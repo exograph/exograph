@@ -1,0 +1,13 @@
+[package]
+name = "payas-server"
+version = "0.1.0"
+authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+graphql-parser = "0.3.0"
+actix-web = "3"
+serde_json = {version = "1.0", features = ["preserve_order"]}
+
