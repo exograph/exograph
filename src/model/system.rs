@@ -14,7 +14,7 @@ pub struct ModelSystemParameterTypes {
     other_parameter_type_map: HashMap<String, Arc<ParameterType>>,
 }
 
-const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"];
+const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"]; // TODO: Expand the list
 
 impl ModelSystem {
     pub fn new() -> Self {

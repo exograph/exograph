@@ -5,6 +5,8 @@ use serde_json::Value;
 
 mod introspection;
 mod model;
+#[macro_use]
+mod sql;
 
 use crate::model::test_util::common_test_data::*;
 
