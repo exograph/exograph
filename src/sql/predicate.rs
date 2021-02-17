@@ -1,5 +1,6 @@
 use super::{column::Column, Expression, ParameterBinding};
 
+#[derive(Debug)]
 pub enum Predicate {
     True,
     False,
@@ -119,4 +120,6 @@ mod tests {
         );
         assert_params!(predicate.binding().params, "foo", 5);
     }
+
+ 
 }

@@ -55,7 +55,7 @@ impl Expression for Column {
                 ParameterBinding::new(strs.join(", "), paramss.into_iter().flatten().collect())
             },
             Column::Literal(value) => {
-                ParameterBinding::new("?".to_string(), vec![value.clone()]) // todo put in the value
+                ParameterBinding::new("?".to_string(), vec![value.clone()])
             }
         }
     }

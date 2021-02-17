@@ -1,9 +1,10 @@
-use super::{Expression, ParameterBinding, column::{Column, PhysicalColumn}};
+use super::{Expression, ParameterBinding, column::{Column, PhysicalColumn}, predicate::Predicate};
 use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum Table {
     Physical(PhysicalTable),
+    PredicateTable(Box<Table>, Predicate)
 }
 
 #[derive(Debug)]
@@ -19,11 +20,14 @@ impl PhysicalTable {
 }
 
 impl Table {
-    fn column(self: Arc<Table>, name: String) -> Column {
-        match self.as_ref() {
+    fn column(&self, name: String) -> Column {
+        match self {
             Table::Physical(physical_table) => {
                 Column::Physical(physical_table.columns.iter().find(|c| c.name == name).unwrap().clone())
             },
+            Table::PredicateTable(table, _) => {
+                table.column(name)
+            }
         }
     }
 }
@@ -38,6 +42,15 @@ impl Expression for Table {
     fn binding(&self) -> ParameterBinding {
         match self {
             Table::Physical(physical_table) => physical_table.binding(),
+            Table::PredicateTable(table, predicate) => {
+                let table_binding = table.as_ref().binding();
+                let predicate_binding = predicate.binding();
+                let stmt = format!("{} where {}", table_binding.stmt, predicate_binding.stmt);
+                let mut params = table_binding.params;
+                params.extend(predicate_binding.params);
+
+                ParameterBinding::new(stmt, params)
+            }
         }
     }
 }
