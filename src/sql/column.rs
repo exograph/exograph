@@ -1,14 +1,13 @@
-use std::sync::Arc;
 use super::{Expression, ParameterBinding, SQLParam};
 
 #[derive(Debug)]
-pub enum Column {
-    Physical(Arc<PhysicalColumn>),
+pub enum Column<'a> {
+    Physical(&'a PhysicalColumn),
     Plain { name: String },
     Star,
-    JsonAgg { column: Box<Column> },
-    JsonObj { columns: Vec<ColumnAttr> },
-    Literal(Arc<dyn SQLParam>),
+    JsonAgg { column: &'a Column<'a> },
+    JsonObj { columns: Vec<ColumnAttr<'a>> },
+    Literal(Box<dyn SQLParam>),
     //SingleSelect { column: Box<Column>, table: Table}
 }
 
@@ -19,9 +18,9 @@ pub struct PhysicalColumn {
 }
 
 #[derive(Debug)]
-pub struct ColumnAttr {
+pub struct ColumnAttr<'a> {
     alias: String,
-    column: Column
+    column: Column<'a>
 }
 
 impl Expression for PhysicalColumn {
@@ -30,7 +29,7 @@ impl Expression for PhysicalColumn {
     }
 }
 
-impl Expression for Column {
+impl Expression for Column<'_> {
     fn binding(&self) -> ParameterBinding {
         match self {
             Column::Physical(physical_column) => {
@@ -55,7 +54,7 @@ impl Expression for Column {
                 ParameterBinding::new(strs.join(", "), paramss.into_iter().flatten().collect())
             },
             Column::Literal(value) => {
-                ParameterBinding::new("?".to_string(), vec![value.clone()])
+                ParameterBinding::new("?".to_string(), vec![value])
             }
         }
     }

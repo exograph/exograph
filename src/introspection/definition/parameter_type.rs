@@ -46,7 +46,6 @@ mod tests {
     use super::*;
     use crate::model::types::{ModelTypeModifier, Parameter};
     use graphql_parser::parse_schema;
-    use std::sync::Arc;
 
     #[test]
     fn scalar() {
@@ -63,19 +62,13 @@ mod tests {
     fn complex() {
         let id_param = Parameter {
             name: "id".to_string(),
-            tpe: Arc::new(ParameterType {
-                name: "Int".to_string(),
-                kind: ParameterTypeKind::Primitive,
-            }),
+            type_name: "Int".to_string(),
             type_modifier: ModelTypeModifier::NonNull,
         };
 
         let title_param = Parameter {
             name: "title".to_string(),
-            tpe: Arc::new(ParameterType {
-                name: "String".to_string(),
-                kind: ParameterTypeKind::Primitive,
-            }),
+            type_name: "String".to_string(),
             type_modifier: ModelTypeModifier::Optional,
         };
 

@@ -14,7 +14,7 @@ pub struct Schema<'a> {
 }
 
 impl<'a> Schema<'a> {
-    pub fn new(system: &'a ModelSystem) -> Schema<'a> {
+    pub fn new(system: &ModelSystem) -> Schema {
         let mut type_definitions: Vec<TypeDefinition<String>> = system
             .types
             .iter()

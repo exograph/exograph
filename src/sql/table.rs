@@ -1,33 +1,28 @@
 use super::{Expression, ParameterBinding, column::{Column, PhysicalColumn}, predicate::Predicate};
-use std::sync::Arc;
 
 #[derive(Debug)]
-pub enum Table {
+pub enum Table<'a> {
     Physical(PhysicalTable),
-    PredicateTable(Box<Table>, Predicate)
+    PredicateTable(&'a Table<'a>, Predicate<'a>)
 }
 
 #[derive(Debug)]
 pub struct PhysicalTable {
     pub name: String,
-    pub columns: Vec<Arc<PhysicalColumn>>
+    pub columns: Vec<PhysicalColumn>
 }
 
 impl PhysicalTable {
-    pub fn get_column(self: &Arc<Self>, column_name: &str) -> Option<Arc<PhysicalColumn>> {
-        self.columns.iter().find(|column| column.name.as_str() == column_name).map(|c| c.clone())
+    pub fn get_column<'a>(&'a self, column_name: &str) -> Option<&'a PhysicalColumn> {
+        self.columns.iter().find(|column| column.name.as_str() == column_name)
     }
 }
 
-impl Table {
-    fn column(&self, name: String) -> Column {
+impl Table<'_> {
+    pub fn get_column(&self, column_name: &str) -> Option<Column> {
         match self {
-            Table::Physical(physical_table) => {
-                Column::Physical(physical_table.columns.iter().find(|c| c.name == name).unwrap().clone())
-            },
-            Table::PredicateTable(table, _) => {
-                table.column(name)
-            }
+            Table::Physical(physical_table) => physical_table.get_column(column_name).map(|c| Column::Physical(c)),
+            Table::PredicateTable(table, _) => table.get_column(column_name)
         }
     }
 }
@@ -38,12 +33,12 @@ impl Expression for PhysicalTable {
     }
 }
 
-impl Expression for Table {
+impl<'a> Expression for Table<'a> {
     fn binding(&self) -> ParameterBinding {
         match self {
             Table::Physical(physical_table) => physical_table.binding(),
             Table::PredicateTable(table, predicate) => {
-                let table_binding = table.as_ref().binding();
+                let table_binding = table.binding();
                 let predicate_binding = predicate.binding();
                 let stmt = format!("{} where {}", table_binding.stmt, predicate_binding.stmt);
                 let mut params = table_binding.params;
@@ -60,11 +55,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn basic() {
+    fn phyrical_table() {
         let table = Table::Physical(PhysicalTable{
             name: "people".to_string(),
             columns: vec![]
         });
         assert_binding!(&table.binding(), "people");
+    }
+
+    #[test]
+    fn predicated_table() {
+        let table = Table::Physical(PhysicalTable{
+            name: "people".to_string(),
+            columns: vec![PhysicalColumn { name: "age".to_string(), table_name: "people".to_string()}]
+        });
+
+        let age_col = table.get_column("age").unwrap();
+        let age_value_col = Column::Literal(Box::new(5));
+
+        let predicated_table = Table::PredicateTable(&table, Predicate::Eq(&age_col, &age_value_col));
+        assert_binding!(&predicated_table.binding(), "people where people.age = ?", 5);
     }
 }

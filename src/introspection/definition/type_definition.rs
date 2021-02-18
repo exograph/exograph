@@ -34,7 +34,7 @@ impl<'a> TypeDefinitionProvider for ModelType {
 
 impl<'a> FieldDefinitionProvider<'a> for ModelField {
     fn field_definition(&self) -> Field<'a, String> {
-        let field_type = util::value_type(&self.tpe.name, &self.type_modifier);
+        let field_type = util::value_type(&self.type_name, &self.type_modifier);
 
         Field::<'a, String> {
             position: Pos::default(),
@@ -62,7 +62,9 @@ mod tests {
             }",
         )
         .unwrap();
-        let venue = venue_model_type();
+
+        let system = test_system();
+        let venue = system.find_type("Venue").unwrap();
         assert_eq!(
             format!("{}", expected),
             format!("{}", venue.type_definition())
@@ -71,7 +73,8 @@ mod tests {
 
     #[test]
     fn nested() {
-        let concert = concert_model_type();
+        let system = test_system();
+        let concert = system.find_type("Concert").unwrap();
 
         let expected = parse_schema::<String>(
             "type Concert {

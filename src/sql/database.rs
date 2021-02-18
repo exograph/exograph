@@ -1,8 +1,7 @@
 use super::{column::PhysicalColumn, table::PhysicalTable};
-use std::sync::Arc;
 
 pub struct Database {
-    pub tables: Vec<Arc<PhysicalTable>>,
+    pub tables: Vec<PhysicalTable>,
 }
 
 impl Database {
@@ -10,36 +9,35 @@ impl Database {
         Self { tables: vec![] }
     }
 
-    pub fn get_table(&self, table_name: &str) -> Option<Arc<PhysicalTable>> {
+    pub fn get_table(&self, table_name: &str) -> Option<&PhysicalTable> {
         self
             .tables
             .iter()
-            .find(|table| table.name.as_str() == table_name).map(|t| t.clone())
+            .find(|table| table.name.as_str() == table_name)
     }
 
-    pub fn get_or_create_table(
+    pub fn create_table(
         &mut self,
         table_name: &str,
         column_names: &[&str],
-    ) -> Arc<PhysicalTable> {
+    ) {
         match self.get_table(table_name)
         {
-            Some(table) => table,
+            Some(_) => (),
             None => {
-                let table = Arc::new(PhysicalTable {
+                let table = PhysicalTable {
                     name: table_name.to_string(),
                     columns: column_names
                         .iter()
                         .map(|column_name| {
-                            Arc::new(PhysicalColumn {
+                            PhysicalColumn {
                                 name: column_name.to_string(),
                                 table_name: table_name.to_string(),
-                            })
+                            }
                         })
                         .collect(),
-                });
-                self.tables.push(table.clone());
-                table
+                };
+                self.tables.push(table);
             }
         }
     }

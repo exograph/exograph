@@ -6,18 +6,18 @@ macro_rules! assert_params {
         assert!($actual_params.is_empty(), "Extra actual parameters");
     };
     ($actual_params:expr, $expected_param:expr) => {
-        match &$actual_params.split_first() {
+        match $actual_params.split_first() {
             Some((actual_head, actual_tail)) => {
-                assert_eq!(actual_head, &&(Arc::new($expected_param) as Arc<dyn SQLParam>));
+                assert_eq!(actual_head, &&(Box::new($expected_param) as Box<dyn crate::sql::SQLParam>));
                 assert_eq!(actual_tail.len(), 0, "Extra actual parameters")
             },
             None => assert!(false)
         }
     };
     ($actual_params:expr, $expected_param:expr, $($rest:expr), *) => {
-        match &$actual_params.split_first() {
+        match $actual_params.split_first() {
             Some((actual_head, actual_tail)) => {
-                assert_eq!(actual_head, &&(Arc::new($expected_param) as Arc<dyn SQLParam>));
+                assert_eq!(actual_head, &&(Box::new($expected_param) as Box<dyn SQLParam>));
                 assert_params!(actual_tail, $($rest), *);
             },
             None => assert!(false)
@@ -41,6 +41,6 @@ pub fn test_database() -> Database {
         tables: vec![]
     };
 
-    db.get_or_create_table("people", &["name", "age"]);
+    db.create_table("people", &["name", "age"]);
     db
 }

@@ -1,4 +1,3 @@
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct ModelType {
@@ -22,7 +21,7 @@ pub enum ModelTypeModifier {
 #[derive(Debug, Clone)]
 pub struct ModelField {
     pub name: String,
-    pub tpe: Arc<ModelType>,
+    pub type_name: String,
     pub type_modifier: ModelTypeModifier,
     pub relation: ModelRelation,
 }
@@ -37,7 +36,7 @@ pub enum ModelRelation {
 #[derive(Debug, Clone)]
 pub struct Parameter {
     pub name: String,
-    pub tpe: Arc<ParameterType>,
+    pub type_name: String,
     pub type_modifier: ModelTypeModifier,
 }
 
@@ -63,6 +62,6 @@ pub struct Operation {
 
 #[derive(Debug, Clone)]
 pub struct OperationReturnType {
-    pub model_type: Arc<ModelType>,
-    pub model_type_modifier: ModelTypeModifier,
+    pub type_name: String,
+    pub type_modifier: ModelTypeModifier,
 }

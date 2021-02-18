@@ -1,6 +1,5 @@
 use postgres::types::ToSql;
 use std::any::Any;
-use std::sync::Arc;
 
 #[macro_use]
 #[cfg(test)]
@@ -13,6 +12,10 @@ mod predicate;
 pub trait SQLParam: ToSql + std::fmt::Display {
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, other: &dyn SQLParam) -> bool;
+}
+
+pub fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
 }
 
 impl<T: ToSql + Any + PartialEq + std::fmt::Display> SQLParam for T {
@@ -31,17 +34,17 @@ impl<T: ToSql + Any + PartialEq + std::fmt::Display> SQLParam for T {
 
 impl PartialEq for dyn SQLParam {
     fn eq(&self, other: &Self) -> bool {
-        SQLParam::eq(self,other)
+        SQLParam::eq(self, other)
     }
 }
 
-pub struct ParameterBinding {
+pub struct ParameterBinding<'a> {
     stmt: String,
-    params: Vec<Arc<dyn SQLParam>>
+    params: Vec<&'a Box<dyn SQLParam>>
 }
 
-impl<'a> ParameterBinding {
-    fn new(stmt: String, params: Vec<Arc<dyn SQLParam>>) -> Self {
+impl<'a> ParameterBinding<'a> {
+    fn new(stmt: String, params: Vec<&'a Box<dyn SQLParam>>) -> Self {
         Self {
             stmt,
             params

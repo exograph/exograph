@@ -22,8 +22,8 @@ impl<'a> FieldDefinitionProvider<'a> for Operation {
             name: self.name.clone(),
             arguments: fields,
             field_type: util::value_type(
-                &self.return_type.model_type.name,
-                &self.return_type.model_type_modifier,
+                &self.return_type.type_name,
+                &self.return_type.type_modifier,
             ),
             directives: vec![],
         }
@@ -34,24 +34,21 @@ impl<'a> FieldDefinitionProvider<'a> for Operation {
 mod tests {
     use super::*;
     use crate::model::test_util::common_test_data::*;
-    use std::sync::Arc;
 
     #[test]
     fn simple_operation() {
-        let venue = venue_model_type();
+        let system = test_system();
+        let venue = system.find_type("Venue").unwrap();
 
         let id_param = Parameter {
             name: "id".to_string(),
-            tpe: Arc::new(ParameterType {
-                name: "Int".to_string(),
-                kind: ParameterTypeKind::Primitive,
-            }),
+            type_name: "Int".to_string(),
             type_modifier: ModelTypeModifier::NonNull,
         };
 
         let return_type = OperationReturnType {
-            model_type: venue,
-            model_type_modifier: ModelTypeModifier::NonNull,
+            type_name: venue.name.clone(),
+            type_modifier: ModelTypeModifier::NonNull,
         };
 
         let op = Operation {
