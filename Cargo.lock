@@ -922,6 +922,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37d572918e350e82412fe766d24b15e6682fb2ed2bbe018280caa810397cb319"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1219,6 +1228,7 @@ dependencies = [
  "actix-web",
  "chrono",
  "graphql-parser",
+ "itertools",
  "openssl",
  "postgres",
  "postgres-openssl",

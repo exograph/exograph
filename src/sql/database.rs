@@ -13,7 +13,7 @@ impl Database {
         self
             .tables
             .iter()
-            .find(|table| table.name.as_str() == table_name)
+            .find(|table| table.name == table_name)
     }
 
     pub fn create_table(
