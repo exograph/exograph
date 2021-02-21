@@ -1,9 +1,17 @@
 use graphql_parser::query::*;
 use serde_json::{Map, Value};
 
-use crate::introspection::{query_context, util};
-use query_context::QueryContext;
-use util::*;
+use super::query_context::QueryContext;
+
+pub trait OutputName<'a> {
+    fn output_name(&self) -> String;
+}
+
+impl<'a> OutputName<'a> for Field<'a, String> {
+    fn output_name(&self) -> String {
+        self.alias.clone().unwrap_or(self.name.clone())
+    }
+}
 
 pub trait FieldResolver
 where

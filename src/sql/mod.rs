@@ -4,21 +4,25 @@ use std::any::Any;
 #[macro_use]
 #[cfg(test)]
 mod test_util;
-mod database;
-mod table;
-mod column;
-mod predicate;
+pub mod column;
+pub mod database;
+pub mod table;
 
-pub trait SQLParam: ToSql + std::fmt::Display {
+pub mod order;
+pub mod predicate;
+
+pub trait SQLParam: ToSql + Sync + std::fmt::Display {
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, other: &dyn SQLParam) -> bool;
+
+    fn as_pg(&self) -> &(dyn ToSql + Sync);
 }
 
 pub fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>())
 }
 
-impl<T: ToSql + Any + PartialEq + std::fmt::Display> SQLParam for T {
+impl<T: ToSql + Sync + Any + PartialEq + std::fmt::Display> SQLParam for T {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -30,6 +34,10 @@ impl<T: ToSql + Any + PartialEq + std::fmt::Display> SQLParam for T {
             false
         }
     }
+
+    fn as_pg(&self) -> &(dyn ToSql + Sync) {
+        self
+    }
 }
 
 impl PartialEq for dyn SQLParam {
@@ -38,27 +46,43 @@ impl PartialEq for dyn SQLParam {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ParameterBinding<'a> {
-    stmt: String,
-    params: Vec<&'a Box<dyn SQLParam>>
+    pub stmt: String,
+    pub params: Vec<&'a Box<dyn SQLParam>>,
 }
 
 impl<'a> ParameterBinding<'a> {
     fn new(stmt: String, params: Vec<&'a Box<dyn SQLParam>>) -> Self {
-        Self {
-            stmt,
-            params
-        }
+        Self { stmt, params }
     }
 }
 
-trait Expression {
-    fn binding(&self) -> ParameterBinding;
+pub trait Expression {
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding;
 }
 
-impl<T> Expression for Box<T> where T: Expression {
-    fn binding(&self) -> ParameterBinding {
-        self.as_ref().binding()
+impl<T> Expression for Box<T>
+where
+    T: Expression,
+{
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+        self.as_ref().binding(expression_context)
     }
 }
 
+pub struct ExpressionContext {
+    param_count: u16,
+}
+
+impl ExpressionContext {
+    pub fn new() -> Self {
+        Self { param_count: 0 }
+    }
+
+    pub fn next_param(&mut self) -> u16 {
+        self.param_count += 1;
+
+        self.param_count
+    }
+}

@@ -1,9 +1,9 @@
 //#[cfg(test)] // needed until we use this code from `main`
 pub mod common_test_data {
-    use crate::model::types::ModelRelation::*;
     use crate::model::types::ModelTypeModifier::*;
     use crate::model::types::{ModelField, ModelType};
     use crate::model::{system::ModelSystem, types::ModelTypeKind::*};
+    use crate::{model::types::ModelRelation::*, sql::database::Database};
 
     pub fn test_system() -> ModelSystem {
         let mut system = ModelSystem::new();
@@ -14,6 +14,13 @@ pub mod common_test_data {
         system.build();
 
         system
+    }
+
+    pub fn test_database() -> Database<'static> {
+        let mut database = Database { tables: vec![] };
+        database.create_table("venues", &["id", "name"]);
+        database.create_table("concerts", &["id", "title", "venueid"]);
+        database
     }
 
     fn create_concert_model_type(system: &ModelSystem) -> ModelType {
@@ -42,6 +49,7 @@ pub mod common_test_data {
                         },
                     },
                 ],
+                table_name: "concerts".to_string(),
             },
         }
     }
@@ -64,6 +72,7 @@ pub mod common_test_data {
                         relation: Scalar { column_name: None },
                     },
                 ],
+                table_name: "venues".to_string(),
             },
         }
     }

@@ -1,11 +1,10 @@
 use graphql_parser::query::*;
 use serde_json::Value;
 
-use crate::introspection::{query_context, schema};
+use crate::introspection::schema::Schema;
 
-use super::resolver::*;
-use query_context::QueryContext;
-use schema::Schema;
+use crate::execution::query_context::QueryContext;
+use crate::execution::resolver::*;
 
 impl<'a> FieldResolver for Schema<'a> {
     fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Field<'_, String>) -> Value {

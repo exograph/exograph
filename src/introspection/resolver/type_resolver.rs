@@ -4,13 +4,9 @@ use graphql_parser::{
 };
 use serde_json::Value;
 
-use crate::introspection::query_context;
-
+use crate::execution::query_context::QueryContext;
+use crate::execution::resolver::*;
 use crate::introspection::definition::type_introspection::TypeDefinitionIntrospection;
-use query_context::QueryContext;
-use resolver::*;
-
-use super::resolver;
 
 #[derive(Debug)]
 struct BoxedType<'a> {

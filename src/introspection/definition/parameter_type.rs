@@ -44,7 +44,7 @@ impl<'a> TypeDefinitionProvider for ParameterType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::types::{ModelTypeModifier, Parameter};
+    use crate::model::types::*;
     use graphql_parser::parse_schema;
 
     #[test]
@@ -64,12 +64,14 @@ mod tests {
             name: "id".to_string(),
             type_name: "Int".to_string(),
             type_modifier: ModelTypeModifier::NonNull,
+            role: ParameterRole::Data,
         };
 
         let title_param = Parameter {
             name: "title".to_string(),
             type_name: "String".to_string(),
             type_modifier: ModelTypeModifier::Optional,
+            role: ParameterRole::Data,
         };
 
         let parameters = vec![id_param, title_param];

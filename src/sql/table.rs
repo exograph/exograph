@@ -1,74 +1,97 @@
+use super::{
+    column::Column, predicate::Predicate, Expression, ExpressionContext, ParameterBinding,
+};
 use itertools::Itertools;
-use super::{Expression, ParameterBinding, column::{Column, PhysicalColumn}, predicate::Predicate};
 
 #[derive(Debug)]
-pub enum Table<'a> {
-    Physical(PhysicalTable),
-    PredicateTable(&'a Table<'a>, Predicate<'a>),
-    Select(&'a Table<'a>, Vec<&'a Column<'a>>),
-    CTE(String)
-}
-
-#[derive(Debug)]
-pub struct PhysicalTable {
+pub struct PhysicalTable<'a> {
     pub name: String,
-    pub columns: Vec<PhysicalColumn>
+    pub columns: Vec<Column<'a>>, // Really Column::Physical, but we can't express that
 }
 
-impl PhysicalTable {
-    pub fn get_column<'a>(&'a self, column_name: &str) -> Option<&'a PhysicalColumn> {
-        self.columns.iter().find(|column| column.name.as_str() == column_name)
+impl<'a> PhysicalTable<'a> {
+    pub fn get_column(&self, name: &str) -> Option<&Column> {
+        self.columns.iter().find(|column| match column {
+            Column::Physical {
+                table_name: _,
+                column_name,
+            } => column_name.as_str() == name,
+            _ => false,
+        })
     }
-}
 
-impl Table<'_> {
-    pub fn get_column(&self, column_name: &str) -> Option<Column> {
-        match self {
-            Table::Physical(physical_table) => physical_table.get_column(column_name).map(|c| Column::Physical(c)),
-            Table::PredicateTable(table, _) => table.get_column(column_name),
-            Table::Select(table, _) => table.get_column(column_name),
-            Table::CTE(_) => unreachable!() // A flaw in our model?
+    pub fn select<'b>(
+        &'b self,
+        columns: &'b Vec<&'b Column>,
+        predicate: Option<&'b Predicate<'b>>,
+    ) -> SelectionTable {
+        SelectionTable {
+            underlying: self,
+            columns,
+            predicate,
         }
     }
 }
 
-impl Expression for PhysicalTable {
-    fn binding(&self) -> ParameterBinding {
+impl Expression for PhysicalTable<'_> {
+    fn binding(&self, _expression_context: &mut ExpressionContext) -> ParameterBinding {
         ParameterBinding::new(self.name.clone(), vec![])
     }
 }
+pub struct SelectionTable<'a> {
+    pub underlying: &'a PhysicalTable<'a>,
+    pub columns: &'a Vec<&'a Column<'a>>,
+    pub predicate: Option<&'a Predicate<'a>>,
+}
 
-impl<'a> Expression for Table<'a> {
-    fn binding(&self) -> ParameterBinding {
-        match self {
-            Table::Physical(physical_table) => physical_table.binding(),
-            Table::PredicateTable(table, predicate) => {
-                let table_binding = table.binding();
-                let predicate_binding = predicate.binding();
-                let stmt = format!("{} where {}", table_binding.stmt, predicate_binding.stmt);
-                let mut params = table_binding.params;
+impl<'a> Expression for SelectionTable<'a> {
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+        let table_binding = self.underlying.binding(expression_context);
+
+        let (col_stmtss, col_paramss): (Vec<_>, Vec<_>) = self
+            .columns
+            .iter()
+            .map(|c| {
+                let col_binding = c.binding(expression_context);
+                let text_cast = match c {
+                    Column::Physical { .. } | Column::Literal(_) => "",
+                    Column::JsonObject(_) | Column::JsonAgg(_) => "::text",
+                };
+                (
+                    format!("{}{}", col_binding.stmt, text_cast),
+                    col_binding.params,
+                )
+            })
+            .unzip();
+
+        let cols_stmts: String = col_stmtss
+            .into_iter()
+            .map(|s| s.to_string())
+            .intersperse(String::from(", "))
+            .collect();
+
+        let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
+        params.extend(table_binding.params);
+
+        let stmt = match self.predicate {
+            Some(Predicate::True) => {
+                // Avoid correct, but inelegant "where true" clause
+                format!("select {} from {}", cols_stmts, table_binding.stmt)
+            }
+            Some(ref predicate) => {
+                let predicate_binding = predicate.binding(expression_context);
                 params.extend(predicate_binding.params);
-
-                ParameterBinding::new(stmt, params)
+                format!(
+                    "select {} from {} where {}",
+                    cols_stmts, table_binding.stmt, predicate_binding.stmt
+                )
             }
-            Table::Select(table, columns) => {
-                let table_binding = table.binding();
-
-                let (col_stmtss, col_paramss): (Vec<_>, Vec<_>) = columns.iter().map(|c| {
-                    let col_binding = c.binding();
-                    (col_binding.stmt, col_binding.params)
-                }).unzip();
-
-                let cols_stmts: String = col_stmtss.into_iter().map(|s| s.to_string()).intersperse(String::from(", ")).collect();
-
-                let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
-                params.extend(table_binding.params);
-                ParameterBinding::new(format!("select {} from {}", cols_stmts, table_binding.stmt), params)
+            None => {
+                format!("select {} from {}", cols_stmts, table_binding.stmt)
             }
-            Table::CTE(name) => {
-                ParameterBinding::new(name.to_owned(), vec![])
-            }
-        }
+        };
+
+        ParameterBinding::new(stmt, params)
     }
 }
 
@@ -77,47 +100,79 @@ mod tests {
     use super::*;
 
     #[test]
-    fn phyrical_table() {
-        let table = Table::Physical(PhysicalTable{
-            name: "people".to_string(),
-            columns: vec![]
-        });
-        assert_binding!(&table.binding(), "people");
-    }
-
-    #[test]
     fn predicated_table() {
-        let table = Table::Physical(PhysicalTable{
-            name: "people".to_string(),
-            columns: vec![PhysicalColumn { name: "age".to_string(), table_name: "people".to_string()}]
-        });
+        let table_name = "people";
+        let physical_table = PhysicalTable {
+            name: table_name.to_string(),
+            columns: vec![Column::Physical {
+                table_name: "people".to_string(),
+                column_name: "age".to_string(),
+            }],
+        };
 
-        let age_col = table.get_column("age").unwrap();
+        let age_col = Column::Physical {
+            table_name: table_name.to_string(),
+            column_name: "age".to_string(),
+        };
         let age_value_col = Column::Literal(Box::new(5));
+        let predicate = Predicate::Eq(&age_col, &age_value_col);
 
-        let predicated_table = Table::PredicateTable(&table, Predicate::Eq(&age_col, &age_value_col));
-        assert_binding!(&predicated_table.binding(), "people where people.age = ?", 5);
+        let age_selected_col = Column::Physical {
+            table_name: table_name.to_string(),
+            column_name: "age".to_string(),
+        };
+        let selected_cols = vec![&age_selected_col];
+
+        let predicated_table = physical_table.select(&selected_cols, Some(&predicate));
+
+        let mut expression_context = ExpressionContext::new();
+        assert_binding!(
+            &predicated_table.binding(&mut expression_context),
+            "select people.age from people where people.age = $1",
+            5
+        );
     }
 
     #[test]
-    fn select_table() {
-        let table = Table::Physical(PhysicalTable{
-            name: "people".to_string(),
-            columns: vec![PhysicalColumn { name: "age".to_string(), table_name: "people".to_string()}]
-        });
+    fn json_object() {
+        let table_name = "people";
+        let _physical_table = PhysicalTable {
+            name: table_name.to_string(),
+            columns: vec![
+                Column::Physical {
+                    table_name: "people".to_string(),
+                    column_name: "name".to_string(),
+                },
+                Column::Physical {
+                    table_name: "people".to_string(),
+                    column_name: "age".to_string(),
+                },
+            ],
+        };
 
-        let age_col = table.get_column("age").unwrap();
-        let age_value_col = Column::Literal(Box::new(5));
+        let _age_col = Column::Physical {
+            table_name: table_name.to_string(),
+            column_name: "age".to_string(),
+        };
 
-        let predicated_table = Table::PredicateTable(&table, Predicate::Eq(&age_col, &age_value_col));
+        // let selected_table = physical_table.select(
+        //     &vec![
+        //         &age_col,
+        //         &Column::JsonObject(vec![
+        //             (
+        //                 "namex".to_string(),
+        //                 Column::Physical(table_name.to_string(), "name".to_string()),
+        //             ),
+        //             (
+        //                 "agex".to_string(),
+        //                 Column::Physical(table_name.to_string(), "age".to_string()),
+        //             ),
+        //         ]),
+        //     ],
+        //     None,
+        // );
 
-        let select_table = Table::Select(&predicated_table, vec![&age_col]);
-        assert_binding!(&select_table.binding(), "select people.age from people where people.age = ?", 5);
-    }
-
-    #[test]
-    fn cte() {
-        let cte = Table::CTE(String::from("my_cte"));
-        assert_binding!(&cte.binding(), "my_cte");
+        // let mut expression_context = ExpressionContext::new();
+        // assert_binding!(&selected_table.binding(&mut expression_context), "select people.age, json_build_object('namex', people.name, 'agex', people.age) from people");
     }
 }

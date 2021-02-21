@@ -36,10 +36,8 @@ macro_rules! assert_binding {
     };
 }
 
-pub fn test_database() -> Database {
-    let mut db = Database {
-        tables: vec![]
-    };
+pub fn test_database() -> Database<'static> {
+    let mut db = Database { tables: vec![] };
 
     db.create_table("people", &["name", "age"]);
     db

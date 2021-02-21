@@ -3,21 +3,36 @@ use crate::model::types::*;
 use super::system::{ModelSystem, ModelSystemParameterTypes};
 
 pub trait QueryProvider {
-    fn queries(&self, system: &ModelSystem, param_types: &mut ModelSystemParameterTypes) -> Vec<Operation>;
+    fn queries(
+        &self,
+        system: &ModelSystem,
+        param_types: &mut ModelSystemParameterTypes,
+    ) -> Vec<Operation>;
 }
 
 impl QueryProvider for ModelType {
-    fn queries(&self,  system: &ModelSystem, param_types: &mut ModelSystemParameterTypes) -> Vec<Operation> {
+    fn queries(
+        &self,
+        system: &ModelSystem,
+        param_types: &mut ModelSystemParameterTypes,
+    ) -> Vec<Operation> {
         match &self.kind {
             ModelTypeKind::Primitive => vec![],
-            ModelTypeKind::Composite { model_fields: _ } => {
-                vec![by_pk_query(self, system, param_types), collection_query(self, system, param_types)]
+            ModelTypeKind::Composite { .. } => {
+                vec![
+                    by_pk_query(self, system, param_types),
+                    collection_query(self, system, param_types),
+                ]
             }
         }
     }
 }
 
-fn by_pk_query(tpe: &ModelType, _system: &ModelSystem, _param_types: &mut ModelSystemParameterTypes) -> Operation {
+fn by_pk_query(
+    tpe: &ModelType,
+    _system: &ModelSystem,
+    _param_types: &mut ModelSystemParameterTypes,
+) -> Operation {
     let operation_name = normalized_name(tpe).to_owned();
 
     let return_type: OperationReturnType = OperationReturnType {
@@ -26,19 +41,24 @@ fn by_pk_query(tpe: &ModelType, _system: &ModelSystem, _param_types: &mut ModelS
     };
 
     let id_param = Parameter {
-        name: "id".to_string(),
+        name: "id".to_string(),       // TODO: Use the pk column
         type_name: "Int".to_string(), // TODO: Use id parameter's type
         type_modifier: ModelTypeModifier::NonNull,
+        role: ParameterRole::Predicate,
     };
 
     Operation {
-        name: operation_name.clone(),
+        name: operation_name,
         parameters: vec![id_param],
         return_type: return_type,
     }
 }
 
-fn collection_query(tpe: &ModelType, system: &ModelSystem, param_types: &mut ModelSystemParameterTypes) -> Operation {
+fn collection_query(
+    tpe: &ModelType,
+    system: &ModelSystem,
+    param_types: &mut ModelSystemParameterTypes,
+) -> Operation {
     let operation_name = to_plural(normalized_name(tpe));
 
     let return_type: OperationReturnType = OperationReturnType {
@@ -48,7 +68,12 @@ fn collection_query(tpe: &ModelType, system: &ModelSystem, param_types: &mut Mod
 
     Operation {
         name: operation_name.clone(),
-        parameters: vec![order_by_param(&tpe.name, "orderBy".to_string(), system, param_types)],
+        parameters: vec![order_by_param(
+            &tpe.name,
+            "orderBy".to_string(),
+            system,
+            param_types,
+        )],
         return_type: return_type,
     }
 }
@@ -56,12 +81,14 @@ fn collection_query(tpe: &ModelType, system: &ModelSystem, param_types: &mut Mod
 fn order_by_param(
     type_name: &str,
     name: String,
-    system: &ModelSystem, param_types: &mut ModelSystemParameterTypes,
+    system: &ModelSystem,
+    param_types: &mut ModelSystemParameterTypes,
 ) -> Parameter {
     Parameter {
         name: name,
         type_name: order_by_param_type(type_name, system, param_types),
         type_modifier: ModelTypeModifier::Optional,
+        role: ParameterRole::OrderBy,
     }
 }
 
@@ -73,17 +100,21 @@ fn order_by_param_type(
     let tpe = system.find_type(&type_name);
 
     match &tpe.as_ref().unwrap().kind {
-        ModelTypeKind::Primitive => {
-            param_types.find_parameter_type("Ordering").unwrap();
-            "Ordering".to_string()
-        },
-        ModelTypeKind::Composite { model_fields } => {
+        ModelTypeKind::Primitive => "Ordering".to_string(),
+        ModelTypeKind::Composite { model_fields, .. } => {
             let parameters = model_fields
                 .iter()
-                .map(|field| order_by_param(&field.type_name, field.name.to_string(), system, param_types))
+                .map(|field| {
+                    order_by_param(
+                        &field.type_name,
+                        field.name.to_string(),
+                        system,
+                        param_types,
+                    )
+                })
                 .collect();
 
-            let param_type_name = format!("{}OrderBy", tpe.as_ref().unwrap().name);
+            let param_type_name = format!("{}OrderBy", &type_name);
             param_types.find_parameter_type_or(param_type_name.as_str(), || ParameterType {
                 name: param_type_name.clone(),
                 kind: ParameterTypeKind::Composite { parameters },

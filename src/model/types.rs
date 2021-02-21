@@ -1,4 +1,3 @@
-
 #[derive(Debug, Clone)]
 pub struct ModelType {
     pub name: String,
@@ -8,7 +7,10 @@ pub struct ModelType {
 #[derive(Debug, Clone)]
 pub enum ModelTypeKind {
     Primitive,
-    Composite { model_fields: Vec<ModelField> },
+    Composite {
+        model_fields: Vec<ModelField>,
+        table_name: String,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +40,14 @@ pub struct Parameter {
     pub name: String,
     pub type_name: String,
     pub type_modifier: ModelTypeModifier,
+    pub role: ParameterRole,
+}
+
+#[derive(Debug, Clone)]
+pub enum ParameterRole {
+    Predicate,
+    OrderBy,
+    Data, // limit/offset
 }
 
 #[derive(Debug, Clone)]

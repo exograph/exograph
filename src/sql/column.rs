@@ -1,60 +1,48 @@
 use super::{Expression, ParameterBinding, SQLParam};
+use crate::sql::ExpressionContext;
 
 #[derive(Debug)]
 pub enum Column<'a> {
-    Physical(&'a PhysicalColumn),
-    Plain { name: String },
-    Star,
-    JsonAgg { column: &'a Column<'a> },
-    JsonObj { columns: Vec<ColumnAttr<'a>> },
+    Physical {
+        table_name: String,
+        column_name: String,
+    },
     Literal(Box<dyn SQLParam>),
-    //SingleSelect { column: Box<Column>, table: Table}
+    JsonObject(Vec<(String, Column<'a>)>),
+    JsonAgg(&'a Column<'a>),
 }
 
-#[derive(Debug)]
-pub struct PhysicalColumn {
-    pub name: String,
-    pub table_name: String
-}
-
-#[derive(Debug)]
-pub struct ColumnAttr<'a> {
-    alias: String,
-    column: Column<'a>
-}
-
-impl Expression for PhysicalColumn {
-    fn binding(&self) -> ParameterBinding {
-        ParameterBinding::new(format!("{}.{}", self.table_name, self.name), vec![])
-    }
-}
-
-impl Expression for Column<'_> {
-    fn binding(&self) -> ParameterBinding {
+impl<'a> Expression for Column<'a> {
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
-            Column::Physical(physical_column) => {
-                physical_column.binding()
-            },
-            Column::Plain { name } => {
-                ParameterBinding::new(name.to_owned(), vec![])
-            },
-            Column::Star => {
-                ParameterBinding::new("*".to_string(), vec![])
-            }
-            Column::JsonAgg { column } => {
-                let col_stmt = column.binding();
-                ParameterBinding::new(format!("json_agg({})", col_stmt.stmt), col_stmt.params)
-            }
-            Column::JsonObj { columns} => {
-                let (strs, paramss): (Vec<_>, Vec<_>) = columns.iter().map(|aliased_column| {
-                    let col_stmt = aliased_column.column.binding();
-                    (format!("'{}', {}", aliased_column.alias, col_stmt.stmt), col_stmt.params)
-                }).unzip();
-
-                ParameterBinding::new(strs.join(", "), paramss.into_iter().flatten().collect())
-            },
+            Column::Physical {
+                table_name,
+                column_name,
+            } => ParameterBinding::new(format!("{}.{}", table_name, column_name), vec![]),
             Column::Literal(value) => {
-                ParameterBinding::new("?".to_string(), vec![value])
+                let param_index = expression_context.next_param();
+                ParameterBinding::new(format! {"${}", param_index}, vec![value])
+            }
+            Column::JsonObject(elems) => {
+                let (elem_stmt, elem_params): (Vec<_>, Vec<_>) = elems
+                    .iter()
+                    .map(|elem| {
+                        let elem_binding = elem.1.binding(expression_context);
+                        (
+                            format!("'{}', {}", elem.0, elem_binding.stmt),
+                            elem_binding.params,
+                        )
+                    })
+                    .unzip();
+
+                let stmt = format!("json_build_object({})", elem_stmt.join(", "));
+                let params = elem_params.into_iter().flatten().collect();
+                ParameterBinding::new(stmt, params)
+            }
+            Column::JsonAgg(column) => {
+                let column_binding = column.binding(expression_context);
+                let stmt = format!("json_agg({})", column_binding.stmt);
+                ParameterBinding::new(stmt, column_binding.params)
             }
         }
     }

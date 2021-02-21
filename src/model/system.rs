@@ -3,12 +3,14 @@ use std::collections::HashMap;
 use super::query::*;
 use super::types::*;
 
+#[derive(Debug, Clone)]
 pub struct ModelSystem {
     pub types: Vec<ModelType>,
     pub queries: Vec<Operation>,
     pub parameter_types: ModelSystemParameterTypes,
 }
 
+#[derive(Debug, Clone)]
 pub struct ModelSystemParameterTypes {
     primitive_parameter_type_map: HashMap<String, ParameterType>,
     other_parameter_type_map: HashMap<String, ParameterType>,
@@ -51,7 +53,7 @@ impl ModelSystem {
             .flat_map(|tpe| tpe.queries(self, &mut parameter_types))
             .collect();
 
-        self.parameter_types = parameter_types;    
+        self.parameter_types = parameter_types;
     }
 
     // Helper commonly needed functions
@@ -64,22 +66,20 @@ impl ModelSystem {
         "String".to_string()
     }
 }
-
 impl ModelSystemParameterTypes {
     pub fn new() -> Self {
-        let primitive_parameter_type_map: HashMap<String, ParameterType> =
-            PRIMITIVE_TYPE_NAMES
-                .iter()
-                .map(|tname| {
-                    (
-                        tname.to_string(),
-                        ParameterType {
-                            name: tname.to_string(),
-                            kind: ParameterTypeKind::Primitive,
-                        },
-                    )
-                })
-                .collect();
+        let primitive_parameter_type_map: HashMap<String, ParameterType> = PRIMITIVE_TYPE_NAMES
+            .iter()
+            .map(|tname| {
+                (
+                    tname.to_string(),
+                    ParameterType {
+                        name: tname.to_string(),
+                        kind: ParameterTypeKind::Primitive,
+                    },
+                )
+            })
+            .collect();
 
         let mut other_parameter_type_map = HashMap::new();
         let ordering_parameter_type = ParameterType {
@@ -111,8 +111,7 @@ impl ModelSystemParameterTypes {
     }
 
     pub fn add_parameter_type(&mut self, tpe: ParameterType) {
-        self.other_parameter_type_map
-            .insert(tpe.name.clone(), tpe);
+        self.other_parameter_type_map.insert(tpe.name.clone(), tpe);
     }
 
     pub fn find_parameter_type_or<F>(&mut self, name: &str, default: F) -> &ParameterType

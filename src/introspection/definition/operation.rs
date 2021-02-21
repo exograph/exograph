@@ -44,6 +44,7 @@ mod tests {
             name: "id".to_string(),
             type_name: "Int".to_string(),
             type_modifier: ModelTypeModifier::NonNull,
+            role: ParameterRole::Predicate,
         };
 
         let return_type = OperationReturnType {

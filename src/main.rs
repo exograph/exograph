@@ -1,12 +1,15 @@
-use actix_web::{get, post, App, HttpResponse, HttpServer, Responder};
+use actix_web::{dev::Body, get, post, App, HttpResponse, HttpServer, Responder};
 
-use crate::introspection::schema::Schema;
+use data::data_context::DataContext;
+use introspection::schema::Schema;
 use serde_json::Value;
 
 mod introspection;
 mod model;
 #[macro_use]
 mod sql;
+mod data;
+mod execution;
 
 use crate::model::test_util::common_test_data::*;
 
@@ -22,21 +25,25 @@ async fn resolve(req_body: String) -> impl Responder {
     let v: Value = serde_json::from_str(req_body.as_str()).unwrap();
 
     let system = test_system();
+    let database = test_database();
+    let data_system = DataContext { system, database };
 
-    let example_schema = Schema::new(&system);
+    let schema = Schema::new(&data_system.system); // TODO: Don't create schema every time
 
     let operation_name = v["operationName"].as_str().unwrap_or("");
     let query_str = v["query"].as_str().unwrap();
     let variables = v["variables"].as_object();
 
-    let response = crate::introspection::executor::execute(
-        &example_schema,
+    let response = crate::execution::executor::execute(
+        &data_system,
+        &schema,
         operation_name,
         query_str,
         &variables,
     );
 
-    HttpResponse::Ok().body(response)
+    let response_bytes = response.as_bytes().to_owned();
+    HttpResponse::Ok().body(Body::from(response_bytes))
 }
 
 #[actix_web::main]

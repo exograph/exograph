@@ -13,7 +13,7 @@ impl<'a> TypeDefinitionProvider for ModelType {
     fn type_definition(&self) -> TypeDefinition<String> {
         match &self.kind {
             Primitive => TypeDefinition::Scalar(ScalarType::new(self.name.clone())),
-            Composite { model_fields } => {
+            Composite { model_fields, .. } => {
                 let fields = model_fields
                     .iter()
                     .map(|model_field| model_field.field_definition())
