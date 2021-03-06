@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
-use crate::model::types::*;
 use crate::sql::ExpressionContext;
 use crate::sql::{column::Column, predicate::Predicate};
 use crate::sql::{table::PhysicalTable, Expression};
+use crate::{
+    model::types::*,
+    sql::order::{OrderBy, Ordering},
+};
 use graphql_parser::{
     query::{Field, Selection},
     schema::Value,
@@ -38,29 +41,39 @@ impl Operation {
         let table = self.physical_table(data_context).unwrap();
         let table_name = &table.name;
 
-        let predicate_arguments = &field.arguments.iter().fold(None, |_acc, argument| {
-            let (argument_name, argument_value) = argument;
+        let (predicate_arguments, order_by_arguments) =
+            &field.arguments.iter().fold((None, None), |acc, argument| {
+                let (argument_name, argument_value) = argument;
 
-            let parameter = self.parameters.iter().find(|p| &p.name == argument_name);
+                let parameter = self.parameters.iter().find(|p| &p.name == argument_name);
 
-            match parameter.map(|p| &p.role) {
-                Some(ParameterRole::Predicate) => Some((argument_name, argument_value)),
-                Some(ParameterRole::OrderBy) => todo!(),
-                Some(ParameterRole::Data) => todo!(),
-                None => None,
-            }
-        });
+                match parameter.map(|p| &p.role) {
+                    Some(ParameterRole::Predicate) => {
+                        (Some((argument_name, argument_value)), acc.1)
+                    }
+                    Some(ParameterRole::OrderBy) => (acc.0, Some((argument_name, argument_value))),
+                    Some(ParameterRole::Data) => todo!(),
+                    None => acc,
+                }
+            });
 
         let argument_supplier =
             predicate_arguments.map(|ps| ArgumentSupplier::new(ps.0.to_owned(), ps.1.to_owned()));
-        let predicate = argument_supplier.as_ref().map(|ref argument_supplier| self.predicate(argument_supplier, table, &data_context.system));
+        let predicate = argument_supplier.as_ref().map(|ref argument_supplier| {
+            self.predicate(argument_supplier, table, &data_context.system)
+        });
+
+        let order_by = order_by_arguments
+            .as_ref()
+            .map(|order_by_arguments| self.compute_order_by(order_by_arguments.1, table));
+
         let content_object = self.content_select(field, table_name);
 
         let agg_column = Column::JsonAgg(&content_object);
         let single_column = vec![&content_object];
         let vector_column = vec![&agg_column];
-        let single_select = table.select(&single_column, predicate.as_ref());
-        let vector_select = table.select(&vector_column, predicate.as_ref());
+        let single_select = table.select(&single_column, predicate.as_ref(), None);
+        let vector_select = table.select(&vector_column, predicate.as_ref(), order_by);
 
         let mut expression_context = ExpressionContext::new();
 
@@ -130,7 +143,6 @@ impl Operation {
             .find_parameter_type(&parameter.type_name)
             .unwrap();
 
-        // TODO: Make this generic and aware of other parameters (general filter, order by, etc)
         match &parameter_type.kind {
             ParameterTypeKind::Primitive => {
                 let argument_column = match argument_value {
@@ -146,6 +158,65 @@ impl Operation {
                 todo!()
             }
             ParameterTypeKind::Enum { values: _ } => todo!(),
+        }
+    }
+
+    fn compute_order_by<'a>(
+        &self,
+        argument: &Value<String>,
+        table: &'a PhysicalTable,
+    ) -> OrderBy<'a> {
+        match argument {
+            Value::Object(elems) => {
+                let mapped: Vec<(&'a Column<'a>, Ordering)> = elems
+                    .iter()
+                    .map(|elem| self.order_by_pair(table, elem.0, elem.1))
+                    .collect();
+                OrderBy(mapped)
+            },
+            Value::List(elems) => {
+                let mapped: Vec<(&'a Column<'a>, Ordering)> = elems
+                    .iter()
+                    .flat_map(|elem| self.compute_order_by(elem, table).0)
+                    .collect();
+                OrderBy(mapped)
+            }
+            _ => todo!(), // Invalid
+        }
+    }
+
+    fn order_by_pair<'a>(
+        &self,
+        table: &'a PhysicalTable,
+        parameter_name: &str,
+        parameter_value: &Value<String>,
+    ) -> (&'a Column<'a>, Ordering) {
+        // let order_by_param = self.parameters.iter().find(|p| p.role == ParameterRole::OrderBy).unwrap();
+
+        // match order_by_param
+        // let parameter = self.parameters
+        //     .iter()
+        //     .find(|p| &p.name == parameter_name)
+        //     .unwrap();
+
+        // FIXME: This assument column_name to be the same as parameter_name
+        let column = table.get_column(&parameter_name).unwrap();
+
+        (column, Self::ordering(parameter_value))
+    }
+
+    fn ordering<'a>(argument: &Value<String>) -> Ordering {
+        match argument {
+            Value::Enum(value) => {
+                if value.as_str() == "ASC" {
+                    Ordering::Asc
+                } else if value.as_str() == "DESC" {
+                    Ordering::Desc
+                } else {
+                    todo!() // return an error
+                }
+            }
+            _ => todo!(), // return an error
         }
     }
 }
@@ -172,11 +243,8 @@ impl<'a> ArgumentSupplier<'a> {
         match value {
             Value::Variable(_) => todo!(),
             Value::Int(v) => {
-                // TODO: Unhack this (we can't access the underlying value of Number since it is declared pub(crate)))
-                let v_string = format!("{:?}", v);
-                let number_only = &v_string[..v_string.len() - 1][7..]; // Remove the Number(...) shell
-                let v_num: i32 = number_only.parse().unwrap(); // TODO: Work with the database schema to cast to appropriate i32, etc type
-                ArgumentColumn::Primitive(Column::Literal(Box::new(v_num)))
+                // TODO: Work with the database schema to cast to appropriate i32, etc type
+                ArgumentColumn::Primitive(Column::Literal(Box::new(v.as_i64().unwrap() as i32)))
             }
             Value::Float(v) => ArgumentColumn::Primitive(Column::Literal(Box::new(v))),
             Value::String(v) => ArgumentColumn::Primitive(Column::Literal(Box::new(v.to_owned()))),

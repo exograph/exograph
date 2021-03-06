@@ -121,7 +121,7 @@ mod tests {
         let mut expression_context = ExpressionContext::new();
         assert_binding!(
             &predicate.binding(&mut expression_context),
-            "people.age = $1",
+            r#""people"."age" = $1"#,
             5
         );
     }
@@ -151,7 +151,7 @@ mod tests {
         let mut expression_context = ExpressionContext::new();
         assert_binding!(
             &predicate.binding(&mut expression_context),
-            "people.name = $1 AND people.age = $2",
+            r#""people"."name" = $1 AND "people"."age" = $2"#,
             "foo",
             5
         );

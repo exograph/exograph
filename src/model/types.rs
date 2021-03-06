@@ -43,7 +43,7 @@ pub struct Parameter {
     pub role: ParameterRole,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ParameterRole {
     Predicate,
     OrderBy,
@@ -60,6 +60,7 @@ pub struct ParameterType {
 pub enum ParameterTypeKind {
     Primitive,
     Composite { parameters: Vec<Parameter> },
+    //List { }
     Enum { values: Vec<String> },
 }
 

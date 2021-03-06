@@ -18,7 +18,7 @@ impl<'a> Expression for Column<'a> {
             Column::Physical {
                 table_name,
                 column_name,
-            } => ParameterBinding::new(format!("{}.{}", table_name, column_name), vec![]),
+            } => ParameterBinding::new(format!("\"{}\".\"{}\"", table_name, column_name), vec![]),
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();
                 ParameterBinding::new(format! {"${}", param_index}, vec![value])

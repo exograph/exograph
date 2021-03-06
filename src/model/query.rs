@@ -87,7 +87,17 @@ fn order_by_param(
     Parameter {
         name: name,
         type_name: order_by_param_type(type_name, system, param_types),
-        type_modifier: ModelTypeModifier::Optional,
+        // Specifying ModelTypeModifier::List allows queries such as:
+        // order_by: [{name: ASC}, {id: DESC}]
+        // Using a List is the only way to maintain ordering within a parameter value 
+        // (the order within an object is not guaranteed to be maintained (and the graphql-parser use BTreeMap that doesn't maintain so))
+        // 
+        // But this also allows nonsensical queries such as 
+        // order_by: [{name: ASC, id: DESC}].
+        // Here the user intention is the same as the query above, but we cannot honor that intention
+        // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
+        // Perhaps, we can work with graphql-parser to allow the ordering to be maintained
+        type_modifier: ModelTypeModifier::List, 
         role: ParameterRole::OrderBy,
     }
 }
@@ -112,6 +122,7 @@ fn order_by_param_type(
                         param_types,
                     )
                 })
+
                 .collect();
 
             let param_type_name = format!("{}OrderBy", &type_name);
