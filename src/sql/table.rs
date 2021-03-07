@@ -1,4 +1,7 @@
-use super::{Expression, ExpressionContext, ParameterBinding, column::Column, order::OrderBy, predicate::Predicate};
+use super::{
+    column::Column, order::OrderBy, predicate::Predicate, Expression, ExpressionContext,
+    ParameterBinding,
+};
 use itertools::Itertools;
 
 #[derive(Debug)]
@@ -8,6 +11,7 @@ pub struct PhysicalTable<'a> {
 }
 
 impl<'a> PhysicalTable<'a> {
+    // TODO: Consider column names that are different than field names
     pub fn get_column(&self, name: &str) -> Option<&Column> {
         self.columns.iter().find(|column| match column {
             Column::Physical {
@@ -22,13 +26,13 @@ impl<'a> PhysicalTable<'a> {
         &'b self,
         columns: &'b Vec<&'b Column>,
         predicate: Option<&'b Predicate<'b>>,
-        order_by: Option<OrderBy<'a>>
+        order_by: Option<OrderBy<'a>>,
     ) -> SelectionTable {
         SelectionTable {
             underlying: self,
             columns,
             predicate,
-            order_by
+            order_by,
         }
     }
 }
@@ -42,7 +46,7 @@ pub struct SelectionTable<'a> {
     pub underlying: &'a PhysicalTable<'a>,
     pub columns: &'a Vec<&'a Column<'a>>,
     pub predicate: Option<&'a Predicate<'a>>,
-    pub order_by: Option<OrderBy<'a>>
+    pub order_by: Option<OrderBy<'a>>,
 }
 
 impl<'a> Expression for SelectionTable<'a> {
@@ -76,20 +80,18 @@ impl<'a> Expression for SelectionTable<'a> {
 
         let stmt = match self.predicate {
             // Avoid correct, but inelegant "where true" clause
-            Some(Predicate::True) | None => {
-                match &self.order_by {
-                    None => format!("select {} from {}", cols_stmts, table_binding.stmt),
-                    Some(order_by) => {
-                        let order_by_binding = order_by.binding(expression_context);
-                        params.extend(order_by_binding.params);
-        
-                        format!(
-                            "select {} from (select * from {} order by {}) as {}",
-                            cols_stmts, table_binding.stmt, order_by_binding.stmt, table_binding.stmt
-                        )
-                    }
+            Some(Predicate::True) | None => match &self.order_by {
+                None => format!("select {} from {}", cols_stmts, table_binding.stmt),
+                Some(order_by) => {
+                    let order_by_binding = order_by.binding(expression_context);
+                    params.extend(order_by_binding.params);
+
+                    format!(
+                        "select {} from (select * from {} order by {}) as {}",
+                        cols_stmts, table_binding.stmt, order_by_binding.stmt, table_binding.stmt
+                    )
                 }
-            }
+            },
             Some(ref predicate) => {
                 let predicate_binding = predicate.binding(expression_context);
                 params.extend(predicate_binding.params);
@@ -102,10 +104,14 @@ impl<'a> Expression for SelectionTable<'a> {
                     Some(order_by) => {
                         let order_by_binding = order_by.binding(expression_context);
                         params.extend(order_by_binding.params);
-        
+
                         format!(
                             "select {} from (select * from {} order by {} where {}) as {}",
-                            cols_stmts, table_binding.stmt, order_by_binding.stmt, predicate_binding.stmt, table_binding.stmt
+                            cols_stmts,
+                            table_binding.stmt,
+                            order_by_binding.stmt,
+                            predicate_binding.stmt,
+                            table_binding.stmt
                         )
                     }
                 }

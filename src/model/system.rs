@@ -2,21 +2,25 @@ use std::collections::HashMap;
 
 use super::query::*;
 use super::types::*;
+use super::operation::*;
+use super::order::*;
+use super::predicate::*;
 
 #[derive(Debug, Clone)]
 pub struct ModelSystem {
     pub types: Vec<ModelType>,
-    pub queries: Vec<Operation>,
+    pub queries: Vec<Query>,
     pub parameter_types: ModelSystemParameterTypes,
 }
 
 #[derive(Debug, Clone)]
 pub struct ModelSystemParameterTypes {
-    primitive_parameter_type_map: HashMap<String, ParameterType>,
-    other_parameter_type_map: HashMap<String, ParameterType>,
+    pub predicate_parameter_type_map: HashMap<String, PredicateParameterType>,
+    pub order_by_parameter_type_map: HashMap<String, OrderByParameterType>,
 }
 
 const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"]; // TODO: Expand the list
+const OPERATORS: [&str; 3] = ["eq", "lt", "gt"]; // TODO: Expand
 
 impl ModelSystem {
     pub fn new() -> Self {
@@ -58,7 +62,6 @@ impl ModelSystem {
 
     // Helper commonly needed functions
     pub fn int_type(&self) -> String {
-        //self.find_type("Int").unwrap()
         "Int".to_string()
     }
 
@@ -66,59 +69,86 @@ impl ModelSystem {
         "String".to_string()
     }
 }
+
 impl ModelSystemParameterTypes {
     pub fn new() -> Self {
-        let primitive_parameter_type_map: HashMap<String, ParameterType> = PRIMITIVE_TYPE_NAMES
+        let predicate_parameter_type_map: HashMap<String, PredicateParameterType> = PRIMITIVE_TYPE_NAMES
             .iter()
-            .map(|tname| {
-                (
-                    tname.to_string(),
-                    ParameterType {
-                        name: tname.to_string(),
-                        kind: ParameterTypeKind::Primitive,
-                    },
-                )
+            .flat_map(|tname| {
+                let filter_type = Self::create_scalar_filter_param_ype(tname.to_string());
+                vec![
+                    (
+                        tname.to_string(),
+                        PredicateParameterType {
+                            name: tname.to_string(),
+                            kind: PredicateParameterTypeKind::Primitive,
+                        },
+                    ),
+                    (
+                        filter_type.name.clone(),
+                        filter_type
+                    )
+                ]
             })
             .collect();
 
-        let mut other_parameter_type_map = HashMap::new();
-        let ordering_parameter_type = ParameterType {
+        let mut order_by_parameter_type_map = HashMap::new();
+        let ordering_parameter_type = OrderByParameterType {
             name: "Ordering".to_string(),
-            kind: ParameterTypeKind::Enum {
+            kind: OrderByParameterTypeKind::Enum {
                 values: vec!["ASC".to_string(), "DESC".to_string()],
             },
         };
 
-        other_parameter_type_map.insert(
+        order_by_parameter_type_map.insert(
             ordering_parameter_type.name.clone(),
             ordering_parameter_type,
         );
 
         Self {
-            primitive_parameter_type_map,
-            other_parameter_type_map,
+            predicate_parameter_type_map,
+            order_by_parameter_type_map,
         }
     }
 
-    pub fn non_primitive_parameter_types(&self) -> Vec<&ParameterType> {
-        self.other_parameter_type_map.values().collect()
+    pub fn find_order_by_parameter_type(&self, name: &str) -> Option<&OrderByParameterType> {
+        self.order_by_parameter_type_map.get(name)
     }
 
-    pub fn find_parameter_type(&self, name: &str) -> Option<&ParameterType> {
-        self.primitive_parameter_type_map
-            .get(name)
-            .or_else(|| self.other_parameter_type_map.get(name))
-    }
-
-    pub fn add_parameter_type(&mut self, tpe: ParameterType) {
-        self.other_parameter_type_map.insert(tpe.name.clone(), tpe);
-    }
-
-    pub fn find_parameter_type_or<F>(&mut self, name: &str, default: F) -> &ParameterType
+    pub fn find_order_by_parameter_type_or<F>(&mut self, name: &str, default: F) -> &OrderByParameterType
     where
-        F: FnOnce() -> ParameterType,
+        F: FnOnce() -> OrderByParameterType,
     {
-        let entry = self.other_parameter_type_map.entry(name.to_string());
+        let entry = self.order_by_parameter_type_map.entry(name.to_string());
         entry.or_insert(default())
     }
+
+    pub fn find_predicate_parameter_type(&self, name: &str) -> Option<&PredicateParameterType> {
+        self.predicate_parameter_type_map.get(name)
+    }
+
+    pub fn find_predicate_parameter_type_or<F>(&mut self, name: &str, default: F) -> &PredicateParameterType
+    where
+        F: FnOnce() -> PredicateParameterType,
+    {
+        let entry = self.predicate_parameter_type_map.entry(name.to_string());
+        entry.or_insert(default())
+    }
+
+    fn create_scalar_filter_param_ype(scalar_type: String) -> PredicateParameterType {
+        let type_name = format!("{}Filter", scalar_type);
+    
+        let parameters: Vec<_> = OPERATORS.iter().map(|operator| {
+            PredicateParameter {
+                name: operator.to_string(),
+                type_name: scalar_type.clone(),
+                type_modifier: ModelTypeModifier::Optional
+            }
+        }).collect();
+    
+        PredicateParameterType {
+            name: type_name,
+            kind: PredicateParameterTypeKind::Composite { parameters }
+        }
+    }    
 }

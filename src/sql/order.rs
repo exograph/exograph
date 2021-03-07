@@ -1,22 +1,29 @@
-use super::{Expression, ParameterBinding, column::Column};
+use super::{column::Column, Expression, ParameterBinding};
 
 pub enum Ordering {
     Asc,
-    Desc
+    Desc,
 }
 
 pub struct OrderBy<'a>(pub Vec<(&'a Column<'a>, Ordering)>);
 
 impl<'a> Expression for OrderBy<'a> {
     fn binding(&self, expression_context: &mut super::ExpressionContext) -> ParameterBinding {
-        let (stmts, params): (Vec<_>, Vec<_>) = self.0.iter().map(|elem| {
-            let column_binding = elem.0.binding(expression_context);
-            let order_stmt = match &elem.1 {
-                Ordering::Asc => "ASC",
-                Ordering::Desc => "DESC"
-            };
-            (format!("{} {}", column_binding.stmt, order_stmt), column_binding.params)            
-        }).unzip();
+        let (stmts, params): (Vec<_>, Vec<_>) = self
+            .0
+            .iter()
+            .map(|elem| {
+                let column_binding = elem.0.binding(expression_context);
+                let order_stmt = match &elem.1 {
+                    Ordering::Asc => "ASC",
+                    Ordering::Desc => "DESC",
+                };
+                (
+                    format!("{} {}", column_binding.stmt, order_stmt),
+                    column_binding.params,
+                )
+            })
+            .unzip();
 
         ParameterBinding::new(stmts.join(", "), params.into_iter().flatten().collect())
     }
@@ -29,7 +36,10 @@ mod test {
 
     #[test]
     fn single() {
-        let age_col = Column::Physical { table_name: "people".to_string(), column_name: "age".to_string()};
+        let age_col = Column::Physical {
+            table_name: "people".to_string(),
+            column_name: "age".to_string(),
+        };
 
         let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
 
@@ -41,8 +51,14 @@ mod test {
 
     #[test]
     fn multiple() {
-        let age_col = Column::Physical { table_name: "people".to_string(), column_name: "age".to_string()};
-        let name_col = Column::Physical { table_name: "people".to_string(), column_name: "name".to_string()};
+        let age_col = Column::Physical {
+            table_name: "people".to_string(),
+            column_name: "age".to_string(),
+        };
+        let name_col = Column::Physical {
+            table_name: "people".to_string(),
+            column_name: "name".to_string(),
+        };
 
         {
             let order_by = OrderBy(vec![(&name_col, Ordering::Asc), (&age_col, Ordering::Desc)]);
@@ -62,7 +78,5 @@ mod test {
 
             assert_binding!(binding, r#""people"."age" DESC, "people"."name" ASC"#);
         }
-
     }
-
 }

@@ -1,27 +1,33 @@
+use crate::model::operation::*;
 use crate::model::types::*;
 
-use super::system::{ModelSystem, ModelSystemParameterTypes};
+use super::{
+    order::*,
+    predicate::PredicateParameter,
+    system::{ModelSystem, ModelSystemParameterTypes},
+};
 
 pub trait QueryProvider {
     fn queries(
         &self,
         system: &ModelSystem,
-        param_types: &mut ModelSystemParameterTypes,
-    ) -> Vec<Operation>;
+        // Really a part of the system, but have to separate out to allow mutating it while still acceesing system
+        system_param_types: &mut ModelSystemParameterTypes,
+    ) -> Vec<Query>;
 }
 
 impl QueryProvider for ModelType {
     fn queries(
         &self,
         system: &ModelSystem,
-        param_types: &mut ModelSystemParameterTypes,
-    ) -> Vec<Operation> {
+        system_param_types: &mut ModelSystemParameterTypes,
+    ) -> Vec<Query> {
         match &self.kind {
             ModelTypeKind::Primitive => vec![],
             ModelTypeKind::Composite { .. } => {
                 vec![
-                    by_pk_query(self, system, param_types),
-                    collection_query(self, system, param_types),
+                    by_pk_query(self, system, system_param_types),
+                    collection_query(self, system, system_param_types),
                 ]
             }
         }
@@ -31,8 +37,8 @@ impl QueryProvider for ModelType {
 fn by_pk_query(
     tpe: &ModelType,
     _system: &ModelSystem,
-    _param_types: &mut ModelSystemParameterTypes,
-) -> Operation {
+    _system_param_types: &mut ModelSystemParameterTypes,
+) -> Query {
     let operation_name = normalized_name(tpe).to_owned();
 
     let return_type: OperationReturnType = OperationReturnType {
@@ -40,16 +46,12 @@ fn by_pk_query(
         type_modifier: ModelTypeModifier::NonNull,
     };
 
-    let id_param = Parameter {
-        name: "id".to_string(),       // TODO: Use the pk column
-        type_name: "Int".to_string(), // TODO: Use id parameter's type
-        type_modifier: ModelTypeModifier::NonNull,
-        role: ParameterRole::Predicate,
-    };
+    let id_param = PredicateParameter::new_pk(&tpe.name, _system, _system_param_types);
 
-    Operation {
+    Query {
         name: operation_name,
-        parameters: vec![id_param],
+        predicate_parameter: Some(id_param),
+        order_by_param: None,
         return_type: return_type,
     }
 }
@@ -58,7 +60,7 @@ fn collection_query(
     tpe: &ModelType,
     system: &ModelSystem,
     param_types: &mut ModelSystemParameterTypes,
-) -> Operation {
+) -> Query {
     let operation_name = to_plural(normalized_name(tpe));
 
     let return_type: OperationReturnType = OperationReturnType {
@@ -66,72 +68,21 @@ fn collection_query(
         type_modifier: ModelTypeModifier::List,
     };
 
-    Operation {
+    Query {
         name: operation_name.clone(),
-        parameters: vec![order_by_param(
+        predicate_parameter: Some(PredicateParameter::new_collection(
+            &tpe.name,
+            "where",
+            system,
+            param_types,
+        )),
+        order_by_param: Some(OrderByParameter::new(
             &tpe.name,
             "orderBy".to_string(),
             system,
             param_types,
-        )],
+        )),
         return_type: return_type,
-    }
-}
-
-fn order_by_param(
-    type_name: &str,
-    name: String,
-    system: &ModelSystem,
-    param_types: &mut ModelSystemParameterTypes,
-) -> Parameter {
-    Parameter {
-        name: name,
-        type_name: order_by_param_type(type_name, system, param_types),
-        // Specifying ModelTypeModifier::List allows queries such as:
-        // order_by: [{name: ASC}, {id: DESC}]
-        // Using a List is the only way to maintain ordering within a parameter value 
-        // (the order within an object is not guaranteed to be maintained (and the graphql-parser use BTreeMap that doesn't maintain so))
-        // 
-        // But this also allows nonsensical queries such as 
-        // order_by: [{name: ASC, id: DESC}].
-        // Here the user intention is the same as the query above, but we cannot honor that intention
-        // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
-        // Perhaps, we can work with graphql-parser to allow the ordering to be maintained
-        type_modifier: ModelTypeModifier::List, 
-        role: ParameterRole::OrderBy,
-    }
-}
-
-fn order_by_param_type(
-    type_name: &str,
-    system: &ModelSystem,
-    param_types: &mut ModelSystemParameterTypes,
-) -> String {
-    let tpe = system.find_type(&type_name);
-
-    match &tpe.as_ref().unwrap().kind {
-        ModelTypeKind::Primitive => "Ordering".to_string(),
-        ModelTypeKind::Composite { model_fields, .. } => {
-            let parameters = model_fields
-                .iter()
-                .map(|field| {
-                    order_by_param(
-                        &field.type_name,
-                        field.name.to_string(),
-                        system,
-                        param_types,
-                    )
-                })
-
-                .collect();
-
-            let param_type_name = format!("{}OrderBy", &type_name);
-            param_types.find_parameter_type_or(param_type_name.as_str(), || ParameterType {
-                name: param_type_name.clone(),
-                kind: ParameterTypeKind::Composite { parameters },
-            });
-            param_type_name
-        }
     }
 }
 

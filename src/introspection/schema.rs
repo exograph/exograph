@@ -5,8 +5,7 @@ use graphql_parser::{
 
 use crate::model::system::ModelSystem;
 
-use crate::introspection::definition::provider::*;
-use crate::introspection::definition::type_introspection::TypeDefinitionIntrospection;
+use super::definition::{provider::*, type_introspection::TypeDefinitionIntrospection};
 
 #[derive(Debug, Clone)]
 pub struct Schema<'a> {
@@ -21,10 +20,15 @@ impl<'a> Schema<'a> {
             .map(|model_type| model_type.type_definition())
             .collect();
 
-        let param_type_definitions: Vec<TypeDefinition<String>> = system
+        let order_by_param_type_definitions: Vec<TypeDefinition<String>> = system
             .parameter_types
-            .non_primitive_parameter_types()
-            .iter()
+            .order_by_parameter_type_map.values()
+            .map(|parameter_type| parameter_type.type_definition())
+            .collect();
+
+        let predicate_param_type_definitions: Vec<TypeDefinition<String>> = system
+            .parameter_types
+            .predicate_parameter_type_map.values()
             .map(|parameter_type| parameter_type.type_definition())
             .collect();
 
@@ -46,7 +50,8 @@ impl<'a> Schema<'a> {
         };
 
         type_definitions.push(query_type_definition);
-        type_definitions.extend(param_type_definitions);
+        type_definitions.extend(order_by_param_type_definitions);
+        type_definitions.extend(predicate_param_type_definitions);
 
         Schema {
             type_definitions: type_definitions,

@@ -1,5 +1,5 @@
 mod operation;
-mod parameter;
+pub mod parameter;
 mod parameter_type;
 mod type_definition;
 

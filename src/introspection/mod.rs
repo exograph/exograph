@@ -1,4 +1,4 @@
-mod definition;
-mod resolver;
+pub mod definition;
 pub mod schema;
+mod resolver;
 mod util;
