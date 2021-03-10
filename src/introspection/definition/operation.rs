@@ -28,10 +28,10 @@ impl Operation for Query {
             Some(param) => params.push(param),
             None => {}
         }
-        
+
         params
     }
-    
+
     fn return_type(&self) -> &OperationReturnType {
         &self.return_type
     }
@@ -63,8 +63,8 @@ impl<'a, T: Operation> FieldDefinitionProvider<'a> for T {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::predicate::*;
     use super::*;
+    use crate::model::predicate::*;
     use crate::model::test_util::common_test_data::*;
     use crate::model::types::*;
 

@@ -22,13 +22,15 @@ impl<'a> Schema<'a> {
 
         let order_by_param_type_definitions: Vec<TypeDefinition<String>> = system
             .parameter_types
-            .order_by_parameter_type_map.values()
+            .order_by_parameter_type_map
+            .values()
             .map(|parameter_type| parameter_type.type_definition())
             .collect();
 
         let predicate_param_type_definitions: Vec<TypeDefinition<String>> = system
             .parameter_types
-            .predicate_parameter_type_map.values()
+            .predicate_parameter_type_map
+            .values()
             .map(|parameter_type| parameter_type.type_definition())
             .collect();
 

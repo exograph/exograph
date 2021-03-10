@@ -1,13 +1,18 @@
-use graphql_parser::{Pos, schema::{EnumType, EnumValue, InputObjectType, InputValue, ScalarType, TypeDefinition}};
+use graphql_parser::{
+    schema::{EnumType, EnumValue, InputObjectType, InputValue, ScalarType, TypeDefinition},
+    Pos,
+};
 
 use crate::model::{order::*, predicate::*};
 
-use super::{parameter::Parameter, provider::{*, TypeDefinitionProvider}};
+use super::{
+    parameter::Parameter,
+    provider::{TypeDefinitionProvider, *},
+};
 
 pub trait ParameterType {
     fn name(&self) -> &String;
 }
-
 
 impl ParameterType for OrderByParameterType {
     fn name(&self) -> &String {
@@ -62,7 +67,7 @@ impl<'a> TypeDefinitionProvider for OrderByParameterType {
 impl<'a> TypeDefinitionProvider for PredicateParameterType {
     fn type_definition(&self) -> TypeDefinition<String> {
         match &self.kind {
-            PredicateParameterTypeKind::Composite { parameters } => {
+            PredicateParameterTypeKind::Composite { parameters, .. } => {
                 let fields: Vec<InputValue<String>> = parameters
                     .iter()
                     .map(|parameter| parameter.input_value())
@@ -76,7 +81,9 @@ impl<'a> TypeDefinitionProvider for PredicateParameterType {
                     fields: fields,
                 })
             }
-            PredicateParameterTypeKind::Primitive => TypeDefinition::Scalar(ScalarType::new(self.name.clone())),
+            PredicateParameterTypeKind::Primitive => {
+                TypeDefinition::Scalar(ScalarType::new(self.name.clone()))
+            }
         }
     }
 }

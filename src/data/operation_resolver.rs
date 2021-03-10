@@ -26,13 +26,26 @@ impl Query {
         QueryResponse::Raw(string_response)
     }
 
-    fn extract_arguments<'a, 'b>(&'a self, field: &'a Field<'b, String>) -> QueryParameters<'a, 'b> {
+    fn extract_arguments<'a, 'b>(
+        &'a self,
+        field: &'a Field<'b, String>,
+    ) -> QueryParameters<'a, 'b> {
         let processed = field.arguments.iter().fold((None, None), |acc, argument| {
             let (argument_name, argument_value) = argument;
 
-            if self.order_by_param.as_ref().map(|p| &p.name == argument_name).is_some() {
+            if self
+                .order_by_param
+                .as_ref()
+                .filter(|p| &p.name == argument_name)
+                .is_some()
+            {
                 (acc.0, Some((argument_name, argument_value)))
-            } else if self.predicate_parameter.as_ref().map(|p| &p.name == argument_name).is_some() {
+            } else if self
+                .predicate_parameter
+                .as_ref()
+                .filter(|p| &p.name == argument_name)
+                .is_some()
+            {
                 (Some((argument_name, argument_value)), acc.1)
             } else {
                 todo!()
@@ -64,7 +77,11 @@ impl Query {
                 .find(|p| &p.name == predicate_arguments.unwrap().0)
                 .unwrap();
 
-            parameter.predicate(&argument_supplier.argument_value, table, &data_context.system) 
+            parameter.predicate(
+                &argument_supplier.argument_value,
+                table,
+                &data_context.system,
+            )
         });
 
         let order_by = order_by_arguments.as_ref().map(|order_by_arguments| {

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use super::query::*;
-use super::types::*;
 use super::operation::*;
 use super::order::*;
 use super::predicate::*;
+use super::query::*;
+use super::types::*;
 
 #[derive(Debug, Clone)]
 pub struct ModelSystem {
@@ -72,25 +72,23 @@ impl ModelSystem {
 
 impl ModelSystemParameterTypes {
     pub fn new() -> Self {
-        let predicate_parameter_type_map: HashMap<String, PredicateParameterType> = PRIMITIVE_TYPE_NAMES
-            .iter()
-            .flat_map(|tname| {
-                let filter_type = Self::create_scalar_filter_param_ype(tname.to_string());
-                vec![
-                    (
-                        tname.to_string(),
-                        PredicateParameterType {
-                            name: tname.to_string(),
-                            kind: PredicateParameterTypeKind::Primitive,
-                        },
-                    ),
-                    (
-                        filter_type.name.clone(),
-                        filter_type
-                    )
-                ]
-            })
-            .collect();
+        let predicate_parameter_type_map: HashMap<String, PredicateParameterType> =
+            PRIMITIVE_TYPE_NAMES
+                .iter()
+                .flat_map(|tname| {
+                    let filter_type = Self::create_scalar_filter_param_ype(tname.to_string());
+                    vec![
+                        (
+                            tname.to_string(),
+                            PredicateParameterType {
+                                name: tname.to_string(),
+                                kind: PredicateParameterTypeKind::Primitive,
+                            },
+                        ),
+                        (filter_type.name.clone(), filter_type),
+                    ]
+                })
+                .collect();
 
         let mut order_by_parameter_type_map = HashMap::new();
         let ordering_parameter_type = OrderByParameterType {
@@ -115,7 +113,11 @@ impl ModelSystemParameterTypes {
         self.order_by_parameter_type_map.get(name)
     }
 
-    pub fn find_order_by_parameter_type_or<F>(&mut self, name: &str, default: F) -> &OrderByParameterType
+    pub fn find_order_by_parameter_type_or<F>(
+        &mut self,
+        name: &str,
+        default: F,
+    ) -> &OrderByParameterType
     where
         F: FnOnce() -> OrderByParameterType,
     {
@@ -127,7 +129,11 @@ impl ModelSystemParameterTypes {
         self.predicate_parameter_type_map.get(name)
     }
 
-    pub fn find_predicate_parameter_type_or<F>(&mut self, name: &str, default: F) -> &PredicateParameterType
+    pub fn find_predicate_parameter_type_or<F>(
+        &mut self,
+        name: &str,
+        default: F,
+    ) -> &PredicateParameterType
     where
         F: FnOnce() -> PredicateParameterType,
     {
@@ -137,18 +143,22 @@ impl ModelSystemParameterTypes {
 
     fn create_scalar_filter_param_ype(scalar_type: String) -> PredicateParameterType {
         let type_name = format!("{}Filter", scalar_type);
-    
-        let parameters: Vec<_> = OPERATORS.iter().map(|operator| {
-            PredicateParameter {
+
+        let parameters: Vec<_> = OPERATORS
+            .iter()
+            .map(|operator| PredicateParameter {
                 name: operator.to_string(),
                 type_name: scalar_type.clone(),
-                type_modifier: ModelTypeModifier::Optional
-            }
-        }).collect();
-    
+                type_modifier: ModelTypeModifier::Optional,
+            })
+            .collect();
+
         PredicateParameterType {
             name: type_name,
-            kind: PredicateParameterTypeKind::Composite { parameters }
+            kind: PredicateParameterTypeKind::Composite {
+                parameters,
+                primitive_filter: true,
+            },
         }
-    }    
+    }
 }

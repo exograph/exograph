@@ -1,6 +1,9 @@
 use graphql_parser::{schema::InputValue, Pos};
 
-use crate::{introspection::util, model::{order::*, predicate::PredicateParameter, types::ModelTypeModifier}};
+use crate::{
+    introspection::util,
+    model::{order::*, predicate::PredicateParameter, types::ModelTypeModifier},
+};
 
 use super::provider::InputValueProvider;
 

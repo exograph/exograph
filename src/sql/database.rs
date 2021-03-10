@@ -52,8 +52,15 @@ impl<'a> Database<'a> {
     fn process(client: &mut Client, query_string: &str, params: &[&(dyn ToSql + Sync)]) -> String {
         let result = client.query(query_string, params).unwrap();
 
-        // TODO: Assert the row has only one element
-        result[0].get(0)
+        if result.len() == 1 {
+            match result[0].try_get(0) {
+                Ok(col) => col,
+                _ => "null".to_owned()
+            }
+        } else {
+            "null".to_owned()
+        }
+        
     }
 
     fn create_client() -> Client {

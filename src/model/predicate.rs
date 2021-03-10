@@ -1,5 +1,7 @@
-use super::{system::{ModelSystem, ModelSystemParameterTypes}, types::{ModelTypeKind, ModelTypeModifier}};
-
+use super::{
+    system::{ModelSystem, ModelSystemParameterTypes},
+    types::{ModelTypeKind, ModelTypeModifier},
+};
 
 #[derive(Debug, Clone)]
 pub struct PredicateParameter {
@@ -18,7 +20,10 @@ pub struct PredicateParameterType {
 pub enum PredicateParameterTypeKind {
     Primitive,
     //PrimitiveOperator { scalar_type: String, operator: String },
-    Composite { parameters: Vec<PredicateParameter> },
+    Composite {
+        parameters: Vec<PredicateParameter>,
+        primitive_filter: bool,
+    },
 }
 
 impl PredicateParameter {
@@ -55,11 +60,11 @@ impl PredicateParameter {
         system_param_types: &mut ModelSystemParameterTypes,
     ) -> String {
         let tpe = system.find_type(&type_name);
-    
+
         match &tpe.as_ref().unwrap().kind {
             ModelTypeKind::Primitive => {
                 format!("{}Filter", type_name)
-            },
+            }
             ModelTypeKind::Composite { model_fields, .. } => {
                 let parameters = model_fields
                     .iter()
@@ -72,14 +77,20 @@ impl PredicateParameter {
                         )
                     })
                     .collect();
-    
+
                 let param_type_name = format!("{}Filter", &type_name);
-                system_param_types.find_predicate_parameter_type_or(param_type_name.as_str(), || PredicateParameterType {
-                    name: param_type_name.clone(),
-                    kind: PredicateParameterTypeKind::Composite { parameters },
-                });
+                system_param_types.find_predicate_parameter_type_or(
+                    param_type_name.as_str(),
+                    || PredicateParameterType {
+                        name: param_type_name.clone(),
+                        kind: PredicateParameterTypeKind::Composite {
+                            parameters,
+                            primitive_filter: false,
+                        },
+                    },
+                );
                 param_type_name
             }
         }
-    }    
+    }
 }

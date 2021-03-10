@@ -4,8 +4,8 @@ use crate::{
     sql::column::Column,
 };
 
-use crate::sql::order::{OrderBy, Ordering};
 use crate::introspection::definition::parameter::Parameter;
+use crate::sql::order::{OrderBy, Ordering};
 use graphql_parser::schema::Value;
 
 impl OrderByParameter {

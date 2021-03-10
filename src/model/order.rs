@@ -1,4 +1,7 @@
-use super::{system::{ModelSystem, ModelSystemParameterTypes}, types::{ModelTypeKind, ModelTypeModifier}};
+use super::{
+    system::{ModelSystem, ModelSystemParameterTypes},
+    types::{ModelTypeKind, ModelTypeModifier},
+};
 
 #[derive(Debug, Clone)]
 pub struct OrderByParameter {
@@ -42,14 +45,14 @@ impl OrderByParameter {
             type_modifier: ModelTypeModifier::List,
         }
     }
-    
+
     fn order_by_param_type(
         type_name: &str,
         system: &ModelSystem,
         system_param_types: &mut ModelSystemParameterTypes,
     ) -> String {
         let tpe = system.find_type(&type_name);
-    
+
         match &tpe.as_ref().unwrap().kind {
             ModelTypeKind::Primitive => "Ordering".to_string(),
             ModelTypeKind::Composite { model_fields, .. } => {
@@ -64,15 +67,17 @@ impl OrderByParameter {
                         )
                     })
                     .collect();
-    
+
                 let param_type_name = format!("{}OrderBy", &type_name);
-                system_param_types.find_order_by_parameter_type_or(param_type_name.as_str(), || OrderByParameterType {
-                    name: param_type_name.clone(),
-                    kind: OrderByParameterTypeKind::Composite { parameters },
-                });
+                system_param_types.find_order_by_parameter_type_or(
+                    param_type_name.as_str(),
+                    || OrderByParameterType {
+                        name: param_type_name.clone(),
+                        kind: OrderByParameterTypeKind::Composite { parameters },
+                    },
+                );
                 param_type_name
             }
         }
     }
-    
 }
