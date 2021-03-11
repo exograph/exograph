@@ -7,6 +7,7 @@ use super::{column::Column, table::PhysicalTable, ParameterBinding};
 fn type_of<T>(_: &T) -> &str {
     std::any::type_name::<T>()
 }
+#[derive(Debug)]
 pub struct Database<'a> {
     pub tables: Vec<PhysicalTable<'a>>,
 }
@@ -39,7 +40,7 @@ impl<'a> Database<'a> {
         }
     }
 
-    pub fn execute(&self, binding: ParameterBinding) -> String {
+    pub fn execute(&self, binding: &ParameterBinding) -> String {
         let mut client = Self::create_client();
 
         let params: Vec<&(dyn ToSql + Sync)> =
@@ -50,12 +51,13 @@ impl<'a> Database<'a> {
     }
 
     fn process(client: &mut Client, query_string: &str, params: &[&(dyn ToSql + Sync)]) -> String {
-        let result = client.query(query_string, params).unwrap();
+        let rows = client.query(query_string, params).unwrap();
 
-        if result.len() == 1 {
-            match result[0].try_get(0) {
+        // TODO: Check if "null" is right
+        if rows.len() == 1 {
+            match rows[0].try_get(0) {
                 Ok(col) => col,
-                _ => "null".to_owned()
+                _ => panic!("Got row without any columns")
             }
         } else {
             "null".to_owned()

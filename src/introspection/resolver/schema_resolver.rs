@@ -6,7 +6,7 @@ use crate::introspection::schema::Schema;
 use crate::execution::query_context::QueryContext;
 use crate::execution::resolver::*;
 
-impl<'a> FieldResolver for Schema<'a> {
+impl<'a> FieldResolver<Value> for Schema<'a> {
     fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Field<'_, String>) -> Value {
         match field.name.as_str() {
             "types" => self

@@ -1,5 +1,7 @@
+use std::iter::FromIterator;
+
 use graphql_parser::query::*;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use super::query_context::QueryContext;
 
@@ -12,8 +14,15 @@ impl<'a> OutputName<'a> for Field<'a, String> {
         self.alias.clone().unwrap_or(self.name.clone())
     }
 }
+pub trait Resolver<R> {
+    fn resolve_value(
+        &self,
+        query_context: &QueryContext<'_>,
+        selection_set: &SelectionSet<'_, String>,
+    ) -> R;
+}
 
-pub trait FieldResolver
+pub trait FieldResolver<R>
 where
     Self: std::fmt::Debug,
 {
@@ -25,14 +34,14 @@ where
         &'a self,
         query_context: &QueryContext<'_>,
         field: &Field<'_, String>,
-    ) -> Value;
+    ) -> R;
 
     // TODO: Move out of the trait to avoid it being overriden?
     fn resolve_selection(
         &self,
         query_context: &QueryContext<'_>,
         selection: &Selection<'_, String>,
-    ) -> Vec<(String, Value)> {
+    ) -> Vec<(String, R)> {
         match selection {
             Selection::Field(field) => {
                 vec![(
@@ -41,11 +50,7 @@ where
                 )]
             }
             Selection::FragmentSpread(fragment_spread) => {
-                let fragment_definition = query_context
-                    .fragment_definitions
-                    .iter()
-                    .find(|fd| fd.name == fragment_spread.fragment_name)
-                    .unwrap();
+                let fragment_definition = query_context.fragment_definition(&fragment_spread).unwrap();
                 fragment_definition
                     .selection_set
                     .items
@@ -57,6 +62,18 @@ where
                 vec![] // TODO
             }
         }
+    }
+
+    fn resolve_selection_set<COL: FromIterator<(std::string::String, R)>> (
+        &self,
+        query_context: &QueryContext<'_>,
+        selection_set: &SelectionSet<'_, String>,
+    ) -> COL {
+        selection_set
+            .items
+            .iter()
+            .flat_map(|selection| self.resolve_selection(query_context, selection))
+            .collect::<COL>()
     }
 }
 
@@ -73,36 +90,23 @@ where
 //     }
 // }
 
-pub trait Resolver {
-    fn resolve_value(
-        &self,
-        query_context: &QueryContext<'_>,
-        selection_set: &SelectionSet<'_, String>,
-    ) -> Value;
-}
 
-impl<T> Resolver for T
+impl<T> Resolver<Value> for T
 where
-    T: FieldResolver + std::fmt::Debug,
+    T: FieldResolver<Value> + std::fmt::Debug,
 {
     fn resolve_value(
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &SelectionSet<'_, String>,
     ) -> Value {
-        let elems: Map<String, Value> = selection_set
-            .items
-            .iter()
-            .flat_map(|selection| self.resolve_selection(query_context, selection))
-            .collect::<Map<String, Value>>();
-
-        Value::Object(elems)
+        Value::Object(self.resolve_selection_set(query_context, selection_set))
     }
 }
 
-impl<T> Resolver for Option<&T>
+impl<T> Resolver<Value> for Option<&T>
 where
-    T: Resolver + std::fmt::Debug,
+    T: Resolver<Value> + std::fmt::Debug,
 {
     fn resolve_value(
         &self,
@@ -116,9 +120,9 @@ where
     }
 }
 
-impl<T> Resolver for Vec<T>
+impl<T> Resolver<Value> for Vec<T>
 where
-    T: Resolver + std::fmt::Debug,
+    T: Resolver<Value> + std::fmt::Debug,
 {
     fn resolve_value(
         &self,
@@ -129,6 +133,7 @@ where
             .iter()
             .map(|elem| elem.resolve_value(query_context, selection_set))
             .collect();
+
         Value::Array(resolved)
     }
 }

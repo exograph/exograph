@@ -9,7 +9,7 @@ use query_context::*;
 use serde_json::{Map, Value};
 
 pub fn create_query_context<'a>(
-    data_system: &'a DataContext,
+    data_context: &'a DataContext,
     schema: &'a Schema<'a>,
     operation_name: &'a str,
     query_str: &'a str,
@@ -62,7 +62,7 @@ pub fn create_query_context<'a>(
             fragment_definitions,
             variables,
             schema: &schema,
-            data_system,
+            data_context,
         },
     )
 }
@@ -85,7 +85,7 @@ pub fn execute<'a>(
 
     // TODO: More efficient (and ideally zero-copy) way to push the values to network
     let mut response = String::from("{\"data\": {");
-    parts.iter().for_each(|part| {
+    parts.iter().enumerate().for_each(|(index, part)| {
         response.push_str("\"");
         response.push_str(part.0.as_str());
         response.push_str("\":");
@@ -93,6 +93,9 @@ pub fn execute<'a>(
             QueryResponse::Json(value) => response.push_str(value.to_string().as_str()),
             QueryResponse::Raw(value) => response.push_str(value.as_str()),
         };
+        if index != parts.len() - 1  {
+            response.push_str(", ");
+        }
     });
     response.push_str("}}");
 

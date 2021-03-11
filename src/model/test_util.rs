@@ -46,6 +46,8 @@ pub mod common_test_data {
                         type_modifier: NonNull,
                         relation: ManyToOne {
                             column_name: Some("venueid".to_string()),
+                            type_name: "Venue".to_string(),
+                            optional: true
                         },
                     },
                 ],
@@ -71,6 +73,16 @@ pub mod common_test_data {
                         type_modifier: Optional,
                         relation: Scalar { column_name: None },
                     },
+                    // ModelField {
+                    //     name: "concerts".to_string(),
+                    //     type_name: "Concert".to_string(),
+                    //     type_modifier: NonNull,
+                    //     relation: OneToMany {
+                    //         column_name: Some("venueid".to_string()),
+                    //         type_name: "Concert".to_string(),
+                    //         optional: true
+                    //     },
+                    // },
                 ],
                 table_name: "venues".to_string(),
             },

@@ -22,7 +22,7 @@ async fn playground() -> impl Responder {
 
 #[post("/")]
 async fn resolve(req_body: String) -> impl Responder {
-    let v: Value = serde_json::from_str(req_body.as_str()).unwrap();
+    let request: Value = serde_json::from_str(req_body.as_str()).unwrap();
 
     let system = test_system();
     let database = test_database();
@@ -30,9 +30,9 @@ async fn resolve(req_body: String) -> impl Responder {
 
     let schema = Schema::new(&data_system.system); // TODO: Don't create schema every time
 
-    let operation_name = v["operationName"].as_str().unwrap_or("");
-    let query_str = v["query"].as_str().unwrap();
-    let variables = v["variables"].as_object();
+    let operation_name = request["operationName"].as_str().unwrap_or("");
+    let query_str = request["query"].as_str().unwrap();
+    let variables = request["variables"].as_object();
 
     let response = crate::execution::executor::execute(
         &data_system,

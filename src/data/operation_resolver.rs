@@ -1,6 +1,6 @@
-use crate::sql::column::Column;
 use crate::sql::ExpressionContext;
 use crate::sql::{table::PhysicalTable, Expression};
+use crate::{execution::query_context::QueryContext, sql::column::Column};
 
 use crate::model::{operation::*, types::*};
 
@@ -21,8 +21,12 @@ struct QueryParameters<'a, 'b> {
 }
 
 impl Query {
-    pub fn resolve(&self, field: &Field<'_, String>, data_context: &DataContext) -> QueryResponse {
-        let string_response = self.operation(field, data_context);
+    pub fn resolve(
+        &self,
+        field: &Field<'_, String>,
+        query_context: &QueryContext<'_>,
+    ) -> QueryResponse {
+        let string_response = self.operation(field, query_context);
         QueryResponse::Raw(string_response)
     }
 
@@ -58,8 +62,8 @@ impl Query {
         }
     }
 
-    fn operation(&self, field: &Field<'_, String>, data_context: &DataContext) -> String {
-        let table = self.physical_table(data_context).unwrap();
+    fn operation(&self, field: &Field<'_, String>, query_context: &QueryContext<'_>) -> String {
+        let table = self.physical_table(query_context.data_context).unwrap();
         let table_name = &table.name;
 
         let QueryParameters {
@@ -80,7 +84,7 @@ impl Query {
             parameter.predicate(
                 &argument_supplier.argument_value,
                 table,
-                &data_context.system,
+                &query_context.data_context.system,
             )
         });
 
@@ -91,10 +95,14 @@ impl Query {
                 .find(|p| &p.name == order_by_arguments.0)
                 .unwrap();
 
-            parameter.compute_order_by(order_by_arguments.1, table, &data_context.system)
+            parameter.compute_order_by(
+                order_by_arguments.1,
+                table,
+                &query_context.data_context.system,
+            )
         });
 
-        let content_object = self.content_select(field, table_name);
+        let content_object = self.content_select(field, table_name, query_context);
 
         let agg_column = Column::JsonAgg(&content_object);
         let single_column = vec![&content_object];
@@ -110,24 +118,20 @@ impl Query {
             ModelTypeModifier::List => vector_select.binding(&mut expression_context),
         };
 
-        data_context.database.execute(binding)
+        query_context.data_context.database.execute(&binding)
     }
 
-    fn content_select(&self, field: &Field<'_, String>, table_name: &str) -> Column {
+    fn content_select(
+        &self,
+        field: &Field<'_, String>,
+        table_name: &str,
+        query_context: &QueryContext<'_>,
+    ) -> Column {
         let column_specs: Vec<_> = field
             .selection_set
             .items
             .iter()
-            .map(|item| match item {
-                Selection::Field(field) => (
-                    field.output_name(),
-                    Column::Physical {
-                        table_name: table_name.to_string(),
-                        column_name: field.name.clone(),
-                    },
-                ),
-                _ => todo!(),
-            })
+            .flat_map(|selection| self.map_selection(selection, table_name, query_context))
             .collect();
 
         Column::JsonObject(column_specs)
@@ -147,5 +151,76 @@ impl Query {
             .flatten()
             .map(|table_name| data_context.database.get_table(table_name))
             .flatten()
+    }
+
+    fn map_selection<'a, 'oc>(
+        &self,
+        selection: &Selection<'_, String>,
+        table_name: &str,
+        query_context: &QueryContext<'_>,
+    ) -> Vec<(String, Column<'a>)> {
+        match selection {
+            Selection::Field(field) => {
+                vec![self.map_field(field, table_name, query_context)]
+            }
+            Selection::FragmentSpread(fragment_spread) => {
+                let fragment_definition =
+                    query_context.fragment_definition(&fragment_spread).unwrap();
+                fragment_definition
+                    .selection_set
+                    .items
+                    .iter()
+                    .flat_map(|selection| self.map_selection(selection, table_name, query_context))
+                    .collect()
+            }
+            Selection::InlineFragment(_inline_fragment) => {
+                vec![] // TODO
+            }
+        }
+    }
+
+    fn map_field<'a>(
+        &self,
+        field: &Field<'_, String>,
+        table_name: &str,
+        query_context: &QueryContext<'_>,
+    ) -> (String, Column<'a>) {
+        let return_type = query_context
+            .data_context
+            .system
+            .find_type(&self.return_type.type_name)
+            .unwrap();
+
+        let model_field = return_type.model_field(&field.name).unwrap();
+
+        let column = match &model_field.relation {
+            ModelRelation::Pk { .. } | ModelRelation::Scalar { .. } => Column::Physical {
+                table_name: table_name.to_string(),
+                column_name: model_field.column_name(),
+            },
+            ModelRelation::ManyToOne {
+                column_name,
+                type_name,
+                optional: _,
+            } => {
+                let pk_query = query_context
+                    .data_context
+                    .system
+                    .queries
+                    .iter()
+                    .find(|query| query.name == type_name.to_ascii_lowercase())
+                    .unwrap();
+                // TODO: Use column_name to create a predicate....
+                //pk_query.content_select(field, additional_predicate, table_name, operation_context)
+                todo!()
+            }
+            ModelRelation::OneToMany {
+                column_name: _,
+                type_name: _,
+                optional: _,
+            } => todo!(),
+        };
+
+        (field.output_name(), column)
     }
 }

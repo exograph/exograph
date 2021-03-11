@@ -1,5 +1,4 @@
-use super::{Expression, ParameterBinding, SQLParam};
-use crate::sql::ExpressionContext;
+use super::{Expression, ExpressionContext, ParameterBinding, SQLParam};
 
 #[derive(Debug)]
 pub enum Column<'a> {
@@ -40,8 +39,9 @@ impl<'a> Expression for Column<'a> {
                 ParameterBinding::new(stmt, params)
             }
             Column::JsonAgg(column) => {
+                // coalesce to return an empty array if we have no matching enities
                 let column_binding = column.binding(expression_context);
-                let stmt = format!("json_agg({})", column_binding.stmt);
+                let stmt = format!("coalesce(json_agg({}), '[]'::json)", column_binding.stmt);
                 ParameterBinding::new(stmt, column_binding.params)
             }
         }

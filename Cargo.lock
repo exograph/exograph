@@ -1233,6 +1233,7 @@ dependencies = [
  "postgres",
  "postgres-openssl",
  "serde_json",
+ "typed-arena",
 ]
 
 [[package]]
@@ -2047,6 +2048,12 @@ dependencies = [
  "tokio 0.2.24",
  "trust-dns-proto",
 ]
+
+[[package]]
+name = "typed-arena"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0685c84d5d54d1c26f7d3eb96cd41550adb97baed141a761cf335d3d33bcd0ae"
 
 [[package]]
 name = "typenum"

@@ -4,7 +4,7 @@ use serde_json::Value;
 use crate::execution::query_context::QueryContext;
 use crate::execution::resolver::*;
 
-impl<'a> FieldResolver for InputValue<'a, String> {
+impl<'a> FieldResolver<Value> for InputValue<'a, String> {
     fn resolve_field(
         &self,
         query_context: &QueryContext<'_>,

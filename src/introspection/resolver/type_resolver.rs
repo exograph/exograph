@@ -14,7 +14,7 @@ struct BoxedType<'a> {
     type_kind: &'a str,
 }
 
-impl<'a> FieldResolver for TypeDefinition<'a, String> {
+impl<'a> FieldResolver<Value> for TypeDefinition<'a, String> {
     fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Field<'_, String>) -> Value {
         match field.name.as_str() {
             "name" => Value::String(self.name().to_owned()),
@@ -54,7 +54,7 @@ impl<'a> FieldResolver for TypeDefinition<'a, String> {
     }
 }
 
-impl<'a> FieldResolver for Type<'a, String> {
+impl<'a> FieldResolver<Value> for Type<'a, String> {
     fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Field<'_, String>) -> Value {
         match self {
             Type::NamedType(name) => {
@@ -84,7 +84,7 @@ impl<'a> FieldResolver for Type<'a, String> {
     }
 }
 
-impl<'a> FieldResolver for BoxedType<'a> {
+impl<'a> FieldResolver<Value> for BoxedType<'a> {
     fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Field<'_, String>) -> Value {
         match field.name.as_str() {
             "kind" => Value::String(self.type_kind.to_owned()),
