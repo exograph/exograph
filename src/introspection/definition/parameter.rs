@@ -1,4 +1,5 @@
-use graphql_parser::{schema::InputValue, Pos};
+use crate::introspection::util::*;
+use async_graphql_parser::types::InputValueDefinition;
 
 use crate::{
     introspection::util,
@@ -41,15 +42,15 @@ impl Parameter for PredicateParameter {
     }
 }
 
-impl<'a, T: Parameter> InputValueProvider<'a> for T {
-    fn input_value(&self) -> InputValue<'a, String> {
-        let field_type = util::value_type(&self.type_name(), &self.type_modifier());
+impl<T: Parameter> InputValueProvider for T {
+    fn input_value(&self) -> InputValueDefinition {
+        let field_type =
+            util::default_positioned(util::value_type(&self.type_name(), &self.type_modifier()));
 
-        InputValue {
-            position: Pos::default(),
+        InputValueDefinition {
             description: None,
-            name: self.name().clone(),
-            value_type: field_type,
+            name: default_positioned_name(self.name()),
+            ty: field_type,
             default_value: None,
             directives: vec![],
         }
@@ -57,15 +58,15 @@ impl<'a, T: Parameter> InputValueProvider<'a> for T {
 }
 
 // TODO: Derive this from the one above
-impl<'a> InputValueProvider<'a> for &dyn Parameter {
-    fn input_value(&self) -> InputValue<'a, String> {
-        let field_type = util::value_type(&self.type_name(), &self.type_modifier());
+impl InputValueProvider for &dyn Parameter {
+    fn input_value(&self) -> InputValueDefinition {
+        let field_type =
+            util::default_positioned(util::value_type(&self.type_name(), &self.type_modifier()));
 
-        InputValue {
-            position: Pos::default(),
+        InputValueDefinition {
             description: None,
-            name: self.name().clone(),
-            value_type: field_type,
+            name: default_positioned_name(self.name()),
+            ty: field_type,
             default_value: None,
             directives: vec![],
         }

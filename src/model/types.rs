@@ -30,10 +30,22 @@ pub struct ModelField {
 
 #[derive(Debug, Clone)]
 pub enum ModelRelation {
-    Pk { column_name: Option<String> },
-    Scalar { column_name: Option<String> },
-    ManyToOne { column_name: Option<String>, type_name: String, optional: bool },
-    OneToMany { column_name: Option<String>, type_name: String, optional: bool },
+    Pk {
+        column_name: Option<String>,
+    },
+    Scalar {
+        column_name: Option<String>,
+    },
+    ManyToOne {
+        column_name: Option<String>,
+        type_name: String,
+        optional: bool,
+    },
+    OneToMany {
+        column_name: Option<String>,
+        type_name: String,
+        optional: bool,
+    },
 }
 
 impl ModelType {
@@ -55,9 +67,7 @@ impl ModelField {
             | ModelRelation::ManyToOne { column_name, .. } => {
                 column_name.clone().unwrap_or(self.name.to_string()).clone()
             }
-            | ModelRelation::OneToMany { column_name, .. } => {
-                column_name.clone().unwrap()
-            }
+            ModelRelation::OneToMany { column_name, .. } => column_name.clone().unwrap(),
         }
     }
 }

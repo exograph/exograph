@@ -47,7 +47,7 @@ pub mod common_test_data {
                         relation: ManyToOne {
                             column_name: Some("venueid".to_string()),
                             type_name: "Venue".to_string(),
-                            optional: true
+                            optional: true,
                         },
                     },
                 ],

@@ -1,33 +1,30 @@
-use graphql_parser::{
-    schema::{ObjectType, TypeDefinition},
-    Pos,
-};
+use async_graphql_parser::types::{ObjectType, TypeDefinition, TypeKind};
 
 use crate::model::system::ModelSystem;
 
 use super::definition::{provider::*, type_introspection::TypeDefinitionIntrospection};
-
+use crate::introspection::util::*;
 #[derive(Debug, Clone)]
-pub struct Schema<'a> {
-    pub type_definitions: Vec<TypeDefinition<'a, String>>,
+pub struct Schema {
+    pub type_definitions: Vec<TypeDefinition>,
 }
 
-impl<'a> Schema<'a> {
+impl Schema {
     pub fn new(system: &ModelSystem) -> Schema {
-        let mut type_definitions: Vec<TypeDefinition<String>> = system
+        let mut type_definitions: Vec<TypeDefinition> = system
             .types
             .iter()
             .map(|model_type| model_type.type_definition())
             .collect();
 
-        let order_by_param_type_definitions: Vec<TypeDefinition<String>> = system
+        let order_by_param_type_definitions: Vec<TypeDefinition> = system
             .parameter_types
             .order_by_parameter_type_map
             .values()
             .map(|parameter_type| parameter_type.type_definition())
             .collect();
 
-        let predicate_param_type_definitions: Vec<TypeDefinition<String>> = system
+        let predicate_param_type_definitions: Vec<TypeDefinition> = system
             .parameter_types
             .predicate_parameter_type_map
             .values()
@@ -38,17 +35,19 @@ impl<'a> Schema<'a> {
             let fields = system
                 .queries
                 .iter()
-                .map(|query| query.field_definition())
+                .map(|query| default_positioned(query.field_definition()))
                 .collect();
 
-            TypeDefinition::Object(ObjectType {
-                position: Pos::default(),
+            TypeDefinition {
+                extend: false,
                 description: None,
-                name: "Query".to_string(),
-                implements_interfaces: vec![],
+                name: default_positioned_name("Query"),
                 directives: vec![],
-                fields: fields,
-            })
+                kind: TypeKind::Object(ObjectType {
+                    implements: vec![],
+                    fields,
+                }),
+            }
         };
 
         type_definitions.push(query_type_definition);
@@ -60,7 +59,7 @@ impl<'a> Schema<'a> {
         }
     }
 
-    pub fn get_type_definition(&self, type_name: &str) -> Option<&'a TypeDefinition<'_, String>> {
+    pub fn get_type_definition(&self, type_name: &str) -> Option<&TypeDefinition> {
         self.type_definitions
             .iter()
             .find(|td| td.name().as_str() == type_name)
@@ -80,6 +79,6 @@ mod tests {
         schema
             .type_definitions
             .iter()
-            .for_each(|td| println!("{}", format!("{}", td)));
+            .for_each(|td| println!("{}", format!("{:?}", td)));
     }
 }

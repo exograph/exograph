@@ -5,7 +5,7 @@ use crate::sql::{column::Column, predicate::Predicate};
 
 use crate::model::{predicate::*, system::ModelSystem};
 
-use graphql_parser::schema::Value;
+use async_graphql_value::Value;
 
 impl PredicateParameter {
     pub fn predicate<'a>(
@@ -93,30 +93,29 @@ pub enum ArgumentColumn<'a> {
 }
 
 impl<'a> ArgumentSupplier<'a> {
-    pub fn new(argument_name: String, argument_value: Value<String>) -> Self {
+    pub fn new(argument_name: String, argument_value: Value) -> Self {
         Self {
             argument_name: argument_name,
             argument_value: Self::param_value(argument_value),
         }
     }
 
-    fn param_value(value: Value<String>) -> ArgumentColumn<'a> {
+    fn param_value(value: Value) -> ArgumentColumn<'a> {
         match value {
             Value::Variable(_) => todo!(),
-            Value::Int(v) => {
-                // TODO: Work with the database schema to cast to appropriate i32, etc type
+            Value::Number(v) => {
+                // TODO: Work with the database schema to cast to appropriate i32/f32, etc type
                 ArgumentColumn::Primitive(Column::Literal(Box::new(v.as_i64().unwrap() as i32)))
             }
-            Value::Float(v) => ArgumentColumn::Primitive(Column::Literal(Box::new(v))),
             Value::String(v) => ArgumentColumn::Primitive(Column::Literal(Box::new(v.to_owned()))),
             Value::Boolean(v) => ArgumentColumn::Primitive(Column::Literal(Box::new(v))),
             Value::Null => todo!(),
-            Value::Enum(v) => ArgumentColumn::Primitive(Column::Literal(Box::new(v.to_owned()))), // We might need guidance from database to do a correct translation
+            Value::Enum(v) => ArgumentColumn::Primitive(Column::Literal(Box::new(v.to_string()))), // We might need guidance from database to do a correct translation
             Value::List(_) => todo!(),
             Value::Object(elems) => {
                 let mapped: HashMap<_, _> = elems
                     .iter()
-                    .map(|elem| (elem.0.to_owned(), Self::param_value(elem.1.to_owned())))
+                    .map(|elem| (elem.0.to_string(), Self::param_value(elem.1.to_owned())))
                     .collect();
                 ArgumentColumn::Object(mapped)
             }

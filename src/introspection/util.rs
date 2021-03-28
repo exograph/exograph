@@ -1,12 +1,36 @@
-use graphql_parser::schema::Type;
+use async_graphql_parser::{
+    types::{BaseType, Type},
+    Pos, Positioned,
+};
+use async_graphql_value::Name;
 
 use crate::model::types::{ModelTypeModifier, ModelTypeModifier::*};
 
-pub fn value_type<'a>(name: &str, type_modifier: &ModelTypeModifier) -> Type<'a, String> {
-    let base_field_type = Type::NamedType(name.to_owned());
+pub fn default_positioned<T>(value: T) -> Positioned<T> {
+    Positioned::new(value, Pos::default())
+}
+
+pub fn default_positioned_name(value: &str) -> Positioned<Name> {
+    default_positioned(Name::new(value))
+}
+
+pub fn value_type<'a>(name: &str, type_modifier: &ModelTypeModifier) -> Type {
+    let base_field_type = BaseType::Named(Name::new(name));
     match type_modifier {
-        Optional => base_field_type,
-        NonNull => Type::NonNullType(Box::new(base_field_type)),
-        List => Type::ListType(Box::new(base_field_type)),
+        Optional => Type {
+            base: base_field_type,
+            nullable: true,
+        },
+        NonNull => Type {
+            base: base_field_type,
+            nullable: false,
+        },
+        List => Type {
+            base: BaseType::List(Box::new(Type {
+                base: base_field_type,
+                nullable: true,
+            })),
+            nullable: true,
+        },
     }
 }

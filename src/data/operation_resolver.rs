@@ -6,48 +6,42 @@ use crate::model::{operation::*, types::*};
 
 use super::predicate_mapper::ArgumentSupplier;
 
-use graphql_parser::{
-    query::{Field, Selection},
-    schema::Value,
+use async_graphql_parser::{
+    types::{Field, Selection},
+    Positioned,
 };
+use async_graphql_value::{Name, Value};
 
 use crate::{execution::query_context::QueryResponse, execution::resolver::OutputName};
 
 use super::data_context::DataContext;
 
-struct QueryParameters<'a, 'b> {
-    predicate_arguments: Option<(&'a String, &'a Value<'b, String>)>,
-    order_by_arguments: Option<(&'a String, &'a Value<'b, String>)>,
+struct QueryParameters<'a> {
+    predicate_arguments: Option<(&'a Positioned<Name>, &'a Positioned<Value>)>,
+    order_by_arguments: Option<(&'a Positioned<Name>, &'a Positioned<Value>)>,
 }
 
 impl Query {
-    pub fn resolve(
-        &self,
-        field: &Field<'_, String>,
-        query_context: &QueryContext<'_>,
-    ) -> QueryResponse {
-        let string_response = self.operation(field, query_context);
+    pub fn resolve(&self, field: &Positioned<Field>, query_context: &QueryContext<'_>) -> QueryResponse {
+        let string_response = self.operation(&field.node, query_context);
         QueryResponse::Raw(string_response)
     }
 
-    fn extract_arguments<'a, 'b>(
-        &'a self,
-        field: &'a Field<'b, String>,
-    ) -> QueryParameters<'a, 'b> {
+    fn extract_arguments<'a>(&'a self, field: &'a Field) -> QueryParameters<'a> {
         let processed = field.arguments.iter().fold((None, None), |acc, argument| {
             let (argument_name, argument_value) = argument;
 
             if self
                 .order_by_param
                 .as_ref()
-                .filter(|p| &p.name == argument_name)
+                .filter(|p| p.name == argument_name.node)
                 .is_some()
             {
                 (acc.0, Some((argument_name, argument_value)))
             } else if self
                 .predicate_parameter
                 .as_ref()
-                .filter(|p| &p.name == argument_name)
+                .filter(|p| p.name == argument_name.node)
                 .is_some()
             {
                 (Some((argument_name, argument_value)), acc.1)
@@ -62,7 +56,7 @@ impl Query {
         }
     }
 
-    fn operation(&self, field: &Field<'_, String>, query_context: &QueryContext<'_>) -> String {
+    fn operation(&self, field: &Field, query_context: &QueryContext<'_>) -> String {
         let table = self.physical_table(query_context.data_context).unwrap();
         let table_name = &table.name;
 
@@ -71,14 +65,14 @@ impl Query {
             order_by_arguments,
         } = self.extract_arguments(&field);
 
-        let argument_supplier =
-            predicate_arguments.map(|ps| ArgumentSupplier::new(ps.0.to_owned(), ps.1.to_owned()));
+        let argument_supplier = predicate_arguments
+            .map(|ps| ArgumentSupplier::new(ps.0.node.as_str().to_owned(), ps.1.node.clone()));
 
         let predicate = argument_supplier.as_ref().map(|argument_supplier| {
             let parameter = self
                 .predicate_parameter
                 .iter()
-                .find(|p| &p.name == predicate_arguments.unwrap().0)
+                .find(|p| p.name == predicate_arguments.unwrap().0.node)
                 .unwrap();
 
             parameter.predicate(
@@ -92,11 +86,11 @@ impl Query {
             let parameter = self
                 .order_by_param
                 .iter()
-                .find(|p| &p.name == order_by_arguments.0)
+                .find(|p| p.name == order_by_arguments.0.node)
                 .unwrap();
 
             parameter.compute_order_by(
-                order_by_arguments.1,
+                &order_by_arguments.1.node,
                 table,
                 &query_context.data_context.system,
             )
@@ -123,15 +117,16 @@ impl Query {
 
     fn content_select(
         &self,
-        field: &Field<'_, String>,
+        field: &Field,
         table_name: &str,
         query_context: &QueryContext<'_>,
     ) -> Column {
         let column_specs: Vec<_> = field
             .selection_set
+            .node
             .items
             .iter()
-            .flat_map(|selection| self.map_selection(selection, table_name, query_context))
+            .flat_map(|selection| self.map_selection(&selection.node, table_name, query_context))
             .collect();
 
         Column::JsonObject(column_specs)
@@ -155,22 +150,26 @@ impl Query {
 
     fn map_selection<'a, 'oc>(
         &self,
-        selection: &Selection<'_, String>,
+        selection: &Selection,
         table_name: &str,
         query_context: &QueryContext<'_>,
     ) -> Vec<(String, Column<'a>)> {
         match selection {
             Selection::Field(field) => {
-                vec![self.map_field(field, table_name, query_context)]
+                vec![self.map_field(&field.node, table_name, query_context)]
             }
             Selection::FragmentSpread(fragment_spread) => {
-                let fragment_definition =
-                    query_context.fragment_definition(&fragment_spread).unwrap();
+                let fragment_definition = query_context
+                    .fragment_definition(&fragment_spread.node)
+                    .unwrap();
                 fragment_definition
                     .selection_set
+                    .node
                     .items
                     .iter()
-                    .flat_map(|selection| self.map_selection(selection, table_name, query_context))
+                    .flat_map(|selection| {
+                        self.map_selection(&selection.node, table_name, query_context)
+                    })
                     .collect()
             }
             Selection::InlineFragment(_inline_fragment) => {
@@ -181,7 +180,7 @@ impl Query {
 
     fn map_field<'a>(
         &self,
-        field: &Field<'_, String>,
+        field: &Field,
         table_name: &str,
         query_context: &QueryContext<'_>,
     ) -> (String, Column<'a>) {
@@ -191,7 +190,7 @@ impl Query {
             .find_type(&self.return_type.type_name)
             .unwrap();
 
-        let model_field = return_type.model_field(&field.name).unwrap();
+        let model_field = return_type.model_field(&field.name.node).unwrap();
 
         let column = match &model_field.relation {
             ModelRelation::Pk { .. } | ModelRelation::Scalar { .. } => Column::Physical {

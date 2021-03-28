@@ -57,12 +57,11 @@ impl<'a> Database<'a> {
         if rows.len() == 1 {
             match rows[0].try_get(0) {
                 Ok(col) => col,
-                _ => panic!("Got row without any columns")
+                _ => panic!("Got row without any columns"),
             }
         } else {
             "null".to_owned()
         }
-        
     }
 
     fn create_client() -> Client {

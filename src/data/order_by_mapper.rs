@@ -6,12 +6,12 @@ use crate::{
 
 use crate::introspection::definition::parameter::Parameter;
 use crate::sql::order::{OrderBy, Ordering};
-use graphql_parser::schema::Value;
+use async_graphql_value::Value;
 
 impl OrderByParameter {
     pub fn compute_order_by<'a>(
         &self,
-        argument: &Value<String>,
+        argument: &Value,
         table: &'a PhysicalTable,
         system: &ModelSystem,
     ) -> OrderBy<'a> {
@@ -26,7 +26,7 @@ impl OrderByParameter {
 impl OrderByParameterType {
     pub fn compute_order_by<'a>(
         &self,
-        argument: &Value<String>,
+        argument: &Value,
         table: &'a PhysicalTable,
         system: &ModelSystem,
     ) -> OrderBy<'a> {
@@ -54,7 +54,7 @@ impl OrderByParameterType {
         &self,
         table: &'a PhysicalTable,
         parameter_name: &str,
-        parameter_value: &Value<String>,
+        parameter_value: &Value,
     ) -> (&'a Column<'a>, Ordering) {
         let parameter = match &self.kind {
             OrderByParameterTypeKind::Composite { parameters } => {
@@ -68,7 +68,7 @@ impl OrderByParameterType {
         (column, Self::ordering(parameter_value))
     }
 
-    fn ordering<'a>(argument: &Value<String>) -> Ordering {
+    fn ordering<'a>(argument: &Value) -> Ordering {
         match argument {
             Value::Enum(value) => {
                 if value.as_str() == "ASC" {

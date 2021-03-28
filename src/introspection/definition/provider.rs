@@ -1,12 +1,13 @@
-use graphql_parser::schema::{Field, InputValue, TypeDefinition};
-pub trait FieldDefinitionProvider<'a> {
-    fn field_definition(&self) -> Field<'a, String>;
+use async_graphql_parser::types::{FieldDefinition, InputValueDefinition, TypeDefinition};
+
+pub trait FieldDefinitionProvider {
+    fn field_definition(&self) -> FieldDefinition;
 }
 
 pub trait TypeDefinitionProvider {
-    fn type_definition(&self) -> TypeDefinition<String>;
+    fn type_definition(&self) -> TypeDefinition;
 }
 
-pub trait InputValueProvider<'a> {
-    fn input_value(&self) -> InputValue<'a, String>;
+pub trait InputValueProvider {
+    fn input_value(&self) -> InputValueDefinition;
 }

@@ -1,14 +1,13 @@
-use graphql_parser::{
-    schema::{EnumType, EnumValue, InputObjectType, InputValue, ScalarType, TypeDefinition},
-    Pos,
+use async_graphql_parser::{
+    types::{EnumType, EnumValueDefinition, InputObjectType, TypeDefinition, TypeKind},
+    Pos, Positioned,
 };
+use async_graphql_value::Name;
 
+use crate::introspection::util::*;
 use crate::model::{order::*, predicate::*};
 
-use super::{
-    parameter::Parameter,
-    provider::{TypeDefinitionProvider, *},
-};
+use super::{parameter::Parameter, provider::*};
 
 pub trait ParameterType {
     fn name(&self) -> &String;
@@ -32,58 +31,73 @@ pub enum ParameterTypeKind {
     Enum { values: Vec<String> },
 }
 
-impl<'a> TypeDefinitionProvider for OrderByParameterType {
-    fn type_definition(&self) -> TypeDefinition<String> {
+impl TypeDefinitionProvider for OrderByParameterType {
+    fn type_definition(&self) -> TypeDefinition {
         match &self.kind {
             OrderByParameterTypeKind::Composite { parameters } => {
-                let fields: Vec<InputValue<String>> = parameters
+                let fields = parameters
                     .iter()
-                    .map(|parameter| parameter.input_value())
+                    .map(|parameter| default_positioned(parameter.input_value()))
                     .collect();
 
-                TypeDefinition::InputObject(InputObjectType {
-                    position: Pos::default(),
+                TypeDefinition {
+                    extend: false,
                     description: None,
-                    name: self.name().clone(),
+                    name: default_positioned_name(self.name()),
                     directives: vec![],
-                    fields: fields,
-                })
+                    kind: TypeKind::InputObject(InputObjectType { fields }),
+                }
             }
-            OrderByParameterTypeKind::Enum { values } => TypeDefinition::Enum(EnumType {
-                position: Pos::default(),
+            OrderByParameterTypeKind::Enum { values } => TypeDefinition {
+                extend: false,
                 description: None,
-                name: self.name().clone(),
+                name: Positioned::new(Name::new(self.name()), Pos::default()),
                 directives: vec![],
-                values: values
-                    .iter()
-                    .map(|value| EnumValue::new(value.to_owned()))
-                    .collect(),
-            }),
+                kind: TypeKind::Enum(EnumType {
+                    values: values
+                        .iter()
+                        .map(|value| {
+                            Positioned::new(
+                                EnumValueDefinition {
+                                    description: None,
+                                    value: Positioned::new(Name::new(value), Pos::default()),
+                                    directives: vec![],
+                                },
+                                Pos::default(),
+                            )
+                        })
+                        .collect(),
+                }),
+            },
         }
     }
 }
 
 // TODO: Reduce duplication from the above impl
-impl<'a> TypeDefinitionProvider for PredicateParameterType {
-    fn type_definition(&self) -> TypeDefinition<String> {
+impl TypeDefinitionProvider for PredicateParameterType {
+    fn type_definition(&self) -> TypeDefinition {
         match &self.kind {
             PredicateParameterTypeKind::Composite { parameters, .. } => {
-                let fields: Vec<InputValue<String>> = parameters
+                let fields = parameters
                     .iter()
-                    .map(|parameter| parameter.input_value())
+                    .map(|parameter| default_positioned(parameter.input_value()))
                     .collect();
 
-                TypeDefinition::InputObject(InputObjectType {
-                    position: Pos::default(),
+                TypeDefinition {
+                    extend: false,
                     description: None,
-                    name: self.name().clone(),
+                    name: default_positioned_name(self.name()),
                     directives: vec![],
-                    fields: fields,
-                })
+                    kind: TypeKind::InputObject(InputObjectType { fields }),
+                }
             }
-            PredicateParameterTypeKind::Primitive => {
-                TypeDefinition::Scalar(ScalarType::new(self.name.clone()))
-            }
+            PredicateParameterTypeKind::Primitive => TypeDefinition {
+                extend: false,
+                description: None,
+                name: default_positioned_name(self.name()),
+                directives: vec![],
+                kind: TypeKind::Scalar,
+            },
         }
     }
 }

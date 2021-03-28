@@ -39,7 +39,7 @@ async fn resolve(req_body: String) -> impl Responder {
         &schema,
         operation_name,
         query_str,
-        &variables,
+        variables,
     );
 
     let response_bytes = response.as_bytes().to_owned();
