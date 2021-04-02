@@ -14,6 +14,17 @@ pub enum Predicate<'a> {
     Or(Box<Predicate<'a>>, Box<Predicate<'a>>),
 }
 
+impl<'a> Predicate<'a> {
+    pub fn from_name(op_name: &str, lhs: &'a Column<'a>, rhs: &'a Column<'a>) -> Predicate<'a> {
+        match op_name {
+            "eq" => Predicate::Eq(lhs, &rhs),
+            "lt" => Predicate::Lt(lhs, &rhs),
+            "gt" => Predicate::Gt(lhs, &rhs),
+            _ => todo!(),
+        }
+    }
+}
+
 impl<'a> Expression for Predicate<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match &self {

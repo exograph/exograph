@@ -24,13 +24,13 @@ impl<'a> PhysicalTable<'a> {
 
     pub fn select<'b>(
         &'b self,
-        columns: &'b Vec<&'b Column>,
+        columns: Vec<&'b Column>,
         predicate: Option<&'b Predicate<'b>>,
         order_by: Option<OrderBy<'a>>,
     ) -> SelectionTable {
         SelectionTable {
             underlying: self,
-            columns,
+            columns: columns,
             predicate,
             order_by,
         }
@@ -44,7 +44,7 @@ impl Expression for PhysicalTable<'_> {
 }
 pub struct SelectionTable<'a> {
     pub underlying: &'a PhysicalTable<'a>,
-    pub columns: &'a Vec<&'a Column<'a>>,
+    pub columns: Vec<&'a Column<'a>>,
     pub predicate: Option<&'a Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
 }

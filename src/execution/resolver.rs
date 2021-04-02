@@ -33,7 +33,11 @@ where
 }
 
 pub trait Resolver<R> {
-    fn resolve_value(&self, query_context: &QueryContext<'_>, selection_set: &Positioned<SelectionSet>) -> R;
+    fn resolve_value(
+        &self,
+        query_context: &QueryContext<'_>,
+        selection_set: &Positioned<SelectionSet>,
+    ) -> R;
 }
 
 pub trait FieldResolver<R>
@@ -44,7 +48,11 @@ where
     //   name: ???
     // }
     // `field` is `name` and ??? is the return value
-    fn resolve_field<'a>(&'a self, query_context: &QueryContext<'_>, field: &Positioned<Field>) -> R;
+    fn resolve_field<'a>(
+        &'a self,
+        query_context: &QueryContext<'_>,
+        field: &Positioned<Field>,
+    ) -> R;
 
     // TODO: Move out of the trait to avoid it being overriden?
     fn resolve_selection(
@@ -60,9 +68,8 @@ where
                 )]
             }
             Selection::FragmentSpread(fragment_spread) => {
-                let fragment_definition = query_context
-                    .fragment_definition(&fragment_spread.node)
-                    .unwrap();
+                let fragment_definition =
+                    query_context.fragment_definition(&fragment_spread).unwrap();
                 fragment_definition
                     .selection_set
                     .node
@@ -82,7 +89,8 @@ where
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
     ) -> COL {
-        selection_set.node
+        selection_set
+            .node
             .items
             .iter()
             .flat_map(|selection| self.resolve_selection(query_context, &selection))

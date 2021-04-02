@@ -1,10 +1,14 @@
-use crate::sql::ExpressionContext;
-use crate::sql::{table::PhysicalTable, Expression};
-use crate::{execution::query_context::QueryContext, sql::column::Column};
+use crate::execution::query_context::QueryContext;
+use crate::sql::{
+    column::Column,
+    predicate::Predicate,
+    table::{PhysicalTable, SelectionTable},
+    Expression, ExpressionContext,
+};
 
 use crate::model::{operation::*, types::*};
 
-use super::predicate_mapper::ArgumentSupplier;
+use super::operation_context::OperationContext;
 
 use async_graphql_parser::{
     types::{Field, Selection},
@@ -22,8 +26,16 @@ struct QueryParameters<'a> {
 }
 
 impl Query {
-    pub fn resolve(&self, field: &Positioned<Field>, query_context: &QueryContext<'_>) -> QueryResponse {
-        let string_response = self.operation(&field.node, query_context);
+    pub fn resolve(
+        &self,
+        field: &Positioned<Field>,
+        query_context: &QueryContext<'_>,
+    ) -> QueryResponse {
+        let operation_context = OperationContext::new(query_context);
+        let selection_table = self.operation(&field.node, &operation_context);
+        let mut expression_context = ExpressionContext::new();
+        let binding = selection_table.binding(&mut expression_context);
+        let string_response = query_context.data_context.database.execute(&binding);
         QueryResponse::Raw(string_response)
     }
 
@@ -56,33 +68,59 @@ impl Query {
         }
     }
 
-    fn operation(&self, field: &Field, query_context: &QueryContext<'_>) -> String {
-        let table = self.physical_table(query_context.data_context).unwrap();
-        let table_name = &table.name;
+    fn compute_predicate<'a>(
+        &self,
+        field: &'a Field,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Option<Predicate<'a>> {
+        let table = self
+            .physical_table(operation_context.query_context.data_context)
+            .unwrap();
+
+        self.predicate_parameter
+            .as_ref()
+            .and_then(|predicate_parameter| {
+                field.arguments.iter().find_map(|argument| {
+                    let (argument_name, argument_value) = argument;
+                    if predicate_parameter.name == argument_name.node {
+                        Some(predicate_parameter.predicate(
+                            &argument_value.node,
+                            table,
+                            operation_context,
+                        ))
+                    } else {
+                        None
+                    }
+                })
+            })
+    }
+
+    fn operation<'a>(
+        &'a self,
+        field: &'a Field,
+        operation_context: &'a OperationContext<'a>,
+    ) -> SelectionTable<'a> {
+        let table = self
+            .physical_table(operation_context.query_context.data_context)
+            .unwrap();
 
         let QueryParameters {
             predicate_arguments,
             order_by_arguments,
         } = self.extract_arguments(&field);
 
-        let argument_supplier = predicate_arguments
-            .map(|ps| ArgumentSupplier::new(ps.0.node.as_str().to_owned(), ps.1.node.clone()));
+        let predicate = predicate_arguments
+            .map(|predicate_arguments| {
+                let parameter = self
+                    .predicate_parameter
+                    .iter()
+                    .find(|p| p.name == predicate_arguments.0.node)
+                    .unwrap();
+                parameter.predicate(&predicate_arguments.1.node, table, operation_context)
+            })
+            .map(|p| operation_context.create_predicate(p));
 
-        let predicate = argument_supplier.as_ref().map(|argument_supplier| {
-            let parameter = self
-                .predicate_parameter
-                .iter()
-                .find(|p| p.name == predicate_arguments.unwrap().0.node)
-                .unwrap();
-
-            parameter.predicate(
-                &argument_supplier.argument_value,
-                table,
-                &query_context.data_context.system,
-            )
-        });
-
-        let order_by = order_by_arguments.as_ref().map(|order_by_arguments| {
+        let order_by = order_by_arguments.map(|order_by_arguments| {
             let parameter = self
                 .order_by_param
                 .iter()
@@ -92,44 +130,46 @@ impl Query {
             parameter.compute_order_by(
                 &order_by_arguments.1.node,
                 table,
-                &query_context.data_context.system,
+                &operation_context.query_context.data_context.system,
             )
         });
 
-        let content_object = self.content_select(field, table_name, query_context);
+        let content_object = self.content_select(field, &operation_context);
 
-        let agg_column = Column::JsonAgg(&content_object);
-        let single_column = vec![&content_object];
-        let vector_column = vec![&agg_column];
-        let single_select = table.select(&single_column, predicate.as_ref(), None);
-        let vector_select = table.select(&vector_column, predicate.as_ref(), order_by);
-
-        let mut expression_context = ExpressionContext::new();
-
-        let binding = match self.return_type.type_modifier {
-            ModelTypeModifier::Optional => single_select.binding(&mut expression_context),
-            ModelTypeModifier::NonNull => single_select.binding(&mut expression_context),
-            ModelTypeModifier::List => vector_select.binding(&mut expression_context),
-        };
-
-        query_context.data_context.database.execute(&binding)
+        match self.return_type.type_modifier {
+            ModelTypeModifier::Optional | ModelTypeModifier::NonNull => {
+                let single_column = vec![content_object];
+                table.select(single_column, predicate, None)
+            }
+            ModelTypeModifier::List => {
+                let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
+                let vector_column = vec![agg_column];
+                table.select(vector_column, predicate, order_by)
+            }
+        }
     }
 
-    fn content_select(
+    fn content_select<'a>(
         &self,
         field: &Field,
-        table_name: &str,
-        query_context: &QueryContext<'_>,
-    ) -> Column {
+        operation_context: &'a OperationContext<'a>,
+    ) -> &'a Column<'a> {
+        let table = self
+            .physical_table(operation_context.query_context.data_context)
+            .unwrap();
+        let table_name = &table.name;
+
         let column_specs: Vec<_> = field
             .selection_set
             .node
             .items
             .iter()
-            .flat_map(|selection| self.map_selection(&selection.node, table_name, query_context))
+            .flat_map(|selection| {
+                self.map_selection(&selection.node, table_name, &operation_context)
+            })
             .collect();
 
-        Column::JsonObject(column_specs)
+        operation_context.create_column(Column::JsonObject(column_specs))
     }
 
     fn physical_table<'a>(&self, data_context: &'a DataContext) -> Option<&'a PhysicalTable<'a>> {
@@ -148,19 +188,20 @@ impl Query {
             .flatten()
     }
 
-    fn map_selection<'a, 'oc>(
+    fn map_selection<'a>(
         &self,
         selection: &Selection,
         table_name: &str,
-        query_context: &QueryContext<'_>,
+        operation_context: &OperationContext,
     ) -> Vec<(String, Column<'a>)> {
         match selection {
             Selection::Field(field) => {
-                vec![self.map_field(&field.node, table_name, query_context)]
+                vec![self.map_field(&field.node, table_name, &operation_context)]
             }
             Selection::FragmentSpread(fragment_spread) => {
-                let fragment_definition = query_context
-                    .fragment_definition(&fragment_spread.node)
+                let fragment_definition = operation_context
+                    .query_context
+                    .fragment_definition(&fragment_spread)
                     .unwrap();
                 fragment_definition
                     .selection_set
@@ -168,7 +209,7 @@ impl Query {
                     .items
                     .iter()
                     .flat_map(|selection| {
-                        self.map_selection(&selection.node, table_name, query_context)
+                        self.map_selection(&selection.node, table_name, &operation_context)
                     })
                     .collect()
             }
@@ -182,9 +223,10 @@ impl Query {
         &self,
         field: &Field,
         table_name: &str,
-        query_context: &QueryContext<'_>,
+        operation_context: &OperationContext,
     ) -> (String, Column<'a>) {
-        let return_type = query_context
+        let return_type = operation_context
+            .query_context
             .data_context
             .system
             .find_type(&self.return_type.type_name)
@@ -202,12 +244,13 @@ impl Query {
                 type_name,
                 optional: _,
             } => {
-                let pk_query = query_context
+                let pk_query = operation_context
+                    .query_context
                     .data_context
                     .system
                     .queries
                     .iter()
-                    .find(|query| query.name == type_name.to_ascii_lowercase())
+                    .find(|query| query.name == type_name.to_ascii_lowercase()) // TODO: Implement a systematic way
                     .unwrap();
                 // TODO: Use column_name to create a predicate....
                 //pk_query.content_select(field, additional_predicate, table_name, operation_context)

@@ -38,13 +38,19 @@ impl<'qc> QueryContext<'qc> {
         self.resolve_selection_set(self, &operation.1.node.selection_set)
     }
 
-    pub fn resolve<'b>(&self, selection_set: &'b Positioned<SelectionSet>) -> Vec<(String, QueryResponse)> {
+    pub fn resolve<'b>(
+        &self,
+        selection_set: &'b Positioned<SelectionSet>,
+    ) -> Vec<(String, QueryResponse)> {
         self.resolve_selection_set(self, selection_set)
     }
 
-    pub fn fragment_definition(&self, fragment: &FragmentSpread) -> Option<&FragmentDefinition> {
+    pub fn fragment_definition(
+        &self,
+        fragment: &Positioned<FragmentSpread>,
+    ) -> Option<&FragmentDefinition> {
         self.fragment_definitions
-            .get(&fragment.fragment_name.node)
+            .get(&fragment.node.fragment_name.node)
             .map(|v| &v.node)
     }
 
