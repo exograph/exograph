@@ -14,16 +14,11 @@ use async_graphql_parser::{
     types::{Field, Selection},
     Positioned,
 };
-use async_graphql_value::{Name, Value};
+use async_graphql_value::Value;
 
 use crate::{execution::query_context::QueryResponse, execution::resolver::OutputName};
 
 use super::data_context::DataContext;
-
-struct QueryParameters<'a> {
-    predicate_arguments: Option<(&'a Positioned<Name>, &'a Positioned<Value>)>,
-    order_by_arguments: Option<(&'a Positioned<Name>, &'a Positioned<Value>)>,
-}
 
 impl Query {
     pub fn resolve(
@@ -39,60 +34,33 @@ impl Query {
         QueryResponse::Raw(string_response)
     }
 
-    fn extract_arguments<'a>(&'a self, field: &'a Field) -> QueryParameters<'a> {
-        let processed = field.arguments.iter().fold((None, None), |acc, argument| {
+    fn find_arg<'a>(field: &'a Field, arg_name: &str) -> Option<&'a Value> {
+        field.arguments.iter().find_map(|argument| {
             let (argument_name, argument_value) = argument;
-
-            if self
-                .order_by_param
-                .as_ref()
-                .filter(|p| p.name == argument_name.node)
-                .is_some()
-            {
-                (acc.0, Some((argument_name, argument_value)))
-            } else if self
-                .predicate_parameter
-                .as_ref()
-                .filter(|p| p.name == argument_name.node)
-                .is_some()
-            {
-                (Some((argument_name, argument_value)), acc.1)
+            if arg_name == argument_name.node {
+                Some(&argument_value.node)
             } else {
-                todo!()
+                None
             }
-        });
-
-        QueryParameters {
-            predicate_arguments: processed.0,
-            order_by_arguments: processed.1,
-        }
+        })
     }
 
     fn compute_predicate<'a>(
         &self,
         field: &'a Field,
+        table: &'a PhysicalTable,
         operation_context: &'a OperationContext<'a>,
-    ) -> Option<Predicate<'a>> {
-        let table = self
-            .physical_table(operation_context.query_context.data_context)
-            .unwrap();
-
-        self.predicate_parameter
+    ) -> Option<&'a Predicate<'a>> {
+        let predicate = self
+            .predicate_parameter
             .as_ref()
             .and_then(|predicate_parameter| {
-                field.arguments.iter().find_map(|argument| {
-                    let (argument_name, argument_value) = argument;
-                    if predicate_parameter.name == argument_name.node {
-                        Some(predicate_parameter.predicate(
-                            &argument_value.node,
-                            table,
-                            operation_context,
-                        ))
-                    } else {
-                        None
-                    }
+                let argument_value = Self::find_arg(field, &predicate_parameter.name);
+                argument_value.map(|argument_value| {
+                    predicate_parameter.predicate(&argument_value, table, operation_context)
                 })
-            })
+            });
+        predicate.map(|p| operation_context.create_predicate(p))
     }
 
     fn operation<'a>(
@@ -104,34 +72,17 @@ impl Query {
             .physical_table(operation_context.query_context.data_context)
             .unwrap();
 
-        let QueryParameters {
-            predicate_arguments,
-            order_by_arguments,
-        } = self.extract_arguments(&field);
+        let predicate = self.compute_predicate(field, table, operation_context);
 
-        let predicate = predicate_arguments
-            .map(|predicate_arguments| {
-                let parameter = self
-                    .predicate_parameter
-                    .iter()
-                    .find(|p| p.name == predicate_arguments.0.node)
-                    .unwrap();
-                parameter.predicate(&predicate_arguments.1.node, table, operation_context)
+        let order_by = self.order_by_param.as_ref().and_then(|order_by_param| {
+            let argument_value = Self::find_arg(field, &order_by_param.name);
+            argument_value.map(|argument_value| {
+                order_by_param.compute_order_by(
+                    argument_value,
+                    table,
+                    &operation_context.query_context.data_context.system,
+                )
             })
-            .map(|p| operation_context.create_predicate(p));
-
-        let order_by = order_by_arguments.map(|order_by_arguments| {
-            let parameter = self
-                .order_by_param
-                .iter()
-                .find(|p| p.name == order_by_arguments.0.node)
-                .unwrap();
-
-            parameter.compute_order_by(
-                &order_by_arguments.1.node,
-                table,
-                &operation_context.query_context.data_context.system,
-            )
         });
 
         let content_object = self.content_select(field, &operation_context);

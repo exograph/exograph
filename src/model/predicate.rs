@@ -18,10 +18,12 @@ pub struct PredicateParameterType {
 
 #[derive(Debug, Clone)]
 pub enum PredicateParameterTypeKind {
-    Primitive,
-    //PrimitiveOperator { scalar_type: String, operator: String },
+    Primitive, // {id: 3}
     Composite {
+        // {where: {id: .., name: ..}}
         parameters: Vec<PredicateParameter>,
+        // Does this represents filter for a primitive type such as id: {lt: ..,gt: ..}.
+        // True for IntFilter etc, false for AccountFilter etc.
         primitive_filter: bool,
     },
 }
@@ -60,8 +62,9 @@ impl PredicateParameter {
         system_param_types: &mut ModelSystemParameterTypes,
     ) -> String {
         let tpe = system.find_type(&type_name);
+        let type_kind = tpe.map(|t| &t.kind);
 
-        match &tpe.as_ref().unwrap().kind {
+        match type_kind.unwrap() {
             ModelTypeKind::Primitive => {
                 format!("{}Filter", type_name)
             }

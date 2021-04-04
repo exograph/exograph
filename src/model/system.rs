@@ -144,6 +144,8 @@ impl ModelSystemParameterTypes {
     fn create_scalar_filter_param_ype(scalar_type: String) -> PredicateParameterType {
         let type_name = format!("{}Filter", scalar_type);
 
+        // TODO: Create scalar_type specific filter. For example, "like" only for String
+        // [eq: <scalar_type>, lt: <scalar_type>, ...]
         let parameters: Vec<_> = OPERATORS
             .iter()
             .map(|operator| PredicateParameter {
