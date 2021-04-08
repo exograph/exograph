@@ -59,7 +59,9 @@ impl<'a> Expression for SelectionTable<'a> {
             .map(|c| {
                 let col_binding = c.binding(expression_context);
                 let text_cast = match c {
-                    Column::Physical { .. } | Column::Literal(_) => "",
+                    Column::Physical { .. } | Column::Literal(_) | Column::SingleSelect { .. } => {
+                        ""
+                    }
                     Column::JsonObject(_) | Column::JsonAgg(_) => "::text",
                 };
                 (
@@ -150,7 +152,7 @@ mod tests {
         };
         let selected_cols = vec![&age_selected_col];
 
-        let predicated_table = physical_table.select(&selected_cols, Some(&predicate), None);
+        let predicated_table = physical_table.select(selected_cols, Some(&predicate), None);
 
         let mut expression_context = ExpressionContext::new();
         assert_binding!(

@@ -1,4 +1,7 @@
-use super::{Expression, ExpressionContext, ParameterBinding, SQLParam};
+use super::{
+    order::OrderBy, predicate::Predicate, table::*, Expression, ExpressionContext,
+    ParameterBinding, SQLParam,
+};
 
 #[derive(Debug)]
 pub enum Column<'a> {
@@ -7,8 +10,14 @@ pub enum Column<'a> {
         column_name: String,
     },
     Literal(Box<dyn SQLParam>),
-    JsonObject(Vec<(String, Column<'a>)>),
+    JsonObject(Vec<(String, &'a Column<'a>)>),
     JsonAgg(&'a Column<'a>),
+    SingleSelect {
+        table: &'a PhysicalTable<'a>,
+        column: &'a Column<'a>,
+        predicate: Option<&'a Predicate<'a>>,
+        order_by: Option<OrderBy<'a>>,
+    },
 }
 
 impl<'a> Expression for Column<'a> {
@@ -42,6 +51,21 @@ impl<'a> Expression for Column<'a> {
                 // coalesce to return an empty array if we have no matching enities
                 let column_binding = column.binding(expression_context);
                 let stmt = format!("coalesce(json_agg({}), '[]'::json)", column_binding.stmt);
+                ParameterBinding::new(stmt, column_binding.params)
+            }
+            Column::SingleSelect {
+                table,
+                column,
+                predicate,
+                order_by,
+            } => {
+                let column_binding = column.binding(expression_context);
+                let table_binding = table.binding(expression_context);
+                let predicate_binding = predicate.unwrap().binding(expression_context);
+                let stmt = format!(
+                    "(select {} from {} where {})",
+                    column_binding.stmt, table_binding.stmt, predicate_binding.stmt
+                );
                 ParameterBinding::new(stmt, column_binding.params)
             }
         }

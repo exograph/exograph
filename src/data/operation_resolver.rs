@@ -124,27 +124,15 @@ impl Query {
     }
 
     fn physical_table<'a>(&self, data_context: &'a DataContext) -> Option<&'a PhysicalTable<'a>> {
-        data_context
-            .system
-            .find_type(&self.return_type.type_name)
-            .map(|t| match &t.kind {
-                ModelTypeKind::Composite {
-                    model_fields: _,
-                    table_name,
-                } => Some(table_name),
-                _ => None,
-            })
-            .flatten()
-            .map(|table_name| data_context.database.get_table(table_name))
-            .flatten()
+        data_context.physical_table(&self.return_type.type_name)
     }
 
     fn map_selection<'a>(
         &self,
         selection: &Selection,
         table_name: &str,
-        operation_context: &OperationContext,
-    ) -> Vec<(String, Column<'a>)> {
+        operation_context: &'a OperationContext<'a>,
+    ) -> Vec<(String, &'a Column<'a>)> {
         match selection {
             Selection::Field(field) => {
                 vec![self.map_field(&field.node, table_name, &operation_context)]
@@ -174,8 +162,8 @@ impl Query {
         &self,
         field: &Field,
         table_name: &str,
-        operation_context: &OperationContext,
-    ) -> (String, Column<'a>) {
+        operation_context: &'a OperationContext<'a>,
+    ) -> (String, &'a Column<'a>) {
         let return_type = operation_context
             .query_context
             .data_context
@@ -186,15 +174,17 @@ impl Query {
         let model_field = return_type.model_field(&field.name.node).unwrap();
 
         let column = match &model_field.relation {
-            ModelRelation::Pk { .. } | ModelRelation::Scalar { .. } => Column::Physical {
-                table_name: table_name.to_string(),
-                column_name: model_field.column_name(),
-            },
+            ModelRelation::Pk { .. } | ModelRelation::Scalar { .. } => operation_context
+                .create_column(Column::Physical {
+                    table_name: table_name.to_string(),
+                    column_name: model_field.column_name(),
+                }),
             ModelRelation::ManyToOne {
                 column_name,
                 type_name,
                 optional: _,
             } => {
+                // Fix all the unwraps
                 let pk_query = operation_context
                     .query_context
                     .data_context
@@ -203,9 +193,27 @@ impl Query {
                     .iter()
                     .find(|query| query.name == type_name.to_ascii_lowercase()) // TODO: Implement a systematic way
                     .unwrap();
-                // TODO: Use column_name to create a predicate....
-                //pk_query.content_select(field, additional_predicate, table_name, operation_context)
-                todo!()
+
+                let table = operation_context
+                    .query_context
+                    .data_context
+                    .physical_table(&pk_query.return_type.type_name)
+                    .unwrap();
+
+                operation_context.create_column(Column::SingleSelect {
+                    table,
+                    column: pk_query.content_select(field, operation_context),
+                    predicate: Some(
+                        operation_context.create_predicate(Predicate::Eq(
+                            self.physical_table(operation_context.query_context.data_context)
+                                .unwrap()
+                                .get_column(column_name.as_ref().unwrap().as_str())
+                                .unwrap(),
+                            table.get_column("id").unwrap(), // Remove hard-coded pk column name
+                        )),
+                    ),
+                    order_by: None,
+                })
             }
             ModelRelation::OneToMany {
                 column_name: _,
