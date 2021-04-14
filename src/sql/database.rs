@@ -1,42 +1,23 @@
+use id_arena::Arena;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres::{types::ToSql, Client};
 use postgres_openssl::MakeTlsConnector;
 
-use super::{column::Column, table::PhysicalTable, ParameterBinding};
+use super::{table::PhysicalTable, ParameterBinding};
 
 fn type_of<T>(_: &T) -> &str {
     std::any::type_name::<T>()
 }
-#[derive(Debug)]
-pub struct Database<'a> {
-    pub tables: Vec<PhysicalTable<'a>>,
+
+#[derive(Debug, Clone)]
+pub struct Database {
+    pub tables: Arena<PhysicalTable>,
 }
 
-impl<'a> Database<'a> {
+impl<'a> Database {
     pub fn empty() -> Self {
-        Self { tables: vec![] }
-    }
-
-    pub fn get_table(&self, table_name: &str) -> Option<&PhysicalTable> {
-        self.tables.iter().find(|table| table.name == table_name)
-    }
-
-    pub fn create_table(&mut self, table_name: &str, column_names: &[&str]) {
-        match self.get_table(table_name) {
-            Some(_) => (),
-            None => {
-                let table = PhysicalTable {
-                    name: table_name.to_string(),
-                    columns: column_names
-                        .iter()
-                        .map(|column_name| Column::Physical {
-                            table_name: table_name.to_string(),
-                            column_name: column_name.to_string(),
-                        })
-                        .collect(),
-                };
-                self.tables.push(table);
-            }
+        Self {
+            tables: Arena::new(),
         }
     }
 

@@ -14,21 +14,19 @@ impl Schema {
         let mut type_definitions: Vec<TypeDefinition> = system
             .types
             .iter()
-            .map(|model_type| model_type.type_definition())
+            .map(|model_type| model_type.1.type_definition())
             .collect();
 
         let order_by_param_type_definitions: Vec<TypeDefinition> = system
-            .parameter_types
-            .order_by_parameter_type_map
-            .values()
-            .map(|parameter_type| parameter_type.type_definition())
+            .order_by_types
+            .iter()
+            .map(|parameter_type| parameter_type.1.type_definition())
             .collect();
 
         let predicate_param_type_definitions: Vec<TypeDefinition> = system
-            .parameter_types
-            .predicate_parameter_type_map
-            .values()
-            .map(|parameter_type| parameter_type.type_definition())
+            .predicate_types
+            .iter()
+            .map(|parameter_type| parameter_type.1.type_definition())
             .collect();
 
         let query_type_definition = {

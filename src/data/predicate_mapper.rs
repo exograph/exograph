@@ -1,5 +1,4 @@
-use crate::sql::predicate::Predicate;
-use crate::sql::table::PhysicalTable;
+use crate::sql::{column::Column, predicate::Predicate};
 
 use crate::model::predicate::*;
 
@@ -8,79 +7,68 @@ use async_graphql_value::Value;
 use super::operation_context::OperationContext;
 
 impl PredicateParameter {
-    pub fn predicate<'a>(
+    pub fn compute_predicate<'a>(
         &self,
         argument_value: &'a Value,
-        table: &'a PhysicalTable,
         operation_context: &'a OperationContext<'a>,
     ) -> Predicate<'a> {
-        let parameter_type = self.get_param_type(operation_context);
+        let system = operation_context.query_context.system;
+        let parameter_type = system.predicate_types.get_by_id(self.type_id).unwrap();
 
         match &parameter_type.kind {
-            PredicateParameterTypeKind::Primitive => Predicate::Eq(
-                table.get_column(&self.name).unwrap(),
+            PredicateParameterTypeKind::ImplicitEqual => Predicate::Eq(
+                operation_context.create_column(Column::Physical(
+                    &self
+                        .column_id
+                        .as_ref()
+                        .and_then(|column_id| column_id.get_column(system))
+                        .unwrap(),
+                )),
                 operation_context.literal_column(argument_value),
             ),
-            PredicateParameterTypeKind::Composite {
-                parameters,
-                primitive_filter,
-            } => parameters.iter().fold(Predicate::True, |acc, parameter| {
-                let new_predicate =
-                    match Self::get_argument_value_component(argument_value, &parameter.name) {
-                        Some(argument_value_component) => {
-                            if *primitive_filter {
-                                parameter.op_predicate(
-                                    &self.name,
-                                    argument_value,
-                                    table,
-                                    operation_context,
-                                )
-                            } else {
-                                parameter.predicate(
-                                    argument_value_component,
-                                    table,
-                                    operation_context,
-                                )
+            PredicateParameterTypeKind::Opeartor(parameters) => {
+                parameters.iter().fold(Predicate::True, |acc, parameter| {
+                    let new_predicate =
+                        match Self::get_argument_value_component(argument_value, &parameter.name) {
+                            Some(op_value) => {
+                                self.op_predicate(&parameter.name, op_value, operation_context)
                             }
-                        }
-                        None => Predicate::True,
-                    };
+                            None => Predicate::True,
+                        };
 
-                Predicate::And(Box::new(acc), Box::new(new_predicate))
-            }),
+                    Predicate::And(Box::new(acc), Box::new(new_predicate))
+                })
+            }
+            PredicateParameterTypeKind::Composite(parameters) => {
+                parameters.iter().fold(Predicate::True, |acc, parameter| {
+                    let new_predicate =
+                        match Self::get_argument_value_component(argument_value, &parameter.name) {
+                            Some(argument_value_component) => parameter
+                                .compute_predicate(argument_value_component, operation_context),
+                            None => Predicate::True,
+                        };
+
+                    Predicate::And(Box::new(acc), Box::new(new_predicate))
+                })
+            }
         }
     }
 
     fn op_predicate<'a>(
         &self,
-        param_name: &str,
-        argument_value: &'a Value,
-        table: &'a PhysicalTable,
+        op_name: &str,
+        op_value: &'a Value,
         operation_context: &'a OperationContext<'a>,
     ) -> Predicate<'a> {
-        let parameter_type = self.get_param_type(operation_context);
-        match &parameter_type.kind {
-            PredicateParameterTypeKind::Primitive => {
-                match Self::get_argument_value_component(argument_value, &self.name) {
-                    Some(op_value) => {
-                        let op_key_column = table.get_column(param_name).unwrap();
-                        let op_value_column = operation_context.literal_column(op_value);
-                        Predicate::from_name(&self.name, op_key_column, op_value_column)
-                    }
-                    None => Predicate::True,
-                }
-            }
-            PredicateParameterTypeKind::Composite { .. } => todo!(),
-        }
-    }
-
-    fn get_param_type<'a>(
-        &self,
-        operation_context: &'a OperationContext<'a>,
-    ) -> &'a PredicateParameterType {
-        operation_context
-            .find_predicate_parameter_type(&self.type_name)
-            .unwrap()
+        let op_key_column = operation_context.create_column(Column::Physical(
+            &self
+                .column_id
+                .as_ref()
+                .and_then(|column_id| column_id.get_column(operation_context.query_context.system))
+                .unwrap(),
+        ));
+        let op_value_column = operation_context.literal_column(op_value);
+        Predicate::from_name(op_name, op_key_column, op_value_column)
     }
 
     fn get_argument_value_component<'a>(

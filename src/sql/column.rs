@@ -3,17 +3,20 @@ use super::{
     ParameterBinding, SQLParam,
 };
 
+#[derive(Debug, Clone)]
+pub struct PhysicalColumn {
+    pub table_name: String,
+    pub column_name: String,
+}
+
 #[derive(Debug)]
 pub enum Column<'a> {
-    Physical {
-        table_name: String,
-        column_name: String,
-    },
+    Physical(&'a PhysicalColumn),
     Literal(Box<dyn SQLParam>),
     JsonObject(Vec<(String, &'a Column<'a>)>),
     JsonAgg(&'a Column<'a>),
     SingleSelect {
-        table: &'a PhysicalTable<'a>,
+        table: &'a PhysicalTable,
         column: &'a Column<'a>,
         predicate: Option<&'a Predicate<'a>>,
         order_by: Option<OrderBy<'a>>,
@@ -23,10 +26,10 @@ pub enum Column<'a> {
 impl<'a> Expression for Column<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
-            Column::Physical {
+            Column::Physical(PhysicalColumn {
                 table_name,
                 column_name,
-            } => ParameterBinding::new(format!("\"{}\".\"{}\"", table_name, column_name), vec![]),
+            }) => ParameterBinding::new(format!("\"{}\".\"{}\"", table_name, column_name), vec![]),
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();
                 ParameterBinding::new(format! {"${}", param_index}, vec![value])

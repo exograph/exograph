@@ -1,12 +1,11 @@
 use super::query_context;
-use crate::introspection::schema::Schema;
-use crate::DataContext;
+use crate::{introspection::schema::Schema, model::system::ModelSystem};
 use async_graphql_parser::{parse_query, types::DocumentOperations};
 use query_context::*;
 use serde_json::{Map, Value};
 
 pub fn create_query_context<'a>(
-    data_context: &'a DataContext,
+    system: &'a ModelSystem,
     schema: &'a Schema,
     operation_name: &'a str,
     query_str: &'a str,
@@ -21,20 +20,20 @@ pub fn create_query_context<'a>(
             fragment_definitions: document.fragments,
             variables,
             schema: &schema,
-            data_context,
+            system,
         },
     )
 }
 
 pub fn execute<'a>(
-    data_system: &'a DataContext,
+    system: &'a ModelSystem,
     schema: &'a Schema,
     operation_name: &'a str,
     query_str: &'a str,
     variables: Option<&'a Map<String, Value>>,
 ) -> String {
     let (operations, query_context) =
-        create_query_context(data_system, schema, operation_name, query_str, &variables);
+        create_query_context(system, schema, operation_name, query_str, &variables);
 
     let parts: Vec<(String, QueryResponse)> = operations
         .iter()

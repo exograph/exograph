@@ -33,14 +33,16 @@ impl<'a> Expression for OrderBy<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::sql::column::PhysicalColumn;
     use crate::sql::ExpressionContext;
 
     #[test]
     fn single() {
-        let age_col = Column::Physical {
+        let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
         };
+        let age_col = Column::Physical(&age_col);
 
         let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
 
@@ -52,14 +54,17 @@ mod test {
 
     #[test]
     fn multiple() {
-        let age_col = Column::Physical {
-            table_name: "people".to_string(),
-            column_name: "age".to_string(),
-        };
-        let name_col = Column::Physical {
+        let name_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "name".to_string(),
         };
+        let name_col = Column::Physical(&name_col);
+
+        let age_col = PhysicalColumn {
+            table_name: "people".to_string(),
+            column_name: "age".to_string(),
+        };
+        let age_col = Column::Physical(&age_col);
 
         {
             let order_by = OrderBy(vec![(&name_col, Ordering::Asc), (&age_col, Ordering::Desc)]);

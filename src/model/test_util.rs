@@ -1,75 +1,62 @@
 //#[cfg(test)] // needed until we use this code from `main`
 pub mod common_test_data {
-    use crate::model::types::ModelTypeModifier::*;
-    use crate::model::types::{ModelField, ModelType};
-    use crate::model::{system::ModelSystem, types::ModelTypeKind::*};
-    use crate::{model::types::ModelRelation::*, sql::database::Database};
+    use crate::model::system::ModelSystem;
+    use crate::model::{
+        ast::ast_types::AstRelation::*, ast::ast_types::AstTypeKind::*,
+        ast::ast_types::AstTypeModifier::*, ast::ast_types::*,
+    };
 
     pub fn test_system() -> ModelSystem {
-        let mut system = ModelSystem::new();
-
-        system.add_type(create_venue_model_type(&system));
-        system.add_type(create_concert_model_type(&system));
-
-        system.build();
-
-        system
+        ModelSystem::build(&[create_venue_model_type(), create_concert_model_type()])
     }
 
-    pub fn test_database() -> Database<'static> {
-        let mut database = Database { tables: vec![] };
-        database.create_table("venues", &["id", "name"]);
-        database.create_table("concerts", &["id", "title", "venueid"]);
-        database
-    }
-
-    fn create_concert_model_type(system: &ModelSystem) -> ModelType {
-        ModelType {
+    fn create_concert_model_type() -> AstType {
+        AstType {
             name: "Concert".to_string(),
             kind: Composite {
-                model_fields: vec![
-                    ModelField {
+                fields: vec![
+                    AstField {
                         name: "id".to_string(),
-                        type_name: system.int_type(),
-                        type_modifier: NonNull,
+                        type_name: "Int".to_string(),
+                        type_modifier: AstTypeModifier::NonNull,
                         relation: Pk { column_name: None },
                     },
-                    ModelField {
+                    AstField {
                         name: "title".to_string(),
-                        type_name: system.string_type(),
-                        type_modifier: NonNull,
+                        type_name: "String".to_string(),
+                        type_modifier: AstTypeModifier::NonNull,
                         relation: Scalar { column_name: None },
                     },
-                    ModelField {
+                    AstField {
                         name: "venue".to_string(),
                         type_name: "Venue".to_string(),
-                        type_modifier: NonNull,
+                        type_modifier: AstTypeModifier::NonNull,
                         relation: ManyToOne {
                             column_name: Some("venueid".to_string()),
-                            type_name: "Venue".to_string(),
+                            other_type_name: "Venue".to_string(),
                             optional: true,
                         },
                     },
                 ],
-                table_name: "concerts".to_string(),
+                table_name: Some("concerts".to_string()),
             },
         }
     }
 
-    fn create_venue_model_type(system: &ModelSystem) -> ModelType {
-        ModelType {
+    fn create_venue_model_type() -> AstType {
+        AstType {
             name: "Venue".to_string(),
             kind: Composite {
-                model_fields: vec![
-                    ModelField {
+                fields: vec![
+                    AstField {
                         name: "id".to_string(),
-                        type_name: system.int_type(),
+                        type_name: "Int".to_string(),
                         type_modifier: NonNull,
                         relation: Pk { column_name: None },
                     },
-                    ModelField {
+                    AstField {
                         name: "name".to_string(),
-                        type_name: system.string_type(),
+                        type_name: "String".to_string(),
                         type_modifier: Optional,
                         relation: Scalar { column_name: None },
                     },
@@ -84,7 +71,7 @@ pub mod common_test_data {
                     //     },
                     // },
                 ],
-                table_name: "venues".to_string(),
+                table_name: Some("venues".to_string()),
             },
         }
     }

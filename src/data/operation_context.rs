@@ -3,7 +3,6 @@ use typed_arena::Arena;
 
 use crate::{
     execution::query_context::QueryContext,
-    model::predicate::PredicateParameterType,
     sql::{column::Column, predicate::Predicate},
 };
 
@@ -46,16 +45,5 @@ impl<'a> OperationContext<'a> {
         };
 
         self.create_column(column)
-    }
-
-    pub fn find_predicate_parameter_type(
-        &self,
-        type_name: &str,
-    ) -> Option<&PredicateParameterType> {
-        self.query_context
-            .data_context
-            .system
-            .parameter_types
-            .find_predicate_parameter_type(type_name)
     }
 }

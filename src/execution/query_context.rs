@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::DataContext;
+use crate::{model::system::ModelSystem};
 use async_graphql_parser::{
     types::{
         BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, SelectionSet,
@@ -21,7 +21,7 @@ pub struct QueryContext<'a> {
     pub fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
     pub variables: &'a Option<&'a Map<String, JsonValue>>,
     pub schema: &'a Schema,
-    pub data_context: &'a DataContext<'a>,
+    pub system: &'a ModelSystem,
 }
 
 #[derive(Debug, Clone)]
@@ -104,7 +104,7 @@ impl<'b> FieldResolver<QueryResponse> for QueryContext<'b> {
         } else if field.node.name.node == "__schema" {
             QueryResponse::Json(self.schema.resolve_value(self, &field.node.selection_set))
         } else {
-            self.data_context.resolve(&field, self)
+            self.system.resolve(&field, self)
         }
     }
 }

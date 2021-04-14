@@ -1,25 +1,23 @@
-use crate::sql::table::PhysicalTable;
-use crate::{
-    model::{order::*, system::ModelSystem},
-    sql::column::Column,
-};
+use crate::{model::order::*, sql::column::Column};
 
-use crate::introspection::definition::parameter::Parameter;
 use crate::sql::order::{OrderBy, Ordering};
 use async_graphql_value::Value;
+
+use super::operation_context::OperationContext;
 
 impl OrderByParameter {
     pub fn compute_order_by<'a>(
         &self,
         argument: &Value,
-        table: &'a PhysicalTable,
-        system: &ModelSystem,
+        operation_context: &'a OperationContext<'a>,
     ) -> OrderBy<'a> {
-        let parameter_type = system
-            .parameter_types
-            .find_order_by_parameter_type(&self.type_name)
+        let parameter_type = operation_context
+            .query_context
+            .system
+            .order_by_types
+            .get_by_id(self.type_id)
             .unwrap();
-        parameter_type.compute_order_by(argument, table, system)
+        parameter_type.compute_order_by(argument, operation_context)
     }
 }
 
@@ -27,22 +25,21 @@ impl OrderByParameterType {
     pub fn compute_order_by<'a>(
         &self,
         argument: &Value,
-        table: &'a PhysicalTable,
-        system: &ModelSystem,
+        operation_context: &'a OperationContext<'a>,
     ) -> OrderBy<'a> {
         match argument {
             Value::Object(elems) => {
                 // TODO: Reject elements with multiple elements (see the comment in query.rs)
                 let mapped: Vec<(&'a Column<'a>, Ordering)> = elems
                     .iter()
-                    .map(|elem| self.order_by_pair(table, elem.0, elem.1))
+                    .map(|elem| self.order_by_pair(elem.0, elem.1, operation_context))
                     .collect();
                 OrderBy(mapped)
             }
             Value::List(elems) => {
                 let mapped: Vec<(&'a Column<'a>, Ordering)> = elems
                     .iter()
-                    .flat_map(|elem| self.compute_order_by(elem, table, system).0)
+                    .flat_map(|elem| self.compute_order_by(elem, operation_context).0)
                     .collect();
                 OrderBy(mapped)
             }
@@ -52,9 +49,9 @@ impl OrderByParameterType {
 
     fn order_by_pair<'a>(
         &self,
-        table: &'a PhysicalTable,
         parameter_name: &str,
         parameter_value: &Value,
+        operation_context: &'a OperationContext<'a>,
     ) -> (&'a Column<'a>, Ordering) {
         let parameter = match &self.kind {
             OrderByParameterTypeKind::Composite { parameters } => {
@@ -63,7 +60,15 @@ impl OrderByParameterType {
             _ => None,
         };
 
-        let column = table.get_column(&parameter.unwrap().name()).unwrap();
+        let column = parameter
+            .and_then(|p| {
+                p.column_id.as_ref().and_then(|column_id| {
+                    column_id.get_column(operation_context.query_context.system)
+                })
+            })
+            .map(|pc| Column::Physical(pc));
+
+        let column = operation_context.create_column(column.unwrap());
 
         (column, Self::ordering(parameter_value))
     }

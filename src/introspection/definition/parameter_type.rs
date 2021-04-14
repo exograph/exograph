@@ -31,6 +31,8 @@ pub enum ParameterTypeKind {
     Enum { values: Vec<String> },
 }
 
+pub const PRIMITIVE_ORDERING_OPTIONS: [&str; 2] = ["ASC", "DESC"];
+
 impl TypeDefinitionProvider for OrderByParameterType {
     fn type_definition(&self) -> TypeDefinition {
         match &self.kind {
@@ -48,13 +50,13 @@ impl TypeDefinitionProvider for OrderByParameterType {
                     kind: TypeKind::InputObject(InputObjectType { fields }),
                 }
             }
-            OrderByParameterTypeKind::Enum { values } => TypeDefinition {
+            OrderByParameterTypeKind::Primitive => TypeDefinition {
                 extend: false,
                 description: None,
                 name: Positioned::new(Name::new(self.name()), Pos::default()),
                 directives: vec![],
                 kind: TypeKind::Enum(EnumType {
-                    values: values
+                    values: PRIMITIVE_ORDERING_OPTIONS
                         .iter()
                         .map(|value| {
                             Positioned::new(
@@ -77,7 +79,8 @@ impl TypeDefinitionProvider for OrderByParameterType {
 impl TypeDefinitionProvider for PredicateParameterType {
     fn type_definition(&self) -> TypeDefinition {
         match &self.kind {
-            PredicateParameterTypeKind::Composite { parameters, .. } => {
+            PredicateParameterTypeKind::Opeartor(parameters)
+            | PredicateParameterTypeKind::Composite(parameters) => {
                 let fields = parameters
                     .iter()
                     .map(|parameter| default_positioned(parameter.input_value()))
@@ -91,7 +94,7 @@ impl TypeDefinitionProvider for PredicateParameterType {
                     kind: TypeKind::InputObject(InputObjectType { fields }),
                 }
             }
-            PredicateParameterTypeKind::Primitive => TypeDefinition {
+            PredicateParameterTypeKind::ImplicitEqual => TypeDefinition {
                 extend: false,
                 description: None,
                 name: default_positioned_name(self.name()),

@@ -1,13 +1,16 @@
-use super::{
-    system::{ModelSystem, ModelSystemParameterTypes},
-    types::{ModelTypeKind, ModelTypeModifier},
-};
+use id_arena::Id;
+
+use super::column_id::ColumnId;
+
+use super::types::ModelTypeModifier;
 
 #[derive(Debug, Clone)]
 pub struct PredicateParameter {
     pub name: String,
     pub type_name: String,
     pub type_modifier: ModelTypeModifier,
+    pub type_id: Id<PredicateParameterType>,
+    pub column_id: Option<ColumnId>,
 }
 
 #[derive(Debug, Clone)]
@@ -18,82 +21,7 @@ pub struct PredicateParameterType {
 
 #[derive(Debug, Clone)]
 pub enum PredicateParameterTypeKind {
-    Primitive, // {id: 3}
-    Composite {
-        // {where: {id: .., name: ..}}
-        parameters: Vec<PredicateParameter>,
-        // Does this represents filter for a primitive type such as id: {lt: ..,gt: ..}.
-        // True for IntFilter etc, false for AccountFilter etc.
-        primitive_filter: bool,
-    },
-}
-
-impl PredicateParameter {
-    pub fn new_pk(
-        _type_name: &str,
-        _system: &ModelSystem,
-        _system_param_types: &mut ModelSystemParameterTypes, // Won't need until we support composite PK
-    ) -> PredicateParameter {
-        // TODO: Find type using type_name and system to get the name and type of the PK parameter
-        PredicateParameter {
-            name: "id".to_string(),       // TODO: Use the pk column
-            type_name: "Int".to_string(), // TODO: Use id parameter's type
-            type_modifier: ModelTypeModifier::NonNull,
-        }
-    }
-
-    pub fn new_collection(
-        type_name: &str,
-        name: &str,
-        system: &ModelSystem,
-        system_param_types: &mut ModelSystemParameterTypes,
-    ) -> PredicateParameter {
-        let param_type = Self::param_type(type_name, system, system_param_types);
-        PredicateParameter {
-            name: name.to_string(),
-            type_name: param_type,
-            type_modifier: ModelTypeModifier::Optional,
-        }
-    }
-
-    fn param_type(
-        type_name: &str,
-        system: &ModelSystem,
-        system_param_types: &mut ModelSystemParameterTypes,
-    ) -> String {
-        let tpe = system.find_type(&type_name);
-        let type_kind = tpe.map(|t| &t.kind);
-
-        match type_kind.unwrap() {
-            ModelTypeKind::Primitive => {
-                format!("{}Filter", type_name)
-            }
-            ModelTypeKind::Composite { model_fields, .. } => {
-                let parameters = model_fields
-                    .iter()
-                    .map(|field| {
-                        Self::new_collection(
-                            &field.type_name,
-                            &field.name,
-                            system,
-                            system_param_types,
-                        )
-                    })
-                    .collect();
-
-                let param_type_name = format!("{}Filter", &type_name);
-                system_param_types.find_predicate_parameter_type_or(
-                    param_type_name.as_str(),
-                    || PredicateParameterType {
-                        name: param_type_name.clone(),
-                        kind: PredicateParameterTypeKind::Composite {
-                            parameters,
-                            primitive_filter: false,
-                        },
-                    },
-                );
-                param_type_name
-            }
-        }
-    }
+    ImplicitEqual,                      // {id: 3}
+    Opeartor(Vec<PredicateParameter>),  // {lt: ..,gt: ..} such as IntFilter
+    Composite(Vec<PredicateParameter>), // {where: {id: .., name: ..}} such as AccountFilter
 }

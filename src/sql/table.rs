@@ -1,32 +1,35 @@
 use super::{
-    column::Column, order::OrderBy, predicate::Predicate, Expression, ExpressionContext,
-    ParameterBinding,
+    column::{Column, PhysicalColumn},
+    order::OrderBy,
+    predicate::Predicate,
+    Expression, ExpressionContext, ParameterBinding,
 };
 use itertools::Itertools;
 
-#[derive(Debug)]
-pub struct PhysicalTable<'a> {
+#[derive(Debug, Clone)]
+pub struct PhysicalTable {
     pub name: String,
-    pub columns: Vec<Column<'a>>, // Really Column::Physical, but we can't express that
+    pub columns: Vec<PhysicalColumn>,
 }
 
-impl<'a> PhysicalTable<'a> {
+impl PhysicalTable {
+    pub fn column_index(&self, name: &str) -> Option<usize> {
+        self.columns.iter().position(|c| c.column_name == name)
+    }
+
     // TODO: Consider column names that are different than field names
-    pub fn get_column(&self, name: &str) -> Option<&Column> {
-        self.columns.iter().find(|column| match column {
-            Column::Physical {
-                table_name: _,
-                column_name,
-            } => column_name.as_str() == name,
-            _ => false,
-        })
+    pub fn get_column(&self, name: &str) -> Option<Column> {
+        self.columns
+            .iter()
+            .find(|column| column.column_name == name)
+            .map(|physical_column| Column::Physical(physical_column))
     }
 
     pub fn select<'b>(
         &'b self,
         columns: Vec<&'b Column>,
         predicate: Option<&'b Predicate<'b>>,
-        order_by: Option<OrderBy<'a>>,
+        order_by: Option<OrderBy<'b>>,
     ) -> SelectionTable {
         SelectionTable {
             underlying: self,
@@ -37,13 +40,14 @@ impl<'a> PhysicalTable<'a> {
     }
 }
 
-impl Expression for PhysicalTable<'_> {
+impl Expression for PhysicalTable {
     fn binding(&self, _expression_context: &mut ExpressionContext) -> ParameterBinding {
         ParameterBinding::new(format!(r#""{}""#, self.name.clone()), vec![])
     }
 }
+
 pub struct SelectionTable<'a> {
-    pub underlying: &'a PhysicalTable<'a>,
+    pub underlying: &'a PhysicalTable,
     pub columns: Vec<&'a Column<'a>>,
     pub predicate: Option<&'a Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
@@ -108,11 +112,11 @@ impl<'a> Expression for SelectionTable<'a> {
                         params.extend(order_by_binding.params);
 
                         format!(
-                            "select {} from (select * from {} order by {} where {}) as {}",
+                            "select {} from (select * from {} where {} order by {}) as {}",
                             cols_stmts,
                             table_binding.stmt,
-                            order_by_binding.stmt,
                             predicate_binding.stmt,
+                            order_by_binding.stmt,
                             table_binding.stmt
                         )
                     }
@@ -130,29 +134,22 @@ mod tests {
 
     #[test]
     fn predicated_table() {
-        let table_name = "people";
-        let physical_table = PhysicalTable {
-            name: table_name.to_string(),
-            columns: vec![Column::Physical {
+        let table = PhysicalTable {
+            name: "people".to_string(),
+            columns: vec![PhysicalColumn {
                 table_name: "people".to_string(),
                 column_name: "age".to_string(),
             }],
         };
 
-        let age_col = Column::Physical {
-            table_name: table_name.to_string(),
-            column_name: "age".to_string(),
-        };
+        let age_col = table.get_column("age").unwrap();
         let age_value_col = Column::Literal(Box::new(5));
+
         let predicate = Predicate::Eq(&age_col, &age_value_col);
 
-        let age_selected_col = Column::Physical {
-            table_name: table_name.to_string(),
-            column_name: "age".to_string(),
-        };
-        let selected_cols = vec![&age_selected_col];
+        let selected_cols = vec![&age_col];
 
-        let predicated_table = physical_table.select(selected_cols, Some(&predicate), None);
+        let predicated_table = table.select(selected_cols, Some(&predicate), None);
 
         let mut expression_context = ExpressionContext::new();
         assert_binding!(
@@ -164,44 +161,32 @@ mod tests {
 
     #[test]
     fn json_object() {
-        let table_name = "people";
-        let _physical_table = PhysicalTable {
-            name: table_name.to_string(),
+        let table = PhysicalTable {
+            name: "people".to_string(),
             columns: vec![
-                Column::Physical {
+                PhysicalColumn {
                     table_name: "people".to_string(),
                     column_name: "name".to_string(),
                 },
-                Column::Physical {
+                PhysicalColumn {
                     table_name: "people".to_string(),
                     column_name: "age".to_string(),
                 },
             ],
         };
 
-        let _age_col = Column::Physical {
-            table_name: table_name.to_string(),
-            column_name: "age".to_string(),
-        };
+        let age_col = table.get_column("age").unwrap();
+        let name_col = table.get_column("name").unwrap();
+        let x = Column::JsonObject(vec![
+            ("namex".to_string(), &name_col),
+            ("agex".to_string(), &age_col),
+        ]);
+        let selected_table = table.select(vec![&age_col, &x], None, None);
 
-        // let selected_table = physical_table.select(
-        //     &vec![
-        //         &age_col,
-        //         &Column::JsonObject(vec![
-        //             (
-        //                 "namex".to_string(),
-        //                 Column::Physical(table_name.to_string(), "name".to_string()),
-        //             ),
-        //             (
-        //                 "agex".to_string(),
-        //                 Column::Physical(table_name.to_string(), "age".to_string()),
-        //             ),
-        //         ]),
-        //     ],
-        //     None,
-        // );
-
-        // let mut expression_context = ExpressionContext::new();
-        // assert_binding!(&selected_table.binding(&mut expression_context), "select people.age, json_build_object('namex', people.name, 'agex', people.age) from people");
+        let mut expression_context = ExpressionContext::new();
+        assert_binding!(
+            &selected_table.binding(&mut expression_context),
+            r#"select "people"."age", json_build_object('namex', "people"."name", 'agex', "people"."age")::text from "people""#
+        );
     }
 }

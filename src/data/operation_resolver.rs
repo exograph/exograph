@@ -1,4 +1,3 @@
-use crate::execution::query_context::QueryContext;
 use crate::sql::{
     column::Column,
     predicate::Predicate,
@@ -6,19 +5,21 @@ use crate::sql::{
     Expression, ExpressionContext,
 };
 
-use crate::model::{operation::*, types::*};
+use crate::{execution::query_context::QueryContext, sql::order::OrderBy};
+
+use crate::model::{operation::*, relation::*, types::*};
 
 use super::operation_context::OperationContext;
 
 use async_graphql_parser::{
-    types::{Field, Selection},
+    types::{Field, Selection, SelectionSet},
     Positioned,
 };
-use async_graphql_value::Value;
+use async_graphql_value::{Name, Value};
 
 use crate::{execution::query_context::QueryResponse, execution::resolver::OutputName};
 
-use super::data_context::DataContext;
+type Arguments = Vec<(Positioned<Name>, Positioned<Value>)>;
 
 impl Query {
     pub fn resolve(
@@ -30,12 +31,12 @@ impl Query {
         let selection_table = self.operation(&field.node, &operation_context);
         let mut expression_context = ExpressionContext::new();
         let binding = selection_table.binding(&mut expression_context);
-        let string_response = query_context.data_context.database.execute(&binding);
+        let string_response = query_context.system.database.execute(&binding);
         QueryResponse::Raw(string_response)
     }
 
-    fn find_arg<'a>(field: &'a Field, arg_name: &str) -> Option<&'a Value> {
-        field.arguments.iter().find_map(|argument| {
+    fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Value> {
+        arguments.iter().find_map(|argument| {
             let (argument_name, argument_value) = argument;
             if arg_name == argument_name.node {
                 Some(&argument_value.node)
@@ -47,20 +48,32 @@ impl Query {
 
     fn compute_predicate<'a>(
         &self,
-        field: &'a Field,
-        table: &'a PhysicalTable,
+        arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<&'a Predicate<'a>> {
         let predicate = self
             .predicate_parameter
             .as_ref()
             .and_then(|predicate_parameter| {
-                let argument_value = Self::find_arg(field, &predicate_parameter.name);
+                let argument_value = Self::find_arg(arguments, &predicate_parameter.name);
                 argument_value.map(|argument_value| {
-                    predicate_parameter.predicate(&argument_value, table, operation_context)
+                    predicate_parameter.compute_predicate(argument_value, operation_context)
                 })
             });
         predicate.map(|p| operation_context.create_predicate(p))
+    }
+
+    fn compute_order_by<'a>(
+        &self,
+        arguments: &'a Arguments,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Option<OrderBy<'a>> {
+        self.order_by_param.as_ref().and_then(|order_by_param| {
+            let argument_value = Self::find_arg(arguments, &order_by_param.name);
+            argument_value.map(|argument_value| {
+                order_by_param.compute_order_by(argument_value, operation_context)
+            })
+        })
     }
 
     fn operation<'a>(
@@ -68,24 +81,10 @@ impl Query {
         field: &'a Field,
         operation_context: &'a OperationContext<'a>,
     ) -> SelectionTable<'a> {
-        let table = self
-            .physical_table(operation_context.query_context.data_context)
-            .unwrap();
+        let table = self.physical_table(operation_context);
 
-        let predicate = self.compute_predicate(field, table, operation_context);
-
-        let order_by = self.order_by_param.as_ref().and_then(|order_by_param| {
-            let argument_value = Self::find_arg(field, &order_by_param.name);
-            argument_value.map(|argument_value| {
-                order_by_param.compute_order_by(
-                    argument_value,
-                    table,
-                    &operation_context.query_context.data_context.system,
-                )
-            })
-        });
-
-        let content_object = self.content_select(field, &operation_context);
+        let predicate = self.compute_predicate(&field.arguments, operation_context);
+        let content_object = self.content_select(&field.selection_set, operation_context);
 
         match self.return_type.type_modifier {
             ModelTypeModifier::Optional | ModelTypeModifier::NonNull => {
@@ -93,6 +92,7 @@ impl Query {
                 table.select(single_column, predicate, None)
             }
             ModelTypeModifier::List => {
+                let order_by = self.compute_order_by(&field.arguments, operation_context);
                 let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
                 let vector_column = vec![agg_column];
                 table.select(vector_column, predicate, order_by)
@@ -102,40 +102,45 @@ impl Query {
 
     fn content_select<'a>(
         &self,
-        field: &Field,
+        selection_set: &Positioned<SelectionSet>,
         operation_context: &'a OperationContext<'a>,
     ) -> &'a Column<'a> {
-        let table = self
-            .physical_table(operation_context.query_context.data_context)
-            .unwrap();
-        let table_name = &table.name;
-
-        let column_specs: Vec<_> = field
-            .selection_set
+        let column_specs: Vec<_> = selection_set
             .node
             .items
             .iter()
-            .flat_map(|selection| {
-                self.map_selection(&selection.node, table_name, &operation_context)
-            })
+            .flat_map(|selection| self.map_selection(&selection.node, &operation_context))
             .collect();
 
         operation_context.create_column(Column::JsonObject(column_specs))
     }
 
-    fn physical_table<'a>(&self, data_context: &'a DataContext) -> Option<&'a PhysicalTable<'a>> {
-        data_context.physical_table(&self.return_type.type_name)
+    fn return_type<'a>(&self, operation_context: &'a OperationContext<'a>) -> &'a ModelType {
+        let system = &operation_context.query_context.system;
+        let return_type_id = &self.return_type.type_id;
+        &system.types.values[*return_type_id]
+    }
+
+    fn physical_table<'a>(&self, operation_context: &'a OperationContext<'a>) -> &'a PhysicalTable {
+        let system = &operation_context.query_context.system;
+        let return_type = self.return_type(operation_context);
+        match &return_type.kind {
+            ModelTypeKind::Primitive => panic!(),
+            ModelTypeKind::Composite {
+                fields: _,
+                table_id,
+            } => &system.tables.values[*table_id],
+        }
     }
 
     fn map_selection<'a>(
         &self,
         selection: &Selection,
-        table_name: &str,
         operation_context: &'a OperationContext<'a>,
     ) -> Vec<(String, &'a Column<'a>)> {
         match selection {
             Selection::Field(field) => {
-                vec![self.map_field(&field.node, table_name, &operation_context)]
+                vec![self.map_field(&field.node, &operation_context)]
             }
             Selection::FragmentSpread(fragment_spread) => {
                 let fragment_definition = operation_context
@@ -147,9 +152,7 @@ impl Query {
                     .node
                     .items
                     .iter()
-                    .flat_map(|selection| {
-                        self.map_selection(&selection.node, table_name, &operation_context)
-                    })
+                    .flat_map(|selection| self.map_selection(&selection.node, &operation_context))
                     .collect()
             }
             Selection::InlineFragment(_inline_fragment) => {
@@ -161,65 +164,56 @@ impl Query {
     fn map_field<'a>(
         &self,
         field: &Field,
-        table_name: &str,
         operation_context: &'a OperationContext<'a>,
     ) -> (String, &'a Column<'a>) {
-        let return_type = operation_context
-            .query_context
-            .data_context
-            .system
-            .find_type(&self.return_type.type_name)
-            .unwrap();
+        let system = operation_context.query_context.system;
+        let return_type = self.return_type(operation_context);
 
         let model_field = return_type.model_field(&field.name.node).unwrap();
 
         let column = match &model_field.relation {
-            ModelRelation::Pk { .. } | ModelRelation::Scalar { .. } => operation_context
-                .create_column(Column::Physical {
-                    table_name: table_name.to_string(),
-                    column_name: model_field.column_name(),
-                }),
+            ModelRelation::Pk { column_id } | ModelRelation::Scalar { column_id } => {
+                let column = column_id.get_column(system).unwrap();
+                operation_context.create_column(Column::Physical(column))
+            }
             ModelRelation::ManyToOne {
-                column_name,
-                type_name,
+                column_id,
+                other_type_id,
                 optional: _,
             } => {
-                // Fix all the unwraps
-                let pk_query = operation_context
-                    .query_context
-                    .data_context
-                    .system
-                    .queries
-                    .iter()
-                    .find(|query| query.name == type_name.to_ascii_lowercase()) // TODO: Implement a systematic way
-                    .unwrap();
+                let pk_query = system.pk_query(other_type_id);
 
-                let table = operation_context
-                    .query_context
-                    .data_context
-                    .physical_table(&pk_query.return_type.type_name)
-                    .unwrap();
+                let other_type = system.types.get_by_id(*other_type_id).unwrap();
+                let other_table = {
+                    match other_type.kind {
+                        ModelTypeKind::Primitive => panic!(""),
+                        ModelTypeKind::Composite { table_id, .. } => {
+                            system.tables.get_by_id(table_id)
+                        }
+                    }
+                    .unwrap()
+                };
+                let other_table_pk_field = other_type.pk_field();
+                let other_table_pk_column = other_table_pk_field
+                    .and_then(|field| field.relation.self_column())
+                    .and_then(|column_id| column_id.get_column(system));
 
                 operation_context.create_column(Column::SingleSelect {
-                    table,
-                    column: pk_query.content_select(field, operation_context),
+                    table: other_table,
+                    column: pk_query.content_select(&field.selection_set, operation_context),
                     predicate: Some(
                         operation_context.create_predicate(Predicate::Eq(
-                            self.physical_table(operation_context.query_context.data_context)
-                                .unwrap()
-                                .get_column(column_name.as_ref().unwrap().as_str())
-                                .unwrap(),
-                            table.get_column("id").unwrap(), // Remove hard-coded pk column name
+                            operation_context.create_column(Column::Physical(
+                                column_id.get_column(system).unwrap(),
+                            )),
+                            operation_context
+                                .create_column(Column::Physical(other_table_pk_column.unwrap())),
                         )),
                     ),
                     order_by: None,
                 })
             }
-            ModelRelation::OneToMany {
-                column_name: _,
-                type_name: _,
-                optional: _,
-            } => todo!(),
+            ModelRelation::OneToMany { .. } => todo!(),
         };
 
         (field.output_name(), column)

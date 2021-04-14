@@ -1,4 +1,10 @@
-use super::{order::OrderByParameter, predicate::PredicateParameter, types::ModelTypeModifier};
+use id_arena::Id;
+
+use super::{
+    order::OrderByParameter,
+    predicate::PredicateParameter,
+    types::{ModelType, ModelTypeModifier},
+};
 
 #[derive(Debug, Clone)]
 pub struct Query {
@@ -10,6 +16,7 @@ pub struct Query {
 
 #[derive(Debug, Clone)]
 pub struct OperationReturnType {
+    pub type_id: Id<ModelType>,
     pub type_name: String,
     pub type_modifier: ModelTypeModifier,
 }
