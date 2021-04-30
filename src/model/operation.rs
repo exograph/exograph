@@ -9,7 +9,7 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct Query {
     pub name: String,
-    pub predicate_parameter: Option<PredicateParameter>,
+    pub predicate_param: Option<PredicateParameter>,
     pub order_by_param: Option<OrderByParameter>,
     pub return_type: OperationReturnType,
 }

@@ -21,6 +21,7 @@ pub enum Column<'a> {
         predicate: Option<&'a Predicate<'a>>,
         order_by: Option<OrderBy<'a>>,
     },
+    SelectionTableWrapper(SelectionTable<'a>),
 }
 
 impl<'a> Expression for Column<'a> {
@@ -70,6 +71,10 @@ impl<'a> Expression for Column<'a> {
                     column_binding.stmt, table_binding.stmt, predicate_binding.stmt
                 );
                 ParameterBinding::new(stmt, column_binding.params)
+            }
+            Column::SelectionTableWrapper(selection_table) => {
+                let pb = selection_table.binding(expression_context);
+                ParameterBinding::new(format!("({})", pb.stmt), pb.params)
             }
         }
     }

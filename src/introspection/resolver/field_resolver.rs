@@ -1,4 +1,7 @@
-use async_graphql_parser::{Positioned, types::{Field, FieldDefinition}};
+use async_graphql_parser::{
+    types::{Field, FieldDefinition},
+    Positioned,
+};
 use serde_json::Value;
 
 use crate::execution::query_context::QueryContext;
@@ -22,7 +25,6 @@ impl FieldResolver<Value> for FieldDefinition {
             "isDeprecated" => Value::Bool(false), // TODO
             "deprecationReason" => Value::Null,   // TODO
             field_name => {
-                dbg!(&self);
                 todo!("Invalid field {:?} for Field", field_name)
             } // TODO: Make it a proper error
         }

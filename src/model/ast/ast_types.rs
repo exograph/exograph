@@ -44,30 +44,7 @@ pub enum AstRelation {
         optional: bool,
     },
     OneToMany {
-        column_name: Option<String>,
+        other_type_column_name: Option<String>,
         other_type_name: String,
-        optional: bool,
     },
-}
-
-impl AstType {
-    pub fn field(&self, name: &str) -> Option<&AstField> {
-        match &self.kind {
-            AstTypeKind::Primitive => None,
-            AstTypeKind::Composite { fields, .. } => fields.iter().find(|field| field.name == name),
-        }
-    }
-}
-
-impl AstField {
-    pub fn column_name(&self) -> String {
-        match &self.relation {
-            AstRelation::Pk { column_name }
-            | AstRelation::Scalar { column_name }
-            | AstRelation::ManyToOne { column_name, .. } => {
-                column_name.clone().unwrap_or(self.name.to_string()).clone()
-            }
-            AstRelation::OneToMany { column_name, .. } => column_name.clone().unwrap(),
-        }
-    }
 }

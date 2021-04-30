@@ -60,16 +60,15 @@ pub mod common_test_data {
                         type_modifier: Optional,
                         relation: Scalar { column_name: None },
                     },
-                    // ModelField {
-                    //     name: "concerts".to_string(),
-                    //     type_name: "Concert".to_string(),
-                    //     type_modifier: NonNull,
-                    //     relation: OneToMany {
-                    //         column_name: Some("venueid".to_string()),
-                    //         type_name: "Concert".to_string(),
-                    //         optional: true
-                    //     },
-                    // },
+                    AstField {
+                        name: "concerts".to_string(),
+                        type_name: "Concert".to_string(),
+                        type_modifier: List,
+                        relation: OneToMany {
+                            other_type_column_name: Some("venueid".to_string()),
+                            other_type_name: "Concert".to_string(),
+                        },
+                    },
                 ],
                 table_name: Some("venues".to_string()),
             },

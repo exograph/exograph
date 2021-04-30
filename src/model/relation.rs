@@ -18,9 +18,8 @@ pub enum ModelRelation {
         optional: bool,
     },
     OneToMany {
-        column_id: ColumnId,
+        other_type_column_id: ColumnId,
         other_type_id: Id<ModelType>,
-        optional: bool,
     },
 }
 

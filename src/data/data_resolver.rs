@@ -12,7 +12,7 @@ impl ModelSystem {
         field: &Positioned<Field>,
         query_context: &QueryContext<'_>,
     ) -> QueryResponse {
-        let operation = self.queries.iter().find(|q| q.name == field.node.name.node);
+        let operation = self.queries.get_by_key(&field.node.name.node);
         operation.unwrap().resolve(field, query_context)
     }
 }

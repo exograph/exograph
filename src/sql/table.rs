@@ -30,12 +30,14 @@ impl PhysicalTable {
         columns: Vec<&'b Column>,
         predicate: Option<&'b Predicate<'b>>,
         order_by: Option<OrderBy<'b>>,
+        top_level_selection: bool,
     ) -> SelectionTable {
         SelectionTable {
             underlying: self,
             columns: columns,
             predicate,
             order_by,
+            top_level_selection,
         }
     }
 }
@@ -46,11 +48,13 @@ impl Expression for PhysicalTable {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct SelectionTable<'a> {
     pub underlying: &'a PhysicalTable,
     pub columns: Vec<&'a Column<'a>>,
     pub predicate: Option<&'a Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
+    top_level_selection: bool,
 }
 
 impl<'a> Expression for SelectionTable<'a> {
@@ -63,10 +67,10 @@ impl<'a> Expression for SelectionTable<'a> {
             .map(|c| {
                 let col_binding = c.binding(expression_context);
                 let text_cast = match c {
-                    Column::Physical { .. } | Column::Literal(_) | Column::SingleSelect { .. } => {
-                        ""
+                    Column::JsonObject(_) | Column::JsonAgg(_) if self.top_level_selection => {
+                        "::text"
                     }
-                    Column::JsonObject(_) | Column::JsonAgg(_) => "::text",
+                    _ => "",
                 };
                 (
                     format!("{}{}", col_binding.stmt, text_cast),
@@ -149,7 +153,7 @@ mod tests {
 
         let selected_cols = vec![&age_col];
 
-        let predicated_table = table.select(selected_cols, Some(&predicate), None);
+        let predicated_table = table.select(selected_cols, Some(&predicate), None, false);
 
         let mut expression_context = ExpressionContext::new();
         assert_binding!(
@@ -181,7 +185,7 @@ mod tests {
             ("namex".to_string(), &name_col),
             ("agex".to_string(), &age_col),
         ]);
-        let selected_table = table.select(vec![&age_col, &x], None, None);
+        let selected_table = table.select(vec![&age_col, &x], None, None, true);
 
         let mut expression_context = ExpressionContext::new();
         assert_binding!(

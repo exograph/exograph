@@ -28,7 +28,8 @@ impl Query {
         query_context: &QueryContext<'_>,
     ) -> QueryResponse {
         let operation_context = OperationContext::new(query_context);
-        let selection_table = self.operation(&field.node, &operation_context);
+        let selection_table =
+            self.operation(&field.node, Predicate::True, &operation_context, true);
         let mut expression_context = ExpressionContext::new();
         let binding = selection_table.binding(&mut expression_context);
         let string_response = query_context.system.database.execute(&binding);
@@ -49,10 +50,11 @@ impl Query {
     fn compute_predicate<'a>(
         &self,
         arguments: &'a Arguments,
+        additional_predicate: Predicate<'a>,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<&'a Predicate<'a>> {
         let predicate = self
-            .predicate_parameter
+            .predicate_param
             .as_ref()
             .and_then(|predicate_parameter| {
                 let argument_value = Self::find_arg(arguments, &predicate_parameter.name);
@@ -60,7 +62,13 @@ impl Query {
                     predicate_parameter.compute_predicate(argument_value, operation_context)
                 })
             });
-        predicate.map(|p| operation_context.create_predicate(p))
+
+        let predicate = match predicate {
+            Some(predicate) => Predicate::And(Box::new(predicate), Box::new(additional_predicate)),
+            None => additional_predicate,
+        };
+
+        Some(operation_context.create_predicate(predicate))
     }
 
     fn compute_order_by<'a>(
@@ -79,30 +87,34 @@ impl Query {
     fn operation<'a>(
         &'a self,
         field: &'a Field,
+        additional_predicate: Predicate<'a>,
         operation_context: &'a OperationContext<'a>,
+        top_level_selection: bool,
     ) -> SelectionTable<'a> {
         let table = self.physical_table(operation_context);
 
-        let predicate = self.compute_predicate(&field.arguments, operation_context);
+        let predicate =
+            self.compute_predicate(&field.arguments, additional_predicate, operation_context);
+
         let content_object = self.content_select(&field.selection_set, operation_context);
 
         match self.return_type.type_modifier {
             ModelTypeModifier::Optional | ModelTypeModifier::NonNull => {
                 let single_column = vec![content_object];
-                table.select(single_column, predicate, None)
+                table.select(single_column, predicate, None, top_level_selection)
             }
             ModelTypeModifier::List => {
                 let order_by = self.compute_order_by(&field.arguments, operation_context);
                 let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
                 let vector_column = vec![agg_column];
-                table.select(vector_column, predicate, order_by)
+                table.select(vector_column, predicate, order_by, top_level_selection)
             }
         }
     }
 
     fn content_select<'a>(
         &self,
-        selection_set: &Positioned<SelectionSet>,
+        selection_set: &'a Positioned<SelectionSet>,
         operation_context: &'a OperationContext<'a>,
     ) -> &'a Column<'a> {
         let column_specs: Vec<_> = selection_set
@@ -129,13 +141,14 @@ impl Query {
             ModelTypeKind::Composite {
                 fields: _,
                 table_id,
+                ..
             } => &system.tables.values[*table_id],
         }
     }
 
     fn map_selection<'a>(
         &self,
-        selection: &Selection,
+        selection: &'a Selection,
         operation_context: &'a OperationContext<'a>,
     ) -> Vec<(String, &'a Column<'a>)> {
         match selection {
@@ -163,7 +176,7 @@ impl Query {
 
     fn map_field<'a>(
         &self,
-        field: &Field,
+        field: &'a Field,
         operation_context: &'a OperationContext<'a>,
     ) -> (String, &'a Column<'a>) {
         let system = operation_context.query_context.system;
@@ -174,33 +187,36 @@ impl Query {
         let column = match &model_field.relation {
             ModelRelation::Pk { column_id } | ModelRelation::Scalar { column_id } => {
                 let column = column_id.get_column(system).unwrap();
-                operation_context.create_column(Column::Physical(column))
+                Column::Physical(column)
             }
             ModelRelation::ManyToOne {
                 column_id,
                 other_type_id,
                 optional: _,
             } => {
-                let pk_query = system.pk_query(other_type_id);
-
                 let other_type = system.types.get_by_id(*other_type_id).unwrap();
-                let other_table = {
+                let (other_table, other_table_pk_query) = {
                     match other_type.kind {
                         ModelTypeKind::Primitive => panic!(""),
-                        ModelTypeKind::Composite { table_id, .. } => {
-                            system.tables.get_by_id(table_id)
-                        }
+                        ModelTypeKind::Composite {
+                            table_id, pk_query, ..
+                        } => (
+                            system.tables.get_by_id(table_id),
+                            system.queries.get_by_id(pk_query),
+                        ),
                     }
-                    .unwrap()
                 };
+                let other_table = other_table.unwrap();
+                let other_table_pk_query = other_table_pk_query.unwrap();
                 let other_table_pk_field = other_type.pk_field();
                 let other_table_pk_column = other_table_pk_field
                     .and_then(|field| field.relation.self_column())
                     .and_then(|column_id| column_id.get_column(system));
 
-                operation_context.create_column(Column::SingleSelect {
+                Column::SingleSelect {
                     table: other_table,
-                    column: pk_query.content_select(&field.selection_set, operation_context),
+                    column: other_table_pk_query
+                        .content_select(&field.selection_set, operation_context),
                     predicate: Some(
                         operation_context.create_predicate(Predicate::Eq(
                             operation_context.create_column(Column::Physical(
@@ -211,11 +227,46 @@ impl Query {
                         )),
                     ),
                     order_by: None,
-                })
+                }
             }
-            ModelRelation::OneToMany { .. } => todo!(),
+            ModelRelation::OneToMany {
+                other_type_column_id,
+                other_type_id,
+            } => {
+                let other_type = system.types.get_by_id(*other_type_id).unwrap();
+                let other_table_collection_query = {
+                    match other_type.kind {
+                        ModelTypeKind::Primitive => panic!(""),
+                        ModelTypeKind::Composite {
+                            collection_query, ..
+                        } => system.queries.get_by_id(collection_query),
+                    }
+                };
+
+                let other_table_collection_query = other_table_collection_query.unwrap();
+
+                let self_pk_column_id = return_type
+                    .pk_field()
+                    .and_then(|pk_field| pk_field.relation.self_column())
+                    .and_then(|column_id| column_id.get_column(system));
+
+                let other_selection_table = other_table_collection_query.operation(
+                    field,
+                    Predicate::Eq(
+                        operation_context.create_column(Column::Physical(
+                            other_type_column_id.get_column(system).unwrap(),
+                        )),
+                        operation_context
+                            .create_column(Column::Physical(self_pk_column_id.unwrap())),
+                    ),
+                    operation_context,
+                    false,
+                );
+
+                Column::SelectionTableWrapper(other_selection_table)
+            }
         };
 
-        (field.output_name(), column)
+        (field.output_name(), operation_context.create_column(column))
     }
 }

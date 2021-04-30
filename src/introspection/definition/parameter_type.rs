@@ -4,8 +4,8 @@ use async_graphql_parser::{
 };
 use async_graphql_value::Name;
 
-use crate::introspection::util::*;
 use crate::model::{order::*, predicate::*};
+use crate::{introspection::util::*, model::system::ModelSystem};
 
 use super::{parameter::Parameter, provider::*};
 
@@ -34,7 +34,7 @@ pub enum ParameterTypeKind {
 pub const PRIMITIVE_ORDERING_OPTIONS: [&str; 2] = ["ASC", "DESC"];
 
 impl TypeDefinitionProvider for OrderByParameterType {
-    fn type_definition(&self) -> TypeDefinition {
+    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         match &self.kind {
             OrderByParameterTypeKind::Composite { parameters } => {
                 let fields = parameters
@@ -77,7 +77,7 @@ impl TypeDefinitionProvider for OrderByParameterType {
 
 // TODO: Reduce duplication from the above impl
 impl TypeDefinitionProvider for PredicateParameterType {
-    fn type_definition(&self) -> TypeDefinition {
+    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         match &self.kind {
             PredicateParameterTypeKind::Opeartor(parameters)
             | PredicateParameterTypeKind::Composite(parameters) => {

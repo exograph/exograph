@@ -1,4 +1,7 @@
-use async_graphql_parser::{Positioned, types::{BaseType, Field, Type, TypeDefinition}};
+use async_graphql_parser::{
+    types::{BaseType, Field, Type, TypeDefinition},
+    Positioned,
+};
 use serde_json::Value;
 
 use crate::execution::query_context::QueryContext;

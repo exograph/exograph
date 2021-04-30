@@ -1,10 +1,13 @@
 use id_arena::Id;
 
-use super::column_id::ColumnId;
+use super::{
+    ast::ast_types::{AstType, AstTypeKind},
+    column_id::ColumnId,
+};
 
 use super::{order::*, relation::ModelRelation, system_context::SystemContextBuilding, types::*};
 
-pub fn build(building: &mut SystemContextBuilding) {
+pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
     let primitive_type = OrderByParameterType {
         name: "Ordering".to_string(),
         kind: OrderByParameterTypeKind::Primitive,
@@ -14,38 +17,34 @@ pub fn build(building: &mut SystemContextBuilding) {
         .order_by_types
         .add(&primitive_type.name.clone(), primitive_type);
 
-    for model_type in building.types.iter() {
-        let shallow_type = create_shallow_type(model_type.1);
+    for ast_type in ast_types.iter() {
+        let shallow_type = create_shallow_type(ast_type);
         let param_type_name = shallow_type.name.clone();
         building.order_by_types.add(&param_type_name, shallow_type);
     }
+}
 
-    for model_type in building.types.iter() {
-        let existing_model_type = building.types.get_by_key(&model_type.1.name);
+pub fn build_expanded(building: &mut SystemContextBuilding) {
+    for (_, model_type) in building.types.iter() {
+        let param_type_name = get_parameter_type_name(&model_type.name, model_type.is_primitive());
+        let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
-        match existing_model_type {
-            Some(existing_model_type) => {
-                let param_type_name = get_parameter_type_name(existing_model_type);
-                let existing_param_id = building.order_by_types.get_id(&param_type_name);
-
-                let new_kind = expand_type(&model_type.1, &building);
-                building.order_by_types.values[existing_param_id.unwrap()].kind = new_kind;
-            }
-            None => panic!(""),
-        }
+        let new_kind = expand_type(&model_type, &building);
+        building.order_by_types.values[existing_param_id.unwrap()].kind = new_kind;
     }
 }
 
-pub fn get_parameter_type_name(model_type: &ModelType) -> String {
-    match &model_type.kind {
-        ModelTypeKind::Primitive => "Ordering".to_string(),
-        ModelTypeKind::Composite { .. } => format!("{}Ordering", &model_type.name),
+pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> String {
+    if is_primitive {
+        "Ordering".to_string()
+    } else {
+        format!("{}Ordering", &model_type_name)
     }
 }
 
-fn create_shallow_type(model_type: &ModelType) -> OrderByParameterType {
+fn create_shallow_type(ast_type: &AstType) -> OrderByParameterType {
     OrderByParameterType {
-        name: get_parameter_type_name(model_type),
+        name: get_parameter_type_name(&ast_type.name, is_primitive(&ast_type.kind)),
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },
     }
 }
@@ -69,11 +68,13 @@ fn expand_type(
 
 fn new_param(
     name: &str,
-    model_type: &ModelType,
+    model_type_name: &str,
+    is_primitive: bool,
     column_id: Option<ColumnId>,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    let (param_type_name, param_type_id) = order_by_param_type(model_type, building);
+    let (param_type_name, param_type_id) =
+        order_by_param_type(model_type_name, is_primitive, building);
 
     OrderByParameter {
         name: name.to_string(),
@@ -107,22 +108,39 @@ pub fn new_field_param(
         _ => None,
     };
 
-    new_param(&model_field.name, field_model_type, column_id, building)
+    new_param(
+        &model_field.name,
+        &field_model_type.name,
+        field_model_type.is_primitive(),
+        column_id,
+        building,
+    )
 }
 
 pub fn new_root_param(
-    model_type: &ModelType,
+    model_type_name: &str,
+    is_primitive: bool,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    new_param("orderBy", model_type, None, building)
+    new_param("orderBy", model_type_name, is_primitive, None, building)
 }
 
 fn order_by_param_type(
-    model_type: &ModelType,
+    model_type_name: &str,
+    is_primitive: bool,
     building: &SystemContextBuilding,
 ) -> (String, Id<OrderByParameterType>) {
-    let param_type_name = get_parameter_type_name(model_type);
+    let param_type_name = get_parameter_type_name(&model_type_name, is_primitive);
+
     let param_type_id = building.order_by_types.get_id(&param_type_name).unwrap();
 
     (param_type_name, param_type_id)
+}
+
+fn is_primitive(kind: &AstTypeKind) -> bool {
+    if let AstTypeKind::Primitive = kind {
+        true
+    } else {
+        false
+    }
 }

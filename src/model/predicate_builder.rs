@@ -1,38 +1,44 @@
-use super::{predicate::*, system_context::SystemContextBuilding, types::*};
+use super::{
+    ast::ast_types::AstType, predicate::*, system_context::SystemContextBuilding,
+    type_builder::PRIMITIVE_TYPE_NAMES, types::*,
+};
 
-pub fn build(building: &mut SystemContextBuilding) {
-    for model_type in building.types.iter() {
-        match model_type.1.kind {
-            ModelTypeKind::Primitive => {
-                building.predicate_types.add(
-                    &model_type.1.name,
-                    PredicateParameterType {
-                        name: model_type.1.name.clone(),
-                        kind: PredicateParameterTypeKind::ImplicitEqual {},
-                    },
-                );
-            }
-            _ => (),
-        }
+pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
+    for type_name in PRIMITIVE_TYPE_NAMES.iter() {
+        // One for queries such as {id: 1}, where the type name is the same as the model type name (in this case `Int`)
+        building.predicate_types.add(
+            type_name,
+            PredicateParameterType {
+                name: type_name.to_string(),
+                kind: PredicateParameterTypeKind::ImplicitEqual {},
+            },
+        );
 
-        let shallow_type = create_shallow_type(model_type.1);
+        // Another one for operators
+        let param_type_name = get_parameter_type_name(type_name);
+        building.predicate_types.add(
+            &param_type_name,
+            PredicateParameterType {
+                name: param_type_name.to_string(),
+                kind: PredicateParameterTypeKind::ImplicitEqual {},
+            },
+        );
+    }
+
+    for ast_type in ast_types.iter() {
+        let shallow_type = create_shallow_type(ast_type);
         let param_type_name = shallow_type.name.clone();
         building.predicate_types.add(&param_type_name, shallow_type);
     }
+}
 
-    for model_type in building.types.iter() {
-        let existing_model_type = building.types.get_by_key(&model_type.1.name);
+pub fn build_expanded(building: &mut SystemContextBuilding) {
+    for (_, model_type) in building.types.iter() {
+        let param_type_name = get_parameter_type_name(&model_type.name);
+        let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        match existing_model_type {
-            Some(existing_model_type) => {
-                let param_type_name = get_parameter_type_name(&existing_model_type.name);
-                let existing_param_id = building.predicate_types.get_id(&param_type_name);
-
-                let new_kind = expand_type(&model_type.1, building);
-                building.predicate_types.values[existing_param_id.unwrap()].kind = new_kind;
-            }
-            None => panic!(""),
-        }
+        let new_kind = expand_type(&model_type, building);
+        building.predicate_types.values[existing_param_id.unwrap()].kind = new_kind;
     }
 }
 
@@ -40,9 +46,9 @@ pub fn get_parameter_type_name(model_type_name: &str) -> String {
     format!("{}Filter", model_type_name)
 }
 
-fn create_shallow_type(model_type: &ModelType) -> PredicateParameterType {
+fn create_shallow_type(ast_type: &AstType) -> PredicateParameterType {
     PredicateParameterType {
-        name: get_parameter_type_name(&model_type.name),
+        name: get_parameter_type_name(&ast_type.name),
         kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
     }
 }

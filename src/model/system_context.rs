@@ -5,6 +5,7 @@ use id_arena::{Arena, Id};
 use crate::sql::table::PhysicalTable;
 
 use super::{
+    operation::Query,
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     types::{ModelType, ModelTypeKind},
@@ -56,6 +57,7 @@ pub struct SystemContextBuilding {
     pub types: MappedArena<ModelType>,
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
+    pub queries: MappedArena<Query>,
     pub tables: MappedArena<PhysicalTable>,
 }
 
@@ -65,6 +67,7 @@ impl SystemContextBuilding {
             types: MappedArena::new(),
             order_by_types: MappedArena::new(),
             predicate_types: MappedArena::new(),
+            queries: MappedArena::new(),
             tables: MappedArena::new(),
         }
     }

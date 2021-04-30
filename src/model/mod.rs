@@ -5,6 +5,7 @@ pub mod order;
 mod order_by_type_builder;
 pub mod predicate;
 mod predicate_builder;
+mod query_builder;
 pub mod relation;
 pub mod system;
 pub mod system_context;

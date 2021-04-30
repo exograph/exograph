@@ -1,4 +1,4 @@
-use crate::introspection::definition::parameter::Parameter;
+use crate::{introspection::definition::parameter::Parameter, model::system::ModelSystem};
 use async_graphql_parser::types::FieldDefinition;
 
 use util::*;
@@ -19,7 +19,7 @@ impl Operation for Query {
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
         let mut params: Vec<&dyn Parameter> = vec![];
-        match &self.predicate_parameter {
+        match &self.predicate_param {
             Some(param) => params.push(param),
             None => {}
         }
@@ -39,7 +39,7 @@ impl Operation for Query {
 // Field defintion for the query such as `venue(id: Int!): Venue`, combining such fields will form
 // the Query, Mutation, and Subscription object defintion
 impl<T: Operation> FieldDefinitionProvider for T {
-    fn field_definition(&self) -> FieldDefinition {
+    fn field_definition(&self, _system: &ModelSystem) -> FieldDefinition {
         let fields = self
             .parameters()
             .iter()
