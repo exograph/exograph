@@ -1,3 +1,5 @@
+use id_arena::Arena;
+
 use super::{operation::*, predicate_builder, system_context::MappedArena};
 use super::{order::*, type_builder};
 use super::{order_by_type_builder, predicate::*};
@@ -12,11 +14,11 @@ use super::types::ModelType;
 
 #[derive(Debug, Clone)]
 pub struct ModelSystem {
-    pub types: MappedArena<ModelType>,
-    pub order_by_types: MappedArena<OrderByParameterType>,
-    pub predicate_types: MappedArena<PredicateParameterType>,
+    pub types: Arena<ModelType>,
+    pub order_by_types: Arena<OrderByParameterType>,
+    pub predicate_types: Arena<PredicateParameterType>,
     pub queries: MappedArena<Query>,
-    pub tables: MappedArena<PhysicalTable>,
+    pub tables: Arena<PhysicalTable>,
     pub database: Database,
 }
 
@@ -34,11 +36,11 @@ impl ModelSystem {
         query_builder::build_expanded(&mut building);
 
         ModelSystem {
-            types: building.types,
-            order_by_types: building.order_by_types,
-            predicate_types: building.predicate_types,
+            types: building.types.values,
+            order_by_types: building.order_by_types.values,
+            predicate_types: building.predicate_types.values,
             queries: building.queries,
-            tables: building.tables,
+            tables: building.tables.values,
 
             database: Database::empty(),
         }

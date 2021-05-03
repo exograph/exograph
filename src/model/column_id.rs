@@ -18,10 +18,7 @@ impl ColumnId {
         }
     }
 
-    pub fn get_column<'a>(&self, system: &'a ModelSystem) -> Option<&'a PhysicalColumn> {
-        system
-            .tables
-            .get_by_id(self.table_id)
-            .and_then(|table| table.columns.get(self.column_index))
+    pub fn get_column<'a>(&self, system: &'a ModelSystem) -> &'a PhysicalColumn {
+        &system.tables[self.table_id].columns[self.column_index]
     }
 }

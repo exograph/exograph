@@ -11,12 +11,7 @@ impl OrderByParameter {
         argument: &Value,
         operation_context: &'a OperationContext<'a>,
     ) -> OrderBy<'a> {
-        let parameter_type = operation_context
-            .query_context
-            .system
-            .order_by_types
-            .get_by_id(self.type_id)
-            .unwrap();
+        let parameter_type = &operation_context.query_context.system.order_by_types[self.type_id];
         parameter_type.compute_order_by(argument, operation_context)
     }
 }
@@ -60,15 +55,9 @@ impl OrderByParameterType {
             _ => None,
         };
 
-        let column = parameter
-            .and_then(|p| {
-                p.column_id.as_ref().and_then(|column_id| {
-                    column_id.get_column(operation_context.query_context.system)
-                })
-            })
-            .map(|pc| Column::Physical(pc));
+        let column_id = parameter.as_ref().and_then(|p| p.column_id.as_ref());
 
-        let column = operation_context.create_column(column.unwrap());
+        let column = operation_context.create_column_with_id(&column_id.unwrap());
 
         (column, Self::ordering(parameter_value))
     }

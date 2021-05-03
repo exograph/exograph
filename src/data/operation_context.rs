@@ -3,6 +3,7 @@ use typed_arena::Arena;
 
 use crate::{
     execution::query_context::QueryContext,
+    model::column_id::ColumnId,
     sql::{column::Column, predicate::Predicate},
 };
 
@@ -23,6 +24,12 @@ impl<'a> OperationContext<'a> {
 
     pub fn create_column(&self, column: Column<'a>) -> &Column<'a> {
         self.columns.alloc(column)
+    }
+
+    pub fn create_column_with_id(&self, column_id: &ColumnId) -> &Column<'a> {
+        self.create_column(Column::Physical(
+            column_id.get_column(self.query_context.system),
+        ))
     }
 
     pub fn create_predicate(&self, predicate: Predicate<'a>) -> &Predicate<'a> {

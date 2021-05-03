@@ -1,4 +1,4 @@
-use super::relation::ModelRelation;
+use super::{column_id::ColumnId, relation::ModelRelation};
 use crate::model::operation::*;
 
 use crate::sql::table::PhysicalTable;
@@ -32,6 +32,11 @@ impl ModelType {
                 None
             }
         })
+    }
+
+    pub fn pk_column_id(&self) -> Option<ColumnId> {
+        self.pk_field()
+            .and_then(|pk_field| pk_field.relation.self_column())
     }
 
     pub fn table_id(&self) -> Option<Id<PhysicalTable>> {

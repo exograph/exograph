@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actix_web::{dev::Body, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 use introspection::schema::Schema;
 use model::system::ModelSystem;

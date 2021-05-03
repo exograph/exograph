@@ -130,7 +130,7 @@ impl Query {
     fn return_type<'a>(&self, operation_context: &'a OperationContext<'a>) -> &'a ModelType {
         let system = &operation_context.query_context.system;
         let return_type_id = &self.return_type.type_id;
-        &system.types.values[*return_type_id]
+        &system.types[*return_type_id]
     }
 
     fn physical_table<'a>(&self, operation_context: &'a OperationContext<'a>) -> &'a PhysicalTable {
@@ -142,7 +142,7 @@ impl Query {
                 fields: _,
                 table_id,
                 ..
-            } => &system.tables.values[*table_id],
+            } => &system.tables[*table_id],
         }
     }
 
@@ -186,78 +186,60 @@ impl Query {
 
         let column = match &model_field.relation {
             ModelRelation::Pk { column_id } | ModelRelation::Scalar { column_id } => {
-                let column = column_id.get_column(system).unwrap();
+                let column = column_id.get_column(system);
                 Column::Physical(column)
             }
             ModelRelation::ManyToOne {
                 column_id,
                 other_type_id,
-                optional: _,
+                ..
             } => {
-                let other_type = system.types.get_by_id(*other_type_id).unwrap();
+                let other_type = &system.types[*other_type_id];
                 let (other_table, other_table_pk_query) = {
                     match other_type.kind {
                         ModelTypeKind::Primitive => panic!(""),
                         ModelTypeKind::Composite {
                             table_id, pk_query, ..
-                        } => (
-                            system.tables.get_by_id(table_id),
-                            system.queries.get_by_id(pk_query),
-                        ),
+                        } => (&system.tables[table_id], &system.queries.values[pk_query]),
                     }
                 };
-                let other_table = other_table.unwrap();
-                let other_table_pk_query = other_table_pk_query.unwrap();
-                let other_table_pk_field = other_type.pk_field();
-                let other_table_pk_column = other_table_pk_field
-                    .and_then(|field| field.relation.self_column())
-                    .and_then(|column_id| column_id.get_column(system));
 
-                Column::SingleSelect {
-                    table: other_table,
-                    column: other_table_pk_query
-                        .content_select(&field.selection_set, operation_context),
-                    predicate: Some(
-                        operation_context.create_predicate(Predicate::Eq(
-                            operation_context.create_column(Column::Physical(
-                                column_id.get_column(system).unwrap(),
+                Column::SelectionTableWrapper(
+                    other_table.select(
+                        vec![other_table_pk_query
+                            .content_select(&field.selection_set, operation_context)],
+                        Some(
+                            operation_context.create_predicate(Predicate::Eq(
+                                operation_context.create_column_with_id(column_id),
+                                operation_context
+                                    .create_column_with_id(&other_type.pk_column_id().unwrap()),
                             )),
-                            operation_context
-                                .create_column(Column::Physical(other_table_pk_column.unwrap())),
-                        )),
+                        ),
+                        None,
+                        false,
                     ),
-                    order_by: None,
-                }
+                )
             }
             ModelRelation::OneToMany {
                 other_type_column_id,
                 other_type_id,
             } => {
-                let other_type = system.types.get_by_id(*other_type_id).unwrap();
+                let other_type = &system.types[*other_type_id];
                 let other_table_collection_query = {
                     match other_type.kind {
                         ModelTypeKind::Primitive => panic!(""),
                         ModelTypeKind::Composite {
                             collection_query, ..
-                        } => system.queries.get_by_id(collection_query),
+                        } => &system.queries.values[collection_query],
                     }
                 };
-
-                let other_table_collection_query = other_table_collection_query.unwrap();
-
-                let self_pk_column_id = return_type
-                    .pk_field()
-                    .and_then(|pk_field| pk_field.relation.self_column())
-                    .and_then(|column_id| column_id.get_column(system));
 
                 let other_selection_table = other_table_collection_query.operation(
                     field,
                     Predicate::Eq(
-                        operation_context.create_column(Column::Physical(
-                            other_type_column_id.get_column(system).unwrap(),
-                        )),
+                        operation_context.create_column_with_id(other_type_column_id),
                         operation_context
-                            .create_column(Column::Physical(self_pk_column_id.unwrap())),
+                            .create_column_with_id(&return_type.pk_column_id().unwrap()),
                     ),
                     operation_context,
                     false,

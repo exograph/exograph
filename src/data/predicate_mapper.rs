@@ -1,4 +1,4 @@
-use crate::sql::{column::Column, predicate::Predicate};
+use crate::sql::predicate::Predicate;
 
 use crate::model::predicate::*;
 
@@ -13,17 +13,15 @@ impl PredicateParameter {
         operation_context: &'a OperationContext<'a>,
     ) -> Predicate<'a> {
         let system = operation_context.query_context.system;
-        let parameter_type = system.predicate_types.get_by_id(self.type_id).unwrap();
+        let parameter_type = &system.predicate_types[self.type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => Predicate::Eq(
-                operation_context.create_column(Column::Physical(
-                    &self
-                        .column_id
-                        .as_ref()
-                        .and_then(|column_id| column_id.get_column(system))
-                        .unwrap(),
-                )),
+                &self
+                    .column_id
+                    .as_ref()
+                    .map(|column_id| operation_context.create_column_with_id(column_id))
+                    .unwrap(),
                 operation_context.literal_column(argument_value),
             ),
             PredicateParameterTypeKind::Opeartor(parameters) => {
@@ -60,13 +58,11 @@ impl PredicateParameter {
         op_value: &'a Value,
         operation_context: &'a OperationContext<'a>,
     ) -> Predicate<'a> {
-        let op_key_column = operation_context.create_column(Column::Physical(
-            &self
-                .column_id
-                .as_ref()
-                .and_then(|column_id| column_id.get_column(operation_context.query_context.system))
-                .unwrap(),
-        ));
+        let op_key_column = &self
+            .column_id
+            .as_ref()
+            .map(|column_id| operation_context.create_column_with_id(column_id))
+            .unwrap();
         let op_value_column = operation_context.literal_column(op_value);
         Predicate::from_name(op_name, op_key_column, op_value_column)
     }

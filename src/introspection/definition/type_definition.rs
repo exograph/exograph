@@ -55,13 +55,13 @@ impl FieldDefinitionProvider for ModelField {
             | ModelRelation::Scalar { .. }
             | ModelRelation::ManyToOne { .. } => vec![],
             ModelRelation::OneToMany { other_type_id, .. } => {
-                let other_type = system.types.get_by_id(other_type_id).unwrap();
+                let other_type = &system.types[other_type_id];
                 match other_type.kind {
                     ModelTypeKind::Primitive => panic!(),
                     ModelTypeKind::Composite {
                         collection_query, ..
                     } => {
-                        let collection_query = system.queries.get_by_id(collection_query).unwrap();
+                        let collection_query = &system.queries.values[collection_query];
                         let predicate_parameter_arg = collection_query
                             .predicate_param
                             .as_ref()
