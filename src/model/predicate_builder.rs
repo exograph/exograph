@@ -58,9 +58,9 @@ fn expand_type(
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     match &model_type.kind {
-        ModelTypeKind::Primitive => create_operator_filter_type_kind(&model_type, building),
+        ModelTypeKind::Primitive => create_operator_filter_type_kind(model_type, building),
         ModelTypeKind::Composite { fields, .. } => {
-            create_composite_filter_type_kind(&fields, building)
+            create_composite_filter_type_kind(fields, building)
         }
     }
 }
@@ -73,7 +73,7 @@ fn create_operator_filter_type_kind(
 ) -> PredicateParameterTypeKind {
     // TODO: Create scalar_type specific filter. For example, "like" only for String
     // [eq: <scalar_type>, lt: <scalar_type>, ...]
-    let parameters: Vec<_> = OPERATORS
+    let parameters = OPERATORS
         .iter()
         .map(|operator| PredicateParameter {
             name: operator.to_string(),

@@ -32,16 +32,14 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
         if let ModelTypeKind::Composite { .. } = &model_type.kind {
             {
                 let operation_name = pk_query_name(&model_type.name).to_owned();
-                let existing_id = building.queries.get_id(&operation_name).unwrap();
-
                 let query = expanded_pk_query(model_type, building);
+                let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries.values[existing_id] = query;
             }
             {
                 let operation_name = collection_query_name(&model_type.name).to_owned();
-                let existing_id = building.queries.get_id(&operation_name).unwrap();
-
                 let query = expanded_collection_query(model_type, building);
+                let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries.values[existing_id] = query;
             }
         }
@@ -74,8 +72,7 @@ fn expanded_pk_query(model_type: &ModelType, building: &SystemContextBuilding) -
         type_id: building
             .predicate_types
             .get_id(&pk_field.type_name)
-            .unwrap()
-            .clone(),
+            .unwrap(),
         type_modifier: ModelTypeModifier::NonNull,
         column_id: pk_field.relation.self_column(),
     };
@@ -110,11 +107,7 @@ fn expanded_collection_query(model_type: &ModelType, building: &SystemContextBui
     let predicate_param = PredicateParameter {
         name: "where".to_string(),
         type_name: param_type_name.clone(),
-        type_id: building
-            .predicate_types
-            .get_id(&param_type_name)
-            .unwrap()
-            .clone(),
+        type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
         type_modifier: ModelTypeModifier::Optional,
         column_id: None,
     };
