@@ -28,19 +28,19 @@ pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (_, model_type) in building.types.values.iter() {
+    for (_, model_type) in building.types.iter() {
         if let ModelTypeKind::Composite { .. } = &model_type.kind {
             {
                 let operation_name = pk_query_name(&model_type.name).to_owned();
                 let query = expanded_pk_query(model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
-                building.queries.values[existing_id] = query;
+                building.queries[existing_id] = query;
             }
             {
                 let operation_name = collection_query_name(&model_type.name).to_owned();
                 let query = expanded_collection_query(model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
-                building.queries.values[existing_id] = query;
+                building.queries[existing_id] = query;
             }
         }
     }

@@ -61,7 +61,7 @@ impl FieldDefinitionProvider for ModelField {
                     ModelTypeKind::Composite {
                         collection_query, ..
                     } => {
-                        let collection_query = &system.queries.values[collection_query];
+                        let collection_query = &system.queries[collection_query];
                         let predicate_parameter_arg = collection_query
                             .predicate_param
                             .as_ref()

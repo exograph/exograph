@@ -38,7 +38,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
         let new_kind = expand_type(&model_type, building);
-        building.predicate_types.values[existing_param_id.unwrap()].kind = new_kind;
+        building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
 

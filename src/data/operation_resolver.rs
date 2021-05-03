@@ -200,7 +200,7 @@ impl Query {
                         ModelTypeKind::Primitive => panic!(""),
                         ModelTypeKind::Composite {
                             table_id, pk_query, ..
-                        } => (&system.tables[table_id], &system.queries.values[pk_query]),
+                        } => (&system.tables[table_id], &system.queries[pk_query]),
                     }
                 };
 
@@ -230,7 +230,7 @@ impl Query {
                         ModelTypeKind::Primitive => panic!(""),
                         ModelTypeKind::Composite {
                             collection_query, ..
-                        } => &system.queries.values[collection_query],
+                        } => &system.queries[collection_query],
                     }
                 };
 

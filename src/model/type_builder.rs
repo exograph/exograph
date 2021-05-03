@@ -93,7 +93,7 @@ fn expand_type1(ast_type: &AstType, building: &mut SystemContextBuilding) {
 
 fn expand_type2(ast_type: &AstType, building: &mut SystemContextBuilding) {
     let existing_type_id = building.types.get_id(&ast_type.name).unwrap();
-    let existing_type = building.types.get_by_id(existing_type_id).unwrap();
+    let existing_type = &building.types[existing_type_id];
 
     if let ModelTypeKind::Composite {
         table_id,
@@ -171,20 +171,19 @@ fn create_relation(
     }
 
     fn compute_column_id(
-        table: Option<&PhysicalTable>,
+        table: &PhysicalTable,
         table_id: Id<PhysicalTable>,
         column_name: &Option<String>,
         ast_field: &AstField,
     ) -> Option<ColumnId> {
         let column_name = compute_column_name(column_name, ast_field);
-        table.and_then(|table| {
-            table
-                .column_index(&column_name)
-                .map(|index| ColumnId::new(table_id, index))
-        })
+
+        table
+            .column_index(&column_name)
+            .map(|index| ColumnId::new(table_id, index))
     }
 
-    let table = building.tables.get_by_id(table_id);
+    let table = &building.tables[table_id];
 
     match &ast_field.relation {
         AstRelation::Pk { column_name } => {
@@ -217,9 +216,9 @@ fn create_relation(
             other_type_name,
         } => {
             let other_type_id = building.types.get_id(other_type_name).unwrap();
-            let other_type = building.types.get_by_id(other_type_id).unwrap();
+            let other_type = &building.types[other_type_id];
             let other_table_id = other_type.table_id().unwrap();
-            let other_table = building.tables.get_by_id(other_table_id);
+            let other_table = &building.tables[other_table_id];
             let other_type_column_id = compute_column_id(
                 other_table,
                 other_table_id,

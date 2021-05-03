@@ -30,7 +30,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
         let new_kind = expand_type(&model_type, &building);
-        building.order_by_types.values[existing_param_id.unwrap()].kind = new_kind;
+        building.order_by_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
 
@@ -99,7 +99,7 @@ pub fn new_field_param(
     model_field: &ModelField,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    let field_model_type = building.types.get_by_id(model_field.type_id).unwrap();
+    let field_model_type = &building.types[model_field.type_id];
 
     let column_id = match &model_field.relation {
         ModelRelation::Pk { column_id, .. } | ModelRelation::Scalar { column_id, .. } => {
