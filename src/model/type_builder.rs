@@ -15,6 +15,7 @@ pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding
         let typ = ModelType {
             name: type_name.to_string(),
             kind: ModelTypeKind::Primitive,
+            is_input: false,
         };
         building.types.add(type_name, typ);
     }
@@ -51,16 +52,36 @@ fn create_shallow_type(ast_type: &AstType, building: &mut SystemContextBuilding)
         };
         building.tables.add(&table_name, table);
 
+        let model_type_name = ast_type.name.to_owned();
         building.types.add(
-            &ast_type.name.to_string(),
+            &model_type_name.to_owned(),
             ModelType {
-                name: ast_type.name.to_string(),
+                name: model_type_name.to_owned().to_string(),
                 kind: ModelTypeKind::Primitive,
+                is_input: false,
             },
         );
+
+        let mutation_type_names = [
+            input_type_name(&model_type_name),
+            input_reference_type_name(&model_type_name),
+        ];
+
+        for mutation_type_name in mutation_type_names.iter() {
+            building.mutation_types.add(
+                &mutation_type_name,
+                ModelType {
+                    name: mutation_type_name.to_string(),
+                    kind: ModelTypeKind::Primitive,
+                    is_input: true,
+                },
+            );
+        }
     }
 }
 
+// Expand type except for model fields. This allows types to become `Composite` and `table_id` for any type
+// can be accessed when building fields
 fn expand_type1(ast_type: &AstType, building: &mut SystemContextBuilding) {
     if let AstTypeKind::Composite {
         table_name: ast_table_name,
@@ -87,7 +108,7 @@ fn expand_type1(ast_type: &AstType, building: &mut SystemContextBuilding) {
         };
         let existing_type_id = building.types.get_id(&ast_type.name);
 
-        building.update_type(existing_type_id.unwrap(), kind);
+        building.types.values[existing_type_id.unwrap()].kind = kind;
     }
 }
 
@@ -112,13 +133,80 @@ fn expand_type2(ast_type: &AstType, building: &mut SystemContextBuilding) {
                 .collect();
 
             let kind = ModelTypeKind::Composite {
-                fields: model_fields,
+                fields: model_fields.clone(),
                 table_id,
                 pk_query,
                 collection_query,
             };
 
-            building.update_type(existing_type_id, kind);
+            building.types.values[existing_type_id].kind = kind;
+
+            {
+                let reference_type_fields = model_fields
+                    .clone()
+                    .into_iter()
+                    .flat_map(|field| match &field.relation {
+                        ModelRelation::Pk { .. } => Some(field),
+                        _ => None,
+                    })
+                    .collect();
+
+                let existing_type_name = input_reference_type_name(&ast_type.name);
+                let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+
+                building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
+                    fields: reference_type_fields,
+                    table_id,
+                    pk_query,
+                    collection_query,
+                }
+            }
+
+            {
+                let input_type_fields = model_fields
+                    .into_iter()
+                    .flat_map(|field| match &field.relation {
+                        ModelRelation::Pk { .. } => None,
+                        ModelRelation::Scalar { .. } => Some(field),
+                        ModelRelation::ManyToOne { .. } => {
+                            let field_type_name = input_reference_type_name(&field.type_name);
+                            let field_type_id =
+                                building.mutation_types.get_id(&field_type_name).unwrap();
+                            let new_field = ModelField {
+                                name: field.name,
+                                type_id: field_type_id,
+                                type_name: field_type_name,
+                                type_modifier: field.type_modifier,
+                                relation: field.relation,
+                            };
+                            Some(new_field)
+                        }
+                        ModelRelation::OneToMany { .. } => {
+                            let field_type_name = input_reference_type_name(&field.type_name);
+                            let field_type_id =
+                                building.mutation_types.get_id(&field_type_name).unwrap();
+                            let new_field = ModelField {
+                                name: field.name,
+                                type_id: field_type_id,
+                                type_name: field_type_name,
+                                type_modifier: ModelTypeModifier::List,
+                                relation: field.relation,
+                            };
+                            Some(new_field)
+                        }
+                    })
+                    .collect();
+
+                let existing_type_name = input_type_name(&ast_type.name);
+                let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+
+                building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
+                    fields: input_type_fields,
+                    table_id,
+                    pk_query,
+                    collection_query,
+                }
+            }
         }
     }
 }
@@ -233,4 +321,12 @@ fn create_relation(
             }
         }
     }
+}
+
+pub fn input_type_name(model_type_name: &str) -> String {
+    format!("{}Input", model_type_name)
+}
+
+pub fn input_reference_type_name(model_type_name: &str) -> String {
+    format!("{}ReferenceInput", model_type_name)
 }

@@ -1,4 +1,7 @@
-use crate::introspection::util::*;
+use crate::{
+    introspection::util::*,
+    model::{operation::MutationDataParameter, types::ModelField},
+};
 use async_graphql_parser::types::InputValueDefinition;
 
 use crate::{
@@ -29,6 +32,34 @@ impl Parameter for OrderByParameter {
 }
 
 impl Parameter for PredicateParameter {
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn type_name(&self) -> &String {
+        &self.type_name
+    }
+
+    fn type_modifier(&self) -> &ModelTypeModifier {
+        &self.type_modifier
+    }
+}
+
+impl Parameter for MutationDataParameter {
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn type_name(&self) -> &String {
+        &self.type_name
+    }
+
+    fn type_modifier(&self) -> &ModelTypeModifier {
+        &ModelTypeModifier::NonNull
+    }
+}
+
+impl Parameter for ModelField {
     fn name(&self) -> &String {
         &self.name
     }

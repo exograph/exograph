@@ -1,6 +1,6 @@
 use id_arena::Arena;
 
-use super::{operation::*, predicate_builder, system_context::MappedArena};
+use super::{mutation_builder, operation::*, predicate_builder, system_context::MappedArena};
 use super::{order::*, type_builder};
 use super::{order_by_type_builder, predicate::*};
 
@@ -18,6 +18,8 @@ pub struct ModelSystem {
     pub order_by_types: Arena<OrderByParameterType>,
     pub predicate_types: Arena<PredicateParameterType>,
     pub queries: MappedArena<Query>,
+    pub mutation_types: Arena<ModelType>,
+    pub create_mutations: MappedArena<CreateMutation>,
     pub tables: Arena<PhysicalTable>,
     pub database: Database,
 }
@@ -29,6 +31,7 @@ impl ModelSystem {
         query_builder::build_shallow(ast_types, &mut building);
         order_by_type_builder::build_shallow(ast_types, &mut building);
         predicate_builder::build_shallow(ast_types, &mut building);
+        mutation_builder::build_shallow(ast_types, &mut building);
 
         type_builder::build_expanded(ast_types, &mut building);
         order_by_type_builder::build_expanded(&mut building);
@@ -41,6 +44,8 @@ impl ModelSystem {
             predicate_types: building.predicate_types.values,
             queries: building.queries,
             tables: building.tables.values,
+            mutation_types: building.mutation_types.values,
+            create_mutations: building.create_mutations,
 
             database: Database::empty(),
         }

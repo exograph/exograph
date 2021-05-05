@@ -6,7 +6,9 @@ use crate::{
         types::{ModelField, ModelType, *},
     },
 };
-use async_graphql_parser::types::{FieldDefinition, ObjectType, TypeDefinition, TypeKind};
+use async_graphql_parser::types::{
+    FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
+};
 
 use super::provider::{FieldDefinitionProvider, TypeDefinitionProvider};
 use crate::introspection::util::*;
@@ -25,20 +27,28 @@ impl TypeDefinitionProvider for ModelType {
                 fields: model_fields,
                 ..
             } => {
-                let fields = model_fields
-                    .iter()
-                    .map(|model_field| default_positioned(model_field.field_definition(system)))
-                    .collect();
-
+                let kind = if self.is_input {
+                    let fields = model_fields
+                        .iter()
+                        .map(|model_field| default_positioned(model_field.input_value()))
+                        .collect();
+                    TypeKind::InputObject(InputObjectType { fields })
+                } else {
+                    let fields = model_fields
+                        .iter()
+                        .map(|model_field| default_positioned(model_field.field_definition(system)))
+                        .collect();
+                    TypeKind::Object(ObjectType {
+                        implements: vec![],
+                        fields,
+                    })
+                };
                 TypeDefinition {
                     extend: false,
                     description: None,
                     name: default_positioned_name(&self.name),
                     directives: vec![],
-                    kind: TypeKind::Object(ObjectType {
-                        implements: vec![],
-                        fields: fields,
-                    }),
+                    kind,
                 }
             }
         }

@@ -5,10 +5,10 @@ use id_arena::{Arena, Id};
 use crate::sql::table::PhysicalTable;
 
 use super::{
-    operation::Query,
+    operation::{CreateMutation, Query},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
-    types::{ModelType, ModelTypeKind},
+    types::ModelType,
 };
 
 #[derive(Debug, Clone)]
@@ -66,6 +66,8 @@ pub struct SystemContextBuilding {
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
     pub queries: MappedArena<Query>,
+    pub mutation_types: MappedArena<ModelType>,
+    pub create_mutations: MappedArena<CreateMutation>,
     pub tables: MappedArena<PhysicalTable>,
 }
 
@@ -76,12 +78,10 @@ impl SystemContextBuilding {
             order_by_types: MappedArena::new(),
             predicate_types: MappedArena::new(),
             queries: MappedArena::new(),
+            mutation_types: MappedArena::new(),
+            create_mutations: MappedArena::new(),
             tables: MappedArena::new(),
         }
-    }
-
-    pub fn update_type(&mut self, existing_id: Id<ModelType>, kind: ModelTypeKind) {
-        self.types.values[existing_id].kind = kind;
     }
 }
 

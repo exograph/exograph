@@ -36,6 +36,20 @@ impl Operation for Query {
     }
 }
 
+impl Operation for CreateMutation {
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn parameters(&self) -> Vec<&dyn Parameter> {
+        vec![&self.data_param]
+    }
+
+    fn return_type(&self) -> &OperationReturnType {
+        &self.return_type
+    }
+}
+
 // Field defintion for the query such as `venue(id: Int!): Venue`, combining such fields will form
 // the Query, Mutation, and Subscription object defintion
 impl<T: Operation> FieldDefinitionProvider for T {

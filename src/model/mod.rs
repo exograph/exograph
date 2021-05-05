@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod column_id;
+mod mutation_builder;
 pub mod operation;
 pub mod order;
 mod order_by_type_builder;

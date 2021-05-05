@@ -15,6 +15,20 @@ pub struct Query {
 }
 
 #[derive(Debug, Clone)]
+pub struct CreateMutation {
+    pub name: String,
+    pub data_param: MutationDataParameter,
+    pub return_type: OperationReturnType,
+}
+
+#[derive(Debug, Clone)]
+pub struct MutationDataParameter {
+    pub name: String,
+    pub type_name: String,
+    pub type_id: Id<ModelType>,
+}
+
+#[derive(Debug, Clone)]
 pub struct OperationReturnType {
     pub type_id: Id<ModelType>,
     pub type_name: String,

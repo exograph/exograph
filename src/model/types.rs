@@ -8,6 +8,7 @@ use id_arena::Id;
 pub struct ModelType {
     pub name: String,
     pub kind: ModelTypeKind,
+    pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)?
 }
 
 impl ModelType {

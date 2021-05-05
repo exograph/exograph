@@ -57,7 +57,7 @@ pub mod common_test_data {
                     AstField {
                         name: "name".to_string(),
                         type_name: "String".to_string(),
-                        type_modifier: Optional,
+                        type_modifier: NonNull,
                         relation: Scalar { column_name: None },
                     },
                     AstField {
