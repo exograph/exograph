@@ -5,11 +5,17 @@ use std::any::Any;
 #[cfg(test)]
 mod test_util;
 pub mod column;
+mod cte;
 pub mod database;
-pub mod table;
+mod insert;
+mod physical_table;
+pub mod select;
+mod sql_operation;
 
 pub mod order;
 pub mod predicate;
+
+pub use physical_table::PhysicalTable;
 
 pub trait SQLParam: ToSql + Sync + std::fmt::Display {
     fn as_any(&self) -> &dyn Any;
@@ -55,6 +61,10 @@ pub struct ParameterBinding<'a> {
 impl<'a> ParameterBinding<'a> {
     fn new(stmt: String, params: Vec<&'a Box<dyn SQLParam>>) -> Self {
         Self { stmt, params }
+    }
+
+    fn as_tuple(self) -> (String, Vec<&'a Box<dyn SQLParam>>) {
+        (self.stmt, self.params)
     }
 }
 

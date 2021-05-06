@@ -1,6 +1,6 @@
 use id_arena::Id;
 
-use crate::sql::{column::PhysicalColumn, table::PhysicalTable};
+use crate::sql::{column::PhysicalColumn, PhysicalTable};
 
 use super::system::ModelSystem;
 

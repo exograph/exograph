@@ -15,10 +15,15 @@ pub struct Query {
 }
 
 #[derive(Debug, Clone)]
-pub struct CreateMutation {
+pub struct Mutation {
     pub name: String,
-    pub data_param: MutationDataParameter,
+    pub kind: MutationKind,
     pub return_type: OperationReturnType,
+}
+
+#[derive(Debug, Clone)]
+pub enum MutationKind {
+    Create(MutationDataParameter),
 }
 
 #[derive(Debug, Clone)]

@@ -36,13 +36,15 @@ impl Operation for Query {
     }
 }
 
-impl Operation for CreateMutation {
+impl Operation for Mutation {
     fn name(&self) -> &String {
         &self.name
     }
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
-        vec![&self.data_param]
+        match &self.kind {
+            MutationKind::Create(data_param) => vec![data_param],
+        }
     }
 
     fn return_type(&self) -> &OperationReturnType {

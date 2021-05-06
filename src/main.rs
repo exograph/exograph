@@ -28,7 +28,7 @@ async fn resolve(
     let (system, schema) = schema.as_ref().as_ref();
 
     let request: Value = serde_json::from_str(req_body.as_str()).unwrap();
-    let operation_name = request["operationName"].as_str().unwrap_or("");
+    let operation_name = request["operationName"].as_str();
     let query_str = request["query"].as_str().unwrap();
     let variables = request["variables"].as_object();
 

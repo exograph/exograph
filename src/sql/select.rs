@@ -1,63 +1,18 @@
 use super::{
-    column::{Column, PhysicalColumn},
-    order::OrderBy,
-    predicate::Predicate,
+    column::Column, order::OrderBy, physical_table::PhysicalTable, predicate::Predicate,
     Expression, ExpressionContext, ParameterBinding,
 };
-use itertools::Itertools;
 
 #[derive(Debug, Clone)]
-pub struct PhysicalTable {
-    pub name: String,
-    pub columns: Vec<PhysicalColumn>,
-}
-
-impl PhysicalTable {
-    pub fn column_index(&self, name: &str) -> Option<usize> {
-        self.columns.iter().position(|c| c.column_name == name)
-    }
-
-    // TODO: Consider column names that are different than field names
-    pub fn get_column(&self, name: &str) -> Option<Column> {
-        self.columns
-            .iter()
-            .find(|column| column.column_name == name)
-            .map(|physical_column| Column::Physical(physical_column))
-    }
-
-    pub fn select<'b>(
-        &'b self,
-        columns: Vec<&'b Column>,
-        predicate: Option<&'b Predicate<'b>>,
-        order_by: Option<OrderBy<'b>>,
-        top_level_selection: bool,
-    ) -> SelectionTable {
-        SelectionTable {
-            underlying: self,
-            columns: columns,
-            predicate,
-            order_by,
-            top_level_selection,
-        }
-    }
-}
-
-impl Expression for PhysicalTable {
-    fn binding(&self, _expression_context: &mut ExpressionContext) -> ParameterBinding {
-        ParameterBinding::new(format!(r#""{}""#, self.name.clone()), vec![])
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SelectionTable<'a> {
+pub struct Select<'a> {
     pub underlying: &'a PhysicalTable,
     pub columns: Vec<&'a Column<'a>>,
     pub predicate: Option<&'a Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
-    top_level_selection: bool,
+    pub top_level_selection: bool,
 }
 
-impl<'a> Expression for SelectionTable<'a> {
+impl<'a> Expression for Select<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         let table_binding = self.underlying.binding(expression_context);
 
@@ -79,11 +34,7 @@ impl<'a> Expression for SelectionTable<'a> {
             })
             .unzip();
 
-        let cols_stmts: String = col_stmtss
-            .into_iter()
-            .map(|s| s.to_string())
-            .intersperse(String::from(", "))
-            .collect();
+        let cols_stmts: String = col_stmtss.join(", ");
 
         let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
         params.extend(table_binding.params);
@@ -134,6 +85,8 @@ impl<'a> Expression for SelectionTable<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::sql::column::PhysicalColumn;
+
     use super::*;
 
     #[test]

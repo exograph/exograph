@@ -3,7 +3,7 @@ use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres::{types::ToSql, Client};
 use postgres_openssl::MakeTlsConnector;
 
-use super::{table::PhysicalTable, ParameterBinding};
+use super::{physical_table::PhysicalTable, ParameterBinding};
 
 fn type_of<T>(_: &T) -> &str {
     std::any::type_name::<T>()

@@ -7,7 +7,7 @@ use serde_json::{Map, Value};
 pub fn create_query_context<'a>(
     system: &'a ModelSystem,
     schema: &'a Schema,
-    operation_name: &'a str,
+    operation_name: Option<&'a str>,
     query_str: &'a str,
     variables: &'a Option<&'a Map<String, Value>>,
 ) -> (DocumentOperations, QueryContext<'a>) {
@@ -28,7 +28,7 @@ pub fn create_query_context<'a>(
 pub fn execute<'a>(
     system: &'a ModelSystem,
     schema: &'a Schema,
-    operation_name: &'a str,
+    operation_name: Option<&'a str>,
     query_str: &'a str,
     variables: Option<&'a Map<String, Value>>,
 ) -> String {

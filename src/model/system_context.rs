@@ -2,10 +2,10 @@ use std::{collections::HashMap, ops};
 
 use id_arena::{Arena, Id};
 
-use crate::sql::table::PhysicalTable;
+use crate::sql::PhysicalTable;
 
 use super::{
-    operation::{CreateMutation, Query},
+    operation::{Mutation, Query},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     types::ModelType,
@@ -67,7 +67,7 @@ pub struct SystemContextBuilding {
     pub predicate_types: MappedArena<PredicateParameterType>,
     pub queries: MappedArena<Query>,
     pub mutation_types: MappedArena<ModelType>,
-    pub create_mutations: MappedArena<CreateMutation>,
+    pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
 }
 
@@ -79,7 +79,7 @@ impl SystemContextBuilding {
             predicate_types: MappedArena::new(),
             queries: MappedArena::new(),
             mutation_types: MappedArena::new(),
-            create_mutations: MappedArena::new(),
+            mutations: MappedArena::new(),
             tables: MappedArena::new(),
         }
     }

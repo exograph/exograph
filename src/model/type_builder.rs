@@ -3,7 +3,7 @@ use id_arena::Id;
 use super::relation::ModelRelation;
 use super::{column_id::ColumnId, query_builder};
 use crate::model::system_context::SystemContextBuilding;
-use crate::sql::table::PhysicalTable;
+use crate::sql::PhysicalTable;
 use crate::{model::ast::ast_types::*, sql::column::PhysicalColumn};
 
 use super::types::{ModelField, ModelType, ModelTypeKind, ModelTypeModifier};

@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{model::system::ModelSystem};
+use crate::model::system::ModelSystem;
 use async_graphql_parser::{
-    types::{
-        BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, SelectionSet,
-        Type,
-    },
+    types::{BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, Type},
     Positioned,
 };
 use async_graphql_value::{Name, Value};
@@ -17,7 +14,7 @@ use crate::introspection::schema::Schema;
 
 #[derive(Debug, Clone)]
 pub struct QueryContext<'a> {
-    pub operation_name: &'a str,
+    pub operation_name: Option<&'a str>,
     pub fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
     pub variables: &'a Option<&'a Map<String, JsonValue>>,
     pub schema: &'a Schema,
@@ -35,14 +32,10 @@ impl<'qc> QueryContext<'qc> {
         &self,
         operation: (Option<&Name>, &'b Positioned<OperationDefinition>),
     ) -> Vec<(String, QueryResponse)> {
-        self.resolve_selection_set(self, &operation.1.node.selection_set)
-    }
-
-    pub fn resolve<'b>(
-        &self,
-        selection_set: &'b Positioned<SelectionSet>,
-    ) -> Vec<(String, QueryResponse)> {
-        self.resolve_selection_set(self, selection_set)
+        operation
+            .1
+            .node
+            .resolve_selection_set(self, &operation.1.node.selection_set)
     }
 
     pub fn fragment_definition(
@@ -76,35 +69,44 @@ impl<'qc> QueryContext<'qc> {
 
 /**
 Go through the FieldResolver (thus through the generic support offered by Resolver) and
-so that we can support fragments in top-level queries such as:
- {
-   ...query_info
- }
+so that we can support fragments in top-level queries in such as:
 
- fragment query_info on Query {
-   __type(name: "Concert") {
-     name
-   }
+```graphql
+{
+  ...query_info
+}
 
-   __schema {
-       types {
-       name
-     }
-   }
- }
+fragment query_info on Query {
+  __type(name: "Concert") {
+    name
+  }
+
+  __schema {
+      types {
+      name
+    }
+  }
+}
+```
 */
-impl<'b> FieldResolver<QueryResponse> for QueryContext<'b> {
+impl FieldResolver<QueryResponse> for OperationDefinition {
     fn resolve_field<'a>(
         &'a self,
-        _query_context: &QueryContext<'_>,
+        query_context: &QueryContext<'_>,
         field: &Positioned<Field>,
     ) -> QueryResponse {
         if field.node.name.node == "__type" {
-            QueryResponse::Json(self.resolve_type(&field.node))
+            QueryResponse::Json(query_context.resolve_type(&field.node))
         } else if field.node.name.node == "__schema" {
-            QueryResponse::Json(self.schema.resolve_value(self, &field.node.selection_set))
+            QueryResponse::Json(
+                query_context
+                    .schema
+                    .resolve_value(query_context, &field.node.selection_set),
+            )
         } else {
-            self.system.resolve(&field, self)
+            query_context
+                .system
+                .resolve(&field, &self.ty, query_context)
         }
     }
 }

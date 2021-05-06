@@ -1,4 +1,4 @@
-use super::{table::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
+use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
 
 #[derive(Debug, Clone)]
 pub struct PhysicalColumn {
@@ -12,7 +12,7 @@ pub enum Column<'a> {
     Literal(Box<dyn SQLParam>),
     JsonObject(Vec<(String, &'a Column<'a>)>),
     JsonAgg(&'a Column<'a>),
-    SelectionTableWrapper(SelectionTable<'a>),
+    SelectionTableWrapper(Select<'a>),
 }
 
 impl<'a> Expression for Column<'a> {

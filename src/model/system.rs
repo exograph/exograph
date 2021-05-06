@@ -4,7 +4,7 @@ use super::{mutation_builder, operation::*, predicate_builder, system_context::M
 use super::{order::*, type_builder};
 use super::{order_by_type_builder, predicate::*};
 
-use crate::{model::ast::ast_types::*, sql::table::PhysicalTable};
+use crate::{model::ast::ast_types::*, sql::PhysicalTable};
 use crate::{
     model::{query_builder, system_context::SystemContextBuilding},
     sql::database::Database,
@@ -19,7 +19,7 @@ pub struct ModelSystem {
     pub predicate_types: Arena<PredicateParameterType>,
     pub queries: MappedArena<Query>,
     pub mutation_types: Arena<ModelType>,
-    pub create_mutations: MappedArena<CreateMutation>,
+    pub create_mutations: MappedArena<Mutation>,
     pub tables: Arena<PhysicalTable>,
     pub database: Database,
 }
@@ -45,7 +45,7 @@ impl ModelSystem {
             queries: building.queries,
             tables: building.tables.values,
             mutation_types: building.mutation_types.values,
-            create_mutations: building.create_mutations,
+            create_mutations: building.mutations,
 
             database: Database::empty(),
         }

@@ -84,7 +84,7 @@ where
         }
     }
 
-    fn resolve_selection_set<COL: FromIterator<(std::string::String, R)>>(
+    fn resolve_selection_set<COL: FromIterator<(String, R)>>(
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,

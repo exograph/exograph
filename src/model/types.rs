@@ -1,7 +1,7 @@
 use super::{column_id::ColumnId, relation::ModelRelation};
 use crate::model::operation::*;
 
-use crate::sql::table::PhysicalTable;
+use crate::sql::PhysicalTable;
 
 use id_arena::Id;
 #[derive(Debug, Clone)]

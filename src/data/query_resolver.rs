@@ -1,8 +1,6 @@
 use crate::sql::{
-    column::Column,
-    predicate::Predicate,
-    table::{PhysicalTable, SelectionTable},
-    Expression, ExpressionContext,
+    column::Column, predicate::Predicate, select::Select, Expression, ExpressionContext,
+    PhysicalTable,
 };
 
 use crate::{execution::query_context::QueryContext, sql::order::OrderBy};
@@ -90,7 +88,7 @@ impl Query {
         additional_predicate: Predicate<'a>,
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
-    ) -> SelectionTable<'a> {
+    ) -> Select<'a> {
         let table = self.physical_table(operation_context);
 
         let predicate =
