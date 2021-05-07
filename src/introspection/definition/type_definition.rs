@@ -84,7 +84,7 @@ impl FieldDefinitionProvider for ModelField {
                         vec![predicate_parameter_arg, order_by_parameter_arg]
                             .into_iter()
                             .flatten()
-                            .map(|iv| util::default_positioned(iv))
+                            .map(util::default_positioned)
                             .collect()
                     }
                 }
@@ -94,7 +94,7 @@ impl FieldDefinitionProvider for ModelField {
         FieldDefinition {
             description: None,
             name: default_positioned_name(&self.name),
-            arguments: arguments,
+            arguments,
             ty: field_type,
             directives: vec![],
         }

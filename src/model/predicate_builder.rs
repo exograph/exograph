@@ -91,7 +91,7 @@ fn create_operator_filter_type_kind(
 }
 
 fn create_composite_filter_type_kind(
-    fields: &Vec<ModelField>,
+    fields: &[ModelField],
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     let parameters = fields

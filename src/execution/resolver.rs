@@ -18,7 +18,7 @@ impl OutputName for Field {
             .alias
             .as_ref()
             .map(|alias| alias.node.to_string())
-            .unwrap_or(self.name.node.to_string()))
+            .unwrap_or_else(|| self.name.node.to_string()))
             .to_string()
     }
 }

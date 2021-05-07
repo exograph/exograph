@@ -26,7 +26,7 @@ impl<V> MappedArena<V> {
     }
 
     pub fn get_id(&self, key: &str) -> Option<Id<V>> {
-        self.map.get(key).map(|id| *id)
+        self.map.get(key).copied()
     }
 
     pub fn get_by_key(&self, key: &str) -> Option<&V> {

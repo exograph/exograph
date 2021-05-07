@@ -14,7 +14,7 @@ pub fn default_positioned_name(value: &str) -> Positioned<Name> {
     default_positioned(Name::new(value))
 }
 
-pub fn value_type<'a>(name: &str, type_modifier: &ModelTypeModifier) -> Type {
+pub fn value_type(name: &str, type_modifier: &ModelTypeModifier) -> Type {
     let base_field_type = BaseType::Named(Name::new(name));
     match type_modifier {
         Optional => Type {

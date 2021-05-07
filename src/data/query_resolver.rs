@@ -1,72 +1,28 @@
-use crate::sql::{
-    column::Column, predicate::Predicate, select::Select, Expression, ExpressionContext,
-    PhysicalTable,
+use crate::{
+    model::system::ModelSystem,
+    sql::{column::Column, predicate::Predicate, select::Select, PhysicalTable, SQLOperation},
 };
 
-use crate::{execution::query_context::QueryContext, sql::order::OrderBy};
+use crate::sql::order::OrderBy;
 
 use crate::model::{operation::*, relation::*, types::*};
 
-use super::operation_context::OperationContext;
+use super::{operation_context::OperationContext, Arguments};
 
 use async_graphql_parser::{
     types::{Field, Selection, SelectionSet},
     Positioned,
 };
-use async_graphql_value::{Name, Value};
 
-use crate::{execution::query_context::QueryResponse, execution::resolver::OutputName};
-
-type Arguments = Vec<(Positioned<Name>, Positioned<Value>)>;
+use crate::execution::resolver::OutputName;
 
 impl Query {
-    pub fn resolve(
-        &self,
-        field: &Positioned<Field>,
-        query_context: &QueryContext<'_>,
-    ) -> QueryResponse {
-        let operation_context = OperationContext::new(query_context);
-        let selection_table =
-            self.operation(&field.node, Predicate::True, &operation_context, true);
-        let mut expression_context = ExpressionContext::new();
-        let binding = selection_table.binding(&mut expression_context);
-        let string_response = query_context.system.database.execute(&binding);
-        QueryResponse::Raw(string_response)
-    }
-
-    fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Value> {
-        arguments.iter().find_map(|argument| {
-            let (argument_name, argument_value) = argument;
-            if arg_name == argument_name.node {
-                Some(&argument_value.node)
-            } else {
-                None
-            }
-        })
-    }
-
-    fn compute_predicate<'a>(
-        &self,
-        arguments: &'a Arguments,
-        additional_predicate: Predicate<'a>,
+    pub fn resolve<'a>(
+        &'a self,
+        field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Option<&'a Predicate<'a>> {
-        let predicate = self
-            .predicate_param
-            .as_ref()
-            .and_then(|predicate_parameter| {
-                let argument_value = Self::find_arg(arguments, &predicate_parameter.name);
-                argument_value.map(|argument_value| {
-                    predicate_parameter.compute_predicate(argument_value, operation_context)
-                })
-            });
-
-        let predicate = match predicate {
-            Some(predicate) => Predicate::And(Box::new(predicate), Box::new(additional_predicate)),
-            None => additional_predicate,
-        };
-
-        Some(operation_context.create_predicate(predicate))
+    ) -> SQLOperation<'a> {
+        SQLOperation::Select(self.operation(&field.node, Predicate::True, operation_context, true))
     }
 
     fn compute_order_by<'a>(
@@ -75,7 +31,7 @@ impl Query {
         operation_context: &'a OperationContext<'a>,
     ) -> Option<OrderBy<'a>> {
         self.order_by_param.as_ref().and_then(|order_by_param| {
-            let argument_value = Self::find_arg(arguments, &order_by_param.name);
+            let argument_value = super::find_arg(arguments, &order_by_param.name);
             argument_value.map(|argument_value| {
                 order_by_param.compute_order_by(argument_value, operation_context)
             })
@@ -91,8 +47,12 @@ impl Query {
     ) -> Select<'a> {
         let table = self.physical_table(operation_context);
 
-        let predicate =
-            self.compute_predicate(&field.arguments, additional_predicate, operation_context);
+        let predicate = super::compute_predicate(
+            &self.predicate_param,
+            &field.arguments,
+            additional_predicate,
+            operation_context,
+        );
 
         let content_object = self.content_select(&field.selection_set, operation_context);
 
@@ -125,15 +85,14 @@ impl Query {
         operation_context.create_column(Column::JsonObject(column_specs))
     }
 
-    fn return_type<'a>(&self, operation_context: &'a OperationContext<'a>) -> &'a ModelType {
-        let system = &operation_context.query_context.system;
+    fn return_type<'a>(&self, system: &'a ModelSystem) -> &'a ModelType {
         let return_type_id = &self.return_type.type_id;
         &system.types[*return_type_id]
     }
 
     fn physical_table<'a>(&self, operation_context: &'a OperationContext<'a>) -> &'a PhysicalTable {
         let system = &operation_context.query_context.system;
-        let return_type = self.return_type(operation_context);
+        let return_type = self.return_type(system);
         match &return_type.kind {
             ModelTypeKind::Primitive => panic!(),
             ModelTypeKind::Composite {
@@ -178,7 +137,7 @@ impl Query {
         operation_context: &'a OperationContext<'a>,
     ) -> (String, &'a Column<'a>) {
         let system = operation_context.query_context.system;
-        let return_type = self.return_type(operation_context);
+        let return_type = self.return_type(system);
 
         let model_field = return_type.model_field(&field.name.node).unwrap();
 

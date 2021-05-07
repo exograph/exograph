@@ -62,7 +62,7 @@ impl OrderByParameterType {
         (column, Self::ordering(parameter_value))
     }
 
-    fn ordering<'a>(argument: &Value) -> Ordering {
+    fn ordering(argument: &Value) -> Ordering {
         match argument {
             Value::Enum(value) => {
                 if value.as_str() == "ASC" {

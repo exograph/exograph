@@ -31,13 +31,13 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
         if let ModelTypeKind::Composite { .. } = &model_type.kind {
             {
-                let operation_name = pk_query_name(&model_type.name).to_owned();
+                let operation_name = pk_query_name(&model_type.name);
                 let query = expanded_pk_query(model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
             }
             {
-                let operation_name = collection_query_name(&model_type.name).to_owned();
+                let operation_name = collection_query_name(&model_type.name);
                 let query = expanded_collection_query(model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
@@ -47,7 +47,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 }
 
 fn shallow_pk_query(model_type_id: Id<ModelType>, ast_type: &AstType) -> Query {
-    let operation_name = pk_query_name(&ast_type.name).to_owned();
+    let operation_name = pk_query_name(&ast_type.name);
     Query {
         name: operation_name,
         predicate_param: None,
@@ -61,7 +61,7 @@ fn shallow_pk_query(model_type_id: Id<ModelType>, ast_type: &AstType) -> Query {
 }
 
 fn expanded_pk_query(model_type: &ModelType, building: &SystemContextBuilding) -> Query {
-    let operation_name = pk_query_name(&model_type.name).to_owned();
+    let operation_name = pk_query_name(&model_type.name);
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
     let pk_field = model_type.pk_field().unwrap();
@@ -86,7 +86,7 @@ fn expanded_pk_query(model_type: &ModelType, building: &SystemContextBuilding) -
 }
 
 fn shallow_collection_query(model_type_id: Id<ModelType>, ast_type: &AstType) -> Query {
-    let operation_name = collection_query_name(&ast_type.name).to_owned();
+    let operation_name = collection_query_name(&ast_type.name);
     Query {
         name: operation_name,
         predicate_param: None,
@@ -100,7 +100,7 @@ fn shallow_collection_query(model_type_id: Id<ModelType>, ast_type: &AstType) ->
 }
 
 fn expanded_collection_query(model_type: &ModelType, building: &SystemContextBuilding) -> Query {
-    let operation_name = collection_query_name(&model_type.name).to_owned();
+    let operation_name = collection_query_name(&model_type.name);
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
     let param_type_name = predicate_builder::get_parameter_type_name(&model_type.name);

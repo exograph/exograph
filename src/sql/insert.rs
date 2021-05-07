@@ -22,12 +22,12 @@ impl<'a> Expression for Insert<'a> {
 
         let (column_statements, col_params): (Vec<_>, Vec<_>) = col_bindings
             .into_iter()
-            .map(|binding| binding.as_tuple())
+            .map(|binding| binding.tupled())
             .unzip();
 
         let (value_statements, value_params): (Vec<_>, Vec<_>) = value_bindings
             .into_iter()
-            .map(|binding| binding.as_tuple())
+            .map(|binding| binding.tupled())
             .unzip();
 
         let stmt = format!(
@@ -47,7 +47,7 @@ impl<'a> Expression for Insert<'a> {
             let (ret_stmts, ret_params): (Vec<_>, Vec<_>) = self
                 .returning
                 .iter()
-                .map(|ret| ret.binding(expression_context).as_tuple())
+                .map(|ret| ret.binding(expression_context).tupled())
                 .unzip();
 
             let stmt = format!("{} RETURNING {}", stmt, ret_stmts.join(", "));

@@ -15,7 +15,7 @@ mod execution;
 
 use crate::model::test_util::common_test_data::*;
 
-static PLAYGROUND_HTML: &'static str = include_str!("assets/playground.html");
+static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
 async fn playground() -> impl Responder {
     HttpResponse::Ok().body(PLAYGROUND_HTML)

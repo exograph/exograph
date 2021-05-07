@@ -16,6 +16,7 @@ pub mod order;
 pub mod predicate;
 
 pub use physical_table::PhysicalTable;
+pub use sql_operation::SQLOperation;
 
 pub trait SQLParam: ToSql + Sync + std::fmt::Display {
     fn as_any(&self) -> &dyn Any;
@@ -63,7 +64,7 @@ impl<'a> ParameterBinding<'a> {
         Self { stmt, params }
     }
 
-    fn as_tuple(self) -> (String, Vec<&'a Box<dyn SQLParam>>) {
+    fn tupled(self) -> (String, Vec<&'a Box<dyn SQLParam>>) {
         (self.stmt, self.params)
     }
 }

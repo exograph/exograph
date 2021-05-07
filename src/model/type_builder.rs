@@ -40,7 +40,9 @@ fn create_shallow_type(ast_type: &AstType, building: &mut SystemContextBuilding)
         table_name: ast_table_name,
     } = &ast_type.kind
     {
-        let table_name = ast_table_name.clone().unwrap_or(ast_type.name.clone());
+        let table_name = ast_table_name
+            .clone()
+            .unwrap_or_else(|| ast_type.name.clone());
         let columns = ast_fields
             .iter()
             .flat_map(|ast_field| create_column(ast_field, &table_name))
@@ -54,9 +56,9 @@ fn create_shallow_type(ast_type: &AstType, building: &mut SystemContextBuilding)
 
         let model_type_name = ast_type.name.to_owned();
         building.types.add(
-            &model_type_name.to_owned(),
+            &model_type_name,
             ModelType {
-                name: model_type_name.to_owned().to_string(),
+                name: model_type_name.to_owned(),
                 kind: ModelTypeKind::Primitive,
                 is_input: false,
             },
@@ -88,7 +90,9 @@ fn expand_type1(ast_type: &AstType, building: &mut SystemContextBuilding) {
         ..
     } = &ast_type.kind
     {
-        let table_name = ast_table_name.clone().unwrap_or(ast_type.name.clone());
+        let table_name = ast_table_name
+            .clone()
+            .unwrap_or_else(|| ast_type.name.clone());
         let table_id = building.tables.get_id(&table_name).unwrap();
 
         let pk_query = building
@@ -238,12 +242,16 @@ fn create_column(ast_field: &AstField, table_name: &str) -> Option<PhysicalColum
         AstRelation::Pk { column_name } | AstRelation::Scalar { column_name } => {
             Some(PhysicalColumn {
                 table_name: table_name.to_string(),
-                column_name: column_name.clone().unwrap_or(ast_field.name.clone()),
+                column_name: column_name
+                    .clone()
+                    .unwrap_or_else(|| ast_field.name.clone()),
             })
         }
         AstRelation::ManyToOne { column_name, .. } => Some(PhysicalColumn {
             table_name: table_name.to_string(),
-            column_name: column_name.clone().unwrap_or(ast_field.name.clone()),
+            column_name: column_name
+                .clone()
+                .unwrap_or_else(|| ast_field.name.clone()),
         }),
         AstRelation::OneToMany { .. } => None, // TODO: Add this column to the other table (needed when the other side doesn't include a corresponding ManyToOne)
     }
@@ -255,7 +263,9 @@ fn create_relation(
     building: &SystemContextBuilding,
 ) -> ModelRelation {
     fn compute_column_name(column_name: &Option<String>, ast_field: &AstField) -> String {
-        column_name.clone().unwrap_or(ast_field.name.clone())
+        column_name
+            .clone()
+            .unwrap_or_else(|| ast_field.name.clone())
     }
 
     fn compute_column_id(

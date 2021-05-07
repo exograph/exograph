@@ -8,14 +8,13 @@ use super::{
 use super::{order::*, relation::ModelRelation, system_context::SystemContextBuilding, types::*};
 
 pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
+    let type_name = "Ordering".to_string();
     let primitive_type = OrderByParameterType {
-        name: "Ordering".to_string(),
+        name: type_name.to_owned(),
         kind: OrderByParameterTypeKind::Primitive,
     };
 
-    building
-        .order_by_types
-        .add(&primitive_type.name.clone(), primitive_type);
+    building.order_by_types.add(&type_name, primitive_type);
 
     for ast_type in ast_types.iter() {
         let shallow_type = create_shallow_type(ast_type);
@@ -138,9 +137,5 @@ fn order_by_param_type(
 }
 
 fn is_primitive(kind: &AstTypeKind) -> bool {
-    if let AstTypeKind::Primitive = kind {
-        true
-    } else {
-        false
-    }
+    matches!(kind, AstTypeKind::Primitive)
 }

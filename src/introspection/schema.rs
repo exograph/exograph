@@ -81,9 +81,7 @@ impl Schema {
         type_definitions.extend(predicate_param_type_definitions);
         type_definitions.extend(mutation_param_type_definitions);
 
-        Schema {
-            type_definitions: type_definitions,
-        }
+        Schema { type_definitions }
     }
 
     pub fn get_type_definition(&self, type_name: &str) -> Option<&TypeDefinition> {

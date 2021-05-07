@@ -2,12 +2,12 @@ use super::{
     select::Select, sql_operation::SQLOperation, Expression, ExpressionContext, ParameterBinding,
 };
 
-pub struct CTE<'a> {
+pub struct Cte<'a> {
     ctes: Vec<(String, SQLOperation<'a>)>,
     select: Select<'a>,
 }
 
-impl<'a> Expression for CTE<'a> {
+impl<'a> Expression for Cte<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         let (cte_statements, cte_params): (Vec<_>, Vec<_>) = self
             .ctes

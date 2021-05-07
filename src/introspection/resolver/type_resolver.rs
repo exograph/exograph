@@ -17,13 +17,9 @@ struct BoxedType<'a> {
 impl<'a> FieldResolver<Value> for TypeDefinition {
     fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Positioned<Field>) -> Value {
         match field.node.name.node.as_str() {
-            "name" => Value::String(self.name().to_owned()),
+            "name" => Value::String(self.name()),
             "kind" => Value::String(self.kind()),
-            "description" => self
-                .description()
-                .clone()
-                .map(|v| Value::String(v))
-                .unwrap_or(Value::Null),
+            "description" => self.description().map(Value::String).unwrap_or(Value::Null),
             "fields" => self
                 .fields()
                 .resolve_value(query_context, &field.node.selection_set),

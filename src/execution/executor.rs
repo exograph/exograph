@@ -43,7 +43,7 @@ pub fn execute<'a>(
     // TODO: More efficient (and ideally zero-copy) way to push the values to network
     let mut response = String::from("{\"data\": {");
     parts.iter().enumerate().for_each(|(index, part)| {
-        response.push_str("\"");
+        response.push('\"');
         response.push_str(part.0.as_str());
         response.push_str("\":");
         match &part.1 {
