@@ -64,9 +64,23 @@ fn expanded_pk_query(model_type: &ModelType, building: &SystemContextBuilding) -
     let operation_name = pk_query_name(&model_type.name);
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
+    let pk_param = pk_predicate_param(model_type, building);
+
+    Query {
+        name: operation_name,
+        predicate_param: Some(pk_param),
+        order_by_param: None,
+        return_type: existing_query.return_type.clone(),
+    }
+}
+
+pub fn pk_predicate_param(
+    model_type: &ModelType,
+    building: &SystemContextBuilding,
+) -> PredicateParameter {
     let pk_field = model_type.pk_field().unwrap();
 
-    let pk_param = PredicateParameter {
+    PredicateParameter {
         name: pk_field.name.to_string(),
         type_name: pk_field.type_name.to_string(),
         type_id: building
@@ -75,13 +89,6 @@ fn expanded_pk_query(model_type: &ModelType, building: &SystemContextBuilding) -
             .unwrap(),
         type_modifier: ModelTypeModifier::NonNull,
         column_id: pk_field.relation.self_column(),
-    };
-
-    Query {
-        name: operation_name,
-        predicate_param: Some(pk_param),
-        order_by_param: None,
-        return_type: existing_query.return_type.clone(),
     }
 }
 
@@ -103,15 +110,7 @@ fn expanded_collection_query(model_type: &ModelType, building: &SystemContextBui
     let operation_name = collection_query_name(&model_type.name);
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
-    let param_type_name = predicate_builder::get_parameter_type_name(&model_type.name);
-    let predicate_param = PredicateParameter {
-        name: "where".to_string(),
-        type_name: param_type_name.clone(),
-        type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-        type_modifier: ModelTypeModifier::Optional,
-        column_id: None,
-    };
-
+    let predicate_param = collection_predicate_param(model_type, building);
     let order_by_param = order_by_type_builder::new_root_param(&model_type.name, false, building);
 
     Query {
@@ -119,6 +118,20 @@ fn expanded_collection_query(model_type: &ModelType, building: &SystemContextBui
         predicate_param: Some(predicate_param),
         order_by_param: Some(order_by_param),
         return_type: existing_query.return_type.clone(),
+    }
+}
+
+pub fn collection_predicate_param(
+    model_type: &ModelType,
+    building: &SystemContextBuilding,
+) -> PredicateParameter {
+    let param_type_name = predicate_builder::get_parameter_type_name(&model_type.name);
+    PredicateParameter {
+        name: "where".to_string(),
+        type_name: param_type_name.clone(),
+        type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
+        type_modifier: ModelTypeModifier::Optional,
+        column_id: None,
     }
 }
 

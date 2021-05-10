@@ -2,7 +2,7 @@ use id_arena::Id;
 
 use crate::model::{
     operation::{MutationDataParameter, MutationKind, OperationReturnType},
-    type_builder,
+    query_builder, type_builder,
     types::ModelTypeModifier,
 };
 
@@ -22,6 +22,10 @@ pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding
             building
                 .mutations
                 .add(&create_mutation.name.to_owned(), create_mutation);
+
+            for mutation in build_delete_mutations(model_type_id, ast_type, building).into_iter() {
+                building.mutations.add(&mutation.name.to_owned(), mutation);
+            }
         }
     }
 }
@@ -50,4 +54,35 @@ fn build_create_mutation(
             type_modifier: ModelTypeModifier::Optional,
         },
     }
+}
+
+fn build_delete_mutations(
+    model_type_id: Id<ModelType>,
+    ast_type: &AstType,
+    building: &SystemContextBuilding,
+) -> Vec<Mutation> {
+    let model_type = &building.types[model_type_id];
+    let by_pk_delete = Mutation {
+        name: format!("delete{}", &ast_type.name),
+        kind: MutationKind::Delete(query_builder::pk_predicate_param(model_type, building)),
+        return_type: OperationReturnType {
+            type_id: model_type_id,
+            type_name: ast_type.name.to_string(),
+            type_modifier: ModelTypeModifier::Optional,
+        },
+    };
+
+    let by_predicate_delete = Mutation {
+        name: format!("delete{}s", &ast_type.name),
+        kind: MutationKind::Delete(query_builder::collection_predicate_param(
+            model_type, building,
+        )),
+        return_type: OperationReturnType {
+            type_id: model_type_id,
+            type_name: ast_type.name.to_string(),
+            type_modifier: ModelTypeModifier::List,
+        },
+    };
+
+    vec![by_pk_delete, by_predicate_delete]
 }

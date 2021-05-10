@@ -42,18 +42,18 @@ impl Query {
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
     ) -> Select<'a> {
-        let table = self
-            .return_type
-            .physical_table(&operation_context.query_context.system);
-
         let predicate = super::compute_predicate(
-            &self.predicate_param,
+            &self.predicate_param.as_ref(),
             &field.arguments,
             additional_predicate,
             operation_context,
         );
 
         let content_object = self.content_select(&field.selection_set, operation_context);
+
+        let table = self
+            .return_type
+            .physical_table(&operation_context.query_context.system);
 
         match self.return_type.type_modifier {
             ModelTypeModifier::Optional | ModelTypeModifier::NonNull => {

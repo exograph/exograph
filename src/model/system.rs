@@ -31,12 +31,13 @@ impl ModelSystem {
         query_builder::build_shallow(ast_types, &mut building);
         order_by_type_builder::build_shallow(ast_types, &mut building);
         predicate_builder::build_shallow(ast_types, &mut building);
-        mutation_builder::build_shallow(ast_types, &mut building);
 
         type_builder::build_expanded(ast_types, &mut building);
         order_by_type_builder::build_expanded(&mut building);
         predicate_builder::build_expanded(&mut building);
         query_builder::build_expanded(&mut building);
+
+        mutation_builder::build_shallow(ast_types, &mut building);
 
         ModelSystem {
             types: building.types.values,

@@ -42,7 +42,7 @@ fn get_argument_field<'a>(argument_value: &'a Value, field_name: &str) -> Option
 }
 
 fn compute_predicate<'a>(
-    predicate_param: &Option<PredicateParameter>,
+    predicate_param: &Option<&PredicateParameter>,
     arguments: &'a Arguments,
     additional_predicate: Predicate<'a>,
     operation_context: &'a OperationContext<'a>,

@@ -7,6 +7,7 @@ mod test_util;
 pub mod column;
 mod cte;
 pub mod database;
+mod delete;
 mod insert;
 mod physical_table;
 mod select;
@@ -16,6 +17,7 @@ pub mod order;
 pub mod predicate;
 
 pub use cte::Cte;
+pub use delete::Delete;
 pub use insert::Insert;
 pub use physical_table::PhysicalTable;
 pub use select::Select;

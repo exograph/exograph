@@ -44,6 +44,7 @@ impl Operation for Mutation {
     fn parameters(&self) -> Vec<&dyn Parameter> {
         match &self.kind {
             MutationKind::Create(data_param) => vec![data_param],
+            MutationKind::Delete(predicate_param) => vec![predicate_param],
         }
     }
 
