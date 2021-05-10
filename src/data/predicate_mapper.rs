@@ -27,7 +27,7 @@ impl PredicateParameter {
             PredicateParameterTypeKind::Opeartor(parameters) => {
                 parameters.iter().fold(Predicate::True, |acc, parameter| {
                     let new_predicate =
-                        match Self::get_argument_value_component(argument_value, &parameter.name) {
+                        match super::get_argument_field(argument_value, &parameter.name) {
                             Some(op_value) => {
                                 self.op_predicate(&parameter.name, op_value, operation_context)
                             }
@@ -40,7 +40,7 @@ impl PredicateParameter {
             PredicateParameterTypeKind::Composite(parameters) => {
                 parameters.iter().fold(Predicate::True, |acc, parameter| {
                     let new_predicate =
-                        match Self::get_argument_value_component(argument_value, &parameter.name) {
+                        match super::get_argument_field(argument_value, &parameter.name) {
                             Some(argument_value_component) => parameter
                                 .compute_predicate(argument_value_component, operation_context),
                             None => Predicate::True,
@@ -65,15 +65,5 @@ impl PredicateParameter {
             .unwrap();
         let op_value_column = operation_context.literal_column(op_value);
         Predicate::from_name(op_name, op_key_column, op_value_column)
-    }
-
-    fn get_argument_value_component<'a>(
-        argument_value: &'a Value,
-        component_name: &str,
-    ) -> Option<&'a Value> {
-        match argument_value {
-            Value::Object(value) => value.get(component_name),
-            _ => None,
-        }
     }
 }

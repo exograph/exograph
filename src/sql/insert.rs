@@ -10,15 +10,17 @@ impl<'a> Expression for Insert<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         let table_binding = self.underlying.binding(expression_context);
 
-        let (col_bindings, value_bindings): (Vec<_>, Vec<_>) = self
-            .column_values
-            .iter()
-            .map(|(column, value)| {
-                let col_binding = column.binding(expression_context);
-                let value_binding = value.binding(expression_context);
-                (col_binding, value_binding)
-            })
-            .unzip();
+        let (col_bindings, value_bindings): (Vec<_>, Vec<_>) =
+            expression_context.with_plain(|expression_context| {
+                self.column_values
+                    .iter()
+                    .map(|(column, value)| {
+                        let col_binding = column.binding(expression_context);
+                        let value_binding = value.binding(expression_context);
+                        (col_binding, value_binding)
+                    })
+                    .unzip()
+            });
 
         let (column_statements, col_params): (Vec<_>, Vec<_>) = col_bindings
             .into_iter()

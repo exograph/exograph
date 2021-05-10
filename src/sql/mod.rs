@@ -9,13 +9,16 @@ mod cte;
 pub mod database;
 mod insert;
 mod physical_table;
-pub mod select;
+mod select;
 mod sql_operation;
 
 pub mod order;
 pub mod predicate;
 
+pub use cte::Cte;
+pub use insert::Insert;
 pub use physical_table::PhysicalTable;
+pub use select::Select;
 pub use sql_operation::SQLOperation;
 
 pub trait SQLParam: ToSql + Sync + std::fmt::Display {
@@ -84,16 +87,31 @@ where
 
 pub struct ExpressionContext {
     param_count: u16,
+    plain: bool, // Indicates if column name should be rendered without the table name i.e. "col" instead of "table"."col"
 }
 
 impl ExpressionContext {
     pub fn new() -> Self {
-        Self { param_count: 0 }
+        Self {
+            param_count: 0,
+            plain: false,
+        }
     }
 
     pub fn next_param(&mut self) -> u16 {
         self.param_count += 1;
 
         self.param_count
+    }
+
+    fn with_plain<F, R>(&mut self, func: F) -> R
+    where
+        F: FnOnce(&mut ExpressionContext) -> R,
+    {
+        let cur_plain = self.plain;
+        self.plain = true;
+        let ret = func(self);
+        self.plain = cur_plain;
+        ret
     }
 }

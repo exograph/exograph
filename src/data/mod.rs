@@ -1,3 +1,4 @@
+mod data_param_mapper;
 pub mod data_resolver;
 pub mod mutation_resolver;
 pub mod operation_context;
@@ -8,7 +9,15 @@ pub mod query_resolver;
 use async_graphql_parser::Positioned;
 use async_graphql_value::{Name, Value};
 
-use crate::{model::predicate::PredicateParameter, sql::predicate::Predicate};
+use crate::{
+    model::{
+        operation::OperationReturnType,
+        predicate::PredicateParameter,
+        system::ModelSystem,
+        types::{ModelType, ModelTypeKind},
+    },
+    sql::{predicate::Predicate, PhysicalTable},
+};
 
 use self::operation_context::OperationContext;
 
@@ -23,6 +32,13 @@ fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Value> {
             None
         }
     })
+}
+
+fn get_argument_field<'a>(argument_value: &'a Value, field_name: &str) -> Option<&'a Value> {
+    match argument_value {
+        Value::Object(value) => value.get(field_name),
+        _ => None,
+    }
 }
 
 fn compute_predicate<'a>(
@@ -44,4 +60,23 @@ fn compute_predicate<'a>(
     };
 
     Some(operation_context.create_predicate(predicate))
+}
+
+impl OperationReturnType {
+    fn typ<'a>(&self, system: &'a ModelSystem) -> &'a ModelType {
+        let return_type_id = &self.type_id;
+        &system.types[*return_type_id]
+    }
+
+    fn physical_table<'a>(&self, system: &'a ModelSystem) -> &'a PhysicalTable {
+        let return_type = self.typ(system);
+        match &return_type.kind {
+            ModelTypeKind::Primitive => panic!(),
+            ModelTypeKind::Composite {
+                fields: _,
+                table_id,
+                ..
+            } => &system.tables[*table_id],
+        }
+    }
 }

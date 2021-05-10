@@ -34,13 +34,13 @@ impl<'a> Database {
     fn process(client: &mut Client, query_string: &str, params: &[&(dyn ToSql + Sync)]) -> String {
         let rows = client.query(query_string, params).unwrap();
 
-        // TODO: Check if "null" is right
         if rows.len() == 1 {
             match rows[0].try_get(0) {
                 Ok(col) => col,
-                _ => panic!("Got row without any columns"),
+                Err(err) => panic!("Got row without any columns {}", err),
             }
         } else {
+            // TODO: Check if "null" is right
             "null".to_owned()
         }
     }

@@ -27,9 +27,8 @@ impl ModelSystem {
                 operation.unwrap().resolve(field, &operation_context)
             }
             OperationType::Mutation => {
-                // let operation = self.create_mutations.get_by_key(&field.node.name.node);
-                // operation.unwrap().resolve(field, query_context)
-                todo!()
+                let operation = self.create_mutations.get_by_key(&field.node.name.node);
+                operation.unwrap().resolve(field, &operation_context)
             }
             OperationType::Subscription => {
                 todo!()

@@ -1,7 +1,4 @@
-use crate::{
-    model::system::ModelSystem,
-    sql::{column::Column, predicate::Predicate, select::Select, PhysicalTable, SQLOperation},
-};
+use crate::sql::{column::Column, predicate::Predicate, SQLOperation, Select};
 
 use crate::sql::order::OrderBy;
 
@@ -38,14 +35,16 @@ impl Query {
         })
     }
 
-    fn operation<'a>(
+    pub fn operation<'a>(
         &'a self,
         field: &'a Field,
         additional_predicate: Predicate<'a>,
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
     ) -> Select<'a> {
-        let table = self.physical_table(operation_context);
+        let table = self
+            .return_type
+            .physical_table(&operation_context.query_context.system);
 
         let predicate = super::compute_predicate(
             &self.predicate_param,
@@ -58,14 +57,12 @@ impl Query {
 
         match self.return_type.type_modifier {
             ModelTypeModifier::Optional | ModelTypeModifier::NonNull => {
-                let single_column = vec![content_object];
-                table.select(single_column, predicate, None, top_level_selection)
+                table.select(vec![content_object], predicate, None, top_level_selection)
             }
             ModelTypeModifier::List => {
                 let order_by = self.compute_order_by(&field.arguments, operation_context);
                 let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
-                let vector_column = vec![agg_column];
-                table.select(vector_column, predicate, order_by, top_level_selection)
+                table.select(vec![agg_column], predicate, order_by, top_level_selection)
             }
         }
     }
@@ -83,24 +80,6 @@ impl Query {
             .collect();
 
         operation_context.create_column(Column::JsonObject(column_specs))
-    }
-
-    fn return_type<'a>(&self, system: &'a ModelSystem) -> &'a ModelType {
-        let return_type_id = &self.return_type.type_id;
-        &system.types[*return_type_id]
-    }
-
-    fn physical_table<'a>(&self, operation_context: &'a OperationContext<'a>) -> &'a PhysicalTable {
-        let system = &operation_context.query_context.system;
-        let return_type = self.return_type(system);
-        match &return_type.kind {
-            ModelTypeKind::Primitive => panic!(),
-            ModelTypeKind::Composite {
-                fields: _,
-                table_id,
-                ..
-            } => &system.tables[*table_id],
-        }
     }
 
     fn map_selection<'a>(
@@ -137,7 +116,7 @@ impl Query {
         operation_context: &'a OperationContext<'a>,
     ) -> (String, &'a Column<'a>) {
         let system = operation_context.query_context.system;
-        let return_type = self.return_type(system);
+        let return_type = self.return_type.typ(system);
 
         let model_field = return_type.model_field(&field.name.node).unwrap();
 

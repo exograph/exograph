@@ -8,7 +8,7 @@ use id_arena::Id;
 pub struct ModelType {
     pub name: String,
     pub kind: ModelTypeKind,
-    pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)?
+    pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
 }
 
 impl ModelType {
@@ -48,10 +48,7 @@ impl ModelType {
     }
 
     pub fn is_primitive(&self) -> bool {
-        match &self.kind {
-            ModelTypeKind::Primitive => true,
-            ModelTypeKind::Composite { .. } => false,
-        }
+        matches!(&self.kind, ModelTypeKind::Primitive)
     }
 }
 

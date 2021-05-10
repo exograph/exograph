@@ -13,6 +13,7 @@ pub enum Column<'a> {
     JsonObject(Vec<(String, &'a Column<'a>)>),
     JsonAgg(&'a Column<'a>),
     SelectionTableWrapper(Select<'a>),
+    Star,
 }
 
 impl<'a> Expression for Column<'a> {
@@ -21,7 +22,14 @@ impl<'a> Expression for Column<'a> {
             Column::Physical(PhysicalColumn {
                 table_name,
                 column_name,
-            }) => ParameterBinding::new(format!("\"{}\".\"{}\"", table_name, column_name), vec![]),
+            }) => {
+                let col_stmt = if expression_context.plain {
+                    format!("\"{}\"", column_name)
+                } else {
+                    format!("\"{}\".\"{}\"", table_name, column_name)
+                };
+                ParameterBinding::new(col_stmt, vec![])
+            }
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();
                 ParameterBinding::new(format! {"${}", param_index}, vec![value])
@@ -52,6 +60,7 @@ impl<'a> Expression for Column<'a> {
                 let pb = selection_table.binding(expression_context);
                 ParameterBinding::new(format!("({})", pb.stmt), pb.params)
             }
+            Column::Star => ParameterBinding::new("*".to_string(), vec![]),
         }
     }
 }

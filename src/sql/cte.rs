@@ -3,8 +3,8 @@ use super::{
 };
 
 pub struct Cte<'a> {
-    ctes: Vec<(String, SQLOperation<'a>)>,
-    select: Select<'a>,
+    pub ctes: Vec<(String, SQLOperation<'a>)>,
+    pub select: Select<'a>,
 }
 
 impl<'a> Expression for Cte<'a> {
