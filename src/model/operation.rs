@@ -25,6 +25,10 @@ pub struct Mutation {
 pub enum MutationKind {
     Create(MutationDataParameter),
     Delete(PredicateParameter),
+    Update {
+        data_param: MutationDataParameter,
+        predicate_param: PredicateParameter,
+    },
 }
 
 #[derive(Debug, Clone)]

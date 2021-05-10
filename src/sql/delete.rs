@@ -5,14 +5,14 @@ use super::{
 
 #[derive(Debug, Clone)]
 pub struct Delete<'a> {
-    pub underlying: &'a PhysicalTable,
+    pub table: &'a PhysicalTable,
     pub predicate: Option<&'a Predicate<'a>>,
     pub returning: Vec<&'a Column<'a>>,
 }
 
 impl<'a> Expression for Delete<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
-        let table_binding = self.underlying.binding(expression_context);
+        let table_binding = self.table.binding(expression_context);
 
         let predicate_binding = self
             .predicate

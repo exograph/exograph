@@ -3,7 +3,7 @@ use super::{
     order::OrderBy,
     predicate::Predicate,
     select::Select,
-    Expression, ExpressionContext, ParameterBinding,
+    Delete, Expression, ExpressionContext, Insert, ParameterBinding, Update,
 };
 
 #[derive(Debug, Clone)]
@@ -37,6 +37,44 @@ impl PhysicalTable {
             predicate,
             order_by,
             top_level_selection,
+        }
+    }
+
+    pub fn insert<'a>(
+        &'a self,
+        column_values: Vec<(&'a Column<'a>, &'a Column<'a>)>,
+        returning: Vec<&'a Column>,
+    ) -> Insert {
+        Insert {
+            table: self,
+            column_values,
+            returning,
+        }
+    }
+
+    pub fn delete<'a>(
+        &'a self,
+        predicate: Option<&'a Predicate<'a>>,
+        returning: Vec<&'a Column>,
+    ) -> Delete {
+        Delete {
+            table: self,
+            predicate,
+            returning,
+        }
+    }
+
+    pub fn update<'a>(
+        &'a self,
+        column_values: Vec<(&'a Column<'a>, &'a Column<'a>)>,
+        predicate: &'a Predicate<'a>,
+        returning: Vec<&'a Column>,
+    ) -> Update {
+        Update {
+            table: self,
+            column_values,
+            predicate,
+            returning,
         }
     }
 }

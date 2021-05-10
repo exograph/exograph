@@ -15,6 +15,7 @@ mod sql_operation;
 
 pub mod order;
 pub mod predicate;
+mod update;
 
 pub use cte::Cte;
 pub use delete::Delete;
@@ -22,6 +23,7 @@ pub use insert::Insert;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
 pub use sql_operation::SQLOperation;
+pub use update::Update;
 
 pub trait SQLParam: ToSql + Sync + std::fmt::Display {
     fn as_any(&self) -> &dyn Any;

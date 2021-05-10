@@ -45,6 +45,10 @@ impl Operation for Mutation {
         match &self.kind {
             MutationKind::Create(data_param) => vec![data_param],
             MutationKind::Delete(predicate_param) => vec![predicate_param],
+            MutationKind::Update {
+                data_param,
+                predicate_param,
+            } => vec![predicate_param, data_param],
         }
     }
 
