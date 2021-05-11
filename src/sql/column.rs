@@ -4,6 +4,25 @@ use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam
 pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
+    pub typ: PhysicalColumnType,
+}
+
+#[derive(Debug, Clone)]
+pub enum PhysicalColumnType {
+    Int,
+    String,
+    Boolean,
+}
+
+impl PhysicalColumnType {
+    pub fn from_string(s: &str) -> PhysicalColumnType {
+        match s {
+            "Int" => PhysicalColumnType::Int,
+            "String" => PhysicalColumnType::String,
+            "Boolean" => PhysicalColumnType::Boolean,
+            s => panic!("Unknown primitive type {}", s),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -14,6 +33,7 @@ pub enum Column<'a> {
     JsonAgg(&'a Column<'a>),
     SelectionTableWrapper(Select<'a>),
     Star,
+    Null,
 }
 
 impl<'a> Expression for Column<'a> {
@@ -22,6 +42,7 @@ impl<'a> Expression for Column<'a> {
             Column::Physical(PhysicalColumn {
                 table_name,
                 column_name,
+                ..
             }) => {
                 let col_stmt = if expression_context.plain {
                     format!("\"{}\"", column_name)
@@ -61,6 +82,7 @@ impl<'a> Expression for Column<'a> {
                 ParameterBinding::new(format!("({})", pb.stmt), pb.params)
             }
             Column::Star => ParameterBinding::new("*".to_string(), vec![]),
+            Column::Null => ParameterBinding::new("NULL".to_string(), vec![]),
         }
     }
 }

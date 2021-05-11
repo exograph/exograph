@@ -6,6 +6,12 @@ pub struct AstType {
     // authorization info etc.
 }
 
+impl AstType {
+    pub fn pk_field(&self) -> Option<&AstField> {
+        self.kind.pk_field()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum AstTypeKind {
     Primitive,
@@ -13,6 +19,17 @@ pub enum AstTypeKind {
         fields: Vec<AstField>,
         table_name: Option<String>,
     },
+}
+
+impl AstTypeKind {
+    fn pk_field(&self) -> Option<&AstField> {
+        match self {
+            AstTypeKind::Primitive => None,
+            AstTypeKind::Composite { fields, .. } => fields
+                .iter()
+                .find(|field| matches!(&field.relation, AstRelation::Pk { .. })),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

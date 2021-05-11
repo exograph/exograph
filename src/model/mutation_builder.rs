@@ -13,7 +13,7 @@ use super::{
     types::ModelType,
 };
 
-pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
+pub fn build(ast_types: &[AstType], building: &mut SystemContextBuilding) {
     for ast_type in ast_types.iter() {
         if let AstTypeKind::Composite { .. } = &ast_type.kind {
             let model_type_id = building.types.get_id(&ast_type.name).unwrap();

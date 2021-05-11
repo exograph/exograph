@@ -11,7 +11,7 @@ use super::{
 };
 
 pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
-    for ast_type in ast_types.iter() {
+    for ast_type in ast_types {
         if let AstTypeKind::Composite { .. } = &ast_type.kind {
             let model_type_id = building.types.get_id(&ast_type.name).unwrap();
             let shallow_query = shallow_pk_query(model_type_id, ast_type);

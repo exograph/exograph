@@ -23,8 +23,9 @@ impl MutationDataParameter {
                 .flat_map(|field| {
                     field.relation.self_column().and_then(|key_column_id| {
                         super::get_argument_field(argument, &field.name).map(|argument_value| {
-                            let key_column =
-                                operation_context.create_column_with_id(&key_column_id);
+                            let key_physical_column = key_column_id.get_column(system);
+                            let key_column = operation_context
+                                .create_column(Column::Physical(&key_physical_column));
                             let argument_value = match &field.relation {
                                 ModelRelation::ManyToOne { other_type_id, .. } => {
                                     let other_type = &system.types[*other_type_id];
@@ -40,7 +41,8 @@ impl MutationDataParameter {
                                 }
                                 _ => argument_value,
                             };
-                            let value_column = operation_context.literal_column(argument_value);
+                            let value_column = operation_context
+                                .literal_column(argument_value, key_physical_column);
                             (key_column, value_column)
                         })
                     })

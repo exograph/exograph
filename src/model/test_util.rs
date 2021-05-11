@@ -7,7 +7,7 @@ pub mod common_test_data {
     };
 
     pub fn test_system() -> ModelSystem {
-        ModelSystem::build(&[create_venue_model_type(), create_concert_model_type()])
+        ModelSystem::build(vec![create_venue_model_type(), create_concert_model_type()])
     }
 
     fn create_concert_model_type() -> AstType {

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use id_arena::Arena;
 
 use super::{mutation_builder, operation::*, predicate_builder, system_context::MappedArena};
@@ -25,19 +27,26 @@ pub struct ModelSystem {
 }
 
 impl ModelSystem {
-    pub fn build(ast_types: &[AstType]) -> ModelSystem {
+    pub fn build(ast_types: Vec<AstType>) -> ModelSystem {
         let mut building = SystemContextBuilding::new();
-        type_builder::build_shallow(ast_types, &mut building);
-        query_builder::build_shallow(ast_types, &mut building);
-        order_by_type_builder::build_shallow(ast_types, &mut building);
-        predicate_builder::build_shallow(ast_types, &mut building);
 
-        type_builder::build_expanded(ast_types, &mut building);
+        let mut ast_types_map = HashMap::new();
+        for ast_type in &ast_types {
+            ast_types_map.insert(ast_type.name.clone(), ast_type);
+        }
+
+        type_builder::build_shallow(&ast_types_map, &mut building);
+
+        query_builder::build_shallow(&ast_types, &mut building);
+        order_by_type_builder::build_shallow(&ast_types, &mut building);
+        predicate_builder::build_shallow(&ast_types, &mut building);
+
+        type_builder::build_expanded(&ast_types, &mut building);
         order_by_type_builder::build_expanded(&mut building);
         predicate_builder::build_expanded(&mut building);
         query_builder::build_expanded(&mut building);
 
-        mutation_builder::build_shallow(ast_types, &mut building);
+        mutation_builder::build(&ast_types, &mut building);
 
         ModelSystem {
             types: building.types.values,

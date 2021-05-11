@@ -1,16 +1,21 @@
+use std::collections::HashMap;
+
 use id_arena::Id;
 
 use super::relation::ModelRelation;
 use super::{column_id::ColumnId, query_builder};
-use crate::model::system_context::SystemContextBuilding;
 use crate::sql::PhysicalTable;
 use crate::{model::ast::ast_types::*, sql::column::PhysicalColumn};
+use crate::{model::system_context::SystemContextBuilding, sql::column::PhysicalColumnType};
 
 use super::types::{ModelField, ModelType, ModelTypeKind, ModelTypeModifier};
 
 pub const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"]; // TODO: Expand the list
 
-pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
+pub fn build_shallow(
+    ast_types_map: &HashMap<String, &AstType>,
+    building: &mut SystemContextBuilding,
+) {
     for type_name in PRIMITIVE_TYPE_NAMES.iter() {
         let typ = ModelType {
             name: type_name.to_string(),
@@ -20,8 +25,8 @@ pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding
         building.types.add(type_name, typ);
     }
 
-    for ast_type in ast_types {
-        create_shallow_type(ast_type, building);
+    for ast_type in ast_types_map.values() {
+        create_shallow_type(ast_type, ast_types_map, building);
     }
 }
 
@@ -34,7 +39,11 @@ pub fn build_expanded(ast_types: &[AstType], building: &mut SystemContextBuildin
     }
 }
 
-fn create_shallow_type(ast_type: &AstType, building: &mut SystemContextBuilding) {
+fn create_shallow_type(
+    ast_type: &AstType,
+    ast_types_map: &HashMap<String, &AstType>,
+    building: &mut SystemContextBuilding,
+) {
     if let AstTypeKind::Composite {
         fields: ast_fields,
         table_name: ast_table_name,
@@ -45,7 +54,7 @@ fn create_shallow_type(ast_type: &AstType, building: &mut SystemContextBuilding)
             .unwrap_or_else(|| ast_type.name.clone());
         let columns = ast_fields
             .iter()
-            .flat_map(|ast_field| create_column(ast_field, &table_name))
+            .flat_map(|ast_field| create_column(ast_field, &table_name, ast_types_map))
             .collect();
 
         let table = PhysicalTable {
@@ -237,7 +246,11 @@ fn create_field(
     }
 }
 
-fn create_column(ast_field: &AstField, table_name: &str) -> Option<PhysicalColumn> {
+fn create_column(
+    ast_field: &AstField,
+    table_name: &str,
+    ast_types_map: &HashMap<String, &AstType>,
+) -> Option<PhysicalColumn> {
     match &ast_field.relation {
         AstRelation::Pk { column_name } | AstRelation::Scalar { column_name } => {
             Some(PhysicalColumn {
@@ -245,14 +258,23 @@ fn create_column(ast_field: &AstField, table_name: &str) -> Option<PhysicalColum
                 column_name: column_name
                     .clone()
                     .unwrap_or_else(|| ast_field.name.clone()),
+                typ: PhysicalColumnType::from_string(&ast_field.type_name),
             })
         }
-        AstRelation::ManyToOne { column_name, .. } => Some(PhysicalColumn {
-            table_name: table_name.to_string(),
-            column_name: column_name
-                .clone()
-                .unwrap_or_else(|| ast_field.name.clone()),
-        }),
+        AstRelation::ManyToOne {
+            column_name,
+            other_type_name,
+            ..
+        } => {
+            let other_type_pk_field = ast_types_map[other_type_name].pk_field().unwrap();
+            Some(PhysicalColumn {
+                table_name: table_name.to_string(),
+                column_name: column_name
+                    .clone()
+                    .unwrap_or_else(|| ast_field.name.clone()),
+                typ: PhysicalColumnType::from_string(&other_type_pk_field.type_name),
+            })
+        }
         AstRelation::OneToMany { .. } => None, // TODO: Add this column to the other table (needed when the other side doesn't include a corresponding ManyToOne)
     }
 }
