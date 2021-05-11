@@ -33,7 +33,7 @@ impl<'a> Expression for OrderBy<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sql::column::PhysicalColumn;
+    use crate::sql::column::{PhysicalColumn, PhysicalColumnType};
     use crate::sql::ExpressionContext;
 
     #[test]
@@ -41,6 +41,7 @@ mod test {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
+            typ: PhysicalColumnType::Int,
         };
         let age_col = Column::Physical(&age_col);
 
@@ -57,12 +58,14 @@ mod test {
         let name_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "name".to_string(),
+            typ: PhysicalColumnType::String,
         };
         let name_col = Column::Physical(&name_col);
 
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
+            typ: PhysicalColumnType::Int,
         };
         let age_col = Column::Physical(&age_col);
 

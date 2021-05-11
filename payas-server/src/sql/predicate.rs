@@ -100,7 +100,7 @@ fn combine<'a, E1: Expression, E2: Expression>(
 #[cfg(test)]
 #[macro_use]
 mod tests {
-    use crate::sql::column::PhysicalColumn;
+    use crate::sql::column::{PhysicalColumn, PhysicalColumnType};
 
     use super::*;
 
@@ -122,6 +122,7 @@ mod tests {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
+            typ: PhysicalColumnType::Int,
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -141,6 +142,7 @@ mod tests {
         let name_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "name".to_string(),
+            typ: PhysicalColumnType::String,
         };
         let name_col = Column::Physical(&name_col);
         let name_value_col = Column::Literal(Box::new("foo"));
@@ -148,6 +150,7 @@ mod tests {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
+            typ: PhysicalColumnType::Int,
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));

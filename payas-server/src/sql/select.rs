@@ -85,7 +85,7 @@ impl<'a> Expression for Select<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::sql::column::PhysicalColumn;
+    use crate::sql::column::{PhysicalColumn, PhysicalColumnType};
 
     use super::*;
 
@@ -96,6 +96,7 @@ mod tests {
             columns: vec![PhysicalColumn {
                 table_name: "people".to_string(),
                 column_name: "age".to_string(),
+                typ: PhysicalColumnType::Int,
             }],
         };
 
@@ -124,10 +125,12 @@ mod tests {
                 PhysicalColumn {
                     table_name: "people".to_string(),
                     column_name: "name".to_string(),
+                    typ: PhysicalColumnType::String,
                 },
                 PhysicalColumn {
                     table_name: "people".to_string(),
                     column_name: "age".to_string(),
+                    typ: PhysicalColumnType::Int,
                 },
             ],
         };
