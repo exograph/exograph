@@ -4,7 +4,7 @@ use async_graphql_parser::{
 };
 use async_graphql_value::Name;
 
-use crate::model::types::{ModelTypeModifier, ModelTypeModifier::*};
+use payas_model::model::types::{ModelTypeModifier, ModelTypeModifier::*};
 
 pub fn default_positioned<T>(value: T) -> Positioned<T> {
     Positioned::new(value, Pos::default())

@@ -1,6 +1,6 @@
 use async_graphql_parser::types::{ObjectType, TypeDefinition, TypeKind};
 
-use crate::model::system::ModelSystem;
+use payas_model::model::system::ModelSystem;
 
 use super::definition::{provider::*, type_introspection::TypeDefinitionIntrospection};
 use crate::introspection::util::*;
@@ -93,8 +93,9 @@ impl Schema {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_util::common_test_data::test_system;
+
     use super::*;
-    use crate::model::test_util::common_test_data::*;
 
     #[test]
     fn schema_generation() {

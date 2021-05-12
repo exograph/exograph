@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
-use crate::model::system::ModelSystem;
 use async_graphql_parser::{
     types::{BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, Type},
     Positioned,
 };
 use async_graphql_value::{Name, Value};
+use payas_model::model::system::ModelSystem;
 use serde_json::{Map, Value as JsonValue};
 
 use super::resolver::*;
 
-use crate::introspection::schema::Schema;
+use crate::{data::data_resolver::DataResolver, introspection::schema::Schema};
 
 #[derive(Debug, Clone)]
 pub struct QueryContext<'a> {

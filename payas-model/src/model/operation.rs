@@ -1,8 +1,12 @@
 use id_arena::Id;
+use payas_sql::sql::PhysicalTable;
+
+use crate::model::ModelTypeKind;
 
 use super::{
     order::OrderByParameter,
     predicate::PredicateParameter,
+    system::ModelSystem,
     types::{ModelType, ModelTypeModifier},
 };
 
@@ -43,4 +47,23 @@ pub struct OperationReturnType {
     pub type_id: Id<ModelType>,
     pub type_name: String,
     pub type_modifier: ModelTypeModifier,
+}
+
+impl OperationReturnType {
+    pub fn typ<'a>(&self, system: &'a ModelSystem) -> &'a ModelType {
+        let return_type_id = &self.type_id;
+        &system.types[*return_type_id]
+    }
+
+    pub fn physical_table<'a>(&self, system: &'a ModelSystem) -> &'a PhysicalTable {
+        let return_type = self.typ(system);
+        match &return_type.kind {
+            ModelTypeKind::Primitive => panic!(),
+            ModelTypeKind::Composite {
+                fields: _,
+                table_id,
+                ..
+            } => &system.tables[*table_id],
+        }
+    }
 }

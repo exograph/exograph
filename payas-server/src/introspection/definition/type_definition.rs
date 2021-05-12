@@ -1,13 +1,11 @@
-use crate::{
-    introspection::{definition::provider::InputValueProvider, util},
-    model::{
-        relation::ModelRelation,
-        system::ModelSystem,
-        types::{ModelField, ModelType, *},
-    },
-};
+use crate::introspection::{definition::provider::InputValueProvider, util};
 use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
+};
+use payas_model::model::{
+    relation::ModelRelation,
+    system::ModelSystem,
+    types::{ModelField, ModelType, *},
 };
 
 use super::provider::{FieldDefinitionProvider, TypeDefinitionProvider};

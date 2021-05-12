@@ -1,14 +1,19 @@
 use std::collections::HashMap;
 
 use id_arena::Id;
+use payas_model::{
+    model::{column_id::ColumnId, relation::ModelRelation},
+    sql::{
+        column::{PhysicalColumn, PhysicalColumnType},
+        PhysicalTable,
+    },
+};
 
-use super::relation::ModelRelation;
-use super::{column_id::ColumnId, query_builder};
-use crate::sql::PhysicalTable;
-use crate::{model::ast::ast_types::*, sql::column::PhysicalColumn};
-use crate::{model::system_context::SystemContextBuilding, sql::column::PhysicalColumnType};
+use super::query_builder;
+use super::system_builder::SystemContextBuilding;
+use crate::ast::ast_types::*;
 
-use super::types::{ModelField, ModelType, ModelTypeKind, ModelTypeModifier};
+use payas_model::model::{ModelField, ModelType, ModelTypeKind, ModelTypeModifier};
 
 pub const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"]; // TODO: Expand the list
 

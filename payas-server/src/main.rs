@@ -3,17 +3,18 @@ use std::sync::Arc;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 use introspection::schema::Schema;
-use model::system::ModelSystem;
+use payas_model::model::system::ModelSystem;
 use serde_json::Value;
 
-mod introspection;
-mod model;
-#[macro_use]
-mod sql;
 mod data;
 mod execution;
+mod introspection;
 
-use crate::model::test_util::common_test_data::*;
+pub use payas_parser::ast;
+pub use payas_parser::parser;
+pub use payas_sql::sql;
+
+mod test_util;
 
 static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
@@ -37,7 +38,7 @@ async fn resolve(
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let system = test_system();
+    let system = test_util::common_test_data::test_system();
     let schema = Schema::new(&system);
 
     let system_with_schema = Arc::new((system, schema));

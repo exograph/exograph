@@ -1,11 +1,14 @@
 use id_arena::Id;
-
-use super::{
-    ast::ast_types::{AstType, AstTypeKind},
+use payas_model::model::{
     column_id::ColumnId,
+    order::{OrderByParameterType, OrderByParameterTypeKind},
 };
 
-use super::{order::*, relation::ModelRelation, system_context::SystemContextBuilding, types::*};
+use crate::ast::ast_types::{AstType, AstTypeKind};
+
+use payas_model::model::{order::*, relation::ModelRelation, types::*};
+
+use super::system_builder::SystemContextBuilding;
 
 pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
     let type_name = "Ordering".to_string();

@@ -4,8 +4,8 @@ use async_graphql_parser::{
 };
 use async_graphql_value::Name;
 
-use crate::model::{order::*, predicate::*};
-use crate::{introspection::util::*, model::system::ModelSystem};
+use crate::introspection::util::*;
+use payas_model::model::{order::*, predicate::*, system::ModelSystem};
 
 use super::{parameter::Parameter, provider::*};
 

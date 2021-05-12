@@ -1,6 +1,7 @@
 use super::query_context;
-use crate::{introspection::schema::Schema, model::system::ModelSystem};
+use crate::introspection::schema::Schema;
 use async_graphql_parser::{parse_query, types::DocumentOperations};
+use payas_model::model::system::ModelSystem;
 use query_context::*;
 use serde_json::{Map, Value};
 

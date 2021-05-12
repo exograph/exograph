@@ -1,17 +1,16 @@
 use id_arena::Id;
+use payas_model::model::{operation::Mutation, types::ModelType};
 
-use crate::model::{
+use crate::builder::{query_builder, type_builder};
+
+use payas_model::model::{
     operation::{MutationDataParameter, MutationKind, OperationReturnType},
-    query_builder, type_builder,
     types::ModelTypeModifier,
 };
 
-use super::{
-    ast::ast_types::{AstType, AstTypeKind},
-    operation::Mutation,
-    system_context::SystemContextBuilding,
-    types::ModelType,
-};
+use crate::ast::ast_types::{AstType, AstTypeKind};
+
+use super::system_builder::SystemContextBuilding;
 
 pub fn build(ast_types: &[AstType], building: &mut SystemContextBuilding) {
     for ast_type in ast_types.iter() {

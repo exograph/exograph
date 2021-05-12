@@ -2,4 +2,4 @@
 
 
 [workspace]
-members = ["payas-cli", "payas-server"]
+members = ["payas-*"]

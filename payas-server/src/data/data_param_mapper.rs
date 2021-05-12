@@ -1,14 +1,15 @@
 use async_graphql_value::Value;
 
-use crate::{
-    model::{operation::MutationDataParameter, relation::ModelRelation, types::ModelTypeKind},
-    sql::column::Column,
+use crate::sql::column::Column;
+
+use payas_model::model::{
+    operation::MutationDataParameter, relation::ModelRelation, types::ModelTypeKind,
 };
 
-use super::operation_context::OperationContext;
+use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
 
-impl MutationDataParameter {
-    pub fn compute_mutation_data<'a>(
+impl<'a> SQLMapper<'a, Vec<(&'a Column<'a>, &'a Column<'a>)>> for MutationDataParameter {
+    fn map_to_sql(
         &'a self,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,

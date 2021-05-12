@@ -1,14 +1,13 @@
 use id_arena::Id;
-
-use super::{
-    ast::ast_types::{AstType, AstTypeKind},
+use payas_model::model::{
     operation::{OperationReturnType, Query},
-    order_by_type_builder,
     predicate::PredicateParameter,
-    predicate_builder,
-    system_context::SystemContextBuilding,
-    types::{ModelType, ModelTypeKind, ModelTypeModifier},
+    ModelType, ModelTypeKind, ModelTypeModifier,
 };
+
+use crate::ast::ast_types::{AstType, AstTypeKind};
+
+use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
 
 pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
     for ast_type in ast_types {

@@ -1,6 +1,6 @@
 use async_graphql_parser::types::{FieldDefinition, InputValueDefinition, TypeDefinition};
 
-use crate::model::system::ModelSystem;
+use payas_model::model::system::ModelSystem;
 
 pub trait FieldDefinitionProvider {
     fn field_definition(&self, system: &ModelSystem) -> FieldDefinition;

@@ -5,21 +5,16 @@ pub mod operation_context;
 pub mod order_by_mapper;
 pub mod predicate_mapper;
 pub mod query_resolver;
+pub mod sql_mapper;
 
 use async_graphql_parser::Positioned;
 use async_graphql_value::{Name, Value};
 
-use crate::{
-    model::{
-        operation::OperationReturnType,
-        predicate::PredicateParameter,
-        system::ModelSystem,
-        types::{ModelType, ModelTypeKind},
-    },
-    sql::{predicate::Predicate, PhysicalTable},
-};
+use crate::sql::predicate::Predicate;
 
-use self::operation_context::OperationContext;
+use payas_model::model::predicate::PredicateParameter;
+
+use self::{operation_context::OperationContext, sql_mapper::SQLMapper};
 
 type Arguments = [(Positioned<Name>, Positioned<Value>)];
 
@@ -42,16 +37,15 @@ fn get_argument_field<'a>(argument_value: &'a Value, field_name: &str) -> Option
 }
 
 fn compute_predicate<'a>(
-    predicate_param: &Option<&PredicateParameter>,
+    predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     additional_predicate: Predicate<'a>,
     operation_context: &'a OperationContext<'a>,
 ) -> Option<&'a Predicate<'a>> {
     let predicate = predicate_param.as_ref().and_then(|predicate_parameter| {
         let argument_value = find_arg(arguments, &predicate_parameter.name);
-        argument_value.map(|argument_value| {
-            predicate_parameter.compute_predicate(argument_value, operation_context)
-        })
+        argument_value
+            .map(|argument_value| predicate_parameter.map_to_sql(argument_value, operation_context))
     });
 
     let predicate = match predicate {
@@ -60,23 +54,4 @@ fn compute_predicate<'a>(
     };
 
     Some(operation_context.create_predicate(predicate))
-}
-
-impl OperationReturnType {
-    fn typ<'a>(&self, system: &'a ModelSystem) -> &'a ModelType {
-        let return_type_id = &self.type_id;
-        &system.types[*return_type_id]
-    }
-
-    fn physical_table<'a>(&self, system: &'a ModelSystem) -> &'a PhysicalTable {
-        let return_type = self.typ(system);
-        match &return_type.kind {
-            ModelTypeKind::Primitive => panic!(),
-            ModelTypeKind::Composite {
-                fields: _,
-                table_id,
-                ..
-            } => &system.tables[*table_id],
-        }
-    }
 }

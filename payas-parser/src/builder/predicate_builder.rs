@@ -1,7 +1,8 @@
-use super::{
-    ast::ast_types::AstType, predicate::*, system_context::SystemContextBuilding,
-    type_builder::PRIMITIVE_TYPE_NAMES, types::*,
-};
+use payas_model::model::types::{ModelField, ModelType, ModelTypeKind, ModelTypeModifier};
+
+use super::{system_builder::SystemContextBuilding, type_builder::PRIMITIVE_TYPE_NAMES};
+use crate::ast::ast_types::AstType;
+use payas_model::model::predicate::*;
 
 pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
     for type_name in PRIMITIVE_TYPE_NAMES.iter() {

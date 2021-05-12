@@ -1,0 +1,11 @@
+[package]
+name = "payas-parser"
+version = "0.1.0"
+authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
+edition = "2018"
+
+[dependencies]
+id-arena = "2.2.1"
+payas-model = { path = "../payas-model" }
+
+[lib]

@@ -1,9 +1,9 @@
 use async_graphql_value::Value;
+use payas_model::model::column_id::ColumnId;
 use typed_arena::Arena;
 
 use crate::{
     execution::query_context::QueryContext,
-    model::column_id::ColumnId,
     sql::{
         column::{Column, PhysicalColumn, PhysicalColumnType},
         predicate::Predicate,

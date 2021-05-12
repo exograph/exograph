@@ -1,12 +1,11 @@
-use crate::{
-    introspection::util::*,
-    model::{operation::MutationDataParameter, types::ModelField},
-};
+use crate::introspection::util::*;
 use async_graphql_parser::types::InputValueDefinition;
 
-use crate::{
-    introspection::util,
-    model::{order::*, predicate::PredicateParameter, types::ModelTypeModifier},
+use crate::introspection::util;
+
+use payas_model::model::{
+    operation::MutationDataParameter, order::*, predicate::PredicateParameter, types::ModelField,
+    types::ModelTypeModifier,
 };
 
 use super::provider::InputValueProvider;

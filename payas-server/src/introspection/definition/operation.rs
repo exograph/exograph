@@ -1,10 +1,14 @@
-use crate::{introspection::definition::parameter::Parameter, model::system::ModelSystem};
+use crate::introspection::definition::parameter::Parameter;
 use async_graphql_parser::types::FieldDefinition;
 
+use payas_model::model::{
+    operation::{Mutation, MutationKind, OperationReturnType, Query},
+    system::ModelSystem,
+};
 use util::*;
 
 use super::provider::{FieldDefinitionProvider, InputValueProvider};
-use crate::{introspection::util, model::operation::*};
+use crate::introspection::util;
 
 pub trait Operation {
     fn name(&self) -> &String;
