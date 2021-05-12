@@ -1,0 +1,9 @@
+[package]
+name = "payas-cli"
+version = "0.1.0"
+authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
+edition = "2018"
+
+[dependencies]
+
+
