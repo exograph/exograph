@@ -12,17 +12,18 @@ use payas_model::{
     sql::{database::Database, PhysicalTable},
 };
 
-use crate::ast::ast_types::AstType;
+use crate::ast::ast_types::AstSystem;
 
 use super::{
     mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,
 };
 
-pub fn build(ast_types: Vec<AstType>) -> ModelSystem {
+pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut building = SystemContextBuilding::new();
 
+    let ast_types = &ast_system.types;
     let mut ast_types_map = HashMap::new();
-    for ast_type in &ast_types {
+    for ast_type in ast_types {
         ast_types_map.insert(ast_type.name.clone(), ast_type);
     }
 
@@ -32,7 +33,7 @@ pub fn build(ast_types: Vec<AstType>) -> ModelSystem {
     order_by_type_builder::build_shallow(&ast_types, &mut building);
     predicate_builder::build_shallow(&ast_types, &mut building);
 
-    type_builder::build_expanded(&ast_types, &mut building);
+    type_builder::build_expanded(&ast_types_map, &mut building);
     order_by_type_builder::build_expanded(&mut building);
     predicate_builder::build_expanded(&mut building);
     query_builder::build_expanded(&mut building);

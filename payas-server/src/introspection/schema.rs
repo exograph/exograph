@@ -90,21 +90,3 @@ impl Schema {
             .find(|td| td.name().as_str() == type_name)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::test_util::common_test_data::test_system;
-
-    use super::*;
-
-    #[test]
-    fn schema_generation() {
-        let system = test_system();
-        let schema = Schema::new(&system);
-
-        schema
-            .type_definitions
-            .iter()
-            .for_each(|td| println!("{}", format!("{:?}", td)));
-    }
-}

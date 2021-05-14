@@ -1293,6 +1293,8 @@ version = "0.1.0"
 dependencies = [
  "id-arena",
  "payas-model",
+ "pest",
+ "pest_derive",
 ]
 
 [[package]]

@@ -35,12 +35,15 @@ pub fn build_shallow(
     }
 }
 
-pub fn build_expanded(ast_types: &[AstType], building: &mut SystemContextBuilding) {
-    for ast_type in ast_types {
+pub fn build_expanded(
+    ast_types_map: &HashMap<String, &AstType>,
+    building: &mut SystemContextBuilding,
+) {
+    for ast_type in ast_types_map.values() {
         expand_type1(ast_type, building);
     }
-    for ast_type in ast_types {
-        expand_type2(ast_type, building);
+    for ast_type in ast_types_map.values() {
+        expand_type2(ast_type, ast_types_map, building);
     }
 }
 
@@ -130,7 +133,11 @@ fn expand_type1(ast_type: &AstType, building: &mut SystemContextBuilding) {
     }
 }
 
-fn expand_type2(ast_type: &AstType, building: &mut SystemContextBuilding) {
+fn expand_type2(
+    ast_type: &AstType,
+    ast_types_map: &HashMap<String, &AstType>,
+    building: &mut SystemContextBuilding,
+) {
     let existing_type_id = building.types.get_id(&ast_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
@@ -147,7 +154,7 @@ fn expand_type2(ast_type: &AstType, building: &mut SystemContextBuilding) {
         {
             let model_fields: Vec<ModelField> = ast_fields
                 .iter()
-                .map(|ast_field| create_field(ast_field, table_id, building))
+                .map(|ast_field| create_field(ast_field, table_id, ast_types_map, building))
                 .collect();
 
             let kind = ModelTypeKind::Composite {
@@ -232,6 +239,7 @@ fn expand_type2(ast_type: &AstType, building: &mut SystemContextBuilding) {
 fn create_field(
     ast_field: &AstField,
     table_id: Id<PhysicalTable>,
+    ast_types_map: &HashMap<String, &AstType>,
     building: &SystemContextBuilding,
 ) -> ModelField {
     fn create_type_modifier(ast_type_modifier: &AstTypeModifier) -> ModelTypeModifier {
@@ -247,7 +255,7 @@ fn create_field(
         type_id: building.types.get_id(&ast_field.type_name).unwrap(),
         type_name: ast_field.type_name.to_owned(),
         type_modifier: create_type_modifier(&ast_field.type_modifier),
-        relation: create_relation(&ast_field, table_id, building),
+        relation: create_relation(&ast_field, table_id, ast_types_map, building),
     }
 }
 
@@ -257,36 +265,52 @@ fn create_column(
     ast_types_map: &HashMap<String, &AstType>,
 ) -> Option<PhysicalColumn> {
     match &ast_field.relation {
-        AstRelation::Pk { column_name } | AstRelation::Scalar { column_name } => {
-            Some(PhysicalColumn {
-                table_name: table_name.to_string(),
-                column_name: column_name
-                    .clone()
-                    .unwrap_or_else(|| ast_field.name.clone()),
-                typ: PhysicalColumnType::from_string(&ast_field.type_name),
-            })
+        AstRelation::Pk { .. } => Some(PhysicalColumn {
+            table_name: table_name.to_string(),
+            column_name: ast_field
+                .column_name
+                .clone()
+                .unwrap_or_else(|| ast_field.name.clone()),
+            typ: PhysicalColumnType::from_string(&ast_field.type_name),
+        }),
+        AstRelation::Other { .. } => {
+            match ast_types_map.get(&ast_field.type_name) {
+                Some(_) => {
+                    if ast_field.type_modifier == AstTypeModifier::List {
+                        None // OneToMany, so the "many"-side type has the column
+                    } else {
+                        let other_type_pk_field =
+                            ast_types_map[&ast_field.type_name].pk_field().unwrap();
+                        Some(PhysicalColumn {
+                            table_name: table_name.to_string(),
+                            column_name: ast_field
+                                .column_name
+                                .clone()
+                                .unwrap_or_else(|| format!("{}_id", ast_field.name)),
+                            typ: PhysicalColumnType::from_string(&other_type_pk_field.type_name),
+                        })
+                    }
+                }
+                None => {
+                    // Scalar type
+                    Some(PhysicalColumn {
+                        table_name: table_name.to_string(),
+                        column_name: ast_field
+                            .column_name
+                            .clone()
+                            .unwrap_or_else(|| ast_field.name.clone()),
+                        typ: PhysicalColumnType::from_string(&ast_field.type_name),
+                    })
+                }
+            }
         }
-        AstRelation::ManyToOne {
-            column_name,
-            other_type_name,
-            ..
-        } => {
-            let other_type_pk_field = ast_types_map[other_type_name].pk_field().unwrap();
-            Some(PhysicalColumn {
-                table_name: table_name.to_string(),
-                column_name: column_name
-                    .clone()
-                    .unwrap_or_else(|| ast_field.name.clone()),
-                typ: PhysicalColumnType::from_string(&other_type_pk_field.type_name),
-            })
-        }
-        AstRelation::OneToMany { .. } => None, // TODO: Add this column to the other table (needed when the other side doesn't include a corresponding ManyToOne)
     }
 }
 
 fn create_relation(
     ast_field: &AstField,
     table_id: Id<PhysicalTable>,
+    ast_types_map: &HashMap<String, &AstType>,
     building: &SystemContextBuilding,
 ) -> ModelRelation {
     fn compute_column_name(column_name: &Option<String>, ast_field: &AstField) -> String {
@@ -311,50 +335,52 @@ fn create_relation(
     let table = &building.tables[table_id];
 
     match &ast_field.relation {
-        AstRelation::Pk { column_name } => {
-            let column_id = compute_column_id(table, table_id, column_name, ast_field);
+        AstRelation::Pk { .. } => {
+            let column_id = compute_column_id(table, table_id, &ast_field.column_name, ast_field);
             ModelRelation::Pk {
                 column_id: column_id.unwrap(),
             }
         }
-        AstRelation::Scalar { column_name } => {
-            let column_id = compute_column_id(table, table_id, column_name, ast_field);
-            ModelRelation::Scalar {
-                column_id: column_id.unwrap(),
-            }
-        }
-        AstRelation::ManyToOne {
-            column_name,
-            other_type_name,
-            optional,
-        } => {
-            let column_id = compute_column_id(table, table_id, column_name, ast_field);
-            let other_type_id = building.types.get_id(other_type_name).unwrap();
-            ModelRelation::ManyToOne {
-                column_id: column_id.unwrap(),
-                other_type_id,
-                optional: *optional,
-            }
-        }
-        AstRelation::OneToMany {
-            other_type_column_name,
-            other_type_name,
-        } => {
-            let other_type_id = building.types.get_id(other_type_name).unwrap();
-            let other_type = &building.types[other_type_id];
-            let other_table_id = other_type.table_id().unwrap();
-            let other_table = &building.tables[other_table_id];
-            let other_type_column_id = compute_column_id(
-                other_table,
-                other_table_id,
-                other_type_column_name,
-                ast_field,
-            )
-            .unwrap();
+        AstRelation::Other { optional } => {
+            match ast_types_map.get(&ast_field.type_name) {
+                Some(_) => {
+                    if ast_field.type_modifier == AstTypeModifier::List {
+                        let other_type_id = building.types.get_id(&ast_field.type_name).unwrap();
+                        let other_type = &building.types[other_type_id];
+                        let other_table_id = other_type.table_id().unwrap();
+                        let other_table = &building.tables[other_table_id];
+                        let other_type_column_id = compute_column_id(
+                            other_table,
+                            other_table_id,
+                            &ast_field.column_name,
+                            ast_field,
+                        )
+                        .unwrap();
 
-            ModelRelation::OneToMany {
-                other_type_column_id,
-                other_type_id,
+                        ModelRelation::OneToMany {
+                            other_type_column_id,
+                            other_type_id,
+                        }
+                    } else {
+                        // ManyToOne
+                        let column_id =
+                            compute_column_id(table, table_id, &ast_field.column_name, ast_field);
+                        let other_type_id = building.types.get_id(&ast_field.type_name).unwrap();
+                        ModelRelation::ManyToOne {
+                            column_id: column_id.unwrap(),
+                            other_type_id,
+                            optional: *optional,
+                        }
+                    }
+                }
+                None => {
+                    // Primitive
+                    let column_id =
+                        compute_column_id(table, table_id, &ast_field.column_name, ast_field);
+                    ModelRelation::Scalar {
+                        column_id: column_id.unwrap(),
+                    }
+                }
             }
         }
     }

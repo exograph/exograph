@@ -1,5 +1,10 @@
 /// Type such as Int/String/... (primitive) and Concert/Venue/Person etc (composite)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct AstSystem {
+    pub types: Vec<AstType>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct AstType {
     pub name: String,
     pub kind: AstTypeKind,
@@ -12,7 +17,7 @@ impl AstType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AstTypeKind {
     Primitive,
     Composite {
@@ -32,36 +37,25 @@ impl AstTypeKind {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AstTypeModifier {
     Optional,
     NonNull,
     List,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AstField {
     pub name: String,
     pub type_name: String,
     pub type_modifier: AstTypeModifier,
     pub relation: AstRelation,
+    pub column_name: Option<String>, // interpreted as self column, except for OneToMany where it is interpreted as the other table's column
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AstRelation {
-    Pk {
-        column_name: Option<String>,
-    },
-    Scalar {
-        column_name: Option<String>,
-    },
-    ManyToOne {
-        column_name: Option<String>,
-        other_type_name: String,
-        optional: bool,
-    },
-    OneToMany {
-        other_type_column_name: Option<String>,
-        other_type_name: String,
-    },
+    Pk { auto_generated: bool },
+    Other { optional: bool },
+    // TODO: Add other auto-geneatable columns (Date with now() etc)
 }

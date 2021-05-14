@@ -1,0 +1,11 @@
+model Concert @table("concerts") {
+  id: Int @pk
+  title: String
+  venue: Venue @column("venueid")
+}
+
+model Venue @table("venues") {
+  id: Int @pk
+  name: String
+  concerts: [Concert] @column("venueid")
+}
