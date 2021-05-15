@@ -1,28 +1,41 @@
-use id_arena::Arena;
+use std::env;
+
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres::{types::ToSql, Client};
+use postgres::{types::ToSql, Client, Config};
 use postgres_openssl::MakeTlsConnector;
 
-use super::{physical_table::PhysicalTable, ParameterBinding};
+use super::ParameterBinding;
 
 fn type_of<T>(_: &T) -> &str {
     std::any::type_name::<T>()
 }
 
+const URL_PARAM: &'static str = "PAYAS_DATABASE_URL";
+const USER_PARAM: &'static str = "PAYAS_DATABASE_USER";
+const PASSWORD_PARAM: &'static str = "PAYAS_DATABASE_PASSWORD";
+
 #[derive(Debug, Clone)]
 pub struct Database {
-    pub tables: Arena<PhysicalTable>,
+    url: String,
+    user: Option<String>,
+    password: Option<String>,
 }
 
 impl<'a> Database {
-    pub fn empty() -> Self {
+    pub fn from_env() -> Self {
+        let url = env::var(URL_PARAM).expect("PAYAS_DATABASE_URL must be provided");
+        let user = env::var(USER_PARAM).ok();
+        let password = env::var(PASSWORD_PARAM).ok();
+
         Self {
-            tables: Arena::new(),
+            url,
+            user,
+            password,
         }
     }
 
     pub fn execute(&self, binding: &ParameterBinding) -> String {
-        let mut client = Self::create_client();
+        let mut client = self.create_client();
 
         let params: Vec<&(dyn ToSql + Sync)> =
             binding.params.iter().map(|p| (*p).as_pg()).collect();
@@ -45,22 +58,25 @@ impl<'a> Database {
         }
     }
 
-    fn create_client() -> Client {
-        let host = "localhost";
-        let port = 5432;
-        let name = "payas-test";
-        let user = "postgres";
-        let password = "postgres";
+    pub fn create_client(&self) -> Client {
+        use std::str::FromStr;
+        let mut config = Config::from_str(&self.url).unwrap();
 
-        let url = format!(
-            "host={} port={} dbname={} user={} password={}",
-            host, port, name, user, password,
-        );
+        if let Some(user) = &self.user {
+            config.user(user);
+        }
+        if let Some(password) = &self.password {
+            config.password(password);
+        }
+
+        if config.get_user() == None {
+            panic!("Database user must be specified through as a part of PAYAS_DATABASE_URL or through PAYAS_DATABASE_USER")
+        }
 
         let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
-        builder.set_verify(SslVerifyMode::NONE); // DO's self-signed cert doesn't work, so don't do SSL verification
+        builder.set_verify(SslVerifyMode::NONE);
         let connector = MakeTlsConnector::new(builder.build());
 
-        postgres::Client::connect(&url, connector).unwrap()
+        config.connect(connector).unwrap()
     }
 }

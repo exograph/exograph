@@ -17,6 +17,8 @@ pub use payas_sql::sql;
 
 static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
+const SERVER_PORT_PARAM: &str = "PAYAS_SERVER_PORT";
+
 async fn playground() -> impl Responder {
     HttpResponse::Ok().body(PLAYGROUND_HTML)
 }
@@ -42,6 +44,8 @@ async fn main() -> std::io::Result<()> {
     let system = system_builder::build(ast_system.unwrap());
     let schema = Schema::new(&system);
 
+    system.database.create_client(); // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
+
     let system_with_schema = Arc::new((system, schema));
 
     let server = HttpServer::new(move || {
@@ -51,5 +55,13 @@ async fn main() -> std::io::Result<()> {
             .route("/", web::post().to(resolve))
     });
 
-    server.bind("127.0.0.1:9876")?.run().await
+    let server_port = env::var(SERVER_PORT_PARAM)
+        .ok()
+        .map(|port_str| port_str.parse::<u32>().unwrap())
+        .unwrap_or(9876);
+
+    let server_url = format!("127.0.0.1:{}", server_port);
+
+    println!("Started server on {}", server_url);
+    server.bind(&server_url)?.run().await
 }

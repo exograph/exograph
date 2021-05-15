@@ -49,7 +49,7 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
         mutation_types: building.mutation_types.values,
         create_mutations: building.mutations,
 
-        database: Database::empty(),
+        database: Database::from_env(),
     }
 }
 
