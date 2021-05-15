@@ -23,6 +23,14 @@ impl PhysicalColumnType {
             s => panic!("Unknown primitive type {}", s),
         }
     }
+
+    pub fn db_type(&self) -> &str {
+        match self {
+            PhysicalColumnType::Int => "INT",
+            PhysicalColumnType::String => "TEXT",
+            PhysicalColumnType::Boolean => "BOOLEAN",
+        }
+    }
 }
 
 #[derive(Debug)]

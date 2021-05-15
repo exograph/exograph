@@ -1278,6 +1278,11 @@ dependencies = [
 [[package]]
 name = "payas-cli"
 version = "0.1.0"
+dependencies = [
+ "payas-model",
+ "payas-parser",
+ "payas-sql",
+]
 
 [[package]]
 name = "payas-model"

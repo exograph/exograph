@@ -9,7 +9,7 @@ use payas_model::{
         system::ModelSystem,
         types::ModelType,
     },
-    sql::{database::Database, PhysicalTable},
+    sql::PhysicalTable,
 };
 
 use crate::ast::ast_types::AstSystem;
@@ -48,8 +48,6 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
         tables: building.tables.values,
         mutation_types: building.mutation_types.values,
         create_mutations: building.mutations,
-
-        database: Database::from_env(),
     }
 }
 

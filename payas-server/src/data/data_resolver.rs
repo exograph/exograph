@@ -47,7 +47,7 @@ impl DataResolver for ModelSystem {
 
         let mut expression_context = ExpressionContext::new();
         let binding = sql_operation.binding(&mut expression_context);
-        let string_response = query_context.system.database.execute(&binding);
+        let string_response = query_context.database.execute(&binding);
         QueryResponse::Raw(string_response)
     }
 }

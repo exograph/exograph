@@ -1,13 +1,14 @@
 use super::query_context;
 use crate::introspection::schema::Schema;
 use async_graphql_parser::{parse_query, types::DocumentOperations};
-use payas_model::model::system::ModelSystem;
+use payas_model::{model::system::ModelSystem, sql::database::Database};
 use query_context::*;
 use serde_json::{Map, Value};
 
 pub fn create_query_context<'a>(
     system: &'a ModelSystem,
     schema: &'a Schema,
+    database: &'a Database,
     operation_name: Option<&'a str>,
     query_str: &'a str,
     variables: &'a Option<&'a Map<String, Value>>,
@@ -22,6 +23,7 @@ pub fn create_query_context<'a>(
             variables,
             schema: &schema,
             system,
+            database,
         },
     )
 }
@@ -29,12 +31,19 @@ pub fn create_query_context<'a>(
 pub fn execute<'a>(
     system: &'a ModelSystem,
     schema: &'a Schema,
+    database: &'a Database,
     operation_name: Option<&'a str>,
     query_str: &'a str,
     variables: Option<&'a Map<String, Value>>,
 ) -> String {
-    let (operations, query_context) =
-        create_query_context(system, schema, operation_name, query_str, &variables);
+    let (operations, query_context) = create_query_context(
+        system,
+        schema,
+        database,
+        operation_name,
+        query_str,
+        &variables,
+    );
 
     let parts: Vec<(String, QueryResponse)> = operations
         .iter()

@@ -4,7 +4,6 @@ use super::order::*;
 use super::predicate::*;
 use super::{mapped_arena::MappedArena, operation::*};
 
-use crate::sql::database::Database;
 use crate::sql::PhysicalTable;
 
 use super::types::ModelType;
@@ -18,5 +17,4 @@ pub struct ModelSystem {
     pub mutation_types: Arena<ModelType>,
     pub create_mutations: MappedArena<Mutation>,
     pub tables: Arena<PhysicalTable>,
-    pub database: Database,
 }
