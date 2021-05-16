@@ -32,6 +32,7 @@ pub enum Column<'a> {
     JsonObject(Vec<(String, &'a Column<'a>)>),
     JsonAgg(&'a Column<'a>),
     SelectionTableWrapper(Select<'a>),
+    Constant(String),
     Star,
     Null,
 }
@@ -81,6 +82,7 @@ impl<'a> Expression for Column<'a> {
                 let pb = selection_table.binding(expression_context);
                 ParameterBinding::new(format!("({})", pb.stmt), pb.params)
             }
+            Column::Constant(value) => ParameterBinding::new(format!("'{}'", value), vec![]),
             Column::Star => ParameterBinding::new("*".to_string(), vec![]),
             Column::Null => ParameterBinding::new("NULL".to_string(), vec![]),
         }

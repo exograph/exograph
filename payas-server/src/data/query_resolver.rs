@@ -146,63 +146,74 @@ fn map_field<'a>(
     let system = operation_context.query_context.system;
     let return_type = query.return_type.typ(system);
 
-    let model_field = return_type.model_field(&field.name.node).unwrap();
+    let column = if field.name.node == "__typename" {
+        Column::Constant(return_type.name.clone())
+    } else {
+        let model_field = return_type.model_field(&field.name.node).unwrap();
 
-    let column = match &model_field.relation {
-        ModelRelation::Pk { column_id } | ModelRelation::Scalar { column_id } => {
-            let column = column_id.get_column(system);
-            Column::Physical(column)
-        }
-        ModelRelation::ManyToOne {
-            column_id,
-            other_type_id,
-            ..
-        } => {
-            let other_type = &system.types[*other_type_id];
-            let (other_table, other_table_pk_query) = {
-                match other_type.kind {
-                    ModelTypeKind::Primitive => panic!(""),
-                    ModelTypeKind::Composite {
-                        table_id, pk_query, ..
-                    } => (&system.tables[table_id], &system.queries[pk_query]),
-                }
-            };
+        match &model_field.relation {
+            ModelRelation::Pk { column_id } | ModelRelation::Scalar { column_id } => {
+                let column = column_id.get_column(system);
+                Column::Physical(column)
+            }
+            ModelRelation::ManyToOne {
+                column_id,
+                other_type_id,
+                ..
+            } => {
+                let other_type = &system.types[*other_type_id];
+                let (other_table, other_table_pk_query) = {
+                    match other_type.kind {
+                        ModelTypeKind::Primitive => panic!(""),
+                        ModelTypeKind::Composite {
+                            table_id, pk_query, ..
+                        } => (&system.tables[table_id], &system.queries[pk_query]),
+                    }
+                };
 
-            Column::SelectionTableWrapper(other_table.select(
-                vec![other_table_pk_query.content_select(&field.selection_set, operation_context)],
-                Some(operation_context.create_predicate(Predicate::Eq(
-                    operation_context.create_column_with_id(column_id),
-                    operation_context.create_column_with_id(&other_type.pk_column_id().unwrap()),
-                ))),
-                None,
-                false,
-            ))
-        }
-        ModelRelation::OneToMany {
-            other_type_column_id,
-            other_type_id,
-        } => {
-            let other_type = &system.types[*other_type_id];
-            let other_table_collection_query = {
-                match other_type.kind {
-                    ModelTypeKind::Primitive => panic!(""),
-                    ModelTypeKind::Composite {
-                        collection_query, ..
-                    } => &system.queries[collection_query],
-                }
-            };
+                Column::SelectionTableWrapper(
+                    other_table.select(
+                        vec![other_table_pk_query
+                            .content_select(&field.selection_set, operation_context)],
+                        Some(
+                            operation_context.create_predicate(Predicate::Eq(
+                                operation_context.create_column_with_id(column_id),
+                                operation_context
+                                    .create_column_with_id(&other_type.pk_column_id().unwrap()),
+                            )),
+                        ),
+                        None,
+                        false,
+                    ),
+                )
+            }
+            ModelRelation::OneToMany {
+                other_type_column_id,
+                other_type_id,
+            } => {
+                let other_type = &system.types[*other_type_id];
+                let other_table_collection_query = {
+                    match other_type.kind {
+                        ModelTypeKind::Primitive => panic!(""),
+                        ModelTypeKind::Composite {
+                            collection_query, ..
+                        } => &system.queries[collection_query],
+                    }
+                };
 
-            let other_selection_table = other_table_collection_query.operation(
-                field,
-                Predicate::Eq(
-                    operation_context.create_column_with_id(other_type_column_id),
-                    operation_context.create_column_with_id(&return_type.pk_column_id().unwrap()),
-                ),
-                operation_context,
-                false,
-            );
+                let other_selection_table = other_table_collection_query.operation(
+                    field,
+                    Predicate::Eq(
+                        operation_context.create_column_with_id(other_type_column_id),
+                        operation_context
+                            .create_column_with_id(&return_type.pk_column_id().unwrap()),
+                    ),
+                    operation_context,
+                    false,
+                );
 
-            Column::SelectionTableWrapper(other_selection_table)
+                Column::SelectionTableWrapper(other_selection_table)
+            }
         }
     };
 
