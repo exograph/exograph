@@ -59,3 +59,5 @@ pub enum AstRelation {
     Other { optional: bool },
     // TODO: Add other auto-geneatable columns (Date with now() etc)
 }
+
+pub enum AstFieldType {}

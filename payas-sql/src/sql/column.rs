@@ -5,19 +5,27 @@ pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
     pub typ: PhysicalColumnType,
+    pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
 }
 
 #[derive(Debug, Clone)]
 pub enum PhysicalColumnType {
-    Int,
+    Int { bits: IntBits },
     String,
     Boolean,
+}
+
+#[derive(Debug, Clone)]
+pub enum IntBits {
+    _16,
+    _32,
+    _64,
 }
 
 impl PhysicalColumnType {
     pub fn from_string(s: &str) -> PhysicalColumnType {
         match s {
-            "Int" => PhysicalColumnType::Int,
+            "Int" => PhysicalColumnType::Int { bits: IntBits::_32 },
             "String" => PhysicalColumnType::String,
             "Boolean" => PhysicalColumnType::Boolean,
             s => panic!("Unknown primitive type {}", s),
@@ -26,7 +34,11 @@ impl PhysicalColumnType {
 
     pub fn db_type(&self) -> &str {
         match self {
-            PhysicalColumnType::Int => "INT",
+            PhysicalColumnType::Int { bits } => match bits {
+                IntBits::_16 => "SMALLINT",
+                IntBits::_32 => "INT",
+                IntBits::_64 => "BIGINT",
+            },
             PhysicalColumnType::String => "TEXT",
             PhysicalColumnType::Boolean => "BOOLEAN",
         }

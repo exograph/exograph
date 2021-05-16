@@ -1,5 +1,5 @@
 use async_graphql_value::Value;
-use payas_model::model::column_id::ColumnId;
+use payas_model::{model::column_id::ColumnId, sql::column::IntBits};
 use typed_arena::Arena;
 
 use crate::{
@@ -74,7 +74,11 @@ impl<'a> OperationContext<'a> {
         destination_type: &PhysicalColumnType,
     ) -> Box<dyn SQLParam> {
         match destination_type {
-            PhysicalColumnType::Int => Box::new(value.as_i64().unwrap() as i32),
+            PhysicalColumnType::Int { bits } => match bits {
+                IntBits::_16 => Box::new(value.as_i64().unwrap() as i16),
+                IntBits::_32 => Box::new(value.as_i64().unwrap() as i32),
+                IntBits::_64 => Box::new(value.as_i64().unwrap() as i64),
+            },
             PhysicalColumnType::String => Box::new(value.as_str().unwrap().to_string()),
             PhysicalColumnType::Boolean => Box::new(value.as_bool().unwrap()),
         }

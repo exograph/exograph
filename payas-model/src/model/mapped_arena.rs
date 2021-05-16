@@ -9,13 +9,6 @@ pub struct MappedArena<V> {
 }
 
 impl<V> MappedArena<V> {
-    pub fn new() -> MappedArena<V> {
-        MappedArena {
-            values: Arena::new(),
-            map: HashMap::new(),
-        }
-    }
-
     pub fn get_id(&self, key: &str) -> Option<Id<V>> {
         self.map.get(key).copied()
     }
@@ -32,6 +25,15 @@ impl<V> MappedArena<V> {
 
     pub fn iter(&self) -> id_arena::Iter<V, impl id_arena::ArenaBehavior> {
         self.values.iter()
+    }
+}
+
+impl<V> Default for MappedArena<V> {
+    fn default() -> Self {
+        MappedArena {
+            values: Arena::default(),
+            map: HashMap::default(),
+        }
     }
 }
 
