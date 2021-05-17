@@ -97,6 +97,9 @@ mod tests {
                 table_name: "people".to_string(),
                 column_name: "age".to_string(),
                 typ: PhysicalColumnType::Int { bits: IntBits::_16 },
+                is_pk: false,
+                is_autoincrement: false,
+                references: None,
             }],
         };
 
@@ -126,11 +129,17 @@ mod tests {
                     table_name: "people".to_string(),
                     column_name: "name".to_string(),
                     typ: PhysicalColumnType::String,
+                    is_pk: false,
+                    is_autoincrement: false,
+                    references: None,
                 },
                 PhysicalColumn {
                     table_name: "people".to_string(),
                     column_name: "age".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
+                    is_pk: false,
+                    is_autoincrement: false,
+                    references: None,
                 },
             ],
         };

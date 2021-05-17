@@ -123,6 +123,9 @@ mod tests {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
+            is_pk: false,
+            is_autoincrement: false,
+            references: None,
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -143,6 +146,9 @@ mod tests {
             table_name: "people".to_string(),
             column_name: "name".to_string(),
             typ: PhysicalColumnType::String,
+            is_pk: false,
+            is_autoincrement: false,
+            references: None,
         };
         let name_col = Column::Physical(&name_col);
         let name_value_col = Column::Literal(Box::new("foo"));
@@ -151,6 +157,9 @@ mod tests {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
+            is_pk: false,
+            is_autoincrement: false,
+            references: None,
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
