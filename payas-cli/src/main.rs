@@ -25,7 +25,7 @@ fn create_table(table: &PhysicalTable) -> String {
     let column_stmts = table
         .columns
         .iter()
-        .map(|column| create_column(column))
+        .map(create_column)
         .collect::<Vec<_>>()
         .join(",\n\t");
 
@@ -33,5 +33,18 @@ fn create_table(table: &PhysicalTable) -> String {
 }
 
 fn create_column(column: &PhysicalColumn) -> String {
-    format!("{} {}", column.column_name, column.typ.db_type())
+    let pk_str = if column.is_pk { " PRIMARY KEY" } else { "" };
+
+    let references_str = match column.references {
+        Some(ref references) => format!(" REFERENCES {}", references.table_name),
+        None => "".to_string(),
+    };
+
+    format!(
+        "{} {}{}{}",
+        column.column_name,
+        column.typ.db_type(column.is_autoincrement),
+        pk_str,
+        references_str
+    )
 }

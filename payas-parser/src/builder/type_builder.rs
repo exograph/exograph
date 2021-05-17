@@ -4,7 +4,7 @@ use id_arena::Id;
 use payas_model::{
     model::{column_id::ColumnId, relation::ModelRelation},
     sql::{
-        column::{PhysicalColumn, PhysicalColumnType},
+        column::{ColumnReferece, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     },
 };
@@ -250,10 +250,11 @@ fn create_field(
         }
     }
 
+    let type_name = ast_field.typ.name();
     ModelField {
         name: ast_field.name.to_owned(),
-        type_id: building.types.get_id(&ast_field.type_name).unwrap(),
-        type_name: ast_field.type_name.to_owned(),
+        type_id: building.types.get_id(&type_name).unwrap(),
+        type_name,
         type_modifier: create_type_modifier(&ast_field.type_modifier),
         relation: create_relation(&ast_field, table_id, ast_types_map, building),
     }
@@ -265,29 +266,48 @@ fn create_column(
     ast_types_map: &HashMap<String, &AstType>,
 ) -> Option<PhysicalColumn> {
     match &ast_field.relation {
-        AstRelation::Pk { .. } => Some(PhysicalColumn {
+        AstRelation::Pk => Some(PhysicalColumn {
             table_name: table_name.to_string(),
             column_name: ast_field
                 .column_name
                 .clone()
                 .unwrap_or_else(|| ast_field.name.clone()),
-            typ: PhysicalColumnType::from_string(&ast_field.type_name),
+            typ: PhysicalColumnType::from_string(&ast_field.typ.name()),
+            is_pk: true,
+            is_autoincrement: match ast_field.typ {
+                AstFieldType::Int { autoincrement } => autoincrement,
+                _ => false,
+            },
+            references: None,
         }),
         AstRelation::Other { .. } => {
-            match ast_types_map.get(&ast_field.type_name) {
+            match ast_types_map.get(&ast_field.typ.name()) {
                 Some(_) => {
                     if ast_field.type_modifier == AstTypeModifier::List {
                         None // OneToMany, so the "many"-side type has the column
                     } else {
-                        let other_type_pk_field =
-                            ast_types_map[&ast_field.type_name].pk_field().unwrap();
+                        let other_type = ast_types_map[&ast_field.typ.name()];
+                        let other_type_pk_field = other_type.pk_field().unwrap();
+                        let other_table_name =
+                            if let AstTypeKind::Composite { table_name, .. } = &other_type.kind {
+                                table_name.clone().unwrap()
+                            } else {
+                                panic!("")
+                            };
+
                         Some(PhysicalColumn {
                             table_name: table_name.to_string(),
                             column_name: ast_field
                                 .column_name
                                 .clone()
                                 .unwrap_or_else(|| format!("{}_id", ast_field.name)),
-                            typ: PhysicalColumnType::from_string(&other_type_pk_field.type_name),
+                            typ: PhysicalColumnType::from_string(&other_type_pk_field.typ.name()),
+                            is_pk: false,
+                            is_autoincrement: false,
+                            references: Some(ColumnReferece {
+                                table_name: other_table_name,
+                                column_name: other_type_pk_field.column_name().to_string(),
+                            }),
                         })
                     }
                 }
@@ -299,7 +319,10 @@ fn create_column(
                             .column_name
                             .clone()
                             .unwrap_or_else(|| ast_field.name.clone()),
-                        typ: PhysicalColumnType::from_string(&ast_field.type_name),
+                        typ: PhysicalColumnType::from_string(&ast_field.typ.name()),
+                        is_pk: false,
+                        is_autoincrement: false,
+                        references: None,
                     })
                 }
             }
@@ -342,10 +365,10 @@ fn create_relation(
             }
         }
         AstRelation::Other { optional } => {
-            match ast_types_map.get(&ast_field.type_name) {
+            match ast_types_map.get(&ast_field.typ.name()) {
                 Some(_) => {
                     if ast_field.type_modifier == AstTypeModifier::List {
-                        let other_type_id = building.types.get_id(&ast_field.type_name).unwrap();
+                        let other_type_id = building.types.get_id(&ast_field.typ.name()).unwrap();
                         let other_type = &building.types[other_type_id];
                         let other_table_id = other_type.table_id().unwrap();
                         let other_table = &building.tables[other_table_id];
@@ -365,7 +388,7 @@ fn create_relation(
                         // ManyToOne
                         let column_id =
                             compute_column_id(table, table_id, &ast_field.column_name, ast_field);
-                        let other_type_id = building.types.get_id(&ast_field.type_name).unwrap();
+                        let other_type_id = building.types.get_id(&ast_field.typ.name()).unwrap();
                         ModelRelation::ManyToOne {
                             column_id: column_id.unwrap(),
                             other_type_id,

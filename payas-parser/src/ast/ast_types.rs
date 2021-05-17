@@ -47,17 +47,36 @@ pub enum AstTypeModifier {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AstField {
     pub name: String,
-    pub type_name: String,
+    pub typ: AstFieldType,
     pub type_modifier: AstTypeModifier,
     pub relation: AstRelation,
     pub column_name: Option<String>, // interpreted as self column, except for OneToMany where it is interpreted as the other table's column
 }
 
+impl AstField {
+    pub fn column_name(&self) -> &str {
+        self.column_name.as_ref().unwrap_or(&self.name)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstRelation {
-    Pk { auto_generated: bool },
+    Pk,
     Other { optional: bool },
     // TODO: Add other auto-geneatable columns (Date with now() etc)
 }
 
-pub enum AstFieldType {}
+#[derive(Debug, Clone, PartialEq)]
+pub enum AstFieldType {
+    Int { autoincrement: bool },
+    Other { name: String },
+}
+
+impl AstFieldType {
+    pub fn name(&self) -> String {
+        match self {
+            AstFieldType::Int { .. } => "Int".to_string(),
+            AstFieldType::Other { name } => name.to_owned(),
+        }
+    }
+}

@@ -5,7 +5,15 @@ pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
     pub typ: PhysicalColumnType,
-    //pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
+    pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
+    pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
+    pub references: Option<ColumnReferece>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ColumnReferece {
+    pub table_name: String,
+    pub column_name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -32,13 +40,25 @@ impl PhysicalColumnType {
         }
     }
 
-    pub fn db_type(&self) -> &str {
+    pub fn db_type(&self, is_autoincrement: bool) -> &str {
         match self {
-            PhysicalColumnType::Int { bits } => match bits {
-                IntBits::_16 => "SMALLINT",
-                IntBits::_32 => "INT",
-                IntBits::_64 => "BIGINT",
-            },
+            PhysicalColumnType::Int { bits } => {
+                if is_autoincrement {
+                    match bits {
+                        IntBits::_32 => "SERIAL",
+                        IntBits::_64 => "BIGSERIAL",
+                        IntBits::_16 => {
+                            panic!("16 bit interger cannot be used as an autoincremented value")
+                        }
+                    }
+                } else {
+                    match bits {
+                        IntBits::_16 => "SMALLINT",
+                        IntBits::_32 => "INT",
+                        IntBits::_64 => "BIGINT",
+                    }
+                }
+            }
             PhysicalColumnType::String => "TEXT",
             PhysicalColumnType::Boolean => "BOOLEAN",
         }

@@ -72,9 +72,10 @@ fn parse_field_definition(pair: Pair<Rule>) -> Result<AstField, Error<Rule>> {
     let type_info = inner.next().unwrap();
 
     let pk = next_if_rule(&mut inner, Rule::pk).map(|_| true);
+    let autoincrement = next_if_rule(&mut inner, Rule::autoincrement).map(|_| true);
     let column_name = parse_column(&mut inner).unwrap();
 
-    parse_field_type(type_info).map(|type_info| {
+    parse_field_type_usage(type_info).map(|type_info| {
         let type_modifier = if type_info.array {
             AstTypeModifier::List
         } else {
@@ -82,17 +83,25 @@ fn parse_field_definition(pair: Pair<Rule>) -> Result<AstField, Error<Rule>> {
         };
 
         let relation = match pk {
-            Some(true) => AstRelation::Pk {
-                auto_generated: false,
-            },
+            Some(true) => AstRelation::Pk,
             _ => AstRelation::Other {
                 optional: type_info.optional,
             },
         };
 
+        let typ = if type_info.type_name == "Int" {
+            AstFieldType::Int {
+                autoincrement: autoincrement.unwrap_or(false),
+            }
+        } else {
+            AstFieldType::Other {
+                name: type_info.type_name,
+            }
+        };
+
         AstField {
             name,
-            type_name: type_info.type_name,
+            typ,
             type_modifier,
             relation,
             column_name,
@@ -101,14 +110,14 @@ fn parse_field_definition(pair: Pair<Rule>) -> Result<AstField, Error<Rule>> {
 }
 
 #[derive(Debug, Clone)]
-struct TypeInfo {
+struct TypeUsage {
     type_name: String,
     array: bool,
     optional: bool,
 }
 
 // "Foo" or "[Foo]" with or without the trailing "?"
-fn parse_field_type(pair: Pair<Rule>) -> Result<TypeInfo, Error<Rule>> {
+fn parse_field_type_usage(pair: Pair<Rule>) -> Result<TypeUsage, Error<Rule>> {
     debug_assert_eq!(pair.as_rule(), Rule::field_type);
 
     let mut inner = pair.into_inner();
@@ -116,17 +125,17 @@ fn parse_field_type(pair: Pair<Rule>) -> Result<TypeInfo, Error<Rule>> {
     let optional = inner.next().map(|_| true).unwrap_or(false);
 
     match base_type.as_rule() {
-        Rule::field_base_type => parse_field_base_type(base_type),
+        Rule::field_base_type => parse_field_base_type_usage(base_type),
         _ => unreachable!(),
     }
-    .map(|type_info| TypeInfo {
+    .map(|type_info| TypeUsage {
         optional,
         ..type_info
     })
 }
 
 // "Foo" or "[Foo]""
-fn parse_field_base_type(pair: Pair<Rule>) -> Result<TypeInfo, Error<Rule>> {
+fn parse_field_base_type_usage(pair: Pair<Rule>) -> Result<TypeUsage, Error<Rule>> {
     debug_assert_eq!(pair.as_rule(), Rule::field_base_type);
 
     let inner = pair.into_inner().next().unwrap();
@@ -135,7 +144,7 @@ fn parse_field_base_type(pair: Pair<Rule>) -> Result<TypeInfo, Error<Rule>> {
         Rule::field_array_type => {
             let type_name = inner.into_inner().next().unwrap().as_str().to_string();
 
-            Ok(TypeInfo {
+            Ok(TypeUsage {
                 type_name,
                 array: true,
                 optional: false,
@@ -144,7 +153,7 @@ fn parse_field_base_type(pair: Pair<Rule>) -> Result<TypeInfo, Error<Rule>> {
         Rule::type_name => {
             let type_name = inner.as_str().to_string();
 
-            Ok(TypeInfo {
+            Ok(TypeUsage {
                 type_name,
                 array: false,
                 optional: false,
@@ -186,7 +195,9 @@ mod tests {
             parse_field_definition(pair),
             Ok(AstField {
                 name: "foo".to_string(),
-                type_name: "Foo".to_string(),
+                typ: AstFieldType::Other {
+                    name: "Foo".to_string()
+                },
                 type_modifier: AstTypeModifier::NonNull,
                 relation: AstRelation::Other { optional: false },
                 column_name: None
@@ -202,7 +213,9 @@ mod tests {
             parse_field_definition(pair),
             Ok(AstField {
                 name: "foo".to_string(),
-                type_name: "Foo".to_string(),
+                typ: AstFieldType::Other {
+                    name: "Foo".to_string()
+                },
                 type_modifier: AstTypeModifier::NonNull,
                 relation: AstRelation::Other { optional: true },
                 column_name: None
@@ -218,7 +231,9 @@ mod tests {
             parse_field_definition(pair),
             Ok(AstField {
                 name: "foo".to_string(),
-                type_name: "Foo".to_string(),
+                typ: AstFieldType::Other {
+                    name: "Foo".to_string()
+                },
                 type_modifier: AstTypeModifier::List,
                 relation: AstRelation::Other { optional: false },
                 column_name: None
@@ -234,7 +249,9 @@ mod tests {
             parse_field_definition(pair),
             Ok(AstField {
                 name: "foo".to_string(),
-                type_name: "Foo".to_string(),
+                typ: AstFieldType::Other {
+                    name: "Foo".to_string()
+                },
                 type_modifier: AstTypeModifier::List,
                 relation: AstRelation::Other { optional: true },
                 column_name: None
@@ -250,7 +267,9 @@ mod tests {
             parse_field_definition(pair),
             Ok(AstField {
                 name: "foo".to_string(),
-                type_name: "Foo".to_string(),
+                typ: AstFieldType::Other {
+                    name: "Foo".to_string()
+                },
                 type_modifier: AstTypeModifier::List,
                 relation: AstRelation::Other { optional: true },
                 column_name: Some("col".to_string())
@@ -322,14 +341,18 @@ mod tests {
                 fields: vec![
                     AstField {
                         name: "first_name".to_string(),
-                        type_name: "String".to_string(),
+                        typ: AstFieldType::Other {
+                            name: "String".to_string(),
+                        },
                         type_modifier: AstTypeModifier::NonNull,
                         relation: AstRelation::Other { optional: true },
                         column_name: Some("f_name".to_string()),
                     },
                     AstField {
                         name: "age".to_string(),
-                        type_name: "Int".to_string(),
+                        typ: AstFieldType::Int {
+                            autoincrement: false,
+                        },
                         type_modifier: AstTypeModifier::NonNull,
                         relation: AstRelation::Other { optional: false },
                         column_name: None,
@@ -347,14 +370,18 @@ mod tests {
                 fields: vec![
                     AstField {
                         name: "name".to_string(),
-                        type_name: "String".to_string(),
+                        typ: AstFieldType::Other {
+                            name: "String".to_string(),
+                        },
                         type_modifier: AstTypeModifier::NonNull,
                         relation: AstRelation::Other { optional: true },
                         column_name: None,
                     },
                     AstField {
                         name: "address".to_string(),
-                        type_name: "String".to_string(),
+                        typ: AstFieldType::Other {
+                            name: "String".to_string(),
+                        },
                         type_modifier: AstTypeModifier::NonNull,
                         relation: AstRelation::Other { optional: false },
                         column_name: None,
