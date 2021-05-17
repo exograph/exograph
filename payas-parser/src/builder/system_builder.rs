@@ -9,7 +9,7 @@ use payas_model::{
         system::ModelSystem,
         types::ModelType,
     },
-    sql::{database::Database, PhysicalTable},
+    sql::PhysicalTable,
 };
 
 use crate::ast::ast_types::AstSystem;
@@ -19,7 +19,7 @@ use super::{
 };
 
 pub fn build(ast_system: AstSystem) -> ModelSystem {
-    let mut building = SystemContextBuilding::new();
+    let mut building = SystemContextBuilding::default();
 
     let ast_types = &ast_system.types;
     let mut ast_types_map = HashMap::new();
@@ -48,12 +48,10 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
         tables: building.tables.values,
         mutation_types: building.mutation_types.values,
         create_mutations: building.mutations,
-
-        database: Database::from_env(),
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SystemContextBuilding {
     pub types: MappedArena<ModelType>,
     pub order_by_types: MappedArena<OrderByParameterType>,
@@ -62,18 +60,4 @@ pub struct SystemContextBuilding {
     pub mutation_types: MappedArena<ModelType>,
     pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
-}
-
-impl SystemContextBuilding {
-    pub fn new() -> Self {
-        Self {
-            types: MappedArena::new(),
-            order_by_types: MappedArena::new(),
-            predicate_types: MappedArena::new(),
-            queries: MappedArena::new(),
-            mutation_types: MappedArena::new(),
-            mutations: MappedArena::new(),
-            tables: MappedArena::new(),
-        }
-    }
 }

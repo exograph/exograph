@@ -5,5 +5,6 @@ authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
 edition = "2018"
 
 [dependencies]
-
-
+payas-sql = { path = "../payas-sql" }
+payas-parser = { path = "../payas-parser" }
+payas-model = { path = "../payas-model" }

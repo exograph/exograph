@@ -10,9 +10,9 @@ fn type_of<T>(_: &T) -> &str {
     std::any::type_name::<T>()
 }
 
-const URL_PARAM: &'static str = "PAYAS_DATABASE_URL";
-const USER_PARAM: &'static str = "PAYAS_DATABASE_USER";
-const PASSWORD_PARAM: &'static str = "PAYAS_DATABASE_PASSWORD";
+const URL_PARAM: &str = "PAYAS_DATABASE_URL";
+const USER_PARAM: &str = "PAYAS_DATABASE_USER";
+const PASSWORD_PARAM: &str = "PAYAS_DATABASE_PASSWORD";
 
 #[derive(Debug, Clone)]
 pub struct Database {

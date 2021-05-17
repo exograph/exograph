@@ -3,7 +3,7 @@ use std::{env, sync::Arc};
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 use introspection::schema::Schema;
-use payas_model::model::system::ModelSystem;
+use payas_model::{model::system::ModelSystem, sql::database::Database};
 use payas_parser::builder::system_builder;
 use serde_json::Value;
 
@@ -25,16 +25,23 @@ async fn playground() -> impl Responder {
 
 async fn resolve(
     req_body: String,
-    schema: web::Data<Arc<(ModelSystem, Schema)>>,
+    system_info: web::Data<Arc<(ModelSystem, Schema, Database)>>,
 ) -> impl Responder {
-    let (system, schema) = schema.as_ref().as_ref();
+    let (system, schema, database) = system_info.as_ref().as_ref();
 
     let request: Value = serde_json::from_str(req_body.as_str()).unwrap();
     let operation_name = request["operationName"].as_str();
     let query_str = request["query"].as_str().unwrap();
     let variables = request["variables"].as_object();
 
-    crate::execution::executor::execute(system, &schema, operation_name, query_str, variables)
+    crate::execution::executor::execute(
+        system,
+        schema,
+        database,
+        operation_name,
+        query_str,
+        variables,
+    )
 }
 
 #[actix_web::main]
@@ -44,13 +51,14 @@ async fn main() -> std::io::Result<()> {
     let system = system_builder::build(ast_system.unwrap());
     let schema = Schema::new(&system);
 
-    system.database.create_client(); // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
+    let database = Database::from_env();
+    database.create_client(); // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
 
-    let system_with_schema = Arc::new((system, schema));
+    let system_info = Arc::new((system, schema, database));
 
     let server = HttpServer::new(move || {
         App::new()
-            .data(system_with_schema.clone())
+            .data(system_info.clone())
             .route("/", web::get().to(playground))
             .route("/", web::post().to(resolve))
     });

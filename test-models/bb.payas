@@ -1,11 +1,11 @@
 model Concert @table("concerts") {
-  id: Int @pk
+  id: Int @pk @autoincrement
   title: String
   venue: Venue @column("venueid")
 }
 
 model Venue @table("venues") {
-  id: Int @pk
+  id: Int @pk @autoincrement
   name: String
   concerts: [Concert] @column("venueid")
 }

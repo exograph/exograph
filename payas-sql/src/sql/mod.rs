@@ -89,19 +89,13 @@ where
     }
 }
 
+#[derive(Default)]
 pub struct ExpressionContext {
     param_count: u16,
     plain: bool, // Indicates if column name should be rendered without the table name i.e. "col" instead of "table"."col"
 }
 
 impl ExpressionContext {
-    pub fn new() -> Self {
-        Self {
-            param_count: 0,
-            plain: false,
-        }
-    }
-
     pub fn next_param(&mut self) -> u16 {
         self.param_count += 1;
 

@@ -5,7 +5,7 @@ use async_graphql_parser::{
     Positioned,
 };
 use async_graphql_value::{Name, Value};
-use payas_model::model::system::ModelSystem;
+use payas_model::{model::system::ModelSystem, sql::database::Database};
 use serde_json::{Map, Value as JsonValue};
 
 use super::resolver::*;
@@ -19,6 +19,7 @@ pub struct QueryContext<'a> {
     pub variables: &'a Option<&'a Map<String, JsonValue>>,
     pub schema: &'a Schema,
     pub system: &'a ModelSystem,
+    pub database: &'a Database,
 }
 
 #[derive(Debug, Clone)]

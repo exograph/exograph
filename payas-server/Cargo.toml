@@ -21,3 +21,5 @@ payas-parser = { path = "../payas-parser" }
 payas-model = { path = "../payas-model" }
 
 
+[profile.release]
+lto = true
