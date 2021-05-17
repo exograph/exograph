@@ -100,20 +100,20 @@ fn combine<'a, E1: Expression, E2: Expression>(
 #[cfg(test)]
 #[macro_use]
 mod tests {
-    use crate::sql::column::{PhysicalColumn, PhysicalColumnType};
+    use crate::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;
 
     #[test]
     fn true_predicate() {
-        let mut expression_context = ExpressionContext::new();
+        let mut expression_context = ExpressionContext::default();
 
         assert_binding!(&Predicate::True.binding(&mut expression_context), "true");
     }
 
     #[test]
     fn false_predicate() {
-        let mut expression_context = ExpressionContext::new();
+        let mut expression_context = ExpressionContext::default();
         assert_binding!(&Predicate::False.binding(&mut expression_context), "false");
     }
 
@@ -122,14 +122,14 @@ mod tests {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
-            typ: PhysicalColumnType::Int,
+            typ: PhysicalColumnType::Int { bits: IntBits::_16 },
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
 
         let predicate = Predicate::Eq(&age_col, &age_value_col);
 
-        let mut expression_context = ExpressionContext::new();
+        let mut expression_context = ExpressionContext::default();
         assert_binding!(
             &predicate.binding(&mut expression_context),
             r#""people"."age" = $1"#,
@@ -150,7 +150,7 @@ mod tests {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
-            typ: PhysicalColumnType::Int,
+            typ: PhysicalColumnType::Int { bits: IntBits::_16 },
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -160,7 +160,7 @@ mod tests {
 
         let predicate = Predicate::And(Box::new(name_predicate), Box::new(age_predicate));
 
-        let mut expression_context = ExpressionContext::new();
+        let mut expression_context = ExpressionContext::default();
         assert_binding!(
             &predicate.binding(&mut expression_context),
             r#""people"."name" = $1 AND "people"."age" = $2"#,

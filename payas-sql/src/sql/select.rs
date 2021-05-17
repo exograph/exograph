@@ -85,7 +85,7 @@ impl<'a> Expression for Select<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::sql::column::{PhysicalColumn, PhysicalColumnType};
+    use crate::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;
 
@@ -96,7 +96,7 @@ mod tests {
             columns: vec![PhysicalColumn {
                 table_name: "people".to_string(),
                 column_name: "age".to_string(),
-                typ: PhysicalColumnType::Int,
+                typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             }],
         };
 
@@ -109,7 +109,7 @@ mod tests {
 
         let predicated_table = table.select(selected_cols, Some(&predicate), None, false);
 
-        let mut expression_context = ExpressionContext::new();
+        let mut expression_context = ExpressionContext::default();
         assert_binding!(
             &predicated_table.binding(&mut expression_context),
             r#"select "people"."age" from "people" where "people"."age" = $1"#,
@@ -130,7 +130,7 @@ mod tests {
                 PhysicalColumn {
                     table_name: "people".to_string(),
                     column_name: "age".to_string(),
-                    typ: PhysicalColumnType::Int,
+                    typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                 },
             ],
         };
@@ -143,7 +143,7 @@ mod tests {
         ]);
         let selected_table = table.select(vec![&age_col, &x], None, None, true);
 
-        let mut expression_context = ExpressionContext::new();
+        let mut expression_context = ExpressionContext::default();
         assert_binding!(
             &selected_table.binding(&mut expression_context),
             r#"select "people"."age", json_build_object('namex', "people"."name", 'agex', "people"."age")::text from "people""#

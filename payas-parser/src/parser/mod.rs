@@ -3,7 +3,11 @@ mod util;
 use std::{fs, path::Path};
 
 use crate::{ast::ast_types::*, parser::util::*};
-use pest::{error::Error, iterators::Pair, Parser};
+use pest::{
+    error::Error,
+    iterators::{Pair, Pairs},
+    Parser,
+};
 use pest_derive::Parser;
 
 #[derive(Parser)]
@@ -15,7 +19,7 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> Result<AstSystem, Error<Rule>> {
     parse(&file_content)
 }
 
-pub fn parse(input: &str) -> Result<AstSystem, Error<Rule>> {
+fn parse(input: &str) -> Result<AstSystem, Error<Rule>> {
     let parsed = PayasParser::parse(Rule::system_document, input)?;
 
     let iter = parsed.into_iter().next().unwrap();
@@ -31,6 +35,7 @@ fn parse_system_document(pair: Pair<Rule>) -> Result<AstSystem, Error<Rule>> {
             if pair.as_rule() == Rule::model_definition {
                 Some(parse_model_definition(pair))
             } else {
+                // Placeholder for other possible top-level definitions such as context
                 None
             }
         })
@@ -45,10 +50,7 @@ fn parse_model_definition(pair: Pair<Rule>) -> Result<AstType, Error<Rule>> {
     let mut inner = pair.into_inner();
     let name = inner.next().unwrap().as_str().to_string();
 
-    let table_name = parse_if_rule(&mut inner, Rule::table, |pair| {
-        Ok(pair.into_inner().next().unwrap().as_str().to_string())
-    })
-    .unwrap();
+    let table_name = parse_table(&mut inner).unwrap();
 
     parse_fields_definition(inner.next().unwrap()).map(|fields| AstType {
         name,
@@ -70,14 +72,7 @@ fn parse_field_definition(pair: Pair<Rule>) -> Result<AstField, Error<Rule>> {
     let type_info = inner.next().unwrap();
 
     let pk = next_if_rule(&mut inner, Rule::pk).map(|_| true);
-    let column_name = inner.next().map(|column_pair| {
-        column_pair
-            .into_inner()
-            .next()
-            .unwrap()
-            .as_str()
-            .to_string()
-    });
+    let column_name = parse_column(&mut inner).unwrap();
 
     parse_field_type(type_info).map(|type_info| {
         let type_modifier = if type_info.array {
@@ -159,6 +154,25 @@ fn parse_field_base_type(pair: Pair<Rule>) -> Result<TypeInfo, Error<Rule>> {
     }
 }
 
+fn parse_quoted_name(pair: Pair<Rule>) -> Result<String, Error<Rule>> {
+    debug_assert_eq!(pair.as_rule(), Rule::quoted_name);
+
+    let inner = pair.into_inner().next().unwrap();
+    Ok(inner.as_str().to_string())
+}
+
+fn parse_table(pairs: &mut Pairs<Rule>) -> Result<Option<String>, Error<Rule>> {
+    parse_if_rule(pairs, Rule::table, |pair| {
+        parse_quoted_name(pair.into_inner().next().unwrap())
+    })
+}
+
+fn parse_column(pairs: &mut Pairs<Rule>) -> Result<Option<String>, Error<Rule>> {
+    parse_if_rule(pairs, Rule::column, |pair| {
+        parse_quoted_name(pair.into_inner().next().unwrap())
+    })
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -230,7 +244,7 @@ mod tests {
 
     #[test]
     fn with_column_name() {
-        let pair = compute_pair(Rule::field_definition, r#"foo: [Foo]? @column(col)"#);
+        let pair = compute_pair(Rule::field_definition, r#"foo: [Foo]? @column("col")"#);
 
         assert_eq!(
             parse_field_definition(pair),
@@ -259,11 +273,11 @@ mod tests {
     }
 
     #[test]
-    fn with_table_type() {
+    fn with_table_name() {
         let pair = compute_pair(
             Rule::model_definition,
-            r#"model Person @table(people) {
-                first_name: String? @column(f_name)
+            r#"model Person @table("people") {
+                first_name: String? @column("f_name")
                 age: Int        
         }
         "#,
@@ -281,8 +295,8 @@ mod tests {
                 address: String        
         }
         
-        model Person @table(people) {
-                first_name: String? @column(f_name)
+        model Person @table("people") {
+                first_name: String? @column("f_name")
                 age: Int        
         }
         "#,

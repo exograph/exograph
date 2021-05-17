@@ -5,7 +5,7 @@ pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
     pub typ: PhysicalColumnType,
-    pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
+    //pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
 }
 
 #[derive(Debug, Clone)]

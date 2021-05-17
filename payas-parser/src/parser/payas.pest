@@ -11,11 +11,12 @@ field_base_type = {field_array_type | type_name}
 field_type_optional = { "?" }
 field_array_type = { "[" ~ type_name ~ "]" }
 
-table = { "@table(\"" ~ name ~ "\")"}
-column = { "@column(\"" ~ name ~ "\")"}
+table = { "@table(" ~ quoted_name ~ ")"}
+column = { "@column(" ~ quoted_name ~ ")"}
 pk = { "@pk" }
 
 field_name = { name }
 type_name = { name}
 
 name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHA | ASCII_DIGIT | "_")* }
+quoted_name = { "\"" ~ name ~ "\""}

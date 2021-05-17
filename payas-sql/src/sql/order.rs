@@ -33,7 +33,7 @@ impl<'a> Expression for OrderBy<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::sql::column::{PhysicalColumn, PhysicalColumnType};
+    use crate::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
     use crate::sql::ExpressionContext;
 
     #[test]
@@ -41,13 +41,13 @@ mod test {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
-            typ: PhysicalColumnType::Int,
+            typ: PhysicalColumnType::Int { bits: IntBits::_16 },
         };
         let age_col = Column::Physical(&age_col);
 
         let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
 
-        let mut expression_context = ExpressionContext::new();
+        let mut expression_context = ExpressionContext::default();
         let binding = order_by.binding(&mut expression_context);
 
         assert_binding!(binding, r#""people"."age" DESC"#);
@@ -65,14 +65,14 @@ mod test {
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
-            typ: PhysicalColumnType::Int,
+            typ: PhysicalColumnType::Int { bits: IntBits::_16 },
         };
         let age_col = Column::Physical(&age_col);
 
         {
             let order_by = OrderBy(vec![(&name_col, Ordering::Asc), (&age_col, Ordering::Desc)]);
 
-            let mut expression_context = ExpressionContext::new();
+            let mut expression_context = ExpressionContext::default();
             let binding = order_by.binding(&mut expression_context);
 
             assert_binding!(binding, r#""people"."name" ASC, "people"."age" DESC"#);
@@ -82,7 +82,7 @@ mod test {
         {
             let order_by = OrderBy(vec![(&age_col, Ordering::Desc), (&name_col, Ordering::Asc)]);
 
-            let mut expression_context = ExpressionContext::new();
+            let mut expression_context = ExpressionContext::default();
             let binding = order_by.binding(&mut expression_context);
 
             assert_binding!(binding, r#""people"."age" DESC, "people"."name" ASC"#);
