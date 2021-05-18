@@ -1,4 +1,4 @@
-use async_graphql_value::Value;
+use async_graphql_value::{Number, Value};
 use payas_model::{model::column_id::ColumnId, sql::column::IntBits};
 use typed_arena::Arena;
 
@@ -54,9 +54,8 @@ impl<'a> OperationContext<'a> {
                     .unwrap();
                 Column::Literal(Self::cast_value(value, &associated_column.typ))
             }
-            Value::Number(v) => {
-                // TODO: Work with the database schema to cast to appropriate i32/f32, etc types
-                Column::Literal(Box::new(v.as_i64().unwrap() as i32))
+            Value::Number(number) => {
+                Column::Literal(Self::cast_number(number, &associated_column.typ))
             }
             Value::String(v) => Column::Literal(Box::new(v.to_owned())),
             Value::Boolean(v) => Column::Literal(Box::new(*v)),
@@ -81,6 +80,18 @@ impl<'a> OperationContext<'a> {
             },
             PhysicalColumnType::String => Box::new(value.as_str().unwrap().to_string()),
             PhysicalColumnType::Boolean => Box::new(value.as_bool().unwrap()),
+        }
+    }
+
+    fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+        match destination_type {
+            PhysicalColumnType::Int { bits } => match bits {
+                IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
+                IntBits::_32 => Box::new(number.as_i64().unwrap() as i32),
+                IntBits::_64 => Box::new(number.as_i64().unwrap() as i64),
+            },
+            // TODO: Expand for other number types such as float
+            _ => panic!("Unexpected destination_type for number value"),
         }
     }
 }
