@@ -45,11 +45,9 @@ impl PhysicalColumnType {
             PhysicalColumnType::Int { bits } => {
                 if is_autoincrement {
                     match bits {
+                        IntBits::_16 => "SMALLSERIAL",
                         IntBits::_32 => "SERIAL",
                         IntBits::_64 => "BIGSERIAL",
-                        IntBits::_16 => {
-                            panic!("16 bit interger cannot be used as an autoincremented value")
-                        }
                     }
                 } else {
                     match bits {
