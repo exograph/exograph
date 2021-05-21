@@ -48,7 +48,7 @@ async fn resolve(
 async fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let ast_system = parser::parse_file(&args[1]);
-    let system = system_builder::build(ast_system.unwrap());
+    let system = system_builder::build(ast_system);
     let schema = Schema::new(&system);
 
     let database = Database::from_env();

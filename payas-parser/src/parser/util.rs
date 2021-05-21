@@ -1,23 +1,70 @@
-use super::Rule;
-
-use pest::{
-    error::Error,
-    iterators::{Pair, Pairs},
+use nom::character::complete::{one_of, space0};
+use nom::combinator::recognize;
+use nom::sequence::preceded;
+use nom::{
+    branch::alt,
+    character::complete::multispace0,
+    sequence::{pair, terminated},
 };
+use nom::{bytes::complete::escaped, combinator::map};
+use nom::{
+    bytes::complete::tag,
+    character::complete::{alpha1, alphanumeric1, char},
+};
+use nom::{combinator::cut, sequence::delimited};
+use nom::{error::context, multi::many0};
 
-// Copied from async-graphql-parser
-pub(super) fn next_if_rule<'a>(pairs: &mut Pairs<'a, Rule>, rule: Rule) -> Option<Pair<'a, Rule>> {
-    if pairs.peek().map_or(false, |pair| pair.as_rule() == rule) {
-        Some(pairs.next().unwrap())
-    } else {
-        None
-    }
+use super::PResult;
+
+pub fn ws<'a, F: 'a, O>(inner: F) -> impl FnMut(&'a str) -> PResult<&'a str, O>
+where
+    F: FnMut(&'a str) -> PResult<&'a str, O>,
+{
+    delimited(multispace0, inner, multispace0)
 }
 
-pub(super) fn parse_if_rule<T>(
-    pairs: &mut Pairs<Rule>,
-    rule: Rule,
-    f: impl FnOnce(Pair<Rule>) -> Result<T, Error<Rule>>,
-) -> Result<Option<T>, Error<Rule>> {
-    next_if_rule(pairs, rule).map(f).transpose()
+pub fn spaces<'a, F: 'a, O>(inner: F) -> impl FnMut(&'a str) -> PResult<&'a str, O>
+where
+    F: FnMut(&'a str) -> PResult<&'a str, O>,
+{
+    delimited(space0, inner, space0)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Identifier<'a>(pub &'a str);
+
+pub fn identifier<'a>(input: &'a str) -> PResult<&'a str, Identifier<'a>> {
+    map(
+        recognize(pair(
+            alt((alpha1, tag("_"))),
+            many0(alt((alphanumeric1, tag("_")))),
+        )),
+        |ident_str| Identifier(ident_str),
+    )(input)
+}
+
+pub fn quoted_identifier<'a>(input: &'a str) -> PResult<&'a str, Identifier<'a>> {
+    delimited(char('"'), identifier, char('"'))(input)
+}
+
+fn parse_str<'a>(input: &'a str) -> PResult<&'a str, &'a str> {
+    escaped(alphanumeric1, '\\', one_of("\"n\\"))(input)
+}
+
+pub fn string<'a>(input: &'a str) -> PResult<&'a str, &'a str> {
+    context(
+        "string",
+        preceded(char('\"'), cut(terminated(parse_str, char('\"')))),
+    )(input)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_identifier() {
+        assert_eq!(identifier("id"), Ok(("", Identifier("id"))));
+        assert_eq!(identifier("team_id"), Ok(("", Identifier("team_id"))));
+    }
 }
