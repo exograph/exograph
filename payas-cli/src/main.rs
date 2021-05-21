@@ -4,11 +4,9 @@ use payas_model::sql::{column::PhysicalColumn, PhysicalTable};
 use payas_parser::{builder::system_builder, parser};
 
 fn main() {
-    println!("Payas Client");
-
     let args: Vec<String> = env::args().collect();
     let ast_system = parser::parse_file(&args[1]);
-    let system = system_builder::build(ast_system.unwrap());
+    let system = system_builder::build(ast_system);
 
     let tables = system.tables;
 
