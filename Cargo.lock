@@ -1346,9 +1346,11 @@ dependencies = [
 name = "payas-parser"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "id-arena",
  "nom",
  "payas-model",
+ "tree-sitter",
 ]
 
 [[package]]
@@ -2224,6 +2226,16 @@ checksum = "ab7bb6f14721aa00656086e9335d363c5c8747bae02ebe32ea2c7dece5689b4c"
 dependencies = [
  "pin-project 0.4.27",
  "tracing",
+]
+
+[[package]]
+name = "tree-sitter"
+version = "0.19.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad726ec26496bf4c083fff0f43d4eb3a2ad1bba305323af5ff91383c0b6ecac0"
+dependencies = [
+ "cc",
+ "regex",
 ]
 
 [[package]]

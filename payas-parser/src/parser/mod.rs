@@ -4,6 +4,7 @@ use crate::ast::ast_types::*;
 
 use nom::{error::VerboseError, IResult};
 
+mod expression;
 mod model;
 mod util;
 
