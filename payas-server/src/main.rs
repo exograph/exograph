@@ -1,5 +1,6 @@
 use std::{env, sync::Arc};
 
+use actix_cors::Cors;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 use introspection::schema::Schema;
@@ -44,6 +45,30 @@ async fn resolve(
     )
 }
 
+fn cors_from_env() -> Cors {
+    const CORS_DOMAINS_PARAM: &str = "PAYAS_CORS_DOMAINS";
+
+    match env::var(CORS_DOMAINS_PARAM).ok() {
+        Some(domains) => {
+            let domains_list = domains.split(',');
+
+            let cors = domains_list.fold(Cors::default(), |cors, domain| {
+                if domain == "*" {
+                    cors.allow_any_origin()
+                } else {
+                    cors.allowed_origin(domain)
+                }
+            });
+
+            // TODO: Allow more control over headers, max_age etc
+            cors.allowed_methods(vec!["GET", "POST"])
+                .allow_any_header()
+                .max_age(3600)
+        }
+        None => Cors::default(),
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -57,7 +82,10 @@ async fn main() -> std::io::Result<()> {
     let system_info = Arc::new((system, schema, database));
 
     let server = HttpServer::new(move || {
+        let cors = cors_from_env();
+
         App::new()
+            .wrap(cors)
             .data(system_info.clone())
             .route("/", web::get().to(playground))
             .route("/", web::post().to(resolve))
