@@ -96,7 +96,7 @@ async fn main() -> std::io::Result<()> {
         .map(|port_str| port_str.parse::<u32>().unwrap())
         .unwrap_or(9876);
 
-    let server_url = format!("127.0.0.1:{}", server_port);
+    let server_url = format!("0.0.0.0:{}", server_port);
 
     println!("Started server on {}", server_url);
     server.bind(&server_url)?.run().await
