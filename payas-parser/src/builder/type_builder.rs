@@ -82,7 +82,8 @@ fn create_shallow_type(
         );
 
         let mutation_type_names = [
-            input_type_name(&model_type_name),
+            input_creation_type_name(&model_type_name),
+            input_update_type_name(&model_type_name),
             input_reference_type_name(&model_type_name),
         ];
 
@@ -188,41 +189,27 @@ fn expand_type2(
             }
 
             {
-                let input_type_fields = model_fields
-                    .into_iter()
-                    .flat_map(|field| match &field.relation {
-                        ModelRelation::Pk { .. } => None,
-                        ModelRelation::Scalar { .. } => Some(field),
-                        ModelRelation::ManyToOne { .. } => {
-                            let field_type_name = input_reference_type_name(&field.type_name);
-                            let field_type_id =
-                                building.mutation_types.get_id(&field_type_name).unwrap();
-                            let new_field = ModelField {
-                                name: field.name,
-                                type_id: field_type_id,
-                                type_name: field_type_name,
-                                type_modifier: field.type_modifier,
-                                relation: field.relation,
-                            };
-                            Some(new_field)
-                        }
-                        ModelRelation::OneToMany { .. } => {
-                            let field_type_name = input_reference_type_name(&field.type_name);
-                            let field_type_id =
-                                building.mutation_types.get_id(&field_type_name).unwrap();
-                            let new_field = ModelField {
-                                name: field.name,
-                                type_id: field_type_id,
-                                type_name: field_type_name,
-                                type_modifier: ModelTypeModifier::List,
-                                relation: field.relation,
-                            };
-                            Some(new_field)
-                        }
-                    })
-                    .collect();
+                let input_type_fields = compute_input_fields(&model_fields, building, None);
 
-                let existing_type_name = input_type_name(&ast_type.name);
+                let existing_type_name = input_creation_type_name(&ast_type.name);
+                let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+
+                building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
+                    fields: input_type_fields,
+                    table_id,
+                    pk_query,
+                    collection_query,
+                }
+            }
+
+            {
+                let input_type_fields = compute_input_fields(
+                    &model_fields,
+                    building,
+                    Some(ModelTypeModifier::Optional),
+                );
+
+                let existing_type_name = input_update_type_name(&ast_type.name);
                 let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
                 building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
@@ -234,6 +221,53 @@ fn expand_type2(
             }
         }
     }
+}
+
+fn compute_input_fields(
+    model_fields: &Vec<ModelField>,
+    building: &SystemContextBuilding,
+    override_field_modifier: Option<ModelTypeModifier>,
+) -> Vec<ModelField> {
+    model_fields
+        .into_iter()
+        .flat_map(|field| match &field.relation {
+            ModelRelation::Pk { .. } => None,
+            ModelRelation::Scalar { .. } => Some(ModelField {
+                type_modifier: override_field_modifier
+                    .as_ref()
+                    .unwrap_or(&field.type_modifier)
+                    .to_owned(),
+                ..field.clone()
+            }),
+            ModelRelation::ManyToOne { .. } => {
+                let field_type_name = input_reference_type_name(&field.type_name);
+                let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
+                let new_field = ModelField {
+                    name: field.name.clone(),
+                    type_id: field_type_id,
+                    type_name: field_type_name,
+                    type_modifier: override_field_modifier
+                        .as_ref()
+                        .unwrap_or(&field.type_modifier)
+                        .to_owned(),
+                    relation: field.relation.clone(),
+                };
+                Some(new_field)
+            }
+            ModelRelation::OneToMany { .. } => {
+                let field_type_name = input_reference_type_name(&field.type_name);
+                let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
+                let new_field = ModelField {
+                    name: field.name.clone(),
+                    type_id: field_type_id,
+                    type_name: field_type_name,
+                    type_modifier: ModelTypeModifier::List, // TODO: Use override_field_modifier once we support wrapping ModelTypeModifier
+                    relation: field.relation.clone(),
+                };
+                Some(new_field)
+            }
+        })
+        .collect()
 }
 
 fn create_field(
@@ -409,8 +443,12 @@ fn create_relation(
     }
 }
 
-pub fn input_type_name(model_type_name: &str) -> String {
-    format!("{}Input", model_type_name)
+pub fn input_creation_type_name(model_type_name: &str) -> String {
+    format!("{}CreationInput", model_type_name)
+}
+
+pub fn input_update_type_name(model_type_name: &str) -> String {
+    format!("{}UpdateInput", model_type_name)
 }
 
 pub fn input_reference_type_name(model_type_name: &str) -> String {
