@@ -37,7 +37,7 @@ fn build_create_mutation(
     ast_type: &AstType,
     building: &SystemContextBuilding,
 ) -> Mutation {
-    let data_param_type_name = type_builder::input_type_name(&ast_type.name);
+    let data_param_type_name = type_builder::input_creation_type_name(&ast_type.name);
     let data_param_type_id = building
         .mutation_types
         .get_id(&data_param_type_name)
@@ -96,7 +96,7 @@ fn build_update_mutations(
 ) -> Vec<Mutation> {
     let model_type = &building.types[model_type_id];
 
-    let data_param_type_name = type_builder::input_type_name(&ast_type.name);
+    let data_param_type_name = type_builder::input_update_type_name(&ast_type.name);
     let data_param_type_id = building
         .mutation_types
         .get_id(&data_param_type_name)
