@@ -15,6 +15,7 @@ pub struct OperationContext<'a> {
     pub query_context: &'a QueryContext<'a>,
     columns: Arena<Column<'a>>,
     predicates: Arena<Predicate<'a>>,
+    resolved_variables: Arena<Value>,
 }
 
 impl<'a> OperationContext<'a> {
@@ -23,6 +24,7 @@ impl<'a> OperationContext<'a> {
             query_context,
             columns: Arena::new(),
             predicates: Arena::new(),
+            resolved_variables: Arena::new(),
         }
     }
 
@@ -66,6 +68,31 @@ impl<'a> OperationContext<'a> {
         };
 
         self.create_column(column)
+    }
+
+    pub fn resolve_variable(&self, name: &str) -> Option<&Value> {
+        let resolved: Option<&serde_json::Value> = self
+            .query_context
+            .variables
+            .and_then(|variables| variables.get(name));
+
+        resolved.map(|json_value| {
+            let value = Value::from_json(json_value.to_owned()).unwrap();
+            let non_mut_value: &Value = self.resolved_variables.alloc(value);
+            non_mut_value
+        })
+    }
+
+    pub fn get_argument_field(
+        &'a self,
+        argument_value: &'a Value,
+        field_name: &str,
+    ) -> Option<&'a Value> {
+        match argument_value {
+            Value::Object(value) => value.get(field_name),
+            Value::Variable(name) => self.resolve_variable(name.as_str()),
+            _ => None,
+        }
     }
 
     fn cast_value(
