@@ -39,6 +39,10 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
                     .collect();
                 OrderBy(mapped)
             }
+            Value::Variable(name) => {
+                let resolved = operation_context.resolve_variable(name.as_str());
+                self.map_to_sql(resolved.unwrap(), operation_context)
+            }
             _ => todo!(), // Invalid
         }
     }
@@ -65,16 +69,19 @@ fn order_by_pair<'a>(
 }
 
 fn ordering(argument: &Value) -> Ordering {
-    match argument {
-        Value::Enum(value) => {
-            if value.as_str() == "ASC" {
-                Ordering::Asc
-            } else if value.as_str() == "DESC" {
-                Ordering::Desc
-            } else {
-                todo!() // return an error
-            }
+    fn str_ordering(value: &str) -> Ordering {
+        if value == "ASC" {
+            Ordering::Asc
+        } else if value == "DESC" {
+            Ordering::Desc
+        } else {
+            todo!() // return an error
         }
-        _ => todo!(), // return an error
+    }
+
+    match argument {
+        Value::Enum(value) => str_ordering(value.as_str()),
+        Value::String(value) => str_ordering(value.as_str()), // Needed when processing values from variables (that don't get mapped to the Enum type)
+        arg => panic!("Unable to process ordering argument {}", arg), // return an error
     }
 }
