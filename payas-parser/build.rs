@@ -3,8 +3,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
-    let sitter_out = Command::new("npx")
-        .arg("tree-sitter-cli@0.19.5")
+    let sitter_out = Command::new("tree-sitter")
         .arg("generate")
         .current_dir(fs::canonicalize("./grammar").unwrap())
         .output()

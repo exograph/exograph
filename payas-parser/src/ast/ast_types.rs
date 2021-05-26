@@ -1,10 +1,12 @@
+use serde::{Serialize, Deserialize};
+
 /// Type such as Int/String/... (primitive) and Concert/Venue/Person etc (composite)
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstSystem {
     pub types: Vec<AstType>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstType {
     pub name: String,
     pub kind: AstTypeKind,
@@ -17,7 +19,7 @@ impl AstType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstTypeKind {
     Primitive,
     Composite {
@@ -37,14 +39,14 @@ impl AstTypeKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstTypeModifier {
     Optional,
     NonNull,
     List,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstField {
     pub name: String,
     pub typ: AstFieldType,
@@ -59,14 +61,14 @@ impl AstField {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstRelation {
     Pk,
     Other { optional: bool },
     // TODO: Add other auto-geneatable columns (Date with now() etc)
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstFieldType {
     Int { autoincrement: bool },
     Other { name: String },

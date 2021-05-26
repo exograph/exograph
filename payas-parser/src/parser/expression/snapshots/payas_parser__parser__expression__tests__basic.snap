@@ -1,0 +1,12 @@
+---
+source: payas-parser/src/parser/expression/mod.rs
+expression: "convert_root(parsed.root_node(), src.as_bytes())"
+
+---
+types:
+  - name: Foo
+    kind:
+      Composite:
+        fields: []
+        table_name: ~
+

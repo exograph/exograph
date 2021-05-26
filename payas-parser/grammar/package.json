@@ -2,7 +2,7 @@
   "name": "grammar",
   "version": "0.0.0",
   "devDependencies": {
-    "tree-sitter-cli": "^0.19.5"
+    "tree-sitter-cli": "0.19.5"
   },
   "main": "bindings/node"
 }

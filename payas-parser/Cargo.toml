@@ -8,10 +8,13 @@ edition = "2018"
 tree-sitter = "0.19.5"
 nom = "6"
 id-arena = "2.2.1"
+serde = "1.0.125"
 payas-model = { path = "../payas-model" }
 
 [build-dependencies]
 cc="*"
 
-[lib]
+[dev-dependencies]
+insta = "1.7.0"
 
+[lib]

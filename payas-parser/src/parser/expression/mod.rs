@@ -1,5 +1,7 @@
 use tree_sitter::{Node, Tree};
 
+use crate::ast::ast_types::*;
+
 mod sitter_ffi;
 
 pub fn parse(input: &str) -> Option<Tree> {
@@ -9,19 +11,35 @@ pub fn parse(input: &str) -> Option<Tree> {
     tree
 }
 
-// #[derive(Debug, Clone, PartialEq)]
-// pub enum LogicalOp<'a> {
-//     Not(Box<AstExpr<'a>>),
-//     And(Box<AstExpr<'a>>, Box<AstExpr<'a>>),
-//     Or(Box<AstExpr<'a>>, Box<AstExpr<'a>>),
-// }
+pub fn convert_root(node: Node, source: &[u8]) -> AstSystem {
+    assert_eq!(node.kind(), "source_file");
+    let mut cursor = node.walk();
+    AstSystem {
+        types: node.children(&mut cursor).map(|c| convert_declaration(c, source)).collect()
+    }
+}
 
-// pub fn convert_node(node: Node) -> LogicalOp {
-//     match node.kind() {
-//         "source_file" => node.children().map(convert_node),
-//     }
-//     node.child_by_field_name("field_name").unwrap()
-// }
+pub fn convert_declaration(node: Node, source: &[u8]) -> AstType {
+    assert_eq!(node.kind(), "declaration");
+    let first_child = node.child(0).unwrap();
+    
+    match first_child.kind() {
+        "model" => convert_model(first_child, source),
+        o => panic!("unsupported declaration kind: {}", o)
+    }
+}
+
+pub fn convert_model(node: Node, source: &[u8]) -> AstType {
+    assert_eq!(node.kind(), "model");
+
+    AstType {
+        name: node.child_by_field_name("name").unwrap().utf8_text(source).unwrap().to_string(),
+        kind: AstTypeKind::Composite {
+            fields: vec![],
+            table_name: None
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -29,15 +47,12 @@ mod tests {
 
     #[test]
     fn basic() {
-        dbg!(parse(
-            r#"
+        let src = r#"
         model Foo {
             bar: Baz @auth(foo.bar | bar.baz)
         }
-        "#
-        )
-        .unwrap()
-        .root_node()
-        .to_sexp());
+        "#;
+        let parsed = parse(src).unwrap();
+        insta::assert_yaml_snapshot!(convert_root(parsed.root_node(), src.as_bytes()));
     }
 }

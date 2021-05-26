@@ -10,18 +10,16 @@ module.exports = grammar({
     model: $ => seq(
       repeat($.annotation),
       "model",
-      $.term,
-      "{",
-      repeat($.field),
-      "}"
+      field("name", $.term),
+      field("body", $.model_body)
     ),
+    model_body: $ => seq("{", repeat($.field), "}"),
     annotation: $ => seq(
       "@",
-      $.term,
-      "(",
-      repeat($.expression),
-      ")"
+      field("name", $.term),
+      field("params", $.param_list)
     ),
+    param_list: $ => seq("(", commaSep($.expression), ")"),
     field: $ => seq(
       $.term,
       ":",
@@ -47,3 +45,11 @@ module.exports = grammar({
     term: $ => /[a-zA-Z]+/,
   }
 });
+
+function commaSep1(rule) {
+  return seq(rule, repeat(seq(",", rule)))
+}
+
+function commaSep(rule) {
+  return optional(commaSep1(rule))
+}
