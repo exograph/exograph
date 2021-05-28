@@ -17,6 +17,12 @@ impl<V> MappedArena<V> {
         self.get_id(key).map(|id| &self[id])
     }
 
+    pub fn get_by_key_mut(&mut self, key: &str) -> Option<&mut V> {
+        if let Some(id) = self.get_id(key) {
+            Some(&mut self[id])
+        } else { None }
+    }
+
     pub fn add(&mut self, key: &str, typ: V) -> Id<V> {
         let id = self.values.alloc(typ);
         self.map.insert(key.to_string(), id);

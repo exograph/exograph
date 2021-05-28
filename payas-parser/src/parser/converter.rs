@@ -3,11 +3,6 @@ use tree_sitter::{Node, Tree};
 use crate::ast::ast_types::*;
 use super::sitter_ffi;
 
-struct AstAnnotation {
-    name: String,
-    params: Vec<AstExpr>
-}
-
 pub fn parse(input: &str) -> Option<Tree> {
     let mut parser = tree_sitter::Parser::new();
     parser.set_language(sitter_ffi::language()).unwrap();
@@ -22,11 +17,11 @@ pub fn convert_root(node: Node, source: &[u8]) -> AstSystem {
     }
     let mut cursor = node.walk();
     AstSystem {
-        types: node.children(&mut cursor).map(|c| convert_declaration(c, source)).collect()
+        models: node.children(&mut cursor).map(|c| convert_declaration(c, source)).collect()
     }
 }
 
-pub fn convert_declaration(node: Node, source: &[u8]) -> AstType {
+pub fn convert_declaration(node: Node, source: &[u8]) -> AstModel {
     assert_eq!(node.kind(), "declaration");
     let first_child = node.child(0).unwrap();
 
@@ -36,15 +31,15 @@ pub fn convert_declaration(node: Node, source: &[u8]) -> AstType {
     }
 }
 
-pub fn convert_model(node: Node, source: &[u8]) -> AstType {
+pub fn convert_model(node: Node, source: &[u8]) -> AstModel {
     assert_eq!(node.kind(), "model");
+    
+    let mut cursor = node.walk();
 
-    AstType {
+    AstModel {
         name: node.child_by_field_name("name").unwrap().utf8_text(source).unwrap().to_string(),
-        kind: AstTypeKind::Composite {
-            fields: convert_fields(node.child_by_field_name("body").unwrap(), source),
-            table_name: None
-        }
+        fields: convert_fields(node.child_by_field_name("body").unwrap(), source),
+        annotations: node.children_by_field_name("annotation", &mut cursor).map(|c| convert_annotation(c, source)).collect()
     }
 }
 
@@ -57,52 +52,31 @@ pub fn convert_field(node: Node, source: &[u8]) -> AstField {
     assert_eq!(node.kind(), "field");
 
     let mut cursor = node.walk();
-    let annotations: Vec<_> = node.children_by_field_name("annotation", &mut cursor).map(|c| convert_annotation(c, source)).collect();
-
-    let mut column_name: Option<String> = None;
-    let mut auth: Option<AstExpr> = None;
-
-    for annotation in annotations {
-        match annotation.name.as_str() {
-            "column" => {
-                if column_name.is_some() {
-                    panic!("duplicate column annotations")
-                } else {
-                    assert!(annotation.params.len() == 1);
-                    if let AstExpr::StringLiteral(ref value) = annotation.params[0] { 
-                        column_name = Some(value.clone());
-                    } else {
-                        panic!("expected literal string")
-                    };
-                }
-            }
-
-            "auth" => {
-                if auth.is_some() {
-                    panic!("duplicate auth annotations")
-                } else {
-                    assert!(annotation.params.len() == 1);
-                    auth = Some(annotation.params[0].clone());
-                }
-            }
-
-            o => panic!("unexpected annotation: {}", o)
-        }
-    }
 
     AstField {
         name: node.child_by_field_name("name").unwrap().utf8_text(source).unwrap().to_string(),
         typ: AstFieldType::Plain(
-            AstType {
-                name: node.child_by_field_name("type").unwrap().utf8_text(source).unwrap().to_string(),
-                kind: AstTypeKind::Other
-            }
+            node.child_by_field_name("type").unwrap().utf8_text(source).unwrap().to_string()
         ),
-        relation: AstRelation::Other {
-            optional: false
-        },
-        column_name: column_name,
-        auth: auth
+        annotations: node.children_by_field_name("annotation", &mut cursor).map(|c| convert_annotation(c, source)).collect()
+    }
+}
+
+pub fn convert_type(node: Node, source: &[u8]) -> AstFieldType {
+    assert_eq!(node.kind(), "type");
+    let first_child = node.child(0).unwrap();
+
+    match first_child.kind() {
+        "term" => AstFieldType::Plain(
+            first_child.utf8_text(source).unwrap().to_string()
+        ),
+        "array_type" => AstFieldType::List(
+            Box::new(convert_type(first_child.child_by_field_name("inner").unwrap(), source))
+        ),
+        "optional_type" => AstFieldType::Optional(
+            Box::new(convert_type(first_child.child_by_field_name("inner").unwrap(), source))
+        ),
+        o => panic!("unsupported declaration kind: {}", o)
     }
 }
 
@@ -221,7 +195,6 @@ mod tests {
         }
         "#;
         let parsed = parse(src).unwrap();
-        dbg!(parsed.root_node().to_sexp());
         insta::assert_yaml_snapshot!(convert_root(parsed.root_node(), src.as_bytes()));
     }
 
@@ -243,7 +216,6 @@ mod tests {
         }
         "#;
         let parsed = parse(src).unwrap();
-        dbg!(parsed.root_node().to_sexp());
         insta::assert_yaml_snapshot!(convert_root(parsed.root_node(), src.as_bytes()));
     }
 }

@@ -12,7 +12,7 @@ module.exports = grammar({
       $.model
     ),
     model: $ => seq(
-      repeat($.annotation),
+      repeat(field("annotation", $.annotation)),
       "model",
       field("name", $.term),
       field("body", $.model_body)
@@ -21,16 +21,25 @@ module.exports = grammar({
     annotation: $ => seq(
       "@",
       field("name", $.term),
-      "(",
-      commaSep(field("param", $.expression)),
-      ")"
+      optional(seq(
+        "(",
+        commaSep(field("param", $.expression)),
+        ")"
+      ))
     ),
     field: $ => seq(
       field("name", $.term),
       ":",
-      field("type", $.term),
+      field("type", $.type),
       repeat(field("annotation", $.annotation))
     ),
+    type: $ => choice(
+      $.array_type,
+      $.optional_type,
+      $.term
+    ),
+    array_type: $ => seq("[", field("inner", $.type), "]"),
+    optional_type: $ => seq(field("inner", $.type), "?"),
     expression: $ => choice(
       $.parenthetical,
       prec(1, $.logical_op),

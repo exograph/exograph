@@ -1,0 +1,42 @@
+---
+source: payas-parser/src/builder/typechecking.rs
+expression: "checked.get_by_key(\"User\").unwrap()"
+
+---
+Composite:
+  name: User
+  fields:
+    - name: document
+      typ:
+        Reference: Doc
+      annotations:
+        - name: column
+          params:
+            - expr:
+                StringLiteral: custom_column
+              typ: Defer
+        - name: auth
+          params:
+            - expr:
+                LogicalOp:
+                  Or:
+                    - RelationalOp:
+                        Eq:
+                          - FieldSelection:
+                              Select:
+                                - Single: self
+                                - role
+                          - StringLiteral: role_admin
+                    - RelationalOp:
+                        Eq:
+                          - FieldSelection:
+                              Select:
+                                - Single: self
+                                - role
+                          - StringLiteral: role_superuser
+              typ: Defer
+    - name: role
+      typ: Defer
+      annotations: []
+  annotations: []
+
