@@ -15,6 +15,11 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
         let system = operation_context.query_context.system;
         let parameter_type = &system.predicate_types[self.type_id];
 
+        let argument_value = match argument_value {
+            Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
+            _ => argument_value,
+        };
+
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_column, op_value_column) =
@@ -23,32 +28,28 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
             }
             PredicateParameterTypeKind::Opeartor(parameters) => {
                 parameters.iter().fold(Predicate::True, |acc, parameter| {
-                    let new_predicate =
-                        match super::get_argument_field(argument_value, &parameter.name) {
-                            Some(op_value) => {
-                                let (op_key_column, op_value_column) =
-                                    operands(self, op_value, operation_context);
-                                Predicate::from_name(
-                                    &parameter.name,
-                                    op_key_column,
-                                    op_value_column,
-                                )
-                            }
-                            None => Predicate::True,
-                        };
+                    let arg = operation_context.get_argument_field(argument_value, &parameter.name);
+                    let new_predicate = match arg {
+                        Some(op_value) => {
+                            let (op_key_column, op_value_column) =
+                                operands(self, op_value, operation_context);
+                            Predicate::from_name(&parameter.name, op_key_column, op_value_column)
+                        }
+                        None => Predicate::True,
+                    };
 
                     Predicate::And(Box::new(acc), Box::new(new_predicate))
                 })
             }
             PredicateParameterTypeKind::Composite(parameters) => {
                 parameters.iter().fold(Predicate::True, |acc, parameter| {
-                    let new_predicate =
-                        match super::get_argument_field(argument_value, &parameter.name) {
-                            Some(argument_value_component) => {
-                                parameter.map_to_sql(argument_value_component, operation_context)
-                            }
-                            None => Predicate::True,
-                        };
+                    let arg = operation_context.get_argument_field(argument_value, &parameter.name);
+                    let new_predicate = match arg {
+                        Some(argument_value_component) => {
+                            parameter.map_to_sql(argument_value_component, operation_context)
+                        }
+                        None => Predicate::True,
+                    };
 
                     Predicate::And(Box::new(acc), Box::new(new_predicate))
                 })

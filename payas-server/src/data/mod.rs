@@ -29,13 +29,6 @@ fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Value> {
     })
 }
 
-fn get_argument_field<'a>(argument_value: &'a Value, field_name: &str) -> Option<&'a Value> {
-    match argument_value {
-        Value::Object(value) => value.get(field_name),
-        _ => None,
-    }
-}
-
 fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,

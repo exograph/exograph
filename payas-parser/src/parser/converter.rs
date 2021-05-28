@@ -92,10 +92,12 @@ pub fn convert_field(node: Node, source: &[u8]) -> AstField {
 
     AstField {
         name: node.child_by_field_name("name").unwrap().utf8_text(source).unwrap().to_string(),
-        typ: AstFieldType::Other {
-            name: node.child_by_field_name("type").unwrap().utf8_text(source).unwrap().to_string()
-        },
-        type_modifier: AstTypeModifier::NonNull,
+        typ: AstFieldType::Plain(
+            AstType {
+                name: node.child_by_field_name("type").unwrap().utf8_text(source).unwrap().to_string(),
+                kind: AstTypeKind::Other
+            }
+        ),
         relation: AstRelation::Other {
             optional: false
         },

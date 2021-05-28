@@ -98,7 +98,7 @@ fn create_composite_filter_type_kind(
     let parameters = fields
         .iter()
         .map(|field| {
-            let param_type_name = get_parameter_type_name(&field.type_name);
+            let param_type_name = get_parameter_type_name(&field.typ.type_name());
             PredicateParameter {
                 name: field.name.to_string(),
                 type_name: param_type_name.clone(),
