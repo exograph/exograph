@@ -55,8 +55,13 @@ impl TypeDefinitionProvider for ModelType {
 
 impl FieldDefinitionProvider for ModelField {
     fn field_definition(&self, system: &ModelSystem) -> FieldDefinition {
+        let type_modifier = match &self.typ {
+            ModelFieldType::Optional(_) => ModelTypeModifier::Optional,
+            ModelFieldType::Plain { .. } => ModelTypeModifier::NonNull,
+            ModelFieldType::List(_) => ModelTypeModifier::List,
+        };
         let field_type =
-            util::default_positioned(util::value_type(&self.type_name, &self.type_modifier));
+            util::default_positioned(util::value_type(&self.typ.type_name(), &type_modifier));
 
         let arguments = match self.relation {
             ModelRelation::Pk { .. }

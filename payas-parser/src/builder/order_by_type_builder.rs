@@ -101,7 +101,7 @@ pub fn new_field_param(
     model_field: &ModelField,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    let field_model_type = &building.types[model_field.type_id];
+    let field_model_type = &building.types[model_field.typ.type_id().to_owned()];
 
     let column_id = match &model_field.relation {
         ModelRelation::Pk { column_id, .. } | ModelRelation::Scalar { column_id, .. } => {
@@ -140,5 +140,8 @@ fn order_by_param_type(
 }
 
 fn is_primitive(kind: &AstTypeKind) -> bool {
-    matches!(kind, AstTypeKind::Primitive)
+    match kind {
+        AstTypeKind::Composite { .. } => false,
+        _ => true,
+    }
 }

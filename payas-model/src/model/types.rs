@@ -73,8 +73,43 @@ pub enum ModelTypeModifier {
 #[derive(Debug, Clone)]
 pub struct ModelField {
     pub name: String,
-    pub type_id: Id<ModelType>,
-    pub type_name: String,
-    pub type_modifier: ModelTypeModifier,
+    pub typ: ModelFieldType,
     pub relation: ModelRelation,
+}
+
+#[derive(Debug, Clone)]
+pub enum ModelFieldType {
+    Optional(Box<ModelFieldType>),
+    Plain {
+        type_id: Id<ModelType>,
+        type_name: String,
+    },
+    List(Box<ModelFieldType>),
+}
+
+impl ModelFieldType {
+    pub fn type_id(&self) -> &Id<ModelType> {
+        match self {
+            ModelFieldType::Optional(underlying) | ModelFieldType::List(underlying) => {
+                underlying.type_id()
+            }
+            ModelFieldType::Plain { type_id, .. } => type_id,
+        }
+    }
+
+    pub fn type_name(&self) -> &str {
+        match self {
+            ModelFieldType::Optional(underlying) | ModelFieldType::List(underlying) => {
+                underlying.type_name()
+            }
+            ModelFieldType::Plain { type_name, .. } => type_name,
+        }
+    }
+
+    pub fn optional(&self) -> Self {
+        match self {
+            ModelFieldType::Optional(_) => self.clone(),
+            _ => ModelFieldType::Optional(Box::new(self.clone())),
+        }
+    }
 }
