@@ -5,23 +5,23 @@ use crate::introspection::util;
 
 use payas_model::model::{
     operation::MutationDataParameter, order::*, predicate::PredicateParameter, types::ModelField,
-    types::ModelTypeModifier,
+    types::ModelTypeModifier, ModelFieldType,
 };
 
 use super::provider::InputValueProvider;
 
 pub trait Parameter {
-    fn name(&self) -> &String;
-    fn type_name(&self) -> &String;
+    fn name(&self) -> &str;
+    fn type_name(&self) -> &str;
     fn type_modifier(&self) -> &ModelTypeModifier;
 }
 
 impl Parameter for OrderByParameter {
-    fn name(&self) -> &String {
+    fn name(&self) -> &str {
         &self.name
     }
 
-    fn type_name(&self) -> &String {
+    fn type_name(&self) -> &str {
         &self.type_name
     }
 
@@ -31,11 +31,11 @@ impl Parameter for OrderByParameter {
 }
 
 impl Parameter for PredicateParameter {
-    fn name(&self) -> &String {
+    fn name(&self) -> &str {
         &self.name
     }
 
-    fn type_name(&self) -> &String {
+    fn type_name(&self) -> &str {
         &self.type_name
     }
 
@@ -45,11 +45,11 @@ impl Parameter for PredicateParameter {
 }
 
 impl Parameter for MutationDataParameter {
-    fn name(&self) -> &String {
+    fn name(&self) -> &str {
         &self.name
     }
 
-    fn type_name(&self) -> &String {
+    fn type_name(&self) -> &str {
         &self.type_name
     }
 
@@ -59,16 +59,20 @@ impl Parameter for MutationDataParameter {
 }
 
 impl Parameter for ModelField {
-    fn name(&self) -> &String {
+    fn name(&self) -> &str {
         &self.name
     }
 
-    fn type_name(&self) -> &String {
-        &self.type_name
+    fn type_name(&self) -> &str {
+        self.typ.type_name()
     }
 
     fn type_modifier(&self) -> &ModelTypeModifier {
-        &self.type_modifier
+        match self.typ {
+            ModelFieldType::Optional(_) => &ModelTypeModifier::Optional,
+            ModelFieldType::Plain { .. } => &ModelTypeModifier::NonNull,
+            ModelFieldType::List(_) => &ModelTypeModifier::List,
+        }
     }
 }
 

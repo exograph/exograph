@@ -19,7 +19,10 @@ impl AstType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstTypeKind {
-    Primitive,
+    Int {
+        autoincrement: bool,
+    },
+    Other, // For now, catch-all for other primitive types TODO: Add a variant for each supported primitive type
     Composite {
         fields: Vec<AstField>,
         table_name: Option<String>,
@@ -29,26 +32,18 @@ pub enum AstTypeKind {
 impl AstTypeKind {
     fn pk_field(&self) -> Option<&AstField> {
         match self {
-            AstTypeKind::Primitive => None,
             AstTypeKind::Composite { fields, .. } => fields
                 .iter()
                 .find(|field| matches!(&field.relation, AstRelation::Pk { .. })),
+            _ => None,
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum AstTypeModifier {
-    Optional,
-    NonNull,
-    List,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AstField {
     pub name: String,
     pub typ: AstFieldType,
-    pub type_modifier: AstTypeModifier,
     pub relation: AstRelation,
     pub column_name: Option<String>, // interpreted as self column, except for OneToMany where it is interpreted as the other table's column
 }
@@ -68,15 +63,25 @@ pub enum AstRelation {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AstFieldType {
-    Int { autoincrement: bool },
-    Other { name: String },
+    Plain(AstType),
+    Optional(Box<AstFieldType>),
+    List(Box<AstFieldType>),
 }
 
 impl AstFieldType {
     pub fn name(&self) -> String {
         match self {
-            AstFieldType::Int { .. } => "Int".to_string(),
-            AstFieldType::Other { name } => name.to_owned(),
+            AstFieldType::Optional(underlying) | AstFieldType::List(underlying) => {
+                underlying.name()
+            }
+            AstFieldType::Plain(base_type) => base_type.name.clone(),
+        }
+    }
+
+    pub fn optional(&self) -> Self {
+        match self {
+            AstFieldType::Optional(_) => self.clone(),
+            _ => AstFieldType::Optional(Box::new(self.clone())),
         }
     }
 }
