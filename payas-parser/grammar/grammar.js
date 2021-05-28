@@ -1,3 +1,7 @@
+const logical_level = 1;
+const relational_level = logical_level + 1;
+const not_level = relational_level + 1;
+
 module.exports = grammar({
   name: 'grammar',
 
@@ -13,36 +17,80 @@ module.exports = grammar({
       field("name", $.term),
       field("body", $.model_body)
     ),
-    model_body: $ => seq("{", repeat($.field), "}"),
+    model_body: $ => seq("{", repeat(field("field", $.field)), "}"),
     annotation: $ => seq(
       "@",
       field("name", $.term),
-      field("params", $.param_list)
+      "(",
+      commaSep(field("param", $.expression)),
+      ")"
     ),
-    param_list: $ => seq("(", commaSep($.expression), ")"),
     field: $ => seq(
-      $.term,
+      field("name", $.term),
       ":",
-      $.term,
-      repeat($.annotation)
+      field("type", $.term),
+      repeat(field("annotation", $.annotation))
     ),
     expression: $ => choice(
+      $.parenthetical,
+      prec(1, $.logical_op),
+      prec(3, $.relational_op),
       $.selection,
-      $.logical_or
+      $.literal_str
     ),
+    parenthetical: $ => seq("(", $.expression, ")"),
     selection: $ => choice(
-      seq(
-        $.selection,
-        ".",
-        $.term
-      ),
+      $.selection_select,
       $.term
     ),
-    logical_or: $ => prec.left(1, seq(
-      $.expression, "|", $.expression
+    selection_select: $ => seq(
+      field("prefix", $.selection),
+      ".",
+      field("term", $.term)
+    ),
+    logical_op: $ => choice(
+      $.logical_or,
+      $.logical_and,
+      $.logical_not
+    ),
+    logical_or: $ => prec.left(logical_level, seq(
+      field("left", $.expression), "||", field("right", $.expression)
+    )),
+    logical_and: $ => prec.left(logical_level, seq(
+      field("left", $.expression), "&&", field("right", $.expression)
+    )),
+    logical_not: $ => prec(not_level, seq(
+      "!", field("value", $.expression)
+    )),
+    relational_op: $ => choice(
+      $.relational_eq,
+      $.relational_neq,
+      $.relational_lt,
+      $.relational_lte,
+      $.relational_gt,
+      $.relational_gte
+    ),
+    relational_eq: $ => prec.left(relational_level, seq(
+      field("left", $.expression), "==", field("right", $.expression)
+    )),
+    relational_neq: $ => prec.left(relational_level, seq(
+      field("left", $.expression), "!=", field("right", $.expression)
+    )),
+    relational_lt: $ => prec.left(relational_level, seq(
+      field("left", $.expression), "<", field("right", $.expression)
+    )),
+    relational_lte: $ => prec.left(relational_level, seq(
+      field("left", $.expression), "<=", field("right", $.expression)
+    )),
+    relational_gt: $ => prec.left(relational_level, seq(
+      field("left", $.expression), ">", field("right", $.expression)
+    )),
+    relational_gte: $ => prec.left(relational_level, seq(
+      field("left", $.expression), ">=", field("right", $.expression)
     )),
     number: $ => /\d+/,
-    term: $ => /[a-zA-Z]+/,
+    term: $ => /[a-zA-Z_]+/,
+    literal_str: $ => seq("\"", field("value", $.term), "\""),
   }
 });
 

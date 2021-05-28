@@ -53,6 +53,7 @@ pub struct AstField {
     pub type_modifier: AstTypeModifier,
     pub relation: AstRelation,
     pub column_name: Option<String>, // interpreted as self column, except for OneToMany where it is interpreted as the other table's column
+    pub auth: Option<AstExpr>
 }
 
 impl AstField {
@@ -82,3 +83,37 @@ impl AstFieldType {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstExpr {
+    FieldSelection(FieldSelection),
+    LogicalOp(LogicalOp),
+    RelationalOp(RelationalOp),
+    StringLiteral(String),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum LogicalOp {
+    Not(Box<AstExpr>),
+    And(Box<AstExpr>, Box<AstExpr>),
+    Or(Box<AstExpr>, Box<AstExpr>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum RelationalOp {
+    Eq(Box<AstExpr>, Box<AstExpr>),
+    Neq(Box<AstExpr>, Box<AstExpr>),
+    Lt(Box<AstExpr>, Box<AstExpr>),
+    Lte(Box<AstExpr>, Box<AstExpr>),
+    Gt(Box<AstExpr>, Box<AstExpr>),
+    Gte(Box<AstExpr>, Box<AstExpr>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum FieldSelection {
+    Single(Identifier),
+    Select(Box<FieldSelection>, Identifier),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct Identifier(pub String);
