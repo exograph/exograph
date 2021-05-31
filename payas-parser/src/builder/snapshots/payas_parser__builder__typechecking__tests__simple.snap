@@ -1,42 +1,67 @@
 ---
 source: payas-parser/src/builder/typechecking.rs
-expression: "checked.get_by_key(\"User\").unwrap()"
+expression: types
 
 ---
-Composite:
-  name: User
-  fields:
-    - name: document
-      typ:
-        Reference: Doc
-      annotations:
-        - name: column
-          params:
-            - expr:
-                StringLiteral: custom_column
-              typ: Defer
-        - name: auth
-          params:
-            - expr:
-                LogicalOp:
-                  Or:
-                    - RelationalOp:
-                        Eq:
-                          - FieldSelection:
-                              Select:
-                                - Single: self
-                                - role
-                          - StringLiteral: role_admin
-                    - RelationalOp:
-                        Eq:
-                          - FieldSelection:
-                              Select:
-                                - Single: self
-                                - role
-                          - StringLiteral: role_superuser
-              typ: Defer
-    - name: role
-      typ: Defer
+- - Doc
+  - Composite:
+      name: Doc
+      fields:
+        - name: is_public
+          typ:
+            Primitive: BOOLEAN
+          annotations: []
       annotations: []
-  annotations: []
+- - User
+  - Composite:
+      name: User
+      fields:
+        - name: doc
+          typ:
+            Reference: Doc
+          annotations:
+            - name: column
+              params:
+                - StringLiteral:
+                    Primitive: STRING
+            - name: auth
+              params:
+                - LogicalOp:
+                    Or:
+                      - LogicalOp:
+                          Or:
+                            - RelationalOp:
+                                Eq:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            Reference: User
+                                        - Primitive: STRING
+                                  - StringLiteral:
+                                      Primitive: STRING
+                                  - Primitive: BOOLEAN
+                            - RelationalOp:
+                                Eq:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            Reference: User
+                                        - Primitive: STRING
+                                  - StringLiteral:
+                                      Primitive: STRING
+                                  - Primitive: BOOLEAN
+                            - Primitive: BOOLEAN
+                      - FieldSelection:
+                          Select:
+                            - Select:
+                                - Single:
+                                    Reference: User
+                                - Reference: Doc
+                            - Primitive: BOOLEAN
+                      - Primitive: BOOLEAN
+        - name: role
+          typ:
+            Primitive: STRING
+          annotations: []
+      annotations: []
 

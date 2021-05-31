@@ -14,7 +14,7 @@ use payas_model::{
 };
 
 use crate::ast::ast_types::AstSystem;
-use crate::builder::typechecking::Typecheck;
+use crate::builder::typechecking::{Typecheck, Scope};
 
 use super::{mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder, typechecking::Type};
 
@@ -34,9 +34,10 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
 
     loop {
         let mut did_change = false;
+        let init_scope = Scope { enclosing_model: None };
         for model in ast_types {
             let mut typ = types_arena.get_by_key_mut(model.name.as_str()).unwrap().clone();
-            let pass_res = model.pass(&mut typ, &types_arena);
+            let pass_res = model.pass(&mut typ, &types_arena, &init_scope);
             if pass_res {
                 *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
                 did_change = true;

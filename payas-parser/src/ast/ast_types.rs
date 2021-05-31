@@ -60,6 +60,12 @@ pub enum AstExpr {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum FieldSelection {
+    Single(Identifier),
+    Select(Box<FieldSelection>, Identifier),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum LogicalOp {
     Not(Box<AstExpr>),
     And(Box<AstExpr>, Box<AstExpr>),
@@ -74,12 +80,6 @@ pub enum RelationalOp {
     Lte(Box<AstExpr>, Box<AstExpr>),
     Gt(Box<AstExpr>, Box<AstExpr>),
     Gte(Box<AstExpr>, Box<AstExpr>),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum FieldSelection {
-    Single(Identifier),
-    Select(Box<FieldSelection>, Identifier),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
