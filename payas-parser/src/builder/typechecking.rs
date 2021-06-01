@@ -1,6 +1,9 @@
 use std::ops::Deref;
 
-use payas_model::{model::mapped_arena::MappedArena, sql::column::{IntBits, PhysicalColumnType}};
+use payas_model::{
+    model::mapped_arena::MappedArena,
+    sql::column::{IntBits, PhysicalColumnType},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::{
@@ -89,7 +92,7 @@ impl Type {
 pub struct CompositeType {
     pub name: String,
     pub fields: Vec<TypedField>,
-    pub annotations: Vec<TypedAnnotation>
+    pub annotations: Vec<TypedAnnotation>,
 }
 
 impl CompositeType {
@@ -110,7 +113,7 @@ impl PrimitiveType {
         match &self {
             PrimitiveType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
             PrimitiveType::String => PhysicalColumnType::String,
-            PrimitiveType::Boolean => PhysicalColumnType::Boolean
+            PrimitiveType::Boolean => PhysicalColumnType::Boolean,
         }
     }
 }

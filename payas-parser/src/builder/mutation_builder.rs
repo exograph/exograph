@@ -8,7 +8,10 @@ use payas_model::model::{
     types::GqlTypeModifier,
 };
 
-use super::{system_builder::SystemContextBuilding, typechecking::{CompositeType, Type}};
+use super::{
+    system_builder::SystemContextBuilding,
+    typechecking::{CompositeType, Type},
+};
 
 pub fn build(models: &[Type], building: &mut SystemContextBuilding) {
     for model in models.iter() {

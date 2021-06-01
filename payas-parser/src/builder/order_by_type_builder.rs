@@ -47,22 +47,22 @@ pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> Str
 fn create_shallow_type(model: &Type) -> OrderByParameterType {
     OrderByParameterType {
         name: match &model {
-            Type::Primitive(p) => get_parameter_type_name(match p {
-                PrimitiveType::Boolean => "Boolean",
-                PrimitiveType::Int => "Int",
-                PrimitiveType::String => "String"
-            }, true),
+            Type::Primitive(p) => get_parameter_type_name(
+                match p {
+                    PrimitiveType::Boolean => "Boolean",
+                    PrimitiveType::Int => "Int",
+                    PrimitiveType::String => "String",
+                },
+                true,
+            ),
             Type::Composite(c) => get_parameter_type_name(c.name.as_str(), false),
-            _ => panic!()
+            _ => panic!(),
         },
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },
     }
 }
 
-fn expand_type(
-    model_type: &GqlType,
-    building: &SystemContextBuilding,
-) -> OrderByParameterTypeKind {
+fn expand_type(model_type: &GqlType, building: &SystemContextBuilding) -> OrderByParameterTypeKind {
     match &model_type.kind {
         GqlTypeKind::Primitive => OrderByParameterTypeKind::Primitive,
         GqlTypeKind::Composite { fields, .. } => {

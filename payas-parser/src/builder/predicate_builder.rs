@@ -1,6 +1,10 @@
 use payas_model::model::types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier};
 
-use super::{system_builder::SystemContextBuilding, type_builder::PRIMITIVE_TYPE_NAMES, typechecking::{CompositeType, Type}};
+use super::{
+    system_builder::SystemContextBuilding,
+    type_builder::PRIMITIVE_TYPE_NAMES,
+    typechecking::{CompositeType, Type},
+};
 use payas_model::model::predicate::*;
 
 pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
@@ -55,10 +59,7 @@ fn create_shallow_type(model: &CompositeType) -> PredicateParameterType {
     }
 }
 
-fn expand_type(
-    gql_type: &GqlType,
-    building: &SystemContextBuilding,
-) -> PredicateParameterTypeKind {
+fn expand_type(gql_type: &GqlType, building: &SystemContextBuilding) -> PredicateParameterTypeKind {
     match &gql_type.kind {
         GqlTypeKind::Primitive => create_operator_filter_type_kind(gql_type, building),
         GqlTypeKind::Composite { fields, .. } => {

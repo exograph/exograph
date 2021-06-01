@@ -70,7 +70,7 @@ impl Parameter for GqlField {
     fn type_modifier(&self) -> &GqlTypeModifier {
         match self.typ {
             GqlFieldType::Optional(_) => &GqlTypeModifier::Optional,
-            GqlFieldType::Plain { .. } => &GqlTypeModifier::NonNull,
+            GqlFieldType::Reference { .. } => &GqlTypeModifier::NonNull,
             GqlFieldType::List(_) => &GqlTypeModifier::List,
         }
     }

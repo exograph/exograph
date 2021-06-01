@@ -12,7 +12,10 @@ use payas_model::{
 
 use crate::ast::ast_types::AstSystem;
 
-use super::{mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder, typechecking::Type};
+use super::{
+    mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,
+    typechecking::Type,
+};
 
 pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut building = SystemContextBuilding::default();

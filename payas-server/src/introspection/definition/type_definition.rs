@@ -57,16 +57,16 @@ impl FieldDefinitionProvider for GqlField {
     fn field_definition(&self, system: &ModelSystem) -> FieldDefinition {
         let type_modifier = match &self.typ {
             GqlFieldType::Optional(_) => GqlTypeModifier::Optional,
-            GqlFieldType::Plain { .. } => GqlTypeModifier::NonNull,
+            GqlFieldType::Reference { .. } => GqlTypeModifier::NonNull,
             GqlFieldType::List(_) => GqlTypeModifier::List,
         };
         let field_type =
             util::default_positioned(util::value_type(&self.typ.type_name(), &type_modifier));
 
         let arguments = match self.relation {
-            GqlRelation::Pk { .. }
-            | GqlRelation::Scalar { .. }
-            | GqlRelation::ManyToOne { .. } => vec![],
+            GqlRelation::Pk { .. } | GqlRelation::Scalar { .. } | GqlRelation::ManyToOne { .. } => {
+                vec![]
+            }
             GqlRelation::OneToMany { other_type_id, .. } => {
                 let other_type = &system.types[other_type_id];
                 match other_type.kind {

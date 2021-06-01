@@ -1,16 +1,19 @@
 use core::panic;
 
 use id_arena::Id;
-use payas_model::{model::{GqlFieldType, column_id::ColumnId, mapped_arena::MappedArena, relation::GqlRelation}, sql::{
+use payas_model::{
+    model::{column_id::ColumnId, mapped_arena::MappedArena, relation::GqlRelation, GqlFieldType},
+    sql::{
         column::{ColumnReferece, PhysicalColumn},
         PhysicalTable,
-    }};
+    },
+};
 
-use super::{system_builder::SystemContextBuilding, typechecking::CompositeType};
 use super::{
     query_builder,
     typechecking::{PrimitiveType, Type, TypedField},
 };
+use super::{system_builder::SystemContextBuilding, typechecking::CompositeType};
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
@@ -33,10 +36,7 @@ pub fn build_shallow(models: &MappedArena<Type>, building: &mut SystemContextBui
     }
 }
 
-pub fn build_expanded(
-    env: &MappedArena<Type>,
-    building: &mut SystemContextBuilding,
-) {
+pub fn build_expanded(env: &MappedArena<Type>, building: &mut SystemContextBuilding) {
     for (_, model_type) in env.iter() {
         if let Type::Composite(c) = &model_type {
             expand_type1(c, building, env);
@@ -49,10 +49,7 @@ pub fn build_expanded(
     }
 }
 
-fn create_shallow_type(
-    model_type: &CompositeType,
-    building: &mut SystemContextBuilding,
-) {
+fn create_shallow_type(model_type: &CompositeType, building: &mut SystemContextBuilding) {
     building.types.add(
         &model_type.name,
         GqlType {
@@ -82,13 +79,18 @@ fn create_shallow_type(
 
 // Expand type except for model fields. This allows types to become `Composite` and `table_id` for any type
 // can be accessed when building fields
-fn expand_type1(model_type: &CompositeType, building: &mut SystemContextBuilding, env: &MappedArena<Type>) {
+fn expand_type1(
+    model_type: &CompositeType,
+    building: &mut SystemContextBuilding,
+    env: &MappedArena<Type>,
+) {
     let table_name = model_type
         .get_annotation("table")
         .map(|a| a.params[0].as_string())
         .unwrap_or_else(|| model_type.name.clone());
 
-    let columns = model_type.fields
+    let columns = model_type
+        .fields
         .iter()
         .flat_map(|field| create_column(field, &table_name, env))
         .collect();
@@ -97,7 +99,7 @@ fn expand_type1(model_type: &CompositeType, building: &mut SystemContextBuilding
         name: table_name.clone(),
         columns,
     };
-    
+
     let table_id = building.tables.add(&table_name, table);
 
     let pk_query = building
@@ -107,9 +109,7 @@ fn expand_type1(model_type: &CompositeType, building: &mut SystemContextBuilding
 
     let collection_query = building
         .queries
-        .get_id(&query_builder::collection_query_name(
-            &model_type.name,
-        ))
+        .get_id(&query_builder::collection_query_name(&model_type.name))
         .unwrap();
 
     let kind = GqlTypeKind::Composite {
@@ -123,7 +123,11 @@ fn expand_type1(model_type: &CompositeType, building: &mut SystemContextBuilding
     building.types.values[existing_type_id.unwrap()].kind = kind;
 }
 
-fn expand_type2(model_type: &CompositeType, building: &mut SystemContextBuilding, env: &MappedArena<Type>) {
+fn expand_type2(
+    model_type: &CompositeType,
+    building: &mut SystemContextBuilding,
+    env: &MappedArena<Type>,
+) {
     let existing_type_id = building.types.get_id(&model_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
@@ -134,7 +138,8 @@ fn expand_type2(model_type: &CompositeType, building: &mut SystemContextBuilding
         ..
     } = existing_type.kind
     {
-        let model_fields: Vec<GqlField> = model_type.fields
+        let model_fields: Vec<GqlField> = model_type
+            .fields
             .iter()
             .map(|field| create_field(field, table_id, building, env))
             .collect();
@@ -221,9 +226,7 @@ fn compute_input_fields(
                 };
                 let field_type = match field.typ {
                     GqlFieldType::Reference { .. } => field_plain_type,
-                    GqlFieldType::Optional(_) => {
-                        GqlFieldType::Optional(Box::new(field_plain_type))
-                    }
+                    GqlFieldType::Optional(_) => GqlFieldType::Optional(Box::new(field_plain_type)),
                     GqlFieldType::List(_) => GqlFieldType::List(Box::new(field_plain_type)),
                 };
                 let field_type = if force_optional_field_modifier {
@@ -247,18 +250,15 @@ fn create_field(
     building: &SystemContextBuilding,
     env: &MappedArena<Type>,
 ) -> GqlField {
-    fn create_field_type(
-        field_type: &Type,
-        building: &SystemContextBuilding,
-    ) -> GqlFieldType {
+    fn create_field_type(field_type: &Type, building: &SystemContextBuilding) -> GqlFieldType {
         match field_type {
             Type::Reference(r) => GqlFieldType::Reference {
                 type_name: r.clone(),
                 type_id: building.types.get_id(&r).unwrap(),
             },
-            Type::Optional(underlying) => GqlFieldType::Optional(Box::new(create_field_type(
-                underlying, building,
-            ))),
+            Type::Optional(underlying) => {
+                GqlFieldType::Optional(Box::new(create_field_type(underlying, building)))
+            }
             Type::List(underlying) => {
                 GqlFieldType::List(Box::new(create_field_type(underlying, building)))
             }
@@ -317,8 +317,11 @@ fn create_column(
 
                 other_type => {
                     let inner_composite = other_type.inner_composite(env);
-                    let other_type_pk_field = inner_composite.fields.iter()
-                        .find(|f| f.get_annotation("pk").is_some()).unwrap();
+                    let other_type_pk_field = inner_composite
+                        .fields
+                        .iter()
+                        .find(|f| f.get_annotation("pk").is_some())
+                        .unwrap();
                     let other_table_name = inner_composite
                         .get_annotation("table")
                         .map(|a| a.params[0].as_string())
@@ -330,7 +333,11 @@ fn create_column(
                             .get_annotation("column")
                             .map(|a| a.params[0].as_string())
                             .unwrap_or_else(|| format!("{}_id", field.name)),
-                        typ: other_type_pk_field.typ.deref(env).as_primitive().to_column_type(),
+                        typ: other_type_pk_field
+                            .typ
+                            .deref(env)
+                            .as_primitive()
+                            .to_column_type(),
                         is_pk: false,
                         is_autoincrement: false,
                         references: Some(ColumnReferece {
@@ -354,9 +361,7 @@ fn create_relation(
     env: &MappedArena<Type>,
 ) -> GqlRelation {
     fn compute_column_name(column_name: &Option<String>, field: &TypedField) -> String {
-        column_name
-            .clone()
-            .unwrap_or_else(|| field.name.clone())
+        column_name.clone().unwrap_or_else(|| field.name.clone())
     }
 
     fn compute_column_id(
@@ -392,7 +397,10 @@ fn create_relation(
             match &field.typ.deref(env) {
                 // Not primitive
                 Type::List(i) => {
-                    let other_type_id = building.types.get_id(i.as_ref().inner_composite(env).name.as_str()).unwrap();
+                    let other_type_id = building
+                        .types
+                        .get_id(i.as_ref().inner_composite(env).name.as_str())
+                        .unwrap();
                     let other_type = &building.types[other_type_id];
                     let other_table_id = other_type.table_id().unwrap();
                     let other_table = &building.tables[other_table_id];
@@ -437,8 +445,10 @@ fn create_relation(
                             .map(|a| a.params[0].as_string()),
                         field,
                     );
-                    let other_type_id =
-                        building.types.get_id(o.inner_composite(env).name.as_str()).unwrap();
+                    let other_type_id = building
+                        .types
+                        .get_id(o.inner_composite(env).name.as_str())
+                        .unwrap();
                     GqlRelation::ManyToOne {
                         column_id: column_id.unwrap(),
                         other_type_id,
