@@ -268,9 +268,9 @@ fn create_field(
             },
             Type::Primitive(p) => {
                 let type_name = match p {
-                    PrimitiveType::BOOLEAN => "Boolean".to_string(),
-                    PrimitiveType::INTEGER => "Int".to_string(),
-                    PrimitiveType::STRING => "String".to_string(),
+                    PrimitiveType::Boolean => "Boolean".to_string(),
+                    PrimitiveType::Int => "Int".to_string(),
+                    PrimitiveType::String => "String".to_string(),
                 };
                 GqlFieldType::Reference { // TODO(shadaj): fix
                     type_name: type_name.clone(),
@@ -315,14 +315,14 @@ fn create_column(
                 .map(|a| a.params[0].as_string())
                 .unwrap_or_else(|| field.name.clone()),
             typ: PhysicalColumnType::from_string(match field.typ.as_primitive() {
-                PrimitiveType::BOOLEAN => "Boolean",
-                PrimitiveType::INTEGER => "Int",
-                PrimitiveType::STRING => "String",
+                PrimitiveType::Boolean => "Boolean",
+                PrimitiveType::Int => "Int",
+                PrimitiveType::String => "String",
             }),
             is_pk: true,
             is_autoincrement: match field.get_annotation("autoincrement") {
                 Some(_) => {
-                    assert!(field.typ == Type::Primitive(PrimitiveType::INTEGER));
+                    assert!(field.typ == Type::Primitive(PrimitiveType::Int));
                     true
                 }
                 _ => false,
@@ -341,11 +341,7 @@ fn create_column(
                             .get_annotation("column")
                             .map(|a| a.params[0].as_string())
                             .unwrap_or_else(|| field.name.clone()),
-                        typ: PhysicalColumnType::from_string(match field.typ.as_primitive() {
-                            PrimitiveType::BOOLEAN => "Boolean",
-                            PrimitiveType::INTEGER => "Int",
-                            PrimitiveType::STRING => "String",
-                        }),
+                        typ: field.typ.as_primitive().to_column_type(),
                         is_pk: false,
                         is_autoincrement: false,
                         references: None,
@@ -366,13 +362,7 @@ fn create_column(
                             .get_annotation("column")
                             .map(|a| a.params[0].as_string())
                             .unwrap_or_else(|| format!("{}_id", field.name)),
-                        typ: PhysicalColumnType::from_string(
-                            match other_type_pk_field.typ.as_primitive() {
-                                PrimitiveType::BOOLEAN => "Boolean",
-                                PrimitiveType::INTEGER => "Int",
-                                PrimitiveType::STRING => "String",
-                            },
-                        ),
+                        typ: other_type_pk_field.typ.as_primitive().to_column_type(),
                         is_pk: false,
                         is_autoincrement: false,
                         references: Some(ColumnReferece {

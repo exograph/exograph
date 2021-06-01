@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use payas_model::model::mapped_arena::MappedArena;
+use payas_model::{model::mapped_arena::MappedArena, sql::column::{IntBits, PhysicalColumnType}};
 use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::{
@@ -99,18 +99,28 @@ impl Type {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveType {
-    INTEGER,
-    STRING,
-    BOOLEAN,
+    Int,
+    String,
+    Boolean,
+}
+
+impl PrimitiveType {
+    pub fn to_column_type(&self) -> PhysicalColumnType {
+        match &self {
+            PrimitiveType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
+            PrimitiveType::String => PhysicalColumnType::String,
+            PrimitiveType::Boolean => PhysicalColumnType::Boolean
+        }
+    }
 }
 
 impl Typecheck<Type> for AstFieldType {
     fn shallow(&self) -> Type {
         match &self {
             AstFieldType::Plain(name) => match name.as_str() {
-                "Boolean" => Type::Primitive(PrimitiveType::BOOLEAN),
-                "Int" => Type::Primitive(PrimitiveType::INTEGER),
-                "String" => Type::Primitive(PrimitiveType::STRING),
+                "Boolean" => Type::Primitive(PrimitiveType::Boolean),
+                "Int" => Type::Primitive(PrimitiveType::Int),
+                "String" => Type::Primitive(PrimitiveType::String),
                 o => Type::Error(format!("Unknown type: {}", o)),
             },
             AstFieldType::Optional(u) => Type::Optional(Box::new(u.shallow())),
@@ -280,7 +290,7 @@ impl Typecheck<TypedExpression> for AstExpr {
             AstExpr::LogicalOp(logic) => TypedExpression::LogicalOp(logic.shallow()),
             AstExpr::RelationalOp(relation) => TypedExpression::RelationalOp(relation.shallow()),
             AstExpr::StringLiteral(v) => {
-                TypedExpression::StringLiteral(v.clone(), Type::Primitive(PrimitiveType::STRING))
+                TypedExpression::StringLiteral(v.clone(), Type::Primitive(PrimitiveType::String))
             }
         }
     }
@@ -450,8 +460,8 @@ impl Typecheck<TypedLogicalOp> for LogicalOp {
                 if let TypedLogicalOp::Not(v_typ, o_typ) = typ {
                     let in_updated = v.pass(v_typ, env, scope);
                     let out_updated = if o_typ.is_incomplete() {
-                        if v_typ.typ().deref(env) == Type::Primitive(PrimitiveType::BOOLEAN) {
-                            *o_typ = Type::Primitive(PrimitiveType::BOOLEAN);
+                        if v_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean) {
+                            *o_typ = Type::Primitive(PrimitiveType::Boolean);
                             true
                         } else {
                             *o_typ = Type::Error(format!(
@@ -473,10 +483,10 @@ impl Typecheck<TypedLogicalOp> for LogicalOp {
                     let in_updated =
                         left.pass(left_typ, env, scope) || right.pass(right_typ, env, scope);
                     let out_updated = if o_typ.is_incomplete() {
-                        if left_typ.typ().deref(env) == Type::Primitive(PrimitiveType::BOOLEAN)
-                            && right_typ.typ().deref(env) == Type::Primitive(PrimitiveType::BOOLEAN)
+                        if left_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean)
+                            && right_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean)
                         {
-                            *o_typ = Type::Primitive(PrimitiveType::BOOLEAN);
+                            *o_typ = Type::Primitive(PrimitiveType::Boolean);
                             true
                         } else {
                             *o_typ = Type::Error("Both inputs to && must be booleans".to_string());
@@ -495,10 +505,10 @@ impl Typecheck<TypedLogicalOp> for LogicalOp {
                     let in_updated =
                         left.pass(left_typ, env, scope) || right.pass(right_typ, env, scope);
                     let out_updated = if o_typ.is_incomplete() {
-                        if left_typ.typ().deref(env) == Type::Primitive(PrimitiveType::BOOLEAN)
-                            && right_typ.typ().deref(env) == Type::Primitive(PrimitiveType::BOOLEAN)
+                        if left_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean)
+                            && right_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean)
                         {
-                            *o_typ = Type::Primitive(PrimitiveType::BOOLEAN);
+                            *o_typ = Type::Primitive(PrimitiveType::Boolean);
                             true
                         } else {
                             *o_typ = Type::Error("Both inputs to || must be booleans".to_string());
@@ -583,7 +593,7 @@ impl Typecheck<TypedRelationalOp> for RelationalOp {
                         left.pass(left_typ, env, scope) || right.pass(right_typ, env, scope);
                     let out_updated = if o_typ.is_incomplete() {
                         if left_typ.typ().deref(env) == right_typ.typ().deref(env) {
-                            *o_typ = Type::Primitive(PrimitiveType::BOOLEAN);
+                            *o_typ = Type::Primitive(PrimitiveType::Boolean);
                             true
                         } else {
                             *o_typ = Type::Error(format!(
