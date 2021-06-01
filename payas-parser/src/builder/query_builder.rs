@@ -12,7 +12,7 @@ use super::{
 
 pub fn build_shallow(ast_types: &[Type], building: &mut SystemContextBuilding) {
     for ast_type in ast_types {
-        let model_type_id = building.types.get_id(&ast_type.UNSAFE_name()).unwrap();
+        let model_type_id = building.types.get_id(&ast_type.composite_name()).unwrap();
         let shallow_query = shallow_pk_query(model_type_id, ast_type);
         let collection_query = shallow_collection_query(model_type_id, ast_type);
 
@@ -45,14 +45,14 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 }
 
 fn shallow_pk_query(model_type_id: Id<ModelType>, ast_type: &Type) -> Query {
-    let operation_name = pk_query_name(&ast_type.UNSAFE_name());
+    let operation_name = pk_query_name(&ast_type.composite_name());
     Query {
         name: operation_name,
         predicate_param: None,
         order_by_param: None,
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.UNSAFE_name(),
+            type_name: ast_type.composite_name(),
             type_modifier: ModelTypeModifier::NonNull,
         },
     }
@@ -91,14 +91,14 @@ pub fn pk_predicate_param(
 }
 
 fn shallow_collection_query(model_type_id: Id<ModelType>, ast_type: &Type) -> Query {
-    let operation_name = collection_query_name(&ast_type.UNSAFE_name());
+    let operation_name = collection_query_name(&ast_type.composite_name());
     Query {
         name: operation_name,
         predicate_param: None,
         order_by_param: None,
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.UNSAFE_name(),
+            type_name: ast_type.composite_name(),
             type_modifier: ModelTypeModifier::List,
         },
     }

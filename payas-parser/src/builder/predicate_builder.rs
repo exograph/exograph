@@ -50,7 +50,7 @@ pub fn get_parameter_type_name(model_type_name: &str) -> String {
 
 fn create_shallow_type(ast_type: &Type) -> PredicateParameterType {
     PredicateParameterType {
-        name: get_parameter_type_name(&ast_type.UNSAFE_name()),
+        name: get_parameter_type_name(&ast_type.composite_name()),
         kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
     }
 }

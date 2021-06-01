@@ -6,7 +6,6 @@ module.exports = grammar({
   name: 'grammar',
 
   rules: {
-    // TODO: add the actual grammar rules
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
       $.model

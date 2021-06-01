@@ -80,7 +80,7 @@ pub struct ModelField {
 #[derive(Debug, Clone)]
 pub enum ModelFieldType {
     Optional(Box<ModelFieldType>),
-    Plain {
+    Reference {
         type_id: Id<ModelType>,
         type_name: String,
     },
@@ -93,7 +93,7 @@ impl ModelFieldType {
             ModelFieldType::Optional(underlying) | ModelFieldType::List(underlying) => {
                 underlying.type_id()
             }
-            ModelFieldType::Plain { type_id, .. } => type_id,
+            ModelFieldType::Reference { type_id, .. } => type_id,
         }
     }
 
@@ -102,7 +102,7 @@ impl ModelFieldType {
             ModelFieldType::Optional(underlying) | ModelFieldType::List(underlying) => {
                 underlying.type_name()
             }
-            ModelFieldType::Plain { type_name, .. } => type_name,
+            ModelFieldType::Reference { type_name, .. } => type_name,
         }
     }
 

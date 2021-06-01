@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use payas_model::{
     model::{
         mapped_arena::MappedArena,
@@ -24,7 +22,6 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut building = SystemContextBuilding::default();
 
     let ast_types = &ast_system.models;
-    let mut ast_types_map = HashMap::new();
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     for model in ast_types {
@@ -56,17 +53,16 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut types_types = Vec::new();
 
     for ast_type in types_arena.keys() {
-        ast_types_map.insert(ast_type.clone(), types_arena.get_by_key(ast_type).unwrap());
         types_types.push(types_arena.get_by_key(ast_type).unwrap().clone());
     }
 
-    type_builder::build_shallow(&ast_types_map, &mut building);
+    type_builder::build_shallow(&types_arena, &mut building);
 
     query_builder::build_shallow(&types_types, &mut building);
     order_by_type_builder::build_shallow(&types_types, &mut building);
     predicate_builder::build_shallow(&types_types, &mut building);
 
-    type_builder::build_expanded(&ast_types_map, &mut building);
+    type_builder::build_expanded(&types_arena, &mut building);
     order_by_type_builder::build_expanded(&mut building);
     predicate_builder::build_expanded(&mut building);
     query_builder::build_expanded(&mut building);

@@ -78,17 +78,20 @@ impl Type {
         }
     }
 
-    pub fn UNSAFE_name(&self) -> String {
+    // useful for relation creation
+    pub fn inner_composite<'a>(&'a self, env: &'a MappedArena<Type>) -> &'a Type {
+        match &self {
+            Type::Composite { .. } => &self,
+            Type::Reference(r) => env.get_by_key(r).unwrap().inner_composite(env),
+            Type::Optional(o) => o.inner_composite(env),
+            Type::List(o) => o.inner_composite(env),
+            _ => panic!("Cannot get inner composite of type {:?}", self),
+        }
+    }
+
+    pub fn composite_name(&self) -> String {
         match &self {
             Type::Composite { name, .. } => name.clone(),
-            Type::Reference(r) => r.clone(),
-            Type::Optional(o) => o.UNSAFE_name(),
-            Type::List(o) => o.UNSAFE_name(),
-            Type::Primitive(p) => match p {
-                PrimitiveType::BOOLEAN => "Boolean".to_string(),
-                PrimitiveType::INTEGER => "Int".to_string(),
-                PrimitiveType::STRING => "String".to_string(),
-            },
             _ => panic!("Cannot get name of type {:?}", self),
         }
     }

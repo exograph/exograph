@@ -1,14 +1,11 @@
 use core::panic;
-use std::{collections::HashMap, ops::Deref};
+use std::ops::Deref;
 
 use id_arena::Id;
-use payas_model::{
-    model::{column_id::ColumnId, relation::ModelRelation, ModelFieldType},
-    sql::{
+use payas_model::{model::{ModelFieldType, column_id::ColumnId, mapped_arena::MappedArena, relation::ModelRelation}, sql::{
         column::{ColumnReferece, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
-    },
-};
+    }};
 
 use super::system_builder::SystemContextBuilding;
 use super::{
@@ -20,7 +17,7 @@ use payas_model::model::{ModelField, ModelType, ModelTypeKind};
 
 pub const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"]; // TODO: Expand the list
 
-pub fn build_shallow(ast_models: &HashMap<String, &Type>, building: &mut SystemContextBuilding) {
+pub fn build_shallow(ast_models: &MappedArena<Type>, building: &mut SystemContextBuilding) {
     for type_name in PRIMITIVE_TYPE_NAMES.iter() {
         let typ = ModelType {
             name: type_name.to_string(),
@@ -30,33 +27,33 @@ pub fn build_shallow(ast_models: &HashMap<String, &Type>, building: &mut SystemC
         building.types.add(type_name, typ);
     }
 
-    for ast_type in ast_models.values() {
+    for (_, ast_type) in ast_models.iter() {
         create_shallow_type(ast_type, ast_models, building);
     }
 }
 
 pub fn build_expanded(
-    ast_types_map: &HashMap<String, &Type>,
+    ast_types_map: &MappedArena<Type>,
     building: &mut SystemContextBuilding,
 ) {
-    for ast_type in ast_types_map.values() {
+    for (_, ast_type) in ast_types_map.iter() {
         expand_type1(ast_type, building);
     }
-    for ast_type in ast_types_map.values() {
-        expand_type2(ast_type, building);
+    for (_, ast_type) in ast_types_map.iter() {
+        expand_type2(ast_type, building, ast_types_map);
     }
 }
 
 fn create_shallow_type(
     ast_type: &Type,
-    ast_types_map: &HashMap<String, &Type>,
+    ast_types_map: &MappedArena<Type>,
     building: &mut SystemContextBuilding,
 ) {
-    if let Type::Composite { name, fields, .. } = &ast_type {
+    if let Type::Composite { name: model_type_name, fields, .. } = &ast_type {
         let table_name = ast_type
             .get_annotation("table")
             .map(|a| a.params[0].as_string())
-            .unwrap_or_else(|| name.clone());
+            .unwrap_or_else(|| model_type_name.clone());
 
         let columns = fields
             .iter()
@@ -69,7 +66,6 @@ fn create_shallow_type(
         };
         building.tables.add(&table_name, table);
 
-        let model_type_name = ast_type.UNSAFE_name();
         building.types.add(
             &model_type_name,
             ModelType {
@@ -106,18 +102,18 @@ fn expand_type1(ast_type: &Type, building: &mut SystemContextBuilding) {
     let table_name = ast_type
         .get_annotation("table")
         .map(|a| a.params[0].as_string())
-        .unwrap_or_else(|| ast_type.UNSAFE_name());
+        .unwrap_or_else(|| ast_type.composite_name());
 
     let table_id = building.tables.get_id(&table_name).unwrap();
 
     let pk_query = building
         .queries
-        .get_id(&query_builder::pk_query_name(&ast_type.UNSAFE_name()))
+        .get_id(&query_builder::pk_query_name(&ast_type.composite_name()))
         .unwrap();
     let collection_query = building
         .queries
         .get_id(&query_builder::collection_query_name(
-            &ast_type.UNSAFE_name(),
+            &ast_type.composite_name(),
         ))
         .unwrap();
 
@@ -127,13 +123,13 @@ fn expand_type1(ast_type: &Type, building: &mut SystemContextBuilding) {
         pk_query,
         collection_query,
     };
-    let existing_type_id = building.types.get_id(&ast_type.UNSAFE_name());
+    let existing_type_id = building.types.get_id(&ast_type.composite_name());
 
     building.types.values[existing_type_id.unwrap()].kind = kind;
 }
 
-fn expand_type2(ast_type: &Type, building: &mut SystemContextBuilding) {
-    let existing_type_id = building.types.get_id(&ast_type.UNSAFE_name()).unwrap();
+fn expand_type2(ast_type: &Type, building: &mut SystemContextBuilding, env: &MappedArena<Type>) {
+    let existing_type_id = building.types.get_id(&ast_type.composite_name()).unwrap();
     let existing_type = &building.types[existing_type_id];
 
     if let ModelTypeKind::Composite {
@@ -144,12 +140,14 @@ fn expand_type2(ast_type: &Type, building: &mut SystemContextBuilding) {
     } = existing_type.kind
     {
         if let Type::Composite {
-            fields: ast_fields, ..
+            fields: ast_fields,
+            name,
+            ..
         } = &ast_type
         {
             let model_fields: Vec<ModelField> = ast_fields
                 .iter()
-                .map(|ast_field| create_field(ast_field, table_id, building))
+                .map(|ast_field| create_field(ast_field, table_id, building, env))
                 .collect();
 
             let kind = ModelTypeKind::Composite {
@@ -171,7 +169,7 @@ fn expand_type2(ast_type: &Type, building: &mut SystemContextBuilding) {
                     })
                     .collect();
 
-                let existing_type_name = input_reference_type_name(&ast_type.UNSAFE_name());
+                let existing_type_name = input_reference_type_name(name);
                 let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
                 building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
@@ -185,7 +183,7 @@ fn expand_type2(ast_type: &Type, building: &mut SystemContextBuilding) {
             {
                 let input_type_fields = compute_input_fields(&model_fields, building, false);
 
-                let existing_type_name = input_creation_type_name(&ast_type.UNSAFE_name());
+                let existing_type_name = input_creation_type_name(name);
                 let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
                 building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
@@ -199,7 +197,7 @@ fn expand_type2(ast_type: &Type, building: &mut SystemContextBuilding) {
             {
                 let input_type_fields = compute_input_fields(&model_fields, building, true);
 
-                let existing_type_name = input_update_type_name(&ast_type.UNSAFE_name());
+                let existing_type_name = input_update_type_name(name);
                 let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
                 building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
@@ -231,12 +229,12 @@ fn compute_input_fields(
             ModelRelation::ManyToOne { .. } | ModelRelation::OneToMany { .. } => {
                 let field_type_name = input_reference_type_name(&field.typ.type_name());
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = ModelFieldType::Plain {
+                let field_plain_type = ModelFieldType::Reference {
                     type_name: field_type_name,
                     type_id: field_type_id,
                 };
                 let field_type = match field.typ {
-                    ModelFieldType::Plain { .. } => field_plain_type,
+                    ModelFieldType::Reference { .. } => field_plain_type,
                     ModelFieldType::Optional(_) => {
                         ModelFieldType::Optional(Box::new(field_plain_type))
                     }
@@ -261,32 +259,42 @@ fn create_field(
     ast_field: &TypedField,
     table_id: Id<PhysicalTable>,
     building: &SystemContextBuilding,
+    env: &MappedArena<Type>,
 ) -> ModelField {
     fn create_model_type(
-        type_name: String,
         ast_field_type: &Type,
         building: &SystemContextBuilding,
     ) -> ModelFieldType {
         match ast_field_type {
-            Type::Reference(_) | Type::Primitive(_) => ModelFieldType::Plain {
-                type_name: type_name.clone(),
-                type_id: building.types.get_id(&type_name).unwrap(),
+            Type::Reference(r) => ModelFieldType::Reference {
+                type_name: r.clone(),
+                type_id: building.types.get_id(&r).unwrap(),
+            },
+            Type::Primitive(p) => {
+                let type_name = match p {
+                    PrimitiveType::BOOLEAN => "Boolean".to_string(),
+                    PrimitiveType::INTEGER => "Int".to_string(),
+                    PrimitiveType::STRING => "String".to_string(),
+                };
+                ModelFieldType::Reference { // TODO(shadaj): fix
+                    type_name: type_name.clone(),
+                    type_id: building.types.get_id(&type_name).unwrap(),
+                }
             },
             Type::Optional(underlying) => ModelFieldType::Optional(Box::new(create_model_type(
-                type_name, underlying, building,
+                underlying, building,
             ))),
             Type::List(underlying) => {
-                ModelFieldType::List(Box::new(create_model_type(type_name, underlying, building)))
+                ModelFieldType::List(Box::new(create_model_type(underlying, building)))
             }
             o => panic!("Cannot create model type for type {:?}", o),
         }
     }
 
-    let type_name = ast_field.typ.UNSAFE_name();
     ModelField {
         name: ast_field.name.to_owned(),
-        typ: create_model_type(type_name, &ast_field.typ, building),
-        relation: create_relation(&ast_field, table_id, building),
+        typ: create_model_type(&ast_field.typ, building),
+        relation: create_relation(&ast_field, table_id, building, env),
     }
 }
 
@@ -301,7 +309,7 @@ fn pk_field_of(typ: &Type) -> Option<&TypedField> {
 fn create_column(
     ast_field: &TypedField,
     table_name: &str,
-    ast_types_map: &HashMap<String, &Type>,
+    ast_types_map: &MappedArena<Type>,
 ) -> Option<PhysicalColumn> {
     match ast_field.get_annotation("pk") {
         Some(_) => Some(PhysicalColumn {
@@ -349,12 +357,12 @@ fn create_column(
                 }
 
                 o => {
-                    let other_type: &Type = ast_types_map[&o.UNSAFE_name()];
-                    let other_type_pk_field = pk_field_of(other_type).unwrap();
+                    let other_type: Type = o.deref(ast_types_map);
+                    let other_type_pk_field = pk_field_of(&other_type).unwrap();
                     let other_table_name = other_type
                         .get_annotation("table")
                         .map(|a| a.params[0].as_string())
-                        .unwrap_or_else(|| o.UNSAFE_name());
+                        .unwrap_or_else(|| other_type.composite_name());
 
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
@@ -389,6 +397,7 @@ fn create_relation(
     ast_field: &TypedField,
     table_id: Id<PhysicalTable>,
     building: &SystemContextBuilding,
+    env: &MappedArena<Type>,
 ) -> ModelRelation {
     fn compute_column_name(column_name: &Option<String>, ast_field: &TypedField) -> String {
         column_name
@@ -429,7 +438,7 @@ fn create_relation(
             match &ast_field.typ {
                 // Not primitive
                 Type::List(i) => {
-                    let other_type_id = building.types.get_id(&i.UNSAFE_name()).unwrap();
+                    let other_type_id = building.types.get_id(i.as_ref().inner_composite(env).composite_name().as_str()).unwrap();
                     let other_type = &building.types[other_type_id];
                     let other_table_id = other_type.table_id().unwrap();
                     let other_table = &building.tables[other_table_id];
@@ -465,7 +474,6 @@ fn create_relation(
                 }
 
                 o => {
-                    let optional = matches!(o, Type::Optional(_));
                     // ManyToOne
                     let column_id = compute_column_id(
                         table,
@@ -476,11 +484,11 @@ fn create_relation(
                         ast_field,
                     );
                     let other_type_id =
-                        building.types.get_id(&ast_field.typ.UNSAFE_name()).unwrap();
+                        building.types.get_id(o.inner_composite(env).composite_name().as_str()).unwrap();
                     ModelRelation::ManyToOne {
                         column_id: column_id.unwrap(),
                         other_type_id,
-                        optional,
+                        optional: matches!(o, Type::Optional(_)),
                     }
                 }
             }

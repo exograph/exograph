@@ -44,7 +44,7 @@ pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> Str
 
 fn create_shallow_type(ast_type: &Type) -> OrderByParameterType {
     OrderByParameterType {
-        name: get_parameter_type_name(&ast_type.UNSAFE_name(), is_primitive(&ast_type)),
+        name: get_parameter_type_name(&ast_type.composite_name(), is_primitive(&ast_type)),
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },
     }
 }
