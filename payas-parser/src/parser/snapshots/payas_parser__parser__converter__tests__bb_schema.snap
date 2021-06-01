@@ -45,7 +45,8 @@ models:
         annotations: []
       - name: concerts
         typ:
-          Plain: "[Concert]"
+          List:
+            Plain: Concert
         annotations:
           - name: column
             params:

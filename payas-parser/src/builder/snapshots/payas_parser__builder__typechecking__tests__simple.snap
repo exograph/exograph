@@ -23,7 +23,8 @@ expression: types
             - name: column
               params:
                 - StringLiteral:
-                    Primitive: STRING
+                    - custom_column
+                    - Primitive: STRING
             - name: auth
               params:
                 - LogicalOp:
@@ -35,28 +36,37 @@ expression: types
                                   - FieldSelection:
                                       Select:
                                         - Single:
-                                            Reference: User
+                                            - self
+                                            - Reference: User
+                                        - role
                                         - Primitive: STRING
                                   - StringLiteral:
-                                      Primitive: STRING
+                                      - role_admin
+                                      - Primitive: STRING
                                   - Primitive: BOOLEAN
                             - RelationalOp:
                                 Eq:
                                   - FieldSelection:
                                       Select:
                                         - Single:
-                                            Reference: User
+                                            - self
+                                            - Reference: User
+                                        - role
                                         - Primitive: STRING
                                   - StringLiteral:
-                                      Primitive: STRING
+                                      - role_superuser
+                                      - Primitive: STRING
                                   - Primitive: BOOLEAN
                             - Primitive: BOOLEAN
                       - FieldSelection:
                           Select:
                             - Select:
                                 - Single:
-                                    Reference: User
+                                    - self
+                                    - Reference: User
+                                - doc
                                 - Reference: Doc
+                            - is_public
                             - Primitive: BOOLEAN
                       - Primitive: BOOLEAN
         - name: role

@@ -687,8 +687,6 @@ pub fn build(ast_system: AstSystem) -> MappedArena<Type> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use super::*;
     use crate::parser::*;
 
