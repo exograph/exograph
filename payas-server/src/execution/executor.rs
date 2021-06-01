@@ -35,6 +35,7 @@ pub fn execute<'a>(
     operation_name: Option<&'a str>,
     query_str: &'a str,
     variables: Option<&'a Map<String, Value>>,
+    _jwt_claims: Option<Value>, // TODO: Pupulate the model user context
 ) -> String {
     let (operations, query_context) = create_query_context(
         system,
@@ -51,11 +52,11 @@ pub fn execute<'a>(
         .collect();
 
     // TODO: More efficient (and ideally zero-copy) way to push the values to network
-    let mut response = String::from("{\"data\": {");
+    let mut response = String::from(r#"{"data": {"#);
     parts.iter().enumerate().for_each(|(index, part)| {
         response.push('\"');
         response.push_str(part.0.as_str());
-        response.push_str("\":");
+        response.push_str(r#"":"#);
         match &part.1 {
             QueryResponse::Json(value) => response.push_str(value.to_string().as_str()),
             QueryResponse::Raw(value) => response.push_str(value.as_str()),
