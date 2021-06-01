@@ -1,4 +1,7 @@
-use async_graphql_parser::{Positioned, types::{EnumValueDefinition, Field}};
+use async_graphql_parser::{
+    types::{EnumValueDefinition, Field},
+    Positioned,
+};
 use serde_json::Value;
 
 use crate::execution::query_context::QueryContext;

@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Type such as Int/String/... (primitive) and Concert/Venue/Person etc (composite)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -10,14 +10,14 @@ pub struct AstSystem {
 pub struct AstModel {
     pub name: String,
     pub fields: Vec<AstField>,
-    pub annotations: Vec<AstAnnotation>
+    pub annotations: Vec<AstAnnotation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstField {
     pub name: String,
     pub typ: AstFieldType,
-    pub annotations: Vec<AstAnnotation>
+    pub annotations: Vec<AstAnnotation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -48,7 +48,7 @@ impl AstFieldType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstAnnotation {
     pub name: String,
-    pub params: Vec<AstExpr>
+    pub params: Vec<AstExpr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 tree-sitter = "0.19.5"
-nom = "6"
 id-arena = "2.2.1"
 serde = "1.0.125"
 payas-model = { path = "../payas-model" }

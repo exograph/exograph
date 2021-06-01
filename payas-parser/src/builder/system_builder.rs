@@ -14,18 +14,18 @@ use payas_model::{
 };
 
 use crate::ast::ast_types::AstSystem;
-use crate::builder::typechecking::{Typecheck, Scope};
+use crate::builder::typechecking::{Scope, Typecheck};
 
-use super::{mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder, typechecking::Type};
+use super::{
+    mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,
+    typechecking::Type,
+};
 
 pub fn build(ast_system: AstSystem) -> ModelSystem {
-    // let mut building = SystemContextBuilding::default();
+    let mut building = SystemContextBuilding::default();
 
     let ast_types = &ast_system.models;
     let mut ast_types_map = HashMap::new();
-    for ast_type in ast_types {
-        ast_types_map.insert(ast_type.name.clone(), ast_type);
-    }
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     for model in ast_types {
@@ -34,9 +34,14 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
 
     loop {
         let mut did_change = false;
-        let init_scope = Scope { enclosing_model: None };
+        let init_scope = Scope {
+            enclosing_model: None,
+        };
         for model in ast_types {
-            let mut typ = types_arena.get_by_key_mut(model.name.as_str()).unwrap().clone();
+            let mut typ = types_arena
+                .get_by_key_mut(model.name.as_str())
+                .unwrap()
+                .clone();
             let pass_res = model.pass(&mut typ, &types_arena, &init_scope);
             if pass_res {
                 *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
@@ -49,29 +54,34 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
         }
     }
 
-    dbg!(types_arena);
+    let mut types_types = Vec::new();
 
-    // type_builder::build_shallow(&ast_types_map, &mut building);
+    for ast_type in types_arena.keys() {
+        ast_types_map.insert(ast_type.clone(), types_arena.get_by_key(ast_type).unwrap());
+        types_types.push(types_arena.get_by_key(ast_type).unwrap().clone());
+    }
 
-    // query_builder::build_shallow(&ast_types, &mut building);
-    // order_by_type_builder::build_shallow(&ast_types, &mut building);
-    // predicate_builder::build_shallow(&ast_types, &mut building);
+    type_builder::build_shallow(&ast_types_map, &mut building);
 
-    // type_builder::build_expanded(&ast_types_map, &mut building);
-    // order_by_type_builder::build_expanded(&mut building);
-    // predicate_builder::build_expanded(&mut building);
-    // query_builder::build_expanded(&mut building);
+    query_builder::build_shallow(&types_types, &mut building);
+    order_by_type_builder::build_shallow(&types_types, &mut building);
+    predicate_builder::build_shallow(&types_types, &mut building);
 
-    // mutation_builder::build(&ast_types, &mut building);
+    type_builder::build_expanded(&ast_types_map, &mut building);
+    order_by_type_builder::build_expanded(&mut building);
+    predicate_builder::build_expanded(&mut building);
+    query_builder::build_expanded(&mut building);
+
+    mutation_builder::build(&types_types, &mut building);
 
     ModelSystem {
-        types: Default::default(),
-        order_by_types: Default::default(),
-        predicate_types: Default::default(),
-        queries: Default::default(),
-        tables: Default::default(),
-        mutation_types: Default::default(),
-        create_mutations: Default::default(),
+        types: building.types.values,
+        order_by_types: building.order_by_types.values,
+        predicate_types: building.predicate_types.values,
+        queries: building.queries,
+        tables: building.tables.values,
+        mutation_types: building.mutation_types.values,
+        create_mutations: building.mutations,
     }
 }
 
