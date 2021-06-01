@@ -4,8 +4,8 @@ use async_graphql_parser::types::InputValueDefinition;
 use crate::introspection::util;
 
 use payas_model::model::{
-    operation::MutationDataParameter, order::*, predicate::PredicateParameter, types::ModelField,
-    types::ModelTypeModifier, ModelFieldType,
+    operation::MutationDataParameter, order::*, predicate::PredicateParameter, types::GqlField,
+    types::GqlTypeModifier, GqlFieldType,
 };
 
 use super::provider::InputValueProvider;
@@ -13,7 +13,7 @@ use super::provider::InputValueProvider;
 pub trait Parameter {
     fn name(&self) -> &str;
     fn type_name(&self) -> &str;
-    fn type_modifier(&self) -> &ModelTypeModifier;
+    fn type_modifier(&self) -> &GqlTypeModifier;
 }
 
 impl Parameter for OrderByParameter {
@@ -25,7 +25,7 @@ impl Parameter for OrderByParameter {
         &self.type_name
     }
 
-    fn type_modifier(&self) -> &ModelTypeModifier {
+    fn type_modifier(&self) -> &GqlTypeModifier {
         &self.type_modifier
     }
 }
@@ -39,7 +39,7 @@ impl Parameter for PredicateParameter {
         &self.type_name
     }
 
-    fn type_modifier(&self) -> &ModelTypeModifier {
+    fn type_modifier(&self) -> &GqlTypeModifier {
         &self.type_modifier
     }
 }
@@ -53,12 +53,12 @@ impl Parameter for MutationDataParameter {
         &self.type_name
     }
 
-    fn type_modifier(&self) -> &ModelTypeModifier {
-        &ModelTypeModifier::NonNull
+    fn type_modifier(&self) -> &GqlTypeModifier {
+        &GqlTypeModifier::NonNull
     }
 }
 
-impl Parameter for ModelField {
+impl Parameter for GqlField {
     fn name(&self) -> &str {
         &self.name
     }
@@ -67,11 +67,11 @@ impl Parameter for ModelField {
         self.typ.type_name()
     }
 
-    fn type_modifier(&self) -> &ModelTypeModifier {
+    fn type_modifier(&self) -> &GqlTypeModifier {
         match self.typ {
-            ModelFieldType::Optional(_) => &ModelTypeModifier::Optional,
-            ModelFieldType::Plain { .. } => &ModelTypeModifier::NonNull,
-            ModelFieldType::List(_) => &ModelTypeModifier::List,
+            GqlFieldType::Optional(_) => &GqlTypeModifier::Optional,
+            GqlFieldType::Plain { .. } => &GqlTypeModifier::NonNull,
+            GqlFieldType::List(_) => &GqlTypeModifier::List,
         }
     }
 }

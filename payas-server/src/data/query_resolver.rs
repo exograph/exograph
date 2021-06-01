@@ -98,10 +98,10 @@ impl<'a> QueryOperations<'a> for Query {
             .physical_table(&operation_context.query_context.system);
 
         match self.return_type.type_modifier {
-            ModelTypeModifier::Optional | ModelTypeModifier::NonNull => {
+            GqlTypeModifier::Optional | GqlTypeModifier::NonNull => {
                 table.select(vec![content_object], predicate, None, top_level_selection)
             }
-            ModelTypeModifier::List => {
+            GqlTypeModifier::List => {
                 let order_by = self.compute_order_by(&field.arguments, operation_context);
                 let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
                 table.select(vec![agg_column], predicate, order_by, top_level_selection)
@@ -152,11 +152,11 @@ fn map_field<'a>(
         let model_field = return_type.model_field(&field.name.node).unwrap();
 
         match &model_field.relation {
-            ModelRelation::Pk { column_id } | ModelRelation::Scalar { column_id } => {
+            GqlRelation::Pk { column_id } | GqlRelation::Scalar { column_id } => {
                 let column = column_id.get_column(system);
                 Column::Physical(column)
             }
-            ModelRelation::ManyToOne {
+            GqlRelation::ManyToOne {
                 column_id,
                 other_type_id,
                 ..
@@ -164,8 +164,8 @@ fn map_field<'a>(
                 let other_type = &system.types[*other_type_id];
                 let (other_table, other_table_pk_query) = {
                     match other_type.kind {
-                        ModelTypeKind::Primitive => panic!(""),
-                        ModelTypeKind::Composite {
+                        GqlTypeKind::Primitive => panic!(""),
+                        GqlTypeKind::Composite {
                             table_id, pk_query, ..
                         } => (&system.tables[table_id], &system.queries[pk_query]),
                     }
@@ -187,15 +187,15 @@ fn map_field<'a>(
                     ),
                 )
             }
-            ModelRelation::OneToMany {
+            GqlRelation::OneToMany {
                 other_type_column_id,
                 other_type_id,
             } => {
                 let other_type = &system.types[*other_type_id];
                 let other_table_collection_query = {
                     match other_type.kind {
-                        ModelTypeKind::Primitive => panic!(""),
-                        ModelTypeKind::Composite {
+                        GqlTypeKind::Primitive => panic!(""),
+                        GqlTypeKind::Composite {
                             collection_query, ..
                         } => &system.queries[collection_query],
                     }

@@ -5,7 +5,7 @@ use payas_model::{
         order::OrderByParameterType,
         predicate::PredicateParameterType,
         system::ModelSystem,
-        types::ModelType,
+        types::GqlType,
     },
     sql::PhysicalTable,
 };
@@ -21,11 +21,11 @@ use super::{
 pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut building = SystemContextBuilding::default();
 
-    let ast_types = &ast_system.models;
+    let models = &ast_system.models;
 
-    let mut types_arena: MappedArena<Type> = MappedArena::default();
-    for model in ast_types {
-        types_arena.add(model.name.as_str(), model.shallow());
+    let mut env: MappedArena<Type> = MappedArena::default();
+    for model in models {
+        env.add(model.name.as_str(), model.shallow());
     }
 
     loop {
@@ -33,14 +33,14 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
         let init_scope = Scope {
             enclosing_model: None,
         };
-        for model in ast_types {
-            let mut typ = types_arena
+        for model in models {
+            let mut typ = env
                 .get_by_key_mut(model.name.as_str())
                 .unwrap()
                 .clone();
-            let pass_res = model.pass(&mut typ, &types_arena, &init_scope);
+            let pass_res = model.pass(&mut typ, &env, &init_scope);
             if pass_res {
-                *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
+                *env.get_by_key_mut(model.name.as_str()).unwrap() = typ;
                 did_change = true;
             }
         }
@@ -52,17 +52,17 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
 
     let mut types_types = Vec::new();
 
-    for ast_type in types_arena.keys() {
-        types_types.push(types_arena.get_by_key(ast_type).unwrap().clone());
+    for ast_type in env.keys() {
+        types_types.push(env.get_by_key(ast_type).unwrap().clone());
     }
 
-    type_builder::build_shallow(&types_arena, &mut building);
+    type_builder::build_shallow(&env, &mut building);
 
     query_builder::build_shallow(&types_types, &mut building);
     order_by_type_builder::build_shallow(&types_types, &mut building);
     predicate_builder::build_shallow(&types_types, &mut building);
 
-    type_builder::build_expanded(&types_arena, &mut building);
+    type_builder::build_expanded(&env, &mut building);
     order_by_type_builder::build_expanded(&mut building);
     predicate_builder::build_expanded(&mut building);
     query_builder::build_expanded(&mut building);
@@ -82,11 +82,11 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
 
 #[derive(Debug, Default)]
 pub struct SystemContextBuilding {
-    pub types: MappedArena<ModelType>,
+    pub types: MappedArena<GqlType>,
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
     pub queries: MappedArena<Query>,
-    pub mutation_types: MappedArena<ModelType>,
+    pub mutation_types: MappedArena<GqlType>,
     pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
 }

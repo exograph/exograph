@@ -1,13 +1,13 @@
 use id_arena::Id;
 use payas_sql::sql::PhysicalTable;
 
-use crate::model::ModelTypeKind;
+use crate::model::GqlTypeKind;
 
 use super::{
     order::OrderByParameter,
     predicate::PredicateParameter,
     system::ModelSystem,
-    types::{ModelType, ModelTypeModifier},
+    types::{GqlType, GqlTypeModifier},
 };
 
 #[derive(Debug, Clone)]
@@ -39,18 +39,18 @@ pub enum MutationKind {
 pub struct MutationDataParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: Id<ModelType>,
+    pub type_id: Id<GqlType>,
 }
 
 #[derive(Debug, Clone)]
 pub struct OperationReturnType {
-    pub type_id: Id<ModelType>,
+    pub type_id: Id<GqlType>,
     pub type_name: String,
-    pub type_modifier: ModelTypeModifier,
+    pub type_modifier: GqlTypeModifier,
 }
 
 impl OperationReturnType {
-    pub fn typ<'a>(&self, system: &'a ModelSystem) -> &'a ModelType {
+    pub fn typ<'a>(&self, system: &'a ModelSystem) -> &'a GqlType {
         let return_type_id = &self.type_id;
         &system.types[*return_type_id]
     }
@@ -58,8 +58,8 @@ impl OperationReturnType {
     pub fn physical_table<'a>(&self, system: &'a ModelSystem) -> &'a PhysicalTable {
         let return_type = self.typ(system);
         match &return_type.kind {
-            ModelTypeKind::Primitive => panic!(),
-            ModelTypeKind::Composite {
+            GqlTypeKind::Primitive => panic!(),
+            GqlTypeKind::Composite {
                 fields: _,
                 table_id,
                 ..

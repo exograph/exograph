@@ -3,7 +3,7 @@ use async_graphql_value::Value;
 use crate::sql::column::Column;
 
 use payas_model::model::{
-    operation::MutationDataParameter, relation::ModelRelation, types::ModelTypeKind,
+    operation::MutationDataParameter, relation::GqlRelation, types::GqlTypeKind,
 };
 
 use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
@@ -23,8 +23,8 @@ impl<'a> SQLMapper<'a, Vec<(&'a Column<'a>, &'a Column<'a>)>> for MutationDataPa
         };
 
         match &model_type.kind {
-            ModelTypeKind::Primitive => panic!(),
-            ModelTypeKind::Composite { fields, .. } => fields
+            GqlTypeKind::Primitive => panic!(),
+            GqlTypeKind::Composite { fields, .. } => fields
                 .iter()
                 .flat_map(|field| {
                     field.relation.self_column().and_then(|key_column_id| {
@@ -35,7 +35,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a Column<'a>, &'a Column<'a>)>> for MutationDataPa
                                 let key_column = operation_context
                                     .create_column(Column::Physical(&key_physical_column));
                                 let argument_value = match &field.relation {
-                                    ModelRelation::ManyToOne { other_type_id, .. } => {
+                                    GqlRelation::ManyToOne { other_type_id, .. } => {
                                         let other_type = &system.types[*other_type_id];
                                         let other_type_pk_field_name = other_type
                                             .pk_column_id()

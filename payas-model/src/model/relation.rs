@@ -2,10 +2,10 @@ use id_arena::Id;
 
 use super::column_id::ColumnId;
 
-use super::types::ModelType;
+use super::types::GqlType;
 
 #[derive(Debug, Clone)]
-pub enum ModelRelation {
+pub enum GqlRelation {
     Pk {
         column_id: ColumnId,
     },
@@ -14,21 +14,21 @@ pub enum ModelRelation {
     },
     ManyToOne {
         column_id: ColumnId,
-        other_type_id: Id<ModelType>,
+        other_type_id: Id<GqlType>,
         optional: bool,
     },
     OneToMany {
         other_type_column_id: ColumnId,
-        other_type_id: Id<ModelType>,
+        other_type_id: Id<GqlType>,
     },
 }
 
-impl ModelRelation {
+impl GqlRelation {
     pub fn self_column(&self) -> Option<ColumnId> {
         match self {
-            ModelRelation::Pk { column_id }
-            | ModelRelation::Scalar { column_id }
-            | ModelRelation::ManyToOne { column_id, .. } => Some(column_id.clone()),
+            GqlRelation::Pk { column_id }
+            | GqlRelation::Scalar { column_id }
+            | GqlRelation::ManyToOne { column_id, .. } => Some(column_id.clone()),
             _ => None,
         }
     }

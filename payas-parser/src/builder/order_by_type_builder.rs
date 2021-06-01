@@ -4,11 +4,11 @@ use payas_model::model::{
     order::{OrderByParameterType, OrderByParameterTypeKind},
 };
 
-use payas_model::model::{order::*, relation::ModelRelation, types::*};
+use payas_model::model::{order::*, relation::GqlRelation, types::*};
 
 use super::{system_builder::SystemContextBuilding, typechecking::Type};
 
-pub fn build_shallow(ast_types: &[Type], building: &mut SystemContextBuilding) {
+pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     let type_name = "Ordering".to_string();
     let primitive_type = OrderByParameterType {
         name: type_name.to_owned(),
@@ -17,8 +17,8 @@ pub fn build_shallow(ast_types: &[Type], building: &mut SystemContextBuilding) {
 
     building.order_by_types.add(&type_name, primitive_type);
 
-    for ast_type in ast_types.iter() {
-        let shallow_type = create_shallow_type(ast_type);
+    for model in models.iter() {
+        let shallow_type = create_shallow_type(model);
         let param_type_name = shallow_type.name.clone();
         building.order_by_types.add(&param_type_name, shallow_type);
     }
@@ -42,20 +42,20 @@ pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> Str
     }
 }
 
-fn create_shallow_type(ast_type: &Type) -> OrderByParameterType {
+fn create_shallow_type(model: &Type) -> OrderByParameterType {
     OrderByParameterType {
-        name: get_parameter_type_name(&ast_type.composite_name(), is_primitive(&ast_type)),
+        name: get_parameter_type_name(&model.composite_name(), is_primitive(&model)),
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },
     }
 }
 
 fn expand_type(
-    model_type: &ModelType,
+    model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> OrderByParameterTypeKind {
     match &model_type.kind {
-        ModelTypeKind::Primitive => OrderByParameterTypeKind::Primitive,
-        ModelTypeKind::Composite { fields, .. } => {
+        GqlTypeKind::Primitive => OrderByParameterTypeKind::Primitive,
+        GqlTypeKind::Composite { fields, .. } => {
             let parameters = fields
                 .iter()
                 .map(|field| new_field_param(field, building))
@@ -90,19 +90,19 @@ fn new_param(
         // Here the user intention is the same as the query above, but we cannot honor that intention
         // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
         // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
-        type_modifier: ModelTypeModifier::List,
+        type_modifier: GqlTypeModifier::List,
         column_id,
     }
 }
 
 pub fn new_field_param(
-    model_field: &ModelField,
+    model_field: &GqlField,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
     let field_model_type = &building.types[model_field.typ.type_id().to_owned()];
 
     let column_id = match &model_field.relation {
-        ModelRelation::Pk { column_id, .. } | ModelRelation::Scalar { column_id, .. } => {
+        GqlRelation::Pk { column_id, .. } | GqlRelation::Scalar { column_id, .. } => {
             Some(column_id.clone())
         }
         _ => None,
