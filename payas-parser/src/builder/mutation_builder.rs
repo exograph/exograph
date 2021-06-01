@@ -11,19 +11,21 @@ use payas_model::model::{
 use super::{system_builder::SystemContextBuilding, typechecking::Type};
 
 pub fn build(models: &[Type], building: &mut SystemContextBuilding) {
-    for ast_type in models.iter() {
-        let model_type_id = building.types.get_id(&ast_type.composite_name()).unwrap();
-        let create_mutation = build_create_mutation(model_type_id, ast_type, building);
+    for model in models.iter() {
+        if let Type::Composite { .. } = model {
+            let model_type_id = building.types.get_id(&model.composite_name()).unwrap();
+            let create_mutation = build_create_mutation(model_type_id, model, building);
 
-        building
-            .mutations
-            .add(&create_mutation.name.to_owned(), create_mutation);
+            building
+                .mutations
+                .add(&create_mutation.name.to_owned(), create_mutation);
 
-        for mutation in build_delete_mutations(model_type_id, ast_type, building)
-            .into_iter()
-            .chain(build_update_mutations(model_type_id, ast_type, building).into_iter())
-        {
-            building.mutations.add(&mutation.name.to_owned(), mutation);
+            for mutation in build_delete_mutations(model_type_id, model, building)
+                .into_iter()
+                .chain(build_update_mutations(model_type_id, model, building).into_iter())
+            {
+                building.mutations.add(&mutation.name.to_owned(), mutation);
+            }
         }
     }
 }

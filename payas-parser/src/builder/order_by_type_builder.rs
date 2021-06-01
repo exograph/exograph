@@ -18,9 +18,11 @@ pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     building.order_by_types.add(&type_name, primitive_type);
 
     for model in models.iter() {
-        let shallow_type = create_shallow_type(model);
-        let param_type_name = shallow_type.name.clone();
-        building.order_by_types.add(&param_type_name, shallow_type);
+        if let Type::Composite { .. } = &model {
+            let shallow_type = create_shallow_type(model);
+            let param_type_name = shallow_type.name.clone();
+            building.order_by_types.add(&param_type_name, shallow_type);
+        }
     }
 }
 

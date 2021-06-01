@@ -12,16 +12,18 @@ use super::{
 
 pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     for model in models {
-        let model_type_id = building.types.get_id(&model.composite_name()).unwrap();
-        let shallow_query = shallow_pk_query(model_type_id, model);
-        let collection_query = shallow_collection_query(model_type_id, model);
+        if let Type::Composite { .. } = &model {
+            let model_type_id = building.types.get_id(&model.composite_name()).unwrap();
+            let shallow_query = shallow_pk_query(model_type_id, model);
+            let collection_query = shallow_collection_query(model_type_id, model);
 
-        building
-            .queries
-            .add(&shallow_query.name.to_owned(), shallow_query);
-        building
-            .queries
-            .add(&collection_query.name.to_owned(), collection_query);
+            building
+                .queries
+                .add(&shallow_query.name.to_owned(), shallow_query);
+            building
+                .queries
+                .add(&collection_query.name.to_owned(), collection_query);
+        }
     }
 }
 

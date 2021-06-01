@@ -13,10 +13,7 @@ use payas_model::{
 use crate::ast::ast_types::AstSystem;
 use crate::builder::typechecking::{Scope, Typecheck};
 
-use super::{
-    mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,
-    typechecking::Type,
-};
+use super::{mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder, typechecking::{Type, populate_standard_env}};
 
 pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut building = SystemContextBuilding::default();
@@ -24,6 +21,7 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
     let models = &ast_system.models;
 
     let mut env: MappedArena<Type> = MappedArena::default();
+    populate_standard_env(&mut env);
     for model in models {
         env.add(model.name.as_str(), model.shallow());
     }

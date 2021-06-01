@@ -17,6 +17,12 @@ pub trait Typecheck<T> {
     fn pass(&self, typ: &mut T, env: &MappedArena<Type>, scope: &Scope) -> bool;
 }
 
+pub fn populate_standard_env(env: &mut MappedArena<Type>) {
+    env.add("Boolean", Type::Primitive(PrimitiveType::Boolean));
+    env.add("Int", Type::Primitive(PrimitiveType::Int));
+    env.add("String", Type::Primitive(PrimitiveType::String));
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
     Primitive(PrimitiveType),
@@ -117,12 +123,7 @@ impl PrimitiveType {
 impl Typecheck<Type> for AstFieldType {
     fn shallow(&self) -> Type {
         match &self {
-            AstFieldType::Plain(name) => match name.as_str() {
-                "Boolean" => Type::Primitive(PrimitiveType::Boolean),
-                "Int" => Type::Primitive(PrimitiveType::Int),
-                "String" => Type::Primitive(PrimitiveType::String),
-                o => Type::Error(format!("Unknown type: {}", o)),
-            },
+            AstFieldType::Plain(_) => Type::Defer,
             AstFieldType::Optional(u) => Type::Optional(Box::new(u.shallow())),
             AstFieldType::List(u) => Type::List(Box::new(u.shallow())),
         }

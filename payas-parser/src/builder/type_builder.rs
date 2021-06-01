@@ -15,7 +15,7 @@ use super::{
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
-pub const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"]; // TODO: Expand the list
+pub const PRIMITIVE_TYPE_NAMES: [&str; 3] = ["Int", "String", "Boolean"]; // TODO: Expand the list
 
 pub fn build_shallow(models: &MappedArena<Type>, building: &mut SystemContextBuilding) {
     for type_name in PRIMITIVE_TYPE_NAMES.iter() {
@@ -28,7 +28,9 @@ pub fn build_shallow(models: &MappedArena<Type>, building: &mut SystemContextBui
     }
 
     for (_, model_type) in models.iter() {
-        create_shallow_type(model_type, building);
+        if let Type::Composite { .. } = &model_type {
+            create_shallow_type(model_type, building);
+        }
     }
 }
 
@@ -37,10 +39,14 @@ pub fn build_expanded(
     building: &mut SystemContextBuilding,
 ) {
     for (_, model_type) in env.iter() {
-        expand_type1(model_type, building, env);
+        if let Type::Composite { .. } = &model_type {
+            expand_type1(model_type, building, env);
+        }
     }
     for (_, model_type) in env.iter() {
-        expand_type2(model_type, building, env);
+        if let Type::Composite { .. } = &model_type {
+            expand_type2(model_type, building, env);
+        }
     }
 }
 
@@ -266,17 +272,6 @@ fn create_field(
                 type_name: r.clone(),
                 type_id: building.types.get_id(&r).unwrap(),
             },
-            Type::Primitive(p) => {
-                let type_name = match p {
-                    PrimitiveType::Boolean => "Boolean".to_string(),
-                    PrimitiveType::Int => "Int".to_string(),
-                    PrimitiveType::String => "String".to_string(),
-                };
-                GqlFieldType::Reference { // TODO(shadaj): fix
-                    type_name: type_name.clone(),
-                    type_id: building.types.get_id(&type_name).unwrap(),
-                }
-            },
             Type::Optional(underlying) => GqlFieldType::Optional(Box::new(create_field_type(
                 underlying, building,
             ))),
@@ -314,15 +309,11 @@ fn create_column(
                 .get_annotation("column")
                 .map(|a| a.params[0].as_string())
                 .unwrap_or_else(|| field.name.clone()),
-            typ: PhysicalColumnType::from_string(match field.typ.as_primitive() {
-                PrimitiveType::Boolean => "Boolean",
-                PrimitiveType::Int => "Int",
-                PrimitiveType::String => "String",
-            }),
+            typ: field.typ.deref(env).as_primitive().to_column_type(),
             is_pk: true,
             is_autoincrement: match field.get_annotation("autoincrement") {
                 Some(_) => {
-                    assert!(field.typ == Type::Primitive(PrimitiveType::Int));
+                    assert!(field.typ.deref(env) == Type::Primitive(PrimitiveType::Int));
                     true
                 }
                 _ => false,
@@ -330,10 +321,10 @@ fn create_column(
             references: None,
         }),
         None { .. } => {
-            match &field.typ {
+            match &field.typ.deref(env) {
                 Type::List(_) => None, // OneToMany, so the "many"-side type has the column
 
-                Type::Primitive(_) => {
+                Type::Primitive(p) => {
                     // Scalar type
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
@@ -341,15 +332,14 @@ fn create_column(
                             .get_annotation("column")
                             .map(|a| a.params[0].as_string())
                             .unwrap_or_else(|| field.name.clone()),
-                        typ: field.typ.as_primitive().to_column_type(),
+                        typ: p.to_column_type(),
                         is_pk: false,
                         is_autoincrement: false,
                         references: None,
                     })
                 }
 
-                o => {
-                    let other_type: Type = o.deref(env);
+                other_type => {
                     let other_type_pk_field = pk_field_of(&other_type).unwrap();
                     let other_table_name = other_type
                         .get_annotation("table")
@@ -362,7 +352,7 @@ fn create_column(
                             .get_annotation("column")
                             .map(|a| a.params[0].as_string())
                             .unwrap_or_else(|| format!("{}_id", field.name)),
-                        typ: other_type_pk_field.typ.as_primitive().to_column_type(),
+                        typ: other_type_pk_field.typ.deref(env).as_primitive().to_column_type(),
                         is_pk: false,
                         is_autoincrement: false,
                         references: Some(ColumnReferece {
@@ -421,7 +411,7 @@ fn create_relation(
             }
         }
         None => {
-            match &field.typ {
+            match &field.typ.deref(env) {
                 // Not primitive
                 Type::List(i) => {
                     let other_type_id = building.types.get_id(i.as_ref().inner_composite(env).composite_name().as_str()).unwrap();
