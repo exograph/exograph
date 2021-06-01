@@ -5,8 +5,6 @@ use payas_model::model::{
     ModelType, ModelTypeKind, ModelTypeModifier,
 };
 
-use crate::ast::ast_types::AstModel;
-
 use super::{
     order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding,
     typechecking::Type,

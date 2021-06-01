@@ -3,7 +3,6 @@ use payas_model::model::types::{ModelField, ModelType, ModelTypeKind, ModelTypeM
 use super::{
     system_builder::SystemContextBuilding, type_builder::PRIMITIVE_TYPE_NAMES, typechecking::Type,
 };
-use crate::ast::ast_types::AstModel;
 use payas_model::model::predicate::*;
 
 pub fn build_shallow(ast_types: &[Type], building: &mut SystemContextBuilding) {

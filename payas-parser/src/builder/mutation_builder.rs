@@ -1,10 +1,7 @@
 use id_arena::Id;
 use payas_model::model::{operation::Mutation, types::ModelType};
 
-use crate::{
-    ast::ast_types::AstModel,
-    builder::{query_builder, type_builder},
-};
+use crate::builder::{query_builder, type_builder};
 
 use payas_model::model::{
     operation::{MutationDataParameter, MutationKind, OperationReturnType},
@@ -51,7 +48,7 @@ fn build_create_mutation(
         }),
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.UNSAFE_name().to_string(),
+            type_name: ast_type.UNSAFE_name(),
             type_modifier: ModelTypeModifier::Optional,
         },
     }
@@ -68,7 +65,7 @@ fn build_delete_mutations(
         kind: MutationKind::Delete(query_builder::pk_predicate_param(model_type, building)),
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.UNSAFE_name().to_string(),
+            type_name: ast_type.UNSAFE_name(),
             type_modifier: ModelTypeModifier::Optional,
         },
     };
@@ -80,7 +77,7 @@ fn build_delete_mutations(
         )),
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.UNSAFE_name().to_string(),
+            type_name: ast_type.UNSAFE_name(),
             type_modifier: ModelTypeModifier::List,
         },
     };
@@ -113,7 +110,7 @@ fn build_update_mutations(
         },
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.UNSAFE_name().to_string(),
+            type_name: ast_type.UNSAFE_name(),
             type_modifier: ModelTypeModifier::Optional,
         },
     };
@@ -130,7 +127,7 @@ fn build_update_mutations(
         },
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.UNSAFE_name().to_string(),
+            type_name: ast_type.UNSAFE_name(),
             type_modifier: ModelTypeModifier::List,
         },
     };

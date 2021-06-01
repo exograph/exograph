@@ -6,8 +6,7 @@ use crate::ast::ast_types::*;
 pub fn parse(input: &str) -> Option<Tree> {
     let mut parser = tree_sitter::Parser::new();
     parser.set_language(sitter_ffi::language()).unwrap();
-    let tree = parser.parse(input, None);
-    tree
+    parser.parse(input, None)
 }
 
 pub fn convert_root(node: Node, source: &[u8]) -> AstSystem {

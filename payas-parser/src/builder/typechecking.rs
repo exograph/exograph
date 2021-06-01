@@ -1,8 +1,7 @@
 use std::ops::Deref;
 
-use id_arena::{Arena, Id};
-use payas_model::model::{mapped_arena::MappedArena, ModelType};
-use serde::{Deserialize, Serialize, Serializer};
+use payas_model::model::mapped_arena::MappedArena;
+use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::{
     AstAnnotation, AstExpr, AstField, AstFieldType, AstModel, AstSystem, FieldSelection,
@@ -67,17 +66,15 @@ impl Type {
 
     pub fn get_annotation(&self, name: &str) -> Option<&TypedAnnotation> {
         match &self {
-            Type::Composite { annotations, .. } => {
-                annotations.iter().find(|a| a.name == name.to_string())
-            }
-            o => panic!(),
+            Type::Composite { annotations, .. } => annotations.iter().find(|a| a.name == *name),
+            _ => panic!(),
         }
     }
 
     pub fn as_primitive(&self) -> PrimitiveType {
         match &self {
             Type::Primitive(p) => p.clone(),
-            o => panic!(format!("Not a primitive: {:?}", self)),
+            _ => panic!("Not a primitive: {:?}", self),
         }
     }
 
@@ -92,7 +89,7 @@ impl Type {
                 PrimitiveType::INTEGER => "Int".to_string(),
                 PrimitiveType::STRING => "String".to_string(),
             },
-            _ => panic!(format!("Cannot get name of type {:?}", self)),
+            _ => panic!("Cannot get name of type {:?}", self),
         }
     }
 }
@@ -122,7 +119,7 @@ impl Typecheck<Type> for AstFieldType {
         if typ.is_incomplete() {
             match &self {
                 AstFieldType::Plain(name) => {
-                    if let Some(field_typ) = env.get_id(name.as_str()) {
+                    if env.get_id(name.as_str()).is_some() {
                         *typ = Type::Reference(name.clone());
                         true
                     } else {
@@ -162,7 +159,7 @@ impl Typecheck<Type> for AstModel {
         }
     }
 
-    fn pass(&self, typ: &mut Type, env: &MappedArena<Type>, scope: &Scope) -> bool {
+    fn pass(&self, typ: &mut Type, env: &MappedArena<Type>, _scope: &Scope) -> bool {
         if let Type::Composite { fields, .. } = typ {
             let model_scope = Scope {
                 enclosing_model: Some(self.name.clone()),
@@ -191,7 +188,7 @@ pub struct TypedField {
 
 impl TypedField {
     pub fn get_annotation(&self, name: &str) -> Option<&TypedAnnotation> {
-        self.annotations.iter().find(|a| a.name == name.to_string())
+        self.annotations.iter().find(|a| a.name == *name)
     }
 }
 
@@ -261,14 +258,14 @@ impl TypedExpression {
             TypedExpression::FieldSelection(select) => select.typ(),
             TypedExpression::LogicalOp(logic) => logic.typ(),
             TypedExpression::RelationalOp(relation) => relation.typ(),
-            TypedExpression::StringLiteral(v, t) => t,
+            TypedExpression::StringLiteral(_, t) => t,
         }
     }
 
     pub fn as_string(&self) -> String {
         match &self {
             TypedExpression::StringLiteral(s, _) => s.clone(),
-            o => panic!(),
+            _ => panic!(),
         }
     }
 }
@@ -308,7 +305,7 @@ impl Typecheck<TypedExpression> for AstExpr {
                     panic!()
                 }
             }
-            AstExpr::StringLiteral(v) => false,
+            AstExpr::StringLiteral(_) => false,
         }
     }
 }
@@ -322,7 +319,7 @@ pub enum TypedFieldSelection {
 impl TypedFieldSelection {
     pub fn typ(&self) -> &Type {
         match &self {
-            TypedFieldSelection::Single(i, typ) => typ,
+            TypedFieldSelection::Single(_, typ) => typ,
             TypedFieldSelection::Select(_, _, typ) => typ,
         }
     }
@@ -479,7 +476,7 @@ impl Typecheck<TypedLogicalOp> for LogicalOp {
                             *o_typ = Type::Primitive(PrimitiveType::BOOLEAN);
                             true
                         } else {
-                            *o_typ = Type::Error(format!("Both inputs to && must be booleans"));
+                            *o_typ = Type::Error("Both inputs to && must be booleans".to_string());
                             false
                         }
                     } else {
@@ -501,7 +498,7 @@ impl Typecheck<TypedLogicalOp> for LogicalOp {
                             *o_typ = Type::Primitive(PrimitiveType::BOOLEAN);
                             true
                         } else {
-                            *o_typ = Type::Error(format!("Both inputs to || must be booleans"));
+                            *o_typ = Type::Error("Both inputs to || must be booleans".to_string());
                             false
                         }
                     } else {

@@ -138,8 +138,5 @@ fn order_by_param_type(
 }
 
 fn is_primitive(kind: &Type) -> bool {
-    match kind {
-        Type::Primitive(_) => true,
-        _ => false,
-    }
+    matches!(kind, Type::Primitive(_))
 }

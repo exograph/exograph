@@ -15,44 +15,10 @@ use super::{
     query_builder,
     typechecking::{PrimitiveType, Type, TypedField},
 };
-use crate::ast::{self, ast_types::*};
 
 use payas_model::model::{ModelField, ModelType, ModelTypeKind};
 
 pub const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"]; // TODO: Expand the list
-
-// pub struct SchemaType {
-//     pub name: String,
-//     pub kind: SchemaTypeKind
-// }
-
-// impl SchemaType {
-//     pub fn pk_field(&self) -> Option<&AstField> {
-//         self.kind.pk_field()
-//     }
-// }
-
-// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-// pub enum SchemaTypeKindKind {
-//     Int {
-//         autoincrement: bool,
-//     },
-//     Other, // For now, catch-all for other primitive types TODO: Add a variant for each supported primitive type
-//     Composite {
-//         fields: Vec<
-//     },
-// }
-
-// impl AstTypeKind {
-//     fn pk_field(&self) -> Option<&AstField> {
-//         match self {
-//             AstTypeKind::Composite { fields, .. } => fields
-//                 .iter()
-//                 .find(|field| matches!(&field.relation, AstRelation::Pk { .. })),
-//             _ => None,
-//         }
-//     }
-// }
 
 pub fn build_shallow(ast_models: &HashMap<String, &Type>, building: &mut SystemContextBuilding) {
     for type_name in PRIMITIVE_TYPE_NAMES.iter() {
@@ -77,7 +43,7 @@ pub fn build_expanded(
         expand_type1(ast_type, building);
     }
     for ast_type in ast_types_map.values() {
-        expand_type2(ast_type, ast_types_map, building);
+        expand_type2(ast_type, building);
     }
 }
 
@@ -86,12 +52,7 @@ fn create_shallow_type(
     ast_types_map: &HashMap<String, &Type>,
     building: &mut SystemContextBuilding,
 ) {
-    if let Type::Composite {
-        name,
-        fields,
-        annotations,
-    } = &ast_type
-    {
+    if let Type::Composite { name, fields, .. } = &ast_type {
         let table_name = ast_type
             .get_annotation("table")
             .map(|a| a.params[0].as_string())
@@ -171,11 +132,7 @@ fn expand_type1(ast_type: &Type, building: &mut SystemContextBuilding) {
     building.types.values[existing_type_id.unwrap()].kind = kind;
 }
 
-fn expand_type2(
-    ast_type: &Type,
-    ast_types_map: &HashMap<String, &Type>,
-    building: &mut SystemContextBuilding,
-) {
+fn expand_type2(ast_type: &Type, building: &mut SystemContextBuilding) {
     let existing_type_id = building.types.get_id(&ast_type.UNSAFE_name()).unwrap();
     let existing_type = &building.types[existing_type_id];
 
@@ -192,7 +149,7 @@ fn expand_type2(
         {
             let model_fields: Vec<ModelField> = ast_fields
                 .iter()
-                .map(|ast_field| create_field(ast_field, table_id, ast_types_map, building))
+                .map(|ast_field| create_field(ast_field, table_id, building))
                 .collect();
 
             let kind = ModelTypeKind::Composite {
@@ -259,12 +216,12 @@ fn expand_type2(
 }
 
 fn compute_input_fields(
-    model_fields: &Vec<ModelField>,
+    model_fields: &[ModelField],
     building: &SystemContextBuilding,
     force_optional_field_modifier: bool,
 ) -> Vec<ModelField> {
     model_fields
-        .into_iter()
+        .iter()
         .flat_map(|field| match &field.relation {
             ModelRelation::Pk { .. } => None,
             ModelRelation::Scalar { .. } => Some(ModelField {
@@ -303,7 +260,6 @@ fn compute_input_fields(
 fn create_field(
     ast_field: &TypedField,
     table_id: Id<PhysicalTable>,
-    ast_types_map: &HashMap<String, &Type>,
     building: &SystemContextBuilding,
 ) -> ModelField {
     fn create_model_type(
@@ -330,7 +286,7 @@ fn create_field(
     ModelField {
         name: ast_field.name.to_owned(),
         typ: create_model_type(type_name, &ast_field.typ, building),
-        relation: create_relation(&ast_field, table_id, ast_types_map, building),
+        relation: create_relation(&ast_field, table_id, building),
     }
 }
 
@@ -338,7 +294,7 @@ fn pk_field_of(typ: &Type) -> Option<&TypedField> {
     match &typ {
         Type::Composite { fields, .. } => fields.iter().find(|f| f.get_annotation("pk").is_some()),
         Type::Optional(o) => pk_field_of(o.deref()),
-        o => panic!(),
+        _ => panic!(),
     }
 }
 
@@ -432,7 +388,6 @@ fn create_column(
 fn create_relation(
     ast_field: &TypedField,
     table_id: Id<PhysicalTable>,
-    ast_types_map: &HashMap<String, &Type>,
     building: &SystemContextBuilding,
 ) -> ModelRelation {
     fn compute_column_name(column_name: &Option<String>, ast_field: &TypedField) -> String {
@@ -510,10 +465,7 @@ fn create_relation(
                 }
 
                 o => {
-                    let optional = match o {
-                        Type::Optional(_) => true,
-                        _ => false,
-                    };
+                    let optional = matches!(o, Type::Optional(_));
                     // ManyToOne
                     let column_id = compute_column_id(
                         table,

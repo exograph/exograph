@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use id_arena::Arena;
 use payas_model::{
     model::{
         mapped_arena::MappedArena,
