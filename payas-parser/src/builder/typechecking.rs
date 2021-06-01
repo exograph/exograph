@@ -26,11 +26,7 @@ pub fn populate_standard_env(env: &mut MappedArena<Type>) {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
     Primitive(PrimitiveType),
-    Composite {
-        name: String,
-        fields: Vec<TypedField>,
-        annotations: Vec<TypedAnnotation>,
-    },
+    Composite(CompositeType),
     Optional(Box<Type>),
     List(Box<Type>),
     Reference(String),
@@ -70,13 +66,6 @@ impl Type {
         }
     }
 
-    pub fn get_annotation(&self, name: &str) -> Option<&TypedAnnotation> {
-        match &self {
-            Type::Composite { annotations, .. } => annotations.iter().find(|a| a.name == *name),
-            _ => panic!(),
-        }
-    }
-
     pub fn as_primitive(&self) -> PrimitiveType {
         match &self {
             Type::Primitive(p) => p.clone(),
@@ -85,21 +74,27 @@ impl Type {
     }
 
     // useful for relation creation
-    pub fn inner_composite<'a>(&'a self, env: &'a MappedArena<Type>) -> &'a Type {
+    pub fn inner_composite<'a>(&'a self, env: &'a MappedArena<Type>) -> &'a CompositeType {
         match &self {
-            Type::Composite { .. } => &self,
+            Type::Composite(c) => c,
             Type::Reference(r) => env.get_by_key(r).unwrap().inner_composite(env),
             Type::Optional(o) => o.inner_composite(env),
             Type::List(o) => o.inner_composite(env),
             _ => panic!("Cannot get inner composite of type {:?}", self),
         }
     }
+}
 
-    pub fn composite_name(&self) -> String {
-        match &self {
-            Type::Composite { name, .. } => name.clone(),
-            _ => panic!("Cannot get name of type {:?}", self),
-        }
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CompositeType {
+    pub name: String,
+    pub fields: Vec<TypedField>,
+    pub annotations: Vec<TypedAnnotation>
+}
+
+impl CompositeType {
+    pub fn get_annotation(&self, name: &str) -> Option<&TypedAnnotation> {
+        self.annotations.iter().find(|a| a.name == *name)
     }
 }
 
@@ -166,22 +161,22 @@ impl Typecheck<Type> for AstFieldType {
 
 impl Typecheck<Type> for AstModel {
     fn shallow(&self) -> Type {
-        Type::Composite {
+        Type::Composite(CompositeType {
             name: self.name.clone(),
             fields: self.fields.iter().map(|f| f.shallow()).collect(),
             annotations: self.annotations.iter().map(|a| a.shallow()).collect(),
-        }
+        })
     }
 
     fn pass(&self, typ: &mut Type, env: &MappedArena<Type>, _scope: &Scope) -> bool {
-        if let Type::Composite { fields, .. } = typ {
+        if let Type::Composite(c) = typ {
             let model_scope = Scope {
                 enclosing_model: Some(self.name.clone()),
             };
             let fields_changed = self
                 .fields
                 .iter()
-                .zip(fields.iter_mut())
+                .zip(c.fields.iter_mut())
                 .map(|(f, tf)| f.pass(tf, env, &model_scope))
                 .filter(|v| *v)
                 .count()
@@ -382,8 +377,8 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                 if let TypedFieldSelection::Select(prefix, _, typ) = typ {
                     let in_updated = selection.pass(prefix, env, scope);
                     let out_updated = if typ.is_incomplete() {
-                        if let Type::Composite { fields, .. } = prefix.typ().deref(env) {
-                            if let Some(field) = fields.iter().find(|f| f.name == i.0) {
+                        if let Type::Composite(c) = prefix.typ().deref(env) {
+                            if let Some(field) = c.fields.iter().find(|f| f.name == i.0) {
                                 if !field.typ.is_incomplete() {
                                     assert!(*typ != field.typ.clone());
                                     *typ = field.typ.clone();
@@ -670,6 +665,7 @@ pub fn build(ast_system: AstSystem) -> MappedArena<Type> {
     let ast_types = &ast_system.models;
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
+    populate_standard_env(&mut types_arena);
     for model in ast_types {
         types_arena.add(model.name.as_str(), model.shallow());
     }

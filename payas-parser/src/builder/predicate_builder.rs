@@ -1,8 +1,6 @@
 use payas_model::model::types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier};
 
-use super::{
-    system_builder::SystemContextBuilding, type_builder::PRIMITIVE_TYPE_NAMES, typechecking::Type,
-};
+use super::{system_builder::SystemContextBuilding, type_builder::PRIMITIVE_TYPE_NAMES, typechecking::{CompositeType, Type}};
 use payas_model::model::predicate::*;
 
 pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
@@ -28,8 +26,8 @@ pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     }
 
     for model in models.iter() {
-        if let Type::Composite { .. } = &model {
-            let shallow_type = create_shallow_type(model);
+        if let Type::Composite(c) = &model {
+            let shallow_type = create_shallow_type(c);
             let param_type_name = shallow_type.name.clone();
             building.predicate_types.add(&param_type_name, shallow_type);
         }
@@ -50,9 +48,9 @@ pub fn get_parameter_type_name(model_type_name: &str) -> String {
     format!("{}Filter", model_type_name)
 }
 
-fn create_shallow_type(model: &Type) -> PredicateParameterType {
+fn create_shallow_type(model: &CompositeType) -> PredicateParameterType {
     PredicateParameterType {
-        name: get_parameter_type_name(&model.composite_name()),
+        name: get_parameter_type_name(model.name.as_str()),
         kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
     }
 }

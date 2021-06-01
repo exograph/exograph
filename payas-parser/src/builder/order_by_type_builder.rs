@@ -6,6 +6,8 @@ use payas_model::model::{
 
 use payas_model::model::{order::*, relation::GqlRelation, types::*};
 
+use crate::builder::typechecking::PrimitiveType;
+
 use super::{system_builder::SystemContextBuilding, typechecking::Type};
 
 pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
@@ -18,11 +20,9 @@ pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     building.order_by_types.add(&type_name, primitive_type);
 
     for model in models.iter() {
-        if let Type::Composite { .. } = &model {
-            let shallow_type = create_shallow_type(model);
-            let param_type_name = shallow_type.name.clone();
-            building.order_by_types.add(&param_type_name, shallow_type);
-        }
+        let shallow_type = create_shallow_type(model);
+        let param_type_name = shallow_type.name.clone();
+        building.order_by_types.add(&param_type_name, shallow_type);
     }
 }
 
@@ -46,7 +46,15 @@ pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> Str
 
 fn create_shallow_type(model: &Type) -> OrderByParameterType {
     OrderByParameterType {
-        name: get_parameter_type_name(&model.composite_name(), is_primitive(&model)),
+        name: match &model {
+            Type::Primitive(p) => get_parameter_type_name(match p {
+                PrimitiveType::Boolean => "Boolean",
+                PrimitiveType::Int => "Int",
+                PrimitiveType::String => "String"
+            }, true),
+            Type::Composite(c) => get_parameter_type_name(c.name.as_str(), false),
+            _ => panic!()
+        },
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },
     }
 }

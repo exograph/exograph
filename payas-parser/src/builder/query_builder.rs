@@ -5,17 +5,14 @@ use payas_model::model::{
     GqlType, GqlTypeKind, GqlTypeModifier,
 };
 
-use super::{
-    order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding,
-    typechecking::Type,
-};
+use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding, typechecking::{CompositeType, Type}};
 
 pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     for model in models {
-        if let Type::Composite { .. } = &model {
-            let model_type_id = building.types.get_id(&model.composite_name()).unwrap();
-            let shallow_query = shallow_pk_query(model_type_id, model);
-            let collection_query = shallow_collection_query(model_type_id, model);
+        if let Type::Composite(c) = &model {
+            let model_type_id = building.types.get_id(c.name.as_str()).unwrap();
+            let shallow_query = shallow_pk_query(model_type_id, c);
+            let collection_query = shallow_collection_query(model_type_id, c);
 
             building
                 .queries
@@ -46,15 +43,15 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
-fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &Type) -> Query {
-    let operation_name = pk_query_name(&typ.composite_name());
+fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &CompositeType) -> Query {
+    let operation_name = pk_query_name(typ.name.as_str());
     Query {
         name: operation_name,
         predicate_param: None,
         order_by_param: None,
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: typ.composite_name(),
+            type_name: typ.name.clone(),
             type_modifier: GqlTypeModifier::NonNull,
         },
     }
@@ -92,15 +89,15 @@ pub fn pk_predicate_param(
     }
 }
 
-fn shallow_collection_query(model_type_id: Id<GqlType>, model: &Type) -> Query {
-    let operation_name = collection_query_name(&model.composite_name());
+fn shallow_collection_query(model_type_id: Id<GqlType>, model: &CompositeType) -> Query {
+    let operation_name = collection_query_name(model.name.as_str());
     Query {
         name: operation_name,
         predicate_param: None,
         order_by_param: None,
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: model.composite_name(),
+            type_name: model.name.clone(),
             type_modifier: GqlTypeModifier::List,
         },
     }

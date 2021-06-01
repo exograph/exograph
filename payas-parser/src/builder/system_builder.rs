@@ -11,45 +11,15 @@ use payas_model::{
 };
 
 use crate::ast::ast_types::AstSystem;
-use crate::builder::typechecking::{Scope, Typecheck};
 
-use super::{mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder, typechecking::{Type, populate_standard_env}};
+use super::{mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder, typechecking::Type};
 
 pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut building = SystemContextBuilding::default();
 
-    let models = &ast_system.models;
-
-    let mut env: MappedArena<Type> = MappedArena::default();
-    populate_standard_env(&mut env);
-    for model in models {
-        env.add(model.name.as_str(), model.shallow());
-    }
-
-    loop {
-        let mut did_change = false;
-        let init_scope = Scope {
-            enclosing_model: None,
-        };
-        for model in models {
-            let mut typ = env
-                .get_by_key_mut(model.name.as_str())
-                .unwrap()
-                .clone();
-            let pass_res = model.pass(&mut typ, &env, &init_scope);
-            if pass_res {
-                *env.get_by_key_mut(model.name.as_str()).unwrap() = typ;
-                did_change = true;
-            }
-        }
-
-        if !did_change {
-            break;
-        }
-    }
+    let env: MappedArena<Type> = super::typechecking::build(ast_system);
 
     let mut types_types = Vec::new();
-
     for ast_type in env.keys() {
         types_types.push(env.get_by_key(ast_type).unwrap().clone());
     }
