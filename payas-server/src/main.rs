@@ -1,13 +1,15 @@
 use std::{env, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::http::StatusCode;
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 
 use introspection::schema::Schema;
 use payas_model::{model::system::ModelSystem, sql::database::Database};
 use payas_parser::builder::system_builder;
 use serde_json::Value;
 
+mod authentication;
 mod data;
 mod execution;
 mod introspection;
@@ -15,6 +17,8 @@ mod introspection;
 pub use payas_parser::ast;
 pub use payas_parser::parser;
 pub use payas_sql::sql;
+
+use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 
 static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
@@ -25,24 +29,53 @@ async fn playground() -> impl Responder {
 }
 
 async fn resolve(
-    req_body: String,
+    req: HttpRequest,
+    body: web::Json<Value>,
     system_info: web::Data<Arc<(ModelSystem, Schema, Database)>>,
+    authenticator: web::Data<Arc<JwtAuthenticator>>,
 ) -> impl Responder {
-    let (system, schema, database) = system_info.as_ref().as_ref();
+    let auth = authenticator.extract_authentication(req);
 
-    let request: Value = serde_json::from_str(req_body.as_str()).unwrap();
-    let operation_name = request["operationName"].as_str();
-    let query_str = request["query"].as_str().unwrap();
-    let variables = request["variables"].as_object();
+    match auth {
+        Ok(claims) => {
+            let (system, schema, database) = system_info.as_ref().as_ref();
 
-    crate::execution::executor::execute(
-        system,
-        schema,
-        database,
-        operation_name,
-        query_str,
-        variables,
-    )
+            let operation_name = body["operationName"].as_str();
+            let query_str = body["query"].as_str().unwrap();
+            let variables = body["variables"].as_object();
+
+            crate::execution::executor::execute(
+                system,
+                schema,
+                database,
+                operation_name,
+                query_str,
+                variables,
+                claims,
+            )
+            .with_status(StatusCode::OK)
+        }
+        Err(err) => {
+            let (message, status_code) = match err {
+                JwtAuthenticationError::ExpiredToken => {
+                    ("Expired JWT token", StatusCode::UNAUTHORIZED)
+                }
+                JwtAuthenticationError::TamperedToken => {
+                    // No need to reveal more info for a tampered token, so mark is as a generic bad request
+                    ("Unexpected error", StatusCode::BAD_REQUEST)
+                }
+                JwtAuthenticationError::Unknown => ("Unknown error", StatusCode::UNAUTHORIZED),
+            };
+
+            let mut response = String::from(r#"{"errors": [{"message":""#);
+            response.push_str(message);
+            response.push_str(r#""}]}"#);
+
+            response
+                .with_status(status_code)
+                .with_header("Content-Type", "application/json")
+        }
+    }
 }
 
 fn cors_from_env() -> Cors {
@@ -80,6 +113,7 @@ async fn main() -> std::io::Result<()> {
     database.create_client(); // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
 
     let system_info = Arc::new((system, schema, database));
+    let authenticator = Arc::new(JwtAuthenticator::new_from_env());
 
     let server = HttpServer::new(move || {
         let cors = cors_from_env();
@@ -87,6 +121,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .data(system_info.clone())
+            .data(authenticator.clone())
             .route("/", web::get().to(playground))
             .route("/", web::post().to(resolve))
     });
