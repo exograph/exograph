@@ -11,7 +11,7 @@ fn main() {
 
     if !sitter_out.status.success() {
         println!("{}", String::from_utf8_lossy(&sitter_out.stderr));
-        panic!("BOO");
+        panic!("Compiling the grammar failed");
     }
 
     let dir: PathBuf = ["grammar", "src"].iter().collect();
