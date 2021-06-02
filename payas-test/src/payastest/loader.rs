@@ -18,8 +18,7 @@ pub type TestfileTest = Vec<String>;
 
 #[derive(Debug)]
 pub enum TestfileOperation {
-    Sql(String),
-    Schema(String),
+    Sql(String, String),
     GqlDocument{ document: String, variables: Option<serde_json::Value>, expected_payload: Option<serde_json::Value> },
 }
 
@@ -28,7 +27,8 @@ pub struct ParsedTestfile {
     pub name: String,
     pub unique_dbname: String,
 
-    pub setup_operations: Vec<TestfileOperation>,
+    pub model_path: Option<String>,
+
     pub init_operations: Vec<TestfileOperation>,
     pub test_operations: HashMap<String, TestfileOperation>
 }
@@ -91,9 +91,9 @@ fn parse_testfile(testfile: &Testfile, testfile_path: &PathBuf) -> Result<Parsed
 
     let mut result = ParsedTestfile {
         name: testfile_name.clone(),
-        unique_dbname: format!("payas{}", testfile_name.replace(|c: char| !c.is_ascii_alphanumeric(), "")),
+        unique_dbname: format!("payatest{}", testfile_name.replace(|c: char| !c.is_ascii_alphanumeric(), "")),
 
-        setup_operations: Vec::new(),
+        model_path: None,
         init_operations: Vec::new(),
         test_operations: HashMap::new(),
     };
@@ -101,13 +101,15 @@ fn parse_testfile(testfile: &Testfile, testfile_path: &PathBuf) -> Result<Parsed
     // parsing the setup section
     // read out schema path 
     // TODO: parse entire setup section
-    // TODO: use pregenerated schema in absence of a provided one
+    // TODO: check for a sql file to use
     // TODO: check ext
-    let mut schema_path = testfile_path.clone();
-    schema_path.push(testfile.setup.get(0).ok_or("No items in the setup section.")?);
-    result.setup_operations.push(TestfileOperation::Schema(schema_path.into_os_string().into_string().map_err(
-        |_| SimpleError::new("Could not parse schema path into a valid Unicode string"))?
-    ));
+    let mut model_path = testfile_path.clone();
+    model_path.pop(); // get parent dir
+    model_path.push(testfile.setup.get(0).ok_or("No items in the setup section.")?);
+    result.model_path = Some(model_path.into_os_string().into_string().map_err(
+        |_| SimpleError::new("Could not parse model path into a valid Unicode string"))?);
+
+    println!("{}", &result.model_path.as_ref().unwrap());
 
     // read in initialization 
     for filename in testfile.init.iter() {
@@ -168,7 +170,7 @@ fn construct_gql_operation_from_file(gql_filepath: &String, json_filepath: Optio
     };
 
     // verify gql by parsing
-    let gql_document = parse_query(&gql.operation)?;
+    let _gql_document = parse_query(&gql.operation)?;
 
     Ok(TestfileOperation::GqlDocument {
         document: gql.operation, 
@@ -182,7 +184,7 @@ fn read_file_from_basedir(path: &String, basedir: &PathBuf) -> Result<String, Bo
     let mut file_path = PathBuf::from(basedir.parent().ok_or("").clone()?);
     file_path.push(path);
 
-    // read in schema file
+    // read in file
     println!("Reading {:?}", file_path);
 
     let mut file = File::open(file_path)?;

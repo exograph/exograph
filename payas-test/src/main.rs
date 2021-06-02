@@ -1,5 +1,6 @@
 pub mod payastest;
 
+use futures::future::join_all;
 use payastest::loader::load_testfiles_from_dir;
 use payastest::runner::run_testfile;
 
@@ -18,8 +19,18 @@ async fn main() {
     // Load testfiles
     let testfiles = load_testfiles_from_dir(&directory).unwrap();
    
-    // Run testfiles
-    for testfile in testfiles {
-        run_testfile(&testfile, std::env::var("PAYAS_DATABASE_URL").unwrap()).await.unwrap();
+    // Run testfiles in parallel
+    let all_tests_succeded = join_all(testfiles.into_iter().map(|t| async move {
+        run_testfile(&t, std::env::var("PAYAS_DATABASE_URL").unwrap()).await
+    }))
+        .await
+        .into_iter()
+        .map(Result::unwrap)
+        .fold(true, |accum, val| accum && val);
+
+    if all_tests_succeded {
+        std::process::exit(0);
+    } else {
+        std::process::exit(1);
     }
 }

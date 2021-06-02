@@ -4,7 +4,7 @@ use postgres::{config::Host, Client, Config};
 use simple_error::{SimpleError, bail};
 
 /// Create a database with the specified name at the specified PostgreSQL server and return 
-/// a connection string for the database on successful creation.
+/// a connection string and username for the database on successful creation.
 pub fn createdb_psql(dbname: &str, url: &str) -> Result<(String, String), Box<dyn Error>> {
     // TODO validate dbname
 
@@ -49,6 +49,13 @@ pub fn createdb_psql(dbname: &str, url: &str) -> Result<(String, String), Box<dy
 
     // return
     Ok((connectionparams, username.to_owned()))
+}
+
+/// Connect to the specified PostgreSQL database and attempt to run a query.
+pub fn run_psql(query: &str, url: &str) -> Result<(), Box<dyn Error>> {
+    let mut client = url.parse::<Config>()?.connect(NoTls)?;
+    client.simple_query(query)?;
+    Ok(())
 }
 
 /// Drop the specified database at the specified PostgreSQL server and
