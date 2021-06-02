@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use payas_model::{
     model::{
         mapped_arena::MappedArena,
@@ -7,7 +5,7 @@ use payas_model::{
         order::OrderByParameterType,
         predicate::PredicateParameterType,
         system::ModelSystem,
-        types::ModelType,
+        types::GqlType,
     },
     sql::PhysicalTable,
 };
@@ -16,29 +14,31 @@ use crate::ast::ast_types::AstSystem;
 
 use super::{
     mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,
+    typechecking::Type,
 };
 
 pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut building = SystemContextBuilding::default();
 
-    let ast_types = &ast_system.types;
-    let mut ast_types_map = HashMap::new();
-    for ast_type in ast_types {
-        ast_types_map.insert(ast_type.name.clone(), ast_type);
+    let env: MappedArena<Type> = super::typechecking::build(ast_system);
+
+    let mut types_types = Vec::new();
+    for ast_type in env.keys() {
+        types_types.push(env.get_by_key(ast_type).unwrap().clone());
     }
 
-    type_builder::build_shallow(&ast_types_map, &mut building);
+    type_builder::build_shallow(&env, &mut building);
 
-    query_builder::build_shallow(&ast_types, &mut building);
-    order_by_type_builder::build_shallow(&ast_types, &mut building);
-    predicate_builder::build_shallow(&ast_types, &mut building);
+    query_builder::build_shallow(&types_types, &mut building);
+    order_by_type_builder::build_shallow(&types_types, &mut building);
+    predicate_builder::build_shallow(&types_types, &mut building);
 
-    type_builder::build_expanded(&ast_types_map, &mut building);
+    type_builder::build_expanded(&env, &mut building);
     order_by_type_builder::build_expanded(&mut building);
     predicate_builder::build_expanded(&mut building);
     query_builder::build_expanded(&mut building);
 
-    mutation_builder::build(&ast_types, &mut building);
+    mutation_builder::build(&types_types, &mut building);
 
     ModelSystem {
         types: building.types.values,
@@ -53,11 +53,11 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
 
 #[derive(Debug, Default)]
 pub struct SystemContextBuilding {
-    pub types: MappedArena<ModelType>,
+    pub types: MappedArena<GqlType>,
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
     pub queries: MappedArena<Query>,
-    pub mutation_types: MappedArena<ModelType>,
+    pub mutation_types: MappedArena<GqlType>,
     pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
 }

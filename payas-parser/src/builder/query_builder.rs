@@ -2,19 +2,21 @@ use id_arena::Id;
 use payas_model::model::{
     operation::{OperationReturnType, Query},
     predicate::PredicateParameter,
-    ModelType, ModelTypeKind, ModelTypeModifier,
+    GqlType, GqlTypeKind, GqlTypeModifier,
 };
 
-use crate::ast::ast_types::{AstType, AstTypeKind};
+use super::{
+    order_by_type_builder, predicate_builder,
+    system_builder::SystemContextBuilding,
+    typechecking::{CompositeType, Type},
+};
 
-use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
-
-pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
-    for ast_type in ast_types {
-        if let AstTypeKind::Composite { .. } = &ast_type.kind {
-            let model_type_id = building.types.get_id(&ast_type.name).unwrap();
-            let shallow_query = shallow_pk_query(model_type_id, ast_type);
-            let collection_query = shallow_collection_query(model_type_id, ast_type);
+pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
+    for model in models {
+        if let Type::Composite(c) = &model {
+            let model_type_id = building.types.get_id(c.name.as_str()).unwrap();
+            let shallow_query = shallow_pk_query(model_type_id, c);
+            let collection_query = shallow_collection_query(model_type_id, c);
 
             building
                 .queries
@@ -28,7 +30,7 @@ pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
-        if let ModelTypeKind::Composite { .. } = &model_type.kind {
+        if let GqlTypeKind::Composite { .. } = &model_type.kind {
             {
                 let operation_name = pk_query_name(&model_type.name);
                 let query = expanded_pk_query(model_type, building);
@@ -45,21 +47,21 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
-fn shallow_pk_query(model_type_id: Id<ModelType>, ast_type: &AstType) -> Query {
-    let operation_name = pk_query_name(&ast_type.name);
+fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &CompositeType) -> Query {
+    let operation_name = pk_query_name(typ.name.as_str());
     Query {
         name: operation_name,
         predicate_param: None,
         order_by_param: None,
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.name.clone(),
-            type_modifier: ModelTypeModifier::NonNull,
+            type_name: typ.name.clone(),
+            type_modifier: GqlTypeModifier::NonNull,
         },
     }
 }
 
-fn expanded_pk_query(model_type: &ModelType, building: &SystemContextBuilding) -> Query {
+fn expanded_pk_query(model_type: &GqlType, building: &SystemContextBuilding) -> Query {
     let operation_name = pk_query_name(&model_type.name);
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
@@ -74,7 +76,7 @@ fn expanded_pk_query(model_type: &ModelType, building: &SystemContextBuilding) -
 }
 
 pub fn pk_predicate_param(
-    model_type: &ModelType,
+    model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let pk_field = model_type.pk_field().unwrap();
@@ -86,26 +88,26 @@ pub fn pk_predicate_param(
             .predicate_types
             .get_id(&pk_field.typ.type_name())
             .unwrap(),
-        type_modifier: ModelTypeModifier::NonNull,
+        type_modifier: GqlTypeModifier::NonNull,
         column_id: pk_field.relation.self_column(),
     }
 }
 
-fn shallow_collection_query(model_type_id: Id<ModelType>, ast_type: &AstType) -> Query {
-    let operation_name = collection_query_name(&ast_type.name);
+fn shallow_collection_query(model_type_id: Id<GqlType>, model: &CompositeType) -> Query {
+    let operation_name = collection_query_name(model.name.as_str());
     Query {
         name: operation_name,
         predicate_param: None,
         order_by_param: None,
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: ast_type.name.clone(),
-            type_modifier: ModelTypeModifier::List,
+            type_name: model.name.clone(),
+            type_modifier: GqlTypeModifier::List,
         },
     }
 }
 
-fn expanded_collection_query(model_type: &ModelType, building: &SystemContextBuilding) -> Query {
+fn expanded_collection_query(model_type: &GqlType, building: &SystemContextBuilding) -> Query {
     let operation_name = collection_query_name(&model_type.name);
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
@@ -121,7 +123,7 @@ fn expanded_collection_query(model_type: &ModelType, building: &SystemContextBui
 }
 
 pub fn collection_predicate_param(
-    model_type: &ModelType,
+    model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let param_type_name = predicate_builder::get_parameter_type_name(&model_type.name);
@@ -129,7 +131,7 @@ pub fn collection_predicate_param(
         name: "where".to_string(),
         type_name: param_type_name.clone(),
         type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-        type_modifier: ModelTypeModifier::Optional,
+        type_modifier: GqlTypeModifier::Optional,
         column_id: None,
     }
 }

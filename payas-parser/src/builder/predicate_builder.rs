@@ -1,10 +1,13 @@
-use payas_model::model::types::{ModelField, ModelType, ModelTypeKind, ModelTypeModifier};
+use payas_model::model::types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier};
 
-use super::{system_builder::SystemContextBuilding, type_builder::PRIMITIVE_TYPE_NAMES};
-use crate::ast::ast_types::AstType;
+use super::{
+    system_builder::SystemContextBuilding,
+    type_builder::PRIMITIVE_TYPE_NAMES,
+    typechecking::{CompositeType, Type},
+};
 use payas_model::model::predicate::*;
 
-pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding) {
+pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     for type_name in PRIMITIVE_TYPE_NAMES.iter() {
         // One for queries such as {id: 1}, where the type name is the same as the model type name (in this case `Int`)
         building.predicate_types.add(
@@ -26,10 +29,12 @@ pub fn build_shallow(ast_types: &[AstType], building: &mut SystemContextBuilding
         );
     }
 
-    for ast_type in ast_types.iter() {
-        let shallow_type = create_shallow_type(ast_type);
-        let param_type_name = shallow_type.name.clone();
-        building.predicate_types.add(&param_type_name, shallow_type);
+    for model in models.iter() {
+        if let Type::Composite(c) = &model {
+            let shallow_type = create_shallow_type(c);
+            let param_type_name = shallow_type.name.clone();
+            building.predicate_types.add(&param_type_name, shallow_type);
+        }
     }
 }
 
@@ -47,20 +52,17 @@ pub fn get_parameter_type_name(model_type_name: &str) -> String {
     format!("{}Filter", model_type_name)
 }
 
-fn create_shallow_type(ast_type: &AstType) -> PredicateParameterType {
+fn create_shallow_type(model: &CompositeType) -> PredicateParameterType {
     PredicateParameterType {
-        name: get_parameter_type_name(&ast_type.name),
+        name: get_parameter_type_name(model.name.as_str()),
         kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type
     }
 }
 
-fn expand_type(
-    model_type: &ModelType,
-    building: &SystemContextBuilding,
-) -> PredicateParameterTypeKind {
-    match &model_type.kind {
-        ModelTypeKind::Primitive => create_operator_filter_type_kind(model_type, building),
-        ModelTypeKind::Composite { fields, .. } => {
+fn expand_type(gql_type: &GqlType, building: &SystemContextBuilding) -> PredicateParameterTypeKind {
+    match &gql_type.kind {
+        GqlTypeKind::Primitive => create_operator_filter_type_kind(gql_type, building),
+        GqlTypeKind::Composite { fields, .. } => {
             create_composite_filter_type_kind(fields, building)
         }
     }
@@ -69,7 +71,7 @@ fn expand_type(
 const OPERATORS: [&str; 3] = ["eq", "lt", "gt"]; // TODO: Expand and make specific for the operand types
 
 fn create_operator_filter_type_kind(
-    scalar_model_type: &ModelType,
+    scalar_model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     // TODO: Create scalar_type specific filter. For example, "like" only for String
@@ -83,7 +85,7 @@ fn create_operator_filter_type_kind(
                 .predicate_types
                 .get_id(&scalar_model_type.name)
                 .unwrap(),
-            type_modifier: ModelTypeModifier::Optional,
+            type_modifier: GqlTypeModifier::Optional,
             column_id: None,
         })
         .collect();
@@ -92,7 +94,7 @@ fn create_operator_filter_type_kind(
 }
 
 fn create_composite_filter_type_kind(
-    fields: &[ModelField],
+    fields: &[GqlField],
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     let parameters = fields
@@ -103,7 +105,7 @@ fn create_composite_filter_type_kind(
                 name: field.name.to_string(),
                 type_name: param_type_name.clone(),
                 type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-                type_modifier: ModelTypeModifier::Optional,
+                type_modifier: GqlTypeModifier::Optional,
                 column_id: field.relation.self_column(),
             }
         })

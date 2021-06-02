@@ -1,0 +1,5 @@
+bindings/
+node_modules/
+binding.gyp
+src/
+index.js

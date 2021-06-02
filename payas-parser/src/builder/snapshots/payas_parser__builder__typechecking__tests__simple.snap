@@ -1,0 +1,83 @@
+---
+source: payas-parser/src/builder/typechecking.rs
+expression: types
+
+---
+- - Boolean
+  - Primitive: Boolean
+- - Doc
+  - Composite:
+      name: Doc
+      fields:
+        - name: is_public
+          typ:
+            Reference: Boolean
+          annotations: []
+      annotations: []
+- - Int
+  - Primitive: Int
+- - String
+  - Primitive: String
+- - User
+  - Composite:
+      name: User
+      fields:
+        - name: doc
+          typ:
+            Reference: Doc
+          annotations:
+            - name: column
+              params:
+                - StringLiteral:
+                    - custom_column
+                    - Primitive: String
+            - name: auth
+              params:
+                - LogicalOp:
+                    Or:
+                      - LogicalOp:
+                          Or:
+                            - RelationalOp:
+                                Eq:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            - self
+                                            - Reference: User
+                                        - role
+                                        - Reference: String
+                                  - StringLiteral:
+                                      - role_admin
+                                      - Primitive: String
+                                  - Primitive: Boolean
+                            - RelationalOp:
+                                Eq:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            - self
+                                            - Reference: User
+                                        - role
+                                        - Reference: String
+                                  - StringLiteral:
+                                      - role_superuser
+                                      - Primitive: String
+                                  - Primitive: Boolean
+                            - Primitive: Boolean
+                      - FieldSelection:
+                          Select:
+                            - Select:
+                                - Single:
+                                    - self
+                                    - Reference: User
+                                - doc
+                                - Reference: Doc
+                            - is_public
+                            - Reference: Boolean
+                      - Primitive: Boolean
+        - name: role
+          typ:
+            Reference: String
+          annotations: []
+      annotations: []
+

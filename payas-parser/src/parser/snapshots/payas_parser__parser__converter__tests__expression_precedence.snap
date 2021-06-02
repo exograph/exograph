@@ -1,0 +1,37 @@
+---
+source: payas-parser/src/parser/converter.rs
+expression: "convert_root(parsed.root_node(), src.as_bytes())"
+
+---
+models:
+  - name: Foo
+    fields:
+      - name: bar
+        typ:
+          Plain: Baz
+        annotations:
+          - name: column
+            params:
+              - StringLiteral: custom_column
+          - name: auth
+            params:
+              - LogicalOp:
+                  Or:
+                    - RelationalOp:
+                        Eq:
+                          - LogicalOp:
+                              Not:
+                                FieldSelection:
+                                  Select:
+                                    - Single: self
+                                    - role
+                          - StringLiteral: role_admin
+                    - RelationalOp:
+                        Eq:
+                          - FieldSelection:
+                              Select:
+                                - Single: self
+                                - role
+                          - StringLiteral: role_superuser
+    annotations: []
+

@@ -3,25 +3,25 @@ use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
 };
 use payas_model::model::{
-    relation::ModelRelation,
+    relation::GqlRelation,
     system::ModelSystem,
-    types::{ModelField, ModelType, *},
+    types::{GqlField, GqlType, *},
 };
 
 use super::provider::{FieldDefinitionProvider, TypeDefinitionProvider};
 use crate::introspection::util::*;
 
-impl TypeDefinitionProvider for ModelType {
+impl TypeDefinitionProvider for GqlType {
     fn type_definition(&self, system: &ModelSystem) -> TypeDefinition {
         match &self.kind {
-            ModelTypeKind::Primitive => TypeDefinition {
+            GqlTypeKind::Primitive => TypeDefinition {
                 extend: false,
                 description: None,
                 name: default_positioned_name(&self.name),
                 directives: vec![],
                 kind: TypeKind::Scalar,
             },
-            ModelTypeKind::Composite {
+            GqlTypeKind::Composite {
                 fields: model_fields,
                 ..
             } => {
@@ -53,25 +53,25 @@ impl TypeDefinitionProvider for ModelType {
     }
 }
 
-impl FieldDefinitionProvider for ModelField {
+impl FieldDefinitionProvider for GqlField {
     fn field_definition(&self, system: &ModelSystem) -> FieldDefinition {
         let type_modifier = match &self.typ {
-            ModelFieldType::Optional(_) => ModelTypeModifier::Optional,
-            ModelFieldType::Plain { .. } => ModelTypeModifier::NonNull,
-            ModelFieldType::List(_) => ModelTypeModifier::List,
+            GqlFieldType::Optional(_) => GqlTypeModifier::Optional,
+            GqlFieldType::Reference { .. } => GqlTypeModifier::NonNull,
+            GqlFieldType::List(_) => GqlTypeModifier::List,
         };
         let field_type =
             util::default_positioned(util::value_type(&self.typ.type_name(), &type_modifier));
 
         let arguments = match self.relation {
-            ModelRelation::Pk { .. }
-            | ModelRelation::Scalar { .. }
-            | ModelRelation::ManyToOne { .. } => vec![],
-            ModelRelation::OneToMany { other_type_id, .. } => {
+            GqlRelation::Pk { .. } | GqlRelation::Scalar { .. } | GqlRelation::ManyToOne { .. } => {
+                vec![]
+            }
+            GqlRelation::OneToMany { other_type_id, .. } => {
                 let other_type = &system.types[other_type_id];
                 match other_type.kind {
-                    ModelTypeKind::Primitive => panic!(),
-                    ModelTypeKind::Composite {
+                    GqlTypeKind::Primitive => panic!(),
+                    GqlTypeKind::Composite {
                         collection_query, ..
                     } => {
                         let collection_query = &system.queries[collection_query];

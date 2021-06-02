@@ -42,8 +42,8 @@ impl<'a> OperationResolver<'a> for Mutation {
 
         let (_, pk_query, collection_query) = return_type_info(self, operation_context);
         let selection_query = match &self.return_type.type_modifier {
-            ModelTypeModifier::List => collection_query,
-            ModelTypeModifier::NonNull | ModelTypeModifier::Optional => pk_query,
+            GqlTypeModifier::List => collection_query,
+            GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
         };
 
         let select =
@@ -139,8 +139,8 @@ fn return_type_info<'a>(
     let typ = mutation.return_type.typ(system);
 
     match typ.kind {
-        ModelTypeKind::Primitive => panic!(""),
-        ModelTypeKind::Composite {
+        GqlTypeKind::Primitive => panic!(""),
+        GqlTypeKind::Composite {
             table_id,
             pk_query,
             collection_query,

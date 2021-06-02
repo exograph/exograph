@@ -1,33 +1,33 @@
-use super::{column_id::ColumnId, relation::ModelRelation};
+use super::{column_id::ColumnId, relation::GqlRelation};
 use crate::model::operation::*;
 
 use crate::sql::PhysicalTable;
 
 use id_arena::Id;
 #[derive(Debug, Clone)]
-pub struct ModelType {
+pub struct GqlType {
     pub name: String,
-    pub kind: ModelTypeKind,
+    pub kind: GqlTypeKind,
     pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
 }
 
-impl ModelType {
-    pub fn model_fields(&self) -> Vec<&ModelField> {
+impl GqlType {
+    pub fn model_fields(&self) -> Vec<&GqlField> {
         match &self.kind {
-            ModelTypeKind::Primitive => vec![],
-            ModelTypeKind::Composite { fields, .. } => fields.iter().collect(),
+            GqlTypeKind::Primitive => vec![],
+            GqlTypeKind::Composite { fields, .. } => fields.iter().collect(),
         }
     }
 
-    pub fn model_field(&self, name: &str) -> Option<&ModelField> {
+    pub fn model_field(&self, name: &str) -> Option<&GqlField> {
         self.model_fields()
             .into_iter()
             .find(|model_field| model_field.name == name)
     }
 
-    pub fn pk_field(&self) -> Option<&ModelField> {
+    pub fn pk_field(&self) -> Option<&GqlField> {
         self.model_fields().iter().find_map(|field| {
-            if let ModelRelation::Pk { .. } = &field.relation {
+            if let GqlRelation::Pk { .. } = &field.relation {
                 Some(*field)
             } else {
                 None
@@ -42,21 +42,21 @@ impl ModelType {
 
     pub fn table_id(&self) -> Option<Id<PhysicalTable>> {
         match &self.kind {
-            ModelTypeKind::Primitive => None,
-            ModelTypeKind::Composite { table_id, .. } => Some(*table_id),
+            GqlTypeKind::Primitive => None,
+            GqlTypeKind::Composite { table_id, .. } => Some(*table_id),
         }
     }
 
     pub fn is_primitive(&self) -> bool {
-        matches!(&self.kind, ModelTypeKind::Primitive)
+        matches!(&self.kind, GqlTypeKind::Primitive)
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum ModelTypeKind {
+pub enum GqlTypeKind {
     Primitive,
     Composite {
-        fields: Vec<ModelField>,
+        fields: Vec<GqlField>,
         table_id: Id<PhysicalTable>,
         pk_query: Id<Query>,
         collection_query: Id<Query>,
@@ -64,52 +64,52 @@ pub enum ModelTypeKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum ModelTypeModifier {
+pub enum GqlTypeModifier {
     Optional,
     NonNull,
     List,
 }
 
 #[derive(Debug, Clone)]
-pub struct ModelField {
+pub struct GqlField {
     pub name: String,
-    pub typ: ModelFieldType,
-    pub relation: ModelRelation,
+    pub typ: GqlFieldType,
+    pub relation: GqlRelation,
 }
 
 #[derive(Debug, Clone)]
-pub enum ModelFieldType {
-    Optional(Box<ModelFieldType>),
-    Plain {
-        type_id: Id<ModelType>,
+pub enum GqlFieldType {
+    Optional(Box<GqlFieldType>),
+    Reference {
+        type_id: Id<GqlType>,
         type_name: String,
     },
-    List(Box<ModelFieldType>),
+    List(Box<GqlFieldType>),
 }
 
-impl ModelFieldType {
-    pub fn type_id(&self) -> &Id<ModelType> {
+impl GqlFieldType {
+    pub fn type_id(&self) -> &Id<GqlType> {
         match self {
-            ModelFieldType::Optional(underlying) | ModelFieldType::List(underlying) => {
+            GqlFieldType::Optional(underlying) | GqlFieldType::List(underlying) => {
                 underlying.type_id()
             }
-            ModelFieldType::Plain { type_id, .. } => type_id,
+            GqlFieldType::Reference { type_id, .. } => type_id,
         }
     }
 
     pub fn type_name(&self) -> &str {
         match self {
-            ModelFieldType::Optional(underlying) | ModelFieldType::List(underlying) => {
+            GqlFieldType::Optional(underlying) | GqlFieldType::List(underlying) => {
                 underlying.type_name()
             }
-            ModelFieldType::Plain { type_name, .. } => type_name,
+            GqlFieldType::Reference { type_name, .. } => type_name,
         }
     }
 
     pub fn optional(&self) -> Self {
         match self {
-            ModelFieldType::Optional(_) => self.clone(),
-            _ => ModelFieldType::Optional(Box::new(self.clone())),
+            GqlFieldType::Optional(_) => self.clone(),
+            _ => GqlFieldType::Optional(Box::new(self.clone())),
         }
     }
 }

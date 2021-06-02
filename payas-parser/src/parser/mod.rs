@@ -2,24 +2,18 @@ use std::{fs, path::Path};
 
 use crate::ast::ast_types::*;
 
-use nom::{error::VerboseError, IResult};
+mod converter;
+mod sitter_ffi;
 
-mod model;
-mod util;
+use self::converter::*;
 
-pub type PResult<I, O> = IResult<I, O, VerboseError<I>>;
-
-pub fn parse_file<'a, P: AsRef<Path>>(path: P) -> AstSystem {
+pub fn parse_file<P: AsRef<Path>>(path: P) -> AstSystem {
     let file_content = fs::read_to_string(path).unwrap();
-    let parsed = model::system(&file_content);
+    let parsed = parse(file_content.as_str()).unwrap();
+    convert_root(parsed.root_node(), file_content.as_bytes())
+}
 
-    parsed
-        .map(|(remaining, system)| {
-            if remaining.is_empty() {
-                system
-            } else {
-                panic!("Failed to parse some part of the file\n{}\n", remaining)
-            }
-        })
-        .unwrap()
+pub fn parse_str(str: &str) -> AstSystem {
+    let parsed = parse(str).unwrap();
+    convert_root(parsed.root_node(), str.as_bytes())
 }

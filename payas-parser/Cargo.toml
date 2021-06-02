@@ -5,8 +5,15 @@ authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
 edition = "2018"
 
 [dependencies]
-nom = "6"
+tree-sitter = "0.19.5"
 id-arena = "2.2.1"
+serde = "1.0.125"
 payas-model = { path = "../payas-model" }
+
+[build-dependencies]
+cc="*"
+
+[dev-dependencies]
+insta = "1.7.0"
 
 [lib]

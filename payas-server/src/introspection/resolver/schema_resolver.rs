@@ -1,4 +1,4 @@
-use async_graphql_parser::{Positioned, types::Field};
+use async_graphql_parser::{types::Field, Positioned};
 use serde_json::Value;
 
 use crate::introspection::schema::Schema;

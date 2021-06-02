@@ -1,257 +1,240 @@
-use std::collections::HashMap;
+use core::panic;
 
 use id_arena::Id;
 use payas_model::{
-    model::{column_id::ColumnId, relation::ModelRelation, ModelFieldType},
+    model::{column_id::ColumnId, mapped_arena::MappedArena, relation::GqlRelation, GqlFieldType},
     sql::{
-        column::{ColumnReferece, PhysicalColumn, PhysicalColumnType},
+        column::{ColumnReferece, PhysicalColumn},
         PhysicalTable,
     },
 };
 
-use super::query_builder;
-use super::system_builder::SystemContextBuilding;
-use crate::ast::ast_types::*;
+use super::{
+    query_builder,
+    typechecking::{PrimitiveType, Type, TypedField},
+};
+use super::{system_builder::SystemContextBuilding, typechecking::CompositeType};
 
-use payas_model::model::{ModelField, ModelType, ModelTypeKind};
+use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
-pub const PRIMITIVE_TYPE_NAMES: [&str; 2] = ["Int", "String"]; // TODO: Expand the list
+pub const PRIMITIVE_TYPE_NAMES: [&str; 3] = ["Int", "String", "Boolean"]; // TODO: Expand the list
 
-pub fn build_shallow(
-    ast_types_map: &HashMap<String, &AstType>,
-    building: &mut SystemContextBuilding,
-) {
+pub fn build_shallow(models: &MappedArena<Type>, building: &mut SystemContextBuilding) {
     for type_name in PRIMITIVE_TYPE_NAMES.iter() {
-        let typ = ModelType {
+        let typ = GqlType {
             name: type_name.to_string(),
-            kind: ModelTypeKind::Primitive,
+            kind: GqlTypeKind::Primitive,
             is_input: false,
         };
         building.types.add(type_name, typ);
     }
 
-    for ast_type in ast_types_map.values() {
-        create_shallow_type(ast_type, ast_types_map, building);
+    for (_, model_type) in models.iter() {
+        if let Type::Composite(c) = &model_type {
+            create_shallow_type(c, building);
+        }
     }
 }
 
-pub fn build_expanded(
-    ast_types_map: &HashMap<String, &AstType>,
-    building: &mut SystemContextBuilding,
-) {
-    for ast_type in ast_types_map.values() {
-        expand_type1(ast_type, building);
+pub fn build_expanded(env: &MappedArena<Type>, building: &mut SystemContextBuilding) {
+    for (_, model_type) in env.iter() {
+        if let Type::Composite(c) = &model_type {
+            expand_type1(c, building, env);
+        }
     }
-    for ast_type in ast_types_map.values() {
-        expand_type2(ast_type, ast_types_map, building);
+    for (_, model_type) in env.iter() {
+        if let Type::Composite(c) = &model_type {
+            expand_type2(c, building, env);
+        }
     }
 }
 
-fn create_shallow_type(
-    ast_type: &AstType,
-    ast_types_map: &HashMap<String, &AstType>,
-    building: &mut SystemContextBuilding,
-) {
-    if let AstTypeKind::Composite {
-        fields: ast_fields,
-        table_name: ast_table_name,
-    } = &ast_type.kind
-    {
-        let table_name = ast_table_name
-            .clone()
-            .unwrap_or_else(|| ast_type.name.clone());
-        let columns = ast_fields
-            .iter()
-            .flat_map(|ast_field| create_column(ast_field, &table_name, ast_types_map))
-            .collect();
+fn create_shallow_type(model_type: &CompositeType, building: &mut SystemContextBuilding) {
+    building.types.add(
+        &model_type.name,
+        GqlType {
+            name: model_type.name.clone(),
+            kind: GqlTypeKind::Primitive,
+            is_input: false,
+        },
+    );
 
-        let table = PhysicalTable {
-            name: table_name.clone(),
-            columns,
-        };
-        building.tables.add(&table_name, table);
+    let mutation_type_names = [
+        input_creation_type_name(&model_type.name),
+        input_update_type_name(&model_type.name),
+        input_reference_type_name(&model_type.name),
+    ];
 
-        let model_type_name = ast_type.name.to_owned();
-        building.types.add(
-            &model_type_name,
-            ModelType {
-                name: model_type_name.to_owned(),
-                kind: ModelTypeKind::Primitive,
-                is_input: false,
+    for mutation_type_name in mutation_type_names.iter() {
+        building.mutation_types.add(
+            &mutation_type_name,
+            GqlType {
+                name: mutation_type_name.to_string(),
+                kind: GqlTypeKind::Primitive,
+                is_input: true,
             },
         );
-
-        let mutation_type_names = [
-            input_creation_type_name(&model_type_name),
-            input_update_type_name(&model_type_name),
-            input_reference_type_name(&model_type_name),
-        ];
-
-        for mutation_type_name in mutation_type_names.iter() {
-            building.mutation_types.add(
-                &mutation_type_name,
-                ModelType {
-                    name: mutation_type_name.to_string(),
-                    kind: ModelTypeKind::Primitive,
-                    is_input: true,
-                },
-            );
-        }
     }
 }
 
 // Expand type except for model fields. This allows types to become `Composite` and `table_id` for any type
 // can be accessed when building fields
-fn expand_type1(ast_type: &AstType, building: &mut SystemContextBuilding) {
-    if let AstTypeKind::Composite {
-        table_name: ast_table_name,
-        ..
-    } = &ast_type.kind
-    {
-        let table_name = ast_table_name
-            .clone()
-            .unwrap_or_else(|| ast_type.name.clone());
-        let table_id = building.tables.get_id(&table_name).unwrap();
+fn expand_type1(
+    model_type: &CompositeType,
+    building: &mut SystemContextBuilding,
+    env: &MappedArena<Type>,
+) {
+    let table_name = model_type
+        .get_annotation("table")
+        .map(|a| a.params[0].as_string())
+        .unwrap_or_else(|| model_type.name.clone());
 
-        let pk_query = building
-            .queries
-            .get_id(&query_builder::pk_query_name(&ast_type.name))
-            .unwrap();
-        let collection_query = building
-            .queries
-            .get_id(&query_builder::collection_query_name(&ast_type.name))
-            .unwrap();
+    let columns = model_type
+        .fields
+        .iter()
+        .flat_map(|field| create_column(field, &table_name, env))
+        .collect();
 
-        let kind = ModelTypeKind::Composite {
-            fields: vec![],
-            table_id,
-            pk_query,
-            collection_query,
-        };
-        let existing_type_id = building.types.get_id(&ast_type.name);
+    let table = PhysicalTable {
+        name: table_name.clone(),
+        columns,
+    };
 
-        building.types.values[existing_type_id.unwrap()].kind = kind;
-    }
+    let table_id = building.tables.add(&table_name, table);
+
+    let pk_query = building
+        .queries
+        .get_id(&query_builder::pk_query_name(&model_type.name))
+        .unwrap();
+
+    let collection_query = building
+        .queries
+        .get_id(&query_builder::collection_query_name(&model_type.name))
+        .unwrap();
+
+    let kind = GqlTypeKind::Composite {
+        fields: vec![],
+        table_id,
+        pk_query,
+        collection_query,
+    };
+    let existing_type_id = building.types.get_id(&model_type.name);
+
+    building.types.values[existing_type_id.unwrap()].kind = kind;
 }
 
 fn expand_type2(
-    ast_type: &AstType,
-    ast_types_map: &HashMap<String, &AstType>,
+    model_type: &CompositeType,
     building: &mut SystemContextBuilding,
+    env: &MappedArena<Type>,
 ) {
-    let existing_type_id = building.types.get_id(&ast_type.name).unwrap();
+    let existing_type_id = building.types.get_id(&model_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
-    if let ModelTypeKind::Composite {
+    if let GqlTypeKind::Composite {
         table_id,
         pk_query,
         collection_query,
         ..
     } = existing_type.kind
     {
-        if let AstTypeKind::Composite {
-            fields: ast_fields, ..
-        } = &ast_type.kind
+        let model_fields: Vec<GqlField> = model_type
+            .fields
+            .iter()
+            .map(|field| create_field(field, table_id, building, env))
+            .collect();
+
+        let kind = GqlTypeKind::Composite {
+            fields: model_fields.clone(),
+            table_id,
+            pk_query,
+            collection_query,
+        };
+
+        building.types.values[existing_type_id].kind = kind;
+
         {
-            let model_fields: Vec<ModelField> = ast_fields
-                .iter()
-                .map(|ast_field| create_field(ast_field, table_id, ast_types_map, building))
+            let reference_type_fields = model_fields
+                .clone()
+                .into_iter()
+                .flat_map(|field| match &field.relation {
+                    GqlRelation::Pk { .. } => Some(field),
+                    _ => None,
+                })
                 .collect();
 
-            let kind = ModelTypeKind::Composite {
-                fields: model_fields.clone(),
+            let existing_type_name = input_reference_type_name(model_type.name.as_str());
+            let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+
+            building.mutation_types[existing_type_id].kind = GqlTypeKind::Composite {
+                fields: reference_type_fields,
                 table_id,
                 pk_query,
                 collection_query,
-            };
-
-            building.types.values[existing_type_id].kind = kind;
-
-            {
-                let reference_type_fields = model_fields
-                    .clone()
-                    .into_iter()
-                    .flat_map(|field| match &field.relation {
-                        ModelRelation::Pk { .. } => Some(field),
-                        _ => None,
-                    })
-                    .collect();
-
-                let existing_type_name = input_reference_type_name(&ast_type.name);
-                let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
-
-                building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
-                    fields: reference_type_fields,
-                    table_id,
-                    pk_query,
-                    collection_query,
-                }
             }
+        }
 
-            {
-                let input_type_fields = compute_input_fields(&model_fields, building, false);
+        {
+            let input_type_fields = compute_input_fields(&model_fields, building, false);
 
-                let existing_type_name = input_creation_type_name(&ast_type.name);
-                let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+            let existing_type_name = input_creation_type_name(model_type.name.as_str());
+            let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-                building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
-                    fields: input_type_fields,
-                    table_id,
-                    pk_query,
-                    collection_query,
-                }
+            building.mutation_types[existing_type_id].kind = GqlTypeKind::Composite {
+                fields: input_type_fields,
+                table_id,
+                pk_query,
+                collection_query,
             }
+        }
 
-            {
-                let input_type_fields = compute_input_fields(&model_fields, building, true);
+        {
+            let input_type_fields = compute_input_fields(&model_fields, building, true);
 
-                let existing_type_name = input_update_type_name(&ast_type.name);
-                let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+            let existing_type_name = input_update_type_name(model_type.name.as_str());
+            let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-                building.mutation_types[existing_type_id].kind = ModelTypeKind::Composite {
-                    fields: input_type_fields,
-                    table_id,
-                    pk_query,
-                    collection_query,
-                }
+            building.mutation_types[existing_type_id].kind = GqlTypeKind::Composite {
+                fields: input_type_fields,
+                table_id,
+                pk_query,
+                collection_query,
             }
         }
     }
 }
 
 fn compute_input_fields(
-    model_fields: &Vec<ModelField>,
+    gql_fields: &[GqlField],
     building: &SystemContextBuilding,
     force_optional_field_modifier: bool,
-) -> Vec<ModelField> {
-    model_fields
-        .into_iter()
+) -> Vec<GqlField> {
+    gql_fields
+        .iter()
         .flat_map(|field| match &field.relation {
-            ModelRelation::Pk { .. } => None,
-            ModelRelation::Scalar { .. } => Some(ModelField {
+            GqlRelation::Pk { .. } => None,
+            GqlRelation::Scalar { .. } => Some(GqlField {
                 typ: field.typ.optional(),
                 ..field.clone()
             }),
-            ModelRelation::ManyToOne { .. } | ModelRelation::OneToMany { .. } => {
+            GqlRelation::ManyToOne { .. } | GqlRelation::OneToMany { .. } => {
                 let field_type_name = input_reference_type_name(&field.typ.type_name());
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = ModelFieldType::Plain {
+                let field_plain_type = GqlFieldType::Reference {
                     type_name: field_type_name,
                     type_id: field_type_id,
                 };
                 let field_type = match field.typ {
-                    ModelFieldType::Plain { .. } => field_plain_type,
-                    ModelFieldType::Optional(_) => {
-                        ModelFieldType::Optional(Box::new(field_plain_type))
-                    }
-                    ModelFieldType::List(_) => ModelFieldType::List(Box::new(field_plain_type)),
+                    GqlFieldType::Reference { .. } => field_plain_type,
+                    GqlFieldType::Optional(_) => GqlFieldType::Optional(Box::new(field_plain_type)),
+                    GqlFieldType::List(_) => GqlFieldType::List(Box::new(field_plain_type)),
                 };
                 let field_type = if force_optional_field_modifier {
                     field_type.optional()
                 } else {
                     field_type
                 };
-                Some(ModelField {
+                Some(GqlField {
                     name: field.name.clone(),
                     typ: field_type,
                     relation: field.relation.clone(),
@@ -262,109 +245,108 @@ fn compute_input_fields(
 }
 
 fn create_field(
-    ast_field: &AstField,
+    field: &TypedField,
     table_id: Id<PhysicalTable>,
-    ast_types_map: &HashMap<String, &AstType>,
     building: &SystemContextBuilding,
-) -> ModelField {
-    fn create_model_type(
-        type_name: String,
-        ast_field_type: &AstFieldType,
-        building: &SystemContextBuilding,
-    ) -> ModelFieldType {
-        match ast_field_type {
-            AstFieldType::Plain(_) => ModelFieldType::Plain {
-                type_name: type_name.clone(),
-                type_id: building.types.get_id(&type_name).unwrap(),
+    env: &MappedArena<Type>,
+) -> GqlField {
+    fn create_field_type(field_type: &Type, building: &SystemContextBuilding) -> GqlFieldType {
+        match field_type {
+            Type::Reference(r) => GqlFieldType::Reference {
+                type_name: r.clone(),
+                type_id: building.types.get_id(&r).unwrap(),
             },
-            AstFieldType::Optional(underlying) => ModelFieldType::Optional(Box::new(
-                create_model_type(type_name, underlying, building),
-            )),
-            AstFieldType::List(underlying) => {
-                ModelFieldType::List(Box::new(create_model_type(type_name, underlying, building)))
+            Type::Optional(underlying) => {
+                GqlFieldType::Optional(Box::new(create_field_type(underlying, building)))
             }
+            Type::List(underlying) => {
+                GqlFieldType::List(Box::new(create_field_type(underlying, building)))
+            }
+            o => panic!("Cannot create model type for type {:?}", o),
         }
     }
 
-    let type_name = ast_field.typ.name();
-    ModelField {
-        name: ast_field.name.to_owned(),
-        typ: create_model_type(type_name, &ast_field.typ, building),
-        relation: create_relation(&ast_field, table_id, ast_types_map, building),
+    GqlField {
+        name: field.name.to_owned(),
+        typ: create_field_type(&field.typ, building),
+        relation: create_relation(&field, table_id, building, env),
     }
 }
 
 fn create_column(
-    ast_field: &AstField,
+    field: &TypedField,
     table_name: &str,
-    ast_types_map: &HashMap<String, &AstType>,
+    env: &MappedArena<Type>,
 ) -> Option<PhysicalColumn> {
-    match &ast_field.relation {
-        AstRelation::Pk => Some(PhysicalColumn {
+    match field.get_annotation("pk") {
+        Some(_) => Some(PhysicalColumn {
             table_name: table_name.to_string(),
-            column_name: ast_field
-                .column_name
-                .clone()
-                .unwrap_or_else(|| ast_field.name.clone()),
-            typ: PhysicalColumnType::from_string(&ast_field.typ.name()),
+            column_name: field
+                .get_annotation("column")
+                .map(|a| a.params[0].as_string())
+                .unwrap_or_else(|| field.name.clone()),
+            typ: field.typ.deref(env).as_primitive().to_column_type(),
             is_pk: true,
-            is_autoincrement: match &ast_field.typ {
-                AstFieldType::Plain(base_type) => match base_type.kind {
-                    AstTypeKind::Int { autoincrement } => autoincrement,
-                    _ => false,
-                },
+            is_autoincrement: match field.get_annotation("autoincrement") {
+                Some(_) => {
+                    assert!(field.typ.deref(env) == Type::Primitive(PrimitiveType::Int));
+                    true
+                }
                 _ => false,
             },
             references: None,
         }),
-        AstRelation::Other { .. } => {
-            match ast_types_map.get(&ast_field.typ.name()) {
-                Some(_) => {
-                    match ast_field.typ {
-                        AstFieldType::List(_) => None, // OneToMany, so the "many"-side type has the column
+        None { .. } => {
+            match &field.typ.deref(env) {
+                Type::List(_) => None, // OneToMany, so the "many"-side type has the column
 
-                        _ => {
-                            let other_type = ast_types_map[&ast_field.typ.name()];
-                            let other_type_pk_field = other_type.pk_field().unwrap();
-                            let other_table_name =
-                                if let AstTypeKind::Composite { table_name, .. } = &other_type.kind
-                                {
-                                    table_name.clone().unwrap()
-                                } else {
-                                    panic!("")
-                                };
-
-                            Some(PhysicalColumn {
-                                table_name: table_name.to_string(),
-                                column_name: ast_field
-                                    .column_name
-                                    .clone()
-                                    .unwrap_or_else(|| format!("{}_id", ast_field.name)),
-                                typ: PhysicalColumnType::from_string(
-                                    &other_type_pk_field.typ.name(),
-                                ),
-                                is_pk: false,
-                                is_autoincrement: false,
-                                references: Some(ColumnReferece {
-                                    table_name: other_table_name,
-                                    column_name: other_type_pk_field.column_name().to_string(),
-                                }),
-                            })
-                        }
-                    }
-                }
-                None => {
+                Type::Primitive(p) => {
                     // Scalar type
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
-                        column_name: ast_field
-                            .column_name
-                            .clone()
-                            .unwrap_or_else(|| ast_field.name.clone()),
-                        typ: PhysicalColumnType::from_string(&ast_field.typ.name()),
+                        column_name: field
+                            .get_annotation("column")
+                            .map(|a| a.params[0].as_string())
+                            .unwrap_or_else(|| field.name.clone()),
+                        typ: p.to_column_type(),
                         is_pk: false,
                         is_autoincrement: false,
                         references: None,
+                    })
+                }
+
+                other_type => {
+                    let inner_composite = other_type.inner_composite(env);
+                    let other_type_pk_field = inner_composite
+                        .fields
+                        .iter()
+                        .find(|f| f.get_annotation("pk").is_some())
+                        .unwrap();
+                    let other_table_name = inner_composite
+                        .get_annotation("table")
+                        .map(|a| a.params[0].as_string())
+                        .unwrap_or_else(|| inner_composite.name.clone());
+
+                    Some(PhysicalColumn {
+                        table_name: table_name.to_string(),
+                        column_name: field
+                            .get_annotation("column")
+                            .map(|a| a.params[0].as_string())
+                            .unwrap_or_else(|| format!("{}_id", field.name)),
+                        typ: other_type_pk_field
+                            .typ
+                            .deref(env)
+                            .as_primitive()
+                            .to_column_type(),
+                        is_pk: false,
+                        is_autoincrement: false,
+                        references: Some(ColumnReferece {
+                            table_name: other_table_name,
+                            column_name: field
+                                .get_annotation("column")
+                                .map(|a| a.params[0].as_string())
+                                .unwrap_or_else(|| field.name.clone()),
+                        }),
                     })
                 }
             }
@@ -373,24 +355,22 @@ fn create_column(
 }
 
 fn create_relation(
-    ast_field: &AstField,
+    field: &TypedField,
     table_id: Id<PhysicalTable>,
-    ast_types_map: &HashMap<String, &AstType>,
     building: &SystemContextBuilding,
-) -> ModelRelation {
-    fn compute_column_name(column_name: &Option<String>, ast_field: &AstField) -> String {
-        column_name
-            .clone()
-            .unwrap_or_else(|| ast_field.name.clone())
+    env: &MappedArena<Type>,
+) -> GqlRelation {
+    fn compute_column_name(column_name: &Option<String>, field: &TypedField) -> String {
+        column_name.clone().unwrap_or_else(|| field.name.clone())
     }
 
     fn compute_column_id(
         table: &PhysicalTable,
         table_id: Id<PhysicalTable>,
         column_name: &Option<String>,
-        ast_field: &AstField,
+        field: &TypedField,
     ) -> Option<ColumnId> {
-        let column_name = compute_column_name(column_name, ast_field);
+        let column_name = compute_column_name(column_name, field);
 
         table
             .column_index(&column_name)
@@ -399,61 +379,80 @@ fn create_relation(
 
     let table = &building.tables[table_id];
 
-    match &ast_field.relation {
-        AstRelation::Pk { .. } => {
-            let column_id = compute_column_id(table, table_id, &ast_field.column_name, ast_field);
-            ModelRelation::Pk {
+    match field.get_annotation("pk") {
+        Some(_) => {
+            let column_id = compute_column_id(
+                table,
+                table_id,
+                &field
+                    .get_annotation("column")
+                    .map(|a| a.params[0].as_string()),
+                field,
+            );
+            GqlRelation::Pk {
                 column_id: column_id.unwrap(),
             }
         }
-        AstRelation::Other { optional } => {
-            match ast_types_map.get(&ast_field.typ.name()) {
+        None => {
+            match &field.typ.deref(env) {
                 // Not primitive
-                Some(_) => {
-                    match ast_field.typ {
-                        AstFieldType::List(_) => {
-                            let other_type_id =
-                                building.types.get_id(&ast_field.typ.name()).unwrap();
-                            let other_type = &building.types[other_type_id];
-                            let other_table_id = other_type.table_id().unwrap();
-                            let other_table = &building.tables[other_table_id];
-                            let other_type_column_id = compute_column_id(
-                                other_table,
-                                other_table_id,
-                                &ast_field.column_name,
-                                ast_field,
-                            )
-                            .unwrap();
+                Type::List(i) => {
+                    let other_type_id = building
+                        .types
+                        .get_id(i.as_ref().inner_composite(env).name.as_str())
+                        .unwrap();
+                    let other_type = &building.types[other_type_id];
+                    let other_table_id = other_type.table_id().unwrap();
+                    let other_table = &building.tables[other_table_id];
+                    let other_type_column_id = compute_column_id(
+                        other_table,
+                        other_table_id,
+                        &field
+                            .get_annotation("column")
+                            .map(|a| a.params[0].as_string()),
+                        field,
+                    )
+                    .unwrap();
 
-                            ModelRelation::OneToMany {
-                                other_type_column_id,
-                                other_type_id,
-                            }
-                        }
-                        _ => {
-                            // ManyToOne
-                            let column_id = compute_column_id(
-                                table,
-                                table_id,
-                                &ast_field.column_name,
-                                ast_field,
-                            );
-                            let other_type_id =
-                                building.types.get_id(&ast_field.typ.name()).unwrap();
-                            ModelRelation::ManyToOne {
-                                column_id: column_id.unwrap(),
-                                other_type_id,
-                                optional: *optional,
-                            }
-                        }
+                    GqlRelation::OneToMany {
+                        other_type_column_id,
+                        other_type_id,
                     }
                 }
-                None => {
+
+                Type::Primitive(_) => {
                     // Primitive
-                    let column_id =
-                        compute_column_id(table, table_id, &ast_field.column_name, ast_field);
-                    ModelRelation::Scalar {
+                    let column_id = compute_column_id(
+                        table,
+                        table_id,
+                        &field
+                            .get_annotation("column")
+                            .map(|a| a.params[0].as_string()),
+                        field,
+                    );
+                    GqlRelation::Scalar {
                         column_id: column_id.unwrap(),
+                    }
+                }
+
+                o => {
+                    // ManyToOne
+                    let column_id = compute_column_id(
+                        table,
+                        table_id,
+                        &field
+                            .get_annotation("column")
+                            .map(|a| a.params[0].as_string()),
+                        field,
+                    );
+                    let other_type_id = building
+                        .types
+                        .get_id(o.inner_composite(env).name.as_str())
+                        .unwrap();
+                    GqlRelation::ManyToOne {
+                        column_id: column_id.unwrap(),
+                        other_type_id,
+                        optional: matches!(o, Type::Optional(_)),
                     }
                 }
             }

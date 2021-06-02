@@ -1,4 +1,7 @@
-use std::{collections::HashMap, ops};
+use std::{
+    collections::{hash_map::Keys, HashMap},
+    ops,
+};
 
 use id_arena::{Arena, Id};
 
@@ -9,12 +12,24 @@ pub struct MappedArena<V> {
 }
 
 impl<V> MappedArena<V> {
+    pub fn keys(&self) -> Keys<String, Id<V>> {
+        self.map.keys()
+    }
+
     pub fn get_id(&self, key: &str) -> Option<Id<V>> {
         self.map.get(key).copied()
     }
 
     pub fn get_by_key(&self, key: &str) -> Option<&V> {
         self.get_id(key).map(|id| &self[id])
+    }
+
+    pub fn get_by_key_mut(&mut self, key: &str) -> Option<&mut V> {
+        if let Some(id) = self.get_id(key) {
+            Some(&mut self[id])
+        } else {
+            None
+        }
     }
 
     pub fn add(&mut self, key: &str, typ: V) -> Id<V> {
