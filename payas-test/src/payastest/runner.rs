@@ -1,4 +1,5 @@
 
+use std::process::Stdio;
 use simple_error::SimpleError;
 use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
@@ -8,7 +9,7 @@ use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
 use serde::Serialize;
 use std::process::Command;
-use std::{thread, time};
+use std::io::Read;
 
 #[derive(Serialize)]
 struct PayasPost {
@@ -56,11 +57,22 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
             .arg(testfile.model_path.as_ref().unwrap())
             .env("PAYAS_DATABASE_URL", dburl_for_payas)
             .env("PAYAS_DATABASE_USER", dbusername)
+            .env("PAYAS_JWT_SECRET", "abc")
             .env("PAYAS_SERVER_PORT", port.to_string()) 
+            .stdout(Stdio::piped())
             .spawn()
             .expect("payas-server failed to start");
 
-        thread::sleep_ms(500);
+        // wait for it to start
+        const magic_string: &str = "Started ";
+        let mut server_stdout = payas_child.stdout.take().unwrap();
+        let mut buffer = [0; magic_string.len()];
+        server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
+        let output = String::from(std::str::from_utf8(&buffer)?);
+        
+        if !output.eq(magic_string) {                        
+            bail!("Unexpected output from server: {}", output)
+        }
 
         // run the init section
         for operation in testfile.init_operations.iter() {
