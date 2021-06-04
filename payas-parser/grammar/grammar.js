@@ -12,10 +12,11 @@ module.exports = grammar({
     ),
     model: $ => seq(
       repeat(field("annotation", $.annotation)),
-      "model",
+      field("kind", $.model_kind),
       field("name", $.term),
       field("body", $.model_body)
     ),
+    model_kind: $ => choice("model", "context"),
     model_body: $ => seq("{", repeat(field("field", $.field)), "}"),
     annotation: $ => seq(
       "@",

@@ -5,6 +5,7 @@ expression: "convert_root(parsed.root_node(), src.as_bytes())"
 ---
 models:
   - name: Foo
+    kind: Persistent
     fields:
       - name: bar
         typ:

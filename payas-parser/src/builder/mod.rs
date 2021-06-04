@@ -8,5 +8,3 @@ mod query_builder;
 pub mod system_builder;
 
 mod type_builder;
-
-mod typechecking;

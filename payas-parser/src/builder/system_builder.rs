@@ -14,13 +14,15 @@ use crate::ast::ast_types::AstSystem;
 
 use super::{
     mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,
-    typechecking::Type,
 };
+
+use crate::typechecker;
+use crate::typechecker::Type;
 
 pub fn build(ast_system: AstSystem) -> ModelSystem {
     let mut building = SystemContextBuilding::default();
 
-    let env: MappedArena<Type> = super::typechecking::build(ast_system);
+    let env: MappedArena<Type> = typechecker::build(ast_system);
 
     let mut types_types = Vec::new();
     for ast_type in env.keys() {

@@ -3,15 +3,13 @@ use payas_model::model::{operation::Mutation, types::GqlType};
 
 use crate::builder::{query_builder, type_builder};
 
+use crate::typechecker::{CompositeType, Type};
 use payas_model::model::{
     operation::{MutationDataParameter, MutationKind, OperationReturnType},
     types::GqlTypeModifier,
 };
 
-use super::{
-    system_builder::SystemContextBuilding,
-    typechecking::{CompositeType, Type},
-};
+use super::system_builder::SystemContextBuilding;
 
 pub fn build(models: &[Type], building: &mut SystemContextBuilding) {
     for model in models.iter() {

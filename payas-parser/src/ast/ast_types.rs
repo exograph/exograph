@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-/// Type such as Int/String/... (primitive) and Concert/Venue/Person etc (composite)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstSystem {
     pub models: Vec<AstModel>,
@@ -9,8 +8,15 @@ pub struct AstSystem {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstModel {
     pub name: String,
+    pub kind: AstModelKind,
     pub fields: Vec<AstField>,
     pub annotations: Vec<AstAnnotation>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstModelKind {
+    Persistent,
+    Context,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

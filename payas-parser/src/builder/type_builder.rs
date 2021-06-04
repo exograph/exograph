@@ -9,11 +9,10 @@ use payas_model::{
     },
 };
 
-use super::{
-    query_builder,
-    typechecking::{PrimitiveType, Type, TypedField},
-};
-use super::{system_builder::SystemContextBuilding, typechecking::CompositeType};
+use super::query_builder;
+use super::system_builder::SystemContextBuilding;
+
+use crate::typechecker::{CompositeType, PrimitiveType, Type, TypedField};
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 

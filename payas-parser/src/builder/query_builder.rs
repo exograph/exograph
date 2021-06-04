@@ -5,11 +5,9 @@ use payas_model::model::{
     GqlType, GqlTypeKind, GqlTypeModifier,
 };
 
-use super::{
-    order_by_type_builder, predicate_builder,
-    system_builder::SystemContextBuilding,
-    typechecking::{CompositeType, Type},
-};
+use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
+
+use crate::typechecker::{CompositeType, Type};
 
 pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     for model in models {

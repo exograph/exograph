@@ -6,9 +6,9 @@ use payas_model::model::{
 
 use payas_model::model::{order::*, relation::GqlRelation, types::*};
 
-use crate::builder::typechecking::PrimitiveType;
+use crate::typechecker::{PrimitiveType, Type};
 
-use super::{system_builder::SystemContextBuilding, typechecking::Type};
+use super::system_builder::SystemContextBuilding;
 
 pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
     let type_name = "Ordering".to_string();

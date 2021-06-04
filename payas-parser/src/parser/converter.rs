@@ -39,6 +39,18 @@ pub fn convert_model(node: Node, source: &[u8]) -> AstModel {
 
     let mut cursor = node.walk();
 
+    let kind = node
+        .child_by_field_name("kind")
+        .unwrap()
+        .utf8_text(source)
+        .unwrap()
+        .to_string();
+    let kind = if kind == "model" {
+        AstModelKind::Persistent
+    } else {
+        AstModelKind::Context
+    };
+
     AstModel {
         name: node
             .child_by_field_name("name")
@@ -46,6 +58,7 @@ pub fn convert_model(node: Node, source: &[u8]) -> AstModel {
             .utf8_text(source)
             .unwrap()
             .to_string(),
+        kind,
         fields: convert_fields(node.child_by_field_name("body").unwrap(), source),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
@@ -296,6 +309,19 @@ mod tests {
           concerts: [Concert] @column("venueid")
         }
         "#;
+        let parsed = parse(src).unwrap();
+        insta::assert_yaml_snapshot!(convert_root(parsed.root_node(), src.as_bytes()));
+    }
+
+    #[test]
+    fn context_schema() {
+        let src = r#"
+        context AuthUser {
+            id: Int @jwt("sub") 
+            roles: [String] @jwt
+         }
+        "#;
+
         let parsed = parse(src).unwrap();
         insta::assert_yaml_snapshot!(convert_root(parsed.root_node(), src.as_bytes()));
     }
