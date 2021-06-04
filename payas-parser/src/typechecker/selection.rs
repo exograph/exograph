@@ -1,7 +1,10 @@
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::{FieldSelection, Identifier};
+use crate::{
+    ast::ast_types::{FieldSelection, Identifier},
+    typechecker::typ::CompositeTypeKind,
+};
 
 use super::{Scope, Type, Typecheck};
 
@@ -49,10 +52,22 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                             false
                         }
                     } else {
-                        *typ = TypedFieldSelection::Single(
-                            Identifier(i.clone()),
-                            Type::Error(format!("Reference to unknown value: {}", i)),
-                        );
+                        let context_type = env.get_by_key(&i).and_then(|t| match t {
+                            Type::Composite(c) if c.kind == CompositeTypeKind::Context => Some(c),
+                            _ => None,
+                        });
+
+                        if let Some(context_type) = context_type {
+                            *typ = TypedFieldSelection::Single(
+                                Identifier(i.clone()),
+                                Type::Reference(context_type.name.clone()),
+                            );
+                        } else {
+                            *typ = TypedFieldSelection::Single(
+                                Identifier(i.clone()),
+                                Type::Error(format!("Reference to unknown value: {}", i)),
+                            );
+                        }
                         false
                     }
                 } else {

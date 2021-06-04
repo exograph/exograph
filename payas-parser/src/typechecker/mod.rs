@@ -92,4 +92,30 @@ mod tests {
         }
         insta::assert_yaml_snapshot!(types);
     }
+
+    #[test]
+    fn with_auth_context_use_in_field_annotation() {
+        let src = r#"
+        context AuthContext {
+            role: String @jwt
+        }
+    
+        model Doc {
+          is_public: Boolean 
+          content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+        }
+        "#;
+
+        let parsed = parse_str(src);
+        let checked = build(parsed);
+
+        let mut types = Vec::new();
+        let mut keys = checked.keys().collect::<Vec<&String>>();
+        keys.sort();
+        for key in keys.iter() {
+            types.push((key, checked.get_by_key(key).unwrap()));
+        }
+
+        insta::assert_yaml_snapshot!(types);
+    }
 }
