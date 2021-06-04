@@ -52,17 +52,17 @@ pub fn createdb_psql(dbname: &str, url: &str) -> Result<(String, String), Box<dy
 }
 
 /// Connect to the specified PostgreSQL database and attempt to run a query.
-pub fn run_psql(query: &str, url: &str) -> Result<(), Box<dyn Error>> {
+pub fn run_psql(query: &str, url: &str) -> Result<(), postgres::Error> {
     let mut client = url.parse::<Config>()?.connect(NoTls)?;
-    Ok(client.simple_query(query).map(|_| ())?)
+    client.simple_query(query).map(|_| ())
 }
 
 /// Drop the specified database at the specified PostgreSQL server and
 /// return on success.
-pub fn dropdb_psql(dbname: &str, url: &str) -> Result<(), Box<dyn Error>> {
+pub fn dropdb_psql(dbname: &str, url: &str) -> Result<(), postgres::Error> {
     let mut client = url.parse::<Config>()?.connect(NoTls)?;
 
     let query: String = format!("DROP DATABASE {}", dbname);
-    Ok(client.execute(query.as_str() , &[]).map(|_| ())?)
+    client.execute(query.as_str() , &[]).map(|_| ())
 }
 
