@@ -31,7 +31,17 @@ impl Typecheck<Type> for AstModel {
                 .filter(|v| *v)
                 .count()
                 > 0;
-            fields_changed
+
+            let annot_changed = self
+                .annotations
+                .iter()
+                .zip(c.annotations.iter_mut())
+                .map(|(ast_annot, typed_annot)| ast_annot.pass(typed_annot, env, &model_scope))
+                .filter(|v| *v)
+                .count()
+                > 0;
+
+            fields_changed || annot_changed
         } else {
             panic!()
         }

@@ -72,25 +72,17 @@ mod tests {
     #[test]
     fn simple() {
         let src = r#"
-      model User {
-        doc: Doc @column("custom_column") @auth(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
-        role: String
-      }
-
-      model Doc {
-        is_public: Boolean
-      }
-      "#;
-        let parsed = parse_str(src);
-        let checked = build(parsed);
-
-        let mut types = Vec::new();
-        let mut keys = checked.keys().collect::<Vec<&String>>();
-        keys.sort();
-        for key in keys.iter() {
-            types.push((key, checked.get_by_key(key).unwrap()));
+        model User {
+          doc: Doc @column("custom_column") @auth(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
+          role: String
         }
-        insta::assert_yaml_snapshot!(types);
+
+        model Doc {
+          is_public: Boolean
+        }
+        "#;
+
+        assert_typechecking(src);
     }
 
     #[test]
@@ -106,6 +98,27 @@ mod tests {
         }
         "#;
 
+        assert_typechecking(src);
+    }
+
+    #[test]
+    fn with_auth_context_use_in_type_annotation() {
+        let src = r#"
+        context AuthContext {
+            role: String @jwt
+        }
+    
+        @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+        model Doc {
+          is_public: Boolean 
+          content: String 
+        }
+        "#;
+
+        assert_typechecking(src);
+    }
+
+    fn assert_typechecking(src: &str) {
         let parsed = parse_str(src);
         let checked = build(parsed);
 

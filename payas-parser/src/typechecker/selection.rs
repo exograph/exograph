@@ -34,6 +34,7 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
     }
 
     fn pass(&self, typ: &mut TypedFieldSelection, env: &MappedArena<Type>, scope: &Scope) -> bool {
+        dbg!(&self);
         match &self {
             FieldSelection::Single(Identifier(i)) => {
                 if let TypedFieldSelection::Single(_, Type::Defer) = typ {
