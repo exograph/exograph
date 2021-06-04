@@ -1,15 +1,14 @@
 
 use std::process::Stdio;
-use simple_error::SimpleError;
 use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
 use std::error::Error;
-use simple_error::bail;
 use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
 use serde::Serialize;
 use std::process::Command;
 use std::io::Read;
+use anyhow::{Result, Context, anyhow, bail};
 
 #[derive(Serialize)]
 struct PayasPost {
@@ -17,7 +16,7 @@ struct PayasPost {
     variables: serde_json::Value
 }
 
-pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bool, Box<dyn Error>> {
+pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bool> {
     let mut test_counter: usize = 0;
     const PORT_BASE: usize = 34140;
     let mut success: bool = true;
@@ -38,7 +37,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let endpoint = format!("http://127.0.0.1:{}/", port);
 
         // create the schema
-        println!("#{} Initializing schema in {} ...", test_counter, dbname);
+        println!("#{} ({}) Initializing schema in {} ...", test_counter, test_name, dbname);
         let cli_child = Command::new("payas-cli")
             .arg(testfile.model_path.as_ref().unwrap())
             .output()?;
@@ -52,7 +51,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         run_psql(query, &dburl_for_payas)?;
 
         // spawn a payas instance 
-        println!("#{} Initializing payas-server ...", test_counter);
+        println!("#{} ({}) Initializing payas-server ...", test_counter, test_name);
         let mut payas_child = Command::new("payas-server")
             .arg(testfile.model_path.as_ref().unwrap())
             .env("PAYAS_DATABASE_URL", dburl_for_payas)
@@ -71,17 +70,17 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let output = String::from(std::str::from_utf8(&buffer)?);
         
         if !output.eq(magic_string) {                        
-            bail!("Unexpected output from server: {}", output)
+            bail!("Unexpected output from payas-server: {}", output)
         }
 
         // run the init section
         for operation in testfile.init_operations.iter() {
-            println!("#{} Initializing database...", test_counter);
+            println!("#{} ({}) Initializing database...", test_counter, test_name);
             run_operation(&endpoint, operation).await??;
         }
             
         // run test
-        println!("#{} Testing ...", test_counter);
+        println!("#{} ({}) Testing ...", test_counter, test_name);
         let result = run_operation(&endpoint, test_op).await;
 
         // did the test run okay? 
@@ -90,17 +89,17 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                 // check test results 
                 match test_result {
                     Ok(_) => { 
-                        println!("#{} OK\n", test_counter); 
+                        println!("#{} ({}) OK\n", test_counter, test_name); 
                     },
 
                     Err(e) => {
-                        println!("#{} ASSERTION FAILED\n{}", test_counter, e.to_string()); 
+                        println!("#{} ({}) ASSERTION FAILED\n{:?}", test_counter, test_name, e); 
                         success = false; 
                     }
                 }
             },
             Err(e) => { 
-                println!("#{} TEST EXECUTION FAILED\n{}", test_counter, e.to_string()); 
+                println!("#{} ({}) TEST EXECUTION FAILED\n{:?}", test_counter, test_name, e); 
                 success = false; 
             }
         }
@@ -115,9 +114,9 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
     Ok(success)
 }
 
-type TestResult = Result<(), Box<dyn Error>>;
+type TestResult = Result<()>;
 
-async fn run_operation(url: &str, gql: &TestfileOperation) -> Result<TestResult, Box<dyn Error>> {
+async fn run_operation(url: &str, gql: &TestfileOperation) -> Result<TestResult> {
     match gql {
         TestfileOperation::GqlDocument { document, variables, expected_payload } => { 
             let client = Client::default(); 
@@ -126,14 +125,14 @@ async fn run_operation(url: &str, gql: &TestfileOperation) -> Result<TestResult,
                     query: document.to_string(),                        
                     variables: variables.as_ref().unwrap().clone()
                 })
-                .await?;
+                .await
+                .map_err(|e| anyhow!("Error sending POST request: {}", e))?;
                 
             if !resp.status().is_success() {
-                println!("BAD");
-                bail!("Request failed with following: {}", resp.status().canonical_reason().unwrap());
+                bail!("Bad response: {}", resp.status().canonical_reason().unwrap());
             }
           
-            let json = resp.json().await.unwrap();
+            let json = resp.json().await.context("Error parsing response into JSON")?;
             let body: serde_json::Value = json; 
           
             match expected_payload {
@@ -142,11 +141,11 @@ async fn run_operation(url: &str, gql: &TestfileOperation) -> Result<TestResult,
                     if body == *expected_payload {
                         Ok(Ok(()))
                     } else {
-                        return Ok(Err(Box::new(SimpleError::new(format!(
+                        return Ok(Err(anyhow!(format!(
                                 "➔ Expected:\n{},\n\n➔ Got:\n{}",
-                                serde_json::to_string_pretty(&expected_payload)?,
-                                serde_json::to_string_pretty(&body)?,
-                            )))))   
+                                serde_json::to_string_pretty(&expected_payload).unwrap(),
+                                serde_json::to_string_pretty(&body).unwrap(),
+                            ))))
     
                     }
                 },
