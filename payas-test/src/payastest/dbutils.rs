@@ -1,46 +1,53 @@
 use postgres::NoTls;
-use std::error::Error;
 use postgres::{config::Host, Client, Config};
-use simple_error::{SimpleError, bail};
+use anyhow::{bail, Context, Result};
+
+type ConnectionString = String;
+type DbUsername = String;
 
 /// Create a database with the specified name at the specified PostgreSQL server and return 
 /// a connection string and username for the database on successful creation.
-pub fn createdb_psql(dbname: &str, url: &str) -> Result<(String, String), Box<dyn Error>> {
+pub fn createdb_psql(dbname: &str, url: &str) -> Result<(ConnectionString, DbUsername)> {
     // TODO validate dbname
 
-    let config = url.parse::<Config>()?;
+    // parse connection string
+    let mut config = url.parse::<Config>().context("Failed to parse PostgreSQL connection string")?;
+
+    // "The postgres database is a default database meant for use by users, utilities and third party applications."
+    config.dbname("postgres");
+
+    // validate and parse out connection parameters 
+    let username = &config.get_user().context("Missing user in connection string")?;
+    let password: Option<&str> = config.get_password().map(std::str::from_utf8).transpose()?;
+    let host: Option<&str> = config.get_hosts().get(0).map(|host| match host {
+        Host::Tcp(host) => { Ok(host.as_str()) },
+        Host::Unix(_) => { bail!("Unix socket connections are currently not supported") }
+    }).transpose()?;
+
+    // run creation query
     let mut client: Client = config.connect(NoTls)?;
-
-    let username = config.get_user().ok_or(SimpleError::new("No user specified in configuration"))?;
-
     let query: String = format!("CREATE DATABASE {}", dbname);
-    client.execute(query.as_str() , &[])?;
+    client.execute(query.as_str() , &[]).context("PostgreSQL database creation query failed")?;
 
     // start building our connection string
     let mut connectionparams = String::from("postgresql://".to_string() + username);
 
     // add password if given
-    match config.get_password() {
+    match password {
         Some(password) => {
-            connectionparams += &(":".to_string() + std::str::from_utf8(password).unwrap());
+            connectionparams += &(":".to_string() + password);
         },
 
         None => {}
     }
 
     // add host
-    match &config.get_hosts().get(0) {
-        Some(host) => match host {
-            Host::Tcp(host) => {
-                connectionparams += &("@".to_string() + &host);
-            },
-
-            // TODO Unix sockets
-            Host::Unix(_) => {
-                bail!("Unix socket connections to PostgreSQL are currently not supported.")
-            }
+    match host {
+        Some(host) => { 
+            connectionparams += &("@".to_string() + host);
         },
-        None => bail!("No host specified.")
+
+        None => bail!("No PostgreSQL host specified")
     }
 
     // add db
@@ -48,21 +55,26 @@ pub fn createdb_psql(dbname: &str, url: &str) -> Result<(String, String), Box<dy
     //println!("{}", connectionparams);
 
     // return
-    Ok((connectionparams, username.to_owned()))
+    Ok((connectionparams, username.to_string()))
 }
 
 /// Connect to the specified PostgreSQL database and attempt to run a query.
-pub fn run_psql(query: &str, url: &str) -> Result<(), postgres::Error> {
+pub fn run_psql(query: &str, url: &str) -> Result<()> {
     let mut client = url.parse::<Config>()?.connect(NoTls)?;
-    client.simple_query(query).map(|_| ())
+    client.simple_query(query).context("PostgreSQL query failed to execute").map(|_| ())
 }
 
 /// Drop the specified database at the specified PostgreSQL server and
 /// return on success.
-pub fn dropdb_psql(dbname: &str, url: &str) -> Result<(), postgres::Error> {
-    let mut client = url.parse::<Config>()?.connect(NoTls)?;
+pub fn dropdb_psql(dbname: &str, url: &str) -> Result<()> {
+    let mut config = url.parse::<Config>()?;
+
+    // "The postgres database is a default database meant for use by users, utilities and third party applications."
+    config.dbname("postgres"); 
+
+    let mut client = config.connect(NoTls)?;
 
     let query: String = format!("DROP DATABASE {}", dbname);
-    client.execute(query.as_str() , &[]).map(|_| ())
+    client.execute(query.as_str() , &[]).context("PostgreSQL drop database query failed").map(|_| ())
 }
 
