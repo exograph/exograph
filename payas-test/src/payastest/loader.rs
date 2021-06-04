@@ -9,7 +9,7 @@ use std::error::Error;
 use serde::{Deserialize};
 
 use async_graphql_parser::parse_query;
-use simple_error::{bail, SimpleError};
+use anyhow::{anyhow, bail, Context, Result};
 
 pub type TestfileSetup = Vec<String>;
 pub type TestfileInit = Vec<String>;
@@ -49,7 +49,7 @@ pub struct GraphQLFile {
 }
 
 /// Load and parse testfiles from a given directory.
-pub fn load_testfiles_from_dir(dir: &str) -> Result<Vec<ParsedTestfile>, Box<dyn Error>> {
+pub fn load_testfiles_from_dir(dir: &str) -> Result<Vec<ParsedTestfile>> {
     // enumerate tests
     let path = Path::new(&dir);
     let mut testfiles: Vec<ParsedTestfile> = Vec::new();
@@ -57,14 +57,15 @@ pub fn load_testfiles_from_dir(dir: &str) -> Result<Vec<ParsedTestfile>, Box<dyn
     for file in read_dir(&path)? {
         let file = file?;
 
-        // TODO recurse
         if file.path().is_dir() {
-            continue;
+            // TODO maybe impose max recursion
+            let mut loaded_testfiles = load_testfiles_from_dir(file.path().to_str().unwrap())?;
+            testfiles.append(&mut loaded_testfiles);
         }
 
         if file.path().extension().unwrap_or_default() == "yml" {
             let testfile = load_testfile(&file.path())?;
-            testfiles.push(parse_testfile(&testfile, &file.path())?);
+            testfiles.push(parse_testfile(&testfile, &file.path()).context("Failed to parse testfile")?);
         }
     }
 
@@ -72,7 +73,7 @@ pub fn load_testfiles_from_dir(dir: &str) -> Result<Vec<ParsedTestfile>, Box<dyn
 }
 
 /// Load a specified testfile into memory
-fn load_testfile(testfile_path: &Path) -> Result<Testfile, Box<dyn Error>> {
+fn load_testfile(testfile_path: &Path) -> Result<Testfile> {
     // load test file into memory
     let file = File::open(testfile_path)?;
     let reader = BufReader::new(file);
@@ -84,10 +85,10 @@ fn load_testfile(testfile_path: &Path) -> Result<Testfile, Box<dyn Error>> {
 // TODO: handle inline code for all sections
 // TODO: handle raw sql for setup and init
 /// Parse a deserialized testfile into a data structure.
-fn parse_testfile(testfile: &Testfile, testfile_path: &PathBuf) -> Result<ParsedTestfile, Box<dyn Error>> {
+fn parse_testfile(testfile: &Testfile, testfile_path: &PathBuf) -> Result<ParsedTestfile> {
     let testfile_name = testfile_path
-            .file_stem().ok_or("Failed to get file name from path")?
-            .to_str().ok_or("Failed to convert file name into Unicode")?.to_string();
+            .file_stem().context("Failed to get file name from path")?
+            .to_str().context("Failed to convert file name into Unicode")?.to_string();
 
     let mut result = ParsedTestfile {
         name: testfile_name.clone(),
@@ -105,11 +106,11 @@ fn parse_testfile(testfile: &Testfile, testfile_path: &PathBuf) -> Result<Parsed
     // TODO: check ext
     let mut model_path = testfile_path.clone();
     model_path.pop(); // get parent dir
-    model_path.push(testfile.setup.get(0).ok_or("No items in the setup section.")?);
+    model_path.push(testfile.setup.get(0).context("No items in the setup section")?);
     result.model_path = Some(model_path.into_os_string().into_string().map_err(
-        |_| SimpleError::new("Could not parse model path into a valid Unicode string"))?);
+        |_| anyhow!("Could not parse model path into a valid Unicode string"))?);
 
-    println!("{}", &result.model_path.as_ref().unwrap());
+    //println!("Model path: {}", &result.model_path.as_ref().unwrap());
 
     // read in initialization 
     for filename in testfile.init.iter() {
@@ -127,14 +128,14 @@ fn parse_testfile(testfile: &Testfile, testfile_path: &PathBuf) -> Result<Parsed
         for path in test.iter() {
             if path.ends_with(".gql") {
                 match gql_filepath {
-                    Some(_) => { bail!("Cannot have multiple .gql documents in test definition") }
+                    Some(_) => { bail!("Cannot have multiple .gql documents in a single test definition") }
                     None => { gql_filepath = Some(path); }
                 }
             }
 
             if path.ends_with(".json") {
                 match json_filepath {
-                    Some(_) => { bail!("Cannot have multiple .json expected responses in test definition") }
+                    Some(_) => { bail!("Cannot have multiple .json expected responses in a single test definition") }
                     None => { json_filepath = Some(path); }
                 }
             }
@@ -143,8 +144,8 @@ fn parse_testfile(testfile: &Testfile, testfile_path: &PathBuf) -> Result<Parsed
         }
 
         let test_op = construct_gql_operation_from_file(
-            gql_filepath.ok_or("Missing GraphQL document.")?, 
-            Some(json_filepath.ok_or("Missing expected .json response")?), 
+            gql_filepath.context("Missing GraphQL document")?, 
+            Some(json_filepath.context("Missing expected .json response")?), 
             testfile_path
         )?;
 
@@ -155,37 +156,39 @@ fn parse_testfile(testfile: &Testfile, testfile_path: &PathBuf) -> Result<Parsed
 }
 
 fn construct_gql_operation_from_file(gql_filepath: &String, json_filepath: Option<&String>, testfile_basedir: &PathBuf) 
-    -> Result<TestfileOperation, Box<dyn Error>> {
+    -> Result<TestfileOperation> {
 
-    let gql_file = read_file_from_basedir(gql_filepath, testfile_basedir)?;
-    let gql: GraphQLFile = serde_yaml::from_str(&gql_file)?;
+    let gql_file = read_file_from_basedir(gql_filepath, testfile_basedir)
+        .with_context(|| format!("Could not read .gql file at {}", gql_filepath))?;
+    let gql: GraphQLFile = serde_yaml::from_str(&gql_file).context("Could not parse .gql file (is it in YAML?)")?;
 
     // parse expected json
     let expected_payload = match json_filepath {
         Some(json_filepath) =>  {
-            let json_file = read_file_from_basedir(json_filepath, testfile_basedir)?;
-            Some(serde_json::from_str(&json_file)?)
+            let json_file = read_file_from_basedir(json_filepath, testfile_basedir)
+                .with_context(|| format!("Could not read JSON file at {}", json_filepath))?;
+            Some(serde_json::from_str(&json_file).context("Provided JSON is not valid")?)
         },
         None => { None }
     };
 
     // verify gql by parsing
-    let _gql_document = parse_query(&gql.operation)?;
+    let _gql_document = parse_query(&gql.operation).context("Provided GraphQL is not a valid document")?;
 
     Ok(TestfileOperation::GqlDocument {
         document: gql.operation, 
-        variables: serde_json::from_str(&gql.variable)?,
+        variables: serde_json::from_str(&gql.variable).context("GraphQL variable section is not valid JSON")?,
         expected_payload
     })
 
 }
 
-fn read_file_from_basedir(path: &String, basedir: &PathBuf) -> Result<String, Box<dyn Error>> {
-    let mut file_path = PathBuf::from(basedir.parent().ok_or("").clone()?);
+fn read_file_from_basedir(path: &String, basedir: &PathBuf) -> Result<String> {
+    let mut file_path = PathBuf::from(basedir.parent().ok_or("").clone().unwrap());
     file_path.push(path);
 
     // read in file
-    println!("Reading {:?}", file_path);
+    //println!("Reading {:?}", file_path);
 
     let mut file = File::open(file_path)?;
     let mut buffer = String::new();
