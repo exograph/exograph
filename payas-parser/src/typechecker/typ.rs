@@ -103,4 +103,12 @@ impl PrimitiveType {
             PrimitiveType::Boolean => PhysicalColumnType::Boolean,
         }
     }
+
+    pub fn name(&self) -> &str {
+        match &self {
+            PrimitiveType::Int => "Int",
+            PrimitiveType::String => "String",
+            PrimitiveType::Boolean => "Boolean",
+        }
+    }
 }

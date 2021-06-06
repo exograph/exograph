@@ -16,22 +16,9 @@ use crate::typechecker::{CompositeType, PrimitiveType, Type, TypedField};
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
-pub const PRIMITIVE_TYPE_NAMES: [&str; 3] = ["Int", "String", "Boolean"]; // TODO: Expand the list
-
 pub fn build_shallow(models: &MappedArena<Type>, building: &mut SystemContextBuilding) {
-    for type_name in PRIMITIVE_TYPE_NAMES.iter() {
-        let typ = GqlType {
-            name: type_name.to_string(),
-            kind: GqlTypeKind::Primitive,
-            is_input: false,
-        };
-        building.types.add(type_name, typ);
-    }
-
     for (_, model_type) in models.iter() {
-        if let Type::Composite(c) = &model_type {
-            create_shallow_type(c, building);
-        }
+        create_shallow_type(model_type, building);
     }
 }
 
@@ -48,32 +35,60 @@ pub fn build_expanded(env: &MappedArena<Type>, building: &mut SystemContextBuild
     }
 }
 
-fn create_shallow_type(model_type: &CompositeType, building: &mut SystemContextBuilding) {
+fn create_shallow_type(model_type: &Type, building: &mut SystemContextBuilding) {
+    let (type_name, is_composite) = match model_type {
+        Type::Composite(c) => (c.name.clone(), true),
+        Type::Primitive(pt) => (pt.name().to_string(), false),
+        _ => panic!(""),
+    };
+
+    // Mark every type as Primitive, since other types that may be referred haven't been processed yet
     building.types.add(
-        &model_type.name,
+        &type_name,
         GqlType {
-            name: model_type.name.clone(),
+            name: type_name.to_string(),
             kind: GqlTypeKind::Primitive,
             is_input: false,
         },
     );
 
-    let mutation_type_names = [
-        input_creation_type_name(&model_type.name),
-        input_update_type_name(&model_type.name),
-        input_reference_type_name(&model_type.name),
-    ];
+    if is_composite {
+        let mutation_type_names = [
+            input_creation_type_name(&type_name),
+            input_update_type_name(&type_name),
+            input_reference_type_name(&type_name),
+        ];
 
-    for mutation_type_name in mutation_type_names.iter() {
-        building.mutation_types.add(
-            &mutation_type_name,
-            GqlType {
-                name: mutation_type_name.to_string(),
-                kind: GqlTypeKind::Primitive,
-                is_input: true,
-            },
-        );
+        for mutation_type_name in mutation_type_names.iter() {
+            building.mutation_types.add(
+                &mutation_type_name,
+                GqlType {
+                    name: mutation_type_name.to_string(),
+                    kind: GqlTypeKind::Primitive,
+                    is_input: true,
+                },
+            );
+        }
     }
+}
+
+fn compute_table_name(typ: &CompositeType) -> String {
+    typ.get_annotation("table")
+        .map(|a| a.params[0].as_string())
+        .unwrap_or_else(|| typ.name.clone())
+}
+
+fn compute_column_name(field: &TypedField, reference: bool) -> String {
+    field
+        .get_annotation("column")
+        .map(|a| a.params[0].as_string())
+        .unwrap_or_else(|| {
+            if reference {
+                format!("{}_id", field.name)
+            } else {
+                field.name.clone()
+            }
+        })
 }
 
 // Expand type except for model fields. This allows types to become `Composite` and `table_id` for any type
@@ -83,10 +98,7 @@ fn expand_type1(
     building: &mut SystemContextBuilding,
     env: &MappedArena<Type>,
 ) {
-    let table_name = model_type
-        .get_annotation("table")
-        .map(|a| a.params[0].as_string())
-        .unwrap_or_else(|| model_type.name.clone());
+    let table_name = compute_table_name(model_type);
 
     let columns = model_type
         .fields
@@ -140,7 +152,7 @@ fn expand_type2(
         let model_fields: Vec<GqlField> = model_type
             .fields
             .iter()
-            .map(|field| create_field(field, table_id, building, env))
+            .map(|field| create_field(model_type, field, table_id, building, env))
             .collect();
 
         let kind = GqlTypeKind::Composite {
@@ -244,6 +256,7 @@ fn compute_input_fields(
 }
 
 fn create_field(
+    model_type: &CompositeType,
     field: &TypedField,
     table_id: Id<PhysicalTable>,
     building: &SystemContextBuilding,
@@ -268,7 +281,7 @@ fn create_field(
     GqlField {
         name: field.name.to_owned(),
         typ: create_field_type(&field.typ, building),
-        relation: create_relation(&field, table_id, building, env),
+        relation: create_relation(model_type, field, table_id, building, env),
     }
 }
 
@@ -280,10 +293,7 @@ fn create_column(
     match field.get_annotation("pk") {
         Some(_) => Some(PhysicalColumn {
             table_name: table_name.to_string(),
-            column_name: field
-                .get_annotation("column")
-                .map(|a| a.params[0].as_string())
-                .unwrap_or_else(|| field.name.clone()),
+            column_name: compute_column_name(field, false),
             typ: field.typ.deref(env).as_primitive().to_column_type(),
             is_pk: true,
             is_autoincrement: match field.get_annotation("autoincrement") {
@@ -303,10 +313,7 @@ fn create_column(
                     // Scalar type
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
-                        column_name: field
-                            .get_annotation("column")
-                            .map(|a| a.params[0].as_string())
-                            .unwrap_or_else(|| field.name.clone()),
+                        column_name: compute_column_name(field, false),
                         typ: p.to_column_type(),
                         is_pk: false,
                         is_autoincrement: false,
@@ -315,23 +322,18 @@ fn create_column(
                 }
 
                 other_type => {
+                    // ManyToOne
                     let inner_composite = other_type.inner_composite(env);
                     let other_type_pk_field = inner_composite
                         .fields
                         .iter()
                         .find(|f| f.get_annotation("pk").is_some())
                         .unwrap();
-                    let other_table_name = inner_composite
-                        .get_annotation("table")
-                        .map(|a| a.params[0].as_string())
-                        .unwrap_or_else(|| inner_composite.name.clone());
+                    let other_table_name = compute_table_name(inner_composite);
 
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
-                        column_name: field
-                            .get_annotation("column")
-                            .map(|a| a.params[0].as_string())
-                            .unwrap_or_else(|| format!("{}_id", field.name)),
+                        column_name: compute_column_name(field, true),
                         typ: other_type_pk_field
                             .typ
                             .deref(env)
@@ -341,10 +343,7 @@ fn create_column(
                         is_autoincrement: false,
                         references: Some(ColumnReferece {
                             table_name: other_table_name,
-                            column_name: field
-                                .get_annotation("column")
-                                .map(|a| a.params[0].as_string())
-                                .unwrap_or_else(|| field.name.clone()),
+                            column_name: compute_column_name(other_type_pk_field, false),
                         }),
                     })
                 }
@@ -354,22 +353,19 @@ fn create_column(
 }
 
 fn create_relation(
+    model_type: &CompositeType,
     field: &TypedField,
     table_id: Id<PhysicalTable>,
     building: &SystemContextBuilding,
     env: &MappedArena<Type>,
 ) -> GqlRelation {
-    fn compute_column_name(column_name: &Option<String>, field: &TypedField) -> String {
-        column_name.clone().unwrap_or_else(|| field.name.clone())
-    }
-
     fn compute_column_id(
         table: &PhysicalTable,
         table_id: Id<PhysicalTable>,
-        column_name: &Option<String>,
         field: &TypedField,
+        reference: bool,
     ) -> Option<ColumnId> {
-        let column_name = compute_column_name(column_name, field);
+        let column_name = compute_column_name(field, reference);
 
         table
             .column_index(&column_name)
@@ -380,14 +376,7 @@ fn create_relation(
 
     match field.get_annotation("pk") {
         Some(_) => {
-            let column_id = compute_column_id(
-                table,
-                table_id,
-                &field
-                    .get_annotation("column")
-                    .map(|a| a.params[0].as_string()),
-                field,
-            );
+            let column_id = compute_column_id(table, table_id, field, false);
             GqlRelation::Pk {
                 column_id: column_id.unwrap(),
             }
@@ -403,15 +392,15 @@ fn create_relation(
                     let other_type = &building.types[other_type_id];
                     let other_table_id = other_type.table_id().unwrap();
                     let other_table = &building.tables[other_table_id];
-                    let other_type_column_id = compute_column_id(
-                        other_table,
-                        other_table_id,
-                        &field
-                            .get_annotation("column")
-                            .map(|a| a.params[0].as_string()),
-                        field,
-                    )
-                    .unwrap();
+
+                    let column_name = field
+                        .get_annotation("column")
+                        .map(|a| a.params[0].as_string())
+                        .unwrap_or_else(|| format!("{}_id", model_type.name.to_ascii_lowercase()));
+                    let other_type_column_id = other_table
+                        .column_index(&column_name)
+                        .map(|index| ColumnId::new(other_table_id, index))
+                        .unwrap();
 
                     GqlRelation::OneToMany {
                         other_type_column_id,
@@ -421,14 +410,7 @@ fn create_relation(
 
                 Type::Primitive(_) => {
                     // Primitive
-                    let column_id = compute_column_id(
-                        table,
-                        table_id,
-                        &field
-                            .get_annotation("column")
-                            .map(|a| a.params[0].as_string()),
-                        field,
-                    );
+                    let column_id = compute_column_id(table, table_id, field, false);
                     GqlRelation::Scalar {
                         column_id: column_id.unwrap(),
                     }
@@ -436,14 +418,7 @@ fn create_relation(
 
                 o => {
                     // ManyToOne
-                    let column_id = compute_column_id(
-                        table,
-                        table_id,
-                        &field
-                            .get_annotation("column")
-                            .map(|a| a.params[0].as_string()),
-                        field,
-                    );
+                    let column_id = compute_column_id(table, table_id, field, true);
                     let other_type_id = building
                         .types
                         .get_id(o.inner_composite(env).name.as_str())
