@@ -1,0 +1,42 @@
+---
+source: payas-parser/src/builder/resolved_builder.rs
+expression: sorted_values(&resolved)
+
+---
+- Primitive: Boolean
+- Composite:
+    name: Concert
+    fields:
+      - name: id
+        typ:
+          Plain: Int
+        column_name: custom_id
+      - name: title
+        typ:
+          Plain: String
+        column_name: custom_title
+      - name: venue
+        typ:
+          Plain: Venue
+        column_name: custom_venue_id
+    table_name: custom_concerts
+- Primitive: Int
+- Primitive: String
+- Composite:
+    name: Venue
+    fields:
+      - name: id
+        typ:
+          Plain: Int
+        column_name: custom_id
+      - name: name
+        typ:
+          Plain: String
+        column_name: custom_name
+      - name: concerts
+        typ:
+          List:
+            Plain: Concert
+        column_name: custom_venueid
+    table_name: venues
+

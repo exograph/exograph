@@ -41,6 +41,21 @@ impl<V> MappedArena<V> {
     pub fn iter(&self) -> id_arena::Iter<V, impl id_arena::ArenaBehavior> {
         self.values.iter()
     }
+
+    pub fn iter_mut(&mut self) -> id_arena::IterMut<V, id_arena::DefaultArenaBehavior<V>> {
+        self.values.iter_mut()
+    }
+}
+
+// Needed for tests, should get DCEd for the main binary
+pub fn sorted_values<V>(arena: &MappedArena<V>) -> Vec<&V> {
+    let mut values = Vec::new();
+    let mut keys = arena.keys().collect::<Vec<&String>>();
+    keys.sort();
+    for key in keys.iter() {
+        values.push(arena.get_by_key(key).unwrap());
+    }
+    values
 }
 
 impl<V> Default for MappedArena<V> {

@@ -13,7 +13,8 @@ use payas_model::{
 use crate::ast::ast_types::AstSystem;
 
 use super::{
-    mutation_builder, order_by_type_builder, predicate_builder, query_builder, type_builder,
+    mutation_builder, order_by_type_builder, predicate_builder, query_builder, resolved_builder,
+    type_builder,
 };
 
 use crate::typechecker;
@@ -29,13 +30,16 @@ pub fn build(ast_system: AstSystem) -> ModelSystem {
         types_types.push(env.get_by_key(ast_type).unwrap().clone());
     }
 
-    type_builder::build_shallow(&env, &mut building);
+    let resolved_types = resolved_builder::build(&env);
+
+    type_builder::build_shallow(&resolved_types, &mut building);
 
     query_builder::build_shallow(&types_types, &mut building);
     order_by_type_builder::build_shallow(&types_types, &mut building);
     predicate_builder::build_shallow(&types_types, &mut building);
 
-    type_builder::build_expanded(&env, &mut building);
+    type_builder::build_expanded(&resolved_types, &mut building);
+
     order_by_type_builder::build_expanded(&mut building);
     predicate_builder::build_expanded(&mut building);
     query_builder::build_expanded(&mut building);
