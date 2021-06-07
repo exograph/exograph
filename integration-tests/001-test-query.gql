@@ -1,0 +1,10 @@
+operation: |
+    query($id:Int!) {
+        venue(id:$id) {
+            name
+        }
+    } 
+variable: |
+    {
+        "id": 1
+    }

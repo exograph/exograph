@@ -54,6 +54,7 @@ async fn resolve(
                 claims,
             )
             .with_status(StatusCode::OK)
+            .with_header("Content-Type", "application/json")
         }
         Err(err) => {
             let (message, status_code) = match err {

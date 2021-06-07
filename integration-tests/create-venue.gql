@@ -1,0 +1,10 @@
+operation: |
+    mutation($name: String!) {
+        createVenue(data: {name: $name}) {
+            name
+        }
+    }
+variable: |
+    {
+        "name": "Venue1"
+    }

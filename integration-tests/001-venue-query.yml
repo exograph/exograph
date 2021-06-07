@@ -1,0 +1,8 @@
+setup:
+  - ../test-models/bb.payas
+init:
+  - create-venue.gql
+tests:
+  query-venue:
+    - 001-test-query.gql
+    - 001-test-query.json
