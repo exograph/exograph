@@ -1,8 +1,6 @@
-
 use std::process::Stdio;
 use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
-use std::error::Error;
 use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
 use serde::Serialize;
@@ -63,13 +61,13 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
             .expect("payas-server failed to start");
 
         // wait for it to start
-        const magic_string: &str = "Started ";
+        const MAGIC_STRING: &str = "Started ";
         let mut server_stdout = payas_child.stdout.take().unwrap();
-        let mut buffer = [0; magic_string.len()];
+        let mut buffer = [0; MAGIC_STRING.len()];
         server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
         let output = String::from(std::str::from_utf8(&buffer)?);
         
-        if !output.eq(magic_string) {                        
+        if !output.eq(MAGIC_STRING) {                        
             bail!("Unexpected output from payas-server: {}", output)
         }
 
