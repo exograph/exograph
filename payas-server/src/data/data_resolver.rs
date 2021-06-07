@@ -3,6 +3,8 @@ use async_graphql_parser::{
     Positioned,
 };
 
+use anyhow::{anyhow, Result};
+
 use crate::sql::Expression;
 use crate::{
     execution::query_context::{QueryContext, QueryResponse},
@@ -19,7 +21,7 @@ pub trait DataResolver {
         field: &Positioned<Field>,
         operation_type: &OperationType,
         query_context: &QueryContext<'_>,
-    ) -> QueryResponse;
+    ) -> Result<QueryResponse>;
 }
 
 impl DataResolver for ModelSystem {
@@ -28,7 +30,7 @@ impl DataResolver for ModelSystem {
         field: &Positioned<Field>,
         operation_type: &OperationType,
         query_context: &QueryContext<'_>,
-    ) -> QueryResponse {
+    ) -> Result<QueryResponse> {
         let operation_context = OperationContext::new(query_context);
 
         let sql_operation = match operation_type {
@@ -47,7 +49,7 @@ impl DataResolver for ModelSystem {
 
         let mut expression_context = ExpressionContext::default();
         let binding = sql_operation.binding(&mut expression_context);
-        let string_response = query_context.database.execute(&binding);
-        QueryResponse::Raw(string_response)
+        let string_response = query_context.database.execute(&binding)?;
+        Ok(QueryResponse::Raw(string_response))
     }
 }

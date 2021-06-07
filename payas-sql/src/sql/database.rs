@@ -1,3 +1,4 @@
+use anyhow::{bail, Context, Result};
 use std::env;
 
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
@@ -22,20 +23,20 @@ pub struct Database {
 }
 
 impl<'a> Database {
-    pub fn from_env() -> Self {
-        let url = env::var(URL_PARAM).expect("PAYAS_DATABASE_URL must be provided");
+    pub fn from_env() -> Result<Self> {
+        let url = env::var(URL_PARAM).context("PAYAS_DATABASE_URL must be provided")?;
         let user = env::var(USER_PARAM).ok();
         let password = env::var(PASSWORD_PARAM).ok();
 
-        Self {
+        Ok(Self {
             url,
             user,
             password,
-        }
+        })
     }
 
-    pub fn execute(&self, binding: &ParameterBinding) -> String {
-        let mut client = self.create_client();
+    pub fn execute(&self, binding: &ParameterBinding) -> Result<String> {
+        let mut client = self.create_client()?;
 
         let params: Vec<&(dyn ToSql + Sync)> =
             binding.params.iter().map(|p| (*p).as_pg()).collect();
@@ -44,23 +45,32 @@ impl<'a> Database {
         Self::process(&mut client, &binding.stmt, &params[..])
     }
 
-    fn process(client: &mut Client, query_string: &str, params: &[&(dyn ToSql + Sync)]) -> String {
-        let rows = client.query(query_string, params).unwrap();
+    fn process(
+        client: &mut Client,
+        query_string: &str,
+        params: &[&(dyn ToSql + Sync)],
+    ) -> Result<String> {
+        let rows = client
+            .query(query_string, params)
+            .context("PostgreSQL query failed")?;
 
-        if rows.len() == 1 {
+        let result = if rows.len() == 1 {
             match rows[0].try_get(0) {
                 Ok(col) => col,
-                Err(err) => panic!("Got row without any columns {}", err),
+                Err(err) => bail!("Got row without any columns {}", err),
             }
         } else {
             // TODO: Check if "null" is right
             "null".to_owned()
-        }
+        };
+
+        Ok(result)
     }
 
-    pub fn create_client(&self) -> Client {
+    pub fn create_client(&self) -> Result<Client> {
         use std::str::FromStr;
-        let mut config = Config::from_str(&self.url).unwrap();
+        let mut config =
+            Config::from_str(&self.url).context("Failed to parse PostgreSQL connection string")?;
 
         if let Some(user) = &self.user {
             config.user(user);
@@ -70,13 +80,13 @@ impl<'a> Database {
         }
 
         if config.get_user() == None {
-            panic!("Database user must be specified through as a part of PAYAS_DATABASE_URL or through PAYAS_DATABASE_USER")
+            bail!("Database user must be specified through as a part of PAYAS_DATABASE_URL or through PAYAS_DATABASE_USER")
         }
 
-        let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+        let mut builder = SslConnector::builder(SslMethod::tls())?;
         builder.set_verify(SslVerifyMode::NONE);
         let connector = MakeTlsConnector::new(builder.build());
 
-        config.connect(connector).unwrap()
+        Ok(config.connect(connector)?)
     }
 }
