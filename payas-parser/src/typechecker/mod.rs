@@ -65,9 +65,27 @@ pub fn build(ast_system: AstSystem) -> MappedArena<Type> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod test_support {
     use super::*;
     use crate::parser::*;
+
+    pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {
+        let parsed = parse_str(src);
+        let checked = build(parsed);
+
+        let mut entries: Vec<_> = checked
+            .keys()
+            .map(|key| (key.clone(), checked.get_by_key(key).unwrap().clone()))
+            .collect();
+
+        entries.sort_by_key(|pair| pair.0.to_owned());
+        entries
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_support::*;
 
     #[test]
     fn simple() {
@@ -118,17 +136,35 @@ mod tests {
         assert_typechecking(src);
     }
 
-    fn assert_typechecking(src: &str) {
-        let parsed = parse_str(src);
-        let checked = build(parsed);
+    #[test]
+    fn insignificant_whitespace() {
+        let typical = r#"
+        @table("venues")
+        model Venue {
+            id: Int @column("idx") @pk
+            name: String
+        }
+        "#;
 
-        let mut types = Vec::new();
-        let mut keys = checked.keys().collect::<Vec<&String>>();
-        keys.sort();
-        for key in keys.iter() {
-            types.push((key, checked.get_by_key(key).unwrap()));
+        let with_whitespace = r#"
+
+        @table ( "venues" )
+        model    Venue   
+        {
+            id:   Int   @column(  "idx"  )    
+            @pk 
+            
+            name:String
+
         }
 
+        "#;
+
+        assert_eq!(parse_sorted(typical), parse_sorted(with_whitespace));
+    }
+
+    fn assert_typechecking(src: &str) {
+        let types = parse_sorted(src);
         insta::assert_yaml_snapshot!(types);
     }
 }

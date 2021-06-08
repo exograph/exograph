@@ -227,6 +227,7 @@ mod tests {
 
     #[test]
     fn with_defaults() {
+        // Note the swapped order between @pk and @autoincrement to assert that our parsing logic permits any order
         let src = r#"
         model Concert {
           id: Int @pk @autoincrement 
@@ -234,9 +235,9 @@ mod tests {
           venue: Venue 
         }
         
-        model Venue {
-          id: Int @pk @autoincrement 
-          name: String 
+        model Venue             {
+          id: Int  @autoincrement @pk 
+          name:String 
           concerts: [Concert] 
         }        
         "#;
