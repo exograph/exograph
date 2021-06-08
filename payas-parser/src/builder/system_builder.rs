@@ -21,30 +21,31 @@ use crate::typechecker;
 use crate::typechecker::Type;
 
 pub fn build(ast_system: AstSystem) -> ModelSystem {
-    let mut building = SystemContextBuilding::default();
-
     let env: MappedArena<Type> = typechecker::build(ast_system);
 
-    let mut types_types = Vec::new();
-    for ast_type in env.keys() {
-        types_types.push(env.get_by_key(ast_type).unwrap().clone());
-    }
+    let resolved_types = resolved_builder::build(env);
 
-    let resolved_types = resolved_builder::build(&env);
+    let mut building = SystemContextBuilding::default();
 
+    // First build shallow GQL types for model, queries, query parameters
     type_builder::build_shallow(&resolved_types, &mut building);
 
-    query_builder::build_shallow(&types_types, &mut building);
-    order_by_type_builder::build_shallow(&types_types, &mut building);
-    predicate_builder::build_shallow(&types_types, &mut building);
+    // The next set of shallow builders need GQL types build above (the order of the next three is unimportant)
+    order_by_type_builder::build_shallow(&resolved_types, &mut building);
+    predicate_builder::build_shallow(&resolved_types, &mut building);
+    query_builder::build_shallow(&resolved_types, &mut building);
 
+    // Now expand the types
+    // First fully build the model types
     type_builder::build_expanded(&resolved_types, &mut building);
 
+    // Which is then used to expand query and query parameters (the order of the next three is unimportant)
+    query_builder::build_expanded(&mut building);
     order_by_type_builder::build_expanded(&mut building);
     predicate_builder::build_expanded(&mut building);
-    query_builder::build_expanded(&mut building);
 
-    mutation_builder::build(&types_types, &mut building);
+    // Finally build mutations. We don't need a shallow pass, since all the types (predicates, specifically) have been already built
+    mutation_builder::build(&resolved_types, &mut building);
 
     ModelSystem {
         types: building.types.values,

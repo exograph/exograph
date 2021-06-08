@@ -1,35 +1,43 @@
-use payas_model::model::types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier};
+use payas_model::model::{
+    mapped_arena::MappedArena,
+    types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
+};
 
-use super::system_builder::SystemContextBuilding;
-use crate::typechecker::{CompositeType, Type};
+use super::{
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+};
 use payas_model::model::predicate::*;
 
-pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
-    for model in models.iter() {
-        if let Type::Composite(c) = &model {
-            let shallow_type = create_shallow_type(c);
-            let param_type_name = shallow_type.name.clone();
-            building.predicate_types.add(&param_type_name, shallow_type);
-        } else if let Type::Primitive(pt) = &model {
-            let type_name = pt.name();
-            // One for queries such as {id: 1}, where the type name is the same as the model type name (in this case `Int`)
-            building.predicate_types.add(
-                type_name,
-                PredicateParameterType {
-                    name: type_name.to_string(),
-                    kind: PredicateParameterTypeKind::ImplicitEqual {},
-                },
-            );
+pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+    for (_, model) in models.iter() {
+        match model {
+            ResolvedType::Primitive(pt) => {
+                let type_name = pt.name();
+                // One for queries such as {id: 1}, where the type name is the same as the model type name (in this case `Int`)
+                building.predicate_types.add(
+                    type_name,
+                    PredicateParameterType {
+                        name: type_name.to_string(),
+                        kind: PredicateParameterTypeKind::ImplicitEqual {},
+                    },
+                );
 
-            // Another one for operators
-            let param_type_name = get_parameter_type_name(type_name);
-            building.predicate_types.add(
-                &param_type_name,
-                PredicateParameterType {
-                    name: param_type_name.to_string(),
-                    kind: PredicateParameterTypeKind::ImplicitEqual {},
-                },
-            );
+                // Another one for operators
+                let param_type_name = get_parameter_type_name(type_name);
+                building.predicate_types.add(
+                    &param_type_name,
+                    PredicateParameterType {
+                        name: param_type_name.to_string(),
+                        kind: PredicateParameterTypeKind::ImplicitEqual {},
+                    },
+                );
+            }
+            ResolvedType::Composite(c) => {
+                let shallow_type = create_shallow_type(c);
+                let param_type_name = shallow_type.name.clone();
+                building.predicate_types.add(&param_type_name, shallow_type);
+            }
         }
     }
 }
@@ -48,7 +56,7 @@ pub fn get_parameter_type_name(model_type_name: &str) -> String {
     format!("{}Filter", model_type_name)
 }
 
-fn create_shallow_type(model: &CompositeType) -> PredicateParameterType {
+fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType {
     PredicateParameterType {
         name: get_parameter_type_name(model.name.as_str()),
         kind: PredicateParameterTypeKind::ImplicitEqual, // Will be set to the correct value in expand_type

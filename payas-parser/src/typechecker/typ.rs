@@ -48,24 +48,6 @@ impl Type {
             o => o.deref().clone(),
         }
     }
-
-    pub fn as_primitive(&self) -> PrimitiveType {
-        match &self {
-            Type::Primitive(p) => p.clone(),
-            _ => panic!("Not a primitive: {:?}", self),
-        }
-    }
-
-    // useful for relation creation
-    pub fn inner_composite<'a>(&'a self, env: &'a MappedArena<Type>) -> &'a CompositeType {
-        match &self {
-            Type::Composite(c) => c,
-            Type::Reference(r) => env.get_by_key(r).unwrap().inner_composite(env),
-            Type::Optional(o) => o.inner_composite(env),
-            Type::List(o) => o.inner_composite(env),
-            _ => panic!("Cannot get inner composite of type {:?}", self),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

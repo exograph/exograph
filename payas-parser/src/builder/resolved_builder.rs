@@ -16,6 +16,22 @@ pub struct ResolvedCompositeType {
     pub table_name: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedField {
+    pub name: String,
+    pub typ: ResolvedFieldType,
+    pub column_name: String,
+    pub is_pk: bool,
+    pub is_autoincrement: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedFieldType {
+    Plain(String), // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
+    Optional(Box<ResolvedFieldType>),
+    List(Box<ResolvedFieldType>),
+}
+
 impl ResolvedCompositeType {
     pub fn pk_field(&self) -> Option<&ResolvedField> {
         self.fields.iter().find(|f| f.is_pk)
@@ -46,22 +62,6 @@ impl ResolvedType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct ResolvedField {
-    pub name: String,
-    pub typ: ResolvedFieldType,
-    pub column_name: String,
-    pub is_pk: bool,
-    pub is_autoincrement: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum ResolvedFieldType {
-    Plain(String), // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
-    Optional(Box<ResolvedFieldType>),
-    List(Box<ResolvedFieldType>),
-}
-
 impl ResolvedFieldType {
     pub fn deref<'a>(&'a self, types: &'a MappedArena<ResolvedType>) -> &'a ResolvedType {
         match self {
@@ -73,8 +73,11 @@ impl ResolvedFieldType {
     }
 }
 
-pub fn build(types: &MappedArena<Type>) -> MappedArena<ResolvedType> {
-    let mut resolved_types = build_shallow(types);
+/// Consume typed-checked types and build resolved types
+/// Resolved types normalized annotations in that if an annotaion isn't provided,
+/// this build compute the default value and sets that information in the resulting resolved type
+pub fn build(types: MappedArena<Type>) -> MappedArena<ResolvedType> {
+    let mut resolved_types = build_shallow(&types);
     build_expanded(types, &mut resolved_types);
     resolved_types
 }
@@ -107,7 +110,7 @@ fn build_shallow(types: &MappedArena<Type>) -> MappedArena<ResolvedType> {
     resolved_arena
 }
 
-fn build_expanded(types: &MappedArena<Type>, resolved_types: &mut MappedArena<ResolvedType>) {
+fn build_expanded(types: MappedArena<Type>, resolved_types: &mut MappedArena<ResolvedType>) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
             let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
@@ -117,8 +120,8 @@ fn build_expanded(types: &MappedArena<Type>, resolved_types: &mut MappedArena<Re
                 .iter()
                 .map(|field| ResolvedField {
                     name: field.name.clone(),
-                    typ: resolve_field_type(&field.typ, types, resolved_types),
-                    column_name: compute_column_name(ct, field, types),
+                    typ: resolve_field_type(&field.typ, &types, resolved_types),
+                    column_name: compute_column_name(ct, field, &types),
                     is_pk: field.get_annotation("pk").is_some(),
                     is_autoincrement: field.get_annotation("autoincrement").is_some(),
                 })
@@ -215,7 +218,7 @@ mod tests {
         "#;
 
         let parsed = parser::parse_str(src);
-        let types = &typechecker::build(parsed);
+        let types = typechecker::build(parsed);
 
         let resolved = build(types);
 
@@ -239,7 +242,7 @@ mod tests {
         "#;
 
         let parsed = parser::parse_str(src);
-        let types = &typechecker::build(parsed);
+        let types = typechecker::build(parsed);
 
         let resolved = build(types);
 

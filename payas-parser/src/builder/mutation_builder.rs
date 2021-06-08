@@ -1,19 +1,20 @@
 use id_arena::Id;
+use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::{operation::Mutation, types::GqlType};
 
 use crate::builder::{query_builder, type_builder};
 
-use crate::typechecker::{CompositeType, Type};
 use payas_model::model::{
     operation::{MutationDataParameter, MutationKind, OperationReturnType},
     types::GqlTypeModifier,
 };
 
+use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 
-pub fn build(models: &[Type], building: &mut SystemContextBuilding) {
-    for model in models.iter() {
-        if let Type::Composite(c) = model {
+pub fn build(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+    for (_, model) in models.iter() {
+        if let ResolvedType::Composite(c) = model {
             let model_type_id = building.types.get_id(c.name.as_str()).unwrap();
             let create_mutation = build_create_mutation(model_type_id, c, building);
 
@@ -33,7 +34,7 @@ pub fn build(models: &[Type], building: &mut SystemContextBuilding) {
 
 fn build_create_mutation(
     model_type_id: Id<GqlType>,
-    model: &CompositeType,
+    model: &ResolvedCompositeType,
     building: &SystemContextBuilding,
 ) -> Mutation {
     let data_param_type_name = type_builder::input_creation_type_name(model.name.as_str());
@@ -59,7 +60,7 @@ fn build_create_mutation(
 
 fn build_delete_mutations(
     model_type_id: Id<GqlType>,
-    model: &CompositeType,
+    model: &ResolvedCompositeType,
     building: &SystemContextBuilding,
 ) -> Vec<Mutation> {
     let model_type = &building.types[model_type_id];
@@ -90,7 +91,7 @@ fn build_delete_mutations(
 
 fn build_update_mutations(
     model_type_id: Id<GqlType>,
-    model: &CompositeType,
+    model: &ResolvedCompositeType,
     building: &SystemContextBuilding,
 ) -> Vec<Mutation> {
     let model_type = &building.types[model_type_id];
