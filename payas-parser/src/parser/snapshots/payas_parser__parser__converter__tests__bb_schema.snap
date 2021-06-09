@@ -5,6 +5,7 @@ expression: "convert_root(parsed.root_node(), src.as_bytes())"
 ---
 models:
   - name: Concert
+    kind: Persistent
     fields:
       - name: id
         typ:
@@ -30,6 +31,7 @@ models:
         params:
           - StringLiteral: concerts
   - name: Venue
+    kind: Persistent
     fields:
       - name: id
         typ:

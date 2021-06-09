@@ -1,5 +1,5 @@
 ---
-source: payas-parser/src/builder/typechecking.rs
+source: payas-parser/src/typechecker/mod.rs
 expression: types
 
 ---
@@ -8,6 +8,7 @@ expression: types
 - - Doc
   - Composite:
       name: Doc
+      kind: Persistent
       fields:
         - name: is_public
           typ:
@@ -21,6 +22,7 @@ expression: types
 - - User
   - Composite:
       name: User
+      kind: Persistent
       fields:
         - name: doc
           typ:

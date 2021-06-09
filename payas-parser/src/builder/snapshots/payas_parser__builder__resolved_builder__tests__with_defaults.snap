@@ -1,0 +1,54 @@
+---
+source: payas-parser/src/builder/resolved_builder.rs
+expression: sorted_values(&resolved)
+
+---
+- Primitive: Boolean
+- Composite:
+    name: Concert
+    fields:
+      - name: id
+        typ:
+          Plain: Int
+        column_name: id
+        is_pk: true
+        is_autoincrement: true
+      - name: title
+        typ:
+          Plain: String
+        column_name: title
+        is_pk: false
+        is_autoincrement: false
+      - name: venue
+        typ:
+          Plain: Venue
+        column_name: venue_id
+        is_pk: false
+        is_autoincrement: false
+    table_name: Concert
+- Primitive: Int
+- Primitive: String
+- Composite:
+    name: Venue
+    fields:
+      - name: id
+        typ:
+          Plain: Int
+        column_name: id
+        is_pk: true
+        is_autoincrement: true
+      - name: name
+        typ:
+          Plain: String
+        column_name: name
+        is_pk: false
+        is_autoincrement: false
+      - name: concerts
+        typ:
+          List:
+            Plain: Concert
+        column_name: venue_id
+        is_pk: false
+        is_autoincrement: false
+    table_name: Venue
+

@@ -1,0 +1,63 @@
+---
+source: payas-parser/src/typechecker/mod.rs
+expression: types
+
+---
+- - AuthContext
+  - Composite:
+      name: AuthContext
+      kind: Context
+      fields:
+        - name: role
+          typ:
+            Reference: String
+          annotations:
+            - name: jwt
+              params: []
+      annotations: []
+- - Boolean
+  - Primitive: Boolean
+- - Doc
+  - Composite:
+      name: Doc
+      kind: Persistent
+      fields:
+        - name: is_public
+          typ:
+            Reference: Boolean
+          annotations: []
+        - name: content
+          typ:
+            Reference: String
+          annotations: []
+      annotations:
+        - name: access
+          params:
+            - LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - AuthContext
+                                  - Reference: AuthContext
+                              - role
+                              - Reference: String
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                            - Primitive: String
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - self
+                            - Reference: Doc
+                        - is_public
+                        - Reference: Boolean
+                  - Primitive: Boolean
+- - Int
+  - Primitive: Int
+- - String
+  - Primitive: String
+

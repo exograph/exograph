@@ -1,16 +1,17 @@
 use id_arena::Id;
 use payas_model::model::{
     column_id::ColumnId,
+    mapped_arena::MappedArena,
     order::{OrderByParameterType, OrderByParameterTypeKind},
 };
 
 use payas_model::model::{order::*, relation::GqlRelation, types::*};
 
-use crate::builder::typechecking::PrimitiveType;
+use crate::typechecker::{PrimitiveType, Type};
 
-use super::{system_builder::SystemContextBuilding, typechecking::Type};
+use super::{resolved_builder::ResolvedType, system_builder::SystemContextBuilding};
 
-pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
+pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     let type_name = "Ordering".to_string();
     let primitive_type = OrderByParameterType {
         name: type_name.to_owned(),
@@ -19,7 +20,7 @@ pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
 
     building.order_by_types.add(&type_name, primitive_type);
 
-    for model in models.iter() {
+    for (_, model) in models.iter() {
         let shallow_type = create_shallow_type(model);
         let param_type_name = shallow_type.name.clone();
         building.order_by_types.add(&param_type_name, shallow_type);
@@ -44,10 +45,10 @@ pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> Str
     }
 }
 
-fn create_shallow_type(model: &Type) -> OrderByParameterType {
+fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
     OrderByParameterType {
         name: match &model {
-            Type::Primitive(p) => get_parameter_type_name(
+            ResolvedType::Primitive(p) => get_parameter_type_name(
                 match p {
                     PrimitiveType::Boolean => "Boolean",
                     PrimitiveType::Int => "Int",
@@ -55,8 +56,7 @@ fn create_shallow_type(model: &Type) -> OrderByParameterType {
                 },
                 true,
             ),
-            Type::Composite(c) => get_parameter_type_name(c.name.as_str(), false),
-            _ => panic!(),
+            ResolvedType::Composite(c) => get_parameter_type_name(c.name.as_str(), false),
         },
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },
     }

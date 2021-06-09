@@ -1,5 +1,6 @@
 use id_arena::Id;
 use payas_model::model::{
+    mapped_arena::MappedArena,
     operation::{OperationReturnType, Query},
     predicate::PredicateParameter,
     GqlType, GqlTypeKind, GqlTypeModifier,
@@ -7,13 +8,13 @@ use payas_model::model::{
 
 use super::{
     order_by_type_builder, predicate_builder,
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
-    typechecking::{CompositeType, Type},
 };
 
-pub fn build_shallow(models: &[Type], building: &mut SystemContextBuilding) {
-    for model in models {
-        if let Type::Composite(c) = &model {
+pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+    for (_, model) in models.iter() {
+        if let ResolvedType::Composite(c) = &model {
             let model_type_id = building.types.get_id(c.name.as_str()).unwrap();
             let shallow_query = shallow_pk_query(model_type_id, c);
             let collection_query = shallow_collection_query(model_type_id, c);
@@ -47,7 +48,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
-fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &CompositeType) -> Query {
+fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &ResolvedCompositeType) -> Query {
     let operation_name = pk_query_name(typ.name.as_str());
     Query {
         name: operation_name,
@@ -93,7 +94,7 @@ pub fn pk_predicate_param(
     }
 }
 
-fn shallow_collection_query(model_type_id: Id<GqlType>, model: &CompositeType) -> Query {
+fn shallow_collection_query(model_type_id: Id<GqlType>, model: &ResolvedCompositeType) -> Query {
     let operation_name = collection_query_name(model.name.as_str());
     Query {
         name: operation_name,
