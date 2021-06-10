@@ -1,12 +1,25 @@
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::typechecker::{CompositeType, PrimitiveType, Type, TypedField};
+use crate::typechecker::{
+    CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedExpression, TypedField,
+    TypedFieldSelection,
+};
 use serde::{Deserialize, Serialize};
+
+pub struct ResolvedSystem {
+    pub types: MappedArena<ResolvedType>,
+    pub contexts: MappedArena<ResolvedContext>,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedType {
     Primitive(PrimitiveType),
     Composite(ResolvedCompositeType),
+}
+
+pub struct ResolvedContext {
+    pub name: String,
+    pub fields: Vec<ResolvedContextField>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -23,6 +36,19 @@ pub struct ResolvedField {
     pub column_name: String,
     pub is_pk: bool,
     pub is_autoincrement: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedContextField {
+    pub name: String,
+    pub typ: ResolvedFieldType,
+    pub source: ResolvedContextSource,
+}
+
+// For now, ResolvedContextSource and ContextSource have the same structure
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedContextSource {
+    Jwt { claim: String },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -76,69 +102,145 @@ impl ResolvedFieldType {
 /// Consume typed-checked types and build resolved types
 /// Resolved types normalized annotations in that if an annotaion isn't provided,
 /// this build compute the default value and sets that information in the resulting resolved type
-pub fn build(types: MappedArena<Type>) -> MappedArena<ResolvedType> {
-    let mut resolved_types = build_shallow(&types);
-    build_expanded(types, &mut resolved_types);
-    resolved_types
+pub fn build(types: MappedArena<Type>) -> ResolvedSystem {
+    let mut resolved_system = build_shallow(&types);
+    build_expanded(types, &mut resolved_system);
+    resolved_system
 }
 
-fn build_shallow(types: &MappedArena<Type>) -> MappedArena<ResolvedType> {
-    let mut resolved_arena: MappedArena<ResolvedType> = MappedArena::default();
+fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
+    let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
+    let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
 
     for (_, typ) in types.iter() {
-        let resolved = match typ {
-            Type::Primitive(pt) => ResolvedType::Primitive(pt.clone()),
-            Type::Composite(ct) => {
+        match typ {
+            Type::Primitive(pt) => {
+                resolved_types.add(pt.name(), ResolvedType::Primitive(pt.clone()));
+            }
+            Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
                 let table_name = ct
                     .get_annotation("table")
                     .map(|a| a.params[0].as_string())
                     .unwrap_or_else(|| ct.name.clone());
-                ResolvedType::Composite(ResolvedCompositeType {
-                    name: ct.name.clone(),
-                    fields: vec![],
-                    table_name,
-                })
+                resolved_types.add(
+                    &ct.name,
+                    ResolvedType::Composite(ResolvedCompositeType {
+                        name: ct.name.clone(),
+                        fields: vec![],
+                        table_name,
+                    }),
+                );
             }
-            _ => panic!(""),
+            Type::Composite(ct) if ct.kind == CompositeTypeKind::Context => {
+                resolved_contexts.add(
+                    &ct.name,
+                    ResolvedContext {
+                        name: ct.name.clone(),
+                        fields: vec![],
+                    },
+                );
+            }
+            o => panic!(
+                "Unable to build shallow type for non-primitve, non-composite type: {:?}",
+                o
+            ),
         };
-
-        let name = resolved.name().to_string();
-
-        resolved_arena.add(&name, resolved);
     }
 
-    resolved_arena
+    ResolvedSystem {
+        types: resolved_types,
+        contexts: resolved_contexts,
+    }
 }
 
-fn build_expanded(types: MappedArena<Type>, resolved_types: &mut MappedArena<ResolvedType>) {
+fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
-            let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
-            let existing_type = &resolved_types[existing_type_id];
-            let resolved_fields = ct
-                .fields
-                .iter()
-                .map(|field| ResolvedField {
-                    name: field.name.clone(),
-                    typ: resolve_field_type(&field.typ, &types, resolved_types),
-                    column_name: compute_column_name(ct, field, &types),
-                    is_pk: field.get_annotation("pk").is_some(),
-                    is_autoincrement: field.get_annotation("autoincrement").is_some(),
-                })
-                .collect();
-            if let ResolvedType::Composite(ResolvedCompositeType {
-                name, table_name, ..
-            }) = existing_type
-            {
-                let expanded = ResolvedType::Composite(ResolvedCompositeType {
-                    name: name.clone(),
-                    fields: resolved_fields,
-                    table_name: table_name.clone(),
-                });
-                resolved_types[existing_type_id] = expanded;
+            if ct.kind == CompositeTypeKind::Persistent {
+                build_expanded_persistent_type(ct, &types, resolved_system);
+            } else {
+                build_expanded_context_type(ct, &types, resolved_system);
             }
         }
     }
+}
+
+fn build_expanded_persistent_type(
+    ct: &CompositeType,
+    types: &MappedArena<Type>,
+    resolved_system: &mut ResolvedSystem,
+) {
+    let resolved_types = &mut resolved_system.types;
+
+    let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
+    let existing_type = &resolved_types[existing_type_id];
+
+    if let ResolvedType::Composite(ResolvedCompositeType {
+        name, table_name, ..
+    }) = existing_type
+    {
+        let resolved_fields = ct
+            .fields
+            .iter()
+            .map(|field| ResolvedField {
+                name: field.name.clone(),
+                typ: resolve_field_type(&field.typ, &types, resolved_types),
+                column_name: compute_column_name(ct, field, &types),
+                is_pk: field.get_annotation("pk").is_some(),
+                is_autoincrement: field.get_annotation("autoincrement").is_some(),
+            })
+            .collect();
+
+        let expanded = ResolvedType::Composite(ResolvedCompositeType {
+            name: name.clone(),
+            fields: resolved_fields,
+            table_name: table_name.clone(),
+        });
+        resolved_types[existing_type_id] = expanded;
+    }
+}
+
+fn build_expanded_context_type(
+    ct: &CompositeType,
+    types: &MappedArena<Type>,
+    resolved_system: &mut ResolvedSystem,
+) {
+    let resolved_contexts = &mut resolved_system.contexts;
+    let resolved_types = &mut resolved_system.types;
+
+    let existing_type_id = resolved_contexts.get_id(&ct.name).unwrap();
+    let existing_type = &resolved_contexts[existing_type_id];
+    let resolved_fields = ct
+        .fields
+        .iter()
+        .map(|field| {
+            let jwt_annot = field
+                .annotations
+                .iter()
+                .find(|annotation| annotation.name == "jwt");
+            let claim = jwt_annot
+                .map(|annot| match &annot.params[0] {
+                    TypedExpression::FieldSelection(selection) => match selection {
+                        TypedFieldSelection::Single(claim, _) => claim.0.clone(),
+                        _ => panic!("Only simple jwt claim supported"),
+                    },
+                    _ => panic!("Expression type other than selection unsupported"),
+                })
+                .unwrap();
+
+            ResolvedContextField {
+                name: field.name.clone(),
+                typ: resolve_field_type(&field.typ, &types, resolved_types),
+                source: ResolvedContextSource::Jwt { claim },
+            }
+        })
+        .collect();
+
+    let expanded = ResolvedContext {
+        name: existing_type.name.clone(),
+        fields: resolved_fields,
+    };
+    resolved_contexts[existing_type_id] = expanded;
 }
 
 fn compute_column_name(
@@ -222,7 +324,7 @@ mod tests {
 
         let resolved = build(types);
 
-        insta::assert_yaml_snapshot!(sorted_values(&resolved));
+        insta::assert_yaml_snapshot!(normalized_system(&resolved).0);
     }
 
     #[test]
@@ -247,6 +349,15 @@ mod tests {
 
         let resolved = build(types);
 
-        insta::assert_yaml_snapshot!(sorted_values(&resolved));
+        insta::assert_yaml_snapshot!(normalized_system(&resolved).0);
+    }
+
+    fn normalized_system<'a>(
+        input: &'a ResolvedSystem,
+    ) -> (Vec<&'a ResolvedType>, Vec<&'a ResolvedContext>) {
+        (
+            sorted_values(&input.types).clone(),
+            sorted_values(&input.contexts),
+        )
     }
 }

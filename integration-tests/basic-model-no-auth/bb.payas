@@ -1,3 +1,8 @@
+context AutoContext {
+  id: Int @jwt(sub)
+  role: String @jwt(role)
+}
+
 @table("concerts")
 model Concert {
   id: Int @pk @autoincrement

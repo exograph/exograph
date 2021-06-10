@@ -4,6 +4,25 @@ use crate::model::operation::*;
 use crate::sql::PhysicalTable;
 
 use id_arena::Id;
+
+#[derive(Debug, Clone)]
+pub struct ContextType {
+    pub name: String,
+    pub fields: Vec<ContextField>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ContextField {
+    pub name: String,
+    pub typ: GqlFieldType,
+    pub source: ContextSource,
+}
+
+#[derive(Debug, Clone)]
+pub enum ContextSource {
+    Jwt { claim: String },
+}
+
 #[derive(Debug, Clone)]
 pub struct GqlType {
     pub name: String,

@@ -12,8 +12,10 @@ pub(super) use annotation::TypedAnnotation;
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 pub(super) use expression::TypedExpression;
+pub(super) use selection::TypedFieldSelection;
+
 pub(super) use field::TypedField;
-pub(super) use typ::{CompositeType, PrimitiveType, Type};
+pub(super) use typ::{CompositeType, CompositeTypeKind, PrimitiveType, Type};
 
 use crate::ast::ast_types::AstSystem;
 use payas_model::model::mapped_arena::MappedArena;
