@@ -17,6 +17,7 @@ pub enum ResolvedType {
     Composite(ResolvedCompositeType),
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedContext {
     pub name: String,
     pub fields: Vec<ResolvedContextField>,
@@ -27,6 +28,7 @@ pub struct ResolvedCompositeType {
     pub name: String,
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
+    pub access: Option<TypedExpression>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -122,12 +124,14 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
                     .get_annotation("table")
                     .map(|a| a.params[0].as_string())
                     .unwrap_or_else(|| ct.name.clone());
+                let access = ct.get_annotation("access").map(|a| a.params[0].clone());
                 resolved_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
                         fields: vec![],
                         table_name,
+                        access,
                     }),
                 );
             }
@@ -176,7 +180,10 @@ fn build_expanded_persistent_type(
     let existing_type = &resolved_types[existing_type_id];
 
     if let ResolvedType::Composite(ResolvedCompositeType {
-        name, table_name, ..
+        name,
+        table_name,
+        access,
+        ..
     }) = existing_type
     {
         let resolved_fields = ct
@@ -195,6 +202,7 @@ fn build_expanded_persistent_type(
             name: name.clone(),
             fields: resolved_fields,
             table_name: table_name.clone(),
+            access: access.clone(),
         });
         resolved_types[existing_type_id] = expanded;
     }
@@ -213,26 +221,10 @@ fn build_expanded_context_type(
     let resolved_fields = ct
         .fields
         .iter()
-        .map(|field| {
-            let jwt_annot = field
-                .annotations
-                .iter()
-                .find(|annotation| annotation.name == "jwt");
-            let claim = jwt_annot
-                .map(|annot| match &annot.params[0] {
-                    TypedExpression::FieldSelection(selection) => match selection {
-                        TypedFieldSelection::Single(claim, _) => claim.0.clone(),
-                        _ => panic!("Only simple jwt claim supported"),
-                    },
-                    _ => panic!("Expression type other than selection unsupported"),
-                })
-                .unwrap();
-
-            ResolvedContextField {
-                name: field.name.clone(),
-                typ: resolve_field_type(&field.typ, &types, resolved_types),
-                source: ResolvedContextSource::Jwt { claim },
-            }
+        .map(|field| ResolvedContextField {
+            name: field.name.clone(),
+            typ: resolve_field_type(&field.typ, &types, resolved_types),
+            source: extract_context_source(field),
         })
         .collect();
 
@@ -241,6 +233,29 @@ fn build_expanded_context_type(
         fields: resolved_fields,
     };
     resolved_contexts[existing_type_id] = expanded;
+}
+
+fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
+    let jwt_annot = field
+        .annotations
+        .iter()
+        .find(|annotation| annotation.name == "jwt");
+    let claim = jwt_annot
+        .map(|annot| {
+            let annot_param = &annot.params.first();
+
+            match annot_param {
+                Some(TypedExpression::FieldSelection(selection)) => match selection {
+                    TypedFieldSelection::Single(claim, _) => claim.0.clone(),
+                    _ => panic!("Only simple jwt claim supported"),
+                },
+                None => field.name.clone(),
+                _ => panic!("Expression type other than selection unsupported"),
+            }
+        })
+        .unwrap();
+
+    ResolvedContextSource::Jwt { claim }
 }
 
 fn compute_column_name(
@@ -319,12 +334,9 @@ mod tests {
         }        
         "#;
 
-        let (parsed, codemap) = parser::parse_str(src);
-        let types = typechecker::build(parsed, codemap);
+        let resolved = create_resolved_system(src);
 
-        let resolved = build(types);
-
-        insta::assert_yaml_snapshot!(normalized_system(&resolved).0);
+        insta::assert_yaml_snapshot!(normalized_system(&resolved));
     }
 
     #[test]
@@ -344,12 +356,56 @@ mod tests {
         }        
         "#;
 
+        let resolved = create_resolved_system(src);
+
+        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+    }
+
+    #[test]
+    fn with_access() {
+        let src = r#"
+        context AuthContext {
+            role: String @jwt(role)
+        }
+
+        @access(AuthContext.role == "ROLE_ADMIN" || self.public)
+        model Concert {
+          id: Int @pk @autoincrement 
+          title: String
+          public: Boolean
+        }      
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+    }
+
+    #[test]
+    fn with_access_default_values() {
+        let src = r#"
+        context AuthContext {
+            role: String @jwt
+        }
+
+        @access(AuthContext.role == "ROLE_ADMIN" || self.public)
+        model Concert {
+          id: Int @pk @autoincrement 
+          title: String
+          public: Boolean
+        }      
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+    }
+
+    fn create_resolved_system(src: &str) -> ResolvedSystem {
         let (parsed, codemap) = parser::parse_str(src);
         let types = typechecker::build(parsed, codemap);
 
-        let resolved = build(types);
-
-        insta::assert_yaml_snapshot!(normalized_system(&resolved).0);
+        build(types)
     }
 
     fn normalized_system<'a>(

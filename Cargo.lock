@@ -1437,6 +1437,7 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "chrono",
+ "id-arena",
  "jsonwebtoken",
  "openssl",
  "payas-model",

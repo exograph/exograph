@@ -11,6 +11,7 @@ model Concert {
 }
 
 @table("venues")
+@access(AutoContext.role == "ADMIN")
 model Venue {
   id: Int @pk @autoincrement
   name: String
