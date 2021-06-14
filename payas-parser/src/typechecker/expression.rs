@@ -46,7 +46,13 @@ impl Typecheck<TypedExpression> for AstExpr {
         }
     }
 
-    fn pass(&self, typ: &mut TypedExpression, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool {
+    fn pass(
+        &self,
+        typ: &mut TypedExpression,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         match &self {
             AstExpr::FieldSelection(select) => {
                 if let TypedExpression::FieldSelection(select_typ) = typ {

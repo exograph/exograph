@@ -27,7 +27,13 @@ impl Typecheck<TypedField> for AstField {
         }
     }
 
-    fn pass(&self, typ: &mut TypedField, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool {
+    fn pass(
+        &self,
+        typ: &mut TypedField,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         let typ_changed = self.typ.pass(&mut typ.typ, env, scope, errors);
 
         let annot_changed = self

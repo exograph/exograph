@@ -23,7 +23,13 @@ pub struct Scope {
 }
 pub trait Typecheck<T> {
     fn shallow(&self) -> T;
-    fn pass(&self, typ: &mut T, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool;
+    fn pass(
+        &self,
+        typ: &mut T,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool;
 }
 
 fn populate_standard_env(env: &mut MappedArena<Type>) {
@@ -61,10 +67,10 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
         }
 
         if !did_change {
-            if errors.len() > 0 {
+            if !errors.is_empty() {
                 let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
                 emitter.emit(&errors);
-                panic!();                  
+                panic!();
             } else {
                 return types_arena;
             }

@@ -65,12 +65,18 @@ impl Typecheck<TypedRelationalOp> for RelationalOp {
         }
     }
 
-    fn pass(&self, typ: &mut TypedRelationalOp, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool {
+    fn pass(
+        &self,
+        typ: &mut TypedRelationalOp,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         match &self {
             RelationalOp::Eq(left, right) => {
                 if let TypedRelationalOp::Eq(left_typ, right_typ, o_typ) = typ {
-                    let in_updated =
-                        left.pass(left_typ, env, scope, errors) || right.pass(right_typ, env, scope, errors);
+                    let in_updated = left.pass(left_typ, env, scope, errors)
+                        || right.pass(right_typ, env, scope, errors);
                     let out_updated = if o_typ.is_incomplete() {
                         let left_typ = left_typ.typ().deref(env);
                         let right_typ = right_typ.typ().deref(env);
@@ -83,28 +89,26 @@ impl Typecheck<TypedRelationalOp> for RelationalOp {
                             if !left_typ.is_incomplete() && !right_typ.is_incomplete() {
                                 let mut spans = vec![];
                                 spans.push(SpanLabel {
-                                    span: left.span().clone(),
+                                    span: *left.span(),
                                     style: SpanStyle::Primary,
-                                    label: Some(format!("got {}", left_typ))
+                                    label: Some(format!("got {}", left_typ)),
                                 });
 
                                 spans.push(SpanLabel {
-                                    span: right.span().clone(),
+                                    span: *right.span(),
                                     style: SpanStyle::Primary,
-                                    label: Some(format!("got {}", right_typ))
+                                    label: Some(format!("got {}", right_typ)),
                                 });
 
-                                errors.push(
-                                    Diagnostic {
-                                        level: Level::Error,
-                                        message: format!(
-                                            "Mismatched types, comparing {} with {}",
-                                            left_typ, right_typ
-                                        ),
-                                        code: Some("C000".to_string()),
-                                        spans: spans
-                                    }
-                                );
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "Mismatched types, comparing {} with {}",
+                                        left_typ, right_typ
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans,
+                                });
                             }
 
                             false
@@ -119,8 +123,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp {
             }
             RelationalOp::Neq(left, right) => {
                 if let TypedRelationalOp::Neq(left_typ, right_typ, _) = typ {
-                    let in_updated =
-                        left.pass(left_typ, env, scope, errors) || right.pass(right_typ, env, scope, errors);
+                    let in_updated = left.pass(left_typ, env, scope, errors)
+                        || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
                     in_updated || out_updated
                 } else {
@@ -129,8 +133,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp {
             }
             RelationalOp::Lt(left, right) => {
                 if let TypedRelationalOp::Lt(left_typ, right_typ, _) = typ {
-                    let in_updated =
-                        left.pass(left_typ, env, scope, errors) || right.pass(right_typ, env, scope, errors);
+                    let in_updated = left.pass(left_typ, env, scope, errors)
+                        || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
                     in_updated || out_updated
                 } else {
@@ -139,8 +143,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp {
             }
             RelationalOp::Lte(left, right) => {
                 if let TypedRelationalOp::Lte(left_typ, right_typ, _) = typ {
-                    let in_updated =
-                        left.pass(left_typ, env, scope, errors) || right.pass(right_typ, env, scope, errors);
+                    let in_updated = left.pass(left_typ, env, scope, errors)
+                        || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
                     in_updated || out_updated
                 } else {
@@ -149,8 +153,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp {
             }
             RelationalOp::Gt(left, right) => {
                 if let TypedRelationalOp::Gt(left_typ, right_typ, _) = typ {
-                    let in_updated =
-                        left.pass(left_typ, env, scope, errors) || right.pass(right_typ, env, scope, errors);
+                    let in_updated = left.pass(left_typ, env, scope, errors)
+                        || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
                     in_updated || out_updated
                 } else {
@@ -159,8 +163,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp {
             }
             RelationalOp::Gte(left, right) => {
                 if let TypedRelationalOp::Gte(left_typ, right_typ, _) = typ {
-                    let in_updated =
-                        left.pass(left_typ, env, scope, errors) || right.pass(right_typ, env, scope, errors);
+                    let in_updated = left.pass(left_typ, env, scope, errors)
+                        || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
                     in_updated || out_updated
                 } else {

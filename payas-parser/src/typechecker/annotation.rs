@@ -19,7 +19,13 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
         }
     }
 
-    fn pass(&self, typ: &mut TypedAnnotation, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool {
+    fn pass(
+        &self,
+        typ: &mut TypedAnnotation,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         let params_changed = self
             .params
             .iter()

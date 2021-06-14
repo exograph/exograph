@@ -34,37 +34,37 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
         }
     }
 
-    fn pass(&self, typ: &mut TypedFieldSelection, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool {
+    fn pass(
+        &self,
+        typ: &mut TypedFieldSelection,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         match &self {
             FieldSelection::Single(Identifier(i, s)) => {
                 if typ.typ().is_incomplete() {
                     if i.as_str() == "self" {
                         if let Some(enclosing) = &scope.enclosing_model {
                             *typ = TypedFieldSelection::Single(
-                                Identifier(i.clone(), s.clone()),
+                                Identifier(i.clone(), *s),
                                 Type::Reference(enclosing.clone()),
                             );
                             true
                         } else {
-                            *typ = TypedFieldSelection::Single(
-                                Identifier(i.clone(), s.clone()),
-                                Type::Error,
-                            );
+                            *typ =
+                                TypedFieldSelection::Single(Identifier(i.clone(), *s), Type::Error);
 
-                            errors.push(
-                                Diagnostic {
-                                    level: Level::Error,
-                                    message: "Cannot use self outside a model".to_string(),
-                                    code: Some("C000".to_string()),
-                                    spans: vec![
-                                        SpanLabel {
-                                            span: s.clone(),
-                                            style: SpanStyle::Primary,
-                                            label: Some("self not allowed".to_string())
-                                        }
-                                    ]
-                                }
-                            );
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: "Cannot use self outside a model".to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: *s,
+                                    style: SpanStyle::Primary,
+                                    label: Some("self not allowed".to_string()),
+                                }],
+                            });
 
                             false
                         }
@@ -76,29 +76,23 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
 
                         if let Some(context_type) = context_type {
                             *typ = TypedFieldSelection::Single(
-                                Identifier(i.clone(), s.clone()),
+                                Identifier(i.clone(), *s),
                                 Type::Reference(context_type.name.clone()),
                             );
                         } else {
-                            *typ = TypedFieldSelection::Single(
-                                Identifier(i.clone(), s.clone()),
-                                Type::Error,
-                            );
+                            *typ =
+                                TypedFieldSelection::Single(Identifier(i.clone(), *s), Type::Error);
 
-                            errors.push(
-                                Diagnostic {
-                                    level: Level::Error,
-                                    message: format!("Reference to unknown context: {}", i),
-                                    code: Some("C000".to_string()),
-                                    spans: vec![
-                                        SpanLabel {
-                                            span: s.clone(),
-                                            style: SpanStyle::Primary,
-                                            label: Some("unknown context".to_string())
-                                        }
-                                    ]
-                                }
-                            );
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: format!("Reference to unknown context: {}", i),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: *s,
+                                    style: SpanStyle::Primary,
+                                    label: Some("unknown context".to_string()),
+                                }],
+                            });
                         }
                         false
                     }
@@ -122,44 +116,36 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                                 }
                             } else {
                                 *typ = Type::Error;
-                                errors.push(
-                                    Diagnostic {
-                                        level: Level::Error,
-                                        message: format!("No such field {} on type {}", i.0, c.name),
-                                        code: Some("C000".to_string()),
-                                        spans: vec![
-                                            SpanLabel {
-                                                span: i.1,
-                                                style: SpanStyle::Primary,
-                                                label: Some("unknown field".to_string())
-                                            }
-                                        ]
-                                    }
-                                );
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!("No such field {} on type {}", i.0, c.name),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: i.1,
+                                        style: SpanStyle::Primary,
+                                        label: Some("unknown field".to_string()),
+                                    }],
+                                });
                                 false
                             }
                         } else {
                             *typ = Type::Error;
 
                             if !prefix.typ().is_error() {
-                                errors.push(
-                                    Diagnostic {
-                                        level: Level::Error,
-                                        message: format!(
-                                            "Cannot read field {} from a non-composite type {}",
-                                            i.0,
-                                            prefix.typ().deref(env)
-                                        ),
-                                        code: Some("C000".to_string()),
-                                        spans: vec![
-                                            SpanLabel {
-                                                span: selection.span().clone(),
-                                                style: SpanStyle::Primary,
-                                                label: Some("non-composite value".to_string())
-                                            }
-                                        ]
-                                    }
-                                );
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "Cannot read field {} from a non-composite type {}",
+                                        i.0,
+                                        prefix.typ().deref(env)
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: *selection.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some("non-composite value".to_string()),
+                                    }],
+                                });
                             }
 
                             false

@@ -15,14 +15,14 @@ pub fn parse(input: &str) -> Option<Tree> {
 fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
     source_span.subspan(
         (node.start_byte() as usize).try_into().unwrap(),
-        (node.end_byte() as usize).try_into().unwrap()
+        (node.end_byte() as usize).try_into().unwrap(),
     )
 }
 
 pub fn convert_root(node: Node, source: &[u8], source_span: Span) -> AstSystem {
     assert_eq!(node.kind(), "source_file");
     if node.has_error() {
-        dbg!(node.to_sexp());
+        println!("{}", node.to_sexp());
         panic!("tree has an error");
     }
     let mut cursor = node.walk();
@@ -69,7 +69,11 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel {
             .unwrap()
             .to_string(),
         kind,
-        fields: convert_fields(node.child_by_field_name("body").unwrap(), source, source_span),
+        fields: convert_fields(
+            node.child_by_field_name("body").unwrap(),
+            source,
+            source_span,
+        ),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
@@ -96,7 +100,11 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField {
             .utf8_text(source)
             .unwrap()
             .to_string(),
-        typ: convert_type(node.child_by_field_name("type").unwrap(), source, source_span),
+        typ: convert_type(
+            node.child_by_field_name("type").unwrap(),
+            source,
+            source_span,
+        ),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
@@ -111,17 +119,17 @@ pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldTyp
     match first_child.kind() {
         "term" => AstFieldType::Plain(
             first_child.utf8_text(source).unwrap().to_string(),
-            span_from_node(source_span, first_child)
+            span_from_node(source_span, first_child),
         ),
         "array_type" => AstFieldType::List(Box::new(convert_type(
             first_child.child_by_field_name("inner").unwrap(),
             source,
-            source_span
+            source_span,
         ))),
         "optional_type" => AstFieldType::Optional(Box::new(convert_type(
             first_child.child_by_field_name("inner").unwrap(),
             source,
-            source_span
+            source_span,
         ))),
         o => panic!("unsupported declaration kind: {}", o),
     }
@@ -156,12 +164,15 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr {
                 .utf8_text(source)
                 .unwrap()
                 .to_string(),
-            span_from_node(source_span, first_child
-                .child_by_field_name("value")
-                .unwrap())
+            span_from_node(
+                source_span,
+                first_child.child_by_field_name("value").unwrap(),
+            ),
         ),
         "logical_op" => AstExpr::LogicalOp(convert_logical_op(first_child, source, source_span)),
-        "relational_op" => AstExpr::RelationalOp(convert_relational_op(first_child, source, source_span)),
+        "relational_op" => {
+            AstExpr::RelationalOp(convert_relational_op(first_child, source, source_span))
+        }
         "selection" => AstExpr::FieldSelection(convert_selection(first_child, source, source_span)),
         o => panic!("unsupported expression kind: {}", o),
     }
@@ -176,31 +187,34 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
             Box::new(convert_expression(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Box::new(convert_expression(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
         ),
         "logical_and" => LogicalOp::And(
             Box::new(convert_expression(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Box::new(convert_expression(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
         ),
-        "logical_not" => LogicalOp::Not(Box::new(convert_expression(
-            first_child.child_by_field_name("value").unwrap(),
-            source,
-            source_span
-        )), span_from_node(source_span, first_child)),
+        "logical_not" => LogicalOp::Not(
+            Box::new(convert_expression(
+                first_child.child_by_field_name("value").unwrap(),
+                source,
+                source_span,
+            )),
+            span_from_node(source_span, first_child),
+        ),
         o => panic!("unsupported logical op kind: {}", o),
     }
 }
@@ -214,72 +228,72 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
             Box::new(convert_expression(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Box::new(convert_expression(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
         ),
         "relational_neq" => RelationalOp::Neq(
             Box::new(convert_expression(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Box::new(convert_expression(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
         ),
         "relational_lt" => RelationalOp::Lt(
             Box::new(convert_expression(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Box::new(convert_expression(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
         ),
         "relational_lte" => RelationalOp::Lte(
             Box::new(convert_expression(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Box::new(convert_expression(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
         ),
         "relational_gt" => RelationalOp::Gt(
             Box::new(convert_expression(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Box::new(convert_expression(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
         ),
         "relational_gte" => RelationalOp::Gte(
             Box::new(convert_expression(
                 first_child.child_by_field_name("left").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Box::new(convert_expression(
                 first_child.child_by_field_name("right").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
         ),
         o => panic!("unsupported relational op kind: {}", o),
@@ -295,7 +309,7 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
             Box::new(convert_selection(
                 first_child.child_by_field_name("prefix").unwrap(),
                 source,
-                source_span
+                source_span,
             )),
             Identifier(
                 first_child
@@ -304,15 +318,16 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
                     .utf8_text(source)
                     .unwrap()
                     .to_string(),
-                span_from_node(source_span, first_child
-                    .child_by_field_name("term")
-                    .unwrap())
+                span_from_node(
+                    source_span,
+                    first_child.child_by_field_name("term").unwrap(),
+                ),
             ),
-            span_from_node(source_span, first_child)
+            span_from_node(source_span, first_child),
         ),
         "term" => FieldSelection::Single(Identifier(
             first_child.utf8_text(source).unwrap().to_string(),
-            span_from_node(source_span, first_child)
+            span_from_node(source_span, first_child),
         )),
         o => panic!("unsupported logical op kind: {}", o),
     }
@@ -326,23 +341,28 @@ mod tests {
 
     fn parsing_test(src: &str) {
         let mut codemap = CodeMap::new();
-        let file_span = codemap.add_file("input.payas".to_string(), src.to_string()).span;
+        let file_span = codemap
+            .add_file("input.payas".to_string(), src.to_string())
+            .span;
         let parsed = parse(src).unwrap();
         insta::assert_yaml_snapshot!(convert_root(parsed.root_node(), src.as_bytes(), file_span));
     }
 
     #[test]
     fn expression_precedence() {
-        parsing_test(r#"
+        parsing_test(
+            r#"
         model Foo {
             bar: Baz @column("custom_column") @auth(!self.role == "role_admin" || self.role == "role_superuser")
         }
-        "#);
+        "#,
+        );
     }
 
     #[test]
     fn bb_schema() {
-        parsing_test(r#"
+        parsing_test(
+            r#"
         @table("concerts")
         model Concert {
           id: Int @pk @autoincrement
@@ -356,16 +376,19 @@ mod tests {
           name: String
           concerts: [Concert] @column("venueid")
         }
-        "#);
+        "#,
+        );
     }
 
     #[test]
     fn context_schema() {
-        parsing_test(r#"
+        parsing_test(
+            r#"
         context AuthUser {
             id: Int @jwt("sub") 
             roles: [String] @jwt
          }
-        "#);
+        "#,
+        );
     }
 }

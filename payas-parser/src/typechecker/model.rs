@@ -18,7 +18,13 @@ impl Typecheck<Type> for AstModel {
         })
     }
 
-    fn pass(&self, typ: &mut Type, env: &MappedArena<Type>, _scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool {
+    fn pass(
+        &self,
+        typ: &mut Type,
+        env: &MappedArena<Type>,
+        _scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         if let Type::Composite(c) = typ {
             let model_scope = Scope {
                 enclosing_model: Some(self.name.clone()),
@@ -36,7 +42,9 @@ impl Typecheck<Type> for AstModel {
                 .annotations
                 .iter()
                 .zip(c.annotations.iter_mut())
-                .map(|(ast_annot, typed_annot)| ast_annot.pass(typed_annot, env, &model_scope, errors))
+                .map(|(ast_annot, typed_annot)| {
+                    ast_annot.pass(typed_annot, env, &model_scope, errors)
+                })
                 .filter(|v| *v)
                 .count()
                 > 0;

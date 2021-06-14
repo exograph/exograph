@@ -3,7 +3,10 @@ use payas_model::{
     sql::column::{IntBits, PhysicalColumnType},
 };
 use serde::{Deserialize, Serialize};
-use std::{fmt::{Display, Formatter}, ops::Deref};
+use std::{
+    fmt::{Display, Formatter},
+    ops::Deref,
+};
 
 use super::{TypedAnnotation, TypedField};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -25,14 +28,14 @@ impl Display for Type {
             Type::Optional(o) => {
                 o.fmt(f)?;
                 f.write_str("?")
-            },
+            }
             Type::List(l) => {
                 f.write_str("[")?;
                 l.fmt(f)?;
                 f.write_str("]")
-            },
+            }
             Type::Reference(r) => f.write_str(r.as_str()),
-            _ => Result::Err(std::fmt::Error)
+            _ => Result::Err(std::fmt::Error),
         }
     }
 }

@@ -14,7 +14,13 @@ impl Typecheck<Type> for AstFieldType {
         }
     }
 
-    fn pass(&self, typ: &mut Type, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool {
+    fn pass(
+        &self,
+        typ: &mut Type,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         if typ.is_incomplete() {
             match &self {
                 AstFieldType::Plain(name, s) => {
@@ -23,20 +29,16 @@ impl Typecheck<Type> for AstFieldType {
                         true
                     } else {
                         *typ = Type::Error;
-                        errors.push(
-                            Diagnostic {
-                                level: Level::Error,
-                                message: format!("Reference to unknown type: {}", name),
-                                code: Some("C000".to_string()),
-                                spans: vec![
-                                    SpanLabel {
-                                        span: s.clone(),
-                                        style: SpanStyle::Primary,
-                                        label: Some("unknown type".to_string())
-                                    }
-                                ]
-                            }
-                        );
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!("Reference to unknown type: {}", name),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: *s,
+                                style: SpanStyle::Primary,
+                                label: Some("unknown type".to_string()),
+                            }],
+                        });
 
                         false
                     }

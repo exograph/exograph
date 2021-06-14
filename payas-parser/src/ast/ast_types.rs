@@ -34,7 +34,7 @@ pub enum AstFieldType {
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
-        Span
+        Span,
     ),
     Optional(Box<AstFieldType>),
     List(Box<AstFieldType>),
@@ -74,7 +74,7 @@ pub enum AstExpr {
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
-        Span
+        Span,
     ),
 }
 
@@ -83,7 +83,7 @@ impl AstExpr {
         match &self {
             AstExpr::FieldSelection(s) => s.span(),
             AstExpr::StringLiteral(_, s) => s,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 }
@@ -97,7 +97,7 @@ pub enum FieldSelection {
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
-        Span
+        Span,
     ),
 }
 
@@ -105,7 +105,7 @@ impl FieldSelection {
     pub fn span(&self) -> &Span {
         match &self {
             FieldSelection::Select(_, _, s) => s,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 }
@@ -117,7 +117,7 @@ pub enum LogicalOp {
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
-        Span
+        Span,
     ),
     And(Box<AstExpr>, Box<AstExpr>),
     Or(Box<AstExpr>, Box<AstExpr>),
@@ -139,10 +139,13 @@ pub struct Identifier(
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
-    pub Span
+    pub Span,
 );
 
 fn default_span() -> Span {
     let mut tmp_codemap = CodeMap::new();
-    tmp_codemap.add_file("".to_string(), "".to_string()).span.subspan(0, 0)
+    tmp_codemap
+        .add_file("".to_string(), "".to_string())
+        .span
+        .subspan(0, 0)
 }
