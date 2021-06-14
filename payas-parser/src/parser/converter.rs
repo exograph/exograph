@@ -23,7 +23,6 @@ fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
 pub fn convert_root(node: Node, source: &[u8], codemap: &CodeMap, source_span: Span) -> AstSystem {
     assert_eq!(node.kind(), "source_file");
     if node.has_error() {
-        dbg!(node.to_sexp());
         let mut errors = vec![];
         collect_parsing_errors(node, source, codemap, source_span, &mut errors);
         let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
