@@ -20,7 +20,12 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> (AstSystem, CodeMap) {
         .span;
     let parsed = parse(file_content.as_str()).unwrap();
     (
-        convert_root(parsed.root_node(), file_content.as_bytes(), file_span),
+        convert_root(
+            parsed.root_node(),
+            file_content.as_bytes(),
+            &codemap,
+            file_span,
+        ),
         codemap,
     )
 }
@@ -32,7 +37,7 @@ pub fn parse_str(str: &str) -> (AstSystem, CodeMap) {
         .span;
     let parsed = parse(str).unwrap();
     (
-        convert_root(parsed.root_node(), str.as_bytes(), file_span),
+        convert_root(parsed.root_node(), str.as_bytes(), &codemap, file_span),
         codemap,
     )
 }

@@ -1,6 +1,7 @@
 use std::convert::TryInto;
 
-use codemap::Span;
+use codemap::{CodeMap, Span};
+use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
 use tree_sitter::{Node, Tree};
 
 use super::sitter_ffi;
@@ -19,18 +20,83 @@ fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
     )
 }
 
-pub fn convert_root(node: Node, source: &[u8], source_span: Span) -> AstSystem {
+pub fn convert_root(node: Node, source: &[u8], codemap: &CodeMap, source_span: Span) -> AstSystem {
     assert_eq!(node.kind(), "source_file");
     if node.has_error() {
-        println!("{}", node.to_sexp());
-        panic!("tree has an error");
+        dbg!(node.to_sexp());
+        let mut errors = vec![];
+        collect_parsing_errors(node, source, codemap, source_span, &mut errors);
+        let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
+        emitter.emit(&errors);
+        panic!();
+    } else {
+        let mut cursor = node.walk();
+        AstSystem {
+            models: node
+                .children(&mut cursor)
+                .map(|c| convert_declaration(c, source, source_span))
+                .collect(),
+        }
     }
-    let mut cursor = node.walk();
-    AstSystem {
-        models: node
-            .children(&mut cursor)
-            .map(|c| convert_declaration(c, source, source_span))
-            .collect(),
+}
+
+fn collect_parsing_errors(
+    node: Node,
+    source: &[u8],
+    codemap: &CodeMap,
+    source_span: Span,
+    errors: &mut Vec<Diagnostic>,
+) {
+    if node.is_error() {
+        let expl = node.child(0).unwrap();
+        let sexp = node.to_sexp();
+        if sexp.starts_with("(ERROR (UNEXPECTED") {
+            let mut tok_getter = sexp.chars();
+            for _ in 0.."(ERROR (UNEXPECTED '".len() {
+                tok_getter.next();
+            }
+            for _ in 0.."'))".len() {
+                tok_getter.next_back();
+            }
+            let tok = tok_getter.as_str();
+
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!("Unexpected token: \"{}\"", tok),
+                code: Some("S000".to_string()),
+                spans: vec![SpanLabel {
+                    span: span_from_node(source_span, expl).subspan(1, 1),
+                    style: SpanStyle::Primary,
+                    label: Some(format!("unexpected \"{}\"", tok)),
+                }],
+            })
+        } else {
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!("Unexpected token: \"{}\"", expl.kind()),
+                code: Some("S000".to_string()),
+                spans: vec![SpanLabel {
+                    span: span_from_node(source_span, expl),
+                    style: SpanStyle::Primary,
+                    label: Some(format!("unexpected \"{}\"", expl.kind())),
+                }],
+            })
+        }
+    } else if node.is_missing() {
+        errors.push(Diagnostic {
+            level: Level::Error,
+            message: format!("Missing token: \"{}\"", node.kind()),
+            code: Some("S000".to_string()),
+            spans: vec![SpanLabel {
+                span: span_from_node(source_span, node),
+                style: SpanStyle::Primary,
+                label: Some(format!("missing \"{}\"", node.kind())),
+            }],
+        })
+    } else {
+        let mut cursor = node.walk();
+        node.children(&mut cursor)
+            .for_each(|c| collect_parsing_errors(c, source, codemap, source_span, errors));
     }
 }
 
@@ -345,7 +411,12 @@ mod tests {
             .add_file("input.payas".to_string(), src.to_string())
             .span;
         let parsed = parse(src).unwrap();
-        insta::assert_yaml_snapshot!(convert_root(parsed.root_node(), src.as_bytes(), file_span));
+        insta::assert_yaml_snapshot!(convert_root(
+            parsed.root_node(),
+            src.as_bytes(),
+            &codemap,
+            file_span
+        ));
     }
 
     #[test]
