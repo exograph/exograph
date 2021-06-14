@@ -1,3 +1,4 @@
+use codemap::CodeMap;
 use payas_model::{
     model::{
         mapped_arena::MappedArena,
@@ -20,8 +21,9 @@ use super::{
 use crate::typechecker;
 use crate::typechecker::Type;
 
-pub fn build(ast_system: AstSystem) -> ModelSystem {
-    let env: MappedArena<Type> = typechecker::build(ast_system);
+pub fn build(ast_system: AstSystem, codemap: CodeMap) -> ModelSystem {
+    let env: MappedArena<Type> = typechecker::build(ast_system, codemap);
+    dbg!(&env);
 
     let resolved_types = resolved_builder::build(env);
 

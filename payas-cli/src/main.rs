@@ -6,8 +6,8 @@ mod schema;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let ast_system = parser::parse_file(&args[1]);
-    let system = system_builder::build(ast_system);
+    let (ast_system, codemap) = parser::parse_file(&args[1]);
+    let system = system_builder::build(ast_system, codemap);
 
     let schema_stmt = schema::schema_stmt(system.tables);
 

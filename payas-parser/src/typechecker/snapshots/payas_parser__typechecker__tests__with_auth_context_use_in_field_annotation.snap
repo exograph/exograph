@@ -39,9 +39,9 @@ expression: types
                             - FieldSelection:
                                 Select:
                                   - Single:
-                                      - AuthContext
+                                      - - AuthContext
                                       - Reference: AuthContext
-                                  - role
+                                  - - role
                                   - Reference: String
                             - StringLiteral:
                                 - ROLE_ADMIN
@@ -50,9 +50,9 @@ expression: types
                       - FieldSelection:
                           Select:
                             - Single:
-                                - self
+                                - - self
                                 - Reference: Doc
-                            - is_public
+                            - - is_public
                             - Reference: Boolean
                       - Primitive: Boolean
       annotations: []

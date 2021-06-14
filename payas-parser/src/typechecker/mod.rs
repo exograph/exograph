@@ -9,6 +9,8 @@ mod selection;
 mod typ;
 
 pub(super) use annotation::TypedAnnotation;
+use codemap::CodeMap;
+use codemap_diagnostic::{ColorConfig, Emitter};
 pub(super) use expression::TypedExpression;
 pub(super) use field::TypedField;
 pub(super) use typ::{CompositeType, PrimitiveType, Type};
@@ -21,7 +23,7 @@ pub struct Scope {
 }
 pub trait Typecheck<T> {
     fn shallow(&self) -> T;
-    fn pass(&self, typ: &mut T, env: &MappedArena<Type>, scope: &Scope) -> bool;
+    fn pass(&self, typ: &mut T, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool;
 }
 
 fn populate_standard_env(env: &mut MappedArena<Type>) {
@@ -30,7 +32,7 @@ fn populate_standard_env(env: &mut MappedArena<Type>) {
     env.add("String", Type::Primitive(PrimitiveType::String));
 }
 
-pub fn build(ast_system: AstSystem) -> MappedArena<Type> {
+pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
     let ast_types = &ast_system.models;
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
@@ -44,24 +46,30 @@ pub fn build(ast_system: AstSystem) -> MappedArena<Type> {
         let init_scope = Scope {
             enclosing_model: None,
         };
+
+        let mut errors = vec![];
+
         for model in ast_types {
             let orig = types_arena.get_by_key(model.name.as_str()).unwrap();
             let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
-            let pass_res = model.pass(&mut typ, &types_arena, &init_scope);
+            let pass_res = model.pass(&mut typ, &types_arena, &init_scope, &mut errors);
             if pass_res {
                 assert!(*orig != typ);
                 *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
                 did_change = true;
-            } else {
             }
         }
 
         if !did_change {
-            break;
+            if errors.len() > 0 {
+                let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
+                emitter.emit(&errors);
+                panic!();                  
+            } else {
+                return types_arena;
+            }
         }
     }
-
-    types_arena
 }
 
 #[cfg(test)]
@@ -70,8 +78,8 @@ pub mod test_support {
     use crate::parser::*;
 
     pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {
-        let parsed = parse_str(src);
-        let checked = build(parsed);
+        let (parsed, codemap) = parse_str(src);
+        let checked = build(parsed, codemap);
 
         let mut entries: Vec<_> = checked
             .keys()

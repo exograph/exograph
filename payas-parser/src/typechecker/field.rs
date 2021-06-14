@@ -27,14 +27,14 @@ impl Typecheck<TypedField> for AstField {
         }
     }
 
-    fn pass(&self, typ: &mut TypedField, env: &MappedArena<Type>, scope: &Scope) -> bool {
-        let typ_changed = self.typ.pass(&mut typ.typ, env, scope);
+    fn pass(&self, typ: &mut TypedField, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec< codemap_diagnostic::Diagnostic>) -> bool {
+        let typ_changed = self.typ.pass(&mut typ.typ, env, scope, errors);
 
         let annot_changed = self
             .annotations
             .iter()
             .zip(typ.annotations.iter_mut())
-            .map(|(f, tf)| f.pass(tf, env, scope))
+            .map(|(f, tf)| f.pass(tf, env, scope, errors))
             .filter(|v| *v)
             .count()
             > 0;

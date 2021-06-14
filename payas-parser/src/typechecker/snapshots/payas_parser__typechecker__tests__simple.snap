@@ -44,9 +44,9 @@ expression: types
                                   - FieldSelection:
                                       Select:
                                         - Single:
-                                            - self
+                                            - - self
                                             - Reference: User
-                                        - role
+                                        - - role
                                         - Reference: String
                                   - StringLiteral:
                                       - role_admin
@@ -57,9 +57,9 @@ expression: types
                                   - FieldSelection:
                                       Select:
                                         - Single:
-                                            - self
+                                            - - self
                                             - Reference: User
-                                        - role
+                                        - - role
                                         - Reference: String
                                   - StringLiteral:
                                       - role_superuser
@@ -70,11 +70,11 @@ expression: types
                           Select:
                             - Select:
                                 - Single:
-                                    - self
+                                    - - self
                                     - Reference: User
-                                - doc
+                                - - doc
                                 - Reference: Doc
-                            - is_public
+                            - - is_public
                             - Reference: Boolean
                       - Primitive: Boolean
         - name: role
