@@ -1,6 +1,6 @@
 use super::{column::Column, Expression, ExpressionContext, ParameterBinding};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Predicate<'a> {
     True,
     False,
@@ -12,6 +12,7 @@ pub enum Predicate<'a> {
     Gte(&'a Column<'a>, &'a Column<'a>),
     And(Box<Predicate<'a>>, Box<Predicate<'a>>),
     Or(Box<Predicate<'a>>, Box<Predicate<'a>>),
+    Not(Box<Predicate<'a>>),
 }
 
 impl<'a> Predicate<'a> {
@@ -21,6 +22,14 @@ impl<'a> Predicate<'a> {
             "lt" => Predicate::Lt(lhs, &rhs),
             "gt" => Predicate::Gt(lhs, &rhs),
             _ => todo!(),
+        }
+    }
+
+    pub fn not(&self) -> Predicate<'a> {
+        match self {
+            Predicate::True => Predicate::False,
+            Predicate::False => Predicate::True,
+            predicate => Predicate::Not(Box::new(predicate.clone())),
         }
     }
 }
@@ -80,6 +89,10 @@ impl<'a> Expression for Predicate<'a> {
                 expression_context,
                 |stmt1, stmt2| format!("{} OR {}", stmt1, stmt2),
             ),
+            Predicate::Not(predicate) => {
+                let expr = predicate.binding(expression_context);
+                ParameterBinding::new(format!("NOT {}", expr.stmt), expr.params)
+            }
         }
     }
 }

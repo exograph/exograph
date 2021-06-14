@@ -3,7 +3,7 @@ use super::{
     Expression, ExpressionContext, ParameterBinding,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Select<'a> {
     pub underlying: &'a PhysicalTable,
     pub columns: Vec<&'a Column<'a>>,

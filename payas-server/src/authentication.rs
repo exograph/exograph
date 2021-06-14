@@ -51,13 +51,10 @@ impl JwtAuthenticator {
                 let token = scheme.token().as_ref();
                 self.validate_jwt(token)
                     .map(|v| Some(v.claims))
-                    .map_err(|err| {
-                        dbg!(&err);
-                        match &err.kind() {
-                            ErrorKind::InvalidSignature => JwtAuthenticationError::TamperedToken,
-                            ErrorKind::ExpiredSignature => JwtAuthenticationError::ExpiredToken,
-                            _ => JwtAuthenticationError::Unknown,
-                        }
+                    .map_err(|err| match &err.kind() {
+                        ErrorKind::InvalidSignature => JwtAuthenticationError::TamperedToken,
+                        ErrorKind::ExpiredSignature => JwtAuthenticationError::ExpiredToken,
+                        _ => JwtAuthenticationError::Unknown,
                     })
             }
             Err(_) => {

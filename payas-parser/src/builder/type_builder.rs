@@ -144,8 +144,6 @@ fn expand_type2(
             collection_query,
         };
 
-        dbg!(&resolved_type.access);
-
         building.types.values[existing_type_id].kind = kind;
 
         {

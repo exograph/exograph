@@ -1,11 +1,8 @@
 use super::query_context;
 use crate::introspection::schema::Schema;
 use async_graphql_parser::{parse_query, types::DocumentOperations};
-use id_arena::Arena;
-use payas_model::{
-    model::{system::ModelSystem, ContextType},
-    sql::database::Database,
-};
+
+use payas_model::{model::system::ModelSystem, sql::database::Database};
 use query_context::*;
 use serde_json::{Map, Value};
 
@@ -32,9 +29,9 @@ pub fn create_query_context<'a>(
     )
 }
 
-fn pupulate_contexts(contexts: &Arena<ContextType>, jwt_claims: Option<Value>) {
-    //TODO
-}
+// fn pupulate_contexts(contexts: &Arena<ContextType>, jwt_claims: Option<Value>) {
+//     //TODO
+// }
 
 pub fn execute<'a>(
     system: &'a ModelSystem,
@@ -45,7 +42,7 @@ pub fn execute<'a>(
     variables: Option<&'a Map<String, Value>>,
     jwt_claims: Option<Value>,
 ) -> String {
-    pupulate_contexts(&system.contexts, jwt_claims);
+    //pupulate_contexts(&system.contexts, jwt_claims);
     let (operations, query_context) = create_query_context(
         system,
         schema,
