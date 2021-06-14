@@ -3,7 +3,7 @@ use async_graphql_parser::{
     Positioned,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use crate::sql::Expression;
 use crate::{
