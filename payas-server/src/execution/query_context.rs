@@ -108,6 +108,7 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
             query_context
                 .system
                 .resolve(&field, &self.ty, query_context)
+                .unwrap() // TODO error handling here
         }
     }
 }

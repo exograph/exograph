@@ -110,8 +110,8 @@ async fn main() -> std::io::Result<()> {
     let system = system_builder::build(ast_system, codemap);
     let schema = Schema::new(&system);
 
-    let database = Database::from_env();
-    database.create_client(); // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
+    let database = Database::from_env().unwrap(); // TODO: error handling here
+    database.create_client().unwrap(); // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
 
     let system_info = Arc::new((system, schema, database));
     let authenticator = Arc::new(JwtAuthenticator::new_from_env());
