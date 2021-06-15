@@ -79,6 +79,7 @@ pub enum GqlTypeKind {
         table_id: Id<PhysicalTable>,
         pk_query: Id<Query>,
         collection_query: Id<Query>,
+        //access: Option<AccessExpression>,
     },
 }
 

@@ -102,8 +102,9 @@ impl ResolvedFieldType {
 }
 
 /// Consume typed-checked types and build resolved types
-/// Resolved types normalized annotations in that if an annotaion isn't provided,
-/// this build compute the default value and sets that information in the resulting resolved type
+/// Resolved types consume and normalize annotations.
+/// For example, while in `Type`, the fields carry an optional annotation for the column name, here that information is encoded into an attribute of `ResolvedType`.
+/// If an annotaion is missing, its default value is assumed.
 pub fn build(types: MappedArena<Type>) -> ResolvedSystem {
     let mut resolved_system = build_shallow(&types);
     build_expanded(types, &mut resolved_system);

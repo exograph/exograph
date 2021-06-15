@@ -9,7 +9,7 @@ use crate::sql::PhysicalTable;
 
 use super::types::GqlType;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ModelSystem {
     pub types: Arena<GqlType>,
     pub contexts: Arena<ContextType>,

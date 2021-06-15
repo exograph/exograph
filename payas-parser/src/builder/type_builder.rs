@@ -197,6 +197,13 @@ fn expand_type2(
     }
 }
 
+fn expand_type3(
+    resolved_type: &ResolvedCompositeType,
+    building: &mut SystemContextBuilding,
+    env: &MappedArena<ResolvedType>,
+) {
+}
+
 fn compute_input_fields(
     gql_fields: &[GqlField],
     building: &SystemContextBuilding,
