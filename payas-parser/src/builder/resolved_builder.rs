@@ -249,6 +249,7 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
                     TypedFieldSelection::Single(claim, _) => claim.0.clone(),
                     _ => panic!("Only simple jwt claim supported"),
                 },
+                Some(TypedExpression::StringLiteral(name, _)) => name.clone(),
                 None => field.name.clone(),
                 _ => panic!("Expression type other than selection unsupported"),
             }
@@ -365,7 +366,7 @@ mod tests {
     fn with_access() {
         let src = r#"
         context AuthContext {
-            role: String @jwt(role)
+            role: String @jwt("role")
         }
 
         @access(AuthContext.role == "ROLE_ADMIN" || self.public)

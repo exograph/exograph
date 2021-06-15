@@ -34,9 +34,9 @@ expression: normalized_system(&resolved)
                   - FieldSelection:
                       Select:
                         - Single:
-                            - AuthContext
+                            - - AuthContext
                             - Reference: AuthContext
-                        - role
+                        - - role
                         - Reference: String
                   - StringLiteral:
                       - ROLE_ADMIN
@@ -45,9 +45,9 @@ expression: normalized_system(&resolved)
             - FieldSelection:
                 Select:
                   - Single:
-                      - self
+                      - - self
                       - Reference: Concert
-                  - public
+                  - - public
                   - Reference: Boolean
             - Primitive: Boolean
   - Primitive: Int
