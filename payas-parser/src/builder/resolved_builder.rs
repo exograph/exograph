@@ -217,8 +217,8 @@ mod tests {
         }        
         "#;
 
-        let parsed = parser::parse_str(src);
-        let types = typechecker::build(parsed);
+        let (parsed, codemap) = parser::parse_str(src);
+        let types = typechecker::build(parsed, codemap);
 
         let resolved = build(types);
 
@@ -242,8 +242,8 @@ mod tests {
         }        
         "#;
 
-        let parsed = parser::parse_str(src);
-        let types = typechecker::build(parsed);
+        let (parsed, codemap) = parser::parse_str(src);
+        let types = typechecker::build(parsed, codemap);
 
         let resolved = build(types);
 

@@ -40,36 +40,42 @@ impl Typecheck<TypedExpression> for AstExpr {
             AstExpr::FieldSelection(select) => TypedExpression::FieldSelection(select.shallow()),
             AstExpr::LogicalOp(logic) => TypedExpression::LogicalOp(logic.shallow()),
             AstExpr::RelationalOp(relation) => TypedExpression::RelationalOp(relation.shallow()),
-            AstExpr::StringLiteral(v) => {
+            AstExpr::StringLiteral(v, _) => {
                 TypedExpression::StringLiteral(v.clone(), Type::Primitive(PrimitiveType::String))
             }
         }
     }
 
-    fn pass(&self, typ: &mut TypedExpression, env: &MappedArena<Type>, scope: &Scope) -> bool {
+    fn pass(
+        &self,
+        typ: &mut TypedExpression,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         match &self {
             AstExpr::FieldSelection(select) => {
                 if let TypedExpression::FieldSelection(select_typ) = typ {
-                    select.pass(select_typ, env, scope)
+                    select.pass(select_typ, env, scope, errors)
                 } else {
                     panic!()
                 }
             }
             AstExpr::LogicalOp(logic) => {
                 if let TypedExpression::LogicalOp(logic_typ) = typ {
-                    logic.pass(logic_typ, env, scope)
+                    logic.pass(logic_typ, env, scope, errors)
                 } else {
                     panic!()
                 }
             }
             AstExpr::RelationalOp(relation) => {
                 if let TypedExpression::RelationalOp(relation_typ) = typ {
-                    relation.pass(relation_typ, env, scope)
+                    relation.pass(relation_typ, env, scope, errors)
                 } else {
                     panic!()
                 }
             }
-            AstExpr::StringLiteral(_) => false,
+            AstExpr::StringLiteral(_, _) => false,
         }
     }
 }

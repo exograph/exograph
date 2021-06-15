@@ -1,17 +1,17 @@
-use std::process::Stdio;
-use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
+use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
+use anyhow::{anyhow, bail, Context, Result};
 use serde::Serialize;
-use std::process::Command;
 use std::io::Read;
-use anyhow::{Result, Context, anyhow, bail};
+use std::process::Command;
+use std::process::Stdio;
 
 #[derive(Serialize)]
 struct PayasPost {
     query: String,
-    variables: serde_json::Value
+    variables: serde_json::Value,
 }
 
 pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bool> {
@@ -35,7 +35,10 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let endpoint = format!("http://127.0.0.1:{}/", port);
 
         // create the schema
-        println!("#{} ({}) Initializing schema in {} ...", test_counter, test_name, dbname);
+        println!(
+            "#{} ({}) Initializing schema in {} ...",
+            test_counter, test_name, dbname
+        );
         let cli_child = Command::new("payas-cli")
             .arg(testfile.model_path.as_ref().unwrap())
             .output()?;
@@ -48,14 +51,17 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         println!("{}", &query);
         run_psql(query, &dburl_for_payas)?;
 
-        // spawn a payas instance 
-        println!("#{} ({}) Initializing payas-server ...", test_counter, test_name);
+        // spawn a payas instance
+        println!(
+            "#{} ({}) Initializing payas-server ...",
+            test_counter, test_name
+        );
         let mut payas_child = Command::new("payas-server")
             .arg(testfile.model_path.as_ref().unwrap())
             .env("PAYAS_DATABASE_URL", dburl_for_payas)
             .env("PAYAS_DATABASE_USER", dbusername)
             .env("PAYAS_JWT_SECRET", "abc")
-            .env("PAYAS_SERVER_PORT", port.to_string()) 
+            .env("PAYAS_SERVER_PORT", port.to_string())
             .stdout(Stdio::piped())
             .spawn()
             .expect("payas-server failed to start");
@@ -66,8 +72,8 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let mut buffer = [0; MAGIC_STRING.len()];
         server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
         let output = String::from(std::str::from_utf8(&buffer)?);
-        
-        if !output.eq(MAGIC_STRING) {                        
+
+        if !output.eq(MAGIC_STRING) {
             bail!("Unexpected output from payas-server: {}", output)
         }
 
@@ -76,29 +82,35 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
             println!("#{} ({}) Initializing database...", test_counter, test_name);
             run_operation(&endpoint, operation).await??;
         }
-            
+
         // run test
         println!("#{} ({}) Testing ...", test_counter, test_name);
         let result = run_operation(&endpoint, test_op).await;
 
-        // did the test run okay? 
+        // did the test run okay?
         match result {
-            Ok(test_result) => { 
-                // check test results 
+            Ok(test_result) => {
+                // check test results
                 match test_result {
-                    Ok(_) => { 
-                        println!("#{} ({}) OK\n", test_counter, test_name); 
-                    },
+                    Ok(_) => {
+                        println!("#{} ({}) OK\n", test_counter, test_name);
+                    }
 
                     Err(e) => {
-                        println!("#{} ({}) ASSERTION FAILED\n{:?}", test_counter, test_name, e); 
-                        success = false; 
+                        println!(
+                            "#{} ({}) ASSERTION FAILED\n{:?}",
+                            test_counter, test_name, e
+                        );
+                        success = false;
                     }
                 }
-            },
-            Err(e) => { 
-                println!("#{} ({}) TEST EXECUTION FAILED\n{:?}", test_counter, test_name, e); 
-                success = false; 
+            }
+            Err(e) => {
+                println!(
+                    "#{} ({}) TEST EXECUTION FAILED\n{:?}",
+                    test_counter, test_name, e
+                );
+                success = false;
             }
         }
 
@@ -108,7 +120,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         // drop the database
         dropdb_psql(&dbname, &dburl)?;
     }
-  
+
     Ok(success)
 }
 
@@ -116,23 +128,34 @@ type TestResult = Result<()>;
 
 async fn run_operation(url: &str, gql: &TestfileOperation) -> Result<TestResult> {
     match gql {
-        TestfileOperation::GqlDocument { document, variables, expected_payload } => { 
-            let client = Client::default(); 
-            let mut resp = client.post(url)
+        TestfileOperation::GqlDocument {
+            document,
+            variables,
+            expected_payload,
+        } => {
+            let client = Client::default();
+            let mut resp = client
+                .post(url)
                 .send_json(&PayasPost {
-                    query: document.to_string(),                        
-                    variables: variables.as_ref().unwrap().clone()
+                    query: document.to_string(),
+                    variables: variables.as_ref().unwrap().clone(),
                 })
                 .await
                 .map_err(|e| anyhow!("Error sending POST request: {}", e))?;
-                
+
             if !resp.status().is_success() {
-                bail!("Bad response: {}", resp.status().canonical_reason().unwrap());
+                bail!(
+                    "Bad response: {}",
+                    resp.status().canonical_reason().unwrap()
+                );
             }
-          
-            let json = resp.json().await.context("Error parsing response into JSON")?;
-            let body: serde_json::Value = json; 
-          
+
+            let json = resp
+                .json()
+                .await
+                .context("Error parsing response into JSON")?;
+            let body: serde_json::Value = json;
+
             match expected_payload {
                 Some(expected_payload) => {
                     // expected response detected - do an assertion
@@ -140,21 +163,19 @@ async fn run_operation(url: &str, gql: &TestfileOperation) -> Result<TestResult>
                         Ok(Ok(()))
                     } else {
                         return Ok(Err(anyhow!(format!(
-                                "➔ Expected:\n{},\n\n➔ Got:\n{}",
-                                serde_json::to_string_pretty(&expected_payload).unwrap(),
-                                serde_json::to_string_pretty(&body).unwrap(),
-                            ))))
-    
+                            "➔ Expected:\n{},\n\n➔ Got:\n{}",
+                            serde_json::to_string_pretty(&expected_payload).unwrap(),
+                            serde_json::to_string_pretty(&body).unwrap(),
+                        ))));
                     }
-                },
-               
-                None => {                    
+                }
+
+                None => {
                     // don't need to check anything
                     Ok(Ok(()))
                 }
             }
-            
-        },
+        }
 
         TestfileOperation::Sql(query, dburl) => {
             run_psql(query, dburl)?;

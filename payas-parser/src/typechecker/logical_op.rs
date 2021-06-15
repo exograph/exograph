@@ -1,3 +1,4 @@
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::LogicalOp;
@@ -24,7 +25,7 @@ impl TypedLogicalOp {
 impl Typecheck<TypedLogicalOp> for LogicalOp {
     fn shallow(&self) -> TypedLogicalOp {
         match &self {
-            LogicalOp::Not(v) => TypedLogicalOp::Not(Box::new(v.shallow()), Type::Defer),
+            LogicalOp::Not(v, _) => TypedLogicalOp::Not(Box::new(v.shallow()), Type::Defer),
             LogicalOp::And(left, right) => TypedLogicalOp::And(
                 Box::new(left.shallow()),
                 Box::new(right.shallow()),
@@ -38,21 +39,44 @@ impl Typecheck<TypedLogicalOp> for LogicalOp {
         }
     }
 
-    fn pass(&self, typ: &mut TypedLogicalOp, env: &MappedArena<Type>, scope: &Scope) -> bool {
+    fn pass(
+        &self,
+        typ: &mut TypedLogicalOp,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         match &self {
-            LogicalOp::Not(v) => {
+            LogicalOp::Not(v, _) => {
                 if let TypedLogicalOp::Not(v_typ, o_typ) = typ {
-                    let in_updated = v.pass(v_typ, env, scope);
+                    let in_updated = v.pass(v_typ, env, scope, errors);
                     let out_updated = if o_typ.is_incomplete() {
-                        if v_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean) {
-                            *o_typ = Type::Primitive(PrimitiveType::Boolean);
-                            true
-                        } else {
-                            *o_typ = Type::Error(format!(
-                                "Cannot negate non-boolean type {:?}",
-                                v_typ.typ().deref(env)
-                            ));
-                            false
+                        match v_typ.typ().deref(env) {
+                            Type::Primitive(PrimitiveType::Boolean) => {
+                                *o_typ = Type::Primitive(PrimitiveType::Boolean);
+                                true
+                            }
+
+                            other => {
+                                *o_typ = Type::Error;
+                                if !other.is_incomplete() {
+                                    errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: format!(
+                                            "Cannot negate non-boolean type {}",
+                                            &other
+                                        ),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: *v.span(),
+                                            style: SpanStyle::Primary,
+                                            label: Some(format!("expected Boolean, got {}", other)),
+                                        }],
+                                    });
+                                }
+
+                                false
+                            }
                         }
                     } else {
                         false
@@ -64,16 +88,49 @@ impl Typecheck<TypedLogicalOp> for LogicalOp {
             }
             LogicalOp::And(left, right) => {
                 if let TypedLogicalOp::And(left_typ, right_typ, o_typ) = typ {
-                    let in_updated =
-                        left.pass(left_typ, env, scope) || right.pass(right_typ, env, scope);
+                    let in_updated = left.pass(left_typ, env, scope, errors)
+                        || right.pass(right_typ, env, scope, errors);
                     let out_updated = if o_typ.is_incomplete() {
-                        if left_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean)
-                            && right_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean)
+                        let left_typ = left_typ.typ().deref(env);
+                        let right_typ = right_typ.typ().deref(env);
+                        if left_typ == Type::Primitive(PrimitiveType::Boolean)
+                            && right_typ == Type::Primitive(PrimitiveType::Boolean)
                         {
                             *o_typ = Type::Primitive(PrimitiveType::Boolean);
                             true
                         } else {
-                            *o_typ = Type::Error("Both inputs to && must be booleans".to_string());
+                            *o_typ = Type::Error;
+
+                            if !left_typ.is_incomplete() || !right_typ.is_incomplete() {
+                                let mut spans = vec![];
+                                if left_typ != Type::Primitive(PrimitiveType::Boolean)
+                                    && !left_typ.is_incomplete()
+                                {
+                                    spans.push(SpanLabel {
+                                        span: *left.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some(format!("expected Boolean, got {}", left_typ)),
+                                    })
+                                }
+
+                                if right_typ != Type::Primitive(PrimitiveType::Boolean)
+                                    && !left_typ.is_incomplete()
+                                {
+                                    spans.push(SpanLabel {
+                                        span: *right.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some(format!("expected Boolean, got {}", right_typ)),
+                                    })
+                                }
+
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: "Both inputs to && must be booleans".to_string(),
+                                    code: Some("C000".to_string()),
+                                    spans,
+                                });
+                            }
+
                             false
                         }
                     } else {
@@ -86,16 +143,50 @@ impl Typecheck<TypedLogicalOp> for LogicalOp {
             }
             LogicalOp::Or(left, right) => {
                 if let TypedLogicalOp::Or(left_typ, right_typ, o_typ) = typ {
-                    let in_updated =
-                        left.pass(left_typ, env, scope) || right.pass(right_typ, env, scope);
+                    let in_updated = left.pass(left_typ, env, scope, errors)
+                        || right.pass(right_typ, env, scope, errors);
                     let out_updated = if o_typ.is_incomplete() {
-                        if left_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean)
-                            && right_typ.typ().deref(env) == Type::Primitive(PrimitiveType::Boolean)
+                        let left_typ = left_typ.typ().deref(env);
+                        let right_typ = right_typ.typ().deref(env);
+
+                        if left_typ == Type::Primitive(PrimitiveType::Boolean)
+                            && right_typ == Type::Primitive(PrimitiveType::Boolean)
                         {
                             *o_typ = Type::Primitive(PrimitiveType::Boolean);
                             true
                         } else {
-                            *o_typ = Type::Error("Both inputs to || must be booleans".to_string());
+                            *o_typ = Type::Error;
+
+                            if !left_typ.is_incomplete() || !right_typ.is_incomplete() {
+                                let mut spans = vec![];
+                                if left_typ != Type::Primitive(PrimitiveType::Boolean)
+                                    && !left_typ.is_incomplete()
+                                {
+                                    spans.push(SpanLabel {
+                                        span: *left.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some(format!("expected Boolean, got {}", left_typ)),
+                                    })
+                                }
+
+                                if right_typ != Type::Primitive(PrimitiveType::Boolean)
+                                    && !right_typ.is_incomplete()
+                                {
+                                    spans.push(SpanLabel {
+                                        span: *right.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some(format!("expected Boolean, got {}", right_typ)),
+                                    })
+                                }
+
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: "Both inputs to || must be booleans".to_string(),
+                                    code: Some("C000".to_string()),
+                                    spans,
+                                });
+                            }
+
                             false
                         }
                     } else {

@@ -1,3 +1,4 @@
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
@@ -27,29 +28,44 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
     fn shallow(&self) -> TypedFieldSelection {
         match &self {
             FieldSelection::Single(v) => TypedFieldSelection::Single(v.clone(), Type::Defer),
-            FieldSelection::Select(selection, i) => {
+            FieldSelection::Select(selection, i, _) => {
                 TypedFieldSelection::Select(Box::new(selection.shallow()), i.clone(), Type::Defer)
             }
         }
     }
 
-    fn pass(&self, typ: &mut TypedFieldSelection, env: &MappedArena<Type>, scope: &Scope) -> bool {
-        dbg!(&self);
+    fn pass(
+        &self,
+        typ: &mut TypedFieldSelection,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool {
         match &self {
-            FieldSelection::Single(Identifier(i)) => {
-                if let TypedFieldSelection::Single(_, Type::Defer) = typ {
+            FieldSelection::Single(Identifier(i, s)) => {
+                if typ.typ().is_incomplete() {
                     if i.as_str() == "self" {
                         if let Some(enclosing) = &scope.enclosing_model {
                             *typ = TypedFieldSelection::Single(
-                                Identifier(i.clone()),
+                                Identifier(i.clone(), *s),
                                 Type::Reference(enclosing.clone()),
                             );
                             true
                         } else {
-                            *typ = TypedFieldSelection::Single(
-                                Identifier(i.clone()),
-                                Type::Error("Cannot use self outside a model".to_string()),
-                            );
+                            *typ =
+                                TypedFieldSelection::Single(Identifier(i.clone(), *s), Type::Error);
+
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: "Cannot use self outside a model".to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: *s,
+                                    style: SpanStyle::Primary,
+                                    label: Some("self not allowed".to_string()),
+                                }],
+                            });
+
                             false
                         }
                     } else {
@@ -60,14 +76,23 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
 
                         if let Some(context_type) = context_type {
                             *typ = TypedFieldSelection::Single(
-                                Identifier(i.clone()),
+                                Identifier(i.clone(), *s),
                                 Type::Reference(context_type.name.clone()),
                             );
                         } else {
-                            *typ = TypedFieldSelection::Single(
-                                Identifier(i.clone()),
-                                Type::Error(format!("Reference to unknown value: {}", i)),
-                            );
+                            *typ =
+                                TypedFieldSelection::Single(Identifier(i.clone(), *s), Type::Error);
+
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: format!("Reference to unknown context: {}", i),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: *s,
+                                    style: SpanStyle::Primary,
+                                    label: Some("unknown context".to_string()),
+                                }],
+                            });
                         }
                         false
                     }
@@ -75,34 +100,54 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                     false
                 }
             }
-            FieldSelection::Select(selection, i) => {
+            FieldSelection::Select(selection, i, _) => {
                 if let TypedFieldSelection::Select(prefix, _, typ) = typ {
-                    let in_updated = selection.pass(prefix, env, scope);
+                    let in_updated = selection.pass(prefix, env, scope, errors);
                     let out_updated = if typ.is_incomplete() {
                         if let Type::Composite(c) = prefix.typ().deref(env) {
                             if let Some(field) = c.fields.iter().find(|f| f.name == i.0) {
                                 if !field.typ.is_incomplete() {
-                                    assert!(*typ != field.typ.clone());
                                     *typ = field.typ.clone();
                                     true
                                 } else {
-                                    *typ = Type::Error(format!(
-                                        "Cannot read field {} in model {:?} with incomplete type",
-                                        i.0,
-                                        prefix.typ()
-                                    ));
+                                    *typ = Type::Error;
+                                    // no diagnostic because the prefix is incomplete
                                     false
                                 }
                             } else {
-                                *typ = Type::Error(format!("No such field: {}", i.0));
+                                *typ = Type::Error;
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!("No such field {} on type {}", i.0, c.name),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: i.1,
+                                        style: SpanStyle::Primary,
+                                        label: Some("unknown field".to_string()),
+                                    }],
+                                });
                                 false
                             }
                         } else {
-                            *typ = Type::Error(format!(
-                                "Cannot read field {} from a non-composite type {:?}",
-                                i.0,
-                                prefix.typ()
-                            ));
+                            *typ = Type::Error;
+
+                            if !prefix.typ().is_error() {
+                                errors.push(Diagnostic {
+                                    level: Level::Error,
+                                    message: format!(
+                                        "Cannot read field {} from a non-composite type {}",
+                                        i.0,
+                                        prefix.typ().deref(env)
+                                    ),
+                                    code: Some("C000".to_string()),
+                                    spans: vec![SpanLabel {
+                                        span: *selection.span(),
+                                        style: SpanStyle::Primary,
+                                        label: Some("non-composite value".to_string()),
+                                    }],
+                                });
+                            }
+
                             false
                         }
                     } else {

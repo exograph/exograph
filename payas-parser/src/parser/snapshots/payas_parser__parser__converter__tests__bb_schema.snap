@@ -1,6 +1,6 @@
 ---
 source: payas-parser/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(), src.as_bytes())"
+expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span)"
 
 ---
 models:
@@ -9,7 +9,8 @@ models:
     fields:
       - name: id
         typ:
-          Plain: Int
+          Plain:
+            - Int
         annotations:
           - name: pk
             params: []
@@ -17,25 +18,30 @@ models:
             params: []
       - name: title
         typ:
-          Plain: String
+          Plain:
+            - String
         annotations: []
       - name: venue
         typ:
-          Plain: Venue
+          Plain:
+            - Venue
         annotations:
           - name: column
             params:
-              - StringLiteral: venueid
+              - StringLiteral:
+                  - venueid
     annotations:
       - name: table
         params:
-          - StringLiteral: concerts
+          - StringLiteral:
+              - concerts
   - name: Venue
     kind: Persistent
     fields:
       - name: id
         typ:
-          Plain: Int
+          Plain:
+            - Int
         annotations:
           - name: pk
             params: []
@@ -43,18 +49,22 @@ models:
             params: []
       - name: name
         typ:
-          Plain: String
+          Plain:
+            - String
         annotations: []
       - name: concerts
         typ:
           List:
-            Plain: Concert
+            Plain:
+              - Concert
         annotations:
           - name: column
             params:
-              - StringLiteral: venueid
+              - StringLiteral:
+                  - venueid
     annotations:
       - name: table
         params:
-          - StringLiteral: venues
+          - StringLiteral:
+              - venues
 

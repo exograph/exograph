@@ -106,8 +106,8 @@ fn cors_from_env() -> Cors {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    let ast_system = parser::parse_file(&args[1]);
-    let system = system_builder::build(ast_system);
+    let (ast_system, codemap) = parser::parse_file(&args[1]);
+    let system = system_builder::build(ast_system, codemap);
     let schema = Schema::new(&system);
 
     let database = Database::from_env();

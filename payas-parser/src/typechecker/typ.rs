@@ -3,7 +3,10 @@ use payas_model::{
     sql::column::{IntBits, PhysicalColumnType},
 };
 use serde::{Deserialize, Serialize};
-use std::ops::Deref;
+use std::{
+    fmt::{Display, Formatter},
+    ops::Deref,
+};
 
 use super::{TypedAnnotation, TypedField};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -14,7 +17,27 @@ pub enum Type {
     List(Box<Type>),
     Reference(String),
     Defer,
-    Error(String),
+    Error,
+}
+
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Type::Primitive(p) => p.fmt(f),
+            Type::Composite(c) => c.fmt(f),
+            Type::Optional(o) => {
+                o.fmt(f)?;
+                f.write_str("?")
+            }
+            Type::List(l) => {
+                f.write_str("[")?;
+                l.fmt(f)?;
+                f.write_str("]")
+            }
+            Type::Reference(r) => f.write_str(r.as_str()),
+            _ => Result::Err(std::fmt::Error),
+        }
+    }
 }
 
 impl Type {
@@ -29,7 +52,7 @@ impl Type {
 
     pub fn is_error(&self) -> bool {
         match &self {
-            Type::Error(_) => true,
+            Type::Error => true,
             Type::Optional(underlying) => underlying.deref().is_error(),
             Type::List(underlying) => underlying.deref().is_error(),
             _ => false,
@@ -64,6 +87,12 @@ impl CompositeType {
     }
 }
 
+impl Display for CompositeType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name.as_str())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CompositeTypeKind {
     Persistent,
@@ -92,5 +121,11 @@ impl PrimitiveType {
             PrimitiveType::String => "String",
             PrimitiveType::Boolean => "Boolean",
         }
+    }
+}
+
+impl Display for PrimitiveType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name())
     }
 }

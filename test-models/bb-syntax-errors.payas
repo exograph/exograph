@@ -1,0 +1,13 @@
+@table("concerts")
+model Concert {
+  id: Int pk @autoincrement
+  title: Stringg @auth(!self.id.bar | self.venue.name)
+  venue: Venue @column("venueid")
+}
+
+@table("venues"
+model Venue {
+  id: Int @pk @autoincrement @auth(Foo)
+  name: String
+  concerts: Concert] @column("venueid")
+}
