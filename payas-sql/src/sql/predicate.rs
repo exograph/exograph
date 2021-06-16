@@ -16,6 +16,8 @@ pub enum Predicate<'a> {
 
     // string predicates
     Like(&'a Column<'a>, &'a Column<'a>),
+    StartsWith(&'a Column<'a>, &'a Column<'a>),
+    EndsWith(&'a Column<'a>, &'a Column<'a>),
 }
 
 impl<'a> Predicate<'a> {
@@ -25,6 +27,8 @@ impl<'a> Predicate<'a> {
             "lt" => Predicate::Lt(lhs, &rhs),
             "gt" => Predicate::Gt(lhs, &rhs),
             "like" => Predicate::Like(lhs, &rhs),
+            "startsWith" => Predicate::StartsWith(lhs, &rhs),
+            "endsWith" => Predicate::EndsWith(lhs, &rhs),
             _ => todo!(),
         }
     }
@@ -93,16 +97,25 @@ impl<'a> Expression for Predicate<'a> {
                 expression_context,
                 |stmt1, stmt2| format!("{} OR {}", stmt1, stmt2),
             ),
-<<<<<<< HEAD
             Predicate::Not(predicate) => {
                 let expr = predicate.binding(expression_context);
                 ParameterBinding::new(format!("NOT {}", expr.stmt), expr.params)
-=======
+            },
+
             Predicate::Like(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
                     format!("{} LIKE {}", stmt1, stmt2)
                 })
->>>>>>> 0fa7a76 (Add support for the 'like' predicate for String fields in queries)
+            }
+            Predicate::StartsWith(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} LIKE {} || '%'", stmt1, stmt2)
+                })
+            }
+            Predicate::EndsWith(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} LIKE '%' || {}", stmt1, stmt2)
+                })
             }
         }
     }

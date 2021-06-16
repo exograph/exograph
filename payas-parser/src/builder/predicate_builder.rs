@@ -98,6 +98,8 @@ fn create_operator_filter_type_kind(
     match scalar_model_type.name.as_ref() {
         "String" => {
             parameters.push(parameter_constructor(&"like"));
+            parameters.push(parameter_constructor(&"startsWith"));
+            parameters.push(parameter_constructor(&"endsWith"));
         }
         _ => {}
     }
