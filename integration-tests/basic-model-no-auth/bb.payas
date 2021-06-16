@@ -1,4 +1,4 @@
-context AutoContext {
+context AuthContext {
   id: Int @jwt("sub")
   role: String @jwt("role")
 }
@@ -11,7 +11,7 @@ model Concert {
 }
 
 @table("venues")
-@access(AutoContext.role == "ADMIN")
+@access(AuthContext.role == "ADMIN")
 model Venue {
   id: Int @pk @autoincrement
   name: String

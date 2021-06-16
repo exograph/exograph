@@ -1,4 +1,4 @@
-mod access_solver;
+pub mod access_solver;
 mod data_param_mapper;
 pub mod data_resolver;
 pub mod mutation_resolver;

@@ -4,6 +4,7 @@ use crate::sql::order::OrderBy;
 
 use payas_model::model::{operation::*, relation::*, types::*};
 
+use super::access_solver;
 use super::{
     operation_context::OperationContext,
     sql_mapper::{OperationResolver, SQLMapper},
@@ -84,12 +85,38 @@ impl<'a> QueryOperations<'a> for Query {
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
     ) -> Select<'a> {
+        let access_predicate = {
+            let return_type = self.return_type.typ(operation_context.query_context.system);
+
+            match &return_type.kind {
+                GqlTypeKind::Primitive => &Predicate::True,
+                GqlTypeKind::Composite { access, .. } => match access {
+                    Some(access) => access_solver::reduce_access(
+                        access,
+                        operation_context.query_context.request_context,
+                        operation_context,
+                    ),
+                    None => &Predicate::True,
+                },
+            }
+        };
+
+        if access_predicate == &Predicate::False {
+            panic!("Can't access {:?}", access_predicate) // TODO: Report a proper GraphQL error
+        }
+
         let predicate = super::compute_predicate(
             self.predicate_param.as_ref(),
             &field.arguments,
             additional_predicate,
             operation_context,
-        );
+        )
+        .map(|predicate| {
+            operation_context.create_predicate(Predicate::And(
+                Box::new(predicate.clone()),
+                Box::new(access_predicate.clone()),
+            ))
+        });
 
         let content_object = self.content_select(&field.selection_set, operation_context);
 

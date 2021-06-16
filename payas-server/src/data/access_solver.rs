@@ -15,13 +15,13 @@ enum ReducedExpression<'a> {
 
 fn reduce_expression<'a>(
     expr: &AccessExpression,
-    context: &'a Value,
+    request_context: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> ReducedExpression<'a> {
     match expr {
         AccessExpression::ContextSelection(selection) => {
             ReducedExpression::Column(literal_column(
-                reduce_conext_selection(selection, context).unwrap(),
+                reduce_conext_selection(selection, request_context).unwrap(),
                 operation_context,
             ))
             //ReducedExpression::Value(selection.reduce(context))
@@ -33,10 +33,10 @@ fn reduce_expression<'a>(
             operation_context.create_column(Column::Literal(Box::new(string.clone()))),
         ),
         AccessExpression::LogicalOp(op) => {
-            ReducedExpression::Predicate(reduce_logical_op(op, context, operation_context))
+            ReducedExpression::Predicate(reduce_logical_op(op, request_context, operation_context))
         }
         AccessExpression::RelationalOp(op) => {
-            ReducedExpression::Predicate(reduce_relational_op(op, context, operation_context))
+            ReducedExpression::Predicate(reduce_relational_op(op, request_context, operation_context))
         }
     }
 }
@@ -71,13 +71,13 @@ fn literal_column<'a>(
 
 fn reduce_relational_op<'a>(
     op: &AccessRelationalOp,
-    context: &'a Value,
+    request_context: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> &'a Predicate<'a> {
     match op {
         AccessRelationalOp::Eq(left, right) => {
-            let left = reduce_expression(left, context, operation_context);
-            let right = reduce_expression(right, context, operation_context);
+            let left = reduce_expression(left, request_context, operation_context);
+            let right = reduce_expression(right, request_context, operation_context);
 
             match (left, right) {
                 (ReducedExpression::Column(left_col), ReducedExpression::Column(right_col)) => {
@@ -116,12 +116,12 @@ fn reduce_relational_op<'a>(
 
 fn reduce_logical_op<'a>(
     op: &AccessLogicalOp,
-    context: &'a Value,
+    request_context: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> &'a Predicate<'a> {
     match op {
         AccessLogicalOp::Not(underlying) => {
-            let underlying = reduce_expression(underlying, context, operation_context);
+            let underlying = reduce_expression(underlying, request_context, operation_context);
             match underlying {
                 ReducedExpression::Value(_) => todo!(),
                 ReducedExpression::Column(_) => todo!(),
@@ -131,12 +131,12 @@ fn reduce_logical_op<'a>(
             }
         }
         AccessLogicalOp::And(left, right) => {
-            let left_predicate = match reduce_expression(left, context, operation_context) {
+            let left_predicate = match reduce_expression(left, request_context, operation_context) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
 
-            let right_predicate = match reduce_expression(right, context, operation_context) {
+            let right_predicate = match reduce_expression(right, request_context, operation_context) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
@@ -154,11 +154,11 @@ fn reduce_logical_op<'a>(
             }
         }
         AccessLogicalOp::Or(left, right) => {
-            let left_predicate = match reduce_expression(left, context, operation_context) {
+            let left_predicate = match reduce_expression(left, request_context, operation_context) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
-            let right_predicate = match reduce_expression(right, context, operation_context) {
+            let right_predicate = match reduce_expression(right, request_context, operation_context) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
@@ -179,16 +179,16 @@ fn reduce_logical_op<'a>(
     }
 }
 
-fn reduce_access<'a>(
+pub fn reduce_access<'a>(
     access_expression: &'a AccessExpression,
-    context: &'a Value,
+    request_context: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> &'a Predicate<'a> {
     match access_expression {
         AccessExpression::ContextSelection(_) => todo!(),
         AccessExpression::Column(_) => todo!(),
-        AccessExpression::LogicalOp(op) => reduce_logical_op(op, context, operation_context),
-        AccessExpression::RelationalOp(op) => reduce_relational_op(op, context, operation_context),
+        AccessExpression::LogicalOp(op) => reduce_logical_op(op, request_context, operation_context),
+        AccessExpression::RelationalOp(op) => reduce_relational_op(op, request_context, operation_context),
         AccessExpression::StringLiteral(_) => todo!(),
     }
 }

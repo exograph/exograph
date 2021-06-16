@@ -20,6 +20,7 @@ pub struct QueryContext<'a> {
     pub schema: &'a Schema,
     pub system: &'a ModelSystem,
     pub database: &'a Database,
+    pub request_context: &'a serde_json::Value,
 }
 
 #[derive(Debug, Clone)]
