@@ -13,6 +13,9 @@ pub enum Predicate<'a> {
     And(Box<Predicate<'a>>, Box<Predicate<'a>>),
     Or(Box<Predicate<'a>>, Box<Predicate<'a>>),
     Not(Box<Predicate<'a>>),
+
+    // string predicates
+    Like(&'a Column<'a>, &'a Column<'a>),
 }
 
 impl<'a> Predicate<'a> {
@@ -21,6 +24,7 @@ impl<'a> Predicate<'a> {
             "eq" => Predicate::Eq(lhs, &rhs),
             "lt" => Predicate::Lt(lhs, &rhs),
             "gt" => Predicate::Gt(lhs, &rhs),
+            "like" => Predicate::Like(lhs, &rhs),
             _ => todo!(),
         }
     }
@@ -89,9 +93,16 @@ impl<'a> Expression for Predicate<'a> {
                 expression_context,
                 |stmt1, stmt2| format!("{} OR {}", stmt1, stmt2),
             ),
+<<<<<<< HEAD
             Predicate::Not(predicate) => {
                 let expr = predicate.binding(expression_context);
                 ParameterBinding::new(format!("NOT {}", expr.stmt), expr.params)
+=======
+            Predicate::Like(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} LIKE {}", stmt1, stmt2)
+                })
+>>>>>>> 0fa7a76 (Add support for the 'like' predicate for String fields in queries)
             }
         }
     }

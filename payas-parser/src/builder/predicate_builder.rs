@@ -79,21 +79,28 @@ fn create_operator_filter_type_kind(
     scalar_model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
-    // TODO: Create scalar_type specific filter. For example, "like" only for String
+    let parameter_constructor = |operator: &&str| PredicateParameter {
+        name: operator.to_string(),
+        type_name: scalar_model_type.name.to_string(),
+        type_id: building
+            .predicate_types
+            .get_id(&scalar_model_type.name)
+            .unwrap(),
+        type_modifier: GqlTypeModifier::Optional,
+        column_id: None,
+    };
+
     // [eq: <scalar_type>, lt: <scalar_type>, ...]
-    let parameters = OPERATORS
-        .iter()
-        .map(|operator| PredicateParameter {
-            name: operator.to_string(),
-            type_name: scalar_model_type.name.to_string(),
-            type_id: building
-                .predicate_types
-                .get_id(&scalar_model_type.name)
-                .unwrap(),
-            type_modifier: GqlTypeModifier::Optional,
-            column_id: None,
-        })
-        .collect();
+    let mut parameters: Vec<PredicateParameter> =
+        OPERATORS.iter().map(parameter_constructor).collect();
+
+    // scalar_model_type specific operators
+    match scalar_model_type.name.as_ref() {
+        "String" => {
+            parameters.push(parameter_constructor(&"like"));
+        }
+        _ => {}
+    }
 
     PredicateParameterTypeKind::Opeartor(parameters)
 }
