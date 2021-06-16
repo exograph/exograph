@@ -1,6 +1,6 @@
 context AutoContext {
-  id: Int @jwt(sub)
-  role: String @jwt(role)
+  id: Int @jwt("sub")
+  role: String @jwt("role")
 }
 
 @table("concerts")

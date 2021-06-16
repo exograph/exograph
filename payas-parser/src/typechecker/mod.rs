@@ -8,10 +8,13 @@ mod relational_op;
 mod selection;
 mod typ;
 
-pub(super) use annotation::TypedAnnotation;
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
+
+pub(super) use annotation::TypedAnnotation;
+
 pub(super) use expression::TypedExpression;
+pub use relational_op::TypedRelationalOp;
 pub(super) use selection::TypedFieldSelection;
 
 pub(super) use field::TypedField;

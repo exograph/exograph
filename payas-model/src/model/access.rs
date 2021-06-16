@@ -1,6 +1,6 @@
 use super::column_id::ColumnId;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AccessExpression {
     ContextSelection(AccessConextSelection), // AuthContext.role
     Column(ColumnId), // self.id (special case of a boolean column such as self.published will be expanded to self.published == true when building an AccessExpression)
@@ -9,20 +9,20 @@ pub enum AccessExpression {
     RelationalOp(AccessRelationalOp),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AccessConextSelection {
     Single(String),
     Select(Box<AccessConextSelection>, String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AccessLogicalOp {
     Not(Box<AccessExpression>),
     And(Box<AccessExpression>, Box<AccessExpression>),
     Or(Box<AccessExpression>, Box<AccessExpression>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AccessRelationalOp {
     Eq(Box<AccessExpression>, Box<AccessExpression>),
     Neq(Box<AccessExpression>, Box<AccessExpression>),

@@ -1,3 +1,4 @@
+use super::access::AccessExpression;
 use super::{column_id::ColumnId, relation::GqlRelation};
 use crate::model::operation::*;
 
@@ -79,7 +80,7 @@ pub enum GqlTypeKind {
         table_id: Id<PhysicalTable>,
         pk_query: Id<Query>,
         collection_query: Id<Query>,
-        //access: Option<AccessExpression>,
+        access: Option<AccessExpression>,
     },
 }
 
