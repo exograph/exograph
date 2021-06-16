@@ -65,7 +65,7 @@ fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
 fn expand_type(model_type: &GqlType, building: &SystemContextBuilding) -> OrderByParameterTypeKind {
     match &model_type.kind {
         GqlTypeKind::Primitive => OrderByParameterTypeKind::Primitive,
-        GqlTypeKind::Composite { fields, .. } => {
+        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
             let parameters = fields
                 .iter()
                 .map(|field| new_field_param(field, building))

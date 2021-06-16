@@ -1,6 +1,7 @@
 use payas_model::model::{
     mapped_arena::MappedArena,
     types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
+    GqlCompositeTypeKind,
 };
 
 use super::{
@@ -66,7 +67,7 @@ fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType 
 fn expand_type(gql_type: &GqlType, building: &SystemContextBuilding) -> PredicateParameterTypeKind {
     match &gql_type.kind {
         GqlTypeKind::Primitive => create_operator_filter_type_kind(gql_type, building),
-        GqlTypeKind::Composite { fields, .. } => {
+        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
             create_composite_filter_type_kind(fields, building)
         }
     }

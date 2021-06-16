@@ -1,7 +1,7 @@
 use id_arena::Id;
 use payas_sql::sql::PhysicalTable;
 
-use crate::model::GqlTypeKind;
+use crate::model::{GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
     order::OrderByParameter,
@@ -59,11 +59,11 @@ impl OperationReturnType {
         let return_type = self.typ(system);
         match &return_type.kind {
             GqlTypeKind::Primitive => panic!(),
-            GqlTypeKind::Composite {
+            GqlTypeKind::Composite(GqlCompositeTypeKind {
                 fields: _,
                 table_id,
                 ..
-            } => &system.tables[*table_id],
+            }) => &system.tables[*table_id],
         }
     }
 }

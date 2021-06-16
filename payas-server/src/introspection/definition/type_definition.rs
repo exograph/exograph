@@ -21,10 +21,10 @@ impl TypeDefinitionProvider for GqlType {
                 directives: vec![],
                 kind: TypeKind::Scalar,
             },
-            GqlTypeKind::Composite {
+            GqlTypeKind::Composite(GqlCompositeTypeKind {
                 fields: model_fields,
                 ..
-            } => {
+            }) => {
                 let kind = if self.is_input {
                     let fields = model_fields
                         .iter()
@@ -71,9 +71,9 @@ impl FieldDefinitionProvider for GqlField {
                 let other_type = &system.types[other_type_id];
                 match other_type.kind {
                     GqlTypeKind::Primitive => panic!(),
-                    GqlTypeKind::Composite {
+                    GqlTypeKind::Composite(GqlCompositeTypeKind {
                         collection_query, ..
-                    } => {
+                    }) => {
                         let collection_query = &system.queries[collection_query];
                         let predicate_parameter_arg = collection_query
                             .predicate_param

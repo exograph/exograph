@@ -90,7 +90,7 @@ impl<'a> QueryOperations<'a> for Query {
 
             match &return_type.kind {
                 GqlTypeKind::Primitive => &Predicate::True,
-                GqlTypeKind::Composite { access, .. } => match access {
+                GqlTypeKind::Composite(GqlCompositeTypeKind { access, .. }) => match access {
                     Some(access) => access_solver::reduce_access(
                         access,
                         operation_context.query_context.request_context,
@@ -100,6 +100,8 @@ impl<'a> QueryOperations<'a> for Query {
                 },
             }
         };
+
+        dbg!(access_predicate);
 
         if access_predicate == &Predicate::False {
             panic!("Can't access {:?}", access_predicate) // TODO: Report a proper GraphQL error
@@ -192,9 +194,9 @@ fn map_field<'a>(
                 let (other_table, other_table_pk_query) = {
                     match other_type.kind {
                         GqlTypeKind::Primitive => panic!(""),
-                        GqlTypeKind::Composite {
+                        GqlTypeKind::Composite(GqlCompositeTypeKind {
                             table_id, pk_query, ..
-                        } => (&system.tables[table_id], &system.queries[pk_query]),
+                        }) => (&system.tables[table_id], &system.queries[pk_query]),
                     }
                 };
 
@@ -222,9 +224,9 @@ fn map_field<'a>(
                 let other_table_collection_query = {
                     match other_type.kind {
                         GqlTypeKind::Primitive => panic!(""),
-                        GqlTypeKind::Composite {
+                        GqlTypeKind::Composite(GqlCompositeTypeKind {
                             collection_query, ..
-                        } => &system.queries[collection_query],
+                        }) => &system.queries[collection_query],
                     }
                 };
 

@@ -19,25 +19,27 @@ fn reduce_expression<'a>(
     operation_context: &'a OperationContext<'a>,
 ) -> ReducedExpression<'a> {
     match expr {
-        AccessExpression::ContextSelection(selection) => {
-            ReducedExpression::Column(literal_column(
-                reduce_conext_selection(selection, request_context).unwrap(),
-                operation_context,
-            ))
-            //ReducedExpression::Value(selection.reduce(context))
-        }
+        AccessExpression::ContextSelection(selection) => ReducedExpression::Column(literal_column(
+            reduce_conext_selection(selection, request_context).unwrap(),
+            operation_context,
+        )),
         AccessExpression::Column(column_id) => {
             ReducedExpression::Column(operation_context.create_column_with_id(column_id))
         }
-        AccessExpression::StringLiteral(string) => ReducedExpression::Column(
-            operation_context.create_column(Column::Literal(Box::new(string.clone()))),
+        AccessExpression::StringLiteral(value) => ReducedExpression::Column(
+            operation_context.create_column(Column::Literal(Box::new(value.clone()))),
+        ),
+        AccessExpression::BooleanLiteral(value) => ReducedExpression::Column(
+            operation_context.create_column(Column::Literal(Box::new(value.clone()))),
         ),
         AccessExpression::LogicalOp(op) => {
             ReducedExpression::Predicate(reduce_logical_op(op, request_context, operation_context))
         }
-        AccessExpression::RelationalOp(op) => {
-            ReducedExpression::Predicate(reduce_relational_op(op, request_context, operation_context))
-        }
+        AccessExpression::RelationalOp(op) => ReducedExpression::Predicate(reduce_relational_op(
+            op,
+            request_context,
+            operation_context,
+        )),
     }
 }
 
@@ -136,7 +138,8 @@ fn reduce_logical_op<'a>(
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
 
-            let right_predicate = match reduce_expression(right, request_context, operation_context) {
+            let right_predicate = match reduce_expression(right, request_context, operation_context)
+            {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
@@ -158,9 +161,10 @@ fn reduce_logical_op<'a>(
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
-            let right_predicate = match reduce_expression(right, request_context, operation_context) {
+            let right_predicate = match reduce_expression(right, request_context, operation_context)
+            {
                 ReducedExpression::Predicate(predicate) => predicate,
-                _ => panic!("Operand of 'And' isn't a predicate"),
+                x => panic!("Operand of 'And' isn't a predicate {:?}", x),
             };
 
             match (left_predicate, right_predicate) {
@@ -187,9 +191,20 @@ pub fn reduce_access<'a>(
     match access_expression {
         AccessExpression::ContextSelection(_) => todo!(),
         AccessExpression::Column(_) => todo!(),
-        AccessExpression::LogicalOp(op) => reduce_logical_op(op, request_context, operation_context),
-        AccessExpression::RelationalOp(op) => reduce_relational_op(op, request_context, operation_context),
+        AccessExpression::LogicalOp(op) => {
+            reduce_logical_op(op, request_context, operation_context)
+        }
+        AccessExpression::RelationalOp(op) => {
+            reduce_relational_op(op, request_context, operation_context)
+        }
         AccessExpression::StringLiteral(_) => todo!(),
+        AccessExpression::BooleanLiteral(value) => {
+            if *value {
+                &Predicate::True
+            } else {
+                &Predicate::False
+            }
+        }
     }
 }
 

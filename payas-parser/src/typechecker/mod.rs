@@ -14,6 +14,7 @@ use codemap_diagnostic::{ColorConfig, Emitter};
 pub(super) use annotation::TypedAnnotation;
 
 pub(super) use expression::TypedExpression;
+pub use logical_op::TypedLogicalOp;
 pub use relational_op::TypedRelationalOp;
 pub(super) use selection::TypedFieldSelection;
 

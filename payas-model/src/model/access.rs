@@ -5,6 +5,7 @@ pub enum AccessExpression {
     ContextSelection(AccessConextSelection), // AuthContext.role
     Column(ColumnId), // self.id (special case of a boolean column such as self.published will be expanded to self.published == true when building an AccessExpression)
     StringLiteral(String), // "ROLE_ADMIN"
+    BooleanLiteral(bool), // true as in `self.published == true`
     LogicalOp(AccessLogicalOp),
     RelationalOp(AccessRelationalOp),
 }

@@ -76,6 +76,13 @@ pub enum AstExpr {
         #[serde(default = "default_span")]
         Span,
     ),
+    BooleanLiteral(
+        bool,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
 }
 
 impl AstExpr {

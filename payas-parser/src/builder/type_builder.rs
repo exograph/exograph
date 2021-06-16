@@ -1,11 +1,11 @@
 use id_arena::Id;
 use payas_model::{
     model::{
-        access::{AccessConextSelection, AccessExpression, AccessRelationalOp},
+        access::{AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp},
         column_id::ColumnId,
         mapped_arena::MappedArena,
         relation::GqlRelation,
-        GqlFieldType,
+        GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
         column::{ColumnReferece, PhysicalColumn},
@@ -19,7 +19,9 @@ use super::{
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
-use crate::typechecker::{PrimitiveType, TypedExpression, TypedFieldSelection, TypedRelationalOp};
+use crate::typechecker::{
+    PrimitiveType, TypedExpression, TypedFieldSelection, TypedLogicalOp, TypedRelationalOp,
+};
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
@@ -116,13 +118,13 @@ fn expand_type1(
         .get_id(&query_builder::collection_query_name(&resolved_type.name))
         .unwrap();
 
-    let kind = GqlTypeKind::Composite {
+    let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
         fields: vec![],
         table_id,
         pk_query,
         collection_query,
         access: None,
-    };
+    });
     let existing_type_id = building.types.get_id(&resolved_type.name);
 
     building.types.values[existing_type_id.unwrap()].kind = kind;
@@ -136,12 +138,12 @@ fn expand_type2(
     let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
-    if let GqlTypeKind::Composite {
+    if let GqlTypeKind::Composite(GqlCompositeTypeKind {
         table_id,
         pk_query,
         collection_query,
         ..
-    } = existing_type.kind
+    }) = existing_type.kind
     {
         let model_fields: Vec<GqlField> = resolved_type
             .fields
@@ -149,13 +151,13 @@ fn expand_type2(
             .map(|field| create_field(field, table_id, building, env))
             .collect();
 
-        let kind = GqlTypeKind::Composite {
+        let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
             fields: model_fields.clone(),
             table_id,
             pk_query,
             collection_query,
             access: None,
-        };
+        });
 
         building.types.values[existing_type_id].kind = kind;
 
@@ -172,13 +174,14 @@ fn expand_type2(
             let existing_type_name = input_reference_type_name(resolved_type.name.as_str());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-            building.mutation_types[existing_type_id].kind = GqlTypeKind::Composite {
-                fields: reference_type_fields,
-                table_id,
-                pk_query,
-                collection_query,
-                access: None,
-            }
+            building.mutation_types[existing_type_id].kind =
+                GqlTypeKind::Composite(GqlCompositeTypeKind {
+                    fields: reference_type_fields,
+                    table_id,
+                    pk_query,
+                    collection_query,
+                    access: None,
+                })
         }
 
         {
@@ -187,13 +190,14 @@ fn expand_type2(
             let existing_type_name = input_creation_type_name(resolved_type.name.as_str());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-            building.mutation_types[existing_type_id].kind = GqlTypeKind::Composite {
-                fields: input_type_fields,
-                table_id,
-                pk_query,
-                collection_query,
-                access: None,
-            }
+            building.mutation_types[existing_type_id].kind =
+                GqlTypeKind::Composite(GqlCompositeTypeKind {
+                    fields: input_type_fields,
+                    table_id,
+                    pk_query,
+                    collection_query,
+                    access: None,
+                })
         }
 
         {
@@ -202,13 +206,14 @@ fn expand_type2(
             let existing_type_name = input_update_type_name(resolved_type.name.as_str());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-            building.mutation_types[existing_type_id].kind = GqlTypeKind::Composite {
-                fields: input_type_fields,
-                table_id,
-                pk_query,
-                collection_query,
-                access: None,
-            }
+            building.mutation_types[existing_type_id].kind =
+                GqlTypeKind::Composite(GqlCompositeTypeKind {
+                    fields: input_type_fields,
+                    table_id,
+                    pk_query,
+                    collection_query,
+                    access: None,
+                })
         }
     }
 }
@@ -218,38 +223,34 @@ fn expand_type3(resolved_type: &ResolvedCompositeType, building: &mut SystemCont
     let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
-    if let GqlTypeKind::Composite {
-        fields,
-        table_id,
-        pk_query,
-        collection_query,
-        ..
-    } = &existing_type.kind
-    {
+    if let GqlTypeKind::Composite(self_type_info) = &existing_type.kind {
         let expr = &resolved_type
             .access
             .as_ref()
-            .map(|access| compute_expression(access, building));
+            .map(|access| compute_expression(access, self_type_info, building, true));
 
         // TODO: Figure out a way to avoid the clone()s
-        let kind = GqlTypeKind::Composite {
-            fields: fields.clone(),
-            table_id: table_id.clone(),
-            pk_query: pk_query.clone(),
-            collection_query: collection_query.clone(),
+        let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
+            fields: self_type_info.fields.clone(),
+            table_id: self_type_info.table_id.clone(),
+            pk_query: self_type_info.pk_query.clone(),
+            collection_query: self_type_info.collection_query.clone(),
             access: expr.clone(),
-        };
+        });
 
         building.types.values[existing_type_id].kind = kind;
     }
 }
 
-enum PathSelection {
-    Column(ColumnId),
+enum PathSelection<'a> {
+    Column(ColumnId, &'a GqlFieldType),
     Context(AccessConextSelection),
 }
 
-fn compute_selection(selection: &TypedFieldSelection) -> PathSelection {
+fn compute_selection<'a>(
+    selection: &TypedFieldSelection,
+    self_type_info: &'a GqlCompositeTypeKind,
+) -> PathSelection<'a> {
     fn flatten(selection: &TypedFieldSelection, acc: &mut Vec<String>) {
         match selection {
             TypedFieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
@@ -271,11 +272,33 @@ fn compute_selection(selection: &TypedFieldSelection) -> PathSelection {
         }
     }
 
+    fn get_column<'a>(
+        path_elements: &[String],
+        self_type_info: &'a GqlCompositeTypeKind,
+    ) -> (ColumnId, &'a GqlFieldType) {
+        if path_elements.len() == 1 {
+            let field = self_type_info
+                .fields
+                .iter()
+                .find(|field| field.name == path_elements[0])
+                .unwrap();
+            match &field.relation {
+                GqlRelation::Pk { column_id }
+                | GqlRelation::Scalar { column_id }
+                | GqlRelation::ManyToOne { column_id, .. } => (column_id.clone(), &field.typ),
+                GqlRelation::OneToMany { .. } => todo!(),
+            }
+        } else {
+            todo!() // Nested selection such as self.venue.published
+        }
+    }
+
     let mut path_elements = vec![];
     flatten(selection, &mut path_elements);
 
     if path_elements[0] == "self" {
-        todo!()
+        let (column_id, column_type) = get_column(&path_elements[1..], self_type_info);
+        PathSelection::Column(column_id, column_type)
     } else {
         PathSelection::Context(unflatten(&path_elements))
     }
@@ -283,21 +306,54 @@ fn compute_selection(selection: &TypedFieldSelection) -> PathSelection {
 
 fn compute_expression(
     expr: &TypedExpression,
+    self_type_info: &GqlCompositeTypeKind,
     building: &SystemContextBuilding,
+    coarce_boolean: bool,
 ) -> AccessExpression {
     match expr {
-        TypedExpression::FieldSelection(selection) => match compute_selection(selection) {
-            PathSelection::Column(_) => todo!(),
-            PathSelection::Context(c) => AccessExpression::ContextSelection(c),
-        },
-        TypedExpression::LogicalOp(_op) => {
-            todo!()
+        TypedExpression::FieldSelection(selection) => {
+            match compute_selection(selection, self_type_info) {
+                PathSelection::Column(column_id, column_type) => {
+                    let column = AccessExpression::Column(column_id);
+
+                    // Coarces the result into an equivalent RelationalOp if `coarce_boolean` is true
+                    // For example, exapnds `self.published` to `self.published == true`, if `published` is a boolean column
+                    // This allows specifying access rule such as `AuthContext.role == "ROLE_ADMIN" || self.published` instead of
+                    // AuthContext.role == "ROLE_ADMIN" || self.published == true`
+                    if coarce_boolean
+                        && column_type.base_type(&building.types.values).name == "Boolean"
+                    {
+                        AccessExpression::RelationalOp(AccessRelationalOp::Eq(
+                            Box::new(column),
+                            Box::new(AccessExpression::BooleanLiteral(true)),
+                        ))
+                    } else {
+                        column
+                    }
+                }
+                PathSelection::Context(c) => AccessExpression::ContextSelection(c),
+            }
         }
+        TypedExpression::LogicalOp(op) => match op {
+            TypedLogicalOp::And(left, right, _) => {
+                AccessExpression::LogicalOp(AccessLogicalOp::And(
+                    Box::new(compute_expression(left, self_type_info, building, true)),
+                    Box::new(compute_expression(right, self_type_info, building, true)),
+                ))
+            }
+            TypedLogicalOp::Or(left, right, _) => AccessExpression::LogicalOp(AccessLogicalOp::Or(
+                Box::new(compute_expression(left, self_type_info, building, true)),
+                Box::new(compute_expression(right, self_type_info, building, true)),
+            )),
+            TypedLogicalOp::Not(value, _) => AccessExpression::LogicalOp(AccessLogicalOp::Not(
+                Box::new(compute_expression(value, self_type_info, building, true)),
+            )),
+        },
         TypedExpression::RelationalOp(op) => match op {
             TypedRelationalOp::Eq(left, right, _) => {
                 AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-                    Box::new(compute_expression(left, building)),
-                    Box::new(compute_expression(right, building)),
+                    Box::new(compute_expression(left, self_type_info, building, false)),
+                    Box::new(compute_expression(right, self_type_info, building, false)),
                 ))
             }
             TypedRelationalOp::Neq(_left, _right, _) => {
@@ -317,6 +373,9 @@ fn compute_expression(
             }
         },
         TypedExpression::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
+        TypedExpression::BooleanLiteral(value, _) => {
+            AccessExpression::BooleanLiteral(value.clone())
+        }
     }
 }
 

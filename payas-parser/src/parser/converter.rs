@@ -234,6 +234,14 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr {
                 first_child.child_by_field_name("value").unwrap(),
             ),
         ),
+        "literal_boolean" => {
+            let value = first_child.child(0).unwrap().utf8_text(source).unwrap();
+            if value == "true" {
+                AstExpr::BooleanLiteral(true, source_span)
+            } else {
+                AstExpr::BooleanLiteral(false, source_span)
+            }
+        }
         "logical_op" => AstExpr::LogicalOp(convert_logical_op(first_child, source, source_span)),
         "relational_op" => {
             AstExpr::RelationalOp(convert_relational_op(first_child, source, source_span))

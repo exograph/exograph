@@ -4,7 +4,7 @@ use crate::model::operation::*;
 
 use crate::sql::PhysicalTable;
 
-use id_arena::Id;
+use id_arena::{Arena, Id};
 
 #[derive(Debug, Clone)]
 pub struct ContextType {
@@ -35,7 +35,7 @@ impl GqlType {
     pub fn model_fields(&self) -> Vec<&GqlField> {
         match &self.kind {
             GqlTypeKind::Primitive => vec![],
-            GqlTypeKind::Composite { fields, .. } => fields.iter().collect(),
+            GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields.iter().collect(),
         }
     }
 
@@ -63,7 +63,7 @@ impl GqlType {
     pub fn table_id(&self) -> Option<Id<PhysicalTable>> {
         match &self.kind {
             GqlTypeKind::Primitive => None,
-            GqlTypeKind::Composite { table_id, .. } => Some(*table_id),
+            GqlTypeKind::Composite(GqlCompositeTypeKind { table_id, .. }) => Some(*table_id),
         }
     }
 
@@ -75,13 +75,16 @@ impl GqlType {
 #[derive(Debug, Clone)]
 pub enum GqlTypeKind {
     Primitive,
-    Composite {
-        fields: Vec<GqlField>,
-        table_id: Id<PhysicalTable>,
-        pk_query: Id<Query>,
-        collection_query: Id<Query>,
-        access: Option<AccessExpression>,
-    },
+    Composite(GqlCompositeTypeKind),
+}
+
+#[derive(Debug, Clone)]
+pub struct GqlCompositeTypeKind {
+    pub fields: Vec<GqlField>,
+    pub table_id: Id<PhysicalTable>,
+    pub pk_query: Id<Query>,
+    pub collection_query: Id<Query>,
+    pub access: Option<AccessExpression>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -115,6 +118,15 @@ impl GqlFieldType {
                 underlying.type_id()
             }
             GqlFieldType::Reference { type_id, .. } => type_id,
+        }
+    }
+
+    pub fn base_type<'a>(&self, types: &'a Arena<GqlType>) -> &'a GqlType {
+        match self {
+            GqlFieldType::Optional(underlying) | GqlFieldType::List(underlying) => {
+                underlying.base_type(types)
+            }
+            GqlFieldType::Reference { type_id, .. } => &types[*type_id],
         }
     }
 
