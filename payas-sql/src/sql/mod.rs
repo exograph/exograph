@@ -63,15 +63,15 @@ impl PartialEq for dyn SQLParam {
 #[derive(Debug, Clone)]
 pub struct ParameterBinding<'a> {
     pub stmt: String,
-    pub params: Vec<&'a dyn SQLParam>,
+    pub params: Vec<&'a Box<dyn SQLParam>>,
 }
 
 impl<'a> ParameterBinding<'a> {
-    fn new(stmt: String, params: Vec<&'a dyn SQLParam>) -> Self {
+    fn new(stmt: String, params: Vec<&'a Box<dyn SQLParam>>) -> Self {
         Self { stmt, params }
     }
 
-    fn tupled(self) -> (String, Vec<&'a dyn SQLParam>) {
+    fn tupled(self) -> (String, Vec<&'a Box<dyn SQLParam>>) {
         (self.stmt, self.params)
     }
 }
