@@ -217,7 +217,6 @@ pub fn reduce_access<'a>(
 mod tests {
     use std::ptr;
 
-    use payas_model::sql::column::{PhysicalColumn, PhysicalColumnType};
     use serde_json::json;
 
     use crate::execution::query_context::QueryContext;

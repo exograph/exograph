@@ -308,7 +308,7 @@ fn compute_expression(
     expr: &TypedExpression,
     self_type_info: &GqlCompositeTypeKind,
     building: &SystemContextBuilding,
-    coarce_boolean: bool,
+    coerce_boolean: bool,
 ) -> AccessExpression {
     match expr {
         TypedExpression::FieldSelection(selection) => {
@@ -316,11 +316,11 @@ fn compute_expression(
                 PathSelection::Column(column_id, column_type) => {
                     let column = AccessExpression::Column(column_id);
 
-                    // Coarces the result into an equivalent RelationalOp if `coarce_boolean` is true
+                    // Coerces the result into an equivalent RelationalOp if `coerce_boolean` is true
                     // For example, exapnds `self.published` to `self.published == true`, if `published` is a boolean column
                     // This allows specifying access rule such as `AuthContext.role == "ROLE_ADMIN" || self.published` instead of
                     // AuthContext.role == "ROLE_ADMIN" || self.published == true`
-                    if coarce_boolean
+                    if coerce_boolean
                         && column_type.base_type(&building.types.values).name == "Boolean"
                     {
                         AccessExpression::RelationalOp(AccessRelationalOp::Eq(
