@@ -101,8 +101,6 @@ impl<'a> QueryOperations<'a> for Query {
             }
         };
 
-        dbg!(access_predicate);
-
         if access_predicate == &Predicate::False {
             panic!("Can't access {:?}", access_predicate) // TODO: Report a proper GraphQL error
         }
