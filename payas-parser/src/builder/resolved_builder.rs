@@ -82,7 +82,7 @@ impl ResolvedType {
     }
 
     // useful for relation creation
-    pub fn as_composite<'a>(&'a self) -> &'a ResolvedCompositeType {
+    pub fn as_composite(&self) -> &ResolvedCompositeType {
         match &self {
             ResolvedType::Composite(c) => c,
             _ => panic!("Cannot get inner composite of type {:?}", self),

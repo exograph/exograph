@@ -232,9 +232,9 @@ fn expand_type3(resolved_type: &ResolvedCompositeType, building: &mut SystemCont
         // TODO: Figure out a way to avoid the clone()s
         let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
             fields: self_type_info.fields.clone(),
-            table_id: self_type_info.table_id.clone(),
-            pk_query: self_type_info.pk_query.clone(),
-            collection_query: self_type_info.collection_query.clone(),
+            table_id: self_type_info.table_id,
+            pk_query: self_type_info.pk_query,
+            collection_query: self_type_info.collection_query,
             access: expr.clone(),
         });
 
@@ -373,9 +373,7 @@ fn compute_expression(
             }
         },
         TypedExpression::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
-        TypedExpression::BooleanLiteral(value, _) => {
-            AccessExpression::BooleanLiteral(value.clone())
-        }
+        TypedExpression::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),
     }
 }
 

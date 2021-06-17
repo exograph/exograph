@@ -46,7 +46,7 @@ impl Typecheck<TypedExpression> for AstExpr {
                 TypedExpression::StringLiteral(v.clone(), Type::Primitive(PrimitiveType::String))
             }
             AstExpr::BooleanLiteral(v, _) => {
-                TypedExpression::BooleanLiteral(v.clone(), Type::Primitive(PrimitiveType::Boolean))
+                TypedExpression::BooleanLiteral(*v, Type::Primitive(PrimitiveType::Boolean))
             }
         }
     }

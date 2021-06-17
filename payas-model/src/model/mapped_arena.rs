@@ -48,7 +48,7 @@ impl<V> MappedArena<V> {
 }
 
 // Needed for tests, should get DCEd for the main binary
-pub fn sorted_values<'a, V>(arena: &'a MappedArena<V>) -> Vec<&'a V> {
+pub fn sorted_values<V>(arena: &MappedArena<V>) -> Vec<&V> {
     let mut values = Vec::new();
     let mut keys = arena.keys().collect::<Vec<&String>>();
     keys.sort();

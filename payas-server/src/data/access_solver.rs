@@ -30,7 +30,7 @@ fn reduce_expression<'a>(
             operation_context.create_column(Column::Literal(Box::new(value.clone()))),
         )),
         AccessExpression::BooleanLiteral(value) => ReducedExpression::Column(Some(
-            operation_context.create_column(Column::Literal(Box::new(value.clone()))),
+            operation_context.create_column(Column::Literal(Box::new(*value))),
         )),
         AccessExpression::LogicalOp(op) => {
             ReducedExpression::Predicate(reduce_logical_op(op, request_context, operation_context))

@@ -221,7 +221,7 @@ fn construct_gql_operation_from_file(
 }
 
 fn read_file_from_basedir(path: &str, basedir: &Path) -> Result<String> {
-    let mut file_path = PathBuf::from(basedir.parent().ok_or("").clone().unwrap());
+    let mut file_path = PathBuf::from(basedir.parent().ok_or("").unwrap());
     file_path.push(path);
 
     // read in file
