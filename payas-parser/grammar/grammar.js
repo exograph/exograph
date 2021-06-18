@@ -45,7 +45,8 @@ module.exports = grammar({
       prec(1, $.logical_op),
       prec(3, $.relational_op),
       $.selection,
-      $.literal_str
+      $.literal_str,
+      $.literal_boolean
     ),
     parenthetical: $ => seq("(", $.expression, ")"),
     selection: $ => choice(
@@ -100,6 +101,7 @@ module.exports = grammar({
     number: $ => /\d+/,
     term: $ => /[a-zA-Z_]+/,
     literal_str: $ => seq("\"", field("value", $.term), "\""),
+    literal_boolean: $ => choice("true", "false")
   }
 });
 

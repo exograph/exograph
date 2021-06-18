@@ -1,7 +1,15 @@
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::typechecker::{CompositeType, PrimitiveType, Type, TypedField};
+use crate::typechecker::{
+    CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedExpression, TypedField,
+    TypedFieldSelection,
+};
 use serde::{Deserialize, Serialize};
+
+pub struct ResolvedSystem {
+    pub types: MappedArena<ResolvedType>,
+    pub contexts: MappedArena<ResolvedContext>,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedType {
@@ -10,10 +18,17 @@ pub enum ResolvedType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedContext {
+    pub name: String,
+    pub fields: Vec<ResolvedContextField>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedCompositeType {
     pub name: String,
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
+    pub access: Option<TypedExpression>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -23,6 +38,19 @@ pub struct ResolvedField {
     pub column_name: String,
     pub is_pk: bool,
     pub is_autoincrement: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedContextField {
+    pub name: String,
+    pub typ: ResolvedFieldType,
+    pub source: ResolvedContextSource,
+}
+
+// For now, ResolvedContextSource and ContextSource have the same structure
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedContextSource {
+    Jwt { claim: String },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -54,7 +82,7 @@ impl ResolvedType {
     }
 
     // useful for relation creation
-    pub fn as_composite<'a>(&'a self) -> &'a ResolvedCompositeType {
+    pub fn as_composite(&self) -> &ResolvedCompositeType {
         match &self {
             ResolvedType::Composite(c) => c,
             _ => panic!("Cannot get inner composite of type {:?}", self),
@@ -74,71 +102,162 @@ impl ResolvedFieldType {
 }
 
 /// Consume typed-checked types and build resolved types
-/// Resolved types normalized annotations in that if an annotaion isn't provided,
-/// this build compute the default value and sets that information in the resulting resolved type
-pub fn build(types: MappedArena<Type>) -> MappedArena<ResolvedType> {
-    let mut resolved_types = build_shallow(&types);
-    build_expanded(types, &mut resolved_types);
-    resolved_types
+/// Resolved types consume and normalize annotations.
+/// For example, while in `Type`, the fields carry an optional annotation for the column name, here that information is encoded into an attribute of `ResolvedType`.
+/// If an annotaion is missing, its default value is assumed.
+pub fn build(types: MappedArena<Type>) -> ResolvedSystem {
+    let mut resolved_system = build_shallow(&types);
+    build_expanded(types, &mut resolved_system);
+    resolved_system
 }
 
-fn build_shallow(types: &MappedArena<Type>) -> MappedArena<ResolvedType> {
-    let mut resolved_arena: MappedArena<ResolvedType> = MappedArena::default();
+fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
+    let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
+    let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
 
     for (_, typ) in types.iter() {
-        let resolved = match typ {
-            Type::Primitive(pt) => ResolvedType::Primitive(pt.clone()),
-            Type::Composite(ct) => {
+        match typ {
+            Type::Primitive(pt) => {
+                resolved_types.add(pt.name(), ResolvedType::Primitive(pt.clone()));
+            }
+            Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
                 let table_name = ct
                     .get_annotation("table")
                     .map(|a| a.params[0].as_string())
                     .unwrap_or_else(|| ct.name.clone());
-                ResolvedType::Composite(ResolvedCompositeType {
-                    name: ct.name.clone(),
-                    fields: vec![],
-                    table_name,
-                })
+                let access = ct.get_annotation("access").map(|a| a.params[0].clone());
+                resolved_types.add(
+                    &ct.name,
+                    ResolvedType::Composite(ResolvedCompositeType {
+                        name: ct.name.clone(),
+                        fields: vec![],
+                        table_name,
+                        access,
+                    }),
+                );
             }
-            _ => panic!(""),
+            Type::Composite(ct) if ct.kind == CompositeTypeKind::Context => {
+                resolved_contexts.add(
+                    &ct.name,
+                    ResolvedContext {
+                        name: ct.name.clone(),
+                        fields: vec![],
+                    },
+                );
+            }
+            o => panic!(
+                "Unable to build shallow type for non-primitve, non-composite type: {:?}",
+                o
+            ),
         };
-
-        let name = resolved.name().to_string();
-
-        resolved_arena.add(&name, resolved);
     }
 
-    resolved_arena
+    ResolvedSystem {
+        types: resolved_types,
+        contexts: resolved_contexts,
+    }
 }
 
-fn build_expanded(types: MappedArena<Type>, resolved_types: &mut MappedArena<ResolvedType>) {
+fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
-            let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
-            let existing_type = &resolved_types[existing_type_id];
-            let resolved_fields = ct
-                .fields
-                .iter()
-                .map(|field| ResolvedField {
-                    name: field.name.clone(),
-                    typ: resolve_field_type(&field.typ, &types, resolved_types),
-                    column_name: compute_column_name(ct, field, &types),
-                    is_pk: field.get_annotation("pk").is_some(),
-                    is_autoincrement: field.get_annotation("autoincrement").is_some(),
-                })
-                .collect();
-            if let ResolvedType::Composite(ResolvedCompositeType {
-                name, table_name, ..
-            }) = existing_type
-            {
-                let expanded = ResolvedType::Composite(ResolvedCompositeType {
-                    name: name.clone(),
-                    fields: resolved_fields,
-                    table_name: table_name.clone(),
-                });
-                resolved_types[existing_type_id] = expanded;
+            if ct.kind == CompositeTypeKind::Persistent {
+                build_expanded_persistent_type(ct, &types, resolved_system);
+            } else {
+                build_expanded_context_type(ct, &types, resolved_system);
             }
         }
     }
+}
+
+fn build_expanded_persistent_type(
+    ct: &CompositeType,
+    types: &MappedArena<Type>,
+    resolved_system: &mut ResolvedSystem,
+) {
+    let resolved_types = &mut resolved_system.types;
+
+    let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
+    let existing_type = &resolved_types[existing_type_id];
+
+    if let ResolvedType::Composite(ResolvedCompositeType {
+        name,
+        table_name,
+        access,
+        ..
+    }) = existing_type
+    {
+        let resolved_fields = ct
+            .fields
+            .iter()
+            .map(|field| ResolvedField {
+                name: field.name.clone(),
+                typ: resolve_field_type(&field.typ, &types, resolved_types),
+                column_name: compute_column_name(ct, field, &types),
+                is_pk: field.get_annotation("pk").is_some(),
+                is_autoincrement: field.get_annotation("autoincrement").is_some(),
+            })
+            .collect();
+
+        let expanded = ResolvedType::Composite(ResolvedCompositeType {
+            name: name.clone(),
+            fields: resolved_fields,
+            table_name: table_name.clone(),
+            access: access.clone(),
+        });
+        resolved_types[existing_type_id] = expanded;
+    }
+}
+
+fn build_expanded_context_type(
+    ct: &CompositeType,
+    types: &MappedArena<Type>,
+    resolved_system: &mut ResolvedSystem,
+) {
+    let resolved_contexts = &mut resolved_system.contexts;
+    let resolved_types = &mut resolved_system.types;
+
+    let existing_type_id = resolved_contexts.get_id(&ct.name).unwrap();
+    let existing_type = &resolved_contexts[existing_type_id];
+    let resolved_fields = ct
+        .fields
+        .iter()
+        .map(|field| ResolvedContextField {
+            name: field.name.clone(),
+            typ: resolve_field_type(&field.typ, &types, resolved_types),
+            source: extract_context_source(field),
+        })
+        .collect();
+
+    let expanded = ResolvedContext {
+        name: existing_type.name.clone(),
+        fields: resolved_fields,
+    };
+    resolved_contexts[existing_type_id] = expanded;
+}
+
+fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
+    let jwt_annot = field
+        .annotations
+        .iter()
+        .find(|annotation| annotation.name == "jwt");
+    let claim = jwt_annot
+        .map(|annot| {
+            let annot_param = &annot.params.first();
+
+            match annot_param {
+                Some(TypedExpression::FieldSelection(selection)) => match selection {
+                    TypedFieldSelection::Single(claim, _) => claim.0.clone(),
+                    _ => panic!("Only simple jwt claim supported"),
+                },
+                Some(TypedExpression::StringLiteral(name, _)) => name.clone(),
+                None => field.name.clone(),
+                _ => panic!("Expression type other than selection unsupported"),
+            }
+        })
+        .unwrap();
+
+    ResolvedContextSource::Jwt { claim }
 }
 
 fn compute_column_name(
@@ -217,12 +336,9 @@ mod tests {
         }        
         "#;
 
-        let (parsed, codemap) = parser::parse_str(src);
-        let types = typechecker::build(parsed, codemap);
+        let resolved = create_resolved_system(src);
 
-        let resolved = build(types);
-
-        insta::assert_yaml_snapshot!(sorted_values(&resolved));
+        insta::assert_yaml_snapshot!(normalized_system(&resolved));
     }
 
     #[test]
@@ -242,11 +358,64 @@ mod tests {
         }        
         "#;
 
+        let resolved = create_resolved_system(src);
+
+        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+    }
+
+    #[test]
+    fn with_access() {
+        let src = r#"
+        context AuthContext {
+            role: String @jwt("role")
+        }
+
+        @access(AuthContext.role == "ROLE_ADMIN" || self.public)
+        model Concert {
+          id: Int @pk @autoincrement 
+          title: String
+          public: Boolean
+        }      
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+    }
+
+    #[test]
+    fn with_access_default_values() {
+        let src = r#"
+        context AuthContext {
+            role: String @jwt
+        }
+
+        @access(AuthContext.role == "ROLE_ADMIN" || self.public)
+        model Concert {
+          id: Int @pk @autoincrement 
+          title: String
+          public: Boolean
+        }      
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+    }
+
+    fn create_resolved_system(src: &str) -> ResolvedSystem {
         let (parsed, codemap) = parser::parse_str(src);
         let types = typechecker::build(parsed, codemap);
 
-        let resolved = build(types);
+        build(types)
+    }
 
-        insta::assert_yaml_snapshot!(sorted_values(&resolved));
+    fn normalized_system<'a>(
+        input: &'a ResolvedSystem,
+    ) -> (Vec<&'a ResolvedType>, Vec<&'a ResolvedContext>) {
+        (
+            sorted_values(&input.types).clone(),
+            sorted_values(&input.contexts),
+        )
     }
 }

@@ -14,6 +14,7 @@ pub enum TypedExpression {
     LogicalOp(TypedLogicalOp),
     RelationalOp(TypedRelationalOp),
     StringLiteral(String, Type),
+    BooleanLiteral(bool, Type),
 }
 
 impl TypedExpression {
@@ -23,6 +24,7 @@ impl TypedExpression {
             TypedExpression::LogicalOp(logic) => logic.typ(),
             TypedExpression::RelationalOp(relation) => relation.typ(),
             TypedExpression::StringLiteral(_, t) => t,
+            TypedExpression::BooleanLiteral(_, t) => t,
         }
     }
 
@@ -42,6 +44,9 @@ impl Typecheck<TypedExpression> for AstExpr {
             AstExpr::RelationalOp(relation) => TypedExpression::RelationalOp(relation.shallow()),
             AstExpr::StringLiteral(v, _) => {
                 TypedExpression::StringLiteral(v.clone(), Type::Primitive(PrimitiveType::String))
+            }
+            AstExpr::BooleanLiteral(v, _) => {
+                TypedExpression::BooleanLiteral(*v, Type::Primitive(PrimitiveType::Boolean))
             }
         }
     }
@@ -75,7 +80,7 @@ impl Typecheck<TypedExpression> for AstExpr {
                     panic!()
                 }
             }
-            AstExpr::StringLiteral(_, _) => false,
+            AstExpr::StringLiteral(_, _) | AstExpr::BooleanLiteral(_, _) => false,
         }
     }
 }

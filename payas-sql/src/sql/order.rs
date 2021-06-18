@@ -1,11 +1,11 @@
 use super::{column::Column, Expression, ParameterBinding};
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Ordering {
     Asc,
     Desc,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OrderBy<'a>(pub Vec<(&'a Column<'a>, Ordering)>);
 
 impl<'a> Expression for OrderBy<'a> {

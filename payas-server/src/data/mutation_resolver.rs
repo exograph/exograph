@@ -140,12 +140,12 @@ fn return_type_info<'a>(
 
     match typ.kind {
         GqlTypeKind::Primitive => panic!(""),
-        GqlTypeKind::Composite {
+        GqlTypeKind::Composite(GqlCompositeTypeKind {
             table_id,
             pk_query,
             collection_query,
             ..
-        } => (
+        }) => (
             &system.tables[table_id],
             &system.queries[pk_query],
             &system.queries[collection_query],

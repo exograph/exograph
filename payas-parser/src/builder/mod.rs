@@ -7,5 +7,6 @@ mod query_builder;
 
 pub mod system_builder;
 
+mod context_builder;
 mod resolved_builder;
 mod type_builder;

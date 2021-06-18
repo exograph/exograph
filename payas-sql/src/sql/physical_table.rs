@@ -6,7 +6,7 @@ use super::{
     Delete, Expression, ExpressionContext, Insert, ParameterBinding, Update,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PhysicalTable {
     pub name: String,
     pub columns: Vec<PhysicalColumn>,

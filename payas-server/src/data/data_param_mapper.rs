@@ -4,6 +4,7 @@ use crate::sql::column::Column;
 
 use payas_model::model::{
     operation::MutationDataParameter, relation::GqlRelation, types::GqlTypeKind,
+    GqlCompositeTypeKind,
 };
 
 use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
@@ -24,7 +25,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a Column<'a>, &'a Column<'a>)>> for MutationDataPa
 
         match &model_type.kind {
             GqlTypeKind::Primitive => panic!(),
-            GqlTypeKind::Composite { fields, .. } => fields
+            GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
                 .iter()
                 .flat_map(|field| {
                     field.relation.self_column().and_then(|key_column_id| {

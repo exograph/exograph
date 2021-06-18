@@ -1,6 +1,6 @@
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
@@ -10,20 +10,20 @@ pub struct PhysicalColumn {
     pub references: Option<ColumnReferece>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ColumnReferece {
     pub table_name: String,
     pub column_name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PhysicalColumnType {
     Int { bits: IntBits },
     String,
     Boolean,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum IntBits {
     _16,
     _32,
@@ -70,9 +70,27 @@ pub enum Column<'a> {
     JsonObject(Vec<(String, &'a Column<'a>)>),
     JsonAgg(&'a Column<'a>),
     SelectionTableWrapper(Select<'a>),
-    Constant(String),
+    Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
+}
+
+// Due to https://github.com/rust-lang/rust/issues/39128, we have to manually implement PartialEq.
+// If we try to put PartialEq in "derive" above, we get a "moving out... doesn't implement copy" error for the Literal variant
+impl<'a> PartialEq for Column<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Column::Physical(v1), Column::Physical(v2)) => v1 == v2,
+            (Column::Literal(v1), Column::Literal(v2)) => v1 == v2,
+            (Column::JsonObject(v1), Column::JsonObject(v2)) => v1 == v2,
+            (Column::JsonAgg(v1), Column::JsonAgg(v2)) => v1 == v2,
+            (Column::SelectionTableWrapper(v1), Column::SelectionTableWrapper(v2)) => v1 == v2,
+            (Column::Constant(v1), Column::Constant(v2)) => v1 == v2,
+            (Column::Star, Column::Star) => true,
+            (Column::Null, Column::Null) => true,
+            _ => false,
+        }
+    }
 }
 
 impl<'a> Expression for Column<'a> {
