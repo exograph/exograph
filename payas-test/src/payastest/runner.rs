@@ -23,7 +23,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
     for (test_name, test_op) in &testfile.test_operations {
         test_counter += 1;
 
-        let dbname = format!("{}test{}", &testfile.unique_dbname, &test_counter);
+        let dbname = format!("{}_test_{}", &testfile.unique_dbname, &test_counter);
 
         // create a database
         dropdb_psql(&dbname, &dburl).ok(); // clear any existing databases

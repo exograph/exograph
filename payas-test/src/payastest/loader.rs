@@ -100,8 +100,8 @@ fn parse_testfile(testfile: &Testfile, testfile_path: &Path) -> Result<ParsedTes
     let mut result = ParsedTestfile {
         name: testfile_name.clone(),
         unique_dbname: format!(
-            "payatest{}",
-            testfile_name.replace(|c: char| !c.is_ascii_alphanumeric(), "")
+            "payastest_{}",
+            testfile_name.replace(|c: char| !c.is_ascii_alphanumeric(), "_")
         ),
 
         model_path: None,

@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 tree-sitter = "0.19.5"
 id-arena = "2.2.1"
-serde = "1.0.125"
+serde = { version = "1.0.125", features = ["derive"] }
 codemap = "0.1.3"
 codemap-diagnostic = "0.1.1"
 payas-model = { path = "../payas-model" }
