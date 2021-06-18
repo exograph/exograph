@@ -64,11 +64,6 @@ impl PhysicalColumnType {
 }
 
 #[derive(Debug)]
-enum Foo {
-    Literal(Box<dyn SQLParam>),
-}
-
-#[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
     Literal(Box<dyn SQLParam>),
@@ -80,7 +75,8 @@ pub enum Column<'a> {
     Null,
 }
 
-// TODO: Figure out why adding PartialEq to "derive" didn't work (we get a "moving out... doesn't implement copy" error for the Literal variant)
+// Due to https://github.com/rust-lang/rust/issues/39128, we have to manually implement PartialEq.
+// If we try to put PartialEq in "derive" above, we get a "moving out... doesn't implement copy" error for the Literal variant
 impl<'a> PartialEq for Column<'a> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
