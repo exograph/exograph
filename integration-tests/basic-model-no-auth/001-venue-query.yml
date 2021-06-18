@@ -1,5 +1,5 @@
 setup:
-  - ./bb.payas
+  - bb.payas
 init:
   - create-venue.gql
 tests:
