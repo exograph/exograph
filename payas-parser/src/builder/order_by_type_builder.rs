@@ -49,11 +49,7 @@ fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
     OrderByParameterType {
         name: match &model {
             ResolvedType::Primitive(p) => get_parameter_type_name(
-                match p {
-                    PrimitiveType::Boolean => "Boolean",
-                    PrimitiveType::Int => "Int",
-                    PrimitiveType::String => "String",
-                },
+                p.name(),
                 true,
             ),
             ResolvedType::Composite(c) => get_parameter_type_name(c.name.as_str(), false),

@@ -1421,6 +1421,7 @@ dependencies = [
  "codemap-diagnostic",
  "id-arena",
  "insta",
+ "lazy_static",
  "payas-model",
  "serde",
  "tree-sitter",

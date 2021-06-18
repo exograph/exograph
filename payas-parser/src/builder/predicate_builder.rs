@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use payas_model::model::{
     mapped_arena::MappedArena,
     types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
@@ -9,6 +10,8 @@ use super::{
     system_builder::SystemContextBuilding,
 };
 use payas_model::model::predicate::*;
+
+use lazy_static::lazy_static;
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {
@@ -73,7 +76,17 @@ fn expand_type(gql_type: &GqlType, building: &SystemContextBuilding) -> Predicat
     }
 }
 
-const OPERATORS: [&str; 3] = ["eq", "lt", "gt"]; // TODO: Expand and make specific for the operand types
+lazy_static! {
+    static ref TYPE_OPERATORS: HashMap<&'static str, Option<Vec<&'static str>>> = {
+        let mut supported_operators = HashMap::new();
+
+        supported_operators.insert("Int",     Some(vec!["eq", "lt", "gt"]));
+        supported_operators.insert("String" , Some(vec!["eq", "lt", "gt", "like", "startsWith", "endsWith"]));
+        supported_operators.insert("Boolean", None);
+
+        supported_operators
+    };
+}
 
 fn create_operator_filter_type_kind(
     scalar_model_type: &GqlType,
@@ -90,21 +103,19 @@ fn create_operator_filter_type_kind(
         column_id: None,
     };
 
-    // [eq: <scalar_type>, lt: <scalar_type>, ...]
-    let mut parameters: Vec<PredicateParameter> =
-        OPERATORS.iter().map(parameter_constructor).collect();
+    // look up type in (type, operations) table
+    if let Some(maybe_operators) = TYPE_OPERATORS.get(&scalar_model_type.name as &str) {
+        if let Some(operators) = maybe_operators {
+            // type supports specific operations, construct kind with supported operations
+            let parameters: Vec<PredicateParameter> =
+                operators.iter().map(parameter_constructor).collect();
 
-    // scalar_model_type specific operators
-    match scalar_model_type.name.as_ref() {
-        "String" => {
-            parameters.push(parameter_constructor(&"like"));
-            parameters.push(parameter_constructor(&"startsWith"));
-            parameters.push(parameter_constructor(&"endsWith"));
+            PredicateParameterTypeKind::Opeartor(parameters)
+        } else {
+            // type supports no specific operations, assume implicit equals
+            PredicateParameterTypeKind::ImplicitEqual
         }
-        _ => {}
-    }
-
-    PredicateParameterTypeKind::Opeartor(parameters)
+    } else { todo!() } // type given is not listed in TYPE_OPERATORS?
 }
 
 fn create_composite_filter_type_kind(
