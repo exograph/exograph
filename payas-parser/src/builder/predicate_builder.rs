@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use payas_model::model::{
     mapped_arena::MappedArena,
     types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
     GqlCompositeTypeKind,
 };
+use std::collections::HashMap;
 
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -80,9 +80,12 @@ lazy_static! {
     static ref TYPE_OPERATORS: HashMap<&'static str, Option<Vec<&'static str>>> = {
         let mut supported_operators = HashMap::new();
 
-        supported_operators.insert("Int",     Some(vec!["eq", "lt", "gt"]));
-        supported_operators.insert("String" , Some(vec!["eq", "lt", "gt", "like", "startsWith", "endsWith"]));
-        supported_operators.insert("Boolean", None);
+        supported_operators.insert("Int", Some(vec!["eq", "lt", "gt"]));
+        supported_operators.insert(
+            "String",
+            Some(vec!["eq", "lt", "gt", "like", "startsWith", "endsWith"]),
+        );
+        supported_operators.insert("Boolean", Some(vec!["eq"]));
 
         supported_operators
     };
@@ -115,7 +118,9 @@ fn create_operator_filter_type_kind(
             // type supports no specific operations, assume implicit equals
             PredicateParameterTypeKind::ImplicitEqual
         }
-    } else { todo!() } // type given is not listed in TYPE_OPERATORS?
+    } else {
+        todo!()
+    } // type given is not listed in TYPE_OPERATORS?
 }
 
 fn create_composite_filter_type_kind(
