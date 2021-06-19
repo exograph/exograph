@@ -24,8 +24,11 @@ impl<'a> Predicate<'a> {
     pub fn from_name(op_name: &str, lhs: &'a Column<'a>, rhs: &'a Column<'a>) -> Predicate<'a> {
         match op_name {
             "eq" => Predicate::Eq(lhs, &rhs),
+            "neq" => Predicate::Neq(lhs, &rhs),
             "lt" => Predicate::Lt(lhs, &rhs),
+            "lte" => Predicate::Lte(lhs, &rhs),
             "gt" => Predicate::Gt(lhs, &rhs),
+            "gte" => Predicate::Gte(lhs, &rhs),
             "like" => Predicate::Like(lhs, &rhs),
             "startsWith" => Predicate::StartsWith(lhs, &rhs),
             "endsWith" => Predicate::EndsWith(lhs, &rhs),

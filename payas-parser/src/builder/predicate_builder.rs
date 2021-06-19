@@ -77,15 +77,32 @@ fn expand_type(gql_type: &GqlType, building: &SystemContextBuilding) -> Predicat
 }
 
 lazy_static! {
+    // immutable map defining the operators allowed for each type
+    // TODO: could probably be done better?
     static ref TYPE_OPERATORS: HashMap<&'static str, Option<Vec<&'static str>>> = {
         let mut supported_operators = HashMap::new();
 
-        supported_operators.insert("Int", Some(vec!["eq", "lt", "gt"]));
+        supported_operators.insert(
+            "Int",
+            Some(vec![
+                "eq", "neq",
+                "lt", "lte", "gt", "gte"
+            ])
+        );
+
         supported_operators.insert(
             "String",
-            Some(vec!["eq", "lt", "gt", "like", "startsWith", "endsWith"]),
+            Some(vec![
+                "eq", "neq",
+                "lt", "lte", "gt", "gte",
+                "like", "startsWith", "endsWith"
+            ])
         );
-        supported_operators.insert("Boolean", Some(vec!["eq"]));
+
+        supported_operators.insert(
+            "Boolean",
+            Some(vec!["eq", "neq"])
+        );
 
         supported_operators
     };
