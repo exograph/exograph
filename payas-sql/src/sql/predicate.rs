@@ -219,4 +219,45 @@ mod tests {
         );
         assert_params!(predicate.binding(&mut expression_context).params, "foo", 5);
     }
+
+    #[test]
+    fn string_predicates() {
+        let title_col = PhysicalColumn {
+            table_name: "videos".to_string(),
+            column_name: "title".to_string(),
+            typ: PhysicalColumnType::String,
+            is_pk: false,
+            is_autoincrement: false,
+            references: None,
+        };
+        let title_col = Column::Physical(&title_col);
+        let title_value_col = Column::Literal(Box::new("utawaku"));
+
+        // like
+        let mut expression_context = ExpressionContext::default();
+        let like_predicate = Predicate::Like(&title_col, &title_value_col);
+        assert_binding!(
+            &like_predicate.binding(&mut expression_context),
+            r#""videos"."title" LIKE $1"#,
+            "utawaku"
+        );
+
+        // startsWith
+        let mut expression_context = ExpressionContext::default();
+        let starts_with_predicate = Predicate::StartsWith(&title_col, &title_value_col);
+        assert_binding!(
+            &starts_with_predicate.binding(&mut expression_context),
+            r#""videos"."title" LIKE $1 || '%'"#,
+            "utawaku"
+        );
+
+        // endsWith
+        let mut expression_context = ExpressionContext::default();
+        let ends_with_predicate = Predicate::EndsWith(&title_col, &title_value_col);
+        assert_binding!(
+            &ends_with_predicate.binding(&mut expression_context),
+            r#""videos"."title" LIKE '%' || $1"#,
+            "utawaku"
+        );
+    }
 }
