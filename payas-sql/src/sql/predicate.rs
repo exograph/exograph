@@ -100,13 +100,14 @@ impl<'a> Expression for Predicate<'a> {
             Predicate::Not(predicate) => {
                 let expr = predicate.binding(expression_context);
                 ParameterBinding::new(format!("NOT {}", expr.stmt), expr.params)
-            },
-
+            }
             Predicate::Like(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
                     format!("{} LIKE {}", stmt1, stmt2)
                 })
             }
+            // we use the postgres concat operator (||) in order to handle both literals
+            // and column references
             Predicate::StartsWith(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
                     format!("{} LIKE {} || '%'", stmt1, stmt2)
