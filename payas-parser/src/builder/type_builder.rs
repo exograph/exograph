@@ -234,7 +234,7 @@ fn expand_type3(resolved_type: &ResolvedCompositeType, building: &mut SystemCont
             table_id: self_type_info.table_id,
             pk_query: self_type_info.pk_query,
             collection_query: self_type_info.collection_query,
-            access: expr.clone(),
+            access: expr,
         });
 
         building.types.values[existing_type_id].kind = kind;
