@@ -1,8 +1,8 @@
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::typechecker::{
-    CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedExpression, TypedField,
-    TypedFieldSelection,
+    CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedAnnotation, TypedExpression,
+    TypedField, TypedFieldSelection,
 };
 use serde::{Deserialize, Serialize};
 
@@ -24,11 +24,33 @@ pub struct ResolvedContext {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedAccess {
+    pub creation: TypedExpression,
+    pub read: TypedExpression,
+    pub update: TypedExpression,
+    pub delete: TypedExpression,
+}
+
+impl ResolvedAccess {
+    fn permissive() -> Self {
+        ResolvedAccess {
+            creation: TypedExpression::BooleanLiteral(
+                true,
+                Type::Primitive(PrimitiveType::Boolean),
+            ),
+            read: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
+            update: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
+            delete: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedCompositeType {
     pub name: String,
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
-    pub access: Option<TypedExpression>,
+    pub access: ResolvedAccess,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -123,9 +145,9 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
             Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
                 let table_name = ct
                     .get_annotation("table")
-                    .map(|a| a.params[0].as_string())
+                    .map(|a| a.get_single_value().unwrap().as_string())
                     .unwrap_or_else(|| ct.name.clone());
-                let access = ct.get_annotation("access").map(|a| a.params[0].clone());
+                let access = build_access(ct.get_annotation("access"));
                 resolved_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
@@ -155,6 +177,50 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
     ResolvedSystem {
         types: resolved_types,
         contexts: resolved_contexts,
+    }
+}
+
+fn build_access(access_annotation: Option<&TypedAnnotation>) -> ResolvedAccess {
+    match access_annotation {
+        Some(access) => {
+            let restrictive =
+                TypedExpression::BooleanLiteral(false, Type::Primitive(PrimitiveType::Boolean));
+
+            let params = &access.params;
+
+            // The annotation parameter hierarchy is:
+            // value -> query
+            //       -> mutation -> create
+            //                   -> update
+            //                   -> delete
+            // Any lower node in the hierarchy get a priority over it parent.
+
+            let default_access = params.get("value").unwrap_or(&restrictive);
+            let default_mutation_access = params.get("mutation").unwrap_or(default_access);
+
+            let read = params.get("query").unwrap_or(default_access).clone();
+
+            let creation = params
+                .get("create")
+                .unwrap_or(default_mutation_access)
+                .clone();
+            let update = params
+                .get("update")
+                .unwrap_or(default_mutation_access)
+                .clone();
+            let delete = params
+                .get("delete")
+                .unwrap_or(default_mutation_access)
+                .clone();
+
+            ResolvedAccess {
+                creation,
+                read,
+                update,
+                delete,
+            }
+        }
+        None => ResolvedAccess::permissive(),
     }
 }
 
@@ -243,7 +309,7 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
         .find(|annotation| annotation.name == "jwt");
     let claim = jwt_annot
         .map(|annot| {
-            let annot_param = &annot.params.first();
+            let annot_param = &annot.get_single_value();
 
             match annot_param {
                 Some(TypedExpression::FieldSelection(selection)) => match selection {
@@ -286,7 +352,7 @@ fn compute_column_name(
 
     field
         .get_annotation("column")
-        .map(|a| a.params[0].as_string())
+        .map(|a| a.get_single_value().unwrap().as_string())
         .unwrap_or_else(|| default_column_name(enclosing_type, field, types))
 }
 

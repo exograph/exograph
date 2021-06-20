@@ -1,7 +1,9 @@
 use id_arena::Id;
 use payas_model::{
     model::{
-        access::{AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp},
+        access::{
+            Access, AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp,
+        },
         column_id::ColumnId,
         mapped_arena::MappedArena,
         relation::GqlRelation,
@@ -15,7 +17,7 @@ use payas_model::{
 
 use super::{
     query_builder,
-    resolved_builder::{ResolvedField, ResolvedFieldType, ResolvedType},
+    resolved_builder::{ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType},
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
@@ -123,7 +125,7 @@ fn expand_type1(
         table_id,
         pk_query,
         collection_query,
-        access: None,
+        access: Access::restrictive(),
     });
     let existing_type_id = building.types.get_id(&resolved_type.name);
 
@@ -156,7 +158,7 @@ fn expand_type2(
             table_id,
             pk_query,
             collection_query,
-            access: None,
+            access: Access::restrictive(),
         });
 
         building.types.values[existing_type_id].kind = kind;
@@ -180,7 +182,7 @@ fn expand_type2(
                     table_id,
                     pk_query,
                     collection_query,
-                    access: None,
+                    access: Access::restrictive(),
                 })
         }
 
@@ -196,7 +198,7 @@ fn expand_type2(
                     table_id,
                     pk_query,
                     collection_query,
-                    access: None,
+                    access: Access::restrictive(),
                 })
         }
 
@@ -212,7 +214,7 @@ fn expand_type2(
                     table_id,
                     pk_query,
                     collection_query,
-                    access: None,
+                    access: Access::restrictive(),
                 })
         }
     }
@@ -224,10 +226,7 @@ fn expand_type3(resolved_type: &ResolvedCompositeType, building: &mut SystemCont
     let existing_type = &building.types[existing_type_id];
 
     if let GqlTypeKind::Composite(self_type_info) = &existing_type.kind {
-        let expr = &resolved_type
-            .access
-            .as_ref()
-            .map(|access| compute_expression(access, self_type_info, building, true));
+        let expr = compute_access(&resolved_type.access, self_type_info, building);
 
         // TODO: Figure out a way to avoid the clone()s
         let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
@@ -239,6 +238,19 @@ fn expand_type3(resolved_type: &ResolvedCompositeType, building: &mut SystemCont
         });
 
         building.types.values[existing_type_id].kind = kind;
+    }
+}
+
+fn compute_access(
+    resolved: &ResolvedAccess,
+    self_type_info: &GqlCompositeTypeKind,
+    building: &SystemContextBuilding,
+) -> Access {
+    Access {
+        creation: compute_expression(&resolved.creation, self_type_info, building, true),
+        read: compute_expression(&resolved.read, self_type_info, building, true),
+        update: compute_expression(&resolved.update, self_type_info, building, true),
+        delete: compute_expression(&resolved.delete, self_type_info, building, true),
     }
 }
 

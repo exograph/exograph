@@ -1,6 +1,25 @@
 use super::column_id::ColumnId;
 
 #[derive(Debug, Clone)]
+pub struct Access {
+    pub creation: AccessExpression,
+    pub read: AccessExpression,
+    pub update: AccessExpression,
+    pub delete: AccessExpression,
+}
+
+impl Access {
+    pub const fn restrictive() -> Self {
+        Self {
+            creation: AccessExpression::BooleanLiteral(false),
+            read: AccessExpression::BooleanLiteral(false),
+            update: AccessExpression::BooleanLiteral(false),
+            delete: AccessExpression::BooleanLiteral(false),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum AccessExpression {
     ContextSelection(AccessConextSelection), // AuthContext.role
     Column(ColumnId), // self.id (special case of a boolean column such as self.published will be expanded to self.published == true when building an AccessExpression)

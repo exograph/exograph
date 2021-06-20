@@ -23,10 +23,11 @@ module.exports = grammar({
       field("name", $.term),
       optional(seq(
         "(",
-        commaSep(field("param", $.expression)),
+        commaSep(field("param", choice($.expression, $.annotation_param))),
         ")"
       ))
     ),
+    annotation_param: $ => seq(field("name", $.term), "=", field("expr", $.expression)),
     field: $ => seq(
       field("name", $.term),
       ":",
