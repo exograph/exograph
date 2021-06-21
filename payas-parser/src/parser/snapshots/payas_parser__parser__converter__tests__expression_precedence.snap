@@ -1,6 +1,6 @@
 ---
 source: payas-parser/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span)"
+expression: "convert_root(parsed.root_node(), src.as_bytes(), &codemap, file_span)"
 
 ---
 models:
@@ -14,11 +14,13 @@ models:
         annotations:
           - name: column
             params:
-              - StringLiteral:
+              value:
+                StringLiteral:
                   - custom_column
           - name: auth
             params:
-              - LogicalOp:
+              value:
+                LogicalOp:
                   Or:
                     - RelationalOp:
                         Eq:

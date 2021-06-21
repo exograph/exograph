@@ -203,6 +203,32 @@ pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldTyp
 fn convert_annotation(node: Node, source: &[u8], source_span: Span) -> AstAnnotation {
     assert_eq!(node.kind(), "annotation");
     let mut cursor = node.walk();
+
+    fn convert_param(node: Node, source: &[u8], source_span: Span) -> (String, AstExpr) {
+        match node.kind() {
+            "expression" => (
+                "value".to_string(), // Use "value" as the default field name for the single field annotation
+                convert_expression(node, source, source_span),
+            ),
+            "annotation_param" => {
+                let name = node
+                    .child_by_field_name("name")
+                    .unwrap()
+                    .utf8_text(source)
+                    .unwrap()
+                    .to_string();
+                let expr = convert_expression(
+                    node.child_by_field_name("expr").unwrap(),
+                    source,
+                    source_span,
+                );
+
+                (name, expr)
+            }
+            o => panic!("unsupported annotation content: {}", o),
+        }
+    }
+
     AstAnnotation {
         name: node
             .child_by_field_name("name")
@@ -212,7 +238,7 @@ fn convert_annotation(node: Node, source: &[u8], source_span: Span) -> AstAnnota
             .to_string(),
         params: node
             .children_by_field_name("param", &mut cursor)
-            .map(|c| convert_expression(c, source, source_span))
+            .map(|c| convert_param(c, source, source_span))
             .collect(),
     }
 }

@@ -26,7 +26,23 @@ expression: normalized_system(&resolved)
           is_pk: false
           is_autoincrement: false
       table_name: Concert
-      access: ~
+      access:
+        creation:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        read:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        update:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        delete:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
   - Primitive: Int
   - Primitive: String
   - Composite:
@@ -52,6 +68,22 @@ expression: normalized_system(&resolved)
           is_pk: false
           is_autoincrement: false
       table_name: Venue
-      access: ~
+      access:
+        creation:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        read:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        update:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        delete:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
 - []
 

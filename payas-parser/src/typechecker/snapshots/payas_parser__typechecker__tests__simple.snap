@@ -30,12 +30,14 @@ expression: types
           annotations:
             - name: column
               params:
-                - StringLiteral:
+                value:
+                  StringLiteral:
                     - custom_column
                     - Primitive: String
             - name: auth
               params:
-                - LogicalOp:
+                value:
+                  LogicalOp:
                     Or:
                       - LogicalOp:
                           Or:

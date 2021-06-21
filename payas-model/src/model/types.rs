@@ -1,4 +1,4 @@
-use super::access::AccessExpression;
+use super::access::Access;
 use super::{column_id::ColumnId, relation::GqlRelation};
 use crate::model::operation::*;
 
@@ -84,7 +84,7 @@ pub struct GqlCompositeTypeKind {
     pub table_id: Id<PhysicalTable>,
     pub pk_query: Id<Query>,
     pub collection_query: Id<Query>,
-    pub access: Option<AccessExpression>,
+    pub access: Access,
 }
 
 #[derive(Debug, Clone, PartialEq)]

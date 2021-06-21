@@ -27,29 +27,102 @@ expression: normalized_system(&resolved)
           is_autoincrement: false
       table_name: Concert
       access:
-        LogicalOp:
-          Or:
-            - RelationalOp:
-                Eq:
-                  - FieldSelection:
-                      Select:
-                        - Single:
-                            - - AuthContext
-                            - Reference: AuthContext
-                        - - role
-                        - Reference: String
-                  - StringLiteral:
-                      - ROLE_ADMIN
-                      - Primitive: String
-                  - Primitive: Boolean
-            - FieldSelection:
-                Select:
-                  - Single:
-                      - - self
-                      - Reference: Concert
-                  - - public
-                  - Reference: Boolean
-            - Primitive: Boolean
+        creation:
+          LogicalOp:
+            Or:
+              - RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference: AuthContext
+                          - - role
+                          - Reference: String
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                        - Primitive: String
+                    - Primitive: Boolean
+              - FieldSelection:
+                  Select:
+                    - Single:
+                        - - self
+                        - Reference: Concert
+                    - - public
+                    - Reference: Boolean
+              - Primitive: Boolean
+        read:
+          LogicalOp:
+            Or:
+              - RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference: AuthContext
+                          - - role
+                          - Reference: String
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                        - Primitive: String
+                    - Primitive: Boolean
+              - FieldSelection:
+                  Select:
+                    - Single:
+                        - - self
+                        - Reference: Concert
+                    - - public
+                    - Reference: Boolean
+              - Primitive: Boolean
+        update:
+          LogicalOp:
+            Or:
+              - RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference: AuthContext
+                          - - role
+                          - Reference: String
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                        - Primitive: String
+                    - Primitive: Boolean
+              - FieldSelection:
+                  Select:
+                    - Single:
+                        - - self
+                        - Reference: Concert
+                    - - public
+                    - Reference: Boolean
+              - Primitive: Boolean
+        delete:
+          LogicalOp:
+            Or:
+              - RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference: AuthContext
+                          - - role
+                          - Reference: String
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                        - Primitive: String
+                    - Primitive: Boolean
+              - FieldSelection:
+                  Select:
+                    - Single:
+                        - - self
+                        - Reference: Concert
+                    - - public
+                    - Reference: Boolean
+              - Primitive: Boolean
   - Primitive: Int
   - Primitive: String
 - - name: AuthContext

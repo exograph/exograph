@@ -13,7 +13,7 @@ expression: types
             Reference: String
           annotations:
             - name: jwt
-              params: []
+              params: {}
       annotations: []
 - - Boolean
   - Primitive: Boolean
@@ -33,7 +33,8 @@ expression: types
       annotations:
         - name: access
           params:
-            - LogicalOp:
+            value:
+              LogicalOp:
                 Or:
                   - RelationalOp:
                       Eq:

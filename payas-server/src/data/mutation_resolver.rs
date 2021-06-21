@@ -1,5 +1,8 @@
 use crate::{
-    data::query_resolver::QueryOperations,
+    data::{
+        query_resolver::QueryOperations,
+        sql_mapper::{compute_access_predicate, OperationKind},
+    },
     sql::{column::Column, predicate::Predicate, Cte, PhysicalTable, SQLOperation},
 };
 
@@ -65,6 +68,18 @@ fn create_operation<'a>(
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
 ) -> SQLOperation<'a> {
+    let access_predicate = compute_access_predicate(
+        &mutation.return_type,
+        &OperationKind::Create,
+        operation_context,
+    );
+
+    // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
+    // See issue #69
+    if access_predicate != &Predicate::True {
+        panic!("Insufficient access to create"); // TODO: Report as GraphQL error
+    }
+
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let column_values = data_columns(data_param, &field.arguments, operation_context).unwrap();
@@ -83,10 +98,21 @@ fn delete_operation<'a>(
 ) -> SQLOperation<'a> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
+    let access_predicate = compute_access_predicate(
+        &mutation.return_type,
+        &OperationKind::Delete,
+        operation_context,
+    );
+
+    if access_predicate == &Predicate::False {
+        // Hard failure, no need to proceed to restrict the predicate in SQL
+        panic!("Insufficient access to delete"); // TODO: Report as GraphQL error
+    }
+
     let predicate = super::compute_predicate(
         Some(predicate_param),
         &field.arguments,
-        Predicate::True,
+        access_predicate.clone(),
         operation_context,
     );
 
@@ -105,6 +131,16 @@ fn update_operation<'a>(
 ) -> SQLOperation<'a> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
+    let access_predicate = compute_access_predicate(
+        &mutation.return_type,
+        &OperationKind::Update,
+        operation_context,
+    );
+
+    if access_predicate == &Predicate::False {
+        // Hard failure, no need to proceed to restrict the predicate in SQL
+        panic!("Insufficient access to update"); // TODO: Report as GraphQL error
+    }
     let predicate = super::compute_predicate(
         Some(predicate_param),
         &field.arguments,

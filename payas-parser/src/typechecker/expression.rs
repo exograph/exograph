@@ -70,7 +70,7 @@ impl Typecheck<TypedExpression> for AstExpr {
                 if let TypedExpression::LogicalOp(logic_typ) = typ {
                     logic.pass(logic_typ, env, scope, errors)
                 } else {
-                    panic!()
+                    panic!("type {:?}", typ);
                 }
             }
             AstExpr::RelationalOp(relation) => {

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use codemap::{CodeMap, Span};
 use serde::{Deserialize, Serialize};
 
@@ -61,7 +63,7 @@ impl AstFieldType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstAnnotation {
     pub name: String,
-    pub params: Vec<AstExpr>,
+    pub params: HashMap<String, AstExpr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
