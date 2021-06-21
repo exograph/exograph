@@ -1,9 +1,11 @@
+use port_scanner::request_open_port; 
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
 use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Serialize;
+use jsonwebtoken::{encode, Header, EncodingKey};
 use std::io::Read;
 use std::process::Command;
 use std::process::Stdio;
@@ -16,28 +18,27 @@ struct PayasPost {
 
 pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bool> {
     let mut test_counter: usize = 0;
-    const PORT_BASE: usize = 34140;
     let mut success: bool = true;
 
     // iterate through our tests
     for (test_name, test_op) in &testfile.test_operations {
         test_counter += 1;
 
+        let log_prefix = format!("({}/{})", testfile.name, test_name);
         let dbname = format!("{}_test_{}", &testfile.unique_dbname, &test_counter);
 
         // create a database
         dropdb_psql(&dbname, &dburl).ok(); // clear any existing databases
         let (dburl_for_payas, dbusername) = createdb_psql(&dbname, &dburl)?;
 
-        // select a port
-        // TODO: check that port is free
-        let port = PORT_BASE + test_counter;
+        // select a free port
+        let port = request_open_port().context("No open ports available.")?;
         let endpoint = format!("http://127.0.0.1:{}/", port);
 
         // create the schema
         println!(
-            "#{} ({}) Initializing schema in {} ...",
-            test_counter, test_name, dbname
+            "{} Initializing schema in {} ...",
+            log_prefix, dbname
         );
         let cli_child = Command::new("payas-cli")
             .arg(testfile.model_path.as_ref().unwrap())
@@ -53,14 +54,14 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
         // spawn a payas instance
         println!(
-            "#{} ({}) Initializing payas-server ...",
-            test_counter, test_name
+            "{} Initializing payas-server ...",
+            log_prefix
         );
         let mut payas_child = Command::new("payas-server")
             .arg(testfile.model_path.as_ref().unwrap())
             .env("PAYAS_DATABASE_URL", dburl_for_payas)
             .env("PAYAS_DATABASE_USER", dbusername)
-            .env("PAYAS_JWT_SECRET", "abc")
+            .env("PAYAS_JWT_SECRET", "SECRET")
             .env("PAYAS_SERVER_PORT", port.to_string())
             .stdout(Stdio::piped())
             .spawn()
@@ -79,12 +80,12 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
         // run the init section
         for operation in testfile.init_operations.iter() {
-            println!("#{} ({}) Initializing database...", test_counter, test_name);
+            println!("{} Initializing database...", log_prefix);
             run_operation(&endpoint, operation).await??;
         }
 
         // run test
-        println!("#{} ({}) Testing ...", test_counter, test_name);
+        println!("{} Testing ...", log_prefix);
         let result = run_operation(&endpoint, test_op).await;
 
         // did the test run okay?
@@ -93,13 +94,13 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                 // check test results
                 match test_result {
                     Ok(_) => {
-                        println!("#{} ({}) OK\n", test_counter, test_name);
+                        println!("{} OK\n", log_prefix);
                     }
 
                     Err(e) => {
                         println!(
-                            "#{} ({}) ASSERTION FAILED\n{:?}",
-                            test_counter, test_name, e
+                            "{} ASSERTION FAILED\n{:?}",
+                            log_prefix, e
                         );
                         success = false;
                     }
@@ -107,8 +108,8 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
             }
             Err(e) => {
                 println!(
-                    "#{} ({}) TEST EXECUTION FAILED\n{:?}",
-                    test_counter, test_name, e
+                    "{} TEST EXECUTION FAILED\n{:?}",
+                    log_prefix, e
                 );
                 success = false;
             }
@@ -132,10 +133,20 @@ async fn run_operation(url: &str, gql: &TestfileOperation) -> Result<TestResult>
             document,
             variables,
             expected_payload,
+            auth
         } => {
             let client = Client::default();
-            let mut resp = client
-                .post(url)
+            let mut req = client
+                .post(url);
+
+            // add JWT token if specified
+            // TODO: generate a secret
+            if let Some(auth) = auth {
+                let token = encode(&Header::default(), &auth, &EncodingKey::from_secret("SECRET".as_ref())).unwrap();
+                req = req.header("Authorization", format!("Bearer {}", token));
+            };
+
+            let mut resp = req
                 .send_json(&PayasPost {
                     query: document.to_string(),
                     variables: variables.as_ref().unwrap().clone(),
