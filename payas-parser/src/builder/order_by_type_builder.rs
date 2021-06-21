@@ -7,7 +7,7 @@ use payas_model::model::{
 
 use payas_model::model::{order::*, relation::GqlRelation, types::*};
 
-use crate::typechecker::{PrimitiveType, Type};
+use crate::typechecker::Type;
 
 use super::{resolved_builder::ResolvedType, system_builder::SystemContextBuilding};
 
@@ -48,10 +48,7 @@ pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> Str
 fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
     OrderByParameterType {
         name: match &model {
-            ResolvedType::Primitive(p) => get_parameter_type_name(
-                p.name(),
-                true,
-            ),
+            ResolvedType::Primitive(p) => get_parameter_type_name(p.name(), true),
             ResolvedType::Composite(c) => get_parameter_type_name(c.name.as_str(), false),
         },
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },

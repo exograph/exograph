@@ -1,0 +1,32 @@
+operation: |
+    query($id:Int!) {
+        venue(id:$id) {
+            id
+            name
+            published
+            concerts {
+                id
+                title
+                published
+            }
+        }
+        venue2: venue(id:2) { # Use alias. Needed anyway, but also tests for how we process aliases
+            id
+            name
+            published
+            concert1: concerts(where: {id: {eq: 1}}) {  # This should result in an empty array, since there is no such concert for venue2
+                id
+                title
+                published
+            }
+            concerts(where: {id: {eq: 2}}) {
+                id
+                title
+                published
+            }
+        }
+    } 
+variable: |
+    {
+        "id": 1
+    }

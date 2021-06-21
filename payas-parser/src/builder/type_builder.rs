@@ -467,6 +467,8 @@ fn create_column(
 ) -> Option<PhysicalColumn> {
     match &field.typ {
         ResolvedFieldType::Plain(type_name) => {
+            // Either a scalar (primitive) or a many-to-one relatioship with another table
+
             let field_type = env.get_by_key(&type_name).unwrap();
 
             match field_type {
@@ -486,16 +488,23 @@ fn create_column(
                     references: None,
                 }),
                 ResolvedType::Composite(ct) => {
-                    let pk_field = ct.pk_field().unwrap();
+                    // Many-to-one:
+                    // Column from the current table (but of the type of the pk column of the other table)
+                    // and it refers to the pk column in the other table.
+                    let other_pk_field = ct.pk_field().unwrap();
                     Some(PhysicalColumn {
-                        table_name: ct.table_name.to_string(),
+                        table_name: table_name.to_string(),
                         column_name: field.column_name.clone(),
-                        typ: pk_field.typ.deref(env).as_primitive().to_column_type(),
+                        typ: other_pk_field
+                            .typ
+                            .deref(env)
+                            .as_primitive()
+                            .to_column_type(),
                         is_pk: false,
                         is_autoincrement: false,
                         references: Some(ColumnReferece {
                             table_name: ct.table_name.clone(),
-                            column_name: field.column_name.clone(),
+                            column_name: other_pk_field.column_name.clone(),
                         }),
                     })
                 }
