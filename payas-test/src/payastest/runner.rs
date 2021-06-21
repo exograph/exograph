@@ -1,3 +1,4 @@
+use port_scanner::request_open_port; 
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
 use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::loader::TestfileOperation;
@@ -16,28 +17,27 @@ struct PayasPost {
 
 pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bool> {
     let mut test_counter: usize = 0;
-    const PORT_BASE: usize = 34140;
     let mut success: bool = true;
 
     // iterate through our tests
     for (test_name, test_op) in &testfile.test_operations {
         test_counter += 1;
 
+        let log_prefix = format!("({}/{})", testfile.name, test_name);
         let dbname = format!("{}_test_{}", &testfile.unique_dbname, &test_counter);
 
         // create a database
         dropdb_psql(&dbname, &dburl).ok(); // clear any existing databases
         let (dburl_for_payas, dbusername) = createdb_psql(&dbname, &dburl)?;
 
-        // select a port
-        // TODO: check that port is free
-        let port = PORT_BASE + test_counter;
+        // select a free port
+        let port = request_open_port().context("No open ports available.")?;
         let endpoint = format!("http://127.0.0.1:{}/", port);
 
         // create the schema
         println!(
-            "#{} ({}) Initializing schema in {} ...",
-            test_counter, test_name, dbname
+            "{} Initializing schema in {} ...",
+            log_prefix, dbname
         );
         let cli_child = Command::new("payas-cli")
             .arg(testfile.model_path.as_ref().unwrap())
@@ -53,8 +53,8 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
         // spawn a payas instance
         println!(
-            "#{} ({}) Initializing payas-server ...",
-            test_counter, test_name
+            "{} Initializing payas-server ...",
+            log_prefix
         );
         let mut payas_child = Command::new("payas-server")
             .arg(testfile.model_path.as_ref().unwrap())
@@ -79,12 +79,12 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
         // run the init section
         for operation in testfile.init_operations.iter() {
-            println!("#{} ({}) Initializing database...", test_counter, test_name);
+            println!("{} Initializing database...", log_prefix);
             run_operation(&endpoint, operation).await??;
         }
 
         // run test
-        println!("#{} ({}) Testing ...", test_counter, test_name);
+        println!("{} Testing ...", log_prefix);
         let result = run_operation(&endpoint, test_op).await;
 
         // did the test run okay?
@@ -93,13 +93,13 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                 // check test results
                 match test_result {
                     Ok(_) => {
-                        println!("#{} ({}) OK\n", test_counter, test_name);
+                        println!("{} OK\n", log_prefix);
                     }
 
                     Err(e) => {
                         println!(
-                            "#{} ({}) ASSERTION FAILED\n{:?}",
-                            test_counter, test_name, e
+                            "{} ASSERTION FAILED\n{:?}",
+                            log_prefix, e
                         );
                         success = false;
                     }
@@ -107,8 +107,8 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
             }
             Err(e) => {
                 println!(
-                    "#{} ({}) TEST EXECUTION FAILED\n{:?}",
-                    test_counter, test_name, e
+                    "{} TEST EXECUTION FAILED\n{:?}",
+                    log_prefix, e
                 );
                 success = false;
             }
