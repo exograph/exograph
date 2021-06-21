@@ -1,0 +1,12 @@
+setup:
+  - concerts.payas
+init:
+  - create-concerts-venues.gql
+tests:
+  venue-by-id-no-nesting:
+    - venue-by-id-no-nesting.gql
+    - venue-by-id-no-nesting.json
+  venue-by-id-with-nesting:
+  - venue-by-id-with-nesting.gql
+  - venue-by-id-with-nesting.json
+  
