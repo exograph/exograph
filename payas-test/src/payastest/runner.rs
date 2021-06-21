@@ -52,6 +52,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
         let log_prefix = format!("({}/{})", testfile.name, test_name);
         let dbname = format!("{}_test_{}", &testfile.unique_dbname, &test_counter);
+        ctx.dbname = Some(dbname.clone());
 
         // create a database
         dropdb_psql(&dbname, &dburl).ok(); // clear any existing databases
