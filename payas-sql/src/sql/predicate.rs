@@ -13,14 +13,25 @@ pub enum Predicate<'a> {
     And(Box<Predicate<'a>>, Box<Predicate<'a>>),
     Or(Box<Predicate<'a>>, Box<Predicate<'a>>),
     Not(Box<Predicate<'a>>),
+
+    // string predicates
+    Like(&'a Column<'a>, &'a Column<'a>),
+    StartsWith(&'a Column<'a>, &'a Column<'a>),
+    EndsWith(&'a Column<'a>, &'a Column<'a>),
 }
 
 impl<'a> Predicate<'a> {
     pub fn from_name(op_name: &str, lhs: &'a Column<'a>, rhs: &'a Column<'a>) -> Predicate<'a> {
         match op_name {
             "eq" => Predicate::Eq(lhs, &rhs),
+            "neq" => Predicate::Neq(lhs, &rhs),
             "lt" => Predicate::Lt(lhs, &rhs),
+            "lte" => Predicate::Lte(lhs, &rhs),
             "gt" => Predicate::Gt(lhs, &rhs),
+            "gte" => Predicate::Gte(lhs, &rhs),
+            "like" => Predicate::Like(lhs, &rhs),
+            "startsWith" => Predicate::StartsWith(lhs, &rhs),
+            "endsWith" => Predicate::EndsWith(lhs, &rhs),
             _ => todo!(),
         }
     }
@@ -92,6 +103,23 @@ impl<'a> Expression for Predicate<'a> {
             Predicate::Not(predicate) => {
                 let expr = predicate.binding(expression_context);
                 ParameterBinding::new(format!("NOT {}", expr.stmt), expr.params)
+            }
+            Predicate::Like(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} LIKE {}", stmt1, stmt2)
+                })
+            }
+            // we use the postgres concat operator (||) in order to handle both literals
+            // and column references
+            Predicate::StartsWith(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} LIKE {} || '%'", stmt1, stmt2)
+                })
+            }
+            Predicate::EndsWith(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} LIKE '%' || {}", stmt1, stmt2)
+                })
             }
         }
     }
@@ -190,5 +218,46 @@ mod tests {
             5
         );
         assert_params!(predicate.binding(&mut expression_context).params, "foo", 5);
+    }
+
+    #[test]
+    fn string_predicates() {
+        let title_col = PhysicalColumn {
+            table_name: "videos".to_string(),
+            column_name: "title".to_string(),
+            typ: PhysicalColumnType::String,
+            is_pk: false,
+            is_autoincrement: false,
+            references: None,
+        };
+        let title_col = Column::Physical(&title_col);
+        let title_value_col = Column::Literal(Box::new("utawaku"));
+
+        // like
+        let mut expression_context = ExpressionContext::default();
+        let like_predicate = Predicate::Like(&title_col, &title_value_col);
+        assert_binding!(
+            &like_predicate.binding(&mut expression_context),
+            r#""videos"."title" LIKE $1"#,
+            "utawaku"
+        );
+
+        // startsWith
+        let mut expression_context = ExpressionContext::default();
+        let starts_with_predicate = Predicate::StartsWith(&title_col, &title_value_col);
+        assert_binding!(
+            &starts_with_predicate.binding(&mut expression_context),
+            r#""videos"."title" LIKE $1 || '%'"#,
+            "utawaku"
+        );
+
+        // endsWith
+        let mut expression_context = ExpressionContext::default();
+        let ends_with_predicate = Predicate::EndsWith(&title_col, &title_value_col);
+        assert_binding!(
+            &ends_with_predicate.binding(&mut expression_context),
+            r#""videos"."title" LIKE '%' || $1"#,
+            "utawaku"
+        );
     }
 }

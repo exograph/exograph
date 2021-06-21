@@ -3,12 +3,15 @@ use payas_model::model::{
     types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
     GqlCompositeTypeKind,
 };
+use std::collections::HashMap;
 
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
 };
 use payas_model::model::predicate::*;
+
+use lazy_static::lazy_static;
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {
@@ -73,29 +76,68 @@ fn expand_type(gql_type: &GqlType, building: &SystemContextBuilding) -> Predicat
     }
 }
 
-const OPERATORS: [&str; 3] = ["eq", "lt", "gt"]; // TODO: Expand and make specific for the operand types
+lazy_static! {
+    // immutable map defining the operators allowed for each type
+    // TODO: could probably be done better?
+    static ref TYPE_OPERATORS: HashMap<&'static str, Option<Vec<&'static str>>> = {
+        let mut supported_operators = HashMap::new();
+
+        supported_operators.insert(
+            "Int",
+            Some(vec![
+                "eq", "neq",
+                "lt", "lte", "gt", "gte"
+            ])
+        );
+
+        supported_operators.insert(
+            "String",
+            Some(vec![
+                "eq", "neq",
+                "lt", "lte", "gt", "gte",
+                "like", "startsWith", "endsWith"
+            ])
+        );
+
+        supported_operators.insert(
+            "Boolean",
+            Some(vec!["eq", "neq"])
+        );
+
+        supported_operators
+    };
+}
 
 fn create_operator_filter_type_kind(
     scalar_model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
-    // TODO: Create scalar_type specific filter. For example, "like" only for String
-    // [eq: <scalar_type>, lt: <scalar_type>, ...]
-    let parameters = OPERATORS
-        .iter()
-        .map(|operator| PredicateParameter {
-            name: operator.to_string(),
-            type_name: scalar_model_type.name.to_string(),
-            type_id: building
-                .predicate_types
-                .get_id(&scalar_model_type.name)
-                .unwrap(),
-            type_modifier: GqlTypeModifier::Optional,
-            column_id: None,
-        })
-        .collect();
+    let parameter_constructor = |operator: &&str| PredicateParameter {
+        name: operator.to_string(),
+        type_name: scalar_model_type.name.to_string(),
+        type_id: building
+            .predicate_types
+            .get_id(&scalar_model_type.name)
+            .unwrap(),
+        type_modifier: GqlTypeModifier::Optional,
+        column_id: None,
+    };
 
-    PredicateParameterTypeKind::Opeartor(parameters)
+    // look up type in (type, operations) table
+    if let Some(maybe_operators) = TYPE_OPERATORS.get(&scalar_model_type.name as &str) {
+        if let Some(operators) = maybe_operators {
+            // type supports specific operations, construct kind with supported operations
+            let parameters: Vec<PredicateParameter> =
+                operators.iter().map(parameter_constructor).collect();
+
+            PredicateParameterTypeKind::Opeartor(parameters)
+        } else {
+            // type supports no specific operations, assume implicit equals
+            PredicateParameterTypeKind::ImplicitEqual
+        }
+    } else {
+        todo!()
+    } // type given is not listed in TYPE_OPERATORS?
 }
 
 fn create_composite_filter_type_kind(
