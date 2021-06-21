@@ -1,0 +1,11 @@
+setup:
+  - concerts.payas
+init:
+  - create-concerts-venues-auth.gql
+tests:
+  with-auth:
+    - with-auth.gql
+    - with-auth.json
+  without-auth:
+    - without-auth.gql
+    - without-auth.json

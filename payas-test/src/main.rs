@@ -24,15 +24,15 @@ async fn main() {
     let all_tests_succeded = join_all(testfiles.into_iter().map(|t| async move {
         run_testfile(&t, std::env::var("PAYAS_TEST_DATABASE_URL").unwrap()).await
     }))
-    .await
-    .into_iter()
-    .fold(true, |accum, test_status| match test_status {
-        Ok(test_result) => accum && test_result,
-        Err(e) => {
-            println!("Testfile failure: {:?}", e);
-            false
-        }
-    });
+        .await
+        .into_iter()
+        .fold(true, |accum, test_status| match test_status {
+            Ok(test_result) => accum && test_result,
+            Err(e) => {
+                println!("Testfile failure: {:?}", e);
+                false
+            }
+        });
 
     if all_tests_succeded {
         std::process::exit(0);
