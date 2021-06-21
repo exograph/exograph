@@ -1,3 +1,4 @@
+use std::process::Child;
 use port_scanner::request_open_port; 
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
 use crate::payastest::loader::ParsedTestfile;
@@ -15,12 +16,38 @@ struct PayasPost {
     variables: serde_json::Value,
 }
 
+/// Structure to hold open resources associated with a running testfile.
+/// When dropped, we will clean them up.
+#[derive(Default)]
+struct TestfileContext {
+    dbname: Option<String>,
+    dburl: Option<String>,
+    server: Option<Child>,
+}
+
+impl Drop for TestfileContext {
+    fn drop(&mut self) { 
+        // kill the started server
+        if let Some(server) = &mut self.server {
+            server.kill().ok();
+        }
+
+        // drop the database
+        if let Some(dburl) = &self.dburl {
+            if let Some(dbname) = &self.dbname {
+                dropdb_psql(&dbname, &dburl).ok();
+            }
+        }
+    }
+}
+
 pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bool> {
     let mut test_counter: usize = 0;
     let mut success: bool = true;
 
     // iterate through our tests
     for (test_name, test_op) in &testfile.test_operations {
+        let mut ctx = TestfileContext::default();
         test_counter += 1;
 
         let log_prefix = format!("({}/{})", testfile.name, test_name);
@@ -29,6 +56,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         // create a database
         dropdb_psql(&dbname, &dburl).ok(); // clear any existing databases
         let (dburl_for_payas, dbusername) = createdb_psql(&dbname, &dburl)?;
+        ctx.dburl = Some(dburl_for_payas.clone());
 
         // select a free port
         let port = request_open_port().context("No open ports available.")?;
@@ -56,20 +84,25 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
             "{} Initializing payas-server ...",
             log_prefix
         );
-        let mut payas_child = Command::new("payas-server")
-            .arg(testfile.model_path.as_ref().unwrap())
-            .env("PAYAS_DATABASE_URL", dburl_for_payas)
-            .env("PAYAS_DATABASE_USER", dbusername)
-            .env("PAYAS_JWT_SECRET", "abc")
-            .env("PAYAS_SERVER_PORT", port.to_string())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("payas-server failed to start");
+        ctx.server = Some(
+            Command::new("payas-server")
+                .arg(testfile.model_path.as_ref().unwrap())
+                .env("PAYAS_DATABASE_URL", dburl_for_payas)
+                .env("PAYAS_DATABASE_USER", dbusername)
+                .env("PAYAS_JWT_SECRET", "abc")
+                .env("PAYAS_SERVER_PORT", port.to_string())
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("payas-server failed to start")
+        );
 
         // wait for it to start
         const MAGIC_STRING: &str = "Started ";
-        let mut server_stdout = payas_child.stdout.take().unwrap();
+        let mut server_stdout = ctx.server.as_mut().unwrap()
+            .stdout.take()
+            .unwrap();
         let mut buffer = [0; MAGIC_STRING.len()];
+
         server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
         let output = String::from(std::str::from_utf8(&buffer)?);
 
@@ -114,11 +147,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
             }
         }
 
-        // kill payas
-        payas_child.kill().ok();
-
-        // drop the database
-        dropdb_psql(&dbname, &dburl)?;
+        // implicit ctx drop
     }
 
     Ok(success)
