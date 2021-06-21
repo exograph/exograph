@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::read_dir;
 use std::fs::File;
@@ -216,14 +216,10 @@ fn construct_gql_operation_from_file(
 
     // parse json sections
     let parse_json_from_section = |section: &Option<String>| {
-        {
-            if let Some(section) = section {
-                Some(serde_json::from_str(&section))
-            } else {
-                None
-            }
-        }
-        .transpose()
+        section
+            .as_ref()
+            .map(|s| serde_json::from_str(&s))
+            .transpose()
     };
 
     Ok(TestfileOperation::GqlDocument {
