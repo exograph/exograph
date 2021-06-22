@@ -1,12 +1,12 @@
-use std::process::Child;
-use port_scanner::request_open_port; 
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
 use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
 use anyhow::{anyhow, bail, Context, Result};
+use port_scanner::request_open_port;
 use serde::Serialize;
 use std::io::Read;
+use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
 
@@ -26,10 +26,10 @@ struct TestfileContext {
 }
 
 impl Drop for TestfileContext {
-    fn drop(&mut self) { 
+    fn drop(&mut self) {
         // kill the started server
         if let Some(server) = &mut self.server {
-            if let e@Err(_) = server.kill() {
+            if let e @ Err(_) = server.kill() {
                 println!("Error killing server instance: {:?}", e)
             }
         }
@@ -37,7 +37,7 @@ impl Drop for TestfileContext {
         // drop the database
         if let Some(dburl) = &self.dburl {
             if let Some(dbname) = &self.dbname {
-                if let e@Err(_) = dropdb_psql(&dbname, &dburl) {
+                if let e @ Err(_) = dropdb_psql(&dbname, &dburl) {
                     println!("Error dropping {} using {}: {:?}", dbname, dburl, e)
                 }
             }
@@ -68,10 +68,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let endpoint = format!("http://127.0.0.1:{}/", port);
 
         // create the schema
-        println!(
-            "{} Initializing schema in {} ...",
-            log_prefix, dbname
-        );
+        println!("{} Initializing schema in {} ...", log_prefix, dbname);
         let cli_child = Command::new("payas-cli")
             .arg(testfile.model_path.as_ref().unwrap())
             .output()?;
@@ -85,10 +82,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         run_psql(query, &dburl_for_payas)?;
 
         // spawn a payas instance
-        println!(
-            "{} Initializing payas-server ...",
-            log_prefix
-        );
+        println!("{} Initializing payas-server ...", log_prefix);
         ctx.server = Some(
             Command::new("payas-server")
                 .arg(testfile.model_path.as_ref().unwrap())
@@ -98,14 +92,12 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                 .env("PAYAS_SERVER_PORT", port.to_string())
                 .stdout(Stdio::piped())
                 .spawn()
-                .expect("payas-server failed to start")
+                .expect("payas-server failed to start"),
         );
 
         // wait for it to start
         const MAGIC_STRING: &str = "Started ";
-        let mut server_stdout = ctx.server.as_mut().unwrap()
-            .stdout.take()
-            .unwrap();
+        let mut server_stdout = ctx.server.as_mut().unwrap().stdout.take().unwrap();
         let mut buffer = [0; MAGIC_STRING.len()];
 
         server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
@@ -135,19 +127,13 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                     }
 
                     Err(e) => {
-                        println!(
-                            "{} ASSERTION FAILED\n{:?}",
-                            log_prefix, e
-                        );
+                        println!("{} ASSERTION FAILED\n{:?}", log_prefix, e);
                         success = false;
                     }
                 }
             }
             Err(e) => {
-                println!(
-                    "{} TEST EXECUTION FAILED\n{:?}",
-                    log_prefix, e
-                );
+                println!("{} TEST EXECUTION FAILED\n{:?}", log_prefix, e);
                 success = false;
             }
         }
