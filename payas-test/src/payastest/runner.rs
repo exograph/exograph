@@ -29,13 +29,17 @@ impl Drop for TestfileContext {
     fn drop(&mut self) { 
         // kill the started server
         if let Some(server) = &mut self.server {
-            server.kill().ok();
+            if let e@Err(_) = server.kill() {
+                println!("Error killing server instance: {:?}", e)
+            }
         }
 
         // drop the database
         if let Some(dburl) = &self.dburl {
             if let Some(dbname) = &self.dbname {
-                dropdb_psql(&dbname, &dburl).ok();
+                if let e@Err(_) = dropdb_psql(&dbname, &dburl) {
+                    println!("Error dropping {} using {}: {:?}", dbname, dburl, e)
+                }
             }
         }
     }
