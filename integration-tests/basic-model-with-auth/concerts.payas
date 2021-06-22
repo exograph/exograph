@@ -4,6 +4,7 @@ context AuthContext {
 }
 
 @table("concerts")
+@access(query=AuthContext.role == "ROLE_ADMIN" || AuthContext.role == "ROLE_USER", mutation=AuthContext.role == "ROLE_ADMIN")
 model Concert {
   id: Int @pk @autoincrement
   title: String

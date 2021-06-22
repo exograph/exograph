@@ -1,11 +1,6 @@
 operation: |
     query($id:Int!) {
-        venue(id:$id) {
-            id
-            name
-            published
-        }
-        venue2: venue(id:2) { # Use alias. Needed anyway, but also tests for how we process aliases
+        venue(id:2) { # Use alias. Needed anyway, but also tests for how we process aliases
             id
             name
             published
