@@ -4,8 +4,11 @@ init:
   - create-concerts-venues-auth.gql
 tests:
   with-auth:
-    - with-auth.gql
-    - with-auth.json
+    - with-auth-admin.gql
+    - with-auth-admin.json
+  with-auth-user:
+    - with-auth-user.gql
+    - with-auth-user.json
   without-auth:
     - without-auth.gql
     - without-auth.json
