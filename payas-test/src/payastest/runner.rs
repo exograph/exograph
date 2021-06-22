@@ -4,16 +4,16 @@ use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
 use anyhow::{anyhow, bail, Context, Result};
 use port_scanner::request_open_port;
+use jsonwebtoken::{encode, EncodingKey, Header};
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use serde::Serialize;
 use serde_json::json;
-use std::time::SystemTime;
-use jsonwebtoken::{encode, Header, EncodingKey};
 use std::io::Read;
 use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
-use rand::Rng;
-use rand::distributions::Alphanumeric;
+use std::time::SystemTime;
 
 #[derive(Serialize)]
 struct PayasPost {
@@ -90,7 +90,6 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         }
 
         let query = std::str::from_utf8(&cli_child.stdout)?;
-        //println!("{}", &query);
         run_psql(query, &dburl_for_payas)?;
 
         // spawn a payas instance
@@ -166,24 +165,30 @@ async fn run_operation(url: &str, gql: &TestfileOperation, jwtsecret: &str) -> R
             document,
             variables,
             expected_payload,
-            auth
+            auth,
         } => {
             let client = Client::default();
-            let mut req = client
-                .post(url);
+            let mut req = client.post(url);
 
             // add JWT token if specified
-            // TODO: generate a secret
             if let Some(auth) = auth {
                 let mut auth = auth.clone();
                 let auth_ref = auth.as_object_mut().unwrap();
-                let epoch_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+                let epoch_time = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
 
                 // populate token with expiry information
                 auth_ref.insert("iat".to_string(), json!(epoch_time));
-                auth_ref.insert("exp".to_string(), json!(epoch_time + 60*60));
+                auth_ref.insert("exp".to_string(), json!(epoch_time + 60 * 60));
 
-                let token = encode(&Header::default(), &auth, &EncodingKey::from_secret(jwtsecret.as_ref())).unwrap();
+                let token = encode(
+                    &Header::default(),
+                    &auth,
+                    &EncodingKey::from_secret(jwtsecret.as_ref()),
+                )
+                .unwrap();
                 req = req.header("Authorization", format!("Bearer {}", token));
             };
 
