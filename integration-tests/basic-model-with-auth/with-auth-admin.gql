@@ -1,0 +1,22 @@
+operation: |
+    query($id:Int!) {
+        venue(id:$id) {
+            id
+            name
+            published
+        }
+        venue2: venue(id:2) { # Use alias. Needed anyway, but also tests for how we process aliases
+            id
+            name
+            published
+        }
+    } 
+variable: |
+    {
+        "id": 1
+    }
+auth: |
+    {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+    }

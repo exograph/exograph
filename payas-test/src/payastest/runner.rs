@@ -3,12 +3,17 @@ use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
 use anyhow::{anyhow, bail, Context, Result};
+use jsonwebtoken::{encode, EncodingKey, Header};
 use port_scanner::request_open_port;
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use serde::Serialize;
+use serde_json::json;
 use std::io::Read;
 use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
+use std::time::SystemTime;
 
 #[derive(Serialize)]
 struct PayasPost {
@@ -58,6 +63,13 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let dbname = format!("{}_test_{}", &testfile.unique_dbname, &test_counter);
         ctx.dbname = Some(dbname.clone());
 
+        // generate a JWT secret
+        let jwtsecret: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(30)
+            .map(char::from)
+            .collect();
+
         // create a database
         dropdb_psql(&dbname, &dburl).ok(); // clear any existing databases
         let (dburl_for_payas, dbusername) = createdb_psql(&dbname, &dburl)?;
@@ -78,7 +90,6 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         }
 
         let query = std::str::from_utf8(&cli_child.stdout)?;
-        println!("{}", &query);
         run_psql(query, &dburl_for_payas)?;
 
         // spawn a payas instance
@@ -88,7 +99,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                 .arg(testfile.model_path.as_ref().unwrap())
                 .env("PAYAS_DATABASE_URL", dburl_for_payas)
                 .env("PAYAS_DATABASE_USER", dbusername)
-                .env("PAYAS_JWT_SECRET", "abc")
+                .env("PAYAS_JWT_SECRET", &jwtsecret)
                 .env("PAYAS_SERVER_PORT", port.to_string())
                 .stdout(Stdio::piped())
                 .spawn()
@@ -110,12 +121,14 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         // run the init section
         for operation in testfile.init_operations.iter() {
             println!("{} Initializing database...", log_prefix);
-            run_operation(&endpoint, operation).await??;
+            run_operation(&endpoint, operation, &jwtsecret)
+                .await
+                .context("Error while initializing database")??;
         }
 
         // run test
         println!("{} Testing ...", log_prefix);
-        let result = run_operation(&endpoint, test_op).await;
+        let result = run_operation(&endpoint, test_op, &jwtsecret).await;
 
         // did the test run okay?
         match result {
@@ -146,16 +159,40 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
 type TestResult = Result<()>;
 
-async fn run_operation(url: &str, gql: &TestfileOperation) -> Result<TestResult> {
+async fn run_operation(url: &str, gql: &TestfileOperation, jwtsecret: &str) -> Result<TestResult> {
     match gql {
         TestfileOperation::GqlDocument {
             document,
             variables,
             expected_payload,
+            auth,
         } => {
             let client = Client::default();
-            let mut resp = client
-                .post(url)
+            let mut req = client.post(url);
+
+            // add JWT token if specified
+            if let Some(auth) = auth {
+                let mut auth = auth.clone();
+                let auth_ref = auth.as_object_mut().unwrap();
+                let epoch_time = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+
+                // populate token with expiry information
+                auth_ref.insert("iat".to_string(), json!(epoch_time));
+                auth_ref.insert("exp".to_string(), json!(epoch_time + 60 * 60));
+
+                let token = encode(
+                    &Header::default(),
+                    &auth,
+                    &EncodingKey::from_secret(jwtsecret.as_ref()),
+                )
+                .unwrap();
+                req = req.header("Authorization", format!("Bearer {}", token));
+            };
+
+            let mut resp = req
                 .send_json(&PayasPost {
                     query: document.to_string(),
                     variables: variables.as_ref().unwrap().clone(),

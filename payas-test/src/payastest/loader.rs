@@ -22,6 +22,7 @@ pub enum TestfileOperation {
         document: String,
         variables: Option<serde_json::Value>,
         expected_payload: Option<serde_json::Value>,
+        auth: Option<serde_json::Value>,
     },
 }
 
@@ -48,7 +49,8 @@ pub struct Testfile {
 #[derive(Deserialize, Debug)]
 pub struct GraphQLFile {
     pub operation: String,
-    pub variable: String,
+    pub variable: Option<String>,
+    pub auth: Option<String>,
 }
 
 /// Load and parse testfiles from a given directory.
@@ -212,11 +214,21 @@ fn construct_gql_operation_from_file(
     let _gql_document =
         parse_query(&gql.operation).context("Provided GraphQL is not a valid document")?;
 
+    // parse json sections
+    let parse_json_from_section = |section: &Option<String>| {
+        section
+            .as_ref()
+            .map(|s| serde_json::from_str(&s))
+            .transpose()
+    };
+
     Ok(TestfileOperation::GqlDocument {
         document: gql.operation,
-        variables: serde_json::from_str(&gql.variable)
+        variables: parse_json_from_section(&gql.variable)
             .context("GraphQL variable section is not valid JSON")?,
         expected_payload,
+        auth: parse_json_from_section(&gql.auth)
+            .context("GraphQL auth section is not valid JSON")?,
     })
 }
 

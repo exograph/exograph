@@ -1,0 +1,27 @@
+operation: |
+    mutation ($venue_name1: String!, $venue_name2: String!, $concert_title1: String!, $concert_title2: String!) {
+        venue1: createVenue(data: {name: $venue_name1, published: true}) {
+            id
+        }
+        venue2: createVenue(data: {name: $venue_name2, published: false}) {
+            id
+        }
+        concert1: createConcert(data: {title: $concert_title1, venue: {id: 1}, published: true}) {
+            id
+        }
+        concert2:createConcert(data: {title: $concert_title2, venue: {id: 2}, published: false}) {
+            id
+        }
+    }  
+variable: |
+    {
+        "venue_name1": "Venue1",
+        "venue_name2": "Venue2",
+        "concert_title1": "Concert1",
+        "concert_title2": "Concert2"
+    }
+auth: |
+    {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+    }
