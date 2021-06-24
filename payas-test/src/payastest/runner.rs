@@ -79,11 +79,32 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let port = request_open_port().context("No open ports available.")?;
         let endpoint = format!("http://127.0.0.1:{}/", port);
 
+        // decide what executables to use for our tests
+        let mut cli_command = Command::new("payas-cli");
+        let mut cli_args = vec![];
+        let mut server_command = Command::new("payas-server");
+        let mut server_args = vec![];
+
+        if let Ok(cargo_env) = std::env::var("PAYAS_USE_CARGO") {
+            if cargo_env == "1" {
+                // build using cargo if defined
+                cli_command = Command::new("cargo");
+                cli_args.push("run");
+                cli_args.push("--bin");
+                cli_args.push("payas-cli");
+
+                server_command = Command::new("cargo");
+                server_args.push("run");
+                server_args.push("--bin");
+                server_args.push("payas-server");
+            }
+        }
+
         // create the schema
         println!("{} Initializing schema in {} ...", log_prefix, dbname);
-        let cli_child = Command::new("payas-cli")
-            .arg(testfile.model_path.as_ref().unwrap())
-            .output()?;
+        cli_args.push(testfile.model_path.as_ref().unwrap());
+
+        let cli_child = cli_command.args(cli_args).output()?;
 
         if !cli_child.status.success() {
             bail!("Could not build schema.");
@@ -94,14 +115,17 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
         // spawn a payas instance
         println!("{} Initializing payas-server ...", log_prefix);
+        server_args.push(testfile.model_path.as_ref().unwrap());
+
         ctx.server = Some(
-            Command::new("payas-server")
-                .arg(testfile.model_path.as_ref().unwrap())
+            server_command
+                .args(server_args)
                 .env("PAYAS_DATABASE_URL", dburl_for_payas)
                 .env("PAYAS_DATABASE_USER", dbusername)
                 .env("PAYAS_JWT_SECRET", &jwtsecret)
                 .env("PAYAS_SERVER_PORT", port.to_string())
                 .stdout(Stdio::piped())
+                .stderr(Stdio::null())
                 .spawn()
                 .expect("payas-server failed to start"),
         );
