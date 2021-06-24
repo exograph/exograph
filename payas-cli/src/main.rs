@@ -12,7 +12,6 @@ fn main() {
         .get(1)
         .map(|arg| arg.as_str())
         .unwrap_or(DEFAULT_MODEL_FILE);
-    dbg!(model_file);
     let (ast_system, codemap) = parser::parse_file(&model_file);
     let system = system_builder::build(ast_system, codemap);
 
