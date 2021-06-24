@@ -1471,7 +1471,6 @@ dependencies = [
  "async-graphql-parser",
  "futures",
  "jsonwebtoken",
- "port_scanner",
  "postgres",
  "postgres-openssl",
  "rand 0.8.3",
@@ -1621,12 +1620,6 @@ name = "pkg-config"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
-
-[[package]]
-name = "port_scanner"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "325a6d2ac5dee293c3b2612d4993b98aec1dff096b0a2dae70ed7d95784a05da"
 
 [[package]]
 name = "postgres"

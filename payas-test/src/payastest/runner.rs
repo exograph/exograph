@@ -4,12 +4,12 @@ use crate::payastest::loader::TestfileOperation;
 use actix_web::client::Client;
 use anyhow::{anyhow, bail, Context, Result};
 use jsonwebtoken::{encode, EncodingKey, Header};
-use port_scanner::request_open_port;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde::Serialize;
 use serde_json::json;
 use std::io::Read;
+use std::io::{BufRead, BufReader};
 use std::process::Child;
 use std::process::Command;
 use std::process::Stdio;
@@ -75,10 +75,6 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let (dburl_for_payas, dbusername) = createdb_psql(&dbname, &dburl)?;
         ctx.dburl = Some(dburl_for_payas.clone());
 
-        // select a free port
-        let port = request_open_port().context("No open ports available.")?;
-        let endpoint = format!("http://127.0.0.1:{}/", port);
-
         // decide what executables to use for our tests
         let mut cli_command = Command::new("payas-cli");
         let mut cli_args = vec![];
@@ -123,7 +119,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                 .env("PAYAS_DATABASE_URL", dburl_for_payas)
                 .env("PAYAS_DATABASE_USER", dbusername)
                 .env("PAYAS_JWT_SECRET", &jwtsecret)
-                .env("PAYAS_SERVER_PORT", port.to_string())
+                .env("PAYAS_SERVER_PORT", "0") // ask payas-server to select a free port
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
                 .spawn()
@@ -131,16 +127,22 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         );
 
         // wait for it to start
-        const MAGIC_STRING: &str = "Started ";
-        let mut server_stdout = ctx.server.as_mut().unwrap().stdout.take().unwrap();
-        let mut buffer = [0; MAGIC_STRING.len()];
+        const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
 
+        let mut server_stdout = BufReader::new(ctx.server.as_mut().unwrap().stdout.take().unwrap());
+
+        let mut buffer = [0; MAGIC_STRING.len()];
         server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
         let output = String::from(std::str::from_utf8(&buffer)?);
 
         if !output.eq(MAGIC_STRING) {
             bail!("Unexpected output from payas-server: {}", output)
         }
+
+        let mut buffer_port = String::new();
+        server_stdout.read_line(&mut buffer_port)?; // read port payas-server is using
+        buffer_port.pop(); // remove newline
+        let endpoint = format!("http://127.0.0.1:{}/", buffer_port);
 
         // run the init section
         for operation in testfile.init_operations.iter() {
