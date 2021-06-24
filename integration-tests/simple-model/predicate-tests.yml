@@ -1,0 +1,14 @@
+setup:
+  - logs.payas
+init:
+  - create-logs.gql
+tests:
+  equality:
+    - equality.gql
+    - equality.json
+  comparison:
+    - comparison.gql
+    - comparison.json
+  strings:
+    - strings.gql
+    - strings.json

@@ -1,0 +1,6 @@
+@table("log")
+model Log {
+  id: Int @pk @autoincrement
+  timestamp: Int
+  text: String
+}

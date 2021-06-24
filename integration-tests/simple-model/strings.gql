@@ -1,0 +1,20 @@
+operation: |
+    query($prefix: String!, $suffix: String!, $like: String!) {
+        starts_with: logs(where: { text: { startsWith: $prefix } }) {
+            text
+        }
+
+        ends_with: logs(where: { text: { endsWith: $suffix } }) {
+            text
+        }
+
+        like: logs(where: { text: { like: $like } }) {
+            text
+        }
+    }
+variable: |
+    {
+        "prefix": "[NORMAL]",
+        "suffix": "50%",
+        "like": "[ERROR] service stopped"
+    }
