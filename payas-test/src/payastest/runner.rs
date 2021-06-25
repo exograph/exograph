@@ -76,9 +76,9 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         ctx.dburl = Some(dburl_for_payas.clone());
 
         // decide what executables to use for our tests
-        let mut cli_command = Command::new("payas-cli");
+        let mut cli_command = Command::new("clay");
         let mut cli_args = vec![];
-        let mut server_command = Command::new("payas-server");
+        let mut server_command = Command::new("clay-server");
         let mut server_args = vec![];
 
         if let Ok(cargo_env) = std::env::var("PAYAS_USE_CARGO") {
@@ -87,12 +87,12 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                 cli_command = Command::new("cargo");
                 cli_args.push("run");
                 cli_args.push("--bin");
-                cli_args.push("payas-cli");
+                cli_args.push("clay");
 
                 server_command = Command::new("cargo");
                 server_args.push("run");
                 server_args.push("--bin");
-                server_args.push("payas-server");
+                server_args.push("clay-server");
             }
         }
 
@@ -110,7 +110,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         run_psql(query, &dburl_for_payas)?;
 
         // spawn a payas instance
-        println!("{} Initializing payas-server ...", log_prefix);
+        println!("{} Initializing clay-server ...", log_prefix);
         server_args.push(testfile.model_path.as_ref().unwrap());
 
         ctx.server = Some(
