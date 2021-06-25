@@ -3,12 +3,19 @@ setup:
 init:
   - create-concerts-venues-auth.gql
 tests:
-  with-auth:
-    - with-auth-admin.gql
-    - with-auth-admin.json
-  with-auth-user:
-    - with-auth-user.gql
-    - with-auth-user.json
-  without-auth:
-    - without-auth.gql
-    - without-auth.json
+  query-venue-with-auth-admin:
+    - query-venue-with-auth-admin.gql
+    - query-venue-with-auth-admin.json
+  query-venue-with-auth-user:
+    - query-venue-with-auth-user.gql
+    - query-venue-with-auth-user.json
+  query-venue-without-auth:
+    - query-venue-without-auth.gql
+    - query-venue-without-auth.json
+  query-concerts-with-auth-admin:
+    - query-concerts-with-auth-admin.gql
+    - query-concerts-with-auth-admin.json
+  query-concerts-with-auth-user:
+    # Expect to get venue null for second concert as that venue is not published
+    - query-concerts-with-auth-user.gql
+    - query-concerts-with-auth-user.json
