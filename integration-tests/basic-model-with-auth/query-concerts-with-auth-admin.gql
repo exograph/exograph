@@ -1,0 +1,18 @@
+operation: |
+    query allConcerts {
+        concerts {
+            id
+            title
+            venue {
+                id
+                name
+                published
+            }
+        }
+        
+    } 
+auth: |
+    {
+        "sub": 1,
+        "role": "ROLE_ADMIN"
+    }

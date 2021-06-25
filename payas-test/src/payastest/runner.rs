@@ -7,7 +7,7 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{json, Map, Value};
 use std::io::Read;
 use std::io::{BufRead, BufReader};
 use std::process::Child;
@@ -221,7 +221,10 @@ async fn run_operation(url: &str, gql: &TestfileOperation, jwtsecret: &str) -> R
             let mut resp = req
                 .send_json(&PayasPost {
                     query: document.to_string(),
-                    variables: variables.as_ref().unwrap().clone(),
+                    variables: variables
+                        .as_ref()
+                        .unwrap_or(&Value::Object(Map::new()))
+                        .clone(),
                 })
                 .await
                 .map_err(|e| anyhow!("Error sending POST request: {}", e))?;

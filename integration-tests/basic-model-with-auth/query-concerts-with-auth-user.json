@@ -1,0 +1,20 @@
+{
+  "data": {
+    "concerts": [
+      {
+        "id": 1,
+        "title": "Concert1",
+        "venue": {
+          "id": 1,
+          "name": "Venue1",
+          "published": true
+        }
+      },
+      {
+        "id": 2,
+        "title": "Concert2",
+        "venue": null
+      }
+    ]
+  }
+}

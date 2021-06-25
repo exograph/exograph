@@ -179,27 +179,22 @@ fn map_field<'a>(
                 ..
             } => {
                 let other_type = &system.types[*other_type_id];
-                let (other_table, other_table_pk_query) = {
-                    match other_type.kind {
-                        GqlTypeKind::Primitive => panic!(""),
-                        GqlTypeKind::Composite(GqlCompositeTypeKind {
-                            table_id, pk_query, ..
-                        }) => (&system.tables[table_id], &system.queries[pk_query]),
+                let other_table_pk_query = match other_type.kind {
+                    GqlTypeKind::Primitive => panic!(""),
+                    GqlTypeKind::Composite(GqlCompositeTypeKind { pk_query, .. }) => {
+                        &system.queries[pk_query]
                     }
                 };
 
                 Column::SelectionTableWrapper(
-                    other_table.select(
-                        vec![other_table_pk_query
-                            .content_select(&field.selection_set, operation_context)],
-                        Some(
-                            operation_context.create_predicate(Predicate::Eq(
-                                operation_context.create_column_with_id(column_id),
-                                operation_context
-                                    .create_column_with_id(&other_type.pk_column_id().unwrap()),
-                            )),
+                    other_table_pk_query.operation(
+                        field,
+                        Predicate::Eq(
+                            operation_context.create_column_with_id(column_id),
+                            operation_context
+                                .create_column_with_id(&other_type.pk_column_id().unwrap()),
                         ),
-                        None,
+                        operation_context,
                         false,
                     ),
                 )
