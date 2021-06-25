@@ -3,6 +3,7 @@ use std::{env, sync::Arc};
 use actix_cors::Cors;
 use actix_web::http::StatusCode;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use anyhow::{anyhow, bail, Result};
 
 use introspection::schema::Schema;
 use payas_model::{model::system::ModelSystem, sql::database::Database};
@@ -107,7 +108,7 @@ fn cors_from_env() -> Cors {
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let model_file = args
         .get(1)
@@ -140,7 +141,14 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or(9876);
 
     let server_url = format!("0.0.0.0:{}", server_port);
+    let result = server.bind(&server_url);
 
-    println!("Started server on {}", server_url);
-    server.bind(&server_url)?.run().await
+    if let Ok(server) = result {
+        let addr = server.addrs()[0];
+
+        println!("Started server on {}", addr);
+        server.run().await.map_err(|e| anyhow!(e))
+    } else {
+        bail!("Error starting server on requested URL {}", server_url);
+    }
 }

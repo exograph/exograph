@@ -1,0 +1,14 @@
+operation: |
+    query($timestamp: Int!) {
+        eq_test: logs(where: { timestamp: { eq: $timestamp } }) {
+            text
+        }
+
+        neq_test: logs(where: { timestamp: { neq: $timestamp } }) {
+            text
+        }
+    }
+variable: |
+    {
+        "timestamp": 3
+    }

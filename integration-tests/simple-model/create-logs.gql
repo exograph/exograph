@@ -1,0 +1,18 @@
+operation: |
+    mutation ($log1_text: String!, $log2_text: String!, $log3_text: String!) {
+        log1: createLog(data: {timestamp: 3, text: $log1_text}) {
+            id
+        }
+        log2: createLog(data: {timestamp: 6, text: $log2_text}) {
+            id
+        }
+        log3: createLog(data: {timestamp: 9, text: $log3_text}) {
+            id
+        }
+    }  
+variable: |
+    {
+        "log1_text": "[NORMAL] http request",
+        "log2_text": "[WARNING] disk usage 50%",
+        "log3_text": "[ERROR] service stopped"
+    }
