@@ -103,10 +103,17 @@ fn cors_from_env() -> Cors {
     }
 }
 
+// TODO: Avoid duplication from cli's main.rs
+const DEFAULT_MODEL_FILE: &str = "index.clay";
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    let (ast_system, codemap) = parser::parse_file(&args[1]);
+    let model_file = args
+        .get(1)
+        .map(|arg| arg.as_str())
+        .unwrap_or(DEFAULT_MODEL_FILE);
+    let (ast_system, codemap) = parser::parse_file(model_file);
     let system = system_builder::build(ast_system, codemap);
     let schema = Schema::new(&system);
 
