@@ -37,10 +37,14 @@ impl SchemaSpec {
             .table_specs
             .iter()
             .map(|t| (t.foreign_constraint_stmt()))
-            .collect::<Vec<String>>()
-            .join("\n\n");
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<String>>();
 
-        format!("{}\n\n{}", table_stmts, foreign_constraint_stmts)
+        format!(
+            "{}\n\n\n{}",
+            table_stmts,
+            foreign_constraint_stmts.join("\n")
+        )
     }
 
     fn from_tables(tables: Arena<PhysicalTable>) -> SchemaSpec {
@@ -62,14 +66,11 @@ impl TableSpec {
     }
 
     fn foreign_constraint_stmt(&self) -> String {
-        let stmts: Vec<_> = self
-            .column_specs
+        self.column_specs
             .iter()
             .flat_map(|c| c.foreign_constraint_stmt())
-            .map(|stmt| format!("ALTER TABLE {} ADD CONSTRAINT {};", self.name, stmt))
-            .collect();
-
-        stmts.join(";\n\t")
+            .map(|stmt| format!("ALTER TABLE {} ADD CONSTRAINT {};\n", self.name, stmt))
+            .collect()
     }
 
     fn from_table(table: &PhysicalTable) -> TableSpec {
