@@ -62,14 +62,14 @@ impl TableSpec {
         let columns: Vec<_> = self.column_specs.iter().map(|c| c.stmt()).collect();
 
         let column_stmts = columns.join(",\n\t");
-        format!("CREATE TABLE {} (\n\t{}\n);", self.name, column_stmts)
+        format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts)
     }
 
     fn foreign_constraint_stmt(&self) -> String {
         self.column_specs
             .iter()
             .flat_map(|c| c.foreign_constraint_stmt())
-            .map(|stmt| format!("ALTER TABLE {} ADD CONSTRAINT {};\n", self.name, stmt))
+            .map(|stmt| format!("ALTER TABLE \"{}\" ADD CONSTRAINT {};\n", self.name, stmt))
             .collect()
     }
 
@@ -87,7 +87,7 @@ impl ColumnSpec {
     fn stmt(&self) -> String {
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
 
-        format!("{} {}{}", self.name, self.db_type, pk_str)
+        format!("\"{}\" {}{}", self.name, self.db_type, pk_str)
     }
 
     fn foreign_constraint_stmt(&self) -> Option<String> {
@@ -115,7 +115,7 @@ impl ColumnSpec {
 impl ForeignConstraint {
     fn stmt(&self) -> String {
         format!(
-            "{}_fk FOREIGN KEY ({}) REFERENCES {}",
+            "{}_fk FOREIGN KEY ({}) REFERENCES \"{}\"",
             self.foreign_table, self.self_column, self.foreign_table
         )
     }
