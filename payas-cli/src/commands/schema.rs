@@ -10,7 +10,6 @@ use crate::schema;
 use super::Command;
 
 /// Create a database schema from a claytip model
-#[derive(Debug)]
 pub struct CreateCommand {
     pub model: PathBuf,
 }

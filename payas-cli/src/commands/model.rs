@@ -6,7 +6,6 @@ use std::path::PathBuf;
 use super::Command;
 
 /// Create a claytip model file based on a database schema
-#[derive(Debug)]
 pub struct ImportCommand {
     pub database: String,
     pub output: PathBuf,
@@ -14,7 +13,6 @@ pub struct ImportCommand {
 
 impl Command for ImportCommand {
     fn run(&self) -> Result<()> {
-        println!("{:#?}", self);
-        Ok(())
+        todo!("Implmement model import command");
     }
 }

@@ -11,20 +11,17 @@ pub trait Command {
 }
 
 /// Build claytip server binary
-#[derive(Debug)]
 pub struct BuildCommand {
     pub model: PathBuf,
 }
 
 impl Command for BuildCommand {
     fn run(&self) -> Result<()> {
-        println!("{:#?}", self);
-        Ok(())
+        todo!("Implmement build command");
     }
 }
 
 /// Perform a database migration for a claytip model
-#[derive(Debug)]
 pub struct MigrateCommand {
     pub model: PathBuf,
     pub database: String,
@@ -32,39 +29,33 @@ pub struct MigrateCommand {
 
 impl Command for MigrateCommand {
     fn run(&self) -> Result<()> {
-        println!("{:#?}", self);
-        Ok(())
+        todo!("Implmement migrate command");
     }
 }
 
 /// Claytip model utilities
-#[derive(Debug)]
 pub struct ServeCommand {
     pub model: PathBuf,
 }
 
 impl Command for ServeCommand {
     fn run(&self) -> Result<()> {
-        println!("{:#?}", self);
-        Ok(())
+        todo!("Implmement serve command");
     }
 }
 
 /// Perform integration tests
-#[derive(Debug)]
 pub struct TestCommand {
     pub dir: PathBuf,
 }
 
 impl Command for TestCommand {
     fn run(&self) -> Result<()> {
-        println!("{:#?}", self);
-        Ok(())
+        todo!("Implmement test command");
     }
 }
 
 /// Verify that a schema is compatible with a claytip model
-#[derive(Debug)]
 pub struct VerifyCommand {
     pub model: PathBuf,
     pub database: String,
@@ -72,20 +63,17 @@ pub struct VerifyCommand {
 
 impl Command for VerifyCommand {
     fn run(&self) -> Result<()> {
-        println!("{:#?}", self);
-        Ok(())
+        todo!("Implmement verify command");
     }
 }
 
 /// Run local claytip server with a temporary database
-#[derive(Debug)]
 pub struct YoloCommand {
     pub model: PathBuf,
 }
 
 impl Command for YoloCommand {
     fn run(&self) -> Result<()> {
-        println!("{:#?}", self);
-        Ok(())
+        todo!("Implmement yolo command");
     }
 }
