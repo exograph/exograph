@@ -1,5 +1,6 @@
 //! Subcommands under the `schema` subcommand
 
+use anyhow::Result;
 use std::path::PathBuf;
 
 use payas_parser::{builder::system_builder, parser};
@@ -15,7 +16,7 @@ pub struct CreateCommand {
 }
 
 impl Command for CreateCommand {
-    fn run(&self) -> Result<(), String> {
+    fn run(&self) -> Result<()> {
         let (ast_system, codemap) = parser::parse_file(&self.model);
         let system = system_builder::build(ast_system, codemap);
 

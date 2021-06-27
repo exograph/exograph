@@ -1,5 +1,6 @@
 //! Subcommands under the `model` subcommand
 
+use anyhow::Result;
 use std::path::PathBuf;
 
 use super::Command;
@@ -12,7 +13,7 @@ pub struct ImportCommand {
 }
 
 impl Command for ImportCommand {
-    fn run(&self) -> Result<(), String> {
+    fn run(&self) -> Result<()> {
         println!("{:#?}", self);
         Ok(())
     }

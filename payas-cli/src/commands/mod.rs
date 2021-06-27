@@ -1,12 +1,13 @@
 //! Top level subcommands
 
+use anyhow::Result;
 use std::path::PathBuf;
 
 pub mod model;
 pub mod schema;
 
 pub trait Command {
-    fn run(&self) -> Result<(), String>;
+    fn run(&self) -> Result<()>;
 }
 
 /// Build claytip server binary
@@ -16,7 +17,7 @@ pub struct BuildCommand {
 }
 
 impl Command for BuildCommand {
-    fn run(&self) -> Result<(), String> {
+    fn run(&self) -> Result<()> {
         println!("{:#?}", self);
         Ok(())
     }
@@ -30,7 +31,7 @@ pub struct MigrateCommand {
 }
 
 impl Command for MigrateCommand {
-    fn run(&self) -> Result<(), String> {
+    fn run(&self) -> Result<()> {
         println!("{:#?}", self);
         Ok(())
     }
@@ -43,7 +44,7 @@ pub struct ServeCommand {
 }
 
 impl Command for ServeCommand {
-    fn run(&self) -> Result<(), String> {
+    fn run(&self) -> Result<()> {
         println!("{:#?}", self);
         Ok(())
     }
@@ -56,7 +57,7 @@ pub struct TestCommand {
 }
 
 impl Command for TestCommand {
-    fn run(&self) -> Result<(), String> {
+    fn run(&self) -> Result<()> {
         println!("{:#?}", self);
         Ok(())
     }
@@ -70,7 +71,7 @@ pub struct VerifyCommand {
 }
 
 impl Command for VerifyCommand {
-    fn run(&self) -> Result<(), String> {
+    fn run(&self) -> Result<()> {
         println!("{:#?}", self);
         Ok(())
     }
@@ -83,7 +84,7 @@ pub struct YoloCommand {
 }
 
 impl Command for YoloCommand {
-    fn run(&self) -> Result<(), String> {
+    fn run(&self) -> Result<()> {
         println!("{:#?}", self);
         Ok(())
     }

@@ -9,6 +9,7 @@ name = "clay"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0"
 clap = "2.33.3"
 id-arena = "2.2.1"
 payas-sql = { path = "../payas-sql" }

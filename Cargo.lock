@@ -1422,6 +1422,7 @@ dependencies = [
 name = "payas-cli"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "id-arena",
  "payas-model",
