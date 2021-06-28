@@ -72,8 +72,8 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
         // create a database
         dropdb_psql(&dbname, &dburl).ok(); // clear any existing databases
-        let (dburl_for_payas, dbusername) = createdb_psql(&dbname, &dburl)?;
-        ctx.dburl = Some(dburl_for_payas.clone());
+        let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &dburl)?;
+        ctx.dburl = Some(dburl_for_clay.clone());
 
         // decide what executables to use for our tests
         let mut cli_command = Command::new("clay");
@@ -81,7 +81,7 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let mut server_command = Command::new("clay-server");
         let mut server_args = vec![];
 
-        if let Ok(cargo_env) = std::env::var("PAYAS_USE_CARGO") {
+        if let Ok(cargo_env) = std::env::var("CLAY_USE_CARGO") {
             if cargo_env == "1" {
                 // build using cargo if defined
                 cli_command = Command::new("cargo");
@@ -111,23 +111,23 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         }
 
         let query = std::str::from_utf8(&cli_child.stdout)?;
-        run_psql(query, &dburl_for_payas)?;
+        run_psql(query, &dburl_for_clay)?;
 
-        // spawn a payas instance
+        // spawn a clay instance
         println!("{} Initializing clay-server ...", log_prefix);
         server_args.push(testfile.model_path.as_ref().unwrap());
 
         ctx.server = Some(
             server_command
                 .args(server_args)
-                .env("PAYAS_DATABASE_URL", dburl_for_payas)
-                .env("PAYAS_DATABASE_USER", dbusername)
-                .env("PAYAS_JWT_SECRET", &jwtsecret)
-                .env("PAYAS_SERVER_PORT", "0") // ask payas-server to select a free port
+                .env("CLAY_DATABASE_URL", dburl_for_clay)
+                .env("CLAY_DATABASE_USER", dbusername)
+                .env("CLAY_JWT_SECRET", &jwtsecret)
+                .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
                 .spawn()
-                .expect("payas-server failed to start"),
+                .expect("clay-server failed to start"),
         );
 
         // wait for it to start
@@ -140,11 +140,11 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let output = String::from(std::str::from_utf8(&buffer)?);
 
         if !output.eq(MAGIC_STRING) {
-            bail!("Unexpected output from payas-server: {}", output)
+            bail!("Unexpected output from clay-server: {}", output)
         }
 
         let mut buffer_port = String::new();
-        server_stdout.read_line(&mut buffer_port)?; // read port payas-server is using
+        server_stdout.read_line(&mut buffer_port)?; // read port clay-server is using
         buffer_port.pop(); // remove newline
         let endpoint = format!("http://127.0.0.1:{}/", buffer_port);
 

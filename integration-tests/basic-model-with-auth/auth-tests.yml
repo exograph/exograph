@@ -1,5 +1,5 @@
 setup:
-  - concerts.payas
+  - concerts.clay
 init:
   - create-concerts-venues-auth.gql
 tests:

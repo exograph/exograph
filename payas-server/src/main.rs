@@ -23,7 +23,7 @@ use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 
 static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
-const SERVER_PORT_PARAM: &str = "PAYAS_SERVER_PORT";
+const SERVER_PORT_PARAM: &str = "CLAY_SERVER_PORT";
 
 async fn playground() -> impl Responder {
     HttpResponse::Ok().body(PLAYGROUND_HTML)
@@ -81,7 +81,7 @@ async fn resolve(
 }
 
 fn cors_from_env() -> Cors {
-    const CORS_DOMAINS_PARAM: &str = "PAYAS_CORS_DOMAINS";
+    const CORS_DOMAINS_PARAM: &str = "CLAY_CORS_DOMAINS";
 
     match env::var(CORS_DOMAINS_PARAM).ok() {
         Some(domains) => {
