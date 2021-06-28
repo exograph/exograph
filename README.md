@@ -62,7 +62,3 @@ If you change the treesitter grammar source file, `cargo watch` doesn't seem pic
 ```
 CLAY_USE_CARGO=1 CLAY_TEST_DATABASE_URL=postgresql://ramnivas@localhost:5432 cargo run --bin clay-test integration-tests
 ```
-
-```
-
-```
