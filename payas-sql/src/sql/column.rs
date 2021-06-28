@@ -110,7 +110,7 @@ impl<'a> Expression for Column<'a> {
             }
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();
-                ParameterBinding::new(format! {"${}", param_index}, vec![value])
+                ParameterBinding::new(format! {"${}", param_index}, vec![value.as_ref()])
             }
             Column::JsonObject(elems) => {
                 let (elem_stmt, elem_params): (Vec<_>, Vec<_>) = elems
