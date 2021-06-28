@@ -55,18 +55,6 @@ impl Command for TestCommand {
     }
 }
 
-/// Verify that a schema is compatible with a claytip model
-pub struct VerifyCommand {
-    pub model: PathBuf,
-    pub database: String,
-}
-
-impl Command for VerifyCommand {
-    fn run(&self) -> Result<()> {
-        todo!("Implmement verify command");
-    }
-}
-
 /// Run local claytip server with a temporary database
 pub struct YoloCommand {
     pub model: PathBuf,

@@ -4,7 +4,7 @@ use clap::{App, AppSettings, Arg, SubCommand};
 
 use crate::commands::{
     model, schema as schema_cmds, BuildCommand, Command, MigrateCommand, ServeCommand, TestCommand,
-    VerifyCommand, YoloCommand,
+    YoloCommand,
 };
 
 mod commands;
@@ -13,7 +13,7 @@ mod schema;
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
 fn main() {
-    let matches = App::new("Clay")
+    let matches = App::new("Claytip")
         .version(env!("CARGO_PKG_VERSION"))
         .global_setting(AppSettings::DisableHelpSubcommand)
         .setting(AppSettings::SubcommandRequiredElseHelp)
@@ -80,6 +80,22 @@ fn main() {
                                 .default_value(DEFAULT_MODEL_FILE)
                                 .index(1),
                         ),
+                )
+                .subcommand(
+                    SubCommand::with_name("verify")
+                        .about("Verify that a schema is compatible with a claytip model")
+                        .arg(
+                            Arg::with_name("model")
+                                .help("Claytip model file")
+                                .required(true)
+                                .index(1),
+                        )
+                        .arg(
+                            Arg::with_name("database")
+                                .help("Database schema source (postgres, git)")
+                                .required(true)
+                                .index(2),
+                        ),
                 ),
         )
         .subcommand(
@@ -100,22 +116,6 @@ fn main() {
                         .help("Integration test directory")
                         .required(true)
                         .index(1),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("verify")
-                .about("Verify that a schema is compatible with a claytip model")
-                .arg(
-                    Arg::with_name("model")
-                        .help("Claytip model file")
-                        .required(true)
-                        .index(1),
-                )
-                .arg(
-                    Arg::with_name("database")
-                        .help("Database schema source (postgres, git)")
-                        .required(true)
-                        .index(2),
                 ),
         )
         .subcommand(
@@ -150,6 +150,10 @@ fn main() {
             ("create", Some(matches)) => Box::new(schema_cmds::CreateCommand {
                 model: PathBuf::from(matches.value_of("model").unwrap()),
             }),
+            ("verify", Some(matches)) => Box::new(schema_cmds::VerifyCommand {
+                model: PathBuf::from(matches.value_of("model").unwrap()),
+                database: matches.value_of("database").unwrap().to_owned(),
+            }),
             _ => panic!("Unhandled command name"),
         },
 
@@ -158,10 +162,6 @@ fn main() {
         }),
         ("test", Some(matches)) => Box::new(TestCommand {
             dir: PathBuf::from(matches.value_of("dir").unwrap()),
-        }),
-        ("verify", Some(matches)) => Box::new(VerifyCommand {
-            model: PathBuf::from(matches.value_of("model").unwrap()),
-            database: matches.value_of("database").unwrap().to_owned(),
         }),
         ("yolo", Some(matches)) => Box::new(YoloCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),

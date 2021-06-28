@@ -26,3 +26,15 @@ impl Command for CreateCommand {
         Ok(())
     }
 }
+
+/// Verify that a schema is compatible with a claytip model
+pub struct VerifyCommand {
+    pub model: PathBuf,
+    pub database: String,
+}
+
+impl Command for VerifyCommand {
+    fn run(&self) -> Result<()> {
+        todo!("Implmement verify command");
+    }
+}
