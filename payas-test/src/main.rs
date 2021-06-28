@@ -22,7 +22,7 @@ async fn main() {
 
     // Run testfiles in parallel
     let all_tests_succeded = join_all(testfiles.into_iter().map(|t| async move {
-        run_testfile(&t, std::env::var("PAYAS_TEST_DATABASE_URL").unwrap()).await
+        run_testfile(&t, std::env::var("CLAY_TEST_DATABASE_URL").unwrap()).await
     }))
     .await
     .into_iter()

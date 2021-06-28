@@ -11,9 +11,9 @@ fn type_of<T>(_: &T) -> &str {
     std::any::type_name::<T>()
 }
 
-const URL_PARAM: &str = "PAYAS_DATABASE_URL";
-const USER_PARAM: &str = "PAYAS_DATABASE_USER";
-const PASSWORD_PARAM: &str = "PAYAS_DATABASE_PASSWORD";
+const URL_PARAM: &str = "CLAY_DATABASE_URL";
+const USER_PARAM: &str = "CLAY_DATABASE_USER";
+const PASSWORD_PARAM: &str = "CLAY_DATABASE_PASSWORD";
 
 #[derive(Debug, Clone)]
 pub struct Database {
@@ -24,7 +24,7 @@ pub struct Database {
 
 impl<'a> Database {
     pub fn from_env() -> Result<Self> {
-        let url = env::var(URL_PARAM).context("PAYAS_DATABASE_URL must be provided")?;
+        let url = env::var(URL_PARAM).context("CLAY_DATABASE_URL must be provided")?;
         let user = env::var(USER_PARAM).ok();
         let password = env::var(PASSWORD_PARAM).ok();
 
@@ -80,7 +80,7 @@ impl<'a> Database {
         }
 
         if config.get_user() == None {
-            bail!("Database user must be specified through as a part of PAYAS_DATABASE_URL or through PAYAS_DATABASE_USER")
+            bail!("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER")
         }
 
         let mut builder = SslConnector::builder(SslMethod::tls())?;

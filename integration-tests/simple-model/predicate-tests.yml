@@ -1,5 +1,5 @@
 setup:
-  - logs.payas
+  - logs.clay
 init:
   - create-logs.gql
 tests:

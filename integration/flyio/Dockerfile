@@ -1,11 +1,11 @@
 FROM payas-server:latest
 
-COPY ./test-models/bb.payas .
+COPY ./integration-tests/basic-model-no-auth/concerts.clay .
 
-COPY ./integration/flyio/payas-server-flyio.sh .
+COPY ./integration/flyio/clay-server-flyio.sh .
 
 EXPOSE 8080
-ENV PAYAS_SERVER_PORT=8080
-ENV PAYAS_CORS_DOMAINS=*
+ENV CLAY_SERVER_PORT=8080
+ENV CLAYS_CORS_DOMAINS=*
 
-CMD ["./payas-server-flyio.sh", "bb.payas"]
+CMD ["./clay-server-flyio.sh", "concerts.clay"]
