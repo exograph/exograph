@@ -88,16 +88,20 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
                 cli_args.push("run");
                 cli_args.push("--bin");
                 cli_args.push("clay");
+                cli_args.push("--");
 
                 server_command = Command::new("cargo");
                 server_args.push("run");
                 server_args.push("--bin");
                 server_args.push("clay-server");
+                server_args.push("--");
             }
         }
 
         // create the schema
         println!("{} Initializing schema in {} ...", log_prefix, dbname);
+        cli_args.push("schema");
+        cli_args.push("create");
         cli_args.push(testfile.model_path.as_ref().unwrap());
 
         let cli_child = cli_command.args(cli_args).output()?;
