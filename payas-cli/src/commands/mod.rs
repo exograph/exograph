@@ -40,7 +40,7 @@ pub struct ServeCommand {
 
 impl Command for ServeCommand {
     fn run(&self) -> Result<()> {
-        todo!("Implmement serve command");
+        payas_server::serve(self.model.clone())
     }
 }
 

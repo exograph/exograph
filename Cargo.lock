@@ -1427,6 +1427,7 @@ dependencies = [
  "id-arena",
  "payas-model",
  "payas-parser",
+ "payas-server",
  "payas-sql",
 ]
 
