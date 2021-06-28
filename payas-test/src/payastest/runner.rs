@@ -8,6 +8,7 @@ use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
+use std::env;
 use std::io::Read;
 use std::io::{BufRead, BufReader};
 use std::process::Child;
@@ -75,36 +76,12 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
         let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &dburl)?;
         ctx.dburl = Some(dburl_for_clay.clone());
 
-        // decide what executables to use for our tests
-        let mut cli_command = Command::new("clay");
-        let mut cli_args = vec![];
-        let mut server_command = Command::new("clay-server");
-        let mut server_args = vec![];
-
-        if let Ok(cargo_env) = std::env::var("CLAY_USE_CARGO") {
-            if cargo_env == "1" {
-                // build using cargo if defined
-                cli_command = Command::new("cargo");
-                cli_args.push("run");
-                cli_args.push("--bin");
-                cli_args.push("clay");
-                cli_args.push("--");
-
-                server_command = Command::new("cargo");
-                server_args.push("run");
-                server_args.push("--bin");
-                server_args.push("clay-server");
-                server_args.push("--");
-            }
-        }
-
         // create the schema
         println!("{} Initializing schema in {} ...", log_prefix, dbname);
-        cli_args.push("schema");
-        cli_args.push("create");
-        cli_args.push(testfile.model_path.as_ref().unwrap());
 
-        let cli_child = cli_command.args(cli_args).output()?;
+        let cli_child = clay_cmd()
+            .args(["schema", "create", testfile.model_path.as_ref().unwrap()])
+            .output()?;
 
         if !cli_child.status.success() {
             bail!("Could not build schema.");
@@ -115,11 +92,10 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
 
         // spawn a clay instance
         println!("{} Initializing clay-server ...", log_prefix);
-        server_args.push(testfile.model_path.as_ref().unwrap());
 
         ctx.server = Some(
-            server_command
-                .args(server_args)
+            clay_cmd()
+                .args(["serve", testfile.model_path.as_ref().unwrap()])
                 .env("CLAY_DATABASE_URL", dburl_for_clay)
                 .env("CLAY_DATABASE_USER", dbusername)
                 .env("CLAY_JWT_SECRET", &jwtsecret)
@@ -185,6 +161,17 @@ pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bo
     }
 
     Ok(success)
+}
+
+fn clay_cmd() -> Command {
+    match env::var("CLAY_USE_CARGO") {
+        Ok(cargo_env) if &cargo_env == "1" => {
+            let mut cmd = Command::new("cargo");
+            cmd.args(["run", "--bin", "clay", "--"]);
+            cmd
+        }
+        _ => Command::new("clay"),
+    }
 }
 
 type TestResult = Result<()>;
