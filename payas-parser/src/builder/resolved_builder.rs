@@ -278,8 +278,8 @@ fn build_expanded_persistent_type(
                     .get_annotation("length")
                     .map(|a| a.get_single_value())
                     .flatten()
-                    .map(|e| e.as_string())
-                    .map(|s| s.parse::<usize>().unwrap()),
+                    .map(|e| e.as_number())
+                    .map(|s| s as usize),
             })
             .collect();
 

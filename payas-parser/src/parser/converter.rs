@@ -248,6 +248,18 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr {
     let first_child = node.child(0).unwrap();
 
     match first_child.kind() {
+        "literal_number" => AstExpr::NumberLiteral(
+            first_child
+                .child_by_field_name("value")
+                .unwrap()
+                .utf8_text(source)
+                .map(|s| s.parse::<i64>().unwrap())
+                .unwrap(),
+            span_from_node(
+                source_span,
+                first_child.child_by_field_name("value").unwrap(),
+            ),
+        ),
         "literal_str" => AstExpr::StringLiteral(
             first_child
                 .child_by_field_name("value")

@@ -13,18 +13,24 @@ expression: normalized_system(&resolved)
           column_name: custom_id
           is_pk: true
           is_autoincrement: true
+          hint_explicit_dbtype: ~
+          hint_length: ~
         - name: title
           typ:
             Plain: String
           column_name: custom_title
           is_pk: false
           is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
         - name: venue
           typ:
             Plain: Venue
           column_name: custom_venue_id
           is_pk: false
           is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
       table_name: custom_concerts
       access:
         creation:
@@ -54,12 +60,16 @@ expression: normalized_system(&resolved)
           column_name: custom_id
           is_pk: true
           is_autoincrement: true
+          hint_explicit_dbtype: ~
+          hint_length: ~
         - name: name
           typ:
             Plain: String
           column_name: custom_name
           is_pk: false
           is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
         - name: concerts
           typ:
             List:
@@ -67,6 +77,8 @@ expression: normalized_system(&resolved)
           column_name: custom_venueid
           is_pk: false
           is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
       table_name: venues
       access:
         creation:

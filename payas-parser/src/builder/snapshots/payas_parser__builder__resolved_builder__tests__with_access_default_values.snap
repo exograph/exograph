@@ -13,18 +13,24 @@ expression: normalized_system(&resolved)
           column_name: id
           is_pk: true
           is_autoincrement: true
+          hint_explicit_dbtype: ~
+          hint_length: ~
         - name: title
           typ:
             Plain: String
           column_name: title
           is_pk: false
           is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
         - name: public
           typ:
             Plain: Boolean
           column_name: public
           is_pk: false
           is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
       table_name: Concert
       access:
         creation:

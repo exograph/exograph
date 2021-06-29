@@ -386,6 +386,7 @@ fn compute_expression(
         },
         TypedExpression::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
         TypedExpression::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),
+        TypedExpression::NumberLiteral(value, _) => AccessExpression::NumberLiteral(*value),
     }
 }
 
