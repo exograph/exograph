@@ -10,7 +10,7 @@ use payas_model::{
         GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
-        column::{ColumnReferece, PhysicalColumn},
+        column::{ColumnReferece, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     },
 };
@@ -475,7 +475,9 @@ fn create_column(
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
                     table_name: table_name.to_string(),
                     column_name: field.column_name.clone(),
-                    typ: pt.to_column_type(),
+                    typ: PhysicalColumnType::from_string(
+                        &determine_column_type(pt, &field).unwrap(),
+                    ),
                     is_pk: field.is_pk,
                     is_autoincrement: if field.is_autoincrement {
                         assert!(
@@ -495,11 +497,13 @@ fn create_column(
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
                         column_name: field.column_name.clone(),
-                        typ: other_pk_field
-                            .typ
-                            .deref(env)
-                            .as_primitive()
-                            .to_column_type(),
+                        typ: PhysicalColumnType::from_string(
+                            &determine_column_type(
+                                &other_pk_field.typ.deref(env).as_primitive(),
+                                &field,
+                            )
+                            .unwrap(),
+                        ),
                         is_pk: false,
                         is_autoincrement: false,
                         references: Some(ColumnReferece {
@@ -517,6 +521,28 @@ fn create_column(
             // OneToMany, so the other side has the associated column
             None
         }
+    }
+}
+
+fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) -> Option<String> {
+    let default_dbtype: String = match pt {
+        PrimitiveType::Int => "INT".to_owned(),
+
+        PrimitiveType::String => {
+            if let Some(length) = &field.hint_length {
+                format!("VARCHAR[{}]", length)
+            } else {
+                "TEXT".to_owned()
+            }
+        }
+
+        PrimitiveType::Boolean => "BOOLEAN".to_owned(),
+    };
+
+    if let Some(dbtype) = &field.hint_explicit_dbtype {
+        Some(dbtype.to_owned())
+    } else {
+        Some(default_dbtype)
     }
 }
 

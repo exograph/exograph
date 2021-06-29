@@ -100,7 +100,8 @@ module.exports = grammar({
       field("left", $.expression), ">=", field("right", $.expression)
     )),
     number: $ => /\d+/,
-    term: $ => /[a-zA-Z_]+/,
+    // TODO: handle numbers correctly
+    term: $ => /[a-zA-Z0-9_]+/,
     literal_str: $ => seq("\"", field("value", $.term), "\""),
     literal_boolean: $ => choice("true", "false")
   }

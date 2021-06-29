@@ -186,7 +186,7 @@ mod tests {
         let name_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "name".to_string(),
-            typ: PhysicalColumnType::String,
+            typ: PhysicalColumnType::String { length: None },
             is_pk: false,
             is_autoincrement: false,
             references: None,
@@ -225,7 +225,7 @@ mod tests {
         let title_col = PhysicalColumn {
             table_name: "videos".to_string(),
             column_name: "title".to_string(),
-            typ: PhysicalColumnType::String,
+            typ: PhysicalColumnType::String { length: None },
             is_pk: false,
             is_autoincrement: false,
             references: None,

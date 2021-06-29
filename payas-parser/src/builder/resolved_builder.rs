@@ -61,6 +61,9 @@ pub struct ResolvedField {
     pub column_name: String,
     pub is_pk: bool,
     pub is_autoincrement: bool,
+
+    pub hint_explicit_dbtype: Option<String>,
+    pub hint_length: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -263,6 +266,20 @@ fn build_expanded_persistent_type(
                 column_name: compute_column_name(ct, field, &types),
                 is_pk: field.get_annotation("pk").is_some(),
                 is_autoincrement: field.get_annotation("autoincrement").is_some(),
+
+                hint_explicit_dbtype: field
+                    .get_annotation("dbtype")
+                    .map(|a| a.get_single_value())
+                    .flatten()
+                    .map(|e| e.as_string())
+                    .map(|s| s.to_uppercase()),
+
+                hint_length: field
+                    .get_annotation("length")
+                    .map(|a| a.get_single_value())
+                    .flatten()
+                    .map(|e| e.as_string())
+                    .map(|s| s.parse::<usize>().unwrap()),
             })
             .collect();
 
