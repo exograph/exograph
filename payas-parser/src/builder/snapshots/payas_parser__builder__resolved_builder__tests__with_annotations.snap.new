@@ -1,0 +1,101 @@
+---
+source: payas-parser/src/builder/resolved_builder.rs
+expression: normalized_system(&resolved)
+
+---
+- - Primitive: Boolean
+  - Composite:
+      name: Concert
+      fields:
+        - name: id
+          typ:
+            Plain: Int
+          column_name: custom_id
+          is_pk: true
+          is_autoincrement: true
+          hint_explicit_dbtype: ~
+          hint_length: ~
+        - name: title
+          typ:
+            Plain: String
+          column_name: custom_title
+          is_pk: false
+          is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: 32
+        - name: venue
+          typ:
+            Plain: Venue
+          column_name: custom_venue_id
+          is_pk: false
+          is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
+      table_name: custom_concerts
+      access:
+        creation:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        read:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        update:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        delete:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+  - Primitive: Int
+  - Primitive: String
+  - Composite:
+      name: Venue
+      fields:
+        - name: id
+          typ:
+            Plain: Int
+          column_name: custom_id
+          is_pk: true
+          is_autoincrement: true
+          hint_explicit_dbtype: ~
+          hint_length: ~
+        - name: name
+          typ:
+            Plain: String
+          column_name: custom_name
+          is_pk: false
+          is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
+        - name: concerts
+          typ:
+            List:
+              Plain: Concert
+          column_name: custom_venueid
+          is_pk: false
+          is_autoincrement: false
+          hint_explicit_dbtype: ~
+          hint_length: ~
+      table_name: venues
+      access:
+        creation:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        read:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        update:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+        delete:
+          BooleanLiteral:
+            - true
+            - Primitive: Boolean
+- []
+

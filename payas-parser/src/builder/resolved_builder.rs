@@ -62,8 +62,12 @@ pub struct ResolvedField {
     pub is_pk: bool,
     pub is_autoincrement: bool,
 
+    // type hints provided by enduser
     pub hint_explicit_dbtype: Option<String>,
-    pub hint_length: Option<usize>,
+    pub hint_length: Option<usize>,     // length of a string field
+    pub hint_size: Option<usize>,       // size of the int field in bytes
+    pub hint_bits: Option<usize>,       // size of the int field given by bit width
+    pub hint_range: Option<(i64, i64)>, // range needed
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -280,6 +284,26 @@ fn build_expanded_persistent_type(
                     .flatten()
                     .map(|e| e.as_number())
                     .map(|s| s as usize),
+
+                hint_size: field
+                    .get_annotation("size")
+                    .map(|a| a.get_single_value())
+                    .flatten()
+                    .map(|e| e.as_number())
+                    .map(|s| s as usize),
+
+                hint_bits: field
+                    .get_annotation("bits")
+                    .map(|a| a.get_single_value())
+                    .flatten()
+                    .map(|e| e.as_number())
+                    .map(|s| s as usize),
+
+                hint_range: field.get_annotation("range").map(|a| {
+                    let min = a.params.get("min").unwrap().as_number();
+                    let max = a.params.get("max").unwrap().as_number();
+                    (min, max)
+                }),
             })
             .collect();
 
