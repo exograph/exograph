@@ -1,15 +1,21 @@
-use std::path::PathBuf;
+use std::path::Path;
+use std::process;
 use std::{env, sync::Arc};
 
 use actix_cors::Cors;
 use actix_web::http::StatusCode;
+use actix_web::rt::System;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 
 use introspection::schema::Schema;
 use payas_model::{model::system::ModelSystem, sql::database::Database};
 use payas_parser::builder::system_builder;
 use serde_json::Value;
+
+use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
+use std::sync::mpsc;
+use std::time::Duration;
 
 mod authentication;
 mod data;
@@ -105,46 +111,73 @@ fn cors_from_env() -> Cors {
     }
 }
 
-// TODO: Avoid duplication from cli's main.rs
-const DEFAULT_MODEL_FILE: &str = "index.clay";
+pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
+    let (watcher_tx, watcher_rx) = mpsc::channel();
+    let mut watcher = notify::watcher(watcher_tx, Duration::from_secs(2))?;
+    if watch {
+        watcher.watch(&model_file, RecursiveMode::NonRecursive)?;
+    }
 
-#[actix_web::main]
-pub async fn serve(model_file: PathBuf) -> Result<()> {
-    let (ast_system, codemap) = parser::parse_file(model_file);
-    let system = system_builder::build(ast_system, codemap);
-    let schema = Schema::new(&system);
+    // Start actix system
+    let mut actix_system = System::new("claytip");
 
-    let database = Database::from_env().unwrap(); // TODO: error handling here
-    database.create_client().unwrap(); // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
+    loop {
+        let model_file = model_file.as_ref().to_path_buf();
 
-    let system_info = Arc::new((system, schema, database));
-    let authenticator = Arc::new(JwtAuthenticator::new_from_env());
+        let (ast_system, codemap) = parser::parse_file(model_file);
+        let system = system_builder::build(ast_system, codemap);
+        let schema = Schema::new(&system);
 
-    let server = HttpServer::new(move || {
-        let cors = cors_from_env();
+        let database = Database::from_env()?; // TODO: error handling here
+        database.create_client()?; // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
 
-        App::new()
-            .wrap(cors)
-            .data(system_info.clone())
-            .data(authenticator.clone())
-            .route("/", web::get().to(playground))
-            .route("/", web::post().to(resolve))
-    });
+        let system_info = Arc::new((system, schema, database));
+        let authenticator = Arc::new(JwtAuthenticator::new_from_env());
 
-    let server_port = env::var(SERVER_PORT_PARAM)
-        .ok()
-        .map(|port_str| port_str.parse::<u32>().unwrap())
-        .unwrap_or(9876);
+        let server = HttpServer::new(move || {
+            let cors = cors_from_env();
 
-    let server_url = format!("0.0.0.0:{}", server_port);
-    let result = server.bind(&server_url);
+            App::new()
+                .wrap(cors)
+                .data(system_info.clone())
+                .data(authenticator.clone())
+                .route("/", web::get().to(playground))
+                .route("/", web::post().to(resolve))
+        });
 
-    if let Ok(server) = result {
-        let addr = server.addrs()[0];
+        let server_port = env::var(SERVER_PORT_PARAM)
+            .ok()
+            .map(|port_str| port_str.parse::<u32>().unwrap())
+            .unwrap_or(9876);
 
-        println!("Started server on {}", addr);
-        server.run().await.map_err(|e| anyhow!(e))
-    } else {
-        bail!("Error starting server on requested URL {}", server_url);
+        let server_url = format!("0.0.0.0:{}", server_port);
+        let result = server.bind(&server_url);
+
+        if let Ok(server) = result {
+            let addr = server.addrs()[0];
+
+            println!("Started server on {}", addr);
+            let server = server.run();
+
+            // Stop server when model file changes
+            // Changes to the file send both a `NoticeWrite` and a `Write` event; loop and ignore
+            // events until a `Write` event.
+            loop {
+                match watcher_rx.recv() {
+                    Ok(e) => {
+                        if matches!(e, DebouncedEvent::Write(_)) {
+                            println!("Restarting...");
+                            actix_system.block_on(async move {
+                                server.stop(true).await;
+                            });
+                            break;
+                        }
+                    }
+                    Err(e) => bail!(e),
+                }
+            }
+        } else {
+            bail!("Error starting server on requested URL {}", server_url)
+        }
     }
 }

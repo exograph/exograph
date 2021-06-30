@@ -36,11 +36,12 @@ impl Command for MigrateCommand {
 /// Claytip model utilities
 pub struct ServeCommand {
     pub model: PathBuf,
+    pub watch: bool,
 }
 
 impl Command for ServeCommand {
     fn run(&self) -> Result<()> {
-        payas_server::serve(self.model.clone())
+        payas_server::main(self.model.clone(), self.watch)
     }
 }
 

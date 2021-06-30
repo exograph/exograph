@@ -19,6 +19,7 @@ postgres-openssl = "0.5.0"
 chrono = "0.4.19"
 typed-arena = "2.0.1"
 id-arena = "2.2.1"
+notify = "4.0.17"
 
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
