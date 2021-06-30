@@ -431,9 +431,10 @@ mod tests {
         let src = r#"
         @table("custom_concerts")
         model Concert {
-          id: Int @pk @autoincrement @column("custom_id")
-          title: String @column("custom_title")
+          id: Int @pk @dbtype("bigint") @autoincrement @column("custom_id")
+          title: String @column("custom_title") @length(12)
           venue: Venue @column("custom_venue_id")
+          reserved: Int @range(min=0, max=300)
         }
         
         @table("venues")
@@ -441,6 +442,7 @@ mod tests {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")
           concerts: [Concert] @column("custom_venueid")
+          capacity: Int @bits(4)
         }        
         "#;
 

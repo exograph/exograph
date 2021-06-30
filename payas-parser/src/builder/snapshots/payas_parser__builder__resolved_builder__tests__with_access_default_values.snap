@@ -15,6 +15,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: true
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
         - name: title
           typ:
             Plain: String
@@ -23,6 +26,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: false
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
         - name: public
           typ:
             Plain: Boolean
@@ -31,6 +37,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: false
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
       table_name: Concert
       access:
         creation:

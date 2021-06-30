@@ -15,6 +15,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: true
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
         - name: title
           typ:
             Plain: String
@@ -23,6 +26,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: false
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
         - name: venue
           typ:
             Plain: Venue
@@ -31,6 +37,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: false
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
       table_name: Concert
       access:
         creation:
@@ -62,6 +71,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: true
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
         - name: name
           typ:
             Plain: String
@@ -70,6 +82,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: false
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
         - name: concerts
           typ:
             List:
@@ -79,6 +94,9 @@ expression: normalized_system(&resolved)
           is_autoincrement: false
           hint_explicit_dbtype: ~
           hint_length: ~
+          hint_size: ~
+          hint_bits: ~
+          hint_range: ~
       table_name: Venue
       access:
         creation:
