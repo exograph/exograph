@@ -15,8 +15,19 @@ variable: |
     {
         "id": 1
     }
-auth: |
+response: |
     {
-        "sub": 1,
-        "role": "ROLE_ADMIN"
+      "data": {
+        "venue": {
+          "id": 1,
+          "name": "Venue1",
+          "published": true
+        },
+        "venue2": {
+          "id": 2,
+          "name": "Venue2",
+          "published": false
+        }
+      }
     }
+    

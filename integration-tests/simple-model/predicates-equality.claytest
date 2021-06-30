@@ -12,3 +12,21 @@ variable: |
     {
         "timestamp": 3
     }
+response: |
+    {
+    	"data": {
+    		"eq_test": [
+    			{
+    				"text": "[NORMAL] http request"
+    			}
+    		],
+    		"neq_test": [
+    			{
+    				"text": "[WARNING] disk usage 50%"
+    			},
+    			{
+    				"text": "[ERROR] service stopped"
+    			}
+    		]
+    	}
+    }

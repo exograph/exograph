@@ -1,13 +1,11 @@
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::fs::read_dir;
 use std::fs::File;
 use std::io::BufReader;
-use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use async_graphql_parser::parse_query;
 
 pub type TestfileSetup = Vec<String>;
@@ -15,9 +13,9 @@ pub type TestfileInit = Vec<String>;
 pub type TestfileTests = HashMap<String, TestfileTest>;
 pub type TestfileTest = Vec<String>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TestfileOperation {
-    Sql(String, String),
+    Sql(String),
     GqlDocument {
         document: String,
         variables: Option<serde_json::Value>,
@@ -26,7 +24,7 @@ pub enum TestfileOperation {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ParsedTestfile {
     pub name: String,
     pub unique_dbname: String,
@@ -34,65 +32,149 @@ pub struct ParsedTestfile {
     pub model_path: Option<String>,
 
     pub init_operations: Vec<TestfileOperation>,
-    pub test_operations: HashMap<String, TestfileOperation>,
+    pub test_operation: Option<TestfileOperation>,
 }
 
 // serde file formats
 
 #[derive(Deserialize, Debug)]
 pub struct Testfile {
-    pub setup: TestfileSetup,
-    pub init: TestfileInit,
-    pub tests: TestfileTests,
+    pub operation: String,
+    pub variable: Option<String>,
+    pub auth: Option<String>,
+    pub response: String,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct GraphQLFile {
+pub struct InitFile {
     pub operation: String,
     pub variable: Option<String>,
     pub auth: Option<String>,
 }
 
 /// Load and parse testfiles from a given directory.
-pub fn load_testfiles_from_dir(dir: &str) -> Result<Vec<ParsedTestfile>> {
-    // enumerate tests
-    let path = Path::new(&dir);
-    let mut testfiles: Vec<ParsedTestfile> = Vec::new();
+pub fn load_testfiles_from_dir(path: &Path) -> Result<Vec<ParsedTestfile>> {
+    load_testfiles_from_dir_(path, None, &[])
+}
 
-    for file in read_dir(&path)? {
-        let file = file?;
+fn load_testfiles_from_dir_(
+    path: &Path,
+    model_path: Option<&Path>,
+    init_ops: &[TestfileOperation],
+) -> Result<Vec<ParsedTestfile>> {
+    let path = PathBuf::from(path);
 
-        if file.path().is_dir() {
-            // TODO maybe impose max recursion
-            let mut loaded_testfiles = load_testfiles_from_dir(file.path().to_str().unwrap())?;
-            testfiles.append(&mut loaded_testfiles);
+    // Begin directory traversal
+    let mut new_model: Option<PathBuf> = None;
+    let mut claytest_files: Vec<PathBuf> = vec![];
+    let mut init_files: Vec<PathBuf> = vec![];
+    let mut directories: Vec<PathBuf> = vec![];
+
+    for dir_entry in (path.read_dir()?).flatten() {
+        if dir_entry.path().is_file() {
+            if let Some(extension) = dir_entry.path().extension() {
+                // looking for a .clay file in our current directory
+                if extension == "clay" {
+                    // new .clay file found, use it as our new model
+                    if new_model.is_some() {
+                        bail!(
+                            "Only one .clay file can exist in a directory! Multiple found in {}",
+                            path.to_str().unwrap()
+                        )
+                    }
+
+                    new_model = Some(dir_entry.path())
+                }
+
+                // looking for .claytest files in our current directory
+                if extension == "claytest" {
+                    claytest_files.push(dir_entry.path());
+                }
+
+                // looking for init* files in our current directory
+                if let Some(filename) = dir_entry.path().file_name() {
+                    // TODO: https://github.com/rust-lang/rust/issues/49802
+                    //if filename.starts_with("init") {
+                    if filename.to_str().unwrap().starts_with("init")
+                        && (extension == "sql" || extension == "gql")
+                    {
+                        init_files.push(dir_entry.path());
+                    }
+                }
+            }
+        } else if dir_entry.path().is_dir() {
+            directories.push(dir_entry.path())
         }
+    }
 
-        if file.path().extension().unwrap_or_default() == "yml" {
-            let testfile = load_testfile(&file.path())?;
-            testfiles
-                .push(parse_testfile(&testfile, &file.path()).context("Failed to parse testfile")?);
+    // sort init files lexicographically
+    init_files.sort();
+
+    let model_path = if let Some(new_model) = new_model {
+        // use the .clay file we found
+        new_model
+    } else if let Some(old_model) = model_path {
+        // use the previous .clay file
+        PathBuf::from(old_model)
+    } else {
+        // no .clay file found!
+        if directories.is_empty() {
+            bail!("No model found in {}", path.to_str().unwrap())
+        } else {
+            // recurse and try to find one
+            let mut parsed = vec![];
+            for directory in directories {
+                let parsed_testfiles = load_testfiles_from_dir_(&directory, None, &init_ops)?;
+                parsed.extend(parsed_testfiles);
+            }
+
+            return Ok(parsed);
         }
+    };
+
+    let prefix = model_path.file_name().unwrap().to_str().unwrap();
+
+    // Parse init files and populate init_ops
+    let mut init_ops = init_ops.to_owned();
+
+    for initfile_path in init_files.iter() {
+        let init_op = construct_operation_from_init_file(initfile_path)?;
+        init_ops.push(init_op);
+    }
+
+    // Parse test files
+    let mut testfiles = vec![];
+
+    for testfile_path in claytest_files.iter() {
+        let mut testfile = parse_testfile(&testfile_path)?;
+
+        // annotate testfile with our prefix and our init operations collection
+        testfile.name = format!("{}/{}", prefix, testfile.name);
+        testfile.unique_dbname = to_postgres(&format!("{}/{}", prefix, testfile.unique_dbname));
+        testfile.model_path = Some(model_path.to_str().unwrap().to_string());
+        testfile.init_operations = init_ops.clone();
+
+        testfiles.push(testfile);
+    }
+
+    // Recursively parse test files
+    for directory in directories.iter() {
+        let child_init_ops = init_ops.clone();
+        let child_testfiles =
+            load_testfiles_from_dir_(directory, Some(&model_path), &child_init_ops)?;
+        testfiles.extend(child_testfiles)
     }
 
     Ok(testfiles)
 }
 
-/// Load a specified testfile into memory
-fn load_testfile(testfile_path: &Path) -> Result<Testfile> {
-    // load test file into memory
-    let file = File::open(testfile_path)?;
+fn parse_testfile(path: &Path) -> Result<ParsedTestfile> {
+    let file = File::open(path).context("Could not open test file")?;
     let reader = BufReader::new(file);
+    let deserialized_testfile: Testfile = serde_yaml::from_reader(reader)
+        .context(format!("Failed to parse test file at {:?}", path))?;
 
-    let testfile: Testfile = serde_yaml::from_reader(reader)?;
-    Ok(testfile)
-}
-
-// TODO: handle inline code for all sections
-// TODO: handle raw sql for setup and init
-/// Parse a deserialized testfile into a data structure.
-fn parse_testfile(testfile: &Testfile, testfile_path: &Path) -> Result<ParsedTestfile> {
-    let testfile_name = testfile_path
+    let testfile_name = path
         .file_stem()
         .context("Failed to get file name from path")?
         .to_str()
@@ -101,147 +183,74 @@ fn parse_testfile(testfile: &Testfile, testfile_path: &Path) -> Result<ParsedTes
 
     let mut result = ParsedTestfile {
         name: testfile_name.clone(),
-        unique_dbname: format!(
-            "payastest_{}",
-            testfile_name.replace(|c: char| !c.is_ascii_alphanumeric(), "_")
-        ),
+        unique_dbname: to_postgres(&format!("claytest_{}", testfile_name)),
 
-        model_path: None,
-        init_operations: Vec::new(),
-        test_operations: HashMap::new(),
+        ..ParsedTestfile::default()
     };
 
-    // parsing the setup section
-    // read out schema path
-    // TODO: parse entire setup section
-    // TODO: check for a sql file to use
-    // TODO: check ext
-    let mut model_path = testfile_path.to_path_buf();
-    model_path.pop(); // get parent dir
-    model_path.push(
-        testfile
-            .setup
-            .get(0)
-            .context("No items in the setup section")?,
-    );
-    result.model_path = Some(
-        model_path
-            .into_os_string()
-            .into_string()
-            .map_err(|_| anyhow!("Could not parse model path into a valid Unicode string"))?,
-    );
+    // validate GraphQL
+    let _gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
 
-    //println!("Model path: {}", &result.model_path.as_ref().unwrap());
-
-    // read in initialization
-    for filename in testfile.init.iter() {
-        if filename.ends_with(".gql") {
-            result
-                .init_operations
-                .push(construct_gql_operation_from_file(
-                    filename,
-                    None,
-                    testfile_path,
-                )?);
-        }
-    }
-
-    // read in tests
-    for (test_name, test) in &testfile.tests {
-        let mut gql_filepath: Option<&String> = None;
-        let mut json_filepath: Option<&String> = None;
-
-        // read in a singular test
-        for path in test.iter() {
-            if path.ends_with(".gql") {
-                match gql_filepath {
-                    Some(_) => {
-                        bail!("Cannot have multiple .gql documents in a single test definition")
-                    }
-                    None => {
-                        gql_filepath = Some(path);
-                    }
-                }
-            }
-
-            if path.ends_with(".json") {
-                match json_filepath {
-                    Some(_) => {
-                        bail!("Cannot have multiple .json expected responses in a single test definition")
-                    }
-                    None => {
-                        json_filepath = Some(path);
-                    }
-                }
-            };
-        }
-
-        let test_op = construct_gql_operation_from_file(
-            gql_filepath.context("Missing GraphQL document")?,
-            Some(json_filepath.context("Missing expected .json response")?),
-            testfile_path,
-        )?;
-
-        result
-            .test_operations
-            .insert(test_name.to_string(), test_op);
-    }
+    // parse operation
+    result.test_operation = Some(TestfileOperation::GqlDocument {
+        document: deserialized_testfile.operation.clone(),
+        auth: deserialized_testfile.auth.map(from_json).transpose()?,
+        variables: deserialized_testfile.variable.map(from_json).transpose()?,
+        expected_payload: Some(from_json(deserialized_testfile.response)?),
+    });
 
     Ok(result)
 }
 
-fn construct_gql_operation_from_file(
-    gql_filepath: &str,
-    json_filepath: Option<&str>,
-    testfile_basedir: &Path,
-) -> Result<TestfileOperation> {
-    let gql_file = read_file_from_basedir(gql_filepath, testfile_basedir)
-        .with_context(|| format!("Could not read .gql file at {}", gql_filepath))?;
-    let gql: GraphQLFile =
-        serde_yaml::from_str(&gql_file).context("Could not parse .gql file (is it in YAML?)")?;
+fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> {
+    match path.extension().unwrap().to_str().unwrap() {
+        "sql" => {
+            let sql = std::fs::read_to_string(&path).context("Failed to read SQL file")?;
 
-    // parse expected json
-    let expected_payload = match json_filepath {
-        Some(json_filepath) => {
-            let json_file = read_file_from_basedir(json_filepath, testfile_basedir)
-                .with_context(|| format!("Could not read JSON file at {}", json_filepath))?;
-            Some(serde_json::from_str(&json_file).context("Provided JSON is not valid")?)
+            Ok(TestfileOperation::Sql(sql))
         }
-        None => None,
-    };
+        "gql" => {
+            let file = File::open(path)?;
+            let reader = BufReader::new(file);
+            let deserialized_initfile: InitFile =
+                serde_yaml::from_reader(reader).context(format!("Failed to parse {:?}", path))?;
 
-    // verify gql by parsing
-    let _gql_document =
-        parse_query(&gql.operation).context("Provided GraphQL is not a valid document")?;
-
-    // parse json sections
-    let parse_json_from_section = |section: &Option<String>| {
-        section
-            .as_ref()
-            .map(|s| serde_json::from_str(&s))
-            .transpose()
-    };
-
-    Ok(TestfileOperation::GqlDocument {
-        document: gql.operation,
-        variables: parse_json_from_section(&gql.variable)
-            .context("GraphQL variable section is not valid JSON")?,
-        expected_payload,
-        auth: parse_json_from_section(&gql.auth)
-            .context("GraphQL auth section is not valid JSON")?,
-    })
+            Ok(TestfileOperation::GqlDocument {
+                document: deserialized_initfile.operation.clone(),
+                auth: deserialized_initfile.auth.map(from_json).transpose()?,
+                variables: deserialized_initfile.variable.map(from_json).transpose()?,
+                expected_payload: None,
+            })
+        }
+        _ => {
+            bail!("Bad extension")
+        }
+    }
 }
 
-fn read_file_from_basedir(path: &str, basedir: &Path) -> Result<String> {
-    let mut file_path = PathBuf::from(basedir.parent().ok_or("").unwrap());
-    file_path.push(path);
+// Parse JSON from a string
+fn from_json(json: String) -> Result<serde_json::Value> {
+    serde_json::from_str(&json).context("Failed to parse JSON")
+}
 
-    // read in file
-    //println!("Reading {:?}", file_path);
+// Generate a PostgreSQL-friendly name from a `str`.
+fn to_postgres(name: &str) -> String {
+    let mut index: usize = 0;
 
-    let mut file = File::open(file_path)?;
-    let mut buffer = String::new();
-    file.read_to_string(&mut buffer)?;
+    name.chars()
+        .map(|c| {
+            let nextchar = if !(c.is_ascii_alphanumeric() || c == '_') {
+                // only alphanumeric and underscores
+                'X'
+            } else if index == 0 && c.is_ascii_digit() {
+                // names in SQL cannot begin with a digit
+                'Z'
+            } else {
+                c
+            };
 
-    Ok(buffer)
+            index += 1;
+            nextchar
+        })
+        .collect()
 }

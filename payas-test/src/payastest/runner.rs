@@ -1,8 +1,10 @@
 use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
 use crate::payastest::loader::ParsedTestfile;
 use crate::payastest::loader::TestfileOperation;
-use actix_web::client::Client;
 use anyhow::{anyhow, bail, Context, Result};
+use isahc::HttpClient;
+use isahc::ReadResponseExt;
+use isahc::Request;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
@@ -51,116 +53,126 @@ impl Drop for TestfileContext {
     }
 }
 
-pub async fn run_testfile(testfile: &ParsedTestfile, dburl: String) -> Result<bool> {
-    let mut test_counter: usize = 0;
-    let mut success: bool = true;
+pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Result<usize> {
+    let mut successful_tests: usize = 0;
 
     // iterate through our tests
-    for (test_name, test_op) in &testfile.test_operations {
-        let mut ctx = TestfileContext::default();
-        test_counter += 1;
+    let mut ctx = TestfileContext::default();
 
-        let log_prefix = format!("({}/{})", testfile.name, test_name);
-        let dbname = format!("{}_test_{}", &testfile.unique_dbname, &test_counter);
-        ctx.dbname = Some(dbname.clone());
+    let log_prefix = ansi_term::Color::Purple.paint(format!("({})", testfile.name));
+    let dbname = &testfile.unique_dbname;
+    ctx.dbname = Some(dbname.clone());
 
-        // generate a JWT secret
-        let jwtsecret: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(30)
-            .map(char::from)
-            .collect();
+    // generate a JWT secret
+    let jwtsecret: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect();
 
-        // create a database
-        dropdb_psql(&dbname, &dburl).ok(); // clear any existing databases
-        let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &dburl)?;
-        ctx.dburl = Some(dburl_for_clay.clone());
+    // create a database
+    dropdb_psql(&dbname, &bootstrap_dburl).ok(); // clear any existing databases
+    let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &bootstrap_dburl)?;
+    ctx.dburl = Some(dburl_for_clay.clone());
 
-        // create the schema
-        println!("{} Initializing schema in {} ...", log_prefix, dbname);
+    // create the schema
+    println!("{} Initializing schema in {} ...", log_prefix, dbname);
 
-        let cli_child = clay_cmd()
-            .args(["schema", "create", testfile.model_path.as_ref().unwrap()])
-            .output()?;
+    let cli_child = clay_cmd()
+        .args(["schema", "create", testfile.model_path.as_ref().unwrap()])
+        .output()?;
 
-        if !cli_child.status.success() {
-            bail!("Could not build schema.");
-        }
-
-        let query = std::str::from_utf8(&cli_child.stdout)?;
-        run_psql(query, &dburl_for_clay)?;
-
-        // spawn a clay instance
-        println!("{} Initializing clay-server ...", log_prefix);
-
-        ctx.server = Some(
-            clay_cmd()
-                .args(["serve", testfile.model_path.as_ref().unwrap()])
-                .env("CLAY_DATABASE_URL", dburl_for_clay)
-                .env("CLAY_DATABASE_USER", dbusername)
-                .env("CLAY_JWT_SECRET", &jwtsecret)
-                .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .spawn()
-                .expect("clay-server failed to start"),
-        );
-
-        // wait for it to start
-        const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
-
-        let mut server_stdout = BufReader::new(ctx.server.as_mut().unwrap().stdout.take().unwrap());
-
-        let mut buffer = [0; MAGIC_STRING.len()];
-        server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
-        let output = String::from(std::str::from_utf8(&buffer)?);
-
-        if !output.eq(MAGIC_STRING) {
-            bail!("Unexpected output from clay-server: {}", output)
-        }
-
-        let mut buffer_port = String::new();
-        server_stdout.read_line(&mut buffer_port)?; // read port clay-server is using
-        buffer_port.pop(); // remove newline
-        let endpoint = format!("http://127.0.0.1:{}/", buffer_port);
-
-        // run the init section
-        for operation in testfile.init_operations.iter() {
-            println!("{} Initializing database...", log_prefix);
-            run_operation(&endpoint, operation, &jwtsecret)
-                .await
-                .context("Error while initializing database")??;
-        }
-
-        // run test
-        println!("{} Testing ...", log_prefix);
-        let result = run_operation(&endpoint, test_op, &jwtsecret).await;
-
-        // did the test run okay?
-        match result {
-            Ok(test_result) => {
-                // check test results
-                match test_result {
-                    Ok(_) => {
-                        println!("{} OK\n", log_prefix);
-                    }
-
-                    Err(e) => {
-                        println!("{} ASSERTION FAILED\n{:?}", log_prefix, e);
-                        success = false;
-                    }
-                }
-            }
-            Err(e) => {
-                println!("{} TEST EXECUTION FAILED\n{:?}", log_prefix, e);
-                success = false;
-            }
-        }
-
-        // implicit ctx drop
+    if !cli_child.status.success() {
+        bail!("Could not build schema.");
     }
 
-    Ok(success)
+    let query = std::str::from_utf8(&cli_child.stdout)?;
+    run_psql(query, &dburl_for_clay)?;
+
+    // spawn a clay instance
+    println!("{} Initializing clay-server ...", log_prefix);
+
+    ctx.server = Some(
+        clay_cmd()
+            .args(["serve", testfile.model_path.as_ref().unwrap()])
+            .env("CLAY_DATABASE_URL", &dburl_for_clay)
+            .env("CLAY_DATABASE_USER", dbusername)
+            .env("CLAY_JWT_SECRET", &jwtsecret)
+            .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
+            .stdout(Stdio::piped())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .context("clay-server failed to start")?,
+    );
+
+    // wait for it to start
+    const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
+
+    let mut server_stdout = BufReader::new(ctx.server.as_mut().unwrap().stdout.take().unwrap());
+
+    let mut buffer = [0; MAGIC_STRING.len()];
+    server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
+    let output = String::from(std::str::from_utf8(&buffer)?);
+
+    //println!("{}", output);
+
+    if !output.eq(MAGIC_STRING) {
+        bail!("Unexpected output from clay-server: {}", output)
+    }
+
+    let mut buffer_port = String::new();
+    server_stdout.read_line(&mut buffer_port)?; // read port clay-server is using
+    buffer_port.pop(); // remove newline
+    let endpoint = format!("http://127.0.0.1:{}/", buffer_port);
+
+    // run the init section
+    println!("{} Initializing database...", log_prefix);
+    for operation in testfile.init_operations.iter() {
+        run_operation(&endpoint, operation, &jwtsecret, &dburl_for_clay)??
+    }
+
+    // run test
+    println!("{} Testing ...", log_prefix);
+    let result = run_operation(
+        &endpoint,
+        &testfile.test_operation.as_ref().unwrap(),
+        &jwtsecret,
+        &dburl_for_clay,
+    );
+
+    // did the test run okay?
+    match result {
+        Ok(test_result) => {
+            // check test results
+            match test_result {
+                Ok(_) => {
+                    println!("{} {}\n", log_prefix, ansi_term::Color::Green.paint("OK"));
+                    successful_tests += 1;
+                }
+
+                Err(e) => {
+                    println!(
+                        "{} {}\n{:?}",
+                        log_prefix,
+                        ansi_term::Color::Yellow.paint("ASSERTION FAILED"),
+                        e
+                    );
+                }
+            }
+        }
+        Err(e) => {
+            println!(
+                "{} {}\n{:?}",
+                log_prefix,
+                ansi_term::Color::Red.paint("TEST SETUP FAILED"),
+                e
+            );
+        }
+    }
+
+    // implicit ctx drop
+
+    Ok(successful_tests)
 }
 
 fn clay_cmd() -> Command {
@@ -176,7 +188,12 @@ fn clay_cmd() -> Command {
 
 type TestResult = Result<()>;
 
-async fn run_operation(url: &str, gql: &TestfileOperation, jwtsecret: &str) -> Result<TestResult> {
+fn run_operation(
+    url: &str,
+    gql: &TestfileOperation,
+    jwtsecret: &str,
+    dburl: &str,
+) -> Result<TestResult> {
     match gql {
         TestfileOperation::GqlDocument {
             document,
@@ -184,8 +201,7 @@ async fn run_operation(url: &str, gql: &TestfileOperation, jwtsecret: &str) -> R
             expected_payload,
             auth,
         } => {
-            let client = Client::default();
-            let mut req = client.post(url);
+            let mut req = Request::post(url);
 
             // add JWT token if specified
             if let Some(auth) = auth {
@@ -209,15 +225,19 @@ async fn run_operation(url: &str, gql: &TestfileOperation, jwtsecret: &str) -> R
                 req = req.header("Authorization", format!("Bearer {}", token));
             };
 
-            let mut resp = req
-                .send_json(&PayasPost {
-                    query: document.to_string(),
-                    variables: variables
-                        .as_ref()
-                        .unwrap_or(&Value::Object(Map::new()))
-                        .clone(),
-                })
-                .await
+            let req =
+                req.header("Content-Type", "application/json")
+                    .body(serde_json::to_string(&PayasPost {
+                        query: document.to_string(),
+                        variables: variables
+                            .as_ref()
+                            .unwrap_or(&Value::Object(Map::new()))
+                            .clone(),
+                    })?)?;
+
+            let client = HttpClient::new()?;
+            let mut resp = client
+                .send(req)
                 .map_err(|e| anyhow!("Error sending POST request: {}", e))?;
 
             if !resp.status().is_success() {
@@ -227,10 +247,7 @@ async fn run_operation(url: &str, gql: &TestfileOperation, jwtsecret: &str) -> R
                 );
             }
 
-            let json = resp
-                .json()
-                .await
-                .context("Error parsing response into JSON")?;
+            let json = resp.json().context("Error parsing response into JSON")?;
             let body: serde_json::Value = json;
 
             match expected_payload {
@@ -254,7 +271,7 @@ async fn run_operation(url: &str, gql: &TestfileOperation, jwtsecret: &str) -> R
             }
         }
 
-        TestfileOperation::Sql(query, dburl) => {
+        TestfileOperation::Sql(query) => {
             run_psql(query, dburl)?;
             Ok(Ok(()))
         }

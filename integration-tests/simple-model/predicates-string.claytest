@@ -18,3 +18,23 @@ variable: |
         "suffix": "50%",
         "like": "[ERROR] service stopped"
     }
+response: |
+    {
+    	"data": {
+    		"starts_with": [
+    			{
+    				"text": "[NORMAL] http request"
+    			}
+    		],
+    		"ends_with": [
+    			{
+    				"text": "[WARNING] disk usage 50%"
+    			}
+    		],
+    		"like": [
+    			{
+    				"text": "[ERROR] service stopped"
+    			}
+    		]
+    	}
+    }

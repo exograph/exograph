@@ -1,4 +1,4 @@
-@table("log")
+@table("logs")
 model Log {
   id: Int @pk @autoincrement
   timestamp: Int
