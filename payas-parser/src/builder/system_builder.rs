@@ -90,6 +90,7 @@ mod tests {
               id: Int @dbtype("bigint") @pk @autoincrement
               nonce: Int @bits(16)
               hash: Int @size(8)
+              weird: Int @range(min=0, max=32770)
               prefix: String @length(15)
               log: String
             }
@@ -102,6 +103,7 @@ mod tests {
         let logs_id = get_column_from_table("id", logs);
         let logs_nonce = get_column_from_table("nonce", logs);
         let logs_hash = get_column_from_table("hash", logs);
+        let logs_weird = get_column_from_table("weird", logs);
         let logs_prefix = get_column_from_table("prefix", logs);
 
         // @dbtype("bigint")
@@ -121,6 +123,14 @@ mod tests {
         // @size(8)
         if let PhysicalColumnType::Int { bits } = &logs_hash.typ {
             assert!(*bits == IntBits::_64)
+        } else {
+            panic!()
+        }
+
+        // @range(min=0, max=32770)
+        if let PhysicalColumnType::Int { bits } = &logs_weird.typ {
+            // range in hint does NOT fit in SMALLINT
+            assert!(*bits == IntBits::_32)
         } else {
             panic!()
         }
