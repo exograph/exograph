@@ -6,7 +6,7 @@ macro_rules! assert_params {
     ($actual_params:expr, $expected_param:expr) => {
         match $actual_params.split_first() {
             Some((actual_head, actual_tail)) => {
-                assert_eq!(actual_head, &&(Box::new($expected_param) as Box<dyn crate::sql::SQLParam>), "Paramter mismatch");
+                assert_eq!(actual_head, &(&$expected_param as &dyn $crate::sql::SQLParam), "Paramter mismatch");
                 assert_eq!(actual_tail.len(), 0, "Extra actual parameters")
             },
             None => assert!(false)
@@ -15,7 +15,7 @@ macro_rules! assert_params {
     ($actual_params:expr, $expected_param:expr, $($rest:expr), *) => {
         match $actual_params.split_first() {
             Some((actual_head, actual_tail)) => {
-                assert_eq!(actual_head, &&(Box::new($expected_param) as Box<dyn crate::sql::SQLParam>), "Paramter mismatch");
+                assert_eq!(actual_head, &(&$expected_param as &dyn $crate::sql::SQLParam), "Paramter mismatch");
                 assert_params!(actual_tail, $($rest), *);
             },
             None => assert!(false)
