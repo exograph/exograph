@@ -15,22 +15,28 @@ steps:
       template: Build {{build.number}} started {{build.link}}
 
   - name: rustfmt-clippy
-    image: rust
+    image: rust:buster
     pull: if-not-exists
     depends_on:
       - slack-start
     commands:
+      - apt-get update && apt-get install -y npm
       - rustup component add rustfmt
       - rustup component add clippy
+      - cd payas-parser/grammar && npm install && cd ../..
+      - export PATH="$PATH:$PWD/payas-parser/grammar/node_modules/.bin"
       - cargo fmt --all -- --check
       - cargo clippy -- -D warnings
 
   - name: test
-    image: rust
+    image: rust:buster
     pull: if-not-exists
     depends_on:
       - slack-start
     commands:
+      - apt-get update && apt-get install -y npm
+      - cd payas-parser/grammar && npm install && cd ../..
+      - export PATH="$PATH:$PWD/payas-parser/grammar/node_modules/.bin"
       - cargo test
 
   - name: slack-end
