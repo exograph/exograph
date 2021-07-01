@@ -13,46 +13,37 @@ expression: normalized_system(&resolved)
           column_name: custom_id
           is_pk: true
           is_autoincrement: true
-          hint_explicit_dbtype: BIGINT
-          hint_length: ~
-          hint_size: ~
-          hint_bits: ~
-          hint_range: ~
+          type_hint:
+            ExplicitHint:
+              dbtype: BIGINT
         - name: title
           typ:
             Plain: String
           column_name: custom_title
           is_pk: false
           is_autoincrement: false
-          hint_explicit_dbtype: ~
-          hint_length: 12
-          hint_size: ~
-          hint_bits: ~
-          hint_range: ~
+          type_hint:
+            StringHint:
+              length: 12
         - name: venue
           typ:
             Plain: Venue
           column_name: custom_venue_id
           is_pk: false
           is_autoincrement: false
-          hint_explicit_dbtype: ~
-          hint_length: ~
-          hint_size: ~
-          hint_bits: ~
-          hint_range: ~
+          type_hint: ~
         - name: reserved
           typ:
             Plain: Int
           column_name: reserved
           is_pk: false
           is_autoincrement: false
-          hint_explicit_dbtype: ~
-          hint_length: ~
-          hint_size: ~
-          hint_bits: ~
-          hint_range:
-            - 0
-            - 300
+          type_hint:
+            IntHint:
+              bits: ~
+              range:
+                - 0
+                - 300
       table_name: custom_concerts
       access:
         creation:
@@ -82,22 +73,14 @@ expression: normalized_system(&resolved)
           column_name: custom_id
           is_pk: true
           is_autoincrement: true
-          hint_explicit_dbtype: ~
-          hint_length: ~
-          hint_size: ~
-          hint_bits: ~
-          hint_range: ~
+          type_hint: ~
         - name: name
           typ:
             Plain: String
           column_name: custom_name
           is_pk: false
           is_autoincrement: false
-          hint_explicit_dbtype: ~
-          hint_length: ~
-          hint_size: ~
-          hint_bits: ~
-          hint_range: ~
+          type_hint: ~
         - name: concerts
           typ:
             List:
@@ -105,22 +88,17 @@ expression: normalized_system(&resolved)
           column_name: custom_venueid
           is_pk: false
           is_autoincrement: false
-          hint_explicit_dbtype: ~
-          hint_length: ~
-          hint_size: ~
-          hint_bits: ~
-          hint_range: ~
+          type_hint: ~
         - name: capacity
           typ:
             Plain: Int
           column_name: capacity
           is_pk: false
           is_autoincrement: false
-          hint_explicit_dbtype: ~
-          hint_length: ~
-          hint_size: ~
-          hint_bits: 4
-          hint_range: ~
+          type_hint:
+            IntHint:
+              bits: 16
+              range: ~
       table_name: venues
       access:
         creation:

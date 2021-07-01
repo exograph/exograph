@@ -17,7 +17,9 @@ use payas_model::{
 
 use super::{
     query_builder,
-    resolved_builder::{ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType},
+    resolved_builder::{
+        ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType, ResolvedTypeHint,
+    },
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
@@ -476,9 +478,7 @@ fn create_column(
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
                     table_name: table_name.to_string(),
                     column_name: field.column_name.clone(),
-                    typ: PhysicalColumnType::from_string(
-                        &determine_column_type(pt, &field).unwrap(),
-                    ),
+                    typ: PhysicalColumnType::from_string(&determine_column_type(pt, &field)),
                     is_pk: field.is_pk,
                     is_autoincrement: if field.is_autoincrement {
                         assert!(
@@ -498,13 +498,10 @@ fn create_column(
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
                         column_name: field.column_name.clone(),
-                        typ: PhysicalColumnType::from_string(
-                            &determine_column_type(
-                                &other_pk_field.typ.deref(env).as_primitive(),
-                                &field,
-                            )
-                            .unwrap(),
-                        ),
+                        typ: PhysicalColumnType::from_string(&determine_column_type(
+                            &other_pk_field.typ.deref(env).as_primitive(),
+                            &field,
+                        )),
                         is_pk: false,
                         is_autoincrement: false,
                         references: Some(ColumnReferece {
@@ -525,80 +522,70 @@ fn create_column(
     }
 }
 
-fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) -> Option<String> {
-    let default_dbtype: String = match pt {
-        PrimitiveType::Int => {
-            // https://www.postgresql.org/docs/9.1/datatype-numeric.html
-
-            if field.hint_bits.is_some() && field.hint_size.is_some() {
-                panic!("Conflicting type hints (cannot have both @bits and @size")
+fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) -> String {
+    if let Some(hint) = &field.type_hint {
+        match hint {
+            ResolvedTypeHint::ExplicitHint { dbtype } => {
+                // TODO: validate this type?
+                dbtype.to_owned()
             }
 
-            // determine the proper sized type to use
-            if let Some(bits) = &field.hint_bits {
-                match bits {
-                    16 => "SMALLINT",
-                    32 => "INT",
-                    64 => "BIGINT",
-                    _ => panic!("Invalid bits"),
-                }
-                .to_owned()
-            } else if let Some(size) = &field.hint_size {
-                match size {
-                    2 => "SMALLINT",
-                    4 => "INT",
-                    8 => "BIGINT",
-                    _ => panic!("Invalid size"),
-                }
-                .to_owned()
-            } else if let Some(range) = &field.hint_range {
-                let is_superset = |bound_min: i64, bound_max: i64| {
-                    let range_min = range.0;
-                    let range_max = range.1;
-                    assert!(range_min <= range_max);
-                    assert!(bound_min <= bound_max);
+            ResolvedTypeHint::IntHint { bits, range } => {
+                assert!(matches!(pt, PrimitiveType::Int));
 
-                    // is this bound a superset of the provided range?
-                    (bound_min <= range_min && bound_min <= range_max)
-                        && (bound_max >= range_max && bound_max >= range_min)
-                };
-
-                // determine which SQL type is appropriate for this range
-                {
-                    if is_superset(-32_768, 32_768) {
-                        "SMALLINT"
-                    } else if is_superset(-2147483648, 2147483647) {
-                        "INT"
-                    } else if is_superset(-9223372036854775808, 9223372036854775807) {
-                        "BIGINT"
-                    } else {
-                        panic!("Requested range is too big")
+                // determine the proper sized type to use
+                if let Some(bits) = bits {
+                    match bits {
+                        16 => "SMALLINT",
+                        32 => "INT",
+                        64 => "BIGINT",
+                        _ => panic!("Invalid bits"),
                     }
-                }
-                .to_owned()
-            } else {
-                // no hints provided, go with default
-                "INT".to_owned()
-            }
-        }
+                    .to_owned()
+                } else if let Some(range) = range {
+                    let is_superset = |bound_min: i64, bound_max: i64| {
+                        let range_min = range.0;
+                        let range_max = range.1;
+                        assert!(range_min <= range_max);
+                        assert!(bound_min <= bound_max);
 
-        PrimitiveType::String => {
-            if let Some(length) = &field.hint_length {
+                        // is this bound a superset of the provided range?
+                        (bound_min <= range_min && bound_min <= range_max)
+                            && (bound_max >= range_max && bound_max >= range_min)
+                    };
+
+                    // determine which SQL type is appropriate for this range
+                    {
+                        if is_superset(-32_768, 32_768) {
+                            "SMALLINT"
+                        } else if is_superset(-2147483648, 2147483647) {
+                            "INT"
+                        } else if is_superset(-9223372036854775808, 9223372036854775807) {
+                            "BIGINT"
+                        } else {
+                            panic!("Requested range is too big")
+                        }
+                    }
+                    .to_owned()
+                } else {
+                    // no hints provided, go with default
+                    "INT".to_owned()
+                }
+            }
+
+            ResolvedTypeHint::StringHint { length } => {
+                assert!(matches!(pt, PrimitiveType::String));
+
                 // length hint provided, use it
                 format!("CHAR[{}]", length)
-            } else {
-                // no hint, use variable length text type
-                "TEXT".to_owned()
             }
         }
-
-        PrimitiveType::Boolean => "BOOLEAN".to_owned(),
-    };
-
-    if let Some(dbtype) = &field.hint_explicit_dbtype {
-        Some(dbtype.to_owned())
     } else {
-        Some(default_dbtype)
+        match pt {
+            PrimitiveType::Int => "INT".to_owned(),
+            PrimitiveType::String => "TEXT".to_owned(),
+            PrimitiveType::Boolean => "BOOLEAN".to_owned(),
+        }
     }
 }
 
