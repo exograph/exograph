@@ -32,6 +32,8 @@ static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
 const SERVER_PORT_PARAM: &str = "CLAY_SERVER_PORT";
 
+const FILE_WATCHER_DELAY: Duration = Duration::from_millis(200);
+
 async fn playground() -> impl Responder {
     HttpResponse::Ok().body(PLAYGROUND_HTML)
 }
@@ -125,7 +127,7 @@ pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
         let tx = tx.clone();
         thread::spawn(move || -> Result<()> {
             let (watcher_tx, watcher_rx) = mpsc::channel();
-            let mut watcher = notify::watcher(watcher_tx, Duration::from_secs(2))?;
+            let mut watcher = notify::watcher(watcher_tx, FILE_WATCHER_DELAY)?;
             watcher.watch(&model_file, RecursiveMode::NonRecursive)?;
 
             loop {
