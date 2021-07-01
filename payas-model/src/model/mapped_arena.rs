@@ -25,6 +25,7 @@ impl<V> MappedArena<V> {
     }
 
     pub fn get_by_key_mut(&mut self, key: &str) -> Option<&mut V> {
+        #[allow(clippy::manual_map)]
         if let Some(id) = self.get_id(key) {
             Some(&mut self[id])
         } else {
