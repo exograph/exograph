@@ -1,0 +1,46 @@
+kind: pipeline
+name: default
+
+trigger:
+  branch:
+  - main
+
+steps:
+  - name: slack-start
+    image: plugins/slack
+    settings:
+      webhook: https://hooks.slack.com/services/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
+      username: drone
+      channel: ci
+      template: Build {{build.number}} started {{build.link}}
+
+  - name: rustfmt-clippy
+    image: rust
+    pull: if-not-exists
+    depends_on:
+      - slack-start
+    commands:
+      - rustup component add rustfmt
+      - rustup component add clippy
+      - cargo fmt --all -- --check
+      - cargo clippy -- -D warnings
+
+  - name: test
+    image: rust
+    pull: if-not-exists
+    depends_on:
+      - slack-start
+    commands:
+      - cargo test
+
+  - name: slack-end
+    image: plugins/slack
+    depends_on:
+      - rustfmt-clippy
+      - test
+    when:
+      status: [success, failure]
+    settings:
+      webhook: https://hooks.slack.com/services/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
+      username: drone
+      channel: ci
