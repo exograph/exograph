@@ -345,8 +345,6 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
             None
         };
 
-        // TODO: validate range fits in bits in type_builder
-
         if bits_hint.is_some() || range_hint.is_some() {
             Some(ResolvedTypeHint::IntHint {
                 bits: bits_hint,
@@ -378,7 +376,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
         .flatten()
         .map(|e| e.as_string())
         .map(|s| ResolvedTypeHint::ExplicitHint {
-            dbtype: s.to_string().to_uppercase(),
+            dbtype: s.to_uppercase(),
         });
 
     ////

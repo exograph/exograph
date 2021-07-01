@@ -105,7 +105,7 @@ impl ColumnSpec {
 
         ColumnSpec {
             name: column.column_name.clone(),
-            db_type: column.typ.db_type(column.is_autoincrement).to_string(),
+            db_type: column.typ.db_type(column.is_autoincrement),
             is_pk: column.is_pk,
             foreign_constraint,
         }
