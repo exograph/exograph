@@ -4,9 +4,7 @@ version = "0.1.0"
 authors = ["Andy Chun <andy.chun@payalabs.com>"]
 edition = "2018"
 
-[[bin]]
-name = "clay-test"
-path = "src/main.rs"
+[lib]
 
 [dependencies]
 anyhow = "1.0"

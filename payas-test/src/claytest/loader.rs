@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -7,11 +6,6 @@ use std::path::PathBuf;
 
 use anyhow::{bail, Context, Result};
 use async_graphql_parser::parse_query;
-
-pub type TestfileSetup = Vec<String>;
-pub type TestfileInit = Vec<String>;
-pub type TestfileTests = HashMap<String, TestfileTest>;
-pub type TestfileTest = Vec<String>;
 
 #[derive(Debug, Clone)]
 pub enum TestfileOperation {

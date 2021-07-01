@@ -1,6 +1,6 @@
-use crate::payastest::dbutils::{createdb_psql, dropdb_psql, run_psql};
-use crate::payastest::loader::ParsedTestfile;
-use crate::payastest::loader::TestfileOperation;
+use crate::claytest::dbutils::{createdb_psql, dropdb_psql, run_psql};
+use crate::claytest::loader::ParsedTestfile;
+use crate::claytest::loader::TestfileOperation;
 use anyhow::{anyhow, bail, Context, Result};
 use isahc::HttpClient;
 use isahc::ReadResponseExt;

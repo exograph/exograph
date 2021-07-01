@@ -1,25 +1,17 @@
-pub mod payastest;
+mod claytest;
 
-use payastest::loader::load_testfiles_from_dir;
-use payastest::runner::run_testfile;
+use anyhow::{bail, Result};
+use claytest::loader::load_testfiles_from_dir;
+use claytest::runner::run_testfile;
 use std::path::Path;
 
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
-
-    let current_dir: String = std::env::current_dir()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
-
-    let directory = args.get(1).unwrap_or(&current_dir);
+pub fn run(directory: &Path) -> Result<()> {
     println!(
         "{} {} {}",
         ansi_term::Color::Blue
             .bold()
             .paint("* Running tests in directory"),
-        directory,
+        directory.to_str().unwrap(),
         ansi_term::Color::Blue.bold().paint("..."),
     );
 
@@ -64,8 +56,8 @@ fn main() {
     );
 
     if success {
-        std::process::exit(0);
+        Ok(())
     } else {
-        std::process::exit(1);
+        bail!("Test failures")
     }
 }
