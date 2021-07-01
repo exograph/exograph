@@ -8,6 +8,7 @@ use anyhow::{bail, Context, Result};
 use async_graphql_parser::parse_query;
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum TestfileOperation {
     Sql(String),
     GqlDocument {
