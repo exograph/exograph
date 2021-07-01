@@ -15,3 +15,9 @@ auth: |
         "sub": 2,
         "role": "ROLE_USER"
     }
+response: |
+    {
+      "data": {
+        "venue": null
+      }
+    }

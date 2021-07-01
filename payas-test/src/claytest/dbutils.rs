@@ -36,7 +36,7 @@ pub fn createdb_psql(dbname: &str, url: &str) -> Result<(ConnectionString, DbUse
 
     // run creation query
     let mut client: Client = config.connect(NoTls)?;
-    let query: String = format!("CREATE DATABASE {}", dbname);
+    let query: String = format!("CREATE DATABASE \"{}\"", dbname);
     client
         .execute(query.as_str(), &[])
         .context("PostgreSQL database creation query failed")?;
@@ -83,7 +83,7 @@ pub fn dropdb_psql(dbname: &str, url: &str) -> Result<()> {
 
     let mut client = config.connect(NoTls)?;
 
-    let query: String = format!("DROP DATABASE {}", dbname);
+    let query: String = format!("DROP DATABASE \"{}\"", dbname);
     client
         .execute(query.as_str(), &[])
         .context("PostgreSQL drop database query failed")

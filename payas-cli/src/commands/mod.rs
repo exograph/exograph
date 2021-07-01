@@ -52,7 +52,7 @@ pub struct TestCommand {
 
 impl Command for TestCommand {
     fn run(&self) -> Result<()> {
-        todo!("Implmement test command");
+        payas_test::run(&self.dir)
     }
 }
 

@@ -1,0 +1,66 @@
+operation: |
+    query($less_than_bound: Int!, $greater_than_bound: Int!) {
+        lt_test: logs(where: { timestamp: { lt: $less_than_bound } }) {
+            text
+        }
+
+        lte_test: logs(where: { timestamp: { lte: $less_than_bound } }) {
+            text
+        }
+
+        gt_test: logs(where: { timestamp: { gt: $greater_than_bound } }) {
+            text
+        }
+
+        gte_test: logs(where: { timestamp: { gte: $greater_than_bound } }) {
+            text
+        }
+    }
+variable: |
+    {
+        "less_than_bound": 9,
+        "greater_than_bound": 3
+    }
+response: |
+    {
+    	"data": {
+    		"lt_test": [
+    			{
+    				"text": "[NORMAL] http request"
+    			},
+    			{
+    				"text": "[WARNING] disk usage 50%"
+    			}
+    		],
+    		"lte_test": [
+    			{
+    				"text": "[NORMAL] http request"
+    			},
+    			{
+    				"text": "[WARNING] disk usage 50%"
+    			},
+    			{
+    				"text": "[ERROR] service stopped"
+    			}
+    		],
+    		"gt_test": [
+    			{
+    				"text": "[WARNING] disk usage 50%"
+    			},
+    			{
+    				"text": "[ERROR] service stopped"
+    			}
+    		],
+    		"gte_test": [
+    			{
+    				"text": "[NORMAL] http request"
+    			},
+    			{
+    				"text": "[WARNING] disk usage 50%"
+    			},
+    			{
+    				"text": "[ERROR] service stopped"
+    			}
+    		]
+    	}
+    }

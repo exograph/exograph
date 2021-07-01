@@ -15,3 +15,15 @@ variable: |
     {
         "id": 1
     }
+response: |
+    {
+      "data": {
+        "venue": {
+          "id": 1,
+          "name": "Venue1",
+          "published": true
+        },
+        "venue2": null
+      }
+    }
+    
