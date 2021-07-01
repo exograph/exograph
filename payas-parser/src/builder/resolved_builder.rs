@@ -477,9 +477,7 @@ mod tests {
         build(types)
     }
 
-    fn normalized_system(
-        input: &ResolvedSystem,
-    ) -> (Vec<&ResolvedType>, Vec<&ResolvedContext>) {
+    fn normalized_system(input: &ResolvedSystem) -> (Vec<&ResolvedType>, Vec<&ResolvedContext>) {
         (
             sorted_values(&input.types).clone(),
             sorted_values(&input.contexts),
