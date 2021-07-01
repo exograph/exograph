@@ -135,21 +135,16 @@ pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
                             tx.send(ServerLoopEvent::FileChange)?;
                         }
                     }
-                    Err(e) => {
-                        bail!(e);
-                    }
+                    Err(e) => bail!(e),
                 }
             }
         });
     }
 
     // Watch for ctrl-c (SIGINT)
-    {
-        let tx = tx.clone();
-        ctrlc::set_handler(move || {
-            tx.send(ServerLoopEvent::SigInt).unwrap();
-        })?;
-    }
+    ctrlc::set_handler(move || {
+        tx.send(ServerLoopEvent::SigInt).unwrap();
+    })?;
 
     let mut actix_system = System::new("claytip");
 
