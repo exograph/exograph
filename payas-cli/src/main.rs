@@ -106,6 +106,11 @@ fn main() {
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
+                )
+                .arg(
+                    Arg::with_name("watch")
+                        .help("Automatically restart server when model file changes")
+                        .long("watch"),
                 ),
         )
         .subcommand(
@@ -159,6 +164,7 @@ fn main() {
 
         ("serve", Some(matches)) => Box::new(ServeCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
+            watch: matches.is_present("watch"),
         }),
         ("test", Some(matches)) => Box::new(TestCommand {
             dir: PathBuf::from(matches.value_of("dir").unwrap()),

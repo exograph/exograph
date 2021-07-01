@@ -4,10 +4,6 @@ version = "0.1.0"
 authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
 edition = "2018"
 
-[[bin]]
-name = "clay-server"
-path = "src/main.rs"
-
 [dependencies]
 anyhow = "1.0"
 async-graphql-parser = "2.6.5"
@@ -23,8 +19,9 @@ postgres-openssl = "0.5.0"
 chrono = "0.4.19"
 typed-arena = "2.0.1"
 id-arena = "2.2.1"
+notify = "4.0.17"
+ctrlc = "3.1.9"
 
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
 payas-model = { path = "../payas-model" }
-

@@ -51,7 +51,7 @@ CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://loca
 During development, it is nicer to use `cargo watch` and let compilation and restart happen automatically with any source changes.
 
 ```
-CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://localhost:5432/concerts-db CLAY_DATABASE_USER=$USERNAME cargo watch --clear -x "run --bin clay-server integration-tests/basic-model-no-auth/concerts.clay"
+CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://localhost:5432/concerts-db CLAY_DATABASE_USER=$USERNAME cargo watch --clear -x "run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay"
 ```
 
 **Note**
