@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::process;
+use std::thread;
 use std::{env, sync::Arc};
 
 use actix_cors::Cors;
@@ -111,14 +111,46 @@ fn cors_from_env() -> Cors {
     }
 }
 
+enum ServerLoopEvent {
+    FileChange,
+    SigInt,
+}
+
 pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
-    let (watcher_tx, watcher_rx) = mpsc::channel();
-    let mut watcher = notify::watcher(watcher_tx, Duration::from_secs(2))?;
+    let (tx, rx) = mpsc::channel();
+
+    // Watch for claytip model file edits
     if watch {
-        watcher.watch(&model_file, RecursiveMode::NonRecursive)?;
+        let model_file = model_file.as_ref().to_path_buf();
+        let tx = tx.clone();
+        thread::spawn(move || -> Result<()> {
+            let (watcher_tx, watcher_rx) = mpsc::channel();
+            let mut watcher = notify::watcher(watcher_tx, Duration::from_secs(2))?;
+            watcher.watch(&model_file, RecursiveMode::NonRecursive)?;
+
+            loop {
+                match watcher_rx.recv() {
+                    Ok(e) => {
+                        if matches!(e, DebouncedEvent::Write(_)) {
+                            tx.send(ServerLoopEvent::FileChange)?;
+                        }
+                    }
+                    Err(e) => {
+                        bail!(e);
+                    }
+                }
+            }
+        });
     }
 
-    // Start actix system
+    // Watch for ctrl-c (SIGINT)
+    {
+        let tx = tx.clone();
+        ctrlc::set_handler(move || {
+            tx.send(ServerLoopEvent::SigInt).unwrap();
+        })?;
+    }
+
     let mut actix_system = System::new("claytip");
 
     loop {
@@ -159,25 +191,24 @@ pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
             println!("Started server on {}", addr);
             let server = server.run();
 
-            // Stop server when model file changes
-            // Changes to the file send both a `NoticeWrite` and a `Write` event; loop and ignore
-            // events until a `Write` event.
-            loop {
-                match watcher_rx.recv() {
-                    Ok(e) => {
-                        if matches!(e, DebouncedEvent::Write(_)) {
-                            println!("Restarting...");
-                            actix_system.block_on(async move {
-                                server.stop(true).await;
-                            });
-                            break;
-                        }
-                    }
-                    Err(e) => bail!(e),
+            // Stop and restart the server initializtion loop when the model file is edited. Exit
+            // the server loop when SIGINT is received.
+            match rx.recv()? {
+                ServerLoopEvent::FileChange => {
+                    println!("Restarting...");
+                    actix_system.block_on(async move {
+                        server.stop(true).await;
+                    });
+                }
+                ServerLoopEvent::SigInt => {
+                    println!("Exiting");
+                    break;
                 }
             }
         } else {
             bail!("Error starting server on requested URL {}", server_url)
         }
     }
+
+    Ok(())
 }
