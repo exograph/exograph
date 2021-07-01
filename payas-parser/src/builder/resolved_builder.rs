@@ -12,6 +12,7 @@ pub struct ResolvedSystem {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum ResolvedType {
     Primitive(PrimitiveType),
     Composite(ResolvedCompositeType),
@@ -476,9 +477,7 @@ mod tests {
         build(types)
     }
 
-    fn normalized_system<'a>(
-        input: &'a ResolvedSystem,
-    ) -> (Vec<&'a ResolvedType>, Vec<&'a ResolvedContext>) {
+    fn normalized_system(input: &ResolvedSystem) -> (Vec<&ResolvedType>, Vec<&ResolvedContext>) {
         (
             sorted_values(&input.types).clone(),
             sorted_values(&input.contexts),

@@ -73,6 +73,7 @@ impl GqlType {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum GqlTypeKind {
     Primitive,
     Composite(GqlCompositeTypeKind),
