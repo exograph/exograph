@@ -20,7 +20,7 @@ steps:
     depends_on:
       - slack-start
     commands:
-      - apt-get update && apt-get install -y npm
+      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
       - rustup component add rustfmt
       - rustup component add clippy
       - cd payas-parser/grammar && npm install && cd ../..
@@ -34,7 +34,7 @@ steps:
     depends_on:
       - slack-start
     commands:
-      - apt-get update && apt-get install -y npm
+      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
       - cd payas-parser/grammar && npm install && cd ../..
       - export PATH="$PATH:$PWD/payas-parser/grammar/node_modules/.bin"
       - cargo test
@@ -45,7 +45,7 @@ steps:
     depends_on:
       - slack-start
     commands:
-      - apt-get update && apt-get install -y npm
+      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
       - cd payas-parser/grammar && npm install && cd ../..
       - export PATH="$PATH:$PWD/payas-parser/grammar/node_modules/.bin"
       - CLAY_USE_CARGO=1 CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 cargo run --bin clay test integration-tests
