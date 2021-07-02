@@ -25,6 +25,7 @@ pub enum AccessExpression {
     Column(ColumnId), // self.id (special case of a boolean column such as self.published will be expanded to self.published == true when building an AccessExpression)
     StringLiteral(String), // "ROLE_ADMIN"
     BooleanLiteral(bool), // true as in `self.published == true`
+    NumberLiteral(i64), // integer (-13, 0, 300, etc.)
     LogicalOp(AccessLogicalOp),
     RelationalOp(AccessRelationalOp),
 }

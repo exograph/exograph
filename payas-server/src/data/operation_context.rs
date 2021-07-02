@@ -105,7 +105,9 @@ impl<'a> OperationContext<'a> {
                 IntBits::_32 => Box::new(value.as_i64().unwrap() as i32),
                 IntBits::_64 => Box::new(value.as_i64().unwrap() as i64),
             },
-            PhysicalColumnType::String => Box::new(value.as_str().unwrap().to_string()),
+            PhysicalColumnType::String { length: _ } => {
+                Box::new(value.as_str().unwrap().to_string())
+            }
             PhysicalColumnType::Boolean => Box::new(value.as_bool().unwrap()),
         }
     }

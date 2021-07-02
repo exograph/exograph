@@ -1,7 +1,4 @@
-use payas_model::{
-    model::mapped_arena::MappedArena,
-    sql::column::{IntBits, PhysicalColumnType},
-};
+use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
@@ -107,14 +104,6 @@ pub enum PrimitiveType {
 }
 
 impl PrimitiveType {
-    pub fn to_column_type(&self) -> PhysicalColumnType {
-        match &self {
-            PrimitiveType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
-            PrimitiveType::String => PhysicalColumnType::String,
-            PrimitiveType::Boolean => PhysicalColumnType::Boolean,
-        }
-    }
-
     pub fn name(&self) -> &str {
         match &self {
             PrimitiveType::Int => "Int",

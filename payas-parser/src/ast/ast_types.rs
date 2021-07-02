@@ -85,6 +85,13 @@ pub enum AstExpr {
         #[serde(default = "default_span")]
         Span,
     ),
+    NumberLiteral(
+        i64,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
 }
 
 impl AstExpr {

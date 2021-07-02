@@ -46,6 +46,7 @@ module.exports = grammar({
       prec(1, $.logical_op),
       prec(3, $.relational_op),
       $.selection,
+      $.literal_number,
       $.literal_str,
       $.literal_boolean
     ),
@@ -99,10 +100,11 @@ module.exports = grammar({
     relational_gte: $ => prec.left(relational_level, seq(
       field("left", $.expression), ">=", field("right", $.expression)
     )),
-    number: $ => /\d+/,
     term: $ => /[a-zA-Z_]+/,
+    number: $ => /\d+/,
     literal_str: $ => seq("\"", field("value", $.term), "\""),
-    literal_boolean: $ => choice("true", "false")
+    literal_boolean: $ => choice("true", "false"),
+    literal_number: $ => field("value", $.number)
   }
 });
 

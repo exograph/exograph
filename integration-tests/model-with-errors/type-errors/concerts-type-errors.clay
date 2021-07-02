@@ -8,6 +8,6 @@ model Concert {
 @table("venues")
 model Venue {
   id: Int @pk @autoincrement @auth(Foo)
-  name: String
+  name: String @range(min=-10, max=10)
   concerts: [Concert] @column("venueid")
 }
