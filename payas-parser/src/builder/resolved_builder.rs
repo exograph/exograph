@@ -61,6 +61,7 @@ pub struct ResolvedField {
     pub column_name: String,
     pub is_pk: bool,
     pub is_autoincrement: bool,
+    pub type_hint: Option<ResolvedTypeHint>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -81,6 +82,20 @@ pub enum ResolvedFieldType {
     Plain(String), // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
     Optional(Box<ResolvedFieldType>),
     List(Box<ResolvedFieldType>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedTypeHint {
+    ExplicitHint {
+        dbtype: String,
+    },
+    IntHint {
+        bits: Option<usize>,
+        range: Option<(i64, i64)>,
+    },
+    StringHint {
+        length: usize,
+    },
 }
 
 impl ResolvedCompositeType {
@@ -263,6 +278,7 @@ fn build_expanded_persistent_type(
                 column_name: compute_column_name(ct, field, &types),
                 is_pk: field.get_annotation("pk").is_some(),
                 is_autoincrement: field.get_annotation("autoincrement").is_some(),
+                type_hint: build_type_hint(&field),
             })
             .collect();
 
@@ -273,6 +289,132 @@ fn build_expanded_persistent_type(
             access: access.clone(),
         });
         resolved_types[existing_type_id] = expanded;
+    }
+}
+
+fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
+    ////
+    // Part 1: parse out and validate hints for each primitive
+    ////
+
+    let int_hint = {
+        let size_annotation = field
+            .get_annotation("size")
+            .map(|a| a.get_single_value())
+            .flatten()
+            .map(|a| a.as_number())
+            .map(|n| n as usize);
+
+        let bits_annotation = field
+            .get_annotation("bits")
+            .map(|a| a.get_single_value())
+            .flatten()
+            .map(|a| a.as_number())
+            .map(|n| n as usize);
+
+        if size_annotation.is_some() && bits_annotation.is_some() {
+            panic!("Cannot have both @size and @bits for {}", field.name)
+        }
+
+        let range_hint = field.get_annotation("range").map(|range_annotation| {
+            let min = range_annotation.params.get("min").unwrap().as_number();
+            let max = range_annotation.params.get("max").unwrap().as_number();
+            (min, max)
+        });
+
+        let bits_hint = if let Some(size) = size_annotation {
+            Some(
+                // normalize size into bits
+                if size <= 2 {
+                    16
+                } else if size <= 4 {
+                    32
+                } else if size <= 8 {
+                    64
+                } else {
+                    panic!("@size of {} cannot be larger than 8 bytes", field.name)
+                },
+            )
+        } else if let Some(bits) = bits_annotation {
+            if !(bits == 16 || bits == 32 || bits == 64) {
+                panic!("@bits of {} is not 16, 32, or 64", field.name)
+            }
+
+            Some(bits)
+        } else {
+            None
+        };
+
+        if bits_hint.is_some() || range_hint.is_some() {
+            Some(ResolvedTypeHint::IntHint {
+                bits: bits_hint,
+                range: range_hint,
+            })
+        } else {
+            // no useful hints to pass along
+            None
+        }
+    };
+
+    let string_hint = {
+        let length_annotation = field
+            .get_annotation("length")
+            .map(|a| a.get_single_value())
+            .flatten()
+            .map(|e| e.as_number())
+            .map(|s| s as usize);
+
+        // None if there is no length annotation
+        length_annotation.map(|length| ResolvedTypeHint::StringHint { length })
+    };
+
+    let primitive_hints = vec![int_hint, string_hint];
+
+    let explicit_dbtype_hint = field
+        .get_annotation("dbtype")
+        .map(|a| a.get_single_value())
+        .flatten()
+        .map(|e| e.as_string())
+        .map(|s| ResolvedTypeHint::ExplicitHint {
+            dbtype: s.to_uppercase(),
+        });
+
+    ////
+    // Part 2: make sure user specified a valid combination of hints
+    // e.g. they didn't specify hints for two different types
+    ////
+
+    let number_of_valid_primitive_hints: usize = primitive_hints
+        .iter()
+        .map(|hint| if hint.is_some() { 1 } else { 0 })
+        .sum();
+
+    let valid_primitive_hints_exist = number_of_valid_primitive_hints > 0;
+
+    if explicit_dbtype_hint.is_some() && valid_primitive_hints_exist {
+        panic!(
+            "Cannot specify both @dbtype and a primitive specific hint for {}",
+            field.name
+        )
+    }
+
+    if number_of_valid_primitive_hints > 1 {
+        panic!("Conflicting type hints specified for {}", field.name)
+    }
+
+    ////
+    // Part 3: return appropriate hint
+    ////
+
+    if explicit_dbtype_hint.is_some() {
+        explicit_dbtype_hint
+    } else if number_of_valid_primitive_hints == 1 {
+        primitive_hints
+            .into_iter()
+            .find(|hint| hint.is_some())
+            .unwrap()
+    } else {
+        None
     }
 }
 
@@ -390,9 +532,10 @@ mod tests {
         let src = r#"
         @table("custom_concerts")
         model Concert {
-          id: Int @pk @autoincrement @column("custom_id")
-          title: String @column("custom_title")
+          id: Int @pk @dbtype("bigint") @autoincrement @column("custom_id")
+          title: String @column("custom_title") @length(12)
           venue: Venue @column("custom_venue_id")
+          reserved: Int @range(min=0, max=300)
         }
         
         @table("venues")
@@ -400,6 +543,7 @@ mod tests {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")
           concerts: [Concert] @column("custom_venueid")
+          capacity: Int @bits(16)
         }        
         "#;
 

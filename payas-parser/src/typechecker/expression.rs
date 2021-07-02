@@ -15,6 +15,7 @@ pub enum TypedExpression {
     RelationalOp(TypedRelationalOp),
     StringLiteral(String, Type),
     BooleanLiteral(bool, Type),
+    NumberLiteral(i64, Type),
 }
 
 impl TypedExpression {
@@ -25,12 +26,20 @@ impl TypedExpression {
             TypedExpression::RelationalOp(relation) => relation.typ(),
             TypedExpression::StringLiteral(_, t) => t,
             TypedExpression::BooleanLiteral(_, t) => t,
+            TypedExpression::NumberLiteral(_, t) => t,
         }
     }
 
     pub fn as_string(&self) -> String {
         match &self {
             TypedExpression::StringLiteral(s, _) => s.clone(),
+            _ => panic!(),
+        }
+    }
+
+    pub fn as_number(&self) -> i64 {
+        match &self {
+            TypedExpression::NumberLiteral(n, _) => *n,
             _ => panic!(),
         }
     }
@@ -47,6 +56,9 @@ impl Typecheck<TypedExpression> for AstExpr {
             }
             AstExpr::BooleanLiteral(v, _) => {
                 TypedExpression::BooleanLiteral(*v, Type::Primitive(PrimitiveType::Boolean))
+            }
+            AstExpr::NumberLiteral(v, _) => {
+                TypedExpression::NumberLiteral(*v, Type::Primitive(PrimitiveType::Int))
             }
         }
     }
@@ -80,7 +92,9 @@ impl Typecheck<TypedExpression> for AstExpr {
                     panic!()
                 }
             }
-            AstExpr::StringLiteral(_, _) | AstExpr::BooleanLiteral(_, _) => false,
+            AstExpr::StringLiteral(_, _)
+            | AstExpr::BooleanLiteral(_, _)
+            | AstExpr::NumberLiteral(_, _) => false,
         }
     }
 }

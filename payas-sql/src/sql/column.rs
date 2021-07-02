@@ -19,7 +19,7 @@ pub struct ColumnReferece {
 #[derive(Debug, Clone, PartialEq)]
 pub enum PhysicalColumnType {
     Int { bits: IntBits },
-    String,
+    String { length: Option<usize> },
     Boolean,
 }
 
@@ -33,14 +33,37 @@ pub enum IntBits {
 impl PhysicalColumnType {
     pub fn from_string(s: &str) -> PhysicalColumnType {
         match s {
-            "Int" => PhysicalColumnType::Int { bits: IntBits::_32 },
-            "String" => PhysicalColumnType::String,
-            "Boolean" => PhysicalColumnType::Boolean,
-            s => panic!("Unknown primitive type {}", s),
+            // TODO: not really correct...
+            "SMALLSERIAL" => PhysicalColumnType::Int { bits: IntBits::_16 },
+            "SMALLINT" => PhysicalColumnType::Int { bits: IntBits::_16 },
+            "INT" => PhysicalColumnType::Int { bits: IntBits::_32 },
+            "SERIAL" => PhysicalColumnType::Int { bits: IntBits::_32 },
+            "BIGINT" => PhysicalColumnType::Int { bits: IntBits::_64 },
+            "BIGSERIAL" => PhysicalColumnType::Int { bits: IntBits::_64 },
+
+            "TEXT" => PhysicalColumnType::String { length: None },
+            "BOOLEAN" => PhysicalColumnType::Boolean,
+            s => {
+                // parse types with arguments
+                // TODO: more robust parsing
+
+                if s.starts_with("VARCHAR") || s.starts_with("CHAR[") {
+                    let length = s
+                        .chars()
+                        .filter(|c| c.is_numeric())
+                        .collect::<String>()
+                        .parse::<usize>()
+                        .ok();
+
+                    return PhysicalColumnType::String { length };
+                }
+
+                panic!("Unknown dbtype {}", s)
+            }
         }
     }
 
-    pub fn db_type(&self, is_autoincrement: bool) -> &str {
+    pub fn db_type(&self, is_autoincrement: bool) -> String {
         match self {
             PhysicalColumnType::Int { bits } => {
                 if is_autoincrement {
@@ -57,8 +80,17 @@ impl PhysicalColumnType {
                     }
                 }
             }
-            PhysicalColumnType::String => "TEXT",
-            PhysicalColumnType::Boolean => "BOOLEAN",
+            .to_owned(),
+
+            PhysicalColumnType::String { length } => {
+                if let Some(length) = length {
+                    format!("CHAR[{}]", length)
+                } else {
+                    "TEXT".to_owned()
+                }
+            }
+
+            PhysicalColumnType::Boolean => "BOOLEAN".to_owned(),
         }
     }
 }

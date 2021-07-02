@@ -1,0 +1,12 @@
+operation: |
+    query {
+        videos(where: {}) {
+            id
+        }
+    }
+response: |
+    {
+      "data": {
+        "videos": []
+      }
+    }

@@ -32,6 +32,9 @@ fn reduce_expression<'a>(
         AccessExpression::BooleanLiteral(value) => ReducedExpression::Column(Some(
             operation_context.create_column(Column::Literal(Box::new(*value))),
         )),
+        AccessExpression::NumberLiteral(value) => ReducedExpression::Column(Some(
+            operation_context.create_column(Column::Literal(Box::new(*value))),
+        )),
         AccessExpression::LogicalOp(op) => {
             ReducedExpression::Predicate(reduce_logical_op(op, request_context, operation_context))
         }
@@ -210,6 +213,7 @@ pub fn reduce_access<'a>(
                 &Predicate::False
             }
         }
+        AccessExpression::NumberLiteral(_) => todo!(),
     }
 }
 

@@ -61,7 +61,7 @@ mod test {
         let name_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "name".to_string(),
-            typ: PhysicalColumnType::String,
+            typ: PhysicalColumnType::String { length: None },
             is_pk: false,
             is_autoincrement: false,
             references: None,

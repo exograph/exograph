@@ -10,14 +10,16 @@ use payas_model::{
         GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
-        column::{ColumnReferece, PhysicalColumn},
+        column::{ColumnReferece, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     },
 };
 
 use super::{
     query_builder,
-    resolved_builder::{ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType},
+    resolved_builder::{
+        ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType, ResolvedTypeHint,
+    },
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
@@ -386,6 +388,7 @@ fn compute_expression(
         },
         TypedExpression::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
         TypedExpression::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),
+        TypedExpression::NumberLiteral(value, _) => AccessExpression::NumberLiteral(*value),
     }
 }
 
@@ -475,7 +478,7 @@ fn create_column(
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
                     table_name: table_name.to_string(),
                     column_name: field.column_name.clone(),
-                    typ: pt.to_column_type(),
+                    typ: PhysicalColumnType::from_string(&determine_column_type(pt, &field)),
                     is_pk: field.is_pk,
                     is_autoincrement: if field.is_autoincrement {
                         assert!(
@@ -495,11 +498,10 @@ fn create_column(
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
                         column_name: field.column_name.clone(),
-                        typ: other_pk_field
-                            .typ
-                            .deref(env)
-                            .as_primitive()
-                            .to_column_type(),
+                        typ: PhysicalColumnType::from_string(&determine_column_type(
+                            &other_pk_field.typ.deref(env).as_primitive(),
+                            &field,
+                        )),
                         is_pk: false,
                         is_autoincrement: false,
                         references: Some(ColumnReferece {
@@ -516,6 +518,73 @@ fn create_column(
         ResolvedFieldType::List(_) => {
             // OneToMany, so the other side has the associated column
             None
+        }
+    }
+}
+
+fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) -> String {
+    if let Some(hint) = &field.type_hint {
+        match hint {
+            ResolvedTypeHint::ExplicitHint { dbtype } => {
+                // TODO: validate this type?
+                dbtype.to_owned()
+            }
+
+            ResolvedTypeHint::IntHint { bits, range } => {
+                assert!(matches!(pt, PrimitiveType::Int));
+
+                // determine the proper sized type to use
+                if let Some(bits) = bits {
+                    match bits {
+                        16 => "SMALLINT",
+                        32 => "INT",
+                        64 => "BIGINT",
+                        _ => panic!("Invalid bits"),
+                    }
+                    .to_owned()
+                } else if let Some(range) = range {
+                    let is_superset = |bound_min: i64, bound_max: i64| {
+                        let range_min = range.0;
+                        let range_max = range.1;
+                        assert!(range_min <= range_max);
+                        assert!(bound_min <= bound_max);
+
+                        // is this bound a superset of the provided range?
+                        (bound_min <= range_min && bound_min <= range_max)
+                            && (bound_max >= range_max && bound_max >= range_min)
+                    };
+
+                    // determine which SQL type is appropriate for this range
+                    {
+                        if is_superset(-32_768, 32_768) {
+                            "SMALLINT"
+                        } else if is_superset(-2147483648, 2147483647) {
+                            "INT"
+                        } else if is_superset(-9223372036854775808, 9223372036854775807) {
+                            "BIGINT"
+                        } else {
+                            panic!("Requested range is too big")
+                        }
+                    }
+                    .to_owned()
+                } else {
+                    // no hints provided, go with default
+                    "INT".to_owned()
+                }
+            }
+
+            ResolvedTypeHint::StringHint { length } => {
+                assert!(matches!(pt, PrimitiveType::String));
+
+                // length hint provided, use it
+                format!("CHAR[{}]", length)
+            }
+        }
+    } else {
+        match pt {
+            PrimitiveType::Int => "INT".to_owned(),
+            PrimitiveType::String => "TEXT".to_owned(),
+            PrimitiveType::Boolean => "BOOLEAN".to_owned(),
         }
     }
 }

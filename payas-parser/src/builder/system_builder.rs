@@ -73,3 +73,101 @@ pub struct SystemContextBuilding {
     pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
 }
+
+#[cfg(test)]
+mod tests {
+    use id_arena::Arena;
+    use payas_model::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
+
+    use super::*;
+    use crate::parser;
+
+    #[test]
+    fn type_hint_annotations() {
+        let src = r#"
+            @table("logs")
+            model Log {
+              id: Int @dbtype("bigint") @pk @autoincrement
+              nonce: Int @bits(16)
+              hash: Int @size(8)
+              weird: Int @range(min=0, max=32770)
+              prefix: String @length(15)
+              log: String
+            }
+        "#;
+
+        let system = create_system(src);
+        let get_table = |n| get_table_from_arena(n, &system.tables);
+
+        let logs = get_table("logs");
+        let logs_id = get_column_from_table("id", logs);
+        let logs_nonce = get_column_from_table("nonce", logs);
+        let logs_hash = get_column_from_table("hash", logs);
+        let logs_weird = get_column_from_table("weird", logs);
+        let logs_prefix = get_column_from_table("prefix", logs);
+
+        // @dbtype("bigint")
+        if let PhysicalColumnType::Int { bits } = &logs_id.typ {
+            assert!(*bits == IntBits::_64)
+        } else {
+            panic!()
+        }
+
+        // @bits(16)
+        if let PhysicalColumnType::Int { bits } = &logs_nonce.typ {
+            assert!(*bits == IntBits::_16)
+        } else {
+            panic!()
+        }
+
+        // @size(8)
+        if let PhysicalColumnType::Int { bits } = &logs_hash.typ {
+            assert!(*bits == IntBits::_64)
+        } else {
+            panic!()
+        }
+
+        // @range(min=0, max=32770)
+        if let PhysicalColumnType::Int { bits } = &logs_weird.typ {
+            // range in hint does NOT fit in SMALLINT
+            assert!(*bits == IntBits::_32)
+        } else {
+            panic!()
+        }
+
+        // @length(15)
+        if let PhysicalColumnType::String { length } = &logs_prefix.typ {
+            assert!((*length).unwrap() == 15)
+        } else {
+            panic!()
+        }
+    }
+
+    fn get_table_from_arena<'a>(
+        name: &'a str,
+        tables: &'a Arena<PhysicalTable>,
+    ) -> &'a PhysicalTable {
+        for (_, item) in tables.iter() {
+            if item.name == name {
+                return item;
+            }
+        }
+
+        panic!("No such table {}", name)
+    }
+
+    fn get_column_from_table<'a>(name: &'a str, table: &'a PhysicalTable) -> &'a PhysicalColumn {
+        for item in table.columns.iter() {
+            if item.column_name == name {
+                return item;
+            }
+        }
+
+        panic!("No such column {}", name)
+    }
+
+    fn create_system(src: &str) -> ModelSystem {
+        let (parsed, codemap) = parser::parse_str(src);
+        build(parsed, codemap)
+    }
+}

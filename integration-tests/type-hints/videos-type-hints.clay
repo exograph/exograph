@@ -1,0 +1,9 @@
+@table("videos")
+model Video {
+  id: Int @dbtype("BIGINT") @pk @autoincrement
+  name: String  
+  slug: String @length(30) 
+  nonce: Int @bits(16)
+  views: Int @range(min=0, max=9999999999)
+  filesize: Int @size(6)
+}
