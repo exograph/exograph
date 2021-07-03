@@ -63,7 +63,17 @@ impl AstFieldType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstAnnotation {
     pub name: String,
-    pub params: HashMap<String, AstExpr>,
+    pub params: AstAnnotationParams,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstAnnotationParams {
+    /// No parameters (e.g. `@pk`)
+    None,
+    /// Single parameter (e.g. `@table("concerts"))
+    Single(AstExpr),
+    /// Named parameters (e.g. `@range(min=-10, max=10)`)
+    Map(HashMap<String, AstExpr>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

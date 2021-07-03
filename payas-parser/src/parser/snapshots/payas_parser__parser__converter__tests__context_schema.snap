@@ -14,7 +14,7 @@ models:
         annotations:
           - name: jwt
             params:
-              value:
+              Single:
                 StringLiteral:
                   - sub
       - name: roles
@@ -24,6 +24,6 @@ models:
               - String
         annotations:
           - name: jwt
-            params: {}
+            params: None
     annotations: []
 

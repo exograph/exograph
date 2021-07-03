@@ -14,12 +14,12 @@ models:
         annotations:
           - name: column
             params:
-              value:
+              Single:
                 StringLiteral:
                   - custom_column
           - name: auth
             params:
-              value:
+              Single:
                 LogicalOp:
                   Or:
                     - RelationalOp:
