@@ -434,15 +434,15 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
     let jwt_annot = field.annotations.jwt();
     let claim = jwt_annot
         .map(|annot| {
-            let annot_param = &annot.0;
+            let annot_param = &annot.params.get("value");
 
-            // TODO no param jwt annotation
             match annot_param {
-                TypedExpression::FieldSelection(selection) => match selection {
+                Some(TypedExpression::FieldSelection(selection)) => match selection {
                     TypedFieldSelection::Single(claim, _) => claim.0.clone(),
                     _ => panic!("Only simple jwt claim supported"),
                 },
-                TypedExpression::StringLiteral(name, _) => name.clone(),
+                Some(TypedExpression::StringLiteral(name, _)) => name.clone(),
+                None => field.name.clone(),
                 _ => panic!("Expression type other than selection unsupported"),
             }
         })

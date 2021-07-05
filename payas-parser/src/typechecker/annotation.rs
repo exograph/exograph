@@ -24,8 +24,8 @@ pub struct DbTypeAnnotation(pub TypedExpression);
 #[annotation("length")]
 pub struct LengthAnnotation(pub TypedExpression);
 
-#[annotation("jwt")]
-pub struct JwtAnnotation(pub TypedExpression);
+#[unchecked_annotation("jwt")]
+pub struct JwtAnnotation;
 
 #[annotation("pk")]
 pub struct PkAnnotation;
@@ -118,6 +118,7 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
         match typ {
             // Unchecked annotations
             TypedAnnotation::Access(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::Jwt(a) => a.pass(&self.params, env, scope, errors),
             // Regular annotations
             _ => match &self.params {
                 AstAnnotationParams::None => false,
@@ -126,7 +127,6 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
                     TypedAnnotation::Column(a) => a.pass(&expr, env, scope, errors),
                     TypedAnnotation::DbType(a) => a.pass(&expr, env, scope, errors),
                     TypedAnnotation::Length(a) => a.pass(&expr, env, scope, errors),
-                    TypedAnnotation::Jwt(a) => a.pass(&expr, env, scope, errors),
                     TypedAnnotation::Size(a) => a.pass(&expr, env, scope, errors),
                     TypedAnnotation::Table(a) => a.pass(&expr, env, scope, errors),
                     _ => panic!(),
