@@ -1,7 +1,7 @@
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::typechecker::{
-    CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedAnnotation, TypedExpression,
+    AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedExpression,
     TypedField, TypedFieldSelection,
 };
 use serde::{Deserialize, Serialize};
@@ -160,10 +160,11 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
             }
             Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
                 let table_name = ct
-                    .get_annotation("table")
-                    .map(|a| a.get_single_value().unwrap().as_string())
+                    .annotations
+                    .table()
+                    .map(|a| a.0.as_string())
                     .unwrap_or_else(|| ct.name.clone());
-                let access = build_access(ct.get_annotation("access"));
+                let access = build_access(ct.annotations.access());
                 resolved_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
@@ -196,7 +197,7 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
     }
 }
 
-fn build_access(access_annotation: Option<&TypedAnnotation>) -> ResolvedAccess {
+fn build_access(access_annotation: Option<&AccessAnnotation>) -> ResolvedAccess {
     match access_annotation {
         Some(access) => {
             let restrictive =
@@ -276,8 +277,8 @@ fn build_expanded_persistent_type(
                 name: field.name.clone(),
                 typ: resolve_field_type(&field.typ, &types, resolved_types),
                 column_name: compute_column_name(ct, field, &types),
-                is_pk: field.get_annotation("pk").is_some(),
-                is_autoincrement: field.get_annotation("autoincrement").is_some(),
+                is_pk: field.annotations.pk().is_some(),
+                is_autoincrement: field.annotations.auto_increment().is_some(),
                 type_hint: build_type_hint(&field),
             })
             .collect();
@@ -298,27 +299,17 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     ////
 
     let int_hint = {
-        let size_annotation = field
-            .get_annotation("size")
-            .map(|a| a.get_single_value())
-            .flatten()
-            .map(|a| a.as_number())
-            .map(|n| n as usize);
+        let size_annotation = field.annotations.size().map(|a| a.0.as_number() as usize);
 
-        let bits_annotation = field
-            .get_annotation("bits")
-            .map(|a| a.get_single_value())
-            .flatten()
-            .map(|a| a.as_number())
-            .map(|n| n as usize);
+        let bits_annotation = field.annotations.bits().map(|a| a.0.as_number() as usize);
 
         if size_annotation.is_some() && bits_annotation.is_some() {
             panic!("Cannot have both @size and @bits for {}", field.name)
         }
 
-        let range_hint = field.get_annotation("range").map(|range_annotation| {
-            let min = range_annotation.params.get("min").unwrap().as_number();
-            let max = range_annotation.params.get("max").unwrap().as_number();
+        let range_hint = field.annotations.range().map(|range_annotation| {
+            let min = range_annotation.min.as_number();
+            let max = range_annotation.max.as_number();
             (min, max)
         });
 
@@ -357,12 +348,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     };
 
     let string_hint = {
-        let length_annotation = field
-            .get_annotation("length")
-            .map(|a| a.get_single_value())
-            .flatten()
-            .map(|e| e.as_number())
-            .map(|s| s as usize);
+        let length_annotation = field.annotations.length().map(|a| a.0.as_number() as usize);
 
         // None if there is no length annotation
         length_annotation.map(|length| ResolvedTypeHint::StringHint { length })
@@ -371,10 +357,9 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     let primitive_hints = vec![int_hint, string_hint];
 
     let explicit_dbtype_hint = field
-        .get_annotation("dbtype")
-        .map(|a| a.get_single_value())
-        .flatten()
-        .map(|e| e.as_string())
+        .annotations
+        .db_type()
+        .map(|a| a.0.as_string())
         .map(|s| ResolvedTypeHint::ExplicitHint {
             dbtype: s.to_uppercase(),
         });
@@ -446,21 +431,18 @@ fn build_expanded_context_type(
 }
 
 fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
-    let jwt_annot = field
-        .annotations
-        .iter()
-        .find(|annotation| annotation.name == "jwt");
+    let jwt_annot = field.annotations.jwt();
     let claim = jwt_annot
         .map(|annot| {
-            let annot_param = &annot.get_single_value();
+            let annot_param = &annot.0;
 
+            // TODO no param jwt annotation
             match annot_param {
-                Some(TypedExpression::FieldSelection(selection)) => match selection {
+                TypedExpression::FieldSelection(selection) => match selection {
                     TypedFieldSelection::Single(claim, _) => claim.0.clone(),
                     _ => panic!("Only simple jwt claim supported"),
                 },
-                Some(TypedExpression::StringLiteral(name, _)) => name.clone(),
-                None => field.name.clone(),
+                TypedExpression::StringLiteral(name, _) => name.clone(),
                 _ => panic!("Expression type other than selection unsupported"),
             }
         })
@@ -494,8 +476,9 @@ fn compute_column_name(
     }
 
     field
-        .get_annotation("column")
-        .map(|a| a.get_single_value().unwrap().as_string())
+        .annotations
+        .column()
+        .map(|a| a.0.as_string())
         .unwrap_or_else(|| default_column_name(enclosing_type, field, types))
 }
 

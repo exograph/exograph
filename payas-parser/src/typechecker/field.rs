@@ -3,27 +3,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::AstField;
 
-use super::{Scope, Type, Typecheck, TypedAnnotation};
+use super::{annotation::AnnotationMap, Scope, Type, Typecheck};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TypedField {
     pub name: String,
     pub typ: Type,
-    pub annotations: Vec<TypedAnnotation>,
-}
-
-impl TypedField {
-    pub fn get_annotation(&self, name: &str) -> Option<&TypedAnnotation> {
-        self.annotations.iter().find(|a| a.name == *name)
-    }
+    pub annotations: Box<AnnotationMap>,
 }
 
 impl Typecheck<TypedField> for AstField {
     fn shallow(&self) -> TypedField {
+        let mut annotations = Box::new(AnnotationMap::default());
+
+        for a in &self.annotations {
+            annotations.add_annotation(a.shallow());
+        }
+
         TypedField {
             name: self.name.clone(),
             typ: self.typ.shallow(),
-            annotations: self.annotations.iter().map(|a| a.shallow()).collect(),
+            annotations,
         }
     }
 
@@ -36,14 +36,7 @@ impl Typecheck<TypedField> for AstField {
     ) -> bool {
         let typ_changed = self.typ.pass(&mut typ.typ, env, scope, errors);
 
-        let annot_changed = self
-            .annotations
-            .iter()
-            .zip(typ.annotations.iter_mut())
-            .map(|(f, tf)| f.pass(tf, env, scope, errors))
-            .filter(|v| *v)
-            .count()
-            > 0;
+        let annot_changed = typ.annotations.pass(&self.annotations, env, scope, errors);
 
         typ_changed || annot_changed
     }

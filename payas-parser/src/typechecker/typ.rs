@@ -5,7 +5,7 @@ use std::{
     ops::Deref,
 };
 
-use super::{TypedAnnotation, TypedField};
+use super::{annotation::AnnotationMap, TypedField};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
     Primitive(PrimitiveType),
@@ -75,13 +75,7 @@ pub struct CompositeType {
     pub name: String,
     pub kind: CompositeTypeKind,
     pub fields: Vec<TypedField>,
-    pub annotations: Vec<TypedAnnotation>,
-}
-
-impl CompositeType {
-    pub fn get_annotation(&self, name: &str) -> Option<&TypedAnnotation> {
-        self.annotations.iter().find(|a| a.name == *name)
-    }
+    pub annotations: Box<AnnotationMap>,
 }
 
 impl Display for CompositeType {

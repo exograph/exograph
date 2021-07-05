@@ -1,4 +1,5 @@
 mod annotation;
+mod annotation_params;
 mod expression;
 mod field;
 mod field_type;
@@ -11,7 +12,7 @@ mod typ;
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 
-pub(super) use annotation::TypedAnnotation;
+pub(super) use annotation::*;
 
 pub(super) use expression::TypedExpression;
 pub use logical_op::TypedLogicalOp;
@@ -66,6 +67,7 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
             let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
             let pass_res = model.pass(&mut typ, &types_arena, &init_scope, &mut errors);
             if pass_res {
+                // println!("t: {:?}", typ);
                 assert!(*orig != typ);
                 *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
                 did_change = true;

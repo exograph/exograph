@@ -2,10 +2,16 @@ use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstModel, AstModelKind};
 
-use super::{typ::CompositeTypeKind, CompositeType, Scope, Type, Typecheck};
+use super::{typ::CompositeTypeKind, AnnotationMap, CompositeType, Scope, Type, Typecheck};
 
 impl Typecheck<Type> for AstModel {
     fn shallow(&self) -> Type {
+        let mut annotations = Box::new(AnnotationMap::default());
+
+        for a in &self.annotations {
+            annotations.add_annotation(a.shallow());
+        }
+
         Type::Composite(CompositeType {
             name: self.name.clone(),
             kind: if self.kind == AstModelKind::Persistent {
@@ -14,7 +20,7 @@ impl Typecheck<Type> for AstModel {
                 CompositeTypeKind::Context
             },
             fields: self.fields.iter().map(|f| f.shallow()).collect(),
-            annotations: self.annotations.iter().map(|a| a.shallow()).collect(),
+            annotations,
         })
     }
 
@@ -38,16 +44,9 @@ impl Typecheck<Type> for AstModel {
                 .count()
                 > 0;
 
-            let annot_changed = self
+            let annot_changed = c
                 .annotations
-                .iter()
-                .zip(c.annotations.iter_mut())
-                .map(|(ast_annot, typed_annot)| {
-                    ast_annot.pass(typed_annot, env, &model_scope, errors)
-                })
-                .filter(|v| *v)
-                .count()
-                > 0;
+                .pass(&self.annotations, env, &model_scope, errors);
 
             fields_changed || annot_changed
         } else {
