@@ -1,0 +1,25 @@
+operation: |
+    mutation {
+        updateVenues(data: {published: true}) {
+            id
+        }
+    } 
+auth: |
+    {
+        "sub": 2,
+        "role": "ROLE_ADMIN"
+    }    
+response: |
+    {
+        "data": {
+            "updateVenues": [
+                {
+                    "id": 1
+                },
+                {
+                    "id": 2
+                }
+            ]
+        }
+    }
+    

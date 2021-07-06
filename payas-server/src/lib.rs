@@ -54,7 +54,7 @@ async fn resolve(
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            crate::execution::executor::execute(
+            match crate::execution::executor::execute(
                 system,
                 schema,
                 database,
@@ -62,9 +62,20 @@ async fn resolve(
                 query_str,
                 variables,
                 claims,
-            )
-            .with_status(StatusCode::OK)
-            .with_header("Content-Type", "application/json")
+            ) {
+                Ok(response) => response
+                    .with_status(StatusCode::OK)
+                    .with_header("Content-Type", "application/json"),
+                Err(err) => {
+                    let mut response = String::from(r#"{"errors": [{"message":""#);
+                    response.push_str(&format!("{}", err));
+                    response.push_str(r#""}]}"#);
+
+                    response
+                        .with_status(StatusCode::OK)
+                        .with_header("Content-Type", "application/json")
+                }
+            }
         }
         Err(err) => {
             let (message, status_code) = match err {
