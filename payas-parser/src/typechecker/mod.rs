@@ -113,7 +113,7 @@ mod tests {
     fn simple() {
         let src = r#"
         model User {
-          doc: Doc @column("custom_column") @auth(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
+          doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
           role: String
         }
 

@@ -476,7 +476,7 @@ mod tests {
         parsing_test(
             r#"
         model Foo {
-            bar: Baz @column("custom_column") @auth(!self.role == "role_admin" || self.role == "role_superuser")
+            bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
         }
         "#,
         );
