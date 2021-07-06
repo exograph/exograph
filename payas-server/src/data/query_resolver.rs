@@ -2,6 +2,7 @@ use crate::sql::{column::Column, predicate::Predicate, SQLOperation, Select};
 
 use crate::sql::order::OrderBy;
 
+use anyhow::{anyhow, bail, Result};
 use payas_model::model::{operation::*, relation::*, types::*};
 
 use super::sql_mapper::{compute_access_predicate, OperationKind};
@@ -23,7 +24,7 @@ impl<'a> OperationResolver<'a> for Query {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLOperation<'a>, GraphQLExecutionError> {
+    ) -> Result<SQLOperation<'a>> {
         let select = self.operation(&field.node, Predicate::True, operation_context, true)?;
         Ok(SQLOperation::Select(select))
     }
@@ -40,7 +41,7 @@ pub trait QueryOperations<'a> {
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<&'a Column<'a>, GraphQLExecutionError>;
+    ) -> Result<&'a Column<'a>>;
 
     fn operation(
         &'a self,
@@ -48,7 +49,7 @@ pub trait QueryOperations<'a> {
         additional_predicate: Predicate<'a>,
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
-    ) -> Result<Select<'a>, GraphQLExecutionError>;
+    ) -> Result<Select<'a>>;
 }
 
 impl<'a> QueryOperations<'a> for Query {
@@ -68,8 +69,8 @@ impl<'a> QueryOperations<'a> for Query {
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<&'a Column<'a>, GraphQLExecutionError> {
-        let column_specs: Result<Vec<_>, GraphQLExecutionError> = selection_set
+    ) -> Result<&'a Column<'a>> {
+        let column_specs: Result<Vec<_>> = selection_set
             .node
             .items
             .iter()
@@ -94,7 +95,7 @@ impl<'a> QueryOperations<'a> for Query {
         additional_predicate: Predicate<'a>,
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
-    ) -> Result<Select<'a>, GraphQLExecutionError> {
+    ) -> Result<Select<'a>> {
         let access_predicate = compute_access_predicate(
             &self.return_type,
             &OperationKind::Retrieve,
@@ -102,7 +103,7 @@ impl<'a> QueryOperations<'a> for Query {
         );
 
         if access_predicate == &Predicate::False {
-            panic!("Can't access {:?}", access_predicate) // TODO: Report a proper GraphQL error
+            bail!(anyhow!(GraphQLExecutionError::Authorization))
         }
 
         let predicate = super::compute_predicate(
@@ -141,7 +142,7 @@ fn map_selection<'a>(
     query: &'a Query,
     selection: &'a Selection,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<(String, &'a Column<'a>)>, GraphQLExecutionError> {
+) -> Result<Vec<(String, &'a Column<'a>)>> {
     match selection {
         Selection::Field(field) => Ok(vec![map_field(query, &field.node, &operation_context)?]),
         Selection::FragmentSpread(fragment_spread) => {
@@ -172,7 +173,7 @@ fn map_field<'a>(
     query: &'a Query,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
-) -> Result<(String, &'a Column<'a>), GraphQLExecutionError> {
+) -> Result<(String, &'a Column<'a>)> {
     let system = operation_context.query_context.system;
     let return_type = query.return_type.typ(system);
 

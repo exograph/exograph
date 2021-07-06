@@ -105,6 +105,7 @@ where
 pub enum GraphQLExecutionError {
     DuplicateKeys(HashSet<String>),
     InvalidField(String, &'static str), // (field name, container type)
+    Authorization,
 }
 
 impl std::error::Error for GraphQLExecutionError {
@@ -127,6 +128,9 @@ impl std::fmt::Display for GraphQLExecutionError {
             }
             GraphQLExecutionError::InvalidField(field_name, container_name) => {
                 write!(f, "Invalid field {} for {}", field_name, container_name)
+            }
+            GraphQLExecutionError::Authorization => {
+                write!(f, "Not authorized")
             }
         }
     }

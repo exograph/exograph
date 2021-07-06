@@ -7,6 +7,7 @@ use crate::{
     sql::{column::Column, predicate::Predicate, Cte, PhysicalTable, SQLOperation},
 };
 
+use anyhow::{anyhow, bail, Result};
 use payas_model::model::{operation::*, predicate::PredicateParameter, types::*};
 
 use super::{
@@ -24,7 +25,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLOperation<'a>, GraphQLExecutionError> {
+    ) -> Result<SQLOperation<'a>> {
         let core_operation = match &self.kind {
             MutationKind::Create(data_param) => {
                 create_operation(self, data_param, &field.node, &operation_context)
@@ -41,7 +42,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                 predicate_param,
                 &field.node,
                 &operation_context,
-            ),
+            )?,
         };
 
         let (_, pk_query, collection_query) = return_type_info(self, operation_context);
@@ -129,7 +130,7 @@ fn update_operation<'a>(
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
-) -> SQLOperation<'a> {
+) -> Result<SQLOperation<'a>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -140,8 +141,9 @@ fn update_operation<'a>(
 
     if access_predicate == &Predicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
-        panic!("Insufficient access to update"); // TODO: Report as GraphQL error
+        bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
+
     let predicate = super::compute_predicate(
         Some(predicate_param),
         &field.arguments,
@@ -152,11 +154,11 @@ fn update_operation<'a>(
 
     let column_values = data_columns(data_param, &field.arguments, operation_context).unwrap();
 
-    SQLOperation::Update(table.update(
+    Ok(SQLOperation::Update(table.update(
         column_values,
         predicate,
         vec![operation_context.create_column(Column::Star)],
-    ))
+    )))
 }
 
 fn data_columns<'a>(

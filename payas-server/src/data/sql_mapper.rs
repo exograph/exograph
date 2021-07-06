@@ -1,4 +1,4 @@
-use crate::execution::resolver::GraphQLExecutionError;
+use anyhow::Result;
 
 use super::{access_solver, operation_context::OperationContext};
 use async_graphql_parser::{types::Field, Positioned};
@@ -17,7 +17,7 @@ pub trait OperationResolver<'a> {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLOperation<'a>, GraphQLExecutionError>;
+    ) -> Result<SQLOperation<'a>>;
 }
 
 pub enum OperationKind {
