@@ -1,0 +1,21 @@
+operation: |
+    query {
+        __type(name: "Video") {
+          kind
+          name
+          ...kind_name
+        }
+    }
+
+    fragment kind_name on __Type {
+      kind
+      name
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Duplicate keys (kind, name) in query"
+        }
+      ]
+    }

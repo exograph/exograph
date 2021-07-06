@@ -1,0 +1,21 @@
+operation: |
+    query {
+        video {
+            id
+            name
+            ...id_name
+        }
+    }
+
+    fragment id_name on Video {
+      id
+      name
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Duplicate keys (id, name) in query"
+        }
+      ]
+    }
