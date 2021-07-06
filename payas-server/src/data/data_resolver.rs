@@ -3,13 +3,11 @@ use async_graphql_parser::{
     Positioned,
 };
 
-use anyhow::Result;
-
-use crate::sql::Expression;
 use crate::{
     execution::query_context::{QueryContext, QueryResponse},
     sql::ExpressionContext,
 };
+use crate::{execution::resolver::GraphQLExecutionError, sql::Expression};
 
 use payas_model::model::system::ModelSystem;
 
@@ -21,7 +19,7 @@ pub trait DataResolver {
         field: &Positioned<Field>,
         operation_type: &OperationType,
         query_context: &QueryContext<'_>,
-    ) -> Result<QueryResponse>;
+    ) -> Result<QueryResponse, GraphQLExecutionError>;
 }
 
 impl DataResolver for ModelSystem {
@@ -30,7 +28,7 @@ impl DataResolver for ModelSystem {
         field: &Positioned<Field>,
         operation_type: &OperationType,
         query_context: &QueryContext<'_>,
-    ) -> Result<QueryResponse> {
+    ) -> Result<QueryResponse, GraphQLExecutionError> {
         let operation_context = OperationContext::new(query_context);
 
         let sql_operation = match operation_type {
@@ -45,11 +43,13 @@ impl DataResolver for ModelSystem {
             OperationType::Subscription => {
                 todo!()
             }
-        };
+        }?;
 
         let mut expression_context = ExpressionContext::default();
         let binding = sql_operation.binding(&mut expression_context);
-        let string_response = query_context.database.execute(&binding)?;
-        Ok(QueryResponse::Raw(string_response))
+        match query_context.database.execute(&binding) {
+            Ok(string_response) => Ok(QueryResponse::Raw(string_response)),
+            Err(err) => Err(GraphQLExecutionError::SQLExecutionError(err)),
+        }
     }
 }

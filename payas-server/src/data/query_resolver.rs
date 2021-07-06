@@ -16,15 +16,16 @@ use async_graphql_parser::{
     Positioned,
 };
 
-use crate::execution::resolver::OutputName;
+use crate::execution::resolver::{check_duplicate_keys, GraphQLExecutionError, OutputName};
 
 impl<'a> OperationResolver<'a> for Query {
     fn map_to_sql(
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> SQLOperation<'a> {
-        SQLOperation::Select(self.operation(&field.node, Predicate::True, operation_context, true))
+    ) -> Result<SQLOperation<'a>, GraphQLExecutionError> {
+        let select = self.operation(&field.node, Predicate::True, operation_context, true)?;
+        Ok(SQLOperation::Select(select))
     }
 }
 
@@ -39,7 +40,7 @@ pub trait QueryOperations<'a> {
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
         operation_context: &'a OperationContext<'a>,
-    ) -> &'a Column<'a>;
+    ) -> Result<&'a Column<'a>, GraphQLExecutionError>;
 
     fn operation(
         &'a self,
@@ -47,7 +48,7 @@ pub trait QueryOperations<'a> {
         additional_predicate: Predicate<'a>,
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
-    ) -> Select<'a>;
+    ) -> Result<Select<'a>, GraphQLExecutionError>;
 }
 
 impl<'a> QueryOperations<'a> for Query {
@@ -67,15 +68,24 @@ impl<'a> QueryOperations<'a> for Query {
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
         operation_context: &'a OperationContext<'a>,
-    ) -> &'a Column<'a> {
-        let column_specs: Vec<_> = selection_set
+    ) -> Result<&'a Column<'a>, GraphQLExecutionError> {
+        let column_specs: Result<Vec<_>, GraphQLExecutionError> = selection_set
             .node
             .items
             .iter()
-            .flat_map(|selection| map_selection(self, &selection.node, &operation_context))
+            .flat_map(
+                |selection| match map_selection(self, &selection.node, &operation_context) {
+                    Ok(s) => s.into_iter().map(|item| Ok(item)).collect(),
+                    Err(err) => vec![Err(err)],
+                },
+            )
             .collect();
 
-        operation_context.create_column(Column::JsonObject(column_specs))
+        let column_specs = column_specs?;
+
+        check_duplicate_keys(&column_specs)?;
+
+        Ok(operation_context.create_column(Column::JsonObject(column_specs)))
     }
 
     fn operation(
@@ -84,7 +94,7 @@ impl<'a> QueryOperations<'a> for Query {
         additional_predicate: Predicate<'a>,
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
-    ) -> Select<'a> {
+    ) -> Result<Select<'a>, GraphQLExecutionError> {
         let access_predicate = compute_access_predicate(
             &self.return_type,
             &OperationKind::Retrieve,
@@ -108,13 +118,13 @@ impl<'a> QueryOperations<'a> for Query {
             ))
         });
 
-        let content_object = self.content_select(&field.selection_set, operation_context);
+        let content_object = self.content_select(&field.selection_set, operation_context)?;
 
         let table = self
             .return_type
             .physical_table(&operation_context.query_context.system);
 
-        match self.return_type.type_modifier {
+        Ok(match self.return_type.type_modifier {
             GqlTypeModifier::Optional | GqlTypeModifier::NonNull => {
                 table.select(vec![content_object], predicate, None, top_level_selection)
             }
@@ -123,7 +133,7 @@ impl<'a> QueryOperations<'a> for Query {
                 let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
                 table.select(vec![agg_column], predicate, order_by, top_level_selection)
             }
-        }
+        })
     }
 }
 
@@ -131,11 +141,9 @@ fn map_selection<'a>(
     query: &'a Query,
     selection: &'a Selection,
     operation_context: &'a OperationContext<'a>,
-) -> Vec<(String, &'a Column<'a>)> {
+) -> Result<Vec<(String, &'a Column<'a>)>, GraphQLExecutionError> {
     match selection {
-        Selection::Field(field) => {
-            vec![map_field(query, &field.node, &operation_context)]
-        }
+        Selection::Field(field) => Ok(vec![map_field(query, &field.node, &operation_context)?]),
         Selection::FragmentSpread(fragment_spread) => {
             let fragment_definition = operation_context
                 .query_context
@@ -146,11 +154,16 @@ fn map_selection<'a>(
                 .node
                 .items
                 .iter()
-                .flat_map(|selection| map_selection(query, &selection.node, &operation_context))
+                .flat_map(|selection| {
+                    match map_selection(query, &selection.node, &operation_context) {
+                        Ok(s) => s.into_iter().map(|item| Ok(item)).collect(),
+                        Err(err) => vec![Err(err)],
+                    }
+                })
                 .collect()
         }
         Selection::InlineFragment(_inline_fragment) => {
-            vec![] // TODO
+            Ok(vec![]) // TODO
         }
     }
 }
@@ -159,7 +172,7 @@ fn map_field<'a>(
     query: &'a Query,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
-) -> (String, &'a Column<'a>) {
+) -> Result<(String, &'a Column<'a>), GraphQLExecutionError> {
     let system = operation_context.query_context.system;
     let return_type = query.return_type.typ(system);
 
@@ -196,7 +209,7 @@ fn map_field<'a>(
                         ),
                         operation_context,
                         false,
-                    ),
+                    )?,
                 )
             }
             GqlRelation::OneToMany {
@@ -222,12 +235,12 @@ fn map_field<'a>(
                     ),
                     operation_context,
                     false,
-                );
+                )?;
 
                 Column::SelectionTableWrapper(other_selection_table)
             }
         }
     };
 
-    (field.output_name(), operation_context.create_column(column))
+    Ok((field.output_name(), operation_context.create_column(column)))
 }

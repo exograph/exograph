@@ -1,11 +1,12 @@
+use crate::execution::resolver::GraphQLExecutionError;
+
+use super::{access_solver, operation_context::OperationContext};
 use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::Value;
 use payas_model::{
     model::{operation::OperationReturnType, GqlCompositeTypeKind, GqlTypeKind},
     sql::{predicate::Predicate, SQLOperation},
 };
-
-use super::{access_solver, operation_context::OperationContext};
 
 pub trait SQLMapper<'a, R> {
     fn map_to_sql(&'a self, argument: &'a Value, operation_context: &'a OperationContext<'a>) -> R;
@@ -16,7 +17,7 @@ pub trait OperationResolver<'a> {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> SQLOperation<'a>;
+    ) -> Result<SQLOperation<'a>, GraphQLExecutionError>;
 }
 
 pub enum OperationKind {

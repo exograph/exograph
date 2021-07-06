@@ -3,6 +3,7 @@ use crate::{
         query_resolver::QueryOperations,
         sql_mapper::{compute_access_predicate, OperationKind},
     },
+    execution::resolver::GraphQLExecutionError,
     sql::{column::Column, predicate::Predicate, Cte, PhysicalTable, SQLOperation},
 };
 
@@ -23,7 +24,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> SQLOperation<'a> {
+    ) -> Result<SQLOperation<'a>, GraphQLExecutionError> {
         let core_operation = match &self.kind {
             MutationKind::Create(data_param) => {
                 create_operation(self, data_param, &field.node, &operation_context)
@@ -50,15 +51,15 @@ impl<'a> OperationResolver<'a> for Mutation {
         };
 
         let select =
-            selection_query.operation(&field.node, Predicate::True, operation_context, true);
+            selection_query.operation(&field.node, Predicate::True, operation_context, true)?;
 
         // Use the same name as the table in the select clause, since that is the name `pk_query.operation` uses
         let cte_name = format!("\"{}\"", select.underlying.name);
 
-        SQLOperation::Cte(Cte {
+        Ok(SQLOperation::Cte(Cte {
             ctes: vec![(cte_name, core_operation)],
             select,
-        })
+        }))
     }
 }
 

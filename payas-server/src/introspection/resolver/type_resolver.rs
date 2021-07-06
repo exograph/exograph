@@ -15,31 +15,42 @@ struct BoxedType<'a> {
 }
 
 impl<'a> FieldResolver<Value> for TypeDefinition {
-    fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Positioned<Field>) -> Value {
+    fn resolve_field(
+        &self,
+        query_context: &QueryContext<'_>,
+        field: &Positioned<Field>,
+    ) -> Result<Value, GraphQLExecutionError> {
         match field.node.name.node.as_str() {
-            "name" => Value::String(self.name()),
-            "kind" => Value::String(self.kind()),
-            "description" => self.description().map(Value::String).unwrap_or(Value::Null),
+            "name" => Ok(Value::String(self.name())),
+            "kind" => Ok(Value::String(self.kind())),
+            "description" => Ok(self.description().map(Value::String).unwrap_or(Value::Null)),
             "fields" => self
                 .fields()
                 .resolve_value(query_context, &field.node.selection_set),
-            "interfaces" => Value::Array(vec![]), // TODO
-            "possibleTypes" => Value::Null,       // TODO
+            "interfaces" => Ok(Value::Array(vec![])), // TODO
+            "possibleTypes" => Ok(Value::Null),       // TODO
             "enumValues" => self
                 .enum_values()
                 .resolve_value(query_context, &field.node.selection_set),
             "inputFields" => self
                 .input_fields()
                 .resolve_value(query_context, &field.node.selection_set),
-            "ofType" => Value::Null,
-            "specifiedByUrl" => Value::Null,
-            field_name => todo!("Invalid field {:?} for TypeDefinition", field_name), // TODO: Make it a proper error
+            "ofType" => Ok(Value::Null),
+            "specifiedByUrl" => Ok(Value::Null),
+            field_name => Err(GraphQLExecutionError::InvalidField(
+                field_name.to_owned(),
+                "TypeDefinition",
+            )),
         }
     }
 }
 
 impl FieldResolver<Value> for Type {
-    fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Positioned<Field>) -> Value {
+    fn resolve_field(
+        &self,
+        query_context: &QueryContext<'_>,
+        field: &Positioned<Field>,
+    ) -> Result<Value, GraphQLExecutionError> {
         let base_type = &self.base;
 
         if !self.nullable {
@@ -60,7 +71,7 @@ impl FieldResolver<Value> for Type {
                     let tpe = query_context.schema.get_type_definition(name);
                     match tpe {
                         Some(tpe) => tpe.resolve_field(query_context, field),
-                        None => Value::Null,
+                        None => Ok(Value::Null),
                     }
                 }
                 BaseType::List(underlying) => {
@@ -78,15 +89,22 @@ impl FieldResolver<Value> for Type {
 // Resolver for boxed (non-null or list type). Since the underlying type determines the `ofType` value and the type_kind determines the `kind`,
 // all other fields evaluates to null
 impl<'a> FieldResolver<Value> for BoxedType<'a> {
-    fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Positioned<Field>) -> Value {
+    fn resolve_field(
+        &self,
+        query_context: &QueryContext<'_>,
+        field: &Positioned<Field>,
+    ) -> Result<Value, GraphQLExecutionError> {
         match field.node.name.node.as_str() {
-            "kind" => Value::String(self.type_kind.to_owned()),
+            "kind" => Ok(Value::String(self.type_kind.to_owned())),
             "ofType" => self
                 .tpe
                 .resolve_value(query_context, &field.node.selection_set),
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"
-            | "possibleTypes" | "enumValues" | "inoutFields" => Value::Null,
-            field_name => todo!("Invalid field {:?} for List/NonNull type", field_name), // TODO: Make it a proper error
+            | "possibleTypes" | "enumValues" | "inoutFields" => Ok(Value::Null),
+            field_name => Err(GraphQLExecutionError::InvalidField(
+                field_name.to_owned(),
+                "List/NonNull type",
+            )),
         }
     }
 }
