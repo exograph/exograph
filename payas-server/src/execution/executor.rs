@@ -1,5 +1,5 @@
 use super::query_context;
-use crate::{introspection::schema::Schema};
+use crate::introspection::schema::Schema;
 use async_graphql_parser::{parse_query, types::DocumentOperations};
 
 use anyhow::Result;
