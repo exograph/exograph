@@ -1,4 +1,4 @@
-use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, AstExpr};
+use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
@@ -24,8 +24,8 @@ pub struct DbTypeAnnotation(pub TypedExpression);
 #[annotation("length")]
 pub struct LengthAnnotation(pub TypedExpression);
 
-#[unchecked_annotation("jwt")]
-pub struct JwtAnnotation;
+#[annotation("jwt")]
+pub struct JwtAnnotation(pub Option<TypedExpression>);
 
 #[annotation("pk")]
 pub struct PkAnnotation;
@@ -116,26 +116,17 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
         match typ {
-            // Unchecked annotations
             TypedAnnotation::Access(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::AutoIncrement(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::Bits(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::Column(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::DbType(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::Length(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Jwt(a) => a.pass(&self.params, env, scope, errors),
-            // Regular annotations
-            _ => match &self.params {
-                AstAnnotationParams::None => false,
-                AstAnnotationParams::Single(expr) => match typ {
-                    TypedAnnotation::Bits(a) => a.pass(&expr, env, scope, errors),
-                    TypedAnnotation::Column(a) => a.pass(&expr, env, scope, errors),
-                    TypedAnnotation::DbType(a) => a.pass(&expr, env, scope, errors),
-                    TypedAnnotation::Length(a) => a.pass(&expr, env, scope, errors),
-                    TypedAnnotation::Size(a) => a.pass(&expr, env, scope, errors),
-                    TypedAnnotation::Table(a) => a.pass(&expr, env, scope, errors),
-                    _ => panic!(),
-                },
-                AstAnnotationParams::Map(params) => match typ {
-                    TypedAnnotation::Range(a) => a.pass(&params, env, scope, errors),
-                    _ => panic!(),
-                },
-            },
+            TypedAnnotation::Pk(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::Range(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::Size(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::Table(a) => a.pass(&self.params, env, scope, errors),
         }
     }
 }
@@ -293,32 +284,30 @@ impl AnnotationMap {
     ) -> bool {
         let mut pass = false;
 
-        macro_rules! c {
-            ($f:expr, $t:path) => {
-                pass = pass
-                    || if let Some(annot) = $f.as_mut() {
-                        ast_annotations
-                            .iter()
-                            .find(|a| a.name.as_str() == annot.name())
-                            .unwrap()
-                            .pass(annot, env, scope, errors)
-                    } else {
-                        false
-                    }
-            };
+        for annot in [
+            &mut self.access,
+            &mut self.auto_increment,
+            &mut self.bits,
+            &mut self.column,
+            &mut self.db_type,
+            &mut self.length,
+            &mut self.jwt,
+            &mut self.pk,
+            &mut self.range,
+            &mut self.size,
+            &mut self.table,
+        ] {
+            pass = pass
+                || if let Some(annot) = annot.as_mut() {
+                    ast_annotations
+                        .iter()
+                        .find(|a| a.name.as_str() == annot.name())
+                        .unwrap()
+                        .pass(annot, env, scope, errors)
+                } else {
+                    false
+                }
         }
-
-        c!(self.access, TypedAnnotation::Access);
-        c!(self.auto_increment, TypedAnnotation::AutoIncrement);
-        c!(self.bits, TypedAnnotation::Bits);
-        c!(self.column, TypedAnnotation::Column);
-        c!(self.db_type, TypedAnnotation::DbType);
-        c!(self.length, TypedAnnotation::Length);
-        c!(self.jwt, TypedAnnotation::Jwt);
-        c!(self.pk, TypedAnnotation::Pk);
-        c!(self.range, TypedAnnotation::Range);
-        c!(self.size, TypedAnnotation::Size);
-        c!(self.table, TypedAnnotation::Table);
         pass
     }
 }

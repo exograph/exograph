@@ -434,7 +434,7 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
     let jwt_annot = field.annotations.jwt();
     let claim = jwt_annot
         .map(|annot| {
-            let annot_param = &annot.params.get("value");
+            let annot_param = &annot.0;
 
             match annot_param {
                 Some(TypedExpression::FieldSelection(selection)) => match selection {

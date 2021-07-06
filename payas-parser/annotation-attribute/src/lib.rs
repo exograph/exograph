@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Lit, NestedMeta};
+use syn::{Field, Lit, NestedMeta, Type};
 
 mod annotation;
 mod unchecked_annotation;
@@ -39,5 +39,15 @@ fn name_fn(args: &[NestedMeta]) -> proc_macro2::TokenStream {
         pub const fn name2(&self) -> &'static str {
             Self::name()
         }
+    }
+}
+
+// TODO also verify if field is TypedExpression
+fn is_optional(field: &Field) -> bool {
+    if let Type::Path(ty) = &field.ty {
+        let segments = ty.path.segments.iter().collect::<Vec<_>>();
+        segments.last().unwrap().ident == "Option"
+    } else {
+        panic!("Type must be TypedExpression or Option<TypedExpression>");
     }
 }

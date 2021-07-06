@@ -2,8 +2,9 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, AttributeArgs, Fields, ItemStruct};
 
-use crate::name_fn;
+use crate::{is_optional, name_fn};
 
+// TODO documentation
 pub(crate) fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as AttributeArgs);
     let input = parse_macro_input!(input as ItemStruct);
@@ -32,7 +33,11 @@ pub(crate) fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
             };
 
             // No args - nothing to check
-            let pass_fn = quote! {};
+            let pass_fn = quote! {
+                fn pass(&mut self, params: &AstAnnotationParams, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> bool {
+                    false
+                }
+            };
 
             (annot_struct, from_params_fn, pass_fn)
         }
@@ -42,8 +47,9 @@ pub(crate) fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
                 panic!("Annotation may only have one unnamed parameter");
             }
 
+            let field = fields.unnamed.first().unwrap();
+
             let annot_struct = {
-                let field = fields.unnamed.first().unwrap();
                 let field_type = &field.ty;
                 let field_vis = &field.vis;
 
@@ -53,19 +59,63 @@ pub(crate) fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
                 }
             };
 
-            let from_params_fn = quote! {
-                fn from_params(params: TypedAnnotationParams) -> Result<Self, Vec<String>> {
-                    if let TypedAnnotationParams::Single(expr) = params {
-                        Ok(Self(expr))
-                    } else {
-                        Err(vec!["expected an unnamed parameter".to_string()])
+            let from_params_fn = {
+                let body = if is_optional(&field) {
+                    quote! {
+                        match params {
+                            TypedAnnotationParams::None => Ok(Self(None)),
+                            TypedAnnotationParams::Single(expr) => Ok(Self(Some(expr))),
+                            TypedAnnotationParams::Map(params) => {
+                                Err(vec!["unexpected named parameters".to_string()])
+                            }
+                        }
+                    }
+                } else {
+                    quote! {
+                        match params {
+                            TypedAnnotationParams::None => Err(vec!["expected a parameter".to_string()]),
+                            TypedAnnotationParams::Single(expr) => Ok(Self(expr)),
+                            TypedAnnotationParams::Map(params) => {
+                                Err(vec!["unexpected named parameters".to_string()])
+                            }
+                        }
+                    }
+                };
+
+                quote! {
+                    fn from_params(params: TypedAnnotationParams) -> Result<Self, Vec<String>> {
+                        #body
                     }
                 }
             };
 
-            let pass_fn = quote! {
-                fn pass(&mut self, expr: &AstExpr, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> bool {
-                    expr.pass(&mut self.0, env, scope, errors)
+            let pass_fn = {
+                let body = if is_optional(&field) {
+                    quote! {
+                        match &params {
+                            AstAnnotationParams::None => false,
+                            AstAnnotationParams::Single(expr) => {
+                                expr.pass(self.0.as_mut().unwrap(), env, scope, errors)
+                            }
+                            AstAnnotationParams::Map(params) => panic!()
+                        }
+                    }
+                } else {
+                    quote! {
+                        match &params {
+                            AstAnnotationParams::None => panic!(),
+                            AstAnnotationParams::Single(expr) => {
+                                expr.pass(&mut self.0, env, scope, errors)
+                            }
+                            AstAnnotationParams::Map(params) => panic!()
+                        }
+                    }
+                };
+
+                quote! {
+                    fn pass(&mut self, params: &AstAnnotationParams, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> bool {
+                        #body
+                    }
                 }
             };
 
@@ -151,10 +201,16 @@ pub(crate) fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
                     .collect::<Vec<_>>();
 
                 quote! {
-                    fn pass(&mut self, params: &std::collections::HashMap<String, AstExpr>, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> bool {
-                        let mut pass = false;
-                        #(#passes)*
-                        pass
+                    fn pass(&mut self, params: &AstAnnotationParams, env: &MappedArena<Type>, scope: &Scope, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> bool {
+                        match &params {
+                            AstAnnotationParams::None => panic!(),
+                            AstAnnotationParams::Single(expr) => panic!(),
+                            AstAnnotationParams::Map(params) => {
+                                let mut pass = false;
+                                #(#passes)*
+                                pass
+                            }
+                        }
                     }
                 }
             };
