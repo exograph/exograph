@@ -1,5 +1,6 @@
 use std::{collections::HashSet, iter::FromIterator};
 
+use anyhow::Result;
 use async_graphql_parser::{
     types::{Field, Selection, SelectionSet},
     Positioned,
@@ -37,7 +38,7 @@ pub trait Resolver<R> {
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
-    ) -> Result<R, GraphQLExecutionError>;
+    ) -> Result<R>;
 }
 
 pub trait FieldResolver<R>
@@ -52,14 +53,14 @@ where
         &'a self,
         query_context: &QueryContext<'_>,
         field: &Positioned<Field>,
-    ) -> Result<R, GraphQLExecutionError>;
+    ) -> Result<R>;
 
     // TODO: Move out of the trait to avoid it being overriden?
     fn resolve_selection(
         &self,
         query_context: &QueryContext<'_>,
         selection: &Positioned<Selection>,
-    ) -> Result<Vec<(String, R)>, GraphQLExecutionError> {
+    ) -> Result<Vec<(String, R)>> {
         match &selection.node {
             Selection::Field(field) => Ok(vec![(
                 field.output_name(),
@@ -80,8 +81,8 @@ where
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
-    ) -> Result<Vec<(String, R)>, GraphQLExecutionError> {
-        let resolved: Result<Vec<(String, R)>, GraphQLExecutionError> = selection_set
+    ) -> Result<Vec<(String, R)>> {
+        let resolved: Result<Vec<(String, R)>> = selection_set
             .node
             .items
             .iter()
@@ -104,7 +105,6 @@ where
 pub enum GraphQLExecutionError {
     DuplicateKeys(HashSet<String>),
     InvalidField(String, &'static str), // (field name, container type)
-    SQLExecutionError(anyhow::Error),
 }
 
 impl std::error::Error for GraphQLExecutionError {
@@ -128,7 +128,6 @@ impl std::fmt::Display for GraphQLExecutionError {
             GraphQLExecutionError::InvalidField(field_name, container_name) => {
                 write!(f, "Invalid field {} for {}", field_name, container_name)
             }
-            GraphQLExecutionError::SQLExecutionError(underlying) => underlying.fmt(f),
         }
     }
 }
@@ -173,7 +172,7 @@ where
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
-    ) -> Result<Value, GraphQLExecutionError> {
+    ) -> Result<Value> {
         Ok(Value::Object(FromIterator::from_iter(
             self.resolve_selection_set(query_context, selection_set)?,
         )))
@@ -188,7 +187,7 @@ where
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
-    ) -> Result<Value, GraphQLExecutionError> {
+    ) -> Result<Value> {
         match self {
             Some(elem) => elem.resolve_value(query_context, selection_set),
             None => Ok(Value::Null),
@@ -204,7 +203,7 @@ where
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
-    ) -> Result<Value, GraphQLExecutionError> {
+    ) -> Result<Value> {
         self.node.resolve_value(query_context, selection_set)
     }
 }
@@ -217,8 +216,8 @@ where
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
-    ) -> Result<Value, GraphQLExecutionError> {
-        let resolved: Result<Vec<Value>, GraphQLExecutionError> = self
+    ) -> Result<Value> {
+        let resolved: Result<Vec<Value>> = self
             .iter()
             .map(|elem| elem.resolve_value(query_context, selection_set))
             .collect();

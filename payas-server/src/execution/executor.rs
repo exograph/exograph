@@ -1,5 +1,5 @@
 use super::query_context;
-use crate::{execution::resolver::GraphQLExecutionError, introspection::schema::Schema};
+use crate::{introspection::schema::Schema};
 use async_graphql_parser::{parse_query, types::DocumentOperations};
 
 use anyhow::Result;
@@ -86,7 +86,7 @@ pub fn execute<'a>(
         &request_context,
     );
 
-    let parts: Result<Vec<(String, QueryResponse)>, GraphQLExecutionError> = operations
+    let parts: Result<Vec<(String, QueryResponse)>> = operations
         .iter()
         .flat_map(|query| match query_context.resolve_operation(query) {
             Ok(resolved) => resolved.into_iter().map(Ok).collect(),

@@ -7,6 +7,7 @@ use serde_json::Value;
 use crate::execution::query_context::QueryContext;
 use crate::execution::resolver::*;
 use crate::introspection::definition::type_introspection::TypeDefinitionIntrospection;
+use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
 struct BoxedType<'a> {
@@ -19,7 +20,7 @@ impl<'a> FieldResolver<Value> for TypeDefinition {
         &self,
         query_context: &QueryContext<'_>,
         field: &Positioned<Field>,
-    ) -> Result<Value, GraphQLExecutionError> {
+    ) -> Result<Value> {
         match field.node.name.node.as_str() {
             "name" => Ok(Value::String(self.name())),
             "kind" => Ok(Value::String(self.kind())),
@@ -37,10 +38,10 @@ impl<'a> FieldResolver<Value> for TypeDefinition {
                 .resolve_value(query_context, &field.node.selection_set),
             "ofType" => Ok(Value::Null),
             "specifiedByUrl" => Ok(Value::Null),
-            field_name => Err(GraphQLExecutionError::InvalidField(
+            field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
                 field_name.to_owned(),
                 "TypeDefinition",
-            )),
+            ))),
         }
     }
 }
@@ -50,7 +51,7 @@ impl FieldResolver<Value> for Type {
         &self,
         query_context: &QueryContext<'_>,
         field: &Positioned<Field>,
-    ) -> Result<Value, GraphQLExecutionError> {
+    ) -> Result<Value> {
         let base_type = &self.base;
 
         if !self.nullable {
@@ -93,7 +94,7 @@ impl<'a> FieldResolver<Value> for BoxedType<'a> {
         &self,
         query_context: &QueryContext<'_>,
         field: &Positioned<Field>,
-    ) -> Result<Value, GraphQLExecutionError> {
+    ) -> Result<Value> {
         match field.node.name.node.as_str() {
             "kind" => Ok(Value::String(self.type_kind.to_owned())),
             "ofType" => self
@@ -101,10 +102,10 @@ impl<'a> FieldResolver<Value> for BoxedType<'a> {
                 .resolve_value(query_context, &field.node.selection_set),
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"
             | "possibleTypes" | "enumValues" | "inoutFields" => Ok(Value::Null),
-            field_name => Err(GraphQLExecutionError::InvalidField(
+            field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
                 field_name.to_owned(),
                 "List/NonNull type",
-            )),
+            ))),
         }
     }
 }
