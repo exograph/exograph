@@ -1,0 +1,4 @@
+model Video {
+  id: Int @pk @autoincrement
+  name: String
+}
