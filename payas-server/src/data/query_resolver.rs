@@ -75,7 +75,7 @@ impl<'a> QueryOperations<'a> for Query {
             .iter()
             .flat_map(
                 |selection| match map_selection(self, &selection.node, &operation_context) {
-                    Ok(s) => s.into_iter().map(|item| Ok(item)).collect(),
+                    Ok(s) => s.into_iter().map(Ok).collect(),
                     Err(err) => vec![Err(err)],
                 },
             )
@@ -156,7 +156,7 @@ fn map_selection<'a>(
                 .iter()
                 .flat_map(|selection| {
                     match map_selection(query, &selection.node, &operation_context) {
-                        Ok(s) => s.into_iter().map(|item| Ok(item)).collect(),
+                        Ok(s) => s.into_iter().map(Ok).collect(),
                         Err(err) => vec![Err(err)],
                     }
                 })

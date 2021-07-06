@@ -89,7 +89,7 @@ pub fn execute<'a>(
     let parts: Result<Vec<(String, QueryResponse)>, GraphQLExecutionError> = operations
         .iter()
         .flat_map(|query| match query_context.resolve_operation(query) {
-            Ok(resolved) => resolved.into_iter().map(|item| Ok(item)).collect(),
+            Ok(resolved) => resolved.into_iter().map(Ok).collect(),
             Err(err) => vec![Err(err)],
         })
         .collect();

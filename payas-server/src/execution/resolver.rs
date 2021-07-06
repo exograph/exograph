@@ -87,7 +87,7 @@ where
             .iter()
             .flat_map(
                 |selection| match self.resolve_selection(query_context, &selection) {
-                    Ok(s) => s.into_iter().map(|item| Ok(item)).collect(),
+                    Ok(s) => s.into_iter().map(Ok).collect(),
                     Err(err) => vec![Err(err)],
                 },
             )
@@ -133,7 +133,7 @@ impl std::fmt::Display for GraphQLExecutionError {
     }
 }
 
-pub fn check_duplicate_keys<R>(resolved: &Vec<(String, R)>) -> Result<(), GraphQLExecutionError> {
+pub fn check_duplicate_keys<R>(resolved: &[(String, R)]) -> Result<(), GraphQLExecutionError> {
     let mut names = HashSet::new();
     let mut duplicates = HashSet::new();
 
