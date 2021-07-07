@@ -19,6 +19,9 @@ steps:
     pull: if-not-exists
     depends_on:
       - slack-start
+    volumes:
+    - name: sccache
+      path: /sccache
     commands:
       - cargo fmt --all -- --check
       - cargo clippy --all-targets --all-features -- -D warnings
@@ -28,6 +31,9 @@ steps:
     pull: if-not-exists
     depends_on:
       - slack-start
+    volumes:
+    - name: sccache
+      path: /sccache
     commands:
       - cargo test
 
@@ -36,6 +42,9 @@ steps:
     pull: if-not-exists
     depends_on:
       - slack-start
+    volumes:
+    - name: sccache
+      path: /sccache
     commands:
       - CLAY_USE_CARGO=1 CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 cargo run --bin clay test integration-tests
 
@@ -59,3 +68,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: test
       POSTGRES_HOST_AUTH_METHOD: trust
+
+volumes:
+- name: sccache
+  host:
+    path: /home/ci/sccache
