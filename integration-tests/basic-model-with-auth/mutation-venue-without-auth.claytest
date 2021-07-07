@@ -1,0 +1,15 @@
+operation: |
+    mutation {
+        updateVenues(data: {published: true}) {
+            id
+        }
+    } 
+response: |
+    {
+        "errors": [
+            {
+                "message": "Not authorized"
+            }
+        ]
+    }
+    

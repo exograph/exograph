@@ -1,14 +1,12 @@
-use async_graphql_parser::{
-    types::{Field, OperationType},
-    Positioned,
-};
-
-use anyhow::Result;
-
 use crate::sql::Expression;
 use crate::{
     execution::query_context::{QueryContext, QueryResponse},
     sql::ExpressionContext,
+};
+use anyhow::Result;
+use async_graphql_parser::{
+    types::{Field, OperationType},
+    Positioned,
 };
 
 use payas_model::model::system::ModelSystem;
@@ -45,11 +43,12 @@ impl DataResolver for ModelSystem {
             OperationType::Subscription => {
                 todo!()
             }
-        };
+        }?;
 
         let mut expression_context = ExpressionContext::default();
         let binding = sql_operation.binding(&mut expression_context);
-        let string_response = query_context.database.execute(&binding)?;
-        Ok(QueryResponse::Raw(string_response))
+        Ok(QueryResponse::Raw(
+            query_context.database.execute(&binding)?,
+        ))
     }
 }

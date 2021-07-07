@@ -2,6 +2,7 @@ use super::query_context;
 use crate::introspection::schema::Schema;
 use async_graphql_parser::{parse_query, types::DocumentOperations};
 
+use anyhow::Result;
 use id_arena::Arena;
 use payas_model::{
     model::{system::ModelSystem, ContextSource, ContextType},
@@ -72,7 +73,7 @@ pub fn execute<'a>(
     query_str: &'a str,
     variables: Option<&'a Map<String, Value>>,
     jwt_claims: Option<Value>,
-) -> String {
+) -> Result<String> {
     let request_context = create_request_contexts(&system.contexts, jwt_claims);
 
     let (operations, query_context) = create_query_context(
@@ -85,10 +86,15 @@ pub fn execute<'a>(
         &request_context,
     );
 
-    let parts: Vec<(String, QueryResponse)> = operations
+    let parts: Result<Vec<(String, QueryResponse)>> = operations
         .iter()
-        .flat_map(|query| query_context.resolve_operation(query))
+        .flat_map(|query| match query_context.resolve_operation(query) {
+            Ok(resolved) => resolved.into_iter().map(Ok).collect(),
+            Err(err) => vec![Err(err)],
+        })
         .collect();
+
+    let parts = parts?;
 
     // TODO: More efficient (and ideally zero-copy) way to push the values to network
     let mut response = String::from(r#"{"data": {"#);
@@ -106,5 +112,5 @@ pub fn execute<'a>(
     });
     response.push_str("}}");
 
-    response
+    Ok(response)
 }

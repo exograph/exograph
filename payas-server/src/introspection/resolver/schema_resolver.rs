@@ -1,13 +1,17 @@
+use crate::introspection::schema::Schema;
 use async_graphql_parser::{types::Field, Positioned};
 use serde_json::Value;
 
-use crate::introspection::schema::Schema;
-
 use crate::execution::query_context::QueryContext;
 use crate::execution::resolver::*;
+use anyhow::{anyhow, Result};
 
 impl FieldResolver<Value> for Schema {
-    fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Positioned<Field>) -> Value {
+    fn resolve_field(
+        &self,
+        query_context: &QueryContext<'_>,
+        field: &Positioned<Field>,
+    ) -> Result<Value> {
         match field.node.name.node.as_str() {
             "types" => self
                 .type_definitions
@@ -24,8 +28,11 @@ impl FieldResolver<Value> for Schema {
                 .schema
                 .get_type_definition("Subscription")
                 .resolve_value(query_context, &field.node.selection_set),
-            "directives" => Value::Null, // TODO
-            field_name => todo!("Invalid field {:?} for Schema", field_name), // TODO: Make it a proper error
+            "directives" => Ok(Value::Null), // TODO
+            field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
+                field_name.to_owned(),
+                "Schema",
+            ))),
         }
     }
 }

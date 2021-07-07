@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use async_graphql_parser::{
     types::{BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, Type},
     Positioned,
@@ -33,7 +34,7 @@ impl<'qc> QueryContext<'qc> {
     pub fn resolve_operation<'b>(
         &self,
         operation: (Option<&Name>, &'b Positioned<OperationDefinition>),
-    ) -> Vec<(String, QueryResponse)> {
+    ) -> Result<Vec<(String, QueryResponse)>> {
         operation
             .1
             .node
@@ -49,7 +50,7 @@ impl<'qc> QueryContext<'qc> {
             .map(|v| &v.node)
     }
 
-    fn resolve_type(&self, field: &Field) -> JsonValue {
+    fn resolve_type(&self, field: &Field) -> Result<JsonValue> {
         let type_name = &field
             .arguments
             .iter()
@@ -64,7 +65,7 @@ impl<'qc> QueryContext<'qc> {
             };
             tpe.resolve_value(self, &field.selection_set)
         } else {
-            JsonValue::Null
+            Ok(JsonValue::Null)
         }
     }
 }
@@ -96,20 +97,21 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
         &'a self,
         query_context: &QueryContext<'_>,
         field: &Positioned<Field>,
-    ) -> QueryResponse {
+    ) -> Result<QueryResponse> {
         if field.node.name.node == "__type" {
-            QueryResponse::Json(query_context.resolve_type(&field.node))
+            Ok(QueryResponse::Json(
+                query_context.resolve_type(&field.node)?,
+            ))
         } else if field.node.name.node == "__schema" {
-            QueryResponse::Json(
+            Ok(QueryResponse::Json(
                 query_context
                     .schema
-                    .resolve_value(query_context, &field.node.selection_set),
-            )
+                    .resolve_value(query_context, &field.node.selection_set)?,
+            ))
         } else {
             query_context
                 .system
                 .resolve(&field, &self.ty, query_context)
-                .unwrap() // TODO error handling here
         }
     }
 }
