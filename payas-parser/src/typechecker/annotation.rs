@@ -282,7 +282,7 @@ impl AnnotationMap {
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        let mut pass = false;
+        let mut changed = false;
 
         for annot in [
             &mut self.access,
@@ -297,17 +297,18 @@ impl AnnotationMap {
             &mut self.size,
             &mut self.table,
         ] {
-            pass = pass
-                || if let Some(annot) = annot.as_mut() {
-                    ast_annotations
-                        .iter()
-                        .find(|a| a.name.as_str() == annot.name())
-                        .unwrap()
-                        .pass(annot, env, scope, errors)
-                } else {
-                    false
-                }
+            let annot_changed = if let Some(annot) = annot.as_mut() {
+                ast_annotations
+                    .iter()
+                    .find(|a| a.name.as_str() == annot.name())
+                    .unwrap()
+                    .pass(annot, env, scope, errors)
+            } else {
+                false
+            };
+
+            changed = changed || annot_changed;
         }
-        pass
+        changed
     }
 }

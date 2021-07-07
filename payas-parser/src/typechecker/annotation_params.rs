@@ -47,9 +47,12 @@ impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
             }
             AstAnnotationParams::Map(params) => {
                 if let TypedAnnotationParams::Map(params_typ) = typ {
-                    params.iter().any(|(name, expr)| {
-                        expr.pass(params_typ.get_mut(name).unwrap(), env, scope, errors)
-                    })
+                    params
+                        .iter()
+                        .map(|(name, expr)| {
+                            expr.pass(params_typ.get_mut(name).unwrap(), env, scope, errors)
+                        })
+                        .any(|b| b)
                 } else {
                     panic!();
                 }

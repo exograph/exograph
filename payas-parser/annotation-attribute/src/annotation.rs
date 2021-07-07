@@ -196,7 +196,10 @@ pub(crate) fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
                     .iter()
                     .map(|i| {
                         let n = i.to_string();
-                        quote! { pass = pass || params[#n].pass(&mut self.#i, env, scope, errors); }
+                        quote! {
+                            let param_changed = params[#n].pass(&mut self.#i, env, scope, errors);
+                            changed = changed || param_changed;
+                        }
                     })
                     .collect::<Vec<_>>();
 
@@ -206,9 +209,9 @@ pub(crate) fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
                             AstAnnotationParams::None => panic!(),
                             AstAnnotationParams::Single(expr) => panic!(),
                             AstAnnotationParams::Map(params) => {
-                                let mut pass = false;
+                                let mut changed = false;
                                 #(#passes)*
-                                pass
+                                changed
                             }
                         }
                     }
