@@ -15,36 +15,28 @@ steps:
       template: Build {{build.number}} started {{build.link}}
 
   - name: rustfmt-clippy
-    image: rust:buster
+    image: payas-ci-image
     pull: if-not-exists
     depends_on:
       - slack-start
     commands:
-      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
-      - rustup component add rustfmt
-      - rustup component add clippy
-      - cargo install --rev v0.19.5 --git https://github.com/tree-sitter/tree-sitter.git tree-sitter-cli
       - cargo fmt --all -- --check
       - cargo clippy --all-targets --all-features -- -D warnings
 
   - name: test
-    image: rust:buster
+    image: payas-ci-image
     pull: if-not-exists
     depends_on:
       - slack-start
     commands:
-      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
-      - cargo install --rev v0.19.5 --git https://github.com/tree-sitter/tree-sitter.git tree-sitter-cli
       - cargo test
 
   - name: test-integration
-    image: rust:buster
+    image: payas-ci-image
     pull: if-not-exists
     depends_on:
       - slack-start
     commands:
-      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
-      - cargo install --rev v0.19.5 --git https://github.com/tree-sitter/tree-sitter.git tree-sitter-cli
       - CLAY_USE_CARGO=1 CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 cargo run --bin clay test integration-tests
 
   - name: slack-end
