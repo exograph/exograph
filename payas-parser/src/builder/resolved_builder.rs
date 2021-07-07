@@ -1,8 +1,8 @@
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::typechecker::{
-    AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedExpression,
-    TypedField, TypedFieldSelection,
+    AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
+    TypedExpression, TypedField, TypedFieldSelection,
 };
 use serde::{Deserialize, Serialize};
 
@@ -162,7 +162,7 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
                 let table_name = ct
                     .annotations
                     .table()
-                    .map(|a| a.0.as_string())
+                    .map(|a| a.value().as_string())
                     .unwrap_or_else(|| ct.name.clone());
                 let access = build_access(ct.annotations.access());
                 resolved_types.add(
@@ -299,19 +299,26 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     ////
 
     let int_hint = {
-        let size_annotation = field.annotations.size().map(|a| a.0.as_number() as usize);
+        let size_annotation = field
+            .annotations
+            .size()
+            .map(|a| a.value().as_number() as usize);
 
-        let bits_annotation = field.annotations.bits().map(|a| a.0.as_number() as usize);
+        let bits_annotation = field
+            .annotations
+            .bits()
+            .map(|a| a.value().as_number() as usize);
 
         if size_annotation.is_some() && bits_annotation.is_some() {
             panic!("Cannot have both @size and @bits for {}", field.name)
         }
 
-        let range_hint = field.annotations.range().map(|range_annotation| {
-            let min = range_annotation.min.as_number();
-            let max = range_annotation.max.as_number();
-            (min, max)
-        });
+        let range_hint = field
+            .annotations
+            .range()
+            .map(|range_annotation| match range_annotation {
+                RangeAnnotation::Map { min, max } => (min.as_number(), max.as_number()),
+            });
 
         let bits_hint = if let Some(size) = size_annotation {
             Some(
@@ -348,7 +355,10 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     };
 
     let string_hint = {
-        let length_annotation = field.annotations.length().map(|a| a.0.as_number() as usize);
+        let length_annotation = field
+            .annotations
+            .length()
+            .map(|a| a.value().as_number() as usize);
 
         // None if there is no length annotation
         length_annotation.map(|length| ResolvedTypeHint::StringHint { length })
@@ -359,7 +369,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     let explicit_dbtype_hint = field
         .annotations
         .db_type()
-        .map(|a| a.0.as_string())
+        .map(|a| a.value().as_string())
         .map(|s| ResolvedTypeHint::ExplicitHint {
             dbtype: s.to_uppercase(),
         });
@@ -434,7 +444,7 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
     let jwt_annot = field.annotations.jwt();
     let claim = jwt_annot
         .map(|annot| {
-            let annot_param = &annot.0;
+            let annot_param = &annot.value();
 
             match annot_param {
                 Some(TypedExpression::FieldSelection(selection)) => match selection {
@@ -478,7 +488,7 @@ fn compute_column_name(
     field
         .annotations
         .column()
-        .map(|a| a.0.as_string())
+        .map(|a| a.value().as_string())
         .unwrap_or_else(|| default_column_name(enclosing_type, field, types))
 }
 

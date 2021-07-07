@@ -10,37 +10,58 @@ use annotation_attribute::{annotation, unchecked_annotation};
 pub struct AccessAnnotation;
 
 #[annotation("autoincrement")]
-pub struct AutoIncrementAnnotation;
+pub enum AutoIncrementAnnotation {
+    None,
+}
 
 #[annotation("bits")]
-pub struct BitsAnnotation(pub TypedExpression);
+pub enum BitsAnnotation {
+    Single(TypedExpression),
+}
 
 #[annotation("column")]
-pub struct ColumnAnnotation(pub TypedExpression);
+pub enum ColumnAnnotation {
+    Single(TypedExpression),
+}
 
 #[annotation("dbtype")]
-pub struct DbTypeAnnotation(pub TypedExpression);
+pub enum DbTypeAnnotation {
+    Single(TypedExpression),
+}
 
 #[annotation("length")]
-pub struct LengthAnnotation(pub TypedExpression);
+pub enum LengthAnnotation {
+    Single(TypedExpression),
+}
 
 #[annotation("jwt")]
-pub struct JwtAnnotation(pub Option<TypedExpression>);
+pub enum JwtAnnotation {
+    None,
+    Single(TypedExpression),
+}
 
 #[annotation("pk")]
-pub struct PkAnnotation;
+pub enum PkAnnotation {
+    None,
+}
 
 #[annotation("range")]
-pub struct RangeAnnotation {
-    pub min: TypedExpression,
-    pub max: TypedExpression,
+pub enum RangeAnnotation {
+    Map {
+        min: TypedExpression,
+        max: TypedExpression,
+    },
 }
 
 #[annotation("size")]
-pub struct SizeAnnotation(pub TypedExpression);
+pub enum SizeAnnotation {
+    Single(TypedExpression),
+}
 
 #[annotation("table")]
-pub struct TableAnnotation(pub TypedExpression);
+pub enum TableAnnotation {
+    Single(TypedExpression),
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum TypedAnnotation {
