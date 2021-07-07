@@ -15,39 +15,37 @@ steps:
       template: Build {{build.number}} started {{build.link}}
 
   - name: rustfmt-clippy
-    image: rust:buster
+    image: payas-ci-image
     pull: if-not-exists
     depends_on:
       - slack-start
+    volumes:
+    - name: sccache
+      path: /sccache
     commands:
-      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
-      - rustup component add rustfmt
-      - rustup component add clippy
-      - cd payas-parser/grammar && npm install && cd ../..
-      - export PATH="$PATH:$PWD/payas-parser/grammar/node_modules/.bin"
       - cargo fmt --all -- --check
       - cargo clippy --all-targets --all-features -- -D warnings
 
   - name: test
-    image: rust:buster
+    image: payas-ci-image
     pull: if-not-exists
     depends_on:
       - slack-start
+    volumes:
+    - name: sccache
+      path: /sccache
     commands:
-      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
-      - cd payas-parser/grammar && npm install && cd ../..
-      - export PATH="$PATH:$PWD/payas-parser/grammar/node_modules/.bin"
       - cargo test
 
   - name: test-integration
-    image: rust:buster
+    image: payas-ci-image
     pull: if-not-exists
     depends_on:
       - slack-start
+    volumes:
+    - name: sccache
+      path: /sccache
     commands:
-      - curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
-      - cd payas-parser/grammar && npm install && cd ../..
-      - export PATH="$PATH:$PWD/payas-parser/grammar/node_modules/.bin"
       - CLAY_USE_CARGO=1 CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 cargo run --bin clay test integration-tests
 
   - name: slack-end
@@ -70,3 +68,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_DB: test
       POSTGRES_HOST_AUTH_METHOD: trust
+
+volumes:
+- name: sccache
+  host:
+    path: /home/ci/sccache
