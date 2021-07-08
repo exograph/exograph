@@ -17,7 +17,7 @@ models:
               Single:
                 StringLiteral:
                   - custom_column
-          - name: auth
+          - name: access
             params:
               Single:
                 LogicalOp:
