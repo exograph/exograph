@@ -1,4 +1,5 @@
 mod annotation;
+mod annotation_map;
 mod annotation_params;
 mod expression;
 mod field;
@@ -13,6 +14,7 @@ use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 
 pub(super) use annotation::*;
+pub(super) use annotation_map::AnnotationMap;
 
 pub(super) use expression::TypedExpression;
 pub use logical_op::TypedLogicalOp;

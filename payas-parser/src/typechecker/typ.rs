@@ -5,7 +5,7 @@ use std::{
     ops::Deref,
 };
 
-use super::{annotation::AnnotationMap, TypedField};
+use super::{AnnotationMap, TypedField};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
     Primitive(PrimitiveType),

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::AstField;
 
-use super::{annotation::AnnotationMap, Scope, Type, Typecheck};
+use super::{AnnotationMap, Scope, Type, Typecheck};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TypedField {

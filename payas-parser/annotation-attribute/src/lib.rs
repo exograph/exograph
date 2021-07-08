@@ -2,7 +2,6 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse_macro_input, AttributeArgs, Field, Fields, Ident, ItemEnum, Lit, NestedMeta, Type,
-    Variant,
 };
 
 use std::collections::HashSet;
@@ -13,16 +12,19 @@ use std::collections::HashSet;
 /// `Map`. `Single` must be a tuple struct with a single parameter. `Map` must
 /// be a struct with named fields. Fields in `Map` may also be optional by
 /// using `Option`.
-/// 
+///
 /// # Generated methods
-/// 
+///
 /// `from_params` - Constructs the annotation given the `TypedAnnotationParams`.
-/// 
+///
 /// `pass` - Performs a type-check pass on all the parameters.
 ///
 /// `value` - If the annotation only contains the `Single` field, `value`
 /// returns the single value. If the annotation only contains the `None` and
 /// `Single` field, `value` returns an `Option` instead.
+///
+/// `name` - Returns the name of the annotation in model files (given as an
+/// argument to attribute)
 #[proc_macro_attribute]
 pub fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as AttributeArgs);
@@ -38,31 +40,23 @@ pub fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
             .map(|v| v.ident.to_string())
             .collect::<HashSet<_>>();
 
-        fn allows(variants: &mut HashSet<String>, name: &'static str) -> bool {
+        let mut variant = |name: &'static str| {
             let name = name.to_string();
-            let allows = variants.contains(&name);
-            if allows {
-                variants.remove(&name);
-            }
-            allows
-        }
+            let allows = variant_names.contains(&name);
 
-        fn variant<'a>(
-            variants: &'a [&Variant],
-            names: &mut HashSet<String>,
-            name: &'static str,
-        ) -> Option<&'a Variant> {
-            if allows(names, name) {
-                Some(*variants.iter().find(|v| v.ident == name).unwrap())
+            if allows {
+                variant_names.remove(&name);
+                Some(*enum_variants.iter().find(|v| v.ident == name).unwrap())
             } else {
                 None
             }
-        }
+        };
 
-        let none = variant(&enum_variants, &mut variant_names, "None");
-        let single = variant(&enum_variants, &mut variant_names, "Single");
-        let map = variant(&enum_variants, &mut variant_names, "Map");
+        let none = variant("None");
+        let single = variant("Single");
+        let map = variant("Map");
 
+        // If there are any variants other than None, Single, or Map
         if !variant_names.is_empty() {
             panic!("Only None, Single, and Map variants allowed");
         }
@@ -306,7 +300,6 @@ pub fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
-
 
 /// Checks if a field is optional (if the type is `Option`).
 fn is_optional(field: &Field) -> bool {
