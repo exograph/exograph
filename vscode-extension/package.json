@@ -1,25 +1,40 @@
 {
-    "name": "claytip",
-    "displayName": "Claytip",
-    "description": "Syntax highlighting support for Claytip projects",
-    "version": "0.0.1",
-    "engines": {
-        "vscode": "^1.57.0"
-    },
-    "categories": [
-        "Programming Languages"
+  "name": "claytip",
+  "displayName": "Claytip",
+  "description": "Syntax highlighting support for Claytip projects",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.57.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "claytip",
+        "aliases": [
+          "claytip",
+          "claytip"
+        ],
+        "extensions": [
+          ".clay"
+        ],
+        "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "graphql",
+        "extensions": [
+          ".claytest"
+        ]
+      }
     ],
-    "contributes": {
-        "languages": [{
-            "id": "claytip",
-            "aliases": ["claytip", "claytip"],
-            "extensions": [".clay"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "claytip",
-            "scopeName": "source.clay",
-            "path": "./syntaxes/claytip.tmLanguage.json"
-        }]
-    }
+    "grammars": [
+      {
+        "language": "claytip",
+        "scopeName": "source.clay",
+        "path": "./syntaxes/claytip.tmLanguage.json"
+      }
+    ]
+  }
 }
