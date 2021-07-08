@@ -203,8 +203,6 @@ fn build_access(access_annotation: Option<&AccessAnnotation>) -> ResolvedAccess 
             let restrictive =
                 TypedExpression::BooleanLiteral(false, Type::Primitive(PrimitiveType::Boolean));
 
-            let params = &access.params;
-
             // The annotation parameter hierarchy is:
             // value -> query
             //       -> mutation -> create
@@ -212,29 +210,30 @@ fn build_access(access_annotation: Option<&AccessAnnotation>) -> ResolvedAccess 
             //                   -> delete
             // Any lower node in the hierarchy get a priority over it parent.
 
-            let default_access = params.get("value").unwrap_or(&restrictive);
-            let default_mutation_access = params.get("mutation").unwrap_or(default_access);
-
-            let read = params.get("query").unwrap_or(default_access).clone();
-
-            let creation = params
-                .get("create")
-                .unwrap_or(default_mutation_access)
-                .clone();
-            let update = params
-                .get("update")
-                .unwrap_or(default_mutation_access)
-                .clone();
-            let delete = params
-                .get("delete")
-                .unwrap_or(default_mutation_access)
-                .clone();
+            let (creation, read, update, delete) = match access {
+                AccessAnnotation::Single(default) => (default, default, default, default),
+                AccessAnnotation::Map {
+                    query,
+                    mutation,
+                    create,
+                    update,
+                    delete,
+                } => {
+                    let default_mutation_access = mutation.as_ref().unwrap_or(&restrictive);
+                    (
+                        create.as_ref().unwrap_or(default_mutation_access),
+                        query.as_ref().unwrap_or(&restrictive),
+                        update.as_ref().unwrap_or(default_mutation_access),
+                        delete.as_ref().unwrap_or(default_mutation_access),
+                    )
+                }
+            };
 
             ResolvedAccess {
-                creation,
-                read,
-                update,
-                delete,
+                creation: creation.clone(),
+                read: read.clone(),
+                update: update.clone(),
+                delete: delete.clone(),
             }
         }
         None => ResolvedAccess::permissive(),

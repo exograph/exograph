@@ -4,10 +4,19 @@ use serde::{Deserialize, Serialize};
 
 use super::{annotation_params::TypedAnnotationParams, Scope, Type, Typecheck, TypedExpression};
 
-use annotation_attribute::{annotation, unchecked_annotation};
+use annotation_attribute::annotation;
 
-#[unchecked_annotation("access")]
-pub struct AccessAnnotation;
+#[annotation("access")]
+pub enum AccessAnnotation {
+    Single(TypedExpression), // default access
+    Map {
+        query: Option<TypedExpression>,
+        mutation: Option<TypedExpression>,
+        create: Option<TypedExpression>,
+        update: Option<TypedExpression>,
+        delete: Option<TypedExpression>,
+    },
+}
 
 #[annotation("autoincrement")]
 pub enum AutoIncrementAnnotation {
