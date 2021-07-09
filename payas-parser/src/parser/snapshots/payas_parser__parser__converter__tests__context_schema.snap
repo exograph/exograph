@@ -15,8 +15,8 @@ models:
           - name: jwt
             params:
               Single:
-                StringLiteral:
-                  - sub
+                - StringLiteral:
+                    - sub
       - name: roles
         typ:
           List:

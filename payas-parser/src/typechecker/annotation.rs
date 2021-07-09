@@ -1,4 +1,6 @@
 use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams};
+use anyhow::{bail, Result};
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
@@ -107,35 +109,67 @@ impl TypedAnnotation {
 }
 
 impl Typecheck<TypedAnnotation> for AstAnnotation {
-    fn shallow(&self) -> TypedAnnotation {
-        let params = self.params.shallow();
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedAnnotation> {
+        let params = self.params.shallow(errors)?;
         let name = self.name.as_str();
 
         // Can't use match https://github.com/rust-lang/rust/issues/57240
         if name == AccessAnnotation::name() {
-            TypedAnnotation::Access(AccessAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Access(AccessAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == AutoIncrementAnnotation::name() {
-            TypedAnnotation::AutoIncrement(AutoIncrementAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::AutoIncrement(
+                AutoIncrementAnnotation::from_params(self, params, errors)?,
+            ))
         } else if name == BitsAnnotation::name() {
-            TypedAnnotation::Bits(BitsAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Bits(BitsAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == ColumnAnnotation::name() {
-            TypedAnnotation::Column(ColumnAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Column(ColumnAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == DbTypeAnnotation::name() {
-            TypedAnnotation::DbType(DbTypeAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::DbType(DbTypeAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == LengthAnnotation::name() {
-            TypedAnnotation::Length(LengthAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Length(LengthAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == JwtAnnotation::name() {
-            TypedAnnotation::Jwt(JwtAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Jwt(JwtAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == PkAnnotation::name() {
-            TypedAnnotation::Pk(PkAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Pk(PkAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == RangeAnnotation::name() {
-            TypedAnnotation::Range(RangeAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Range(RangeAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == SizeAnnotation::name() {
-            TypedAnnotation::Size(SizeAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Size(SizeAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == TableAnnotation::name() {
-            TypedAnnotation::Table(TableAnnotation::from_params(params).unwrap())
+            Ok(TypedAnnotation::Table(TableAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else {
-            panic!("unknown annotation {}", name);
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!("Unknown annotation `{}`", name),
+                code: Some("A000".to_string()),
+                spans: vec![SpanLabel {
+                    span: self.span,
+                    label: None,
+                    style: SpanStyle::Primary,
+                }],
+            });
+            bail!("")
         }
     }
 

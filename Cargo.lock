@@ -307,6 +307,7 @@ dependencies = [
 name = "annotation-attribute"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "proc-macro2",
  "quote",
  "syn",
@@ -1731,6 +1732,7 @@ name = "payas-parser"
 version = "0.1.0"
 dependencies = [
  "annotation-attribute",
+ "anyhow",
  "cc",
  "codemap",
  "codemap-diagnostic",

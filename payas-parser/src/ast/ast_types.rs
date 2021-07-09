@@ -64,6 +64,10 @@ impl AstFieldType {
 pub struct AstAnnotation {
     pub name: String,
     pub params: AstAnnotationParams,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -71,9 +75,20 @@ pub enum AstAnnotationParams {
     /// No parameters (e.g. `@pk`)
     None,
     /// Single parameter (e.g. `@table("concerts"))
-    Single(AstExpr),
+    Single(
+        AstExpr,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
     /// Named parameters (e.g. `@range(min=-10, max=10)`)
-    Map(HashMap<String, AstExpr>),
+    Map(
+        HashMap<String, AstExpr>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        HashMap<String, Span>,
+    ),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

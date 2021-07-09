@@ -1,3 +1,4 @@
+use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
@@ -13,18 +14,18 @@ pub struct TypedField {
 }
 
 impl Typecheck<TypedField> for AstField {
-    fn shallow(&self) -> TypedField {
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedField> {
         let mut annotations = Box::new(AnnotationMap::default());
 
         for a in &self.annotations {
-            annotations.add_annotation(a.shallow());
+            annotations.add_annotation(a.shallow(errors)?);
         }
 
-        TypedField {
+        Ok(TypedField {
             name: self.name.clone(),
-            typ: self.typ.shallow(),
+            typ: self.typ.shallow(errors)?,
             annotations,
-        }
+        })
     }
 
     fn pass(

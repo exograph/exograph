@@ -203,18 +203,15 @@ pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldTyp
 fn convert_annotation(node: Node, source: &[u8], source_span: Span) -> AstAnnotation {
     assert_eq!(node.kind(), "annotation");
 
-    AstAnnotation {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+    let name_node = node.child_by_field_name("name").unwrap();
 
+    AstAnnotation {
+        name: name_node.utf8_text(source).unwrap().to_string(),
         params: match node.child_by_field_name("params") {
             Some(node) => convert_annotation_params(node, source, source_span),
             None => AstAnnotationParams::None,
         },
+        span: span_from_node(source_span, name_node),
     }
 }
 
@@ -224,28 +221,45 @@ fn convert_annotation_params(node: Node, source: &[u8], source_span: Span) -> As
     let first_child = node.child(0).unwrap();
 
     match first_child.kind() {
-        "expression" => {
-            AstAnnotationParams::Single(convert_expression(first_child, source, source_span))
-        }
-        "annotation_map_params" => AstAnnotationParams::Map(
-            first_child
+        "expression" => AstAnnotationParams::Single(
+            convert_expression(first_child, source, source_span),
+            span_from_node(source_span, first_child),
+        ),
+        "annotation_map_params" => {
+            let params = first_child
                 .children_by_field_name("param", &mut cursor)
-                .map(|c| {
+                .map(|p| {
                     (
-                        c.child_by_field_name("name")
+                        p.child_by_field_name("name")
                             .unwrap()
                             .utf8_text(source)
                             .unwrap()
                             .to_string(),
-                        convert_expression(
-                            c.child_by_field_name("expr").unwrap(),
-                            source,
-                            source_span,
-                        ),
+                        p,
                     )
                 })
-                .collect(),
-        ),
+                .collect::<Vec<_>>();
+
+            AstAnnotationParams::Map(
+                params
+                    .iter()
+                    .map(|(name, p)| {
+                        (
+                            name.clone(),
+                            convert_expression(
+                                p.child_by_field_name("expr").unwrap(),
+                                source,
+                                source_span,
+                            ),
+                        )
+                    })
+                    .collect(),
+                params
+                    .iter()
+                    .map(|(name, p)| (name.clone(), span_from_node(source_span, *p)))
+                    .collect(),
+            )
+        }
         o => panic!("unsupported annotation params kind: {}", o),
     }
 }

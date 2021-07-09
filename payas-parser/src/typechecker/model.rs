@@ -1,3 +1,4 @@
+use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstModel, AstModelKind};
@@ -5,23 +6,27 @@ use crate::ast::ast_types::{AstModel, AstModelKind};
 use super::{typ::CompositeTypeKind, AnnotationMap, CompositeType, Scope, Type, Typecheck};
 
 impl Typecheck<Type> for AstModel {
-    fn shallow(&self) -> Type {
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Type> {
         let mut annotations = Box::new(AnnotationMap::default());
 
         for a in &self.annotations {
-            annotations.add_annotation(a.shallow());
+            annotations.add_annotation(a.shallow(errors)?);
         }
 
-        Type::Composite(CompositeType {
+        Ok(Type::Composite(CompositeType {
             name: self.name.clone(),
             kind: if self.kind == AstModelKind::Persistent {
                 CompositeTypeKind::Persistent
             } else {
                 CompositeTypeKind::Context
             },
-            fields: self.fields.iter().map(|f| f.shallow()).collect(),
+            fields: self
+                .fields
+                .iter()
+                .map(|f| f.shallow(errors))
+                .collect::<Result<_, _>>()?,
             annotations,
-        })
+        }))
     }
 
     fn pass(

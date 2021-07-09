@@ -29,14 +29,14 @@ models:
           - name: column
             params:
               Single:
-                StringLiteral:
-                  - venueid
+                - StringLiteral:
+                    - venueid
     annotations:
       - name: table
         params:
           Single:
-            StringLiteral:
-              - concerts
+            - StringLiteral:
+                - concerts
   - name: Venue
     kind: Persistent
     fields:
@@ -63,12 +63,12 @@ models:
           - name: column
             params:
               Single:
-                StringLiteral:
-                  - venueid
+                - StringLiteral:
+                    - venueid
     annotations:
       - name: table
         params:
           Single:
-            StringLiteral:
-              - venues
+            - StringLiteral:
+                - venues
 

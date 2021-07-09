@@ -2,6 +2,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
     parse_macro_input, AttributeArgs, Field, Fields, Ident, ItemEnum, Lit, NestedMeta, Type,
+    Variant,
 };
 
 use std::collections::HashSet;
@@ -30,241 +31,6 @@ pub fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as AttributeArgs);
     let input = parse_macro_input!(input as ItemEnum);
 
-    let enum_name = &input.ident;
-    let enum_variants = input.variants.iter().collect::<Vec<_>>();
-
-    // Get info about None/Single/Map variants
-    let (none_variant, single_variant, map_variant) = {
-        let mut variant_names = enum_variants
-            .iter()
-            .map(|v| v.ident.to_string())
-            .collect::<HashSet<_>>();
-
-        let mut variant = |name: &'static str| {
-            let name = name.to_string();
-            let allows = variant_names.contains(&name);
-
-            if allows {
-                variant_names.remove(&name);
-                Some(*enum_variants.iter().find(|v| v.ident == name).unwrap())
-            } else {
-                None
-            }
-        };
-
-        let none = variant("None");
-        let single = variant("Single");
-        let map = variant("Map");
-
-        // If there are any variants other than None, Single, or Map
-        if !variant_names.is_empty() {
-            panic!("Only None, Single, and Map variants allowed");
-        }
-
-        (none, single, map)
-    };
-
-    // Build from_params function
-    let from_params_fn = {
-        // If given no parameters
-        let from_none = if none_variant.is_some() {
-            quote! { Ok(Self::None) }
-        } else {
-            quote! { Err(vec!["expected parameters".to_string()]) }
-        };
-
-        // If given a single parameter
-        let from_single = if single_variant.is_some() {
-            quote! { Ok(Self::Single(expr)) }
-        } else {
-            quote! { Err(vec!["unexpected unnamed parameter".to_string()]) }
-        };
-
-        // If given a map of parameters
-        let from_map = if let Some(variant) = map_variant {
-            // (field, field is_optional)
-            let fields = if let Fields::Named(fields) = &variant.fields {
-                fields
-                    .named
-                    .iter()
-                    .map(|field| (field, is_optional(&field)))
-                    .collect::<Vec<_>>()
-            } else {
-                panic!("Map must have named parameters");
-            };
-
-            // (field name, field is_optional)
-            let (expected_fields, expected_fields_is_optional): (Vec<String>, Vec<bool>) = fields
-                .iter()
-                .map(|(field, is_optional)| {
-                    (field.ident.as_ref().unwrap().to_string(), is_optional)
-                })
-                .unzip();
-
-            // Build the annotation constructor
-            let constructor = fields
-                .iter()
-                .map(|(field, is_optional)| {
-                    let ident = field.ident.as_ref().unwrap();
-                    let n = ident.to_string();
-
-                    if *is_optional {
-                        quote! { #ident: params.get(#n).map(|p| p.clone()) }
-                    } else {
-                        quote! { #ident: params.get(#n).unwrap().clone() }
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            quote! {
-                let mut errs = Vec::new();
-
-                // Keep track of extra unused parameters
-                let mut unexpected_params = params.keys().cloned().collect::<std::collections::HashSet<_>>();
-
-                // For each field, check if it is given or if it's optional
-                for (expected, is_optional) in [#((#expected_fields, #expected_fields_is_optional)),*] {
-                    if params.contains_key(expected) {
-                        unexpected_params.remove(expected);
-                    } else if !is_optional {
-                        errs.push(format!("Expected parameters {}", expected));
-                    }
-                }
-
-                // For any unexpected parameters, push an error
-                for unexpected in unexpected_params {
-                    errs.push(format!("Unexpected parameter {}", unexpected));
-                }
-
-                if errs.is_empty() {
-                    Ok(Self::Map {
-                        #(#constructor,)*
-                    })
-                } else {
-                    Err(errs)
-                }
-            }
-        } else {
-            quote! { Err(vec!["unexpected parameters".to_string()]) }
-        };
-
-        quote! {
-            fn from_params(params: TypedAnnotationParams) -> Result<Self, Vec<String>> {
-                match params {
-                    TypedAnnotationParams::None => { #from_none },
-                    TypedAnnotationParams::Single(expr) => { #from_single },
-                    TypedAnnotationParams::Map(params) => { #from_map },
-                }
-            }
-        }
-    };
-
-    // Build pass function
-    let pass_fn = {
-        // If given no parameters, don't need a pass function (always false)
-
-        let pass_single = if single_variant.is_some() {
-            quote! {
-                if let Self::Single(expr) = self {
-                    ast_expr.pass(expr, env, scope, errors)
-                } else {
-                    panic!();
-                }
-            }
-        } else {
-            quote! { panic!(); }
-        };
-
-        let pass_map = if let Some(variant) = map_variant {
-            let (idents, is_optionals): (Vec<&Ident>, Vec<bool>) =
-                if let Fields::Named(fields) = &variant.fields {
-                    fields
-                        .named
-                        .iter()
-                        .map(|field| (field.ident.as_ref().unwrap(), is_optional(&field)))
-                        .unzip()
-                } else {
-                    panic!("Map must have named parameters");
-                };
-
-            let passes = idents
-                .iter()
-                .zip(is_optionals)
-                .map(|(ident, is_optional)| {
-                    let n = ident.to_string();
-
-                    if is_optional {
-                        quote! {
-                            if let Some(#ident) = #ident {
-                                let param_changed = ast_params[#n].pass(#ident, env, scope, errors);
-                                changed = changed || param_changed;
-                            }
-                        }
-                    } else {
-                        quote! {
-                            let param_changed = ast_params[#n].pass(#ident, env, scope, errors);
-                            changed = changed || param_changed;
-                        }
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            quote! {
-                if let Self::Map { #(#idents),* } = self {
-                    let mut changed = false;
-                    #(#passes)*
-                    changed
-                } else {
-                    panic!();
-                }
-            }
-        } else {
-            quote! { panic!(); }
-        };
-
-        quote! {
-            fn pass(
-                &mut self,
-                params: &AstAnnotationParams,
-                env: &MappedArena<Type>,
-                scope: &Scope,
-                errors: &mut Vec<codemap_diagnostic::Diagnostic>
-            ) -> bool {
-                match params {
-                    AstAnnotationParams::None => false,
-                    AstAnnotationParams::Single(ast_expr) => { #pass_single }
-                    AstAnnotationParams::Map(ast_params) => { #pass_map }
-                }
-            }
-        }
-    };
-
-    // Build value function
-    // If the annotation only has a `Single` variant, `value()` returns the single value
-    // If the annotation has `None` and `Single`, `value()` returns an optional
-    let value_fn = if none_variant.is_none() && single_variant.is_some() && map_variant.is_none() {
-        quote! {
-            pub fn value(&self) -> &TypedExpression {
-                match &self {
-                    Self::Single(value) => value,
-                    _ => panic!(),
-                }
-            }
-        }
-    } else if none_variant.is_some() && single_variant.is_some() && map_variant.is_none() {
-        quote! {
-            pub fn value(&self) -> Option<&TypedExpression> {
-                match &self {
-                    Self::None => None,
-                    Self::Single(value) => Some(value),
-                    _ => panic!(),
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
-
     // Get claytip annotation name from the annotation arguments
     if args.len() != 1 {
         panic!("expected claytip name literal");
@@ -280,8 +46,14 @@ pub fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
         panic!("expected literal");
     };
 
-    // Build annotation output
-    let expanded = quote! {
+    let enum_name = &input.ident;
+    let enum_variants = AnnotVariants::from(&input.variants.iter().collect::<Vec<_>>());
+
+    let from_params_fn = build_from_params_fn(&claytip_name, &enum_variants);
+    let pass_fn = build_pass_fn(&enum_variants);
+    let value_fn = build_value_fn(&enum_variants);
+
+    TokenStream::from(quote! {
         #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
         #input
 
@@ -296,9 +68,319 @@ pub fn annotation(args: TokenStream, input: TokenStream) -> TokenStream {
                 #claytip_name
             }
         }
+    })
+}
+
+/// Data about the three annotation variants (None, Single, Map).
+struct AnnotVariants<'a> {
+    /// Does `None` variant exist
+    none: bool,
+    /// Does `Single` variant exist
+    single: bool,
+    /// If `Map` variant exists, vector of (field, field is optional)
+    map: Option<Vec<(&'a Field, bool)>>,
+}
+
+impl<'a> AnnotVariants<'a> {
+    fn from(enum_variants: &[&'a Variant]) -> Self {
+        let mut variant_names = enum_variants
+            .iter()
+            .map(|v| v.ident.to_string())
+            .collect::<HashSet<_>>();
+
+        let mut get_variant = |name: &'static str| {
+            let name = name.to_string();
+            let allows = variant_names.contains(&name);
+
+            if allows {
+                variant_names.remove(&name);
+                Some(*enum_variants.iter().find(|v| v.ident == name).unwrap())
+            } else {
+                None
+            }
+        };
+
+        let none = get_variant("None");
+        let single = get_variant("Single");
+        let map = get_variant("Map");
+
+        // If there are any variants other than None, Single, or Map
+        if !variant_names.is_empty() {
+            panic!("Only None, Single, and Map variants allowed");
+        }
+
+        AnnotVariants {
+            none: none.is_some(),
+            single: single.is_some(),
+            map: match map {
+                Some(v) => match &v.fields {
+                    Fields::Named(fields) => Some(
+                        fields
+                            .named
+                            .iter()
+                            .map(|field| (field, is_optional(&field)))
+                            .collect::<Vec<_>>(),
+                    ),
+                    _ => None,
+                },
+                None => None,
+            },
+        }
+    }
+}
+
+/// Build the `from_params` function, which constructs the annotation given the typed annotation
+/// parameters.
+fn build_from_params_fn(claytip_name: &str, variants: &AnnotVariants) -> proc_macro2::TokenStream {
+    // Message for what parameters were expected in case of a type error
+    let diagnostic_msg = {
+        let mut expected = Vec::new();
+
+        if variants.none {
+            expected.push("no parameters".to_string());
+        }
+        if variants.single {
+            expected.push("a single parameter".to_string());
+        }
+        if let Some(map_fields) = &variants.map {
+            expected.push(format!(
+                "({})",
+                join_strings(
+                    map_fields
+                        .iter()
+                        .map(|(f, is_optional)| format!(
+                            "{}{}",
+                            f.ident.as_ref().unwrap(),
+                            if *is_optional { "?" } else { "" }
+                        ))
+                        .collect(),
+                    None,
+                )
+            ));
+        }
+
+        format!("Expected {}", join_strings(expected, Some("or")))
     };
 
-    TokenStream::from(expanded)
+    let base_diagnostic = quote! {
+        errors.push(Diagnostic {
+            level: Level::Error,
+            message: format!("Incorrect parameters for `{}`", #claytip_name),
+            code: Some("A000".to_string()),
+            spans: vec![
+                SpanLabel {
+                    span: ast_annot.span,
+                    label: Some(#diagnostic_msg.to_string()),
+                    style: SpanStyle::Primary,
+                }
+            ],
+        });
+        bail!("");
+    };
+
+    // If given no parameters
+    let from_none = if variants.none {
+        quote! { Ok(Self::None) }
+    } else {
+        base_diagnostic.clone()
+    };
+
+    // If given a single parameter
+    let from_single = if variants.single {
+        quote! { Ok(Self::Single(expr)) }
+    } else {
+        base_diagnostic.clone()
+    };
+
+    // If given a map of parameters
+    let from_map = if let Some(map_fields) = &variants.map {
+        // (field name, field is_ ptional)
+        let (expected_fields, expected_fields_is_optional): (Vec<String>, Vec<bool>) = map_fields
+            .iter()
+            .map(|(field, is_optional)| (field.ident.as_ref().unwrap().to_string(), is_optional))
+            .unzip();
+
+        // Build the annotation constructor
+        let constructor = map_fields
+            .iter()
+            .map(|(field, is_optional)| {
+                let ident = field.ident.as_ref().unwrap();
+                let n = ident.to_string();
+
+                if *is_optional {
+                    quote! { #ident: params.get(#n).map(|p| p.clone()) }
+                } else {
+                    quote! { #ident: params.get(#n).unwrap().clone() }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        quote! {
+            let param_spans = match &ast_annot.params {
+                AstAnnotationParams::Map(_, spans) => spans,
+                _ => panic!(),
+            };
+
+            let mut err_labels = Vec::new();
+            let mut missing_param = false;
+
+            // Keep track of extra unused parameters
+            let mut unexpected_params = params.keys().cloned().collect::<std::collections::HashSet<_>>();
+
+            // For each field, check if it is given or if it's optional
+            for (expected, is_optional) in [#((#expected_fields, #expected_fields_is_optional)),*] {
+                if params.contains_key(expected) {
+                    unexpected_params.remove(expected);
+                } else if !is_optional {
+                    missing_param = true;
+                }
+            }
+
+            // For any unexpected parameters, push an error
+            for unexpected in unexpected_params {
+                err_labels.push(
+                    SpanLabel {
+                        span: param_spans[&unexpected],
+                        label: Some(format!("`{}` unexpected", unexpected)),
+                        style: SpanStyle::Secondary,
+                    }
+                );
+            }
+
+            if err_labels.is_empty() && !missing_param {
+                Ok(Self::Map {
+                    #(#constructor,)*
+                })
+            } else {
+                err_labels.push(
+                    SpanLabel {
+                        span: ast_annot.span,
+                        label: Some(#diagnostic_msg.to_string()),
+                        style: SpanStyle::Primary,
+                    }
+                );
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!("Incorrect parameters for `{}` annotation", #claytip_name),
+                    code: Some("A000".to_string()),
+                    spans: err_labels,
+                });
+                bail!("");
+            }
+        }
+    } else {
+        base_diagnostic
+    };
+
+    quote! {
+        fn from_params(ast_annot: &AstAnnotation, params: TypedAnnotationParams, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Self> {
+            match params {
+                TypedAnnotationParams::None => { #from_none },
+                TypedAnnotationParams::Single(expr) => { #from_single },
+                TypedAnnotationParams::Map(params) => { #from_map },
+            }
+        }
+    }
+}
+
+/// Build the `pass` function, which performs a pass on every parameter of the annotation.
+fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
+    let pass_single = if variants.single {
+        quote! {
+            if let Self::Single(expr) = self {
+                ast_expr.pass(expr, env, scope, errors)
+            } else {
+                panic!();
+            }
+        }
+    } else {
+        quote! { panic!(); }
+    };
+
+    let pass_map = if let Some(map_fields) = &variants.map {
+        // (field name, field is optional)
+        let (idents, is_optionals): (Vec<&Ident>, Vec<bool>) = map_fields
+            .iter()
+            .map(|(field, is_optional)| (field.ident.as_ref().unwrap(), is_optional))
+            .unzip();
+
+        let passes = idents
+            .iter()
+            .zip(is_optionals)
+            .map(|(ident, is_optional)| {
+                let n = ident.to_string();
+
+                if is_optional {
+                    quote! {
+                        if let Some(#ident) = #ident {
+                            let param_changed = ast_params[#n].pass(#ident, env, scope, errors);
+                            changed = changed || param_changed;
+                        }
+                    }
+                } else {
+                    quote! {
+                        let param_changed = ast_params[#n].pass(#ident, env, scope, errors);
+                        changed = changed || param_changed;
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+
+        quote! {
+            if let Self::Map { #(#idents),* } = self {
+                let mut changed = false;
+                #(#passes)*
+                changed
+            } else {
+                panic!();
+            }
+        }
+    } else {
+        quote! { panic!(); }
+    };
+
+    quote! {
+        fn pass(
+            &mut self,
+            params: &AstAnnotationParams,
+            env: &MappedArena<Type>,
+            scope: &Scope,
+            errors: &mut Vec<codemap_diagnostic::Diagnostic>
+        ) -> bool {
+            match params {
+                AstAnnotationParams::None => false,
+                AstAnnotationParams::Single(ast_expr, _) => { #pass_single }
+                AstAnnotationParams::Map(ast_params, _) => { #pass_map }
+            }
+        }
+    }
+}
+
+/// Build the `value` function, which returns the single value if `Single` is the only variant, or
+/// returns an `Option` if `None` and `Single` are the only variants.
+fn build_value_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
+    if !variants.none && variants.single && variants.map.is_none() {
+        quote! {
+            pub fn value(&self) -> &TypedExpression {
+                match &self {
+                    Self::Single(value) => value,
+                    _ => panic!(),
+                }
+            }
+        }
+    } else if variants.none && variants.single && variants.map.is_none() {
+        quote! {
+            pub fn value(&self) -> Option<&TypedExpression> {
+                match &self {
+                    Self::None => None,
+                    Self::Single(value) => Some(value),
+                    _ => panic!(),
+                }
+            }
+        }
+    } else {
+        quote! {}
+    }
 }
 
 /// Checks if a field is optional (if the type is `Option`).
@@ -307,6 +389,32 @@ fn is_optional(field: &Field) -> bool {
         let segments = ty.path.segments.iter().collect::<Vec<_>>();
         segments.last().unwrap().ident == "Option"
     } else {
-        panic!("Type must be TypedExpression or Option<TypedExpression>");
+        panic!("Unexpected field type");
+    }
+}
+
+/// Join strings together with commas and an optional separator before the last word.
+///
+/// e.g. `join_strings(vec!["a", "b", "c"], Some("or")) == "a, b, or c"`
+fn join_strings(strs: Vec<String>, last_sep: Option<&'static str>) -> String {
+    match strs.len() {
+        1 => strs[0].to_string(),
+        2 => match last_sep {
+            Some(last_sep) => format!("{} {} {}", strs[0], last_sep, strs[1]),
+            None => format!("{}, {}", strs[0], strs[1]),
+        },
+        _ => {
+            let mut joined = String::new();
+            for i in 0..strs.len() {
+                joined.push_str(&strs[i]);
+                if i < strs.len() - 1 {
+                    joined.push_str(", ");
+                }
+                if i == strs.len() - 2 {
+                    joined.push_str(last_sep.unwrap_or(""));
+                }
+            }
+            joined
+        }
     }
 }

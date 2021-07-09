@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
@@ -15,18 +16,22 @@ pub enum TypedAnnotationParams {
 }
 
 impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
-    fn shallow(&self) -> TypedAnnotationParams {
-        match &self {
+    fn shallow(
+        &self,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> Result<TypedAnnotationParams> {
+        Ok(match &self {
             AstAnnotationParams::None => TypedAnnotationParams::None,
-            AstAnnotationParams::Single(expr) => TypedAnnotationParams::Single(expr.shallow()),
-            AstAnnotationParams::Map(params) => TypedAnnotationParams::Map(
+            AstAnnotationParams::Single(expr, _) => {
+                TypedAnnotationParams::Single(expr.shallow(errors)?)
+            }
+            AstAnnotationParams::Map(params, _) => TypedAnnotationParams::Map(
                 params
-                    .clone()
-                    .into_iter()
-                    .map(|(name, expr)| (name, expr.shallow()))
-                    .collect(),
+                    .iter()
+                    .map(|(name, expr)| expr.shallow(errors).map(|t| (name.clone(), t)))
+                    .collect::<Result<_, _>>()?,
             ),
-        }
+        })
     }
 
     fn pass(
@@ -38,14 +43,14 @@ impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
     ) -> bool {
         match &self {
             AstAnnotationParams::None => true,
-            AstAnnotationParams::Single(expr) => {
+            AstAnnotationParams::Single(expr, _) => {
                 if let TypedAnnotationParams::Single(expr_typ) = typ {
                     expr.pass(expr_typ, env, scope, errors)
                 } else {
                     panic!();
                 }
             }
-            AstAnnotationParams::Map(params) => {
+            AstAnnotationParams::Map(params, _) => {
                 if let TypedAnnotationParams::Map(params_typ) = typ {
                     params
                         .iter()

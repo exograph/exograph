@@ -10,6 +10,7 @@ mod relational_op;
 mod selection;
 mod typ;
 
+use anyhow::Result;
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 
@@ -31,7 +32,8 @@ pub struct Scope {
     pub enclosing_model: Option<String>,
 }
 pub trait Typecheck<T> {
-    fn shallow(&self) -> T;
+    #[allow(clippy::result_unit_err)] // Use unit result since errors are tracked as a parameter
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<T>;
     fn pass(
         &self,
         typ: &mut T,
@@ -52,8 +54,21 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     populate_standard_env(&mut types_arena);
+
+    let mut errors = Vec::new();
+    let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
+
     for model in ast_types {
-        types_arena.add(model.name.as_str(), model.shallow());
+        match model.shallow(&mut errors) {
+            Ok(typ) => {
+                types_arena.add(model.name.as_str(), typ);
+            }
+            Err(_) => {
+                assert!(!errors.is_empty());
+                emitter.emit(&errors);
+                panic!();
+            }
+        }
     }
 
     loop {
@@ -62,14 +77,13 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
             enclosing_model: None,
         };
 
-        let mut errors = vec![];
+        let mut errors = Vec::new();
 
         for model in ast_types {
             let orig = types_arena.get_by_key(model.name.as_str()).unwrap();
             let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
             let pass_res = model.pass(&mut typ, &types_arena, &init_scope, &mut errors);
             if pass_res {
-                // println!("t: {:?}", typ);
                 assert!(*orig != typ);
                 *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
                 did_change = true;
@@ -78,7 +92,6 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
 
         if !did_change {
             if !errors.is_empty() {
-                let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
                 emitter.emit(&errors);
                 panic!();
             } else {
