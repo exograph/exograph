@@ -101,6 +101,10 @@ pub enum PrimitiveType {
     Int,
     String,
     Boolean,
+    LocalDate,
+    LocalTime,
+    LocalDateTime,
+    Instant,
 }
 
 impl PrimitiveType {
@@ -109,6 +113,10 @@ impl PrimitiveType {
             PrimitiveType::Int => "Int",
             PrimitiveType::String => "String",
             PrimitiveType::Boolean => "Boolean",
+            PrimitiveType::LocalDate => "LocalDate",
+            PrimitiveType::LocalTime => "LocalTime",
+            PrimitiveType::LocalDateTime => "LocalDateTime",
+            PrimitiveType::Instant => "Instant",
         }
     }
 }

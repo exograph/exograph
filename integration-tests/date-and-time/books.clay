@@ -1,0 +1,8 @@
+@table("books")
+model Book {
+	id: Int @pk @autoincrement
+  published_on: LocalDate 
+  modified_time: Instant @precision(4)
+  modified_time_stripped: LocalDateTime 
+  reading_club_time: LocalTime 
+}

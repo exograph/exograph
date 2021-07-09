@@ -18,9 +18,21 @@ pub struct ColumnReferece {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum PhysicalColumnType {
-    Int { bits: IntBits },
-    String { length: Option<usize> },
+    Int {
+        bits: IntBits,
+    },
+    String {
+        length: Option<usize>,
+    },
     Boolean,
+    Timestamp {
+        timezone: bool,
+        precision: Option<usize>,
+    },
+    Date,
+    Time {
+        precision: Option<usize>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,15 +59,33 @@ impl PhysicalColumnType {
                 // parse types with arguments
                 // TODO: more robust parsing
 
-                if s.starts_with("VARCHAR") || s.starts_with("CHAR[") {
-                    let length = s
-                        .chars()
+                let get_num = |s: &str| {
+                    s.chars()
                         .filter(|c| c.is_numeric())
                         .collect::<String>()
                         .parse::<usize>()
-                        .ok();
+                        .ok()
+                };
 
-                    return PhysicalColumnType::String { length };
+                if s.starts_with("VARCHAR") || s.starts_with("CHAR[") {
+                    return PhysicalColumnType::String { length: get_num(s) };
+                }
+
+                if s.starts_with("TIMESTAMP") {
+                    return PhysicalColumnType::Timestamp {
+                        precision: get_num(s),
+                        timezone: s.contains("WITH TIME ZONE"),
+                    };
+                }
+
+                if s.starts_with("TIME") {
+                    return PhysicalColumnType::Time {
+                        precision: get_num(s),
+                    };
+                }
+
+                if s.starts_with("DATE") {
+                    return PhysicalColumnType::Date;
                 }
 
                 panic!("Unknown dbtype {}", s)
@@ -91,6 +121,41 @@ impl PhysicalColumnType {
             }
 
             PhysicalColumnType::Boolean => "BOOLEAN".to_owned(),
+
+            PhysicalColumnType::Timestamp {
+                timezone,
+                precision,
+            } => {
+                let timezone_option = if *timezone {
+                    "WITH TIME ZONE"
+                } else {
+                    "WITHOUT TIME ZONE"
+                };
+                let precision_option = if let Some(p) = precision {
+                    format!("({})", p)
+                } else {
+                    String::default()
+                };
+
+                let typ = match self {
+                    PhysicalColumnType::Timestamp { .. } => "TIMESTAMP",
+                    PhysicalColumnType::Time { .. } => "TIME",
+                    _ => panic!(),
+                };
+
+                // e.g. "TIMESTAMP(3) WITH TIME ZONE"
+                format!("{}{} {}", typ, precision_option, timezone_option)
+            }
+
+            PhysicalColumnType::Time { precision } => {
+                if let Some(p) = precision {
+                    format!("TIME({})", p)
+                } else {
+                    "TIME".to_owned()
+                }
+            }
+
+            PhysicalColumnType::Date => "DATE".to_owned(),
         }
     }
 }

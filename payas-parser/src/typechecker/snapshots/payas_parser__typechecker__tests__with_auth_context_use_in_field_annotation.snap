@@ -57,8 +57,16 @@ expression: types
                             - Reference: Boolean
                       - Primitive: Boolean
       annotations: []
+- - Instant
+  - Primitive: Instant
 - - Int
   - Primitive: Int
+- - LocalDate
+  - Primitive: LocalDate
+- - LocalDateTime
+  - Primitive: LocalDateTime
+- - LocalTime
+  - Primitive: LocalTime
 - - String
   - Primitive: String
 

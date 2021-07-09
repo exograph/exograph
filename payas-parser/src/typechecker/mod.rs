@@ -42,6 +42,13 @@ fn populate_standard_env(env: &mut MappedArena<Type>) {
     env.add("Boolean", Type::Primitive(PrimitiveType::Boolean));
     env.add("Int", Type::Primitive(PrimitiveType::Int));
     env.add("String", Type::Primitive(PrimitiveType::String));
+    env.add("LocalTime", Type::Primitive(PrimitiveType::LocalTime));
+    env.add(
+        "LocalDateTime",
+        Type::Primitive(PrimitiveType::LocalDateTime),
+    );
+    env.add("LocalDate", Type::Primitive(PrimitiveType::LocalDate));
+    env.add("Instant", Type::Primitive(PrimitiveType::Instant));
 }
 
 pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {

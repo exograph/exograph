@@ -96,6 +96,9 @@ pub enum ResolvedTypeHint {
     StringHint {
         length: usize,
     },
+    DateTimeHint {
+        precision: usize,
+    },
 }
 
 impl ResolvedCompositeType {
@@ -362,13 +365,24 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
             .map(|a| a.get_single_value())
             .flatten()
             .map(|e| e.as_number())
-            .map(|s| s as usize);
+            .map(|n| n as usize);
 
         // None if there is no length annotation
         length_annotation.map(|length| ResolvedTypeHint::StringHint { length })
     };
 
-    let primitive_hints = vec![int_hint, string_hint];
+    let datetime_hint = {
+        field
+            .get_annotation("precision")
+            .map(|a| a.get_single_value())
+            .flatten()
+            .map(|e| e.as_number())
+            .map(|n| ResolvedTypeHint::DateTimeHint {
+                precision: n as usize,
+            })
+    };
+
+    let primitive_hints = vec![int_hint, string_hint, datetime_hint];
 
     let explicit_dbtype_hint = field
         .get_annotation("dbtype")
@@ -536,6 +550,7 @@ mod tests {
           title: String @column("custom_title") @length(12)
           venue: Venue @column("custom_venue_id")
           reserved: Int @range(min=0, max=300)
+          time: Instant @precision(4)
         }
         
         @table("venues")

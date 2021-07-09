@@ -126,7 +126,11 @@ expression: normalized_system(&resolved)
                     - - public
                     - Reference: Boolean
               - Primitive: Boolean
+  - Primitive: Instant
   - Primitive: Int
+  - Primitive: LocalDate
+  - Primitive: LocalDateTime
+  - Primitive: LocalTime
   - Primitive: String
 - - name: AuthContext
     fields:

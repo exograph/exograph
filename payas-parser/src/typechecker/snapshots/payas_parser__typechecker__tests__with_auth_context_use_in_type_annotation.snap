@@ -57,8 +57,16 @@ expression: types
                         - - is_public
                         - Reference: Boolean
                   - Primitive: Boolean
+- - Instant
+  - Primitive: Instant
 - - Int
   - Primitive: Int
+- - LocalDate
+  - Primitive: LocalDate
+- - LocalDateTime
+  - Primitive: LocalDateTime
+- - LocalTime
+  - Primitive: LocalTime
 - - String
   - Primitive: String
 

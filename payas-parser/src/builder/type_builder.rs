@@ -522,6 +522,7 @@ fn create_column(
     }
 }
 
+// FIXME: can't we just pass around PhysicalColumnType directly??
 fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) -> String {
     if let Some(hint) = &field.type_hint {
         match hint {
@@ -579,12 +580,33 @@ fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) ->
                 // length hint provided, use it
                 format!("CHAR[{}]", length)
             }
+
+            ResolvedTypeHint::DateTimeHint { precision } => match pt {
+                PrimitiveType::LocalTime => {
+                    format!("TIME({})", precision)
+                }
+
+                PrimitiveType::LocalDateTime => {
+                    format!("TIMESTAMP({}) WITHOUT TIME ZONE", precision)
+                }
+
+                PrimitiveType::Instant => {
+                    format!("TIMESTAMP({}) WITH TIME ZONE", precision)
+                }
+
+                _ => panic!(),
+            },
         }
     } else {
         match pt {
+            // choose a default SQL type
             PrimitiveType::Int => "INT".to_owned(),
             PrimitiveType::String => "TEXT".to_owned(),
             PrimitiveType::Boolean => "BOOLEAN".to_owned(),
+            PrimitiveType::LocalTime => "TIME".to_owned(),
+            PrimitiveType::LocalDateTime => "TIMESTAMP WITHOUT TIME ZONE".to_owned(),
+            PrimitiveType::LocalDate => "DATE".to_owned(),
+            PrimitiveType::Instant => "TIMESTAMP WITH TIME ZONE".to_owned(),
         }
     }
 }
