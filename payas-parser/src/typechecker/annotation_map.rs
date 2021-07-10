@@ -1,3 +1,6 @@
+use anyhow::{bail, Result};
+use codemap::Span;
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
@@ -33,20 +36,47 @@ macro_rules! coerce {
 }
 
 impl AnnotationMap {
-    pub fn add_annotation(&mut self, annotation: TypedAnnotation) {
-        match annotation {
-            TypedAnnotation::Access(_) => self.access = Some(annotation),
-            TypedAnnotation::AutoIncrement(_) => self.auto_increment = Some(annotation),
-            TypedAnnotation::Bits(_) => self.bits = Some(annotation),
-            TypedAnnotation::Column(_) => self.column = Some(annotation),
-            TypedAnnotation::DbType(_) => self.db_type = Some(annotation),
-            TypedAnnotation::Length(_) => self.length = Some(annotation),
-            TypedAnnotation::Jwt(_) => self.jwt = Some(annotation),
-            TypedAnnotation::Pk(_) => self.pk = Some(annotation),
-            TypedAnnotation::Range(_) => self.range = Some(annotation),
-            TypedAnnotation::Size(_) => self.size = Some(annotation),
-            TypedAnnotation::Table(_) => self.table = Some(annotation),
+    pub fn add(
+        &mut self,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        annotation: TypedAnnotation,
+        span: Span,
+    ) -> Result<()> {
+        macro_rules! s {
+            ($field:expr, $errors:expr, $annotation:expr, $span:expr) => {
+                match &$field {
+                    Some(_) => {
+                        $errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!("Duplicate annotation `{}`", $annotation.name()),
+                            code: Some("A000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: $span,
+                                label: None,
+                                style: SpanStyle::Primary,
+                            }],
+                        });
+                        bail!("");
+                    }
+                    None => $field = Some($annotation),
+                }
+            };
         }
+
+        match annotation {
+            TypedAnnotation::Access(_) => s!(self.access, errors, annotation, span),
+            TypedAnnotation::AutoIncrement(_) => s!(self.auto_increment, errors, annotation, span),
+            TypedAnnotation::Bits(_) => s!(self.bits, errors, annotation, span),
+            TypedAnnotation::Column(_) => s!(self.column, errors, annotation, span),
+            TypedAnnotation::DbType(_) => s!(self.db_type, errors, annotation, span),
+            TypedAnnotation::Length(_) => s!(self.length, errors, annotation, span),
+            TypedAnnotation::Jwt(_) => s!(self.jwt, errors, annotation, span),
+            TypedAnnotation::Pk(_) => s!(self.pk, errors, annotation, span),
+            TypedAnnotation::Range(_) => s!(self.range, errors, annotation, span),
+            TypedAnnotation::Size(_) => s!(self.size, errors, annotation, span),
+            TypedAnnotation::Table(_) => s!(self.table, errors, annotation, span),
+        }
+        Ok(())
     }
 
     pub fn pass(

@@ -10,7 +10,8 @@ impl Typecheck<Type> for AstModel {
         let mut annotations = Box::new(AnnotationMap::default());
 
         for a in &self.annotations {
-            annotations.add_annotation(a.shallow(errors)?);
+            let annotation = a.shallow(errors)?;
+            annotations.add(errors, annotation, a.span)?;
         }
 
         Ok(Type::Composite(CompositeType {
