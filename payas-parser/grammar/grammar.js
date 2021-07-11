@@ -5,6 +5,11 @@ const not_level = relational_level + 1;
 module.exports = grammar({
   name: 'grammar',
 
+  extras: $ => [
+    /\s/,
+    $.comment
+  ],
+
   rules: {
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
@@ -104,7 +109,15 @@ module.exports = grammar({
     number: $ => /\d+/,
     literal_str: $ => seq("\"", field("value", $.term), "\""),
     literal_boolean: $ => choice("true", "false"),
-    literal_number: $ => field("value", $.number)
+    literal_number: $ => field("value", $.number),
+    comment: $ => token(choice(
+      seq('//', /.*/),
+      seq(
+        '/*',
+        /[^*]*\*+([^/*][^*]*\*+)*/,
+        '/'
+      )
+    ))
   }
 });
 
