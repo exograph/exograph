@@ -194,7 +194,7 @@ fn build_from_params_fn(claytip_name: &str, variants: &AnnotVariants) -> proc_ma
 
     // If given a map of parameters
     let from_map = if let Some(map_fields) = &variants.map {
-        // (field name, field is_ ptional)
+        // (field name, field is optional)
         let (expected_fields, expected_fields_is_optional): (Vec<String>, Vec<bool>) = map_fields
             .iter()
             .map(|(field, is_optional)| (field.ident.as_ref().unwrap().to_string(), is_optional))
@@ -216,16 +216,39 @@ fn build_from_params_fn(claytip_name: &str, variants: &AnnotVariants) -> proc_ma
             .collect::<Vec<_>>();
 
         quote! {
-            let param_spans = match &ast_annot.params {
-                AstAnnotationParams::Map(_, spans) => spans,
-                _ => panic!(),
-            };
-
             let mut err_labels = Vec::new();
             let mut missing_param = false;
 
+            // Check for any duplicate parameters
+            let mut param_spans: HashMap<String, Span>  = HashMap::new();
+            match &ast_annot.params {
+                AstAnnotationParams::Map(_, spans) => {
+                    for (name, span) in spans.iter() {
+                        if param_spans.contains_key(name) {
+                            err_labels.push(
+                                SpanLabel {
+                                    span: span.clone(),
+                                    label: Some(format!("`{}` redefined here", name)),
+                                    style: SpanStyle::Primary,
+                                }
+                            );
+                            err_labels.push(
+                                SpanLabel {
+                                    span: param_spans[name],
+                                    label: Some(format!("`{}` previously defined here", name)),
+                                    style: SpanStyle::Secondary,
+                                }
+                            );
+                        } else {
+                            param_spans.insert(name.clone(), span.clone());
+                        }
+                    }
+                },
+                _ => panic!(),
+            };
+
             // Keep track of extra unused parameters
-            let mut unexpected_params = params.keys().cloned().collect::<std::collections::HashSet<_>>();
+            let mut unexpected_params = params.keys().cloned().collect::<HashSet<_>>();
 
             // For each field, check if it is given or if it's optional
             for (expected, is_optional) in [#((#expected_fields, #expected_fields_is_optional)),*] {
@@ -242,7 +265,7 @@ fn build_from_params_fn(claytip_name: &str, variants: &AnnotVariants) -> proc_ma
                     SpanLabel {
                         span: param_spans[&unexpected],
                         label: Some(format!("`{}` unexpected", unexpected)),
-                        style: SpanStyle::Secondary,
+                        style: SpanStyle::Primary,
                     }
                 );
             }

@@ -1,8 +1,11 @@
 use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams};
 use anyhow::{bail, Result};
+use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
+
+use std::collections::{HashMap, HashSet};
 
 use super::{annotation_params::TypedAnnotationParams, Scope, Type, Typecheck, TypedExpression};
 
