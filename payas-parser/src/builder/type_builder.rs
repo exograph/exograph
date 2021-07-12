@@ -10,7 +10,7 @@ use payas_model::{
         GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
-        column::{ColumnReferece, PhysicalColumn, PhysicalColumnType},
+        column::{ColumnReferece, IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     },
 };
@@ -478,7 +478,7 @@ fn create_column(
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
                     table_name: table_name.to_string(),
                     column_name: field.column_name.clone(),
-                    typ: PhysicalColumnType::from_string(&determine_column_type(pt, &field)),
+                    typ: determine_column_type(pt, &field),
                     is_pk: field.is_pk,
                     is_autoincrement: if field.is_autoincrement {
                         assert!(
@@ -498,10 +498,10 @@ fn create_column(
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
                         column_name: field.column_name.clone(),
-                        typ: PhysicalColumnType::from_string(&determine_column_type(
+                        typ: determine_column_type(
                             &other_pk_field.typ.deref(env).as_primitive(),
                             &field,
-                        )),
+                        ),
                         is_pk: false,
                         is_autoincrement: false,
                         references: Some(ColumnReferece {
@@ -522,27 +522,27 @@ fn create_column(
     }
 }
 
-// FIXME: can't we just pass around PhysicalColumnType directly??
-fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) -> String {
+fn determine_column_type<'a>(
+    pt: &'a PrimitiveType,
+    field: &'a ResolvedField,
+) -> PhysicalColumnType {
     if let Some(hint) = &field.type_hint {
         match hint {
-            ResolvedTypeHint::ExplicitHint { dbtype } => {
-                // TODO: validate this type?
-                dbtype.to_owned()
-            }
+            ResolvedTypeHint::ExplicitHint { dbtype } => PhysicalColumnType::from_string(dbtype),
 
             ResolvedTypeHint::IntHint { bits, range } => {
                 assert!(matches!(pt, PrimitiveType::Int));
 
                 // determine the proper sized type to use
                 if let Some(bits) = bits {
-                    match bits {
-                        16 => "SMALLINT",
-                        32 => "INT",
-                        64 => "BIGINT",
-                        _ => panic!("Invalid bits"),
+                    PhysicalColumnType::Int {
+                        bits: match bits {
+                            16 => IntBits::_16,
+                            32 => IntBits::_32,
+                            64 => IntBits::_64,
+                            _ => panic!("Invalid bits"),
+                        },
                     }
-                    .to_owned()
                 } else if let Some(range) = range {
                     let is_superset = |bound_min: i64, bound_max: i64| {
                         let range_min = range.0;
@@ -558,19 +558,19 @@ fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) ->
                     // determine which SQL type is appropriate for this range
                     {
                         if is_superset(-32_768, 32_768) {
-                            "SMALLINT"
+                            PhysicalColumnType::Int { bits: IntBits::_16 }
                         } else if is_superset(-2147483648, 2147483647) {
-                            "INT"
+                            PhysicalColumnType::Int { bits: IntBits::_32 }
                         } else if is_superset(-9223372036854775808, 9223372036854775807) {
-                            "BIGINT"
+                            PhysicalColumnType::Int { bits: IntBits::_64 }
                         } else {
+                            // TODO: numeric type
                             panic!("Requested range is too big")
                         }
                     }
-                    .to_owned()
                 } else {
                     // no hints provided, go with default
-                    "INT".to_owned()
+                    PhysicalColumnType::Int { bits: IntBits::_32 }
                 }
             }
 
@@ -578,35 +578,42 @@ fn determine_column_type<'a>(pt: &'a PrimitiveType, field: &'a ResolvedField) ->
                 assert!(matches!(pt, PrimitiveType::String));
 
                 // length hint provided, use it
-                format!("CHAR[{}]", length)
+                PhysicalColumnType::String {
+                    length: Some(*length),
+                }
             }
 
             ResolvedTypeHint::DateTimeHint { precision } => match pt {
-                PrimitiveType::LocalTime => {
-                    format!("TIME({})", precision)
-                }
-
-                PrimitiveType::LocalDateTime => {
-                    format!("TIMESTAMP({}) WITHOUT TIME ZONE", precision)
-                }
-
-                PrimitiveType::Instant => {
-                    format!("TIMESTAMP({}) WITH TIME ZONE", precision)
-                }
-
+                PrimitiveType::LocalTime => PhysicalColumnType::Time {
+                    precision: Some(*precision),
+                },
+                PrimitiveType::LocalDateTime => PhysicalColumnType::Timestamp {
+                    precision: Some(*precision),
+                    timezone: false,
+                },
+                PrimitiveType::Instant => PhysicalColumnType::Timestamp {
+                    precision: Some(*precision),
+                    timezone: true,
+                },
                 _ => panic!(),
             },
         }
     } else {
         match pt {
             // choose a default SQL type
-            PrimitiveType::Int => "INT".to_owned(),
-            PrimitiveType::String => "TEXT".to_owned(),
-            PrimitiveType::Boolean => "BOOLEAN".to_owned(),
-            PrimitiveType::LocalTime => "TIME".to_owned(),
-            PrimitiveType::LocalDateTime => "TIMESTAMP WITHOUT TIME ZONE".to_owned(),
-            PrimitiveType::LocalDate => "DATE".to_owned(),
-            PrimitiveType::Instant => "TIMESTAMP WITH TIME ZONE".to_owned(),
+            PrimitiveType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
+            PrimitiveType::String => PhysicalColumnType::String { length: None },
+            PrimitiveType::Boolean => PhysicalColumnType::Boolean,
+            PrimitiveType::LocalTime => PhysicalColumnType::Time { precision: None },
+            PrimitiveType::LocalDateTime => PhysicalColumnType::Timestamp {
+                precision: None,
+                timezone: false,
+            },
+            PrimitiveType::LocalDate => PhysicalColumnType::Date,
+            PrimitiveType::Instant => PhysicalColumnType::Timestamp {
+                precision: None,
+                timezone: true,
+            },
         }
     }
 }
