@@ -202,44 +202,65 @@ pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldTyp
 
 fn convert_annotation(node: Node, source: &[u8], source_span: Span) -> AstAnnotation {
     assert_eq!(node.kind(), "annotation");
-    let mut cursor = node.walk();
 
-    fn convert_param(node: Node, source: &[u8], source_span: Span) -> (String, AstExpr) {
-        match node.kind() {
-            "expression" => (
-                "value".to_string(), // Use "value" as the default field name for the single field annotation
-                convert_expression(node, source, source_span),
-            ),
-            "annotation_param" => {
-                let name = node
-                    .child_by_field_name("name")
-                    .unwrap()
-                    .utf8_text(source)
-                    .unwrap()
-                    .to_string();
-                let expr = convert_expression(
-                    node.child_by_field_name("expr").unwrap(),
-                    source,
-                    source_span,
-                );
-
-                (name, expr)
-            }
-            o => panic!("unsupported annotation content: {}", o),
-        }
-    }
+    let name_node = node.child_by_field_name("name").unwrap();
 
     AstAnnotation {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
-        params: node
-            .children_by_field_name("param", &mut cursor)
-            .map(|c| convert_param(c, source, source_span))
-            .collect(),
+        name: name_node.utf8_text(source).unwrap().to_string(),
+        params: match node.child_by_field_name("params") {
+            Some(node) => convert_annotation_params(node, source, source_span),
+            None => AstAnnotationParams::None,
+        },
+        span: span_from_node(source_span, name_node),
+    }
+}
+
+fn convert_annotation_params(node: Node, source: &[u8], source_span: Span) -> AstAnnotationParams {
+    assert_eq!(node.kind(), "annotation_params");
+    let mut cursor = node.walk();
+    let first_child = node.child(0).unwrap();
+
+    match first_child.kind() {
+        "expression" => AstAnnotationParams::Single(
+            convert_expression(first_child, source, source_span),
+            span_from_node(source_span, first_child),
+        ),
+        "annotation_map_params" => {
+            let params = first_child
+                .children_by_field_name("param", &mut cursor)
+                .map(|p| {
+                    (
+                        p.child_by_field_name("name")
+                            .unwrap()
+                            .utf8_text(source)
+                            .unwrap()
+                            .to_string(),
+                        p,
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            AstAnnotationParams::Map(
+                params
+                    .iter()
+                    .map(|(name, p)| {
+                        (
+                            name.clone(),
+                            convert_expression(
+                                p.child_by_field_name("expr").unwrap(),
+                                source,
+                                source_span,
+                            ),
+                        )
+                    })
+                    .collect(),
+                params
+                    .iter()
+                    .map(|(name, p)| (name.clone(), span_from_node(source_span, *p)))
+                    .collect(),
+            )
+        }
+        o => panic!("unsupported annotation params kind: {}", o),
     }
 }
 
@@ -469,7 +490,7 @@ mod tests {
         parsing_test(
             r#"
         model Foo {
-            bar: Baz @column("custom_column") @auth(!self.role == "role_admin" || self.role == "role_superuser")
+            bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
         }
         "#,
         );

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
@@ -23,20 +24,20 @@ impl TypedLogicalOp {
     }
 }
 impl Typecheck<TypedLogicalOp> for LogicalOp {
-    fn shallow(&self) -> TypedLogicalOp {
-        match &self {
-            LogicalOp::Not(v, _) => TypedLogicalOp::Not(Box::new(v.shallow()), Type::Defer),
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedLogicalOp> {
+        Ok(match &self {
+            LogicalOp::Not(v, _) => TypedLogicalOp::Not(Box::new(v.shallow(errors)?), Type::Defer),
             LogicalOp::And(left, right) => TypedLogicalOp::And(
-                Box::new(left.shallow()),
-                Box::new(right.shallow()),
+                Box::new(left.shallow(errors)?),
+                Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
             LogicalOp::Or(left, right) => TypedLogicalOp::Or(
-                Box::new(left.shallow()),
-                Box::new(right.shallow()),
+                Box::new(left.shallow(errors)?),
+                Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
-        }
+        })
     }
 
     fn pass(

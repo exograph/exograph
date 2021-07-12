@@ -13,8 +13,30 @@ expression: types
         - name: is_public
           typ:
             Reference: Boolean
-          annotations: []
-      annotations: []
+          annotations:
+            access: ~
+            auto_increment: ~
+            bits: ~
+            column: ~
+            db_type: ~
+            length: ~
+            jwt: ~
+            pk: ~
+            range: ~
+            size: ~
+            table: ~
+      annotations:
+        access: ~
+        auto_increment: ~
+        bits: ~
+        column: ~
+        db_type: ~
+        length: ~
+        jwt: ~
+        pk: ~
+        range: ~
+        size: ~
+        table: ~
 - - Int
   - Primitive: Int
 - - String
@@ -28,15 +50,9 @@ expression: types
           typ:
             Reference: Doc
           annotations:
-            - name: column
-              params:
-                value:
-                  StringLiteral:
-                    - custom_column
-                    - Primitive: String
-            - name: auth
-              params:
-                value:
+            access:
+              Access:
+                Single:
                   LogicalOp:
                     Or:
                       - LogicalOp:
@@ -79,9 +95,46 @@ expression: types
                             - - is_public
                             - Reference: Boolean
                       - Primitive: Boolean
+            auto_increment: ~
+            bits: ~
+            column:
+              Column:
+                Single:
+                  StringLiteral:
+                    - custom_column
+                    - Primitive: String
+            db_type: ~
+            length: ~
+            jwt: ~
+            pk: ~
+            range: ~
+            size: ~
+            table: ~
         - name: role
           typ:
             Reference: String
-          annotations: []
-      annotations: []
+          annotations:
+            access: ~
+            auto_increment: ~
+            bits: ~
+            column: ~
+            db_type: ~
+            length: ~
+            jwt: ~
+            pk: ~
+            range: ~
+            size: ~
+            table: ~
+      annotations:
+        access: ~
+        auto_increment: ~
+        bits: ~
+        column: ~
+        db_type: ~
+        length: ~
+        jwt: ~
+        pk: ~
+        range: ~
+        size: ~
+        table: ~
 

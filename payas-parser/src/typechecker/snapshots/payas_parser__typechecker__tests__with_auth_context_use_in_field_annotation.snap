@@ -12,9 +12,30 @@ expression: types
           typ:
             Reference: String
           annotations:
-            - name: jwt
-              params: {}
-      annotations: []
+            access: ~
+            auto_increment: ~
+            bits: ~
+            column: ~
+            db_type: ~
+            length: ~
+            jwt:
+              Jwt: None
+            pk: ~
+            range: ~
+            size: ~
+            table: ~
+      annotations:
+        access: ~
+        auto_increment: ~
+        bits: ~
+        column: ~
+        db_type: ~
+        length: ~
+        jwt: ~
+        pk: ~
+        range: ~
+        size: ~
+        table: ~
 - - Boolean
   - Primitive: Boolean
 - - Doc
@@ -25,14 +46,25 @@ expression: types
         - name: is_public
           typ:
             Reference: Boolean
-          annotations: []
+          annotations:
+            access: ~
+            auto_increment: ~
+            bits: ~
+            column: ~
+            db_type: ~
+            length: ~
+            jwt: ~
+            pk: ~
+            range: ~
+            size: ~
+            table: ~
         - name: content
           typ:
             Reference: String
           annotations:
-            - name: access
-              params:
-                value:
+            access:
+              Access:
+                Single:
                   LogicalOp:
                     Or:
                       - RelationalOp:
@@ -56,7 +88,28 @@ expression: types
                             - - is_public
                             - Reference: Boolean
                       - Primitive: Boolean
-      annotations: []
+            auto_increment: ~
+            bits: ~
+            column: ~
+            db_type: ~
+            length: ~
+            jwt: ~
+            pk: ~
+            range: ~
+            size: ~
+            table: ~
+      annotations:
+        access: ~
+        auto_increment: ~
+        bits: ~
+        column: ~
+        db_type: ~
+        length: ~
+        jwt: ~
+        pk: ~
+        range: ~
+        size: ~
+        table: ~
 - - Int
   - Primitive: Int
 - - String

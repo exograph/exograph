@@ -1,3 +1,4 @@
+use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
@@ -46,11 +47,15 @@ impl TypedExpression {
 }
 
 impl Typecheck<TypedExpression> for AstExpr {
-    fn shallow(&self) -> TypedExpression {
-        match &self {
-            AstExpr::FieldSelection(select) => TypedExpression::FieldSelection(select.shallow()),
-            AstExpr::LogicalOp(logic) => TypedExpression::LogicalOp(logic.shallow()),
-            AstExpr::RelationalOp(relation) => TypedExpression::RelationalOp(relation.shallow()),
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedExpression> {
+        Ok(match &self {
+            AstExpr::FieldSelection(select) => {
+                TypedExpression::FieldSelection(select.shallow(errors)?)
+            }
+            AstExpr::LogicalOp(logic) => TypedExpression::LogicalOp(logic.shallow(errors)?),
+            AstExpr::RelationalOp(relation) => {
+                TypedExpression::RelationalOp(relation.shallow(errors)?)
+            }
             AstExpr::StringLiteral(v, _) => {
                 TypedExpression::StringLiteral(v.clone(), Type::Primitive(PrimitiveType::String))
             }
@@ -60,7 +65,7 @@ impl Typecheck<TypedExpression> for AstExpr {
             AstExpr::NumberLiteral(v, _) => {
                 TypedExpression::NumberLiteral(*v, Type::Primitive(PrimitiveType::Int))
             }
-        }
+        })
     }
 
     fn pass(

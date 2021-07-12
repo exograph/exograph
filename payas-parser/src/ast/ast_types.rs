@@ -63,7 +63,32 @@ impl AstFieldType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstAnnotation {
     pub name: String,
-    pub params: HashMap<String, AstExpr>,
+    pub params: AstAnnotationParams,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstAnnotationParams {
+    /// No parameters (e.g. `@pk`)
+    None,
+    /// Single parameter (e.g. `@table("concerts"))
+    Single(
+        AstExpr,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+    ),
+    /// Named parameters (e.g. `@range(min=-10, max=10)`)
+    Map(
+        HashMap<String, AstExpr>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        Vec<(String, Span)>, // store as Vec to check for duplicates later on
+    ),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

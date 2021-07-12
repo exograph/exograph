@@ -1,0 +1,13 @@
+[package]
+name = "annotation-attribute"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0"
+syn = "1.0"
+proc-macro2 = "1.0"
+anyhow = "1.0"
