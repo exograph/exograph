@@ -1,8 +1,7 @@
-use async_graphql_value::{from_value, Number, Value};
-use chrono::offset::TimeZone;
+use async_graphql_value::{Number, Value};
 use chrono::prelude::*;
+use chrono::DateTime;
 use payas_model::{model::column_id::ColumnId, sql::column::IntBits};
-use std::collections::BTreeMap;
 use typed_arena::Arena;
 
 use crate::{
@@ -62,13 +61,13 @@ impl<'a> OperationContext<'a> {
             Value::Number(number) => {
                 Column::Literal(Self::cast_number(number, &associated_column.typ))
             }
-            Value::String(v) => Column::Literal(Box::new(v.to_owned())),
+            Value::String(v) => Column::Literal(Self::cast_string(v, &associated_column.typ)),
             Value::Boolean(v) => Column::Literal(Box::new(*v)),
             Value::Null => Column::Null,
             Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from database to do a correct translation
             Value::List(_) => todo!(),
-            Value::Object(object) => {
-                Column::Literal(Self::cast_object(&object, &associated_column.typ))
+            Value::Object(_) => {
+                panic!()
             }
         };
 
@@ -132,55 +131,33 @@ impl<'a> OperationContext<'a> {
         }
     }
 
-    fn cast_object(
-        obj: &BTreeMap<async_graphql_value::Name, async_graphql_value::Value>,
-        destination_type: &PhysicalColumnType,
-    ) -> Box<dyn SQLParam> {
-        let get_u32 = |s: &str| -> u32 {
-            from_value(obj.get(s).unwrap().clone().into_const().unwrap()).unwrap()
-        };
-        let get_i32 = |s: &str| -> i32 {
-            from_value(obj.get(s).unwrap().clone().into_const().unwrap()).unwrap()
-        };
-
+    fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
         match destination_type {
-            PhysicalColumnType::Timestamp { .. } | PhysicalColumnType::Time { .. } => {
-                let hours = get_u32("hours");
-                let minutes = get_u32("minutes");
-                let seconds = get_u32("seconds");
-                let nanoseconds = get_u32("ns");
-                let t = NaiveTime::from_hms_nano(hours, minutes, seconds, nanoseconds);
+            PhysicalColumnType::Timestamp { timezone, .. } => {
+                println!("{} {:?}", string, destination_type);
 
-                if let PhysicalColumnType::Timestamp { timezone, .. } = destination_type {
-                    let year = get_i32("year");
-                    let month = get_u32("month");
-                    let day = get_u32("day");
-
-                    let d = NaiveDate::from_ymd(year, month, day);
-                    let dt = NaiveDateTime::new(d, t);
-
-                    if *timezone {
-                        let offset = get_i32("offset");
-                        Box::new(FixedOffset::east(offset).from_local_datetime(&dt).unwrap())
-                    } else {
-                        Box::new(dt)
-                    }
-                } else if let PhysicalColumnType::Time { .. } = destination_type {
-                    Box::new(t)
+                if *timezone {
+                    let dt = DateTime::parse_from_rfc3339(string).unwrap();
+                    Box::new(dt)
                 } else {
-                    panic!()
+                    let dt = NaiveDateTime::parse_from_str(string, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
+                    Box::new(dt)
                 }
             }
 
-            PhysicalColumnType::Date => {
-                let year = get_i32("year");
-                let month = get_u32("month");
-                let day = get_u32("day");
-
-                Box::new(NaiveDate::from_ymd(year, month, day))
+            PhysicalColumnType::Time { .. } => {
+                let t = NaiveTime::parse_from_str(string, "%H:%M:%S%.f").unwrap();
+                Box::new(t)
             }
 
-            _ => panic!(),
+            PhysicalColumnType::Date => {
+                let d = NaiveDate::parse_from_str(string, "%Y-%m-%d").unwrap();
+                Box::new(d)
+            }
+
+            PhysicalColumnType::String { .. } => Box::new(string.to_owned()),
+
+            _ => panic!(""),
         }
     }
 }

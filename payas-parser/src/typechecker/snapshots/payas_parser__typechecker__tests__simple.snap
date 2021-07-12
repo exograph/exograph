@@ -20,6 +20,7 @@ expression: types
             column: ~
             db_type: ~
             length: ~
+            precision: ~
             jwt: ~
             pk: ~
             range: ~
@@ -32,11 +33,14 @@ expression: types
         column: ~
         db_type: ~
         length: ~
+        precision: ~
         jwt: ~
         pk: ~
         range: ~
         size: ~
         table: ~
+- - Instant
+  - Primitive: Instant
 - - Int
   - Primitive: Int
 - - LocalDate
@@ -111,6 +115,7 @@ expression: types
                     - Primitive: String
             db_type: ~
             length: ~
+            precision: ~
             jwt: ~
             pk: ~
             range: ~
@@ -126,6 +131,7 @@ expression: types
             column: ~
             db_type: ~
             length: ~
+            precision: ~
             jwt: ~
             pk: ~
             range: ~
@@ -138,6 +144,7 @@ expression: types
         column: ~
         db_type: ~
         length: ~
+        precision: ~
         jwt: ~
         pk: ~
         range: ~

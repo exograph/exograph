@@ -2,34 +2,10 @@ operation: |
     mutation {
         createBook(data: {
             id: 1,
-            published_on: { year: 2018, month: 4, day: 17 },
-            modified_time: {
-                year: 2021,
-                month: 7,
-                day: 6,
-                hours: 20,
-                minutes: 8,
-                seconds: 47,
-                ns: 123456000, # 0.123456s; should only retain 0.1235s because of @precision(4)
-                offset: -25200 # UTC-7 * 3600 seconds
-            },
-
-            modified_time_stripped: {
-                year: 2021,
-                month: 7,
-                day: 6,
-                hours: 20,
-                minutes: 8,
-                seconds: 47,
-                ns: 0
-            },
-
-            reading_club_time: {
-                hours: 12,
-                minutes: 0,
-                seconds: 0,
-                ns: 0
-            }
+            published_on: "2018-04-17",
+            modified_time: "2021-07-06T20:08:47.1234567-07:00",
+            modified_time_stripped: "2021-07-06T20:08:47",
+            reading_club_time: "14:00:00.02"
         }) {
             id
         }

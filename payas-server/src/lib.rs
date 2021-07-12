@@ -69,6 +69,7 @@ async fn resolve(
                 Err(err) => {
                     let mut response = String::from(r#"{"errors": [{"message":""#);
                     response.push_str(&format!("{}", err));
+                    eprintln!("{:?}", err);
                     response.push_str(r#""}]}"#);
 
                     response
