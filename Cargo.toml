@@ -1,5 +1,5 @@
 [workspace]
-members = ["payas-*"]
+members = ["payas-*", "payas-parser/annotation-attribute"]
 
 [profile.release]
 lto = true

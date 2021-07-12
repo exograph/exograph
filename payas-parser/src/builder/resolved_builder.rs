@@ -1,8 +1,8 @@
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::typechecker::{
-    CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedAnnotation, TypedExpression,
-    TypedField, TypedFieldSelection,
+    AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
+    TypedExpression, TypedField, TypedFieldSelection,
 };
 use serde::{Deserialize, Serialize};
 
@@ -160,10 +160,11 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
             }
             Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
                 let table_name = ct
-                    .get_annotation("table")
-                    .map(|a| a.get_single_value().unwrap().as_string())
+                    .annotations
+                    .table()
+                    .map(|a| a.value().as_string())
                     .unwrap_or_else(|| ct.name.clone());
-                let access = build_access(ct.get_annotation("access"));
+                let access = build_access(ct.annotations.access());
                 resolved_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
@@ -196,13 +197,11 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
     }
 }
 
-fn build_access(access_annotation: Option<&TypedAnnotation>) -> ResolvedAccess {
+fn build_access(access_annotation: Option<&AccessAnnotation>) -> ResolvedAccess {
     match access_annotation {
         Some(access) => {
             let restrictive =
                 TypedExpression::BooleanLiteral(false, Type::Primitive(PrimitiveType::Boolean));
-
-            let params = &access.params;
 
             // The annotation parameter hierarchy is:
             // value -> query
@@ -211,29 +210,30 @@ fn build_access(access_annotation: Option<&TypedAnnotation>) -> ResolvedAccess {
             //                   -> delete
             // Any lower node in the hierarchy get a priority over it parent.
 
-            let default_access = params.get("value").unwrap_or(&restrictive);
-            let default_mutation_access = params.get("mutation").unwrap_or(default_access);
-
-            let read = params.get("query").unwrap_or(default_access).clone();
-
-            let creation = params
-                .get("create")
-                .unwrap_or(default_mutation_access)
-                .clone();
-            let update = params
-                .get("update")
-                .unwrap_or(default_mutation_access)
-                .clone();
-            let delete = params
-                .get("delete")
-                .unwrap_or(default_mutation_access)
-                .clone();
+            let (creation, read, update, delete) = match access {
+                AccessAnnotation::Single(default) => (default, default, default, default),
+                AccessAnnotation::Map {
+                    query,
+                    mutation,
+                    create,
+                    update,
+                    delete,
+                } => {
+                    let default_mutation_access = mutation.as_ref().unwrap_or(&restrictive);
+                    (
+                        create.as_ref().unwrap_or(default_mutation_access),
+                        query.as_ref().unwrap_or(&restrictive),
+                        update.as_ref().unwrap_or(default_mutation_access),
+                        delete.as_ref().unwrap_or(default_mutation_access),
+                    )
+                }
+            };
 
             ResolvedAccess {
-                creation,
-                read,
-                update,
-                delete,
+                creation: creation.clone(),
+                read: read.clone(),
+                update: update.clone(),
+                delete: delete.clone(),
             }
         }
         None => ResolvedAccess::permissive(),
@@ -276,8 +276,8 @@ fn build_expanded_persistent_type(
                 name: field.name.clone(),
                 typ: resolve_field_type(&field.typ, &types, resolved_types),
                 column_name: compute_column_name(ct, field, &types),
-                is_pk: field.get_annotation("pk").is_some(),
-                is_autoincrement: field.get_annotation("autoincrement").is_some(),
+                is_pk: field.annotations.pk().is_some(),
+                is_autoincrement: field.annotations.auto_increment().is_some(),
                 type_hint: build_type_hint(&field),
             })
             .collect();
@@ -299,28 +299,25 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
 
     let int_hint = {
         let size_annotation = field
-            .get_annotation("size")
-            .map(|a| a.get_single_value())
-            .flatten()
-            .map(|a| a.as_number())
-            .map(|n| n as usize);
+            .annotations
+            .size()
+            .map(|a| a.value().as_number() as usize);
 
         let bits_annotation = field
-            .get_annotation("bits")
-            .map(|a| a.get_single_value())
-            .flatten()
-            .map(|a| a.as_number())
-            .map(|n| n as usize);
+            .annotations
+            .bits()
+            .map(|a| a.value().as_number() as usize);
 
         if size_annotation.is_some() && bits_annotation.is_some() {
             panic!("Cannot have both @size and @bits for {}", field.name)
         }
 
-        let range_hint = field.get_annotation("range").map(|range_annotation| {
-            let min = range_annotation.params.get("min").unwrap().as_number();
-            let max = range_annotation.params.get("max").unwrap().as_number();
-            (min, max)
-        });
+        let range_hint = field
+            .annotations
+            .range()
+            .map(|range_annotation| match range_annotation {
+                RangeAnnotation::Map { min, max } => (min.as_number(), max.as_number()),
+            });
 
         let bits_hint = if let Some(size) = size_annotation {
             Some(
@@ -358,11 +355,9 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
 
     let string_hint = {
         let length_annotation = field
-            .get_annotation("length")
-            .map(|a| a.get_single_value())
-            .flatten()
-            .map(|e| e.as_number())
-            .map(|s| s as usize);
+            .annotations
+            .length()
+            .map(|a| a.value().as_number() as usize);
 
         // None if there is no length annotation
         length_annotation.map(|length| ResolvedTypeHint::StringHint { length })
@@ -371,10 +366,9 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     let primitive_hints = vec![int_hint, string_hint];
 
     let explicit_dbtype_hint = field
-        .get_annotation("dbtype")
-        .map(|a| a.get_single_value())
-        .flatten()
-        .map(|e| e.as_string())
+        .annotations
+        .db_type()
+        .map(|a| a.value().as_string())
         .map(|s| ResolvedTypeHint::ExplicitHint {
             dbtype: s.to_uppercase(),
         });
@@ -446,13 +440,10 @@ fn build_expanded_context_type(
 }
 
 fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
-    let jwt_annot = field
-        .annotations
-        .iter()
-        .find(|annotation| annotation.name == "jwt");
+    let jwt_annot = field.annotations.jwt();
     let claim = jwt_annot
         .map(|annot| {
-            let annot_param = &annot.get_single_value();
+            let annot_param = &annot.value();
 
             match annot_param {
                 Some(TypedExpression::FieldSelection(selection)) => match selection {
@@ -494,8 +485,9 @@ fn compute_column_name(
     }
 
     field
-        .get_annotation("column")
-        .map(|a| a.get_single_value().unwrap().as_string())
+        .annotations
+        .column()
+        .map(|a| a.value().as_string())
         .unwrap_or_else(|| default_column_name(enclosing_type, field, types))
 }
 

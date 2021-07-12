@@ -1,3 +1,4 @@
+use anyhow::Result;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
@@ -30,39 +31,42 @@ impl TypedRelationalOp {
 }
 
 impl Typecheck<TypedRelationalOp> for RelationalOp {
-    fn shallow(&self) -> TypedRelationalOp {
-        match &self {
+    fn shallow(
+        &self,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> Result<TypedRelationalOp> {
+        Ok(match &self {
             RelationalOp::Eq(left, right) => TypedRelationalOp::Eq(
-                Box::new(left.shallow()),
-                Box::new(right.shallow()),
+                Box::new(left.shallow(errors)?),
+                Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
             RelationalOp::Neq(left, right) => TypedRelationalOp::Neq(
-                Box::new(left.shallow()),
-                Box::new(right.shallow()),
+                Box::new(left.shallow(errors)?),
+                Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
             RelationalOp::Lt(left, right) => TypedRelationalOp::Lt(
-                Box::new(left.shallow()),
-                Box::new(right.shallow()),
+                Box::new(left.shallow(errors)?),
+                Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
             RelationalOp::Lte(left, right) => TypedRelationalOp::Lte(
-                Box::new(left.shallow()),
-                Box::new(right.shallow()),
+                Box::new(left.shallow(errors)?),
+                Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
             RelationalOp::Gt(left, right) => TypedRelationalOp::Gt(
-                Box::new(left.shallow()),
-                Box::new(right.shallow()),
+                Box::new(left.shallow(errors)?),
+                Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
             RelationalOp::Gte(left, right) => TypedRelationalOp::Gte(
-                Box::new(left.shallow()),
-                Box::new(right.shallow()),
+                Box::new(left.shallow(errors)?),
+                Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
-        }
+        })
     }
 
     fn pass(

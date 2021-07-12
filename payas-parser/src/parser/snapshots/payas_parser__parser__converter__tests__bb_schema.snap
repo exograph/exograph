@@ -13,9 +13,9 @@ models:
             - Int
         annotations:
           - name: pk
-            params: {}
+            params: None
           - name: autoincrement
-            params: {}
+            params: None
       - name: title
         typ:
           Plain:
@@ -28,15 +28,15 @@ models:
         annotations:
           - name: column
             params:
-              value:
-                StringLiteral:
-                  - venueid
+              Single:
+                - StringLiteral:
+                    - venueid
     annotations:
       - name: table
         params:
-          value:
-            StringLiteral:
-              - concerts
+          Single:
+            - StringLiteral:
+                - concerts
   - name: Venue
     kind: Persistent
     fields:
@@ -46,9 +46,9 @@ models:
             - Int
         annotations:
           - name: pk
-            params: {}
+            params: None
           - name: autoincrement
-            params: {}
+            params: None
       - name: name
         typ:
           Plain:
@@ -62,13 +62,13 @@ models:
         annotations:
           - name: column
             params:
-              value:
-                StringLiteral:
-                  - venueid
+              Single:
+                - StringLiteral:
+                    - venueid
     annotations:
       - name: table
         params:
-          value:
-            StringLiteral:
-              - venues
+          Single:
+            - StringLiteral:
+                - venues
 

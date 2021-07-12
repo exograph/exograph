@@ -1,21 +1,33 @@
+use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstModel, AstModelKind};
 
-use super::{typ::CompositeTypeKind, CompositeType, Scope, Type, Typecheck};
+use super::{typ::CompositeTypeKind, AnnotationMap, CompositeType, Scope, Type, Typecheck};
 
 impl Typecheck<Type> for AstModel {
-    fn shallow(&self) -> Type {
-        Type::Composite(CompositeType {
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Type> {
+        let mut annotations = Box::new(AnnotationMap::default());
+
+        for a in &self.annotations {
+            let annotation = a.shallow(errors)?;
+            annotations.add(errors, annotation, a.span)?;
+        }
+
+        Ok(Type::Composite(CompositeType {
             name: self.name.clone(),
             kind: if self.kind == AstModelKind::Persistent {
                 CompositeTypeKind::Persistent
             } else {
                 CompositeTypeKind::Context
             },
-            fields: self.fields.iter().map(|f| f.shallow()).collect(),
-            annotations: self.annotations.iter().map(|a| a.shallow()).collect(),
-        })
+            fields: self
+                .fields
+                .iter()
+                .map(|f| f.shallow(errors))
+                .collect::<Result<_, _>>()?,
+            annotations,
+        }))
     }
 
     fn pass(
@@ -38,16 +50,9 @@ impl Typecheck<Type> for AstModel {
                 .count()
                 > 0;
 
-            let annot_changed = self
+            let annot_changed = c
                 .annotations
-                .iter()
-                .zip(c.annotations.iter_mut())
-                .map(|(ast_annot, typed_annot)| {
-                    ast_annot.pass(typed_annot, env, &model_scope, errors)
-                })
-                .filter(|v| *v)
-                .count()
-                > 0;
+                .pass(&self.annotations, env, &model_scope, errors);
 
             fields_changed || annot_changed
         } else {
