@@ -557,11 +557,11 @@ fn determine_column_type<'a>(
 
                     // determine which SQL type is appropriate for this range
                     {
-                        if is_superset(-32_768, 32_768) {
+                        if is_superset(i16::MIN.into(), i16::MAX.into()) {
                             PhysicalColumnType::Int { bits: IntBits::_16 }
-                        } else if is_superset(-2147483648, 2147483647) {
+                        } else if is_superset(i32::MIN.into(), i32::MAX.into()) {
                             PhysicalColumnType::Int { bits: IntBits::_32 }
-                        } else if is_superset(-9223372036854775808, 9223372036854775807) {
+                        } else if is_superset(i64::MIN.into(), i64::MAX.into()) {
                             PhysicalColumnType::Int { bits: IntBits::_64 }
                         } else {
                             // TODO: numeric type
