@@ -1,0 +1,46 @@
+operation: |
+  query {
+    club_time_nine_am: books(where: { reading_club_time: { eq: "09:00:00" } }) {
+      name 
+    }
+
+    before_21st_century: books(where: { published_on: { lt: "2000-01-01" } }) {
+      name
+    }
+
+    modified_on_or_before: books(where: { modified_time: { lte: "2021-07-16T20:00:00+00:00" } }) {
+      modified_time
+    }
+  }
+response: |
+  {
+    "data": {
+      "club_time_nine_am": [
+        {
+          "name": "Nineteen Eighty-Four"
+        },
+        {
+          "name": "Gordon Ramsay's Ultimate Cookery Course"
+        }
+      ],
+      "before_21st_century": [
+        {
+          "name": "Moby-Dick"
+        },
+        {
+          "name": "Nineteen Eighty-Four"
+        }
+      ],
+      "modified_on_or_before": [
+        {
+          "modified_time": "2021-07-07T03:08:47.1235+00:00"
+        },
+        {
+          "modified_time": "2021-07-12T22:58:16+00:00"
+        },
+        {
+          "modified_time": "2021-07-16T20:00:00+00:00"
+        }
+      ]
+    }
+  } 

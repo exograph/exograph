@@ -11,10 +11,10 @@ response: |
   {
     "data": {
       "book": {
-        "published_on": "2018-04-17",
+        "published_on": "1851-10-18",
         "modified_time": "2021-07-07T03:08:47.1235+00:00",
         "modified_time_stripped": "2021-07-06T20:08:47",
-        "reading_club_time": "14:00:00.02"
+        "reading_club_time": "14:00:00"
       }
     }
   }
