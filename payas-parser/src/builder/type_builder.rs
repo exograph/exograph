@@ -561,7 +561,7 @@ fn determine_column_type<'a>(
                             PhysicalColumnType::Int { bits: IntBits::_16 }
                         } else if is_superset(i32::MIN.into(), i32::MAX.into()) {
                             PhysicalColumnType::Int { bits: IntBits::_32 }
-                        } else if is_superset(i64::MIN.into(), i64::MAX.into()) {
+                        } else if is_superset(i64::MIN, i64::MAX) {
                             PhysicalColumnType::Int { bits: IntBits::_64 }
                         } else {
                             // TODO: numeric type
