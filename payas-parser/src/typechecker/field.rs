@@ -1,30 +1,32 @@
+use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::AstField;
 
-use super::{Scope, Type, Typecheck, TypedAnnotation};
+use super::{AnnotationMap, Scope, Type, Typecheck};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TypedField {
     pub name: String,
     pub typ: Type,
-    pub annotations: Vec<TypedAnnotation>,
-}
-
-impl TypedField {
-    pub fn get_annotation(&self, name: &str) -> Option<&TypedAnnotation> {
-        self.annotations.iter().find(|a| a.name == *name)
-    }
+    pub annotations: Box<AnnotationMap>,
 }
 
 impl Typecheck<TypedField> for AstField {
-    fn shallow(&self) -> TypedField {
-        TypedField {
-            name: self.name.clone(),
-            typ: self.typ.shallow(),
-            annotations: self.annotations.iter().map(|a| a.shallow()).collect(),
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedField> {
+        let mut annotations = Box::new(AnnotationMap::default());
+
+        for a in &self.annotations {
+            let annotation = a.shallow(errors)?;
+            annotations.add(errors, annotation, a.span)?;
         }
+
+        Ok(TypedField {
+            name: self.name.clone(),
+            typ: self.typ.shallow(errors)?,
+            annotations,
+        })
     }
 
     fn pass(
@@ -36,14 +38,7 @@ impl Typecheck<TypedField> for AstField {
     ) -> bool {
         let typ_changed = self.typ.pass(&mut typ.typ, env, scope, errors);
 
-        let annot_changed = self
-            .annotations
-            .iter()
-            .zip(typ.annotations.iter_mut())
-            .map(|(f, tf)| f.pass(tf, env, scope, errors))
-            .filter(|v| *v)
-            .count()
-            > 0;
+        let annot_changed = typ.annotations.pass(&self.annotations, env, scope, errors);
 
         typ_changed || annot_changed
     }

@@ -1,4 +1,6 @@
 mod annotation;
+mod annotation_map;
+mod annotation_params;
 mod expression;
 mod field;
 mod field_type;
@@ -8,10 +10,12 @@ mod relational_op;
 mod selection;
 mod typ;
 
+use anyhow::Result;
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 
-pub(super) use annotation::TypedAnnotation;
+pub(super) use annotation::*;
+pub(super) use annotation_map::AnnotationMap;
 
 pub(super) use expression::TypedExpression;
 pub use logical_op::TypedLogicalOp;
@@ -28,7 +32,8 @@ pub struct Scope {
     pub enclosing_model: Option<String>,
 }
 pub trait Typecheck<T> {
-    fn shallow(&self) -> T;
+    #[allow(clippy::result_unit_err)] // Use unit result since errors are tracked as a parameter
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<T>;
     fn pass(
         &self,
         typ: &mut T,
@@ -56,8 +61,21 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     populate_standard_env(&mut types_arena);
+
+    let mut errors = Vec::new();
+    let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
+
     for model in ast_types {
-        types_arena.add(model.name.as_str(), model.shallow());
+        match model.shallow(&mut errors) {
+            Ok(typ) => {
+                types_arena.add(model.name.as_str(), typ);
+            }
+            Err(_) => {
+                assert!(!errors.is_empty());
+                emitter.emit(&errors);
+                panic!();
+            }
+        }
     }
 
     loop {
@@ -66,7 +84,7 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
             enclosing_model: None,
         };
 
-        let mut errors = vec![];
+        let mut errors = Vec::new();
 
         for model in ast_types {
             let orig = types_arena.get_by_key(model.name.as_str()).unwrap();
@@ -81,7 +99,6 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
 
         if !did_change {
             if !errors.is_empty() {
-                let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
                 emitter.emit(&errors);
                 panic!();
             } else {
@@ -118,7 +135,7 @@ mod tests {
     fn simple() {
         let src = r#"
         model User {
-          doc: Doc @column("custom_column") @auth(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
+          doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
           role: String
         }
 

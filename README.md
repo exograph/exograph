@@ -6,7 +6,7 @@ Must have:
 
 - Rust (the latest version)
 - Postgres 12
-- Treesitter (`npm install -g treesitter`)
+- Treesitter (`cargo install --rev v0.19.5 --git https://github.com/tree-sitter/tree-sitter.git tree-sitter-cli`)
 
 Nice to have:
 

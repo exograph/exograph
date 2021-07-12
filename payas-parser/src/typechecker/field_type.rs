@@ -1,3 +1,4 @@
+use anyhow::Result;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
@@ -6,12 +7,12 @@ use crate::ast::ast_types::AstFieldType;
 use super::{Scope, Type, Typecheck};
 
 impl Typecheck<Type> for AstFieldType {
-    fn shallow(&self) -> Type {
-        match &self {
+    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Type> {
+        Ok(match &self {
             AstFieldType::Plain(_, _) => Type::Defer,
-            AstFieldType::Optional(u) => Type::Optional(Box::new(u.shallow())),
-            AstFieldType::List(u) => Type::List(Box::new(u.shallow())),
-        }
+            AstFieldType::Optional(u) => Type::Optional(Box::new(u.shallow(errors)?)),
+            AstFieldType::List(u) => Type::List(Box::new(u.shallow(errors)?)),
+        })
     }
 
     fn pass(

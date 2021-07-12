@@ -14,33 +14,33 @@ models:
         annotations:
           - name: column
             params:
-              value:
-                StringLiteral:
-                  - custom_column
-          - name: auth
+              Single:
+                - StringLiteral:
+                    - custom_column
+          - name: access
             params:
-              value:
-                LogicalOp:
-                  Or:
-                    - RelationalOp:
-                        Eq:
-                          - LogicalOp:
-                              Not:
-                                - FieldSelection:
-                                    Select:
-                                      - Single:
-                                          - self
-                                      - - role
-                          - StringLiteral:
-                              - role_admin
-                    - RelationalOp:
-                        Eq:
-                          - FieldSelection:
-                              Select:
-                                - Single:
-                                    - self
-                                - - role
-                          - StringLiteral:
-                              - role_superuser
+              Single:
+                - LogicalOp:
+                    Or:
+                      - RelationalOp:
+                          Eq:
+                            - LogicalOp:
+                                Not:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            - self
+                                        - - role
+                            - StringLiteral:
+                                - role_admin
+                      - RelationalOp:
+                          Eq:
+                            - FieldSelection:
+                                Select:
+                                  - Single:
+                                      - self
+                                  - - role
+                            - StringLiteral:
+                                - role_superuser
     annotations: []
 

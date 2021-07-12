@@ -1,3 +1,4 @@
+use anyhow::Result;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
@@ -25,13 +26,18 @@ impl TypedFieldSelection {
 }
 
 impl Typecheck<TypedFieldSelection> for FieldSelection {
-    fn shallow(&self) -> TypedFieldSelection {
-        match &self {
+    fn shallow(
+        &self,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> Result<TypedFieldSelection> {
+        Ok(match &self {
             FieldSelection::Single(v) => TypedFieldSelection::Single(v.clone(), Type::Defer),
-            FieldSelection::Select(selection, i, _) => {
-                TypedFieldSelection::Select(Box::new(selection.shallow()), i.clone(), Type::Defer)
-            }
-        }
+            FieldSelection::Select(selection, i, _) => TypedFieldSelection::Select(
+                Box::new(selection.shallow(errors)?),
+                i.clone(),
+                Type::Defer,
+            ),
+        })
     }
 
     fn pass(

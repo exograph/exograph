@@ -1,0 +1,17 @@
+operation: |
+    query {
+        video {
+            id
+            name
+            id
+            name
+        }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Duplicate keys (id, name) in query"
+        }
+      ]
+    }
