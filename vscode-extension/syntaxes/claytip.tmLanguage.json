@@ -13,9 +13,25 @@
 		},
 		{
 			"include": "#constants"
+		},
+		{
+			"include": "#comments"
 		}
 	],
 	"repository": {
+		"comments": {
+			"patterns": [
+				{
+					"name": "comment.line.double-slash.claytip",
+					"match": "(//).*$\n?"
+				},
+				{
+					"name": "comment.block.claytip",
+					"begin": "(/\\*)",
+					"end": "(\\*/)"
+				}
+			]
+		},
 		"type-definition": {
 			"patterns": [{
 				"name": "meta.typedef.claytip",
@@ -40,6 +56,9 @@
 								"patterns": [
 									{
 										"include": "#types"
+									},
+									{
+										"include": "#comments"
 									}
 								]
 							}
@@ -47,6 +66,9 @@
 					},
 					{
 						"include": "#annotations"
+					},
+					{
+						"include": "#comments"
 					}
 				],
 				"end": "}"
@@ -71,6 +93,9 @@
 				},
 				{
 					"include": "#operators"
+				},
+				{
+					"include": "#comments"
 				}
 			]
 		},
@@ -82,6 +107,9 @@
 					"patterns": [
 						{
 							"include": "#types"
+						},
+						{
+							"include": "#comments"
 						}
 					],
 					"end": "(\\])"
@@ -113,7 +141,7 @@
 		"annotations": {
 			"patterns": [{
 				"name": "meta.annotation.claytip",
-				"begin": "(@([a-zA-Z]+)?)(\\()?",
+				"begin": "(@([a-zA-Z]+)?)(\\()",
 				"beginCaptures": {
 					"1": {
 						"name": "entity.name.function.claytip"
@@ -122,9 +150,20 @@
 				"patterns": [
 					{
 						"include": "#expressions"
+					},
+					{
+						"include": "#comments"
 					}
 				],
 				"end": "\\)"
+			}, {
+				"name": "meta.annotation.claytip",
+				"match": "(@([a-zA-Z]+)?)",
+				"captures": {
+					"1": {
+						"name": "entity.name.function.claytip"
+					}
+				}
 			}]
 		},
 		"constants": {
