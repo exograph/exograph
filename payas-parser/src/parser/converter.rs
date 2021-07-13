@@ -484,8 +484,12 @@ mod tests {
         @table("concerts")
         model Concert {
           id: Int @pk @autoincrement
-          title: String
+          title: String // a comment
+          // another comment
           venue: Venue @column("venueid")
+          /*
+          not_a_field: Int
+          */
         }
 
         /*
@@ -495,7 +499,7 @@ mod tests {
         model Venue {
           id: Int @pk @autoincrement
           name: String
-          concerts: [Concert] @column("venueid")
+          concerts: [Concert /* here too! */] @column("venueid")
         }
         "#,
         );
