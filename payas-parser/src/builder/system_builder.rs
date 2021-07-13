@@ -93,6 +93,7 @@ mod tests {
               weird: Int @range(min=0, max=32770)
               prefix: String @length(15)
               log: String
+              granular: Instant @precision(6)
             }
         "#;
 
@@ -105,6 +106,7 @@ mod tests {
         let logs_hash = get_column_from_table("hash", logs);
         let logs_weird = get_column_from_table("weird", logs);
         let logs_prefix = get_column_from_table("prefix", logs);
+        let logs_granular = get_column_from_table("granular", logs);
 
         // @dbtype("bigint")
         if let PhysicalColumnType::Int { bits } = &logs_id.typ {
@@ -141,6 +143,18 @@ mod tests {
         } else {
             panic!()
         }
+
+        // @precision(6)
+        match &logs_granular.typ {
+            PhysicalColumnType::Timestamp { precision, .. } => {
+                if let Some(p) = precision {
+                    assert!(*p == 6)
+                } else {
+                    panic!()
+                }
+            }
+            _ => panic!(),
+        };
     }
 
     fn get_table_from_arena<'a>(

@@ -44,6 +44,15 @@ expression: normalized_system(&resolved)
               range:
                 - 0
                 - 300
+        - name: time
+          typ:
+            Plain: Instant
+          column_name: time
+          is_pk: false
+          is_autoincrement: false
+          type_hint:
+            DateTimeHint:
+              precision: 4
       table_name: custom_concerts
       access:
         creation:
@@ -62,7 +71,11 @@ expression: normalized_system(&resolved)
           BooleanLiteral:
             - true
             - Primitive: Boolean
+  - Primitive: Instant
   - Primitive: Int
+  - Primitive: LocalDate
+  - Primitive: LocalDateTime
+  - Primitive: LocalTime
   - Primitive: String
   - Composite:
       name: Venue

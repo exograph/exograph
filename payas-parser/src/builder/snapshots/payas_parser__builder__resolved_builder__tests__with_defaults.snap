@@ -46,7 +46,11 @@ expression: normalized_system(&resolved)
           BooleanLiteral:
             - true
             - Primitive: Boolean
+  - Primitive: Instant
   - Primitive: Int
+  - Primitive: LocalDate
+  - Primitive: LocalDateTime
+  - Primitive: LocalTime
   - Primitive: String
   - Composite:
       name: Venue

@@ -8,8 +8,8 @@ use crate::ast::ast_types::AstAnnotation;
 
 use super::{
     AccessAnnotation, AutoIncrementAnnotation, BitsAnnotation, ColumnAnnotation, DbTypeAnnotation,
-    JwtAnnotation, LengthAnnotation, PkAnnotation, RangeAnnotation, Scope, SizeAnnotation,
-    TableAnnotation, Type, Typecheck, TypedAnnotation,
+    JwtAnnotation, LengthAnnotation, PkAnnotation, PrecisionAnnotation, RangeAnnotation, Scope,
+    SizeAnnotation, TableAnnotation, Type, Typecheck, TypedAnnotation,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -20,6 +20,7 @@ pub struct AnnotationMap {
     column: Option<TypedAnnotation>,
     db_type: Option<TypedAnnotation>,
     length: Option<TypedAnnotation>,
+    precision: Option<TypedAnnotation>,
     jwt: Option<TypedAnnotation>,
     pk: Option<TypedAnnotation>,
     range: Option<TypedAnnotation>,
@@ -70,6 +71,7 @@ impl AnnotationMap {
             TypedAnnotation::Column(_) => s!(self.column, errors, annotation, span),
             TypedAnnotation::DbType(_) => s!(self.db_type, errors, annotation, span),
             TypedAnnotation::Length(_) => s!(self.length, errors, annotation, span),
+            TypedAnnotation::Precision(_) => s!(self.precision, errors, annotation, span),
             TypedAnnotation::Jwt(_) => s!(self.jwt, errors, annotation, span),
             TypedAnnotation::Pk(_) => s!(self.pk, errors, annotation, span),
             TypedAnnotation::Range(_) => s!(self.range, errors, annotation, span),
@@ -95,6 +97,7 @@ impl AnnotationMap {
             &mut self.column,
             &mut self.db_type,
             &mut self.length,
+            &mut self.precision,
             &mut self.jwt,
             &mut self.pk,
             &mut self.range,
@@ -138,6 +141,10 @@ impl AnnotationMap {
 
     pub fn length(&self) -> Option<&LengthAnnotation> {
         coerce!(self.length, TypedAnnotation::Length)
+    }
+
+    pub fn precision(&self) -> Option<&PrecisionAnnotation> {
+        coerce!(self.precision, TypedAnnotation::Precision)
     }
 
     pub fn jwt(&self) -> Option<&JwtAnnotation> {
