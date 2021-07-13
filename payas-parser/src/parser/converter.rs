@@ -33,6 +33,7 @@ pub fn convert_root(node: Node, source: &[u8], codemap: &CodeMap, source_span: S
         AstSystem {
             models: node
                 .children(&mut cursor)
+                .filter(|n| n.kind() == "declaration")
                 .map(|c| convert_declaration(c, source, source_span))
                 .collect(),
         }
@@ -500,18 +501,26 @@ mod tests {
     fn bb_schema() {
         parsing_test(
             r#"
+        // a short comment
         @table("concerts")
         model Concert {
           id: Int @pk @autoincrement
-          title: String
+          title: String // a comment
+          // another comment
           venue: Venue @column("venueid")
+          /*
+          not_a_field: Int
+          */
         }
 
+        /*
+        a multiline comment
+        */
         @table("venues")
         model Venue {
           id: Int @pk @autoincrement
           name: String
-          concerts: [Concert] @column("venueid")
+          concerts: [Concert /* here too! */] @column("venueid")
         }
         "#,
         );
