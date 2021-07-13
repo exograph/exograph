@@ -1,4 +1,6 @@
 use async_graphql_value::{Number, Value};
+use chrono::prelude::*;
+use chrono::DateTime;
 use payas_model::{model::column_id::ColumnId, sql::column::IntBits};
 use typed_arena::Arena;
 
@@ -59,12 +61,14 @@ impl<'a> OperationContext<'a> {
             Value::Number(number) => {
                 Column::Literal(Self::cast_number(number, &associated_column.typ))
             }
-            Value::String(v) => Column::Literal(Box::new(v.to_owned())),
+            Value::String(v) => Column::Literal(Self::cast_string(v, &associated_column.typ)),
             Value::Boolean(v) => Column::Literal(Box::new(*v)),
             Value::Null => Column::Null,
             Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from database to do a correct translation
             Value::List(_) => todo!(),
-            Value::Object(_) => panic!(),
+            Value::Object(_) => {
+                panic!()
+            }
         };
 
         self.create_column(column)
@@ -109,6 +113,9 @@ impl<'a> OperationContext<'a> {
                 Box::new(value.as_str().unwrap().to_string())
             }
             PhysicalColumnType::Boolean => Box::new(value.as_bool().unwrap()),
+            PhysicalColumnType::Timestamp { .. } => panic!(),
+            PhysicalColumnType::Date => panic!(),
+            PhysicalColumnType::Time { .. } => panic!(),
         }
     }
 
@@ -121,6 +128,36 @@ impl<'a> OperationContext<'a> {
             },
             // TODO: Expand for other number types such as float
             _ => panic!("Unexpected destination_type for number value"),
+        }
+    }
+
+    fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+        match destination_type {
+            PhysicalColumnType::Timestamp { timezone, .. } => {
+                println!("{} {:?}", string, destination_type);
+
+                if *timezone {
+                    let dt = DateTime::parse_from_rfc3339(string).unwrap();
+                    Box::new(dt)
+                } else {
+                    let dt = NaiveDateTime::parse_from_str(string, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
+                    Box::new(dt)
+                }
+            }
+
+            PhysicalColumnType::Time { .. } => {
+                let t = NaiveTime::parse_from_str(string, "%H:%M:%S%.f").unwrap();
+                Box::new(t)
+            }
+
+            PhysicalColumnType::Date => {
+                let d = NaiveDate::parse_from_str(string, "%Y-%m-%d").unwrap();
+                Box::new(d)
+            }
+
+            PhysicalColumnType::String { .. } => Box::new(string.to_owned()),
+
+            _ => panic!(""),
         }
     }
 }

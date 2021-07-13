@@ -104,6 +104,16 @@ lazy_static! {
             Some(vec!["eq", "neq"])
         );
 
+        let datetime_operators = Some(vec![
+            "eq", "neq",
+            "lt", "lte", "gt", "gte"
+        ]);
+
+        supported_operators.insert("LocalTime", datetime_operators.clone());
+        supported_operators.insert("LocalDateTime", datetime_operators.clone());
+        supported_operators.insert("LocalDate", datetime_operators.clone());
+        supported_operators.insert("Instant", datetime_operators.clone());
+
         supported_operators
     };
 }
