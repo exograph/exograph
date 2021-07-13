@@ -1,3 +1,4 @@
+use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::typechecker::{
@@ -6,6 +7,11 @@ use crate::typechecker::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Resolved types consume and normalize annotations.
+/// For example, while in `Type`, the fields carry an optional annotation for the column name, here that information is encoded into an attribute of `ResolvedType`.
+/// If an annotaion is missing, its default value is assumed.
+
+/// Consume typed-checked types and build resolved types
 pub struct ResolvedSystem {
     pub types: MappedArena<ResolvedType>,
     pub contexts: MappedArena<ResolvedContext>,
@@ -108,7 +114,7 @@ impl ResolvedCompositeType {
 }
 
 impl ResolvedType {
-    fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         match self {
             ResolvedType::Primitive(pt) => pt.name(),
             ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name,
@@ -142,17 +148,13 @@ impl ResolvedFieldType {
     }
 }
 
-/// Consume typed-checked types and build resolved types
-/// Resolved types consume and normalize annotations.
-/// For example, while in `Type`, the fields carry an optional annotation for the column name, here that information is encoded into an attribute of `ResolvedType`.
-/// If an annotaion is missing, its default value is assumed.
-pub fn build(types: MappedArena<Type>) -> ResolvedSystem {
-    let mut resolved_system = build_shallow(&types);
+pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem> {
+    let mut resolved_system = build_shallow(&types)?;
     build_expanded(types, &mut resolved_system);
-    resolved_system
+    Ok(resolved_system)
 }
 
-fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
+fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
     let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
 
@@ -194,10 +196,10 @@ fn build_shallow(types: &MappedArena<Type>) -> ResolvedSystem {
         };
     }
 
-    ResolvedSystem {
+    Ok(ResolvedSystem {
         types: resolved_types,
         contexts: resolved_contexts,
-    }
+    })
 }
 
 fn build_access(access_annotation: Option<&AccessAnnotation>) -> ResolvedAccess {
@@ -621,9 +623,9 @@ mod tests {
 
     fn create_resolved_system(src: &str) -> ResolvedSystem {
         let (parsed, codemap) = parser::parse_str(src);
-        let types = typechecker::build(parsed, codemap);
+        let types = typechecker::build(parsed, codemap).unwrap();
 
-        build(types)
+        build(types).unwrap()
     }
 
     fn normalized_system(input: &ResolvedSystem) -> (Vec<&ResolvedType>, Vec<&ResolvedContext>) {

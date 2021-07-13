@@ -7,8 +7,6 @@ use payas_model::model::{
 
 use payas_model::model::{order::*, relation::GqlRelation, types::*};
 
-use crate::typechecker::Type;
-
 use super::{resolved_builder::ResolvedType, system_builder::SystemContextBuilding};
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
@@ -138,8 +136,4 @@ fn order_by_param_type(
     let param_type_id = building.order_by_types.get_id(&param_type_name).unwrap();
 
     (param_type_name, param_type_id)
-}
-
-fn is_primitive(kind: &Type) -> bool {
-    matches!(kind, Type::Primitive(_))
 }

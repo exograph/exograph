@@ -35,29 +35,30 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
     }
 }
 
-pub fn build_expanded(env: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
-    for (_, model_type) in env.iter() {
+pub fn build_expanded(
+    resolved_types: &MappedArena<ResolvedType>,
+    building: &mut SystemContextBuilding,
+) {
+    for (_, model_type) in resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_type1(c, building, env);
+            expand_type_no_fields(c, building, resolved_types);
         }
     }
-    for (_, model_type) in env.iter() {
+    for (_, model_type) in resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_type2(c, building, env);
+            expand_type_fields(c, building, resolved_types);
         }
     }
-    for (_, model_type) in env.iter() {
+
+    for (_, model_type) in resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_type3(c, building);
+            expand_type_access(c, building);
         }
     }
 }
 
 fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
-    let (type_name, is_composite) = match resolved_type {
-        ResolvedType::Composite(ResolvedCompositeType { name, .. }) => (name.clone(), true),
-        ResolvedType::Primitive(pt) => (pt.name().to_string(), false),
-    };
+    let type_name = resolved_type.name();
 
     // Mark every type as Primitive, since other types that may be referred haven't been processed yet
     // and we haven't build query and mutation types either
@@ -69,40 +70,28 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
             is_input: false,
         },
     );
-
-    if is_composite {
-        let mutation_type_names = [
-            input_creation_type_name(&type_name),
-            input_update_type_name(&type_name),
-            input_reference_type_name(&type_name),
-        ];
-
-        for mutation_type_name in mutation_type_names.iter() {
-            building.mutation_types.add(
-                &mutation_type_name,
-                GqlType {
-                    name: mutation_type_name.to_string(),
-                    kind: GqlTypeKind::Primitive,
-                    is_input: true,
-                },
-            );
-        }
-    }
 }
 
-// Expand type except for model fields. Specifically, set the table and *_query members, but leave fields as an empty vector.
-// This allows types to become `Composite` and `table_id` for any type can be accessed when building fields
-fn expand_type1(
+/// Expand a type except for creating its fields.
+/// Specifically:
+/// 1. Create and set the table
+/// 2. Create and set *_query members
+/// 3. Leave fields as an empty vector
+///
+/// This allows types to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
+/// We can't expand fields yet since creating a field requires access to columns (self as well as those in a refered field in case a relation)
+/// and we may not have expanded a refered type yet.
+fn expand_type_no_fields(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
-    env: &MappedArena<ResolvedType>,
+    resolved_types: &MappedArena<ResolvedType>,
 ) {
     let table_name = resolved_type.table_name.clone();
 
     let columns = resolved_type
         .fields
         .iter()
-        .flat_map(|field| create_column(field, &table_name, env))
+        .flat_map(|field| create_column(field, &table_name, resolved_types))
         .collect();
 
     let table = PhysicalTable {
@@ -134,10 +123,12 @@ fn expand_type1(
     building.types.values[existing_type_id.unwrap()].kind = kind;
 }
 
-fn expand_type2(
+/// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
+/// expand fields
+fn expand_type_fields(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
-    env: &MappedArena<ResolvedType>,
+    resolved_types: &MappedArena<ResolvedType>,
 ) {
     let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
@@ -152,11 +143,11 @@ fn expand_type2(
         let model_fields: Vec<GqlField> = resolved_type
             .fields
             .iter()
-            .map(|field| create_field(field, table_id, building, env))
+            .map(|field| create_field(field, table_id, building, resolved_types))
             .collect();
 
         let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
-            fields: model_fields.clone(),
+            fields: model_fields,
             table_id,
             pk_query,
             collection_query,
@@ -164,66 +155,11 @@ fn expand_type2(
         });
 
         building.types.values[existing_type_id].kind = kind;
-
-        {
-            let reference_type_fields = model_fields
-                .clone()
-                .into_iter()
-                .flat_map(|field| match &field.relation {
-                    GqlRelation::Pk { .. } => Some(field),
-                    _ => None,
-                })
-                .collect();
-
-            let existing_type_name = input_reference_type_name(resolved_type.name.as_str());
-            let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
-
-            building.mutation_types[existing_type_id].kind =
-                GqlTypeKind::Composite(GqlCompositeTypeKind {
-                    fields: reference_type_fields,
-                    table_id,
-                    pk_query,
-                    collection_query,
-                    access: Access::restrictive(),
-                })
-        }
-
-        {
-            let input_type_fields = compute_input_fields(&model_fields, building, false);
-
-            let existing_type_name = input_creation_type_name(resolved_type.name.as_str());
-            let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
-
-            building.mutation_types[existing_type_id].kind =
-                GqlTypeKind::Composite(GqlCompositeTypeKind {
-                    fields: input_type_fields,
-                    table_id,
-                    pk_query,
-                    collection_query,
-                    access: Access::restrictive(),
-                })
-        }
-
-        {
-            let input_type_fields = compute_input_fields(&model_fields, building, true);
-
-            let existing_type_name = input_update_type_name(resolved_type.name.as_str());
-            let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
-
-            building.mutation_types[existing_type_id].kind =
-                GqlTypeKind::Composite(GqlCompositeTypeKind {
-                    fields: input_type_fields,
-                    table_id,
-                    pk_query,
-                    collection_query,
-                    access: Access::restrictive(),
-                })
-        }
     }
 }
 
 // Expand access expressions (pre-condition: all model fields have been populated)
-fn expand_type3(resolved_type: &ResolvedCompositeType, building: &mut SystemContextBuilding) {
+fn expand_type_access(resolved_type: &ResolvedCompositeType, building: &mut SystemContextBuilding) {
     let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
@@ -390,46 +326,6 @@ fn compute_expression(
         TypedExpression::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),
         TypedExpression::NumberLiteral(value, _) => AccessExpression::NumberLiteral(*value),
     }
-}
-
-fn compute_input_fields(
-    gql_fields: &[GqlField],
-    building: &SystemContextBuilding,
-    force_optional_field_modifier: bool,
-) -> Vec<GqlField> {
-    gql_fields
-        .iter()
-        .flat_map(|field| match &field.relation {
-            GqlRelation::Pk { .. } => None,
-            GqlRelation::Scalar { .. } => Some(GqlField {
-                typ: field.typ.optional(),
-                ..field.clone()
-            }),
-            GqlRelation::ManyToOne { .. } | GqlRelation::OneToMany { .. } => {
-                let field_type_name = input_reference_type_name(&field.typ.type_name());
-                let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = GqlFieldType::Reference {
-                    type_name: field_type_name,
-                    type_id: field_type_id,
-                };
-                let field_type = match field.typ {
-                    GqlFieldType::Reference { .. } => field_plain_type,
-                    GqlFieldType::Optional(_) => GqlFieldType::Optional(Box::new(field_plain_type)),
-                    GqlFieldType::List(_) => GqlFieldType::List(Box::new(field_plain_type)),
-                };
-                let field_type = if force_optional_field_modifier {
-                    field_type.optional()
-                } else {
-                    field_type
-                };
-                Some(GqlField {
-                    name: field.name.clone(),
-                    typ: field_type,
-                    relation: field.relation.clone(),
-                })
-            }
-        })
-        .collect()
 }
 
 fn create_field(
@@ -690,16 +586,4 @@ fn create_relation(
             ResolvedFieldType::Optional(_) => todo!(),
         }
     }
-}
-
-pub fn input_creation_type_name(model_type_name: &str) -> String {
-    format!("{}CreationInput", model_type_name)
-}
-
-pub fn input_update_type_name(model_type_name: &str) -> String {
-    format!("{}UpdateInput", model_type_name)
-}
-
-pub fn input_reference_type_name(model_type_name: &str) -> String {
-    format!("{}ReferenceInput", model_type_name)
 }
