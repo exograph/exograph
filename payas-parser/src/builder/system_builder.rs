@@ -23,7 +23,6 @@ use super::{
 
 use crate::typechecker;
 
-
 /// Build a [ModelSystem] given an [AstSystem].
 ///
 /// First, it type checks the input [AstSystem] to produce typechecked types.
