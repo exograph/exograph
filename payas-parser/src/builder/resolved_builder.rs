@@ -1,3 +1,9 @@
+//! Resolve types to consume and normalize annotations.
+//!
+//! For example, while in `Type`, the fields carry an optional @column annotation for the
+//! column name, here that information is encoded into an attribute of `ResolvedType`.
+//! If no @column is provided, the encoded information is set to an appropriate default value.
+
 use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 
@@ -6,10 +12,6 @@ use crate::typechecker::{
     TypedExpression, TypedField, TypedFieldSelection,
 };
 use serde::{Deserialize, Serialize};
-
-/// Resolved types consume and normalize annotations.
-/// For example, while in `Type`, the fields carry an optional annotation for the column name, here that information is encoded into an attribute of `ResolvedType`.
-/// If an annotaion is missing, its default value is assumed.
 
 /// Consume typed-checked types and build resolved types
 pub struct ResolvedSystem {

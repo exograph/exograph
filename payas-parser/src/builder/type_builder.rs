@@ -73,6 +73,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
 }
 
 /// Expand a type except for creating its fields.
+///
 /// Specifically:
 /// 1. Create and set the table
 /// 2. Create and set *_query members

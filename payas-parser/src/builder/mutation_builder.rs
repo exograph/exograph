@@ -1,7 +1,5 @@
-/*!
-    Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
-    mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
-*/
+//! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
+//! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
 use id_arena::Id;
 use payas_model::model::access::Access;
