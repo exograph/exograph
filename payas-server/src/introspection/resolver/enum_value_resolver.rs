@@ -23,6 +23,7 @@ impl FieldResolver<Value> for EnumValueDefinition {
                 .unwrap_or(Value::Null)),
             "isDeprecated" => Ok(Value::Bool(false)), // TODO
             "deprecationReason" => Ok(Value::Null),   // TODO
+            "__typename" => Ok(Value::String("__EnumValue".to_string())),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
                 field_name.to_owned(),
                 "EnumValueDefinition"

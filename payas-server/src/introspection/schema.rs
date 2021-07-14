@@ -9,6 +9,10 @@ pub struct Schema {
     pub type_definitions: Vec<TypeDefinition>,
 }
 
+pub const QUERY_ROOT_TYPENAME: &'static str = "Query";
+pub const MUTATION_ROOT_TYPENAME: &'static str = "Mutation";
+pub const SUBSCRIPTION_ROOT_TYPENAME: &'static str = "Subscription";
+
 impl Schema {
     pub fn new(system: &ModelSystem) -> Schema {
         let mut type_definitions: Vec<TypeDefinition> = system
@@ -46,7 +50,7 @@ impl Schema {
             TypeDefinition {
                 extend: false,
                 description: None,
-                name: default_positioned_name("Query"),
+                name: default_positioned_name(QUERY_ROOT_TYPENAME),
                 directives: vec![],
                 kind: TypeKind::Object(ObjectType {
                     implements: vec![],
@@ -66,7 +70,7 @@ impl Schema {
             TypeDefinition {
                 extend: false,
                 description: None,
-                name: default_positioned_name("Mutation"),
+                name: default_positioned_name(MUTATION_ROOT_TYPENAME),
                 directives: vec![],
                 kind: TypeKind::Object(ObjectType {
                     implements: vec![],

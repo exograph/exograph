@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use async_graphql_parser::{
-    types::{BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, Type},
+    types::{
+        BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, OperationType,
+        Type,
+    },
     Positioned,
 };
 use async_graphql_value::{Name, Value};
@@ -11,7 +14,7 @@ use serde_json::{Map, Value as JsonValue};
 
 use super::resolver::*;
 
-use crate::{data::data_resolver::DataResolver, introspection::schema::Schema};
+use crate::{data::data_resolver::DataResolver, introspection::schema::*};
 
 #[derive(Debug, Clone)]
 pub struct QueryContext<'a> {
@@ -98,20 +101,26 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
         query_context: &QueryContext<'_>,
         field: &Positioned<Field>,
     ) -> Result<QueryResponse> {
-        if field.node.name.node == "__type" {
-            Ok(QueryResponse::Json(
+        match field.node.name.node.as_str() {
+            "__type" => Ok(QueryResponse::Json(
                 query_context.resolve_type(&field.node)?,
-            ))
-        } else if field.node.name.node == "__schema" {
-            Ok(QueryResponse::Json(
+            )),
+            "__schema" => Ok(QueryResponse::Json(
                 query_context
                     .schema
                     .resolve_value(query_context, &field.node.selection_set)?,
-            ))
-        } else {
-            query_context
+            )),
+            "__typename" => {
+                let typename = match self.ty {
+                    OperationType::Query => QUERY_ROOT_TYPENAME,
+                    OperationType::Mutation => MUTATION_ROOT_TYPENAME,
+                    OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
+                };
+                Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
+            }
+            _ => query_context
                 .system
-                .resolve(&field, &self.ty, query_context)
+                .resolve(&field, &self.ty, query_context),
         }
     }
 }

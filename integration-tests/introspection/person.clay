@@ -1,0 +1,5 @@
+model Person {
+  id: Int @pk @autoincrement
+  name: String
+}
+

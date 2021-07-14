@@ -29,6 +29,7 @@ impl FieldResolver<Value> for FieldDefinition {
                 .resolve_value(query_context, &field.node.selection_set),
             "isDeprecated" => Ok(Value::Bool(false)), // TODO
             "deprecationReason" => Ok(Value::Null),   // TODO
+            "__typename" => Ok(Value::String("__Field".to_string())),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
                 field_name.to_owned(),
                 "Field",

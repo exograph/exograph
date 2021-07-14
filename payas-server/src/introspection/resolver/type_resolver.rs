@@ -38,6 +38,7 @@ impl<'a> FieldResolver<Value> for TypeDefinition {
                 .resolve_value(query_context, &field.node.selection_set),
             "ofType" => Ok(Value::Null),
             "specifiedByUrl" => Ok(Value::Null),
+            "__typename" => Ok(Value::String("__Type".to_string())),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
                 field_name.to_owned(),
                 "TypeDefinition",

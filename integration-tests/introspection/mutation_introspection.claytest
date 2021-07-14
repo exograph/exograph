@@ -1,0 +1,12 @@
+operation: |
+    mutation {
+      __typename
+    }
+response: |
+    {
+      "data": {
+        "__typename": "Mutation"
+      }
+    }
+
+    
