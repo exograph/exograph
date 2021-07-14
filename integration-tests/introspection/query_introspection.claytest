@@ -1,0 +1,103 @@
+operation: |
+    query {
+      __schema {
+        mutationType {
+          ...type_info
+        }
+        queryType {
+          ...type_info
+          ...fields_info
+        }
+        __typename
+      }
+      int_type: __type(name: "Int") {
+        ...type_info
+        ...fields_info
+      }
+      concert_type: __type(name: "Concert") {
+        ...type_info
+        ...fields_info
+      }
+    }
+
+    fragment type_info on __Type {
+      name
+      __typename
+      kind
+      ofType {
+        __typename
+      }
+    }
+
+    fragment fields_info on __Type {
+      fields {
+        __typename
+        name
+        args {
+          name
+          __typename
+        }
+      }
+    }
+response: |
+    {
+      "data": {
+        "__schema": {
+          "mutationType": {
+            "name": "Mutation",
+            "__typename": "__Type",
+            "kind": "OBJECT",
+            "ofType": null
+          },
+          "queryType": {
+            "name": "Query",
+            "__typename": "__Type",
+            "kind": "OBJECT",
+            "ofType": null,
+            "fields": [
+              {
+                "__typename": "__Field",
+                "name": "person",
+                "args": [
+                  {
+                    "name": "id",
+                    "__typename": "__InputValue"
+                  }
+                ]
+              },
+              {
+                "__typename": "__Field",
+                "name": "persons",
+                "args": [
+                  {
+                    "name": "where",
+                    "__typename": "__InputValue"
+                  },
+                  {
+                    "name": "orderBy",
+                    "__typename": "__InputValue"
+                  }
+                ]
+              }
+            ]
+          },
+          "__typename": "__Schema"
+        },
+        "int_type": {
+          "name": "Int",
+          "__typename": "__Type",
+          "kind": "SCALAR",
+          "ofType": null,
+          "fields": null
+        },
+        "concert_type": {
+          "name": null,
+          "__typename": null,
+          "kind": null,
+          "ofType": null,
+          "fields": null
+        }
+      }
+    }
+
+    

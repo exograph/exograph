@@ -25,6 +25,7 @@ impl FieldResolver<Value> for InputValueDefinition {
                 .ty
                 .resolve_value(query_context, &field.node.selection_set),
             "defaultValue" => Ok(Value::Null), // TODO
+            "__typename" => Ok(Value::String("__InputValue".to_string())),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
                 field_name.to_owned(),
                 "InputValue",
