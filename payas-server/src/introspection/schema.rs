@@ -9,9 +9,9 @@ pub struct Schema {
     pub type_definitions: Vec<TypeDefinition>,
 }
 
-pub const QUERY_ROOT_TYPENAME: &'static str = "Query";
-pub const MUTATION_ROOT_TYPENAME: &'static str = "Mutation";
-pub const SUBSCRIPTION_ROOT_TYPENAME: &'static str = "Subscription";
+pub const QUERY_ROOT_TYPENAME: &str = "Query";
+pub const MUTATION_ROOT_TYPENAME: &str = "Mutation";
+pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
 impl Schema {
     pub fn new(system: &ModelSystem) -> Schema {
