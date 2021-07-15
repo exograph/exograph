@@ -116,10 +116,10 @@ impl ResolvedCompositeType {
 }
 
 impl ResolvedType {
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> String {
         match self {
             ResolvedType::Primitive(pt) => pt.name(),
-            ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name,
+            ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name.to_owned(),
         }
     }
 
@@ -163,7 +163,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
     for (_, typ) in types.iter() {
         match typ {
             Type::Primitive(pt) => {
-                resolved_types.add(pt.name(), ResolvedType::Primitive(pt.clone()));
+                resolved_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
             Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
                 let table_name = ct
@@ -488,7 +488,23 @@ fn compute_column_name(
     ) -> String {
         match &field.typ {
             Type::Optional(_) => field.name.to_string(),
-            Type::List(_) => format!("{}_id", enclosing_type.name.to_ascii_lowercase()),
+            Type::List(typ) => {
+                // unwrap type
+                let mut underlying_typ = typ;
+                while let Type::List(t) = &**underlying_typ {
+                    underlying_typ = t;
+                }
+
+                if let Type::Reference(type_name) = &**underlying_typ {
+                    if let Some(Type::Primitive(_)) = types.get_by_key(type_name) {
+                        // base type is a primitive, which means this is an Array
+                        return field.name.clone();
+                    }
+                }
+
+                // OneToMany
+                format!("{}_id", enclosing_type.name.to_ascii_lowercase())
+            }
             Type::Reference(type_name) => {
                 let field_type = types.get_by_key(&type_name).unwrap();
                 match field_type {
@@ -569,6 +585,7 @@ mod tests {
           id: Int @pk @autoincrement 
           title: String 
           venue: Venue 
+          attending: [String]
         }
         
         model Venue             {

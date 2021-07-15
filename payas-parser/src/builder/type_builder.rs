@@ -412,9 +412,48 @@ fn create_column(
         ResolvedFieldType::Optional(_) => {
             todo!()
         }
-        ResolvedFieldType::List(_) => {
-            // OneToMany, so the other side has the associated column
-            None
+        ResolvedFieldType::List(typ) => {
+            // unwrap list to base type
+            let mut underlying_typ = typ;
+            let mut depth = 1;
+
+            while let ResolvedFieldType::List(t) = &**underlying_typ {
+                underlying_typ = t;
+                depth += 1;
+            }
+
+            let underlying_pt = if let ResolvedFieldType::Plain(name) = &**underlying_typ {
+                if let Some(ResolvedType::Primitive(pt)) = env.get_by_key(&name) {
+                    Some(pt)
+                } else {
+                    None
+                }
+            } else {
+                todo!()
+            };
+
+            // is our underlying list type a primitive or a column?
+            if let Some(underlying_pt) = underlying_pt {
+                // underlying type is a primitive, so treat it as an Array
+
+                // rewrap underlying PrimitiveType
+                let mut pt = underlying_pt.clone();
+                for _ in 0..depth {
+                    pt = PrimitiveType::Array(Box::new(pt))
+                }
+
+                Some(PhysicalColumn {
+                    table_name: table_name.to_string(),
+                    column_name: field.column_name.clone(),
+                    typ: determine_column_type(&pt, field),
+                    is_pk: false,
+                    is_autoincrement: false,
+                    references: None,
+                })
+            } else {
+                // this is a OneToMany relation, so the other side has the associated column
+                None
+            }
         }
     }
 }
@@ -423,6 +462,12 @@ fn determine_column_type<'a>(
     pt: &'a PrimitiveType,
     field: &'a ResolvedField,
 ) -> PhysicalColumnType {
+    if let PrimitiveType::Array(underlying_pt) = pt {
+        return PhysicalColumnType::Array {
+            typ: Box::new(determine_column_type(underlying_pt, field)),
+        };
+    }
+
     if let Some(hint) = &field.type_hint {
         match hint {
             ResolvedTypeHint::ExplicitHint { dbtype } => PhysicalColumnType::from_string(dbtype),
@@ -511,6 +556,7 @@ fn determine_column_type<'a>(
                 precision: None,
                 timezone: true,
             },
+            PrimitiveType::Array(_) => panic!(),
         }
     }
 }
@@ -543,7 +589,14 @@ fn create_relation(
     } else {
         match &field.typ {
             ResolvedFieldType::List(underlying) => {
-                let field_type = underlying.deref(env).as_composite();
+                // TODO: should grab separate syntaxes for primitive arrays and relations
+                let field_type = if let ResolvedType::Primitive(_) = underlying.deref(env) {
+                    return GqlRelation::Scalar {
+                        column_id: compute_column_id(table, table_id, field).unwrap(),
+                    };
+                } else {
+                    underlying.deref(env).as_composite()
+                };
 
                 let other_type_id = building.types.get_id(field_type.name.as_str()).unwrap();
                 let other_type = &building.types[other_type_id];

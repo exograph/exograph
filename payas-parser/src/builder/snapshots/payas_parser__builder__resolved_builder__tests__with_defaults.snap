@@ -28,6 +28,14 @@ expression: normalized_system(&resolved)
           is_pk: false
           is_autoincrement: false
           type_hint: ~
+        - name: attending
+          typ:
+            List:
+              Plain: String
+          column_name: attending
+          is_pk: false
+          is_autoincrement: false
+          type_hint: ~
       table_name: Concert
       access:
         creation:

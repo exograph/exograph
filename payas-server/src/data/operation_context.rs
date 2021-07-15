@@ -44,11 +44,11 @@ impl<'a> OperationContext<'a> {
         self.predicates.alloc(predicate)
     }
 
-    pub fn literal_column<'b>(
-        &'b self,
-        value: &'b Value,
+    pub fn literal_column(
+        &'a self,
+        value: &'a Value,
         associated_column: &PhysicalColumn,
-    ) -> &'b Column<'b> {
+    ) -> &'a Column<'a> {
         let column = match value {
             Value::Variable(name) => {
                 let value = self
@@ -65,7 +65,14 @@ impl<'a> OperationContext<'a> {
             Value::Boolean(v) => Column::Literal(Box::new(*v)),
             Value::Null => Column::Null,
             Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from database to do a correct translation
-            Value::List(_) => todo!(),
+            Value::List(v) => {
+                let values: Vec<&'a Column<'a>> = v
+                    .iter()
+                    .map(|x| Self::literal_column(self, &x, associated_column))
+                    .collect();
+
+                Column::Array(values)
+            }
             Value::Object(_) => {
                 panic!()
             }
@@ -116,6 +123,7 @@ impl<'a> OperationContext<'a> {
             PhysicalColumnType::Timestamp { .. } => panic!(),
             PhysicalColumnType::Date => panic!(),
             PhysicalColumnType::Time { .. } => panic!(),
+            PhysicalColumnType::Array { .. } => panic!(),
         }
     }
 
@@ -157,7 +165,9 @@ impl<'a> OperationContext<'a> {
 
             PhysicalColumnType::String { .. } => Box::new(string.to_owned()),
 
-            _ => panic!(""),
+            PhysicalColumnType::Array { typ } => Self::cast_string(string, typ),
+
+            _ => panic!(),
         }
     }
 }
