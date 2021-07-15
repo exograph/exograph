@@ -586,6 +586,7 @@ mod tests {
           title: String 
           venue: Venue 
           attending: [String]
+          seating: [[Boolean]]
         }
         
         model Venue             {

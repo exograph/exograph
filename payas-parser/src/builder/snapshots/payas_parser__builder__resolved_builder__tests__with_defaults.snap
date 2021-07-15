@@ -36,6 +36,15 @@ expression: normalized_system(&resolved)
           is_pk: false
           is_autoincrement: false
           type_hint: ~
+        - name: seating
+          typ:
+            List:
+              List:
+                Plain: Boolean
+          column_name: seating
+          is_pk: false
+          is_autoincrement: false
+          type_hint: ~
       table_name: Concert
       access:
         creation:
