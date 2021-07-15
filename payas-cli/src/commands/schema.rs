@@ -3,7 +3,7 @@
 use anyhow::Result;
 use std::path::PathBuf;
 
-use payas_parser::{builder::system_builder, parser};
+use payas_parser::{builder, parser};
 
 use crate::schema;
 
@@ -17,7 +17,7 @@ pub struct CreateCommand {
 impl Command for CreateCommand {
     fn run(&self) -> Result<()> {
         let (ast_system, codemap) = parser::parse_file(&self.model);
-        let system = system_builder::build(ast_system, codemap);
+        let system = builder::build(ast_system, codemap)?;
 
         let schema_stmt = schema::schema_stmt(system.tables);
 

@@ -1,3 +1,4 @@
+use anyhow::Result;
 use codemap::CodeMap;
 use payas_model::{
     model::{
@@ -16,41 +17,39 @@ use crate::ast::ast_types::AstSystem;
 
 use super::{
     context_builder, mutation_builder, order_by_type_builder, predicate_builder, query_builder,
-    resolved_builder, type_builder,
+    resolved_builder::{self, ResolvedSystem},
+    type_builder,
 };
 
 use crate::typechecker;
 
-pub fn build(ast_system: AstSystem, codemap: CodeMap) -> ModelSystem {
-    let resolved_system = resolved_builder::build(typechecker::build(ast_system, codemap));
-    let resolved_types = resolved_system.types;
-    let resolved_contexts = resolved_system.contexts;
+/// Build a [ModelSystem] given an [AstSystem].
+///
+/// First, it type checks the input [AstSystem] to produce typechecked types.
+/// Next, it resolves the typechecked types. Resolving a type entails consuming annotations and finalizing information such as table and column names.
+/// Finally, it builds the model type through a series of builders.
+///
+/// Each builder implements the following pattern:
+/// - build_shallow: Build relevant shallow types.
+///   Each shallow type in marked as primitive and thus holds just the name and notes if it is an input type.
+/// - build_expanded: Fully expand the previously created shallow type as well as any other dependent objects (such as Query and Mutation)
+///
+/// This two pass method allows dealing with cycles.
+/// In the first shallow pass, each builder iterates over resolved types and create a placeholder model type.
+/// In the second expand pass, each builder again iterates over resolved types and expand each model type
+/// (this is done in place, so references created from elsewhere remain valid). Since all model
+/// types have been created in the first pass, the expansion pass can refer to other types (which may still be
+/// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
+pub fn build(ast_system: AstSystem, codemap: CodeMap) -> Result<ModelSystem> {
+    let typechecked_system = typechecker::build(ast_system, codemap)?;
+    let resolved_system = resolved_builder::build(typechecked_system)?;
 
     let mut building = SystemContextBuilding::default();
 
-    // First build shallow GQL types for model, queries, query parameters
-    type_builder::build_shallow(&resolved_types, &mut building);
-    context_builder::build_shallow(&resolved_contexts, &mut building);
+    build_shallow(&resolved_system, &mut building);
+    build_expanded(&resolved_system, &mut building);
 
-    // The next set of shallow builders need GQL types build above (the order of the next three is unimportant)
-    order_by_type_builder::build_shallow(&resolved_types, &mut building);
-    predicate_builder::build_shallow(&resolved_types, &mut building);
-    query_builder::build_shallow(&resolved_types, &mut building);
-
-    // Now expand the types
-    // First fully build the model types
-    type_builder::build_expanded(&resolved_types, &mut building);
-    context_builder::build_expanded(&resolved_contexts, &mut building);
-
-    // Which is then used to expand query and query parameters (the order of the next three is unimportant)
-    query_builder::build_expanded(&mut building);
-    order_by_type_builder::build_expanded(&mut building);
-    predicate_builder::build_expanded(&mut building);
-
-    // Finally build mutations. We don't need a shallow pass, since all the types (predicates, specifically) have been already built
-    mutation_builder::build(&resolved_types, &mut building);
-
-    ModelSystem {
+    Ok(ModelSystem {
         types: building.types.values,
         contexts: building.contexts.values,
         order_by_types: building.order_by_types.values,
@@ -59,7 +58,43 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> ModelSystem {
         tables: building.tables.values,
         mutation_types: building.mutation_types.values,
         create_mutations: building.mutations,
-    }
+    })
+}
+
+fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
+    let resolved_types = &resolved_system.types;
+    let resolved_contexts = &resolved_system.contexts;
+
+    // First build shallow GQL types for types, context, query parameters (order by and predicate)
+    // The order of next four is unimportant, since each of them simply create a shallow type without refering to anything
+    type_builder::build_shallow(resolved_types, building);
+    context_builder::build_shallow(resolved_contexts, building);
+    order_by_type_builder::build_shallow(resolved_types, building);
+    predicate_builder::build_shallow(resolved_types, building);
+
+    // The next two shallow builders need GQL types build above (the order of the next two is unimportant)
+    // Specifically, the OperationReturn type in Query and Mutation looks for the id for the return type, so requires
+    // type_builder::build_shallow to have run
+    query_builder::build_shallow(resolved_types, building);
+    mutation_builder::build_shallow(resolved_types, building);
+}
+
+fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
+    let resolved_types = &resolved_system.types;
+    let resolved_contexts = &resolved_system.contexts;
+
+    // First fully build the model types.
+    type_builder::build_expanded(resolved_types, building);
+    context_builder::build_expanded(resolved_contexts, building);
+
+    // Which is then used to expand query and query parameters (the order of the next three is unimportant) but must be executed
+    // after running type_builder::build_expanded
+    order_by_type_builder::build_expanded(building);
+    predicate_builder::build_expanded(building);
+
+    // Finally expand queries and mutations
+    query_builder::build_expanded(building);
+    mutation_builder::build_expanded(building);
 }
 
 #[derive(Debug, Default)]
@@ -182,6 +217,6 @@ mod tests {
 
     fn create_system(src: &str) -> ModelSystem {
         let (parsed, codemap) = parser::parse_str(src);
-        build(parsed, codemap)
+        build(parsed, codemap).unwrap()
     }
 }
