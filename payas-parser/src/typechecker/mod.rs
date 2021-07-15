@@ -10,7 +10,7 @@ mod relational_op;
 mod selection;
 mod typ;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 
@@ -56,7 +56,7 @@ fn populate_standard_env(env: &mut MappedArena<Type>) {
     env.add("Instant", Type::Primitive(PrimitiveType::Instant));
 }
 
-pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
+pub fn build(ast_system: AstSystem, codemap: CodeMap) -> Result<MappedArena<Type>> {
     let ast_types = &ast_system.models;
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
@@ -73,7 +73,7 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
             Err(_) => {
                 assert!(!errors.is_empty());
                 emitter.emit(&errors);
-                panic!();
+                return Err(anyhow!("Could not process input clay files"));
             }
         }
     }
@@ -100,9 +100,9 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> MappedArena<Type> {
         if !did_change {
             if !errors.is_empty() {
                 emitter.emit(&errors);
-                panic!();
+                return Err(anyhow!("Could not process input clay files"));
             } else {
-                return types_arena;
+                return Ok(types_arena);
             }
         }
     }
@@ -115,7 +115,7 @@ pub mod test_support {
 
     pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {
         let (parsed, codemap) = parse_str(src);
-        let checked = build(parsed, codemap);
+        let checked = build(parsed, codemap).unwrap();
 
         let mut entries: Vec<_> = checked
             .keys()
