@@ -1,0 +1,7 @@
+@table("chess_piece")
+model ChessPiece {
+  id: Int @pk @autoincrement
+  name: String
+  position_history: [String]
+  neighbor_info: [[String]]
+}
