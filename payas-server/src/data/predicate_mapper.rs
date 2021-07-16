@@ -66,6 +66,6 @@ fn operands<'a>(
     let system = &operation_context.query_context.system;
     let op_physical_column = &param.column_id.as_ref().unwrap().get_column(system);
     let op_key_column = operation_context.create_column(Column::Physical(op_physical_column));
-    let op_value_column = operation_context.literal_column(op_value, op_physical_column);
+    let op_value_column = operation_context.literal_column(op_value.clone(), op_physical_column);
     (op_key_column, op_value_column)
 }

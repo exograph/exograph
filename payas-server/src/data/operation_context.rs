@@ -44,28 +44,45 @@ impl<'a> OperationContext<'a> {
         self.predicates.alloc(predicate)
     }
 
-    pub fn literal_column<'b>(
-        &'b self,
-        value: &'b Value,
+    pub fn literal_column(
+        &'a self,
+
+        // TODO: we probably don't need to pass around `Value`
+        // this was originally `&Value` because we weren't creating any new `Value` objects in this function
+        // however, this is now a `Value` since we use `Value::from_json` to parse out a `Value` from JSON variables
+        // (this results in a new `Value`!)
+        // can we shift value ownership (maybe something like an `Rc<Value>`) to avoid unnecessary clones in
+        // data_param_mapper.rs and predicate_mapper.rs ?
+        value: Value,
+
         associated_column: &PhysicalColumn,
-    ) -> &'b Column<'b> {
-        let column = match value {
+    ) -> &'a Column<'a> {
+        let column: Column<'a> = match value {
             Value::Variable(name) => {
                 let value = self
                     .query_context
                     .variables
                     .and_then(|variable| variable.get(name.as_str()))
+                    .map(|value| async_graphql_value::Value::from_json(value.clone()).unwrap())
                     .unwrap();
-                Column::Literal(Self::cast_value(value, &associated_column.typ))
+
+                return Self::literal_column(self, value, associated_column);
             }
             Value::Number(number) => {
-                Column::Literal(Self::cast_number(number, &associated_column.typ))
+                Column::Literal(Self::cast_number(&number, &associated_column.typ))
             }
-            Value::String(v) => Column::Literal(Self::cast_string(v, &associated_column.typ)),
-            Value::Boolean(v) => Column::Literal(Box::new(*v)),
+            Value::String(v) => Column::Literal(Self::cast_string(&v, &associated_column.typ)),
+            Value::Boolean(v) => Column::Literal(Box::new(v)),
             Value::Null => Column::Null,
             Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from database to do a correct translation
-            Value::List(_) => todo!(),
+            Value::List(v) => {
+                let values: Vec<&'a Column<'a>> = v
+                    .into_iter()
+                    .map(|x| Self::literal_column(self, x, associated_column))
+                    .collect();
+
+                Column::Array(values)
+            }
             Value::Object(_) => {
                 panic!()
             }
@@ -96,26 +113,6 @@ impl<'a> OperationContext<'a> {
             Value::Object(value) => value.get(field_name),
             Value::Variable(name) => self.resolve_variable(name.as_str()),
             _ => None,
-        }
-    }
-
-    fn cast_value(
-        value: &serde_json::value::Value,
-        destination_type: &PhysicalColumnType,
-    ) -> Box<dyn SQLParam> {
-        match destination_type {
-            PhysicalColumnType::Int { bits } => match bits {
-                IntBits::_16 => Box::new(value.as_i64().unwrap() as i16),
-                IntBits::_32 => Box::new(value.as_i64().unwrap() as i32),
-                IntBits::_64 => Box::new(value.as_i64().unwrap() as i64),
-            },
-            PhysicalColumnType::String { length: _ } => {
-                Box::new(value.as_str().unwrap().to_string())
-            }
-            PhysicalColumnType::Boolean => Box::new(value.as_bool().unwrap()),
-            PhysicalColumnType::Timestamp { .. } => panic!(),
-            PhysicalColumnType::Date => panic!(),
-            PhysicalColumnType::Time { .. } => panic!(),
         }
     }
 
@@ -157,7 +154,9 @@ impl<'a> OperationContext<'a> {
 
             PhysicalColumnType::String { .. } => Box::new(string.to_owned()),
 
-            _ => panic!(""),
+            PhysicalColumnType::Array { typ } => Self::cast_string(string, typ),
+
+            _ => panic!(),
         }
     }
 }
