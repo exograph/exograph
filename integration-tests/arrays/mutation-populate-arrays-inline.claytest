@@ -1,8 +1,8 @@
 operation: |
-    mutation($user_history: [String]!) {
+    mutation {
         insertion: createChessPiece(data: {
             name: "rook",
-            position_history: $user_history,
+            position_history: ["Rh1", "Rh5", "Rd5"],
             neighbor_info: [
                 ["none", "none", "none"],
                 ["pawn", "rook", "none"],
@@ -14,10 +14,6 @@ operation: |
             neighbor_info
         }
     }
-variable: |
-  {
-    "user_history": ["Rh1", "Rh5", "Rd5"]
-  }
 response: |
     {
       "data": {
