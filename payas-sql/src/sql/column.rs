@@ -1,4 +1,5 @@
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
+use std::fmt::Write;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PhysicalColumn {
@@ -32,6 +33,9 @@ pub enum PhysicalColumnType {
     Date,
     Time {
         precision: Option<usize>,
+    },
+    Array {
+        typ: Box<PhysicalColumnType>,
     },
 }
 
@@ -156,6 +160,32 @@ impl PhysicalColumnType {
             }
 
             PhysicalColumnType::Date => "DATE".to_owned(),
+
+            PhysicalColumnType::Array { typ } => {
+                // 'unwrap' nested arrays all the way to the underlying primitive type
+
+                let mut underlying_typ = typ;
+                let mut dimensions = 1;
+
+                while let PhysicalColumnType::Array { typ } = &**underlying_typ {
+                    underlying_typ = &typ;
+                    dimensions += 1;
+                }
+
+                // build dimensions
+
+                let mut dimensions_part = String::new();
+
+                for _dim in 0..dimensions {
+                    write!(&mut dimensions_part, "[]").unwrap();
+                }
+
+                format!(
+                    "{}{}",
+                    underlying_typ.db_type(is_autoincrement),
+                    dimensions_part
+                )
+            }
         }
     }
 }
@@ -163,6 +193,7 @@ impl PhysicalColumnType {
 #[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
+    Array(Vec<&'a Column<'a>>),
     Literal(Box<dyn SQLParam>),
     JsonObject(Vec<(String, &'a Column<'a>)>),
     JsonAgg(&'a Column<'a>),
@@ -204,6 +235,20 @@ impl<'a> Expression for Column<'a> {
                     format!("\"{}\".\"{}\"", table_name, column_name)
                 };
                 ParameterBinding::new(col_stmt, vec![])
+            }
+            Column::Array(list) => {
+                let (elem_stmt, elem_params): (Vec<_>, Vec<_>) = list
+                    .iter()
+                    .map(|elem| {
+                        let elem_binding = elem.binding(expression_context);
+                        (elem_binding.stmt, elem_binding.params)
+                    })
+                    .unzip();
+
+                let stmt = format!("ARRAY[{}]", elem_stmt.join(", "));
+                let params = elem_params.into_iter().flatten().collect();
+
+                ParameterBinding::new(stmt, params)
             }
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();

@@ -46,7 +46,7 @@ pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> Str
 fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
     OrderByParameterType {
         name: match &model {
-            ResolvedType::Primitive(p) => get_parameter_type_name(p.name(), true),
+            ResolvedType::Primitive(p) => get_parameter_type_name(&p.name(), true),
             ResolvedType::Composite(c) => get_parameter_type_name(c.name.as_str(), false),
         },
         kind: OrderByParameterTypeKind::Composite { parameters: vec![] },
