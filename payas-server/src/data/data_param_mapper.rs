@@ -54,7 +54,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a Column<'a>, &'a Column<'a>)>> for MutationDataPa
                                     _ => argument_value,
                                 };
                                 let value_column = operation_context
-                                    .literal_column(argument_value, key_physical_column);
+                                    .literal_column(argument_value.clone(), key_physical_column);
                                 (key_column, value_column)
                             })
                     })
