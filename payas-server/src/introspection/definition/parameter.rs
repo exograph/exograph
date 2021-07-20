@@ -54,7 +54,11 @@ impl Parameter for MutationDataParameter {
     }
 
     fn type_modifier(&self) -> &GqlTypeModifier {
-        &GqlTypeModifier::NonNull
+        if self.array_input {
+            &GqlTypeModifier::List
+        } else {
+            &GqlTypeModifier::NonNull
+        }
     }
 }
 

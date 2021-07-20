@@ -1,7 +1,7 @@
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
 use std::fmt::Write;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
@@ -11,13 +11,13 @@ pub struct PhysicalColumn {
     pub references: Option<ColumnReferece>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ColumnReferece {
     pub table_name: String,
     pub column_name: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PhysicalColumnType {
     Int {
         bits: IntBits,
@@ -39,7 +39,7 @@ pub enum PhysicalColumnType {
     },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IntBits {
     _16,
     _32,
@@ -221,21 +221,21 @@ impl<'a> PartialEq for Column<'a> {
     }
 }
 
+impl<'a> Expression for PhysicalColumn {
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+        let col_stmt = if expression_context.plain {
+            format!("\"{}\"", self.column_name)
+        } else {
+            format!("\"{}\".\"{}\"", self.table_name, self.column_name)
+        };
+        ParameterBinding::new(col_stmt, vec![])
+    }
+}
+
 impl<'a> Expression for Column<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
-            Column::Physical(PhysicalColumn {
-                table_name,
-                column_name,
-                ..
-            }) => {
-                let col_stmt = if expression_context.plain {
-                    format!("\"{}\"", column_name)
-                } else {
-                    format!("\"{}\".\"{}\"", table_name, column_name)
-                };
-                ParameterBinding::new(col_stmt, vec![])
-            }
+            Column::Physical(pc) => pc.binding(expression_context),
             Column::Array(list) => {
                 let (elem_stmt, elem_params): (Vec<_>, Vec<_>) = list
                     .iter()
