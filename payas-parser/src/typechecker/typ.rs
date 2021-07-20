@@ -99,6 +99,7 @@ pub enum PrimitiveType {
     LocalTime,
     LocalDateTime,
     Instant,
+    Json,
     Array(Box<PrimitiveType>),
 }
 
@@ -116,6 +117,7 @@ impl PrimitiveType {
             PrimitiveType::LocalTime => "LocalTime",
             PrimitiveType::LocalDateTime => "LocalDateTime",
             PrimitiveType::Instant => "Instant",
+            PrimitiveType::Json => "Json",
             PrimitiveType::Array(_) => panic!(),
         }
         .to_owned()

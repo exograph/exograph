@@ -114,6 +114,11 @@ lazy_static! {
         supported_operators.insert("LocalDate", datetime_operators.clone());
         supported_operators.insert("Instant", datetime_operators.clone());
 
+        supported_operators.insert(
+            "Json",
+            Some(vec!["contains", "containedBy", "matchKey", "matchAllKeys", "matchAnyKey"])
+        );
+
         supported_operators
     };
 }
@@ -146,7 +151,7 @@ fn create_operator_filter_type_kind(
             PredicateParameterTypeKind::ImplicitEqual
         }
     } else {
-        todo!()
+        todo!("{} does not support any operators", scalar_model_type.name)
     } // type given is not listed in TYPE_OPERATORS?
 }
 

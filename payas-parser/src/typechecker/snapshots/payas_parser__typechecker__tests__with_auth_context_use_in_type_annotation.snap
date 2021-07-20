@@ -119,6 +119,8 @@ expression: types
   - Primitive: Instant
 - - Int
   - Primitive: Int
+- - Json
+  - Primitive: Json
 - - LocalDate
   - Primitive: LocalDate
 - - LocalDateTime
