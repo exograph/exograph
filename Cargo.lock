@@ -1779,6 +1779,8 @@ dependencies = [
  "openssl",
  "postgres",
  "postgres-openssl",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2008,6 +2010,8 @@ dependencies = [
  "chrono",
  "fallible-iterator",
  "postgres-protocol",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

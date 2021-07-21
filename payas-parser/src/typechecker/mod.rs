@@ -54,6 +54,7 @@ fn populate_standard_env(env: &mut MappedArena<Type>) {
     );
     env.add("LocalDate", Type::Primitive(PrimitiveType::LocalDate));
     env.add("Instant", Type::Primitive(PrimitiveType::Instant));
+    env.add("Json", Type::Primitive(PrimitiveType::Json));
 }
 
 pub fn build(ast_system: AstSystem, codemap: CodeMap) -> Result<MappedArena<Type>> {

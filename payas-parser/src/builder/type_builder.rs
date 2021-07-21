@@ -556,6 +556,7 @@ fn determine_column_type<'a>(
                 precision: None,
                 timezone: true,
             },
+            PrimitiveType::Json => PhysicalColumnType::Json,
             PrimitiveType::Array(_) => panic!(),
         }
     }

@@ -1,0 +1,37 @@
+operation: |
+  mutation($todo_data_1: Json!, $todo_data_2: Json!, $todo_data_3: Json!) {
+    entry1: createTodo(data: {
+      data: $todo_data_1
+    })
+
+    entry2: createTodo(data: {
+      data: $todo_data_2
+    })
+
+    entry3: createTodo(data: {
+      data: $todo_data_3
+    })
+  }
+variable: |
+  {
+    "todo_data_1": {
+      "date": "10/1",
+      "clean_room": true,
+      "days_left": 2,
+      "my_progress": 2.45 
+    },
+
+    "todo_data_2": {
+      "grab_groceries": {
+        "apples": true,
+        "oranges": false,
+        "milk": false
+      }
+    },
+
+    "todo_data_3": {
+      "date": "10/6",
+      "clean_room": false,
+      "refill_medication": false
+    }
+  }
