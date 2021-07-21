@@ -1,12 +1,13 @@
 use super::{
-    column::Column, predicate::Predicate, Expression, ExpressionContext, ParameterBinding,
-    PhysicalTable,
+    column::{Column, PhysicalColumn},
+    predicate::Predicate,
+    Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
 pub struct Update<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: &'a Predicate<'a>,
-    pub column_values: Vec<(&'a Column<'a>, &'a Column<'a>)>,
+    pub column_values: Vec<(&'a PhysicalColumn, &'a Column<'a>)>,
     pub returning: Vec<&'a Column<'a>>,
 }
 

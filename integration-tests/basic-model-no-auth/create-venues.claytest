@@ -1,0 +1,20 @@
+operation: |
+    mutation {
+      createVenues(data: [{name: "V1", published:true}, { published:false, name: "V2"}]) {
+        id
+      }
+    }
+response: |
+    {
+      "data": {
+        "createVenues": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ]
+      }
+    }
+    
