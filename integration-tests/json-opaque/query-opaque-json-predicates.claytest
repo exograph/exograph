@@ -1,0 +1,133 @@
+operation: |
+  query(
+    $selection: Json!, 
+    $superset: Json!, 
+    $single_key: String!, 
+    $any_keys: [String]!, 
+    $all_keys: [String]!
+  ) {
+    # entries where the `data` column contains $selection
+    contains_result: todos(where: {
+      data: {
+        contains: $selection
+      }
+    }) { data }
+
+    # entries where the `data` column is contained by $superset 
+    containedBy_result: todos(where: {
+      data: {
+        containedBy: $superset
+      }
+    }) { data }
+
+    # entries where the `data` column has a top-level key matching $single_key
+    matchKey_result: todos(where: {
+      data: {
+        matchKey: $single_key
+      }
+    }) { data }
+
+    # entries where the `data` column has a top-level key matching ANY string in $any_keys
+    matchAnyKey_result: todos(where: {
+      data: {
+        matchAnyKey: $any_keys
+      }
+    }) { data }
+
+    # entries where the `data` column has a top-level key for ALL strings in $all_keys
+    matchAllKeys_result: todos(where: {
+      data: {
+        matchAllKeys: $all_keys
+      }
+    }) { data }
+  }
+variable: |
+  {
+    "selection": { 
+      "grab_groceries": {
+        "apples": true
+      } 
+    },
+
+    "superset": {
+      "date": "10/1",
+      "clean_room": true,
+      "days_left": 2,
+      "my_progress": 2.45,
+      "extra_element": "extra" 
+    },
+
+    "single_key": "days_left",
+    "any_keys": ["my_progress", "refill_medication"],
+    "all_keys": ["date", "clean_room"]
+  }
+response: |
+  {
+    "data": {
+      "contains_result": [
+        {
+          "data": {
+            "grab_groceries": {
+              "milk": false,
+              "apples": true,
+              "oranges": false
+            }
+          }
+        }
+      ],
+      "containedBy_result": [
+        {
+          "data": {
+            "date": "10/1",
+            "days_left": 2,
+            "clean_room": true,
+            "my_progress": 2.45
+          }
+        }
+      ],
+      "matchKey_result": [
+        {
+          "data": {
+            "date": "10/1",
+            "days_left": 2,
+            "clean_room": true,
+            "my_progress": 2.45
+          }
+        }
+      ],
+      "matchAnyKey_result": [
+        {
+          "data": {
+            "date": "10/1",
+            "days_left": 2,
+            "clean_room": true,
+            "my_progress": 2.45
+          }
+        },
+        {
+          "data": {
+            "date": "10/6",
+            "clean_room": false,
+            "refill_medication": false
+          }
+        }
+      ],
+      "matchAllKeys_result": [
+        {
+          "data": {
+            "date": "10/1",
+            "days_left": 2,
+            "clean_room": true,
+            "my_progress": 2.45
+          }
+        },
+        {
+          "data": {
+            "date": "10/6",
+            "clean_room": false,
+            "refill_medication": false
+          }
+        }
+      ]
+    }
+  }

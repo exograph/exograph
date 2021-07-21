@@ -83,9 +83,7 @@ impl<'a> OperationContext<'a> {
 
                 Column::Array(values)
             }
-            Value::Object(_) => {
-                panic!()
-            }
+            Value::Object(_) => Column::Literal(Self::cast_value(&value, &associated_column.typ)),
         };
 
         self.create_column(column)
@@ -131,8 +129,6 @@ impl<'a> OperationContext<'a> {
     fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
         match destination_type {
             PhysicalColumnType::Timestamp { timezone, .. } => {
-                println!("{} {:?}", string, destination_type);
-
                 if *timezone {
                     let dt = DateTime::parse_from_rfc3339(string).unwrap();
                     Box::new(dt)
@@ -152,10 +148,18 @@ impl<'a> OperationContext<'a> {
                 Box::new(d)
             }
 
-            PhysicalColumnType::String { .. } => Box::new(string.to_owned()),
-
             PhysicalColumnType::Array { typ } => Self::cast_string(string, typ),
 
+            _ => Box::new(string.to_owned()),
+        }
+    }
+
+    fn cast_value(val: &Value, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+        match destination_type {
+            PhysicalColumnType::Json => {
+                let json_object = val.clone().into_json().unwrap();
+                Box::new(json_object)
+            }
             _ => panic!(),
         }
     }

@@ -73,6 +73,7 @@ expression: normalized_system(&resolved)
             - Primitive: Boolean
   - Primitive: Instant
   - Primitive: Int
+  - Primitive: Json
   - Primitive: LocalDate
   - Primitive: LocalDateTime
   - Primitive: LocalTime

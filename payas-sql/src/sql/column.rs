@@ -34,6 +34,7 @@ pub enum PhysicalColumnType {
     Time {
         precision: Option<usize>,
     },
+    Json,
     Array {
         typ: Box<PhysicalColumnType>,
     },
@@ -160,6 +161,8 @@ impl PhysicalColumnType {
             }
 
             PhysicalColumnType::Date => "DATE".to_owned(),
+
+            PhysicalColumnType::Json => "JSONB".to_owned(),
 
             PhysicalColumnType::Array { typ } => {
                 // 'unwrap' nested arrays all the way to the underlying primitive type
