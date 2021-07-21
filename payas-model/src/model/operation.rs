@@ -40,6 +40,7 @@ pub struct MutationDataParameter {
     pub name: String,
     pub type_name: String,
     pub type_id: Id<GqlType>,
+    pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
 }
 
 #[derive(Debug, Clone)]

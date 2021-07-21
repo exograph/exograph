@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     data::{
         query_resolver::QueryOperations,
@@ -8,7 +10,10 @@ use crate::{
 };
 
 use anyhow::{anyhow, bail, Result};
-use payas_model::model::{operation::*, predicate::PredicateParameter, types::*};
+use payas_model::{
+    model::{operation::*, predicate::PredicateParameter, types::*},
+    sql::column::PhysicalColumn,
+};
 
 use super::{
     operation_context::OperationContext,
@@ -84,10 +89,12 @@ fn create_operation<'a>(
 
     let (table, _, _) = return_type_info(mutation, operation_context);
 
-    let column_values = data_columns(data_param, &field.arguments, operation_context).unwrap();
+    let (column_names, column_values_seq) =
+        insertion_columns(data_param, &field.arguments, operation_context).unwrap();
 
     SQLOperation::Insert(table.insert(
-        column_values,
+        column_names,
+        column_values_seq,
         vec![operation_context.create_column(Column::Star)],
     ))
 }
@@ -161,11 +168,66 @@ fn update_operation<'a>(
     )))
 }
 
+fn insertion_columns<'a>(
+    data_param: &'a MutationDataParameter,
+    arguments: &'a Arguments,
+    operation_context: &'a OperationContext<'a>,
+) -> Option<(Vec<&'a PhysicalColumn>, Vec<Vec<&'a Column<'a>>>)> {
+    let argument_value = super::find_arg(arguments, &data_param.name);
+    argument_value.map(|argument_value| match argument_value {
+        Value::List(elems) => {
+            let unaligned: Vec<_> = elems
+                .iter()
+                .map(|elem| data_param.map_to_sql(elem, operation_context))
+                .collect();
+
+            // Here we may have each mapped element with potentially different set of columns.
+            // For example, if the input is {data: [{a: 1, b: 2}, {a: 3, c: 4}]}, we will have the 'a' key in both
+            // but only 'b' or 'c' keys in others. So we need align columns that can be supplied to an insert statement
+            // (a, b, c), [(1, 2, null), (3, null, 4)]
+            let mut all_keys = HashSet::new();
+            for item in unaligned.iter() {
+                for (key, _) in item.iter() {
+                    all_keys.insert(*key);
+                }
+            }
+
+            let keys_count = all_keys.len();
+
+            let mut result = Vec::with_capacity(unaligned.len());
+            for item in unaligned.into_iter() {
+                let mut row = Vec::with_capacity(keys_count);
+                for key in &all_keys {
+                    // TODO: We can probably do a better job than find(), maybe preconvert each row to a HashMap, but that too
+                    // will require an O(N) operations. Perhaps, data_param.map_to_sql() itself should build and return a HashMap
+                    let value = item
+                        .iter()
+                        .find(|entry| &entry.0 == key)
+                        .map(|e| e.1)
+                        .unwrap_or(&Column::Null);
+                    row.push(value);
+                }
+
+                result.push(row);
+            }
+
+            (all_keys.into_iter().collect(), result)
+        }
+        _ => {
+            let raw: (Vec<_>, Vec<_>) = data_param
+                .map_to_sql(argument_value, operation_context)
+                .into_iter()
+                .unzip();
+            (raw.0, vec![raw.1])
+        }
+    })
+}
+
 fn data_columns<'a>(
     data_param: &'a MutationDataParameter,
     arguments: &'a Arguments,
     operation_context: &'a OperationContext<'a>,
-) -> Option<Vec<(&'a Column<'a>, &'a Column<'a>)>> {
+) -> Option<Vec<(&'a PhysicalColumn, &'a Column<'a>)>> {
     let argument_value = super::find_arg(arguments, &data_param.name);
     argument_value.map(|argument_value| data_param.map_to_sql(argument_value, operation_context))
 }

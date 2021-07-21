@@ -42,12 +42,14 @@ impl PhysicalTable {
 
     pub fn insert<'a>(
         &'a self,
-        column_values: Vec<(&'a Column<'a>, &'a Column<'a>)>,
+        column_names: Vec<&'a PhysicalColumn>,
+        column_values_seq: Vec<Vec<&'a Column<'a>>>,
         returning: Vec<&'a Column>,
     ) -> Insert {
         Insert {
             table: self,
-            column_values,
+            column_names,
+            column_values_seq,
             returning,
         }
     }
@@ -66,7 +68,7 @@ impl PhysicalTable {
 
     pub fn update<'a>(
         &'a self,
-        column_values: Vec<(&'a Column<'a>, &'a Column<'a>)>,
+        column_values: Vec<(&'a PhysicalColumn, &'a Column<'a>)>,
         predicate: &'a Predicate<'a>,
         returning: Vec<&'a Column>,
     ) -> Update {

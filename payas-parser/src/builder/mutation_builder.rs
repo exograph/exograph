@@ -39,16 +39,18 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
         if let GqlTypeKind::Composite { .. } = &model_type.kind {
             let model_type_id = building.types.get_id(model_type.name.as_str()).unwrap();
-            let create_mutation = build_create_mutation(model_type_id, model_type, building);
 
-            building
-                .mutations
-                .add(&create_mutation.name.to_owned(), create_mutation);
-
-            for mutation in build_delete_mutations(model_type_id, model_type, building)
+            let mutations = build_create_mutation(model_type_id, model_type, building)
                 .into_iter()
-                .chain(build_update_mutations(model_type_id, model_type, building).into_iter())
-            {
+                .chain(
+                    build_delete_mutations(model_type_id, model_type, building)
+                        .into_iter()
+                        .chain(
+                            build_update_mutations(model_type_id, model_type, building).into_iter(),
+                        ),
+                );
+
+            for mutation in mutations {
                 building.mutations.add(&mutation.name.to_owned(), mutation);
             }
         }
@@ -80,26 +82,44 @@ fn build_create_mutation(
     model_type_id: Id<GqlType>,
     model_type: &GqlType,
     building: &SystemContextBuilding,
-) -> Mutation {
+) -> Vec<Mutation> {
     let data_param_type_name = input_creation_type_name(model_type.name.as_str());
     let data_param_type_id = building
         .mutation_types
         .get_id(&data_param_type_name)
         .unwrap();
 
-    Mutation {
+    let single_create = Mutation {
         name: format!("create{}", model_type.name.as_str()),
         kind: MutationKind::Create(MutationDataParameter {
             name: "data".to_string(),
-            type_name: data_param_type_name,
+            type_name: data_param_type_name.clone(),
             type_id: data_param_type_id,
+            array_input: false,
         }),
         return_type: OperationReturnType {
             type_id: model_type_id,
             type_name: model_type.name.clone(),
             type_modifier: GqlTypeModifier::Optional,
         },
-    }
+    };
+
+    let multi_create = Mutation {
+        name: format!("create{}s", model_type.name.as_str()),
+        kind: MutationKind::Create(MutationDataParameter {
+            name: "data".to_string(),
+            type_name: data_param_type_name,
+            type_id: data_param_type_id,
+            array_input: true,
+        }),
+        return_type: OperationReturnType {
+            type_id: model_type_id,
+            type_name: model_type.name.clone(),
+            type_modifier: GqlTypeModifier::List,
+        },
+    };
+
+    vec![single_create, multi_create]
 }
 
 fn build_delete_mutations(
@@ -150,6 +170,7 @@ fn build_update_mutations(
                 name: "data".to_string(),
                 type_name: data_param_type_name.clone(),
                 type_id: data_param_type_id,
+                array_input: false,
             },
             predicate_param: query_builder::pk_predicate_param(model_type, building),
         },
@@ -167,6 +188,7 @@ fn build_update_mutations(
                 name: "data".to_string(),
                 type_name: data_param_type_name,
                 type_id: data_param_type_id,
+                array_input: false,
             },
             predicate_param: query_builder::collection_predicate_param(model_type, building),
         },
