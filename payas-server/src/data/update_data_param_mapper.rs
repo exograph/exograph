@@ -4,7 +4,7 @@ use crate::sql::column::Column;
 
 use payas_model::{
     model::{
-        operation::MutationDataParameter, relation::GqlRelation, types::GqlTypeKind,
+        operation::UpdateDataParameter, relation::GqlRelation, types::GqlTypeKind,
         GqlCompositeTypeKind,
     },
     sql::column::PhysicalColumn,
@@ -12,7 +12,7 @@ use payas_model::{
 
 use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
 
-impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for MutationDataParameter {
+impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for UpdateDataParameter {
     fn map_to_sql(
         &'a self,
         argument: &'a Value,
@@ -45,12 +45,13 @@ impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for MutationDa
                                                 &column_id.get_column(system).column_name
                                             })
                                             .unwrap();
-                                        operation_context
-                                            .get_argument_field(
-                                                argument_value,
-                                                other_type_pk_field_name,
-                                            )
-                                            .unwrap()
+                                        match operation_context.get_argument_field(
+                                            argument_value,
+                                            other_type_pk_field_name,
+                                        ) {
+                                            Some(other_type_pk_arg) => other_type_pk_arg,
+                                            None => todo!(),
+                                        }
                                     }
                                     _ => argument_value,
                                 };

@@ -71,7 +71,7 @@ impl<'a> OperationResolver<'a> for Mutation {
 
 fn create_operation<'a>(
     mutation: &'a Mutation,
-    data_param: &'a MutationDataParameter,
+    data_param: &'a CreateDataParameter,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
 ) -> SQLOperation<'a> {
@@ -133,7 +133,7 @@ fn delete_operation<'a>(
 
 fn update_operation<'a>(
     mutation: &'a Mutation,
-    data_param: &'a MutationDataParameter,
+    data_param: &'a UpdateDataParameter,
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
@@ -159,7 +159,7 @@ fn update_operation<'a>(
     )
     .unwrap();
 
-    let column_values = data_columns(data_param, &field.arguments, operation_context).unwrap();
+    let column_values = update_columns(data_param, &field.arguments, operation_context).unwrap();
 
     Ok(SQLOperation::Update(table.update(
         column_values,
@@ -169,7 +169,7 @@ fn update_operation<'a>(
 }
 
 fn insertion_columns<'a>(
-    data_param: &'a MutationDataParameter,
+    data_param: &'a CreateDataParameter,
     arguments: &'a Arguments,
     operation_context: &'a OperationContext<'a>,
 ) -> Option<(Vec<&'a PhysicalColumn>, Vec<Vec<&'a Column<'a>>>)> {
@@ -223,8 +223,8 @@ fn insertion_columns<'a>(
     })
 }
 
-fn data_columns<'a>(
-    data_param: &'a MutationDataParameter,
+fn update_columns<'a>(
+    data_param: &'a UpdateDataParameter,
     arguments: &'a Arguments,
     operation_context: &'a OperationContext<'a>,
 ) -> Option<Vec<(&'a PhysicalColumn, &'a Column<'a>)>> {

@@ -11,7 +11,7 @@ use payas_model::model::{GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKi
 use crate::builder::query_builder;
 
 use payas_model::model::{
-    operation::{MutationDataParameter, MutationKind, OperationReturnType},
+    operation::{CreateDataParameter, MutationKind, OperationReturnType, UpdateDataParameter},
     types::GqlTypeModifier,
 };
 
@@ -91,7 +91,7 @@ fn build_create_mutation(
 
     let single_create = Mutation {
         name: format!("create{}", model_type.name.as_str()),
-        kind: MutationKind::Create(MutationDataParameter {
+        kind: MutationKind::Create(CreateDataParameter {
             name: "data".to_string(),
             type_name: data_param_type_name.clone(),
             type_id: data_param_type_id,
@@ -106,7 +106,7 @@ fn build_create_mutation(
 
     let multi_create = Mutation {
         name: format!("create{}s", model_type.name.as_str()),
-        kind: MutationKind::Create(MutationDataParameter {
+        kind: MutationKind::Create(CreateDataParameter {
             name: "data".to_string(),
             type_name: data_param_type_name,
             type_id: data_param_type_id,
@@ -166,11 +166,10 @@ fn build_update_mutations(
     let by_pk_update = Mutation {
         name: format!("update{}", model_type.name),
         kind: MutationKind::Update {
-            data_param: MutationDataParameter {
+            data_param: UpdateDataParameter {
                 name: "data".to_string(),
                 type_name: data_param_type_name.clone(),
                 type_id: data_param_type_id,
-                array_input: false,
             },
             predicate_param: query_builder::pk_predicate_param(model_type, building),
         },
@@ -184,11 +183,10 @@ fn build_update_mutations(
     let by_predicate_update = Mutation {
         name: format!("update{}s", model_type.name),
         kind: MutationKind::Update {
-            data_param: MutationDataParameter {
+            data_param: UpdateDataParameter {
                 name: "data".to_string(),
                 type_name: data_param_type_name,
                 type_id: data_param_type_id,
-                array_input: false,
             },
             predicate_param: query_builder::collection_predicate_param(model_type, building),
         },
