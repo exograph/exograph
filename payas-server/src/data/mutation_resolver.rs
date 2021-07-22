@@ -59,14 +59,19 @@ impl<'a> OperationResolver<'a> for Mutation {
         let select =
             selection_query.operation(&field.node, Predicate::True, operation_context, true)?;
 
-        // Use the same name as the table in the select clause, since that is the name `pk_query.operation` uses
-        let cte_name = format!("\"{}\"", select.underlying.name);
-
         Ok(SQLOperation::Cte(Cte {
-            ctes: vec![(cte_name, core_operation)],
+            ctes: core_operation,
             select,
         }))
     }
+}
+
+fn table_name(mutation: &Mutation, operation_context: &OperationContext) -> String {
+    mutation
+        .return_type
+        .physical_table(operation_context.query_context.system)
+        .name
+        .to_owned()
 }
 
 fn create_operation<'a>(
@@ -74,7 +79,7 @@ fn create_operation<'a>(
     data_param: &'a CreateDataParameter,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
-) -> SQLOperation<'a> {
+) -> Result<Vec<(String, SQLOperation<'a>)>> {
     let access_predicate = compute_access_predicate(
         &mutation.return_type,
         &OperationKind::Create,
@@ -83,8 +88,9 @@ fn create_operation<'a>(
 
     // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
     // See issue #69
-    if access_predicate != &Predicate::True {
-        panic!("Insufficient access to create"); // TODO: Report as GraphQL error
+    if access_predicate == &Predicate::False {
+        // Hard failure, no need to proceed to restrict the predicate in SQL
+        bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
     let (table, _, _) = return_type_info(mutation, operation_context);
@@ -92,11 +98,14 @@ fn create_operation<'a>(
     let (column_names, column_values_seq) =
         insertion_columns(data_param, &field.arguments, operation_context).unwrap();
 
-    SQLOperation::Insert(table.insert(
-        column_names,
-        column_values_seq,
-        vec![operation_context.create_column(Column::Star)],
-    ))
+    Ok(vec![(
+        table_name(mutation, operation_context),
+        SQLOperation::Insert(table.insert(
+            column_names,
+            column_values_seq,
+            vec![operation_context.create_column(Column::Star)],
+        )),
+    )])
 }
 
 fn delete_operation<'a>(
@@ -104,7 +113,7 @@ fn delete_operation<'a>(
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
-) -> SQLOperation<'a> {
+) -> Result<Vec<(String, SQLOperation<'a>)>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -115,7 +124,7 @@ fn delete_operation<'a>(
 
     if access_predicate == &Predicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
-        panic!("Insufficient access to delete"); // TODO: Report as GraphQL error
+        bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
     let predicate = super::compute_predicate(
@@ -125,10 +134,13 @@ fn delete_operation<'a>(
         operation_context,
     );
 
-    SQLOperation::Delete(table.delete(
-        predicate,
-        vec![operation_context.create_column(Column::Star)],
-    ))
+    Ok(vec![(
+        table_name(mutation, operation_context),
+        SQLOperation::Delete(table.delete(
+            predicate,
+            vec![operation_context.create_column(Column::Star)],
+        )),
+    )])
 }
 
 fn update_operation<'a>(
@@ -137,7 +149,7 @@ fn update_operation<'a>(
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
-) -> Result<SQLOperation<'a>> {
+) -> Result<Vec<(String, SQLOperation<'a>)>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -161,11 +173,14 @@ fn update_operation<'a>(
 
     let column_values = update_columns(data_param, &field.arguments, operation_context).unwrap();
 
-    Ok(SQLOperation::Update(table.update(
-        column_values,
-        predicate,
-        vec![operation_context.create_column(Column::Star)],
-    )))
+    Ok(vec![(
+        table_name(mutation, operation_context),
+        SQLOperation::Update(table.update(
+            column_values,
+            predicate,
+            vec![operation_context.create_column(Column::Star)],
+        )),
+    )])
 }
 
 fn insertion_columns<'a>(
