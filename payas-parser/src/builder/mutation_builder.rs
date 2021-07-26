@@ -1,6 +1,8 @@
 //! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
+use std::collections::HashSet;
+
 use id_arena::Id;
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::MappedArena;
@@ -15,13 +17,13 @@ use payas_model::model::{
     types::GqlTypeModifier,
 };
 
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
+use super::resolved_builder::{ResolvedCompositeType, ResolvedFieldType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 
 /// Build shallow mutaiton input types
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model_type) in models.iter() {
-        create_shallow_type(model_type, building);
+        create_shallow_type(model_type, models, building);
     }
 }
 
@@ -29,10 +31,8 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
         if let GqlTypeKind::Composite { .. } = &model_type.kind {
-            if let Some(expanded) = expanded_mutation_types(model_type, building) {
-                for (existing_id, expanded_kind) in expanded {
-                    building.mutation_types[existing_id].kind = expanded_kind;
-                }
+            for (existing_id, expanded_kind) in expanded_mutation_types(model_type, building) {
+                building.mutation_types[existing_id].kind = expanded_kind;
             }
         }
     }
@@ -57,15 +57,47 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
-fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
-    if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) = resolved_type {
+fn create_shallow_type(
+    resolved_type: &ResolvedType,
+    models: &MappedArena<ResolvedType>,
+    building: &mut SystemContextBuilding,
+) {
+    if let ResolvedType::Composite(ResolvedCompositeType {
+        name: contain_type_name,
+        fields,
+        ..
+    }) = resolved_type
+    {
         let mutation_type_names = [
-            input_creation_type_name(name),
-            input_update_type_name(name),
-            input_reference_type_name(name),
+            input_creation_type_name(contain_type_name, None),
+            input_update_type_name(contain_type_name),
+            input_reference_type_name(contain_type_name),
         ];
 
-        for mutation_type_name in mutation_type_names.iter() {
+        let nested_creation_type_names: Vec<_> = fields
+            .iter()
+            .filter_map(|field| {
+                let field_type = field.typ.deref(models);
+                // Create a nested input data type only if it refers to a many side
+                // So for Venue <-> [Concert] case, create only ConcertCreationInputFromVenue
+                if let ResolvedFieldType::List(_) = field.typ {
+                    if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) = field_type
+                    {
+                        Some(input_creation_type_name(name, Some(contain_type_name)))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        // TODO: Check why do we need to collect() above in order to chain() in the next line
+
+        for mutation_type_name in mutation_type_names
+            .iter()
+            .chain(nested_creation_type_names.iter())
+        {
             building.mutation_types.add(
                 mutation_type_name,
                 GqlType {
@@ -83,7 +115,7 @@ fn build_create_mutation(
     model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> Vec<Mutation> {
-    let data_param_type_name = input_creation_type_name(model_type.name.as_str());
+    let data_param_type_name = input_creation_type_name(model_type.name.as_str(), None);
     let data_param_type_id = building
         .mutation_types
         .get_id(&data_param_type_name)
@@ -200,8 +232,11 @@ fn build_update_mutations(
     vec![by_pk_update, by_predicate_update]
 }
 
-fn input_creation_type_name(model_type_name: &str) -> String {
-    format!("{}CreationInput", model_type_name)
+fn input_creation_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
+    match container_type {
+        Some(container_type) => format!("{}CreationInputFrom{}", model_type_name, container_type),
+        None => format!("{}CreationInput", model_type_name),
+    }
 }
 
 fn input_update_type_name(model_type_name: &str) -> String {
@@ -215,7 +250,9 @@ fn input_reference_type_name(model_type_name: &str) -> String {
 fn expanded_mutation_types(
     model_type: &GqlType,
     building: &SystemContextBuilding,
-) -> Option<[(Id<GqlType>, GqlTypeKind); 3]> {
+) -> Vec<(Id<GqlType>, GqlTypeKind)> {
+    let mut expanded_nested_mutation_types = HashSet::new();
+
     let existing_type = model_type;
 
     if let GqlTypeKind::Composite(GqlCompositeTypeKind {
@@ -228,7 +265,7 @@ fn expanded_mutation_types(
     {
         let model_fields = fields;
 
-        let reference_type = {
+        let reference_types = {
             let reference_type_fields = model_fields
                 .clone()
                 .into_iter()
@@ -241,7 +278,7 @@ fn expanded_mutation_types(
             let existing_type_name = input_reference_type_name(model_type.name.as_str());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-            (
+            vec![(
                 existing_type_id,
                 GqlTypeKind::Composite(GqlCompositeTypeKind {
                     fields: reference_type_fields,
@@ -250,34 +287,23 @@ fn expanded_mutation_types(
                     collection_query,
                     access: Access::restrictive(),
                 }),
-            )
+            )]
         };
 
-        let creation_type = {
-            let input_type_fields = compute_input_fields(model_fields, building, false);
+        let creation_types = expanded_creation_type(
+            model_type,
+            building,
+            vec![],
+            &mut expanded_nested_mutation_types,
+        );
 
-            let existing_type_name = input_creation_type_name(model_type.name.as_str());
-            let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
-
-            (
-                existing_type_id,
-                GqlTypeKind::Composite(GqlCompositeTypeKind {
-                    fields: input_type_fields,
-                    table_id,
-                    pk_query,
-                    collection_query,
-                    access: Access::restrictive(),
-                }),
-            )
-        };
-
-        let update_type = {
-            let input_type_fields = compute_input_fields(model_fields, building, true);
+        let update_types = {
+            let input_type_fields = compute_update_input_fields(&model_fields, building);
 
             let existing_type_name = input_update_type_name(model_type.name.as_str());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-            (
+            vec![(
                 existing_type_id,
                 GqlTypeKind::Composite(GqlCompositeTypeKind {
                     fields: input_type_fields,
@@ -286,19 +312,159 @@ fn expanded_mutation_types(
                     collection_query,
                     access: Access::restrictive(),
                 }),
-            )
+            )]
         };
 
-        Some([reference_type, creation_type, update_type])
+        vec![reference_types, creation_types, update_types]
+            .into_iter()
+            .flatten()
+            .collect()
     } else {
-        None
+        vec![]
     }
 }
 
-fn compute_input_fields(
+fn expanded_creation_type(
+    model_type: &GqlType,
+    building: &SystemContextBuilding,
+    container_types: Vec<&str>,
+    expanded_nested_mutation_types: &mut HashSet<String>,
+) -> Vec<(Id<GqlType>, GqlTypeKind)> {
+    if let GqlTypeKind::Composite(GqlCompositeTypeKind {
+        ref fields,
+        table_id,
+        pk_query,
+        collection_query,
+        ..
+    }) = model_type.kind
+    {
+        let model_fields = fields;
+
+        let mut new_container_types = container_types.clone();
+        new_container_types.push(&model_type.name);
+
+        let mut creation_types: Vec<_> = model_fields
+            .iter()
+            .flat_map(|field| {
+                let field_type = field.typ.base_type(&building.types.values);
+                if let (GqlTypeKind::Composite(_), GqlFieldType::List(_)) =
+                    (&field_type.kind, &field.typ)
+                {
+                    let existing_type_name = input_creation_type_name(
+                        &field_type.name,
+                        container_types.first().map(|s| *s),
+                    );
+
+                    // Protect against going into an infinite loop when cycles are present
+                    if !expanded_nested_mutation_types.contains(&existing_type_name) {
+                        expanded_nested_mutation_types.insert(existing_type_name);
+                        expanded_creation_type(
+                            field_type,
+                            building,
+                            new_container_types.clone(),
+                            expanded_nested_mutation_types,
+                        )
+                    } else {
+                        vec![]
+                    }
+                } else {
+                    vec![]
+                }
+            })
+            .collect();
+
+        let existing_type_name = input_creation_type_name(
+            model_type.name.as_str(),
+            container_types.first().map(|s| *s),
+        );
+        let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+
+        let input_type_fields =
+            compute_create_input_fields(&model_fields, new_container_types, building);
+        creation_types.push((
+            existing_type_id,
+            GqlTypeKind::Composite(GqlCompositeTypeKind {
+                fields: input_type_fields,
+                table_id,
+                pk_query,
+                collection_query,
+                access: Access::restrictive(),
+            }),
+        ));
+
+        creation_types
+    } else {
+        vec![]
+    }
+}
+
+fn compute_create_input_fields(
+    gql_fields: &[GqlField],
+    container_types: Vec<&str>,
+    building: &SystemContextBuilding,
+) -> Vec<GqlField> {
+    gql_fields
+        .iter()
+        .flat_map(|field| match &field.relation {
+            GqlRelation::Pk { .. } => None, // TODO: Make this decistion based on autoincrement/uuid etc of the id
+            GqlRelation::Scalar { .. } => Some(GqlField {
+                typ: field.typ.clone(),
+                ..field.clone()
+            }),
+            GqlRelation::OneToMany { .. } => {
+                let field_type_name = input_creation_type_name(
+                    &field.typ.type_name(),
+                    container_types.first().map(|s| *s),
+                );
+                let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
+                let field_plain_type = GqlFieldType::Reference {
+                    type_name: field_type_name,
+                    type_id: field_type_id,
+                };
+                let field_type = GqlFieldType::List(Box::new(field_plain_type));
+
+                if container_types.contains(&field.typ.type_name()) {
+                    None
+                } else {
+                    Some(GqlField {
+                        name: field.name.clone(),
+                        typ: field_type,
+                        relation: field.relation.clone(),
+                    })
+                }
+            }
+            GqlRelation::ManyToOne { .. } => {
+                let field_type_name = input_reference_type_name(&field.typ.type_name());
+                let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
+                let field_plain_type = GqlFieldType::Reference {
+                    type_name: field_type_name,
+                    type_id: field_type_id,
+                };
+                let field_type = match field.typ {
+                    GqlFieldType::Reference { .. } => field_plain_type,
+                    GqlFieldType::Optional(_) => GqlFieldType::Optional(Box::new(field_plain_type)),
+                    GqlFieldType::List(_) => GqlFieldType::List(Box::new(field_plain_type)),
+                };
+
+                if container_types.contains(&field.typ.type_name()) {
+                    None
+                } else {
+                    Some(GqlField {
+                        name: field.name.clone(),
+                        typ: field_type,
+                        relation: field.relation.clone(),
+                    })
+                }
+            }
+        })
+        .collect()
+}
+
+// TODO: After many-to-many impl is complete, reexamine if we can share more code between compute_create_input_fields
+// and the following function
+fn compute_update_input_fields(
     gql_fields: &[GqlField],
     building: &SystemContextBuilding,
-    force_optional_field_modifier: bool,
 ) -> Vec<GqlField> {
     gql_fields
         .iter()
@@ -320,14 +486,9 @@ fn compute_input_fields(
                     GqlFieldType::Optional(_) => GqlFieldType::Optional(Box::new(field_plain_type)),
                     GqlFieldType::List(_) => GqlFieldType::List(Box::new(field_plain_type)),
                 };
-                let field_type = if force_optional_field_modifier {
-                    field_type.optional()
-                } else {
-                    field_type
-                };
                 Some(GqlField {
                     name: field.name.clone(),
-                    typ: field_type,
+                    typ: field_type.optional(),
                     relation: field.relation.clone(),
                 })
             }
