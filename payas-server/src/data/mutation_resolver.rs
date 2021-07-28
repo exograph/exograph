@@ -99,7 +99,7 @@ fn create_operation<'a>(
         insertion_columns(data_param, &field.arguments, operation_context).unwrap();
 
     Ok(vec![(
-        table_name(mutation, operation_context),
+        table.name.clone(),
         SQLOperation::Insert(table.insert(
             column_names,
             column_values_seq,
@@ -202,9 +202,7 @@ fn insertion_columns<'a>(
             // (a, b, c), [(1, 2, null), (3, null, 4)]
             let mut all_keys = HashSet::new();
             for item in unaligned.iter() {
-                for (key, _) in item.iter() {
-                    all_keys.insert(*key);
-                }
+                all_keys.extend(item.column_values.keys())
             }
 
             let keys_count = all_keys.len();
@@ -213,12 +211,10 @@ fn insertion_columns<'a>(
             for item in unaligned.into_iter() {
                 let mut row = Vec::with_capacity(keys_count);
                 for key in &all_keys {
-                    // TODO: We can probably do a better job than find(), maybe preconvert each row to a HashMap, but that too
-                    // will require an O(N) operations. Perhaps, data_param.map_to_sql() itself should build and return a HashMap
                     let value = item
-                        .iter()
-                        .find(|entry| &entry.0 == key)
-                        .map(|e| e.1)
+                        .column_values
+                        .get(key)
+                        .map(|value| *value)
                         .unwrap_or(&Column::Null);
                     row.push(value);
                 }
@@ -231,6 +227,7 @@ fn insertion_columns<'a>(
         _ => {
             let raw: (Vec<_>, Vec<_>) = data_param
                 .map_to_sql(argument_value, operation_context)
+                .column_values
                 .into_iter()
                 .unzip();
             (raw.0, vec![raw.1])

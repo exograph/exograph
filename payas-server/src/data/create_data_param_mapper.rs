@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_graphql_value::Value;
 
 use crate::sql::column::Column;
@@ -12,12 +14,16 @@ use payas_model::{
 
 use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
 
-impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for CreateDataParameter {
+pub struct InsertionRow<'a> {
+    pub column_values: HashMap<&'a PhysicalColumn, &'a Column<'a>>,
+}
+
+impl<'a> SQLMapper<'a, InsertionRow<'a>> for CreateDataParameter {
     fn map_to_sql(
         &'a self,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> Vec<(&PhysicalColumn, &Column)> {
+    ) -> InsertionRow<'a> {
         let system = &operation_context.query_context.system;
         let model_type = &system.mutation_types[self.type_id];
 
@@ -26,7 +32,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for CreateData
             _ => argument,
         };
 
-        match &model_type.kind {
+        let row = match &model_type.kind {
             GqlTypeKind::Primitive => panic!(),
             GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
                 .iter()
@@ -38,6 +44,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for CreateData
                                 let key_column = key_column_id.get_column(system);
                                 let argument_value = match &field.relation {
                                     GqlRelation::ManyToOne { other_type_id, .. } => {
+                                        // TODO: Include enough information in the ManyToOne relation to not need this much logic here
                                         let other_type = &system.types[*other_type_id];
                                         let other_type_pk_field_name = other_type
                                             .pk_column_id()
@@ -62,6 +69,8 @@ impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for CreateData
                     })
                 })
                 .collect(),
-        }
+        };
+
+        InsertionRow { column_values: row }
     }
 }
