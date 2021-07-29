@@ -75,7 +75,7 @@ impl<'a> QueryOperations<'a> for Query {
             .items
             .iter()
             .flat_map(
-                |selection| match map_selection(self, &selection.node, &operation_context) {
+                |selection| match map_selection(self, &selection.node, operation_context) {
                     Ok(s) => s.into_iter().map(Ok).collect(),
                     Err(err) => vec![Err(err)],
                 },
@@ -123,7 +123,7 @@ impl<'a> QueryOperations<'a> for Query {
 
         let table = self
             .return_type
-            .physical_table(&operation_context.query_context.system);
+            .physical_table(operation_context.query_context.system);
 
         Ok(match self.return_type.type_modifier {
             GqlTypeModifier::Optional | GqlTypeModifier::NonNull => {
@@ -144,11 +144,11 @@ fn map_selection<'a>(
     operation_context: &'a OperationContext<'a>,
 ) -> Result<Vec<(String, &'a Column<'a>)>> {
     match selection {
-        Selection::Field(field) => Ok(vec![map_field(query, &field.node, &operation_context)?]),
+        Selection::Field(field) => Ok(vec![map_field(query, &field.node, operation_context)?]),
         Selection::FragmentSpread(fragment_spread) => {
             let fragment_definition = operation_context
                 .query_context
-                .fragment_definition(&fragment_spread)
+                .fragment_definition(fragment_spread)
                 .unwrap();
             fragment_definition
                 .selection_set
@@ -156,7 +156,7 @@ fn map_selection<'a>(
                 .items
                 .iter()
                 .flat_map(|selection| {
-                    match map_selection(query, &selection.node, &operation_context) {
+                    match map_selection(query, &selection.node, operation_context) {
                         Ok(s) => s.into_iter().map(Ok).collect(),
                         Err(err) => vec![Err(err)],
                     }

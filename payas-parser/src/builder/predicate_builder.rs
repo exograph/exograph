@@ -51,7 +51,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
         let param_type_name = get_parameter_type_name(&model_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        let new_kind = expand_type(&model_type, building);
+        let new_kind = expand_type(model_type, building);
         building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
@@ -162,7 +162,7 @@ fn create_composite_filter_type_kind(
     let parameters = fields
         .iter()
         .map(|field| {
-            let param_type_name = get_parameter_type_name(&field.typ.type_name());
+            let param_type_name = get_parameter_type_name(field.typ.type_name());
             PredicateParameter {
                 name: field.name.to_string(),
                 type_name: param_type_name.clone(),

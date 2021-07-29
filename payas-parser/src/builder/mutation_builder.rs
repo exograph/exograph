@@ -60,14 +60,14 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
     if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) = resolved_type {
         let mutation_type_names = [
-            input_creation_type_name(&name),
-            input_update_type_name(&name),
-            input_reference_type_name(&name),
+            input_creation_type_name(name),
+            input_update_type_name(name),
+            input_reference_type_name(name),
         ];
 
         for mutation_type_name in mutation_type_names.iter() {
             building.mutation_types.add(
-                &mutation_type_name,
+                mutation_type_name,
                 GqlType {
                     name: mutation_type_name.to_string(),
                     kind: GqlTypeKind::Primitive,
@@ -256,7 +256,7 @@ fn expanded_mutation_types(
         };
 
         let creation_type = {
-            let input_type_fields = compute_input_fields(&model_fields, building, false);
+            let input_type_fields = compute_input_fields(model_fields, building, false);
 
             let existing_type_name = input_creation_type_name(model_type.name.as_str());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
@@ -274,7 +274,7 @@ fn expanded_mutation_types(
         };
 
         let update_type = {
-            let input_type_fields = compute_input_fields(&model_fields, building, true);
+            let input_type_fields = compute_input_fields(model_fields, building, true);
 
             let existing_type_name = input_update_type_name(model_type.name.as_str());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
@@ -311,7 +311,7 @@ fn compute_input_fields(
                 ..field.clone()
             }),
             GqlRelation::ManyToOne { .. } | GqlRelation::OneToMany { .. } => {
-                let field_type_name = input_reference_type_name(&field.typ.type_name());
+                let field_type_name = input_reference_type_name(field.typ.type_name());
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = GqlFieldType::Reference {
                     type_name: field_type_name,

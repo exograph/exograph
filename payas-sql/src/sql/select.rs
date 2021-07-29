@@ -53,7 +53,7 @@ impl<'a> Expression for Select<'a> {
                     )
                 }
             },
-            Some(ref predicate) => {
+            Some(predicate) => {
                 let predicate_binding = predicate.binding(expression_context);
                 params.extend(predicate_binding.params);
 

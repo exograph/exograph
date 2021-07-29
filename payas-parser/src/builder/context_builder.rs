@@ -68,7 +68,7 @@ fn create_context_field_type(
 ) -> GqlFieldType {
     match field_type {
         ResolvedFieldType::Plain(type_name) => GqlFieldType::Reference {
-            type_id: building.types.get_id(&type_name).unwrap(),
+            type_id: building.types.get_id(type_name).unwrap(),
             type_name: type_name.clone(),
         },
         ResolvedFieldType::Optional(underlying) => {

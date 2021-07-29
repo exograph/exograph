@@ -342,7 +342,7 @@ fn create_field(
         match field_type {
             ResolvedFieldType::Plain(r) => GqlFieldType::Reference {
                 type_name: r.clone(),
-                type_id: building.types.get_id(&r).unwrap(),
+                type_id: building.types.get_id(r).unwrap(),
             },
             ResolvedFieldType::Optional(underlying) => {
                 GqlFieldType::Optional(Box::new(create_field_type(underlying, building)))
@@ -369,13 +369,13 @@ fn create_column(
         ResolvedFieldType::Plain(type_name) => {
             // Either a scalar (primitive) or a many-to-one relatioship with another table
 
-            let field_type = env.get_by_key(&type_name).unwrap();
+            let field_type = env.get_by_key(type_name).unwrap();
 
             match field_type {
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
                     table_name: table_name.to_string(),
                     column_name: field.column_name.clone(),
-                    typ: determine_column_type(pt, &field),
+                    typ: determine_column_type(pt, field),
                     is_pk: field.is_pk,
                     is_autoincrement: if field.is_autoincrement {
                         assert!(
@@ -397,7 +397,7 @@ fn create_column(
                         column_name: field.column_name.clone(),
                         typ: determine_column_type(
                             &other_pk_field.typ.deref(env).as_primitive(),
-                            &field,
+                            field,
                         ),
                         is_pk: false,
                         is_autoincrement: false,
@@ -423,7 +423,7 @@ fn create_column(
             }
 
             let underlying_pt = if let ResolvedFieldType::Plain(name) = &**underlying_typ {
-                if let Some(ResolvedType::Primitive(pt)) = env.get_by_key(&name) {
+                if let Some(ResolvedType::Primitive(pt)) = env.get_by_key(name) {
                     Some(pt)
                 } else {
                     None
@@ -470,9 +470,9 @@ fn determine_column_type<'a>(
 
     if let Some(hint) = &field.type_hint {
         match hint {
-            ResolvedTypeHint::ExplicitHint { dbtype } => PhysicalColumnType::from_string(dbtype),
+            ResolvedTypeHint::Explicit { dbtype } => PhysicalColumnType::from_string(dbtype),
 
-            ResolvedTypeHint::IntHint { bits, range } => {
+            ResolvedTypeHint::Int { bits, range } => {
                 assert!(matches!(pt, PrimitiveType::Int));
 
                 // determine the proper sized type to use
@@ -516,7 +516,7 @@ fn determine_column_type<'a>(
                 }
             }
 
-            ResolvedTypeHint::StringHint { length } => {
+            ResolvedTypeHint::String { length } => {
                 assert!(matches!(pt, PrimitiveType::String));
 
                 // length hint provided, use it
@@ -525,7 +525,7 @@ fn determine_column_type<'a>(
                 }
             }
 
-            ResolvedTypeHint::DateTimeHint { precision } => match pt {
+            ResolvedTypeHint::DateTime { precision } => match pt {
                 PrimitiveType::LocalTime => PhysicalColumnType::Time {
                     precision: Some(*precision),
                 },
@@ -617,7 +617,7 @@ fn create_relation(
             }
 
             ResolvedFieldType::Plain(type_name) => {
-                let field_type = env.get_by_key(&type_name).unwrap();
+                let field_type = env.get_by_key(type_name).unwrap();
 
                 match field_type {
                     ResolvedType::Primitive(_) => {

@@ -28,7 +28,7 @@ pub fn create_query_context<'a>(
             operation_name,
             fragment_definitions: document.fragments,
             variables,
-            schema: &schema,
+            schema,
             system,
             database,
             request_context,
