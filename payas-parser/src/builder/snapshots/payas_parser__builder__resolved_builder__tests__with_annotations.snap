@@ -14,7 +14,7 @@ expression: normalized_system(&resolved)
           is_pk: true
           is_autoincrement: true
           type_hint:
-            ExplicitHint:
+            Explicit:
               dbtype: BIGINT
         - name: title
           typ:
@@ -23,7 +23,7 @@ expression: normalized_system(&resolved)
           is_pk: false
           is_autoincrement: false
           type_hint:
-            StringHint:
+            String:
               length: 12
         - name: venue
           typ:
@@ -39,7 +39,7 @@ expression: normalized_system(&resolved)
           is_pk: false
           is_autoincrement: false
           type_hint:
-            IntHint:
+            Int:
               bits: ~
               range:
                 - 0
@@ -51,7 +51,7 @@ expression: normalized_system(&resolved)
           is_pk: false
           is_autoincrement: false
           type_hint:
-            DateTimeHint:
+            DateTime:
               precision: 4
       table_name: custom_concerts
       access:
@@ -110,7 +110,7 @@ expression: normalized_system(&resolved)
           is_pk: false
           is_autoincrement: false
           type_hint:
-            IntHint:
+            Int:
               bits: 16
               range: ~
       table_name: venues
