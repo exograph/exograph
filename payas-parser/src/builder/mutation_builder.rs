@@ -298,7 +298,7 @@ fn expanded_mutation_types(
         );
 
         let update_types = {
-            let input_type_fields = compute_update_input_fields(&model_fields, building);
+            let input_type_fields = compute_update_input_fields(model_fields, building);
 
             let existing_type_name = input_update_type_name(model_type.name.as_str());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
@@ -352,7 +352,7 @@ fn expanded_creation_type(
                 {
                     let existing_type_name = input_creation_type_name(
                         &field_type.name,
-                        container_types.first().map(|s| *s),
+                        container_types.first().copied(),
                     );
 
                     // Protect against going into an infinite loop when cycles are present
@@ -373,14 +373,12 @@ fn expanded_creation_type(
             })
             .collect();
 
-        let existing_type_name = input_creation_type_name(
-            model_type.name.as_str(),
-            container_types.first().map(|s| *s),
-        );
+        let existing_type_name =
+            input_creation_type_name(model_type.name.as_str(), container_types.first().copied());
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
         let input_type_fields =
-            compute_create_input_fields(&model_fields, new_container_types, building);
+            compute_create_input_fields(model_fields, new_container_types, building);
         creation_types.push((
             existing_type_id,
             GqlTypeKind::Composite(GqlCompositeTypeKind {
@@ -413,8 +411,8 @@ fn compute_create_input_fields(
             }),
             GqlRelation::OneToMany { .. } => {
                 let field_type_name = input_creation_type_name(
-                    &field.typ.type_name(),
-                    container_types.first().map(|s| *s),
+                    field.typ.type_name(),
+                    container_types.first().copied(),
                 );
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = GqlFieldType::Reference {
@@ -434,7 +432,7 @@ fn compute_create_input_fields(
                 }
             }
             GqlRelation::ManyToOne { .. } => {
-                let field_type_name = input_reference_type_name(&field.typ.type_name());
+                let field_type_name = input_reference_type_name(field.typ.type_name());
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = GqlFieldType::Reference {
                     type_name: field_type_name,

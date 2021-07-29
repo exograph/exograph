@@ -214,7 +214,7 @@ fn insertion_columns<'a>(
                     let value = item
                         .column_values
                         .get(key)
-                        .map(|value| *value)
+                        .copied()
                         .unwrap_or(&Column::Null);
                     row.push(value);
                 }
