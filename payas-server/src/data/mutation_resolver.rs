@@ -47,8 +47,8 @@ impl<'a> OperationResolver<'a> for Mutation {
                 predicate_param,
                 &field.node,
                 operation_context,
-            )?,
-        };
+            ),
+        }?;
 
         let (_, pk_query, collection_query) = return_type_info(self, operation_context);
         let selection_query = match &self.return_type.type_modifier {
