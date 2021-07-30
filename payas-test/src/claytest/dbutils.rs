@@ -58,7 +58,6 @@ pub fn createdb_psql(dbname: &str, url: &str) -> Result<(ConnectionString, DbUse
 
     // add db
     connectionparams += &("/".to_string() + dbname);
-    //println!("{}", connectionparams);
 
     // set a common timezone for tests for consistency
     connectionparams += "?options=-c%20TimeZone%3DUTC%2B00"; // -c TimeZone=UTC+00
