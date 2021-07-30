@@ -1,3 +1,5 @@
+use crate::spec::{ModelStatement, SQLStatement};
+
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,6 +51,7 @@ impl PhysicalColumnType {
             "SMALLSERIAL" => PhysicalColumnType::Int { bits: IntBits::_16 },
             "SMALLINT" => PhysicalColumnType::Int { bits: IntBits::_16 },
             "INT" => PhysicalColumnType::Int { bits: IntBits::_32 },
+            "INTEGER" => PhysicalColumnType::Int { bits: IntBits::_32 },
             "SERIAL" => PhysicalColumnType::Int { bits: IntBits::_32 },
             "BIGINT" => PhysicalColumnType::Int { bits: IntBits::_64 },
             "BIGSERIAL" => PhysicalColumnType::Int { bits: IntBits::_64 },
@@ -93,7 +96,58 @@ impl PhysicalColumnType {
         }
     }
 
-    pub fn db_type(&self, is_autoincrement: bool) -> String {
+    pub fn to_model(&self) -> ModelStatement {
+        let (stmt, annotations) = match self {
+            PhysicalColumnType::Int { bits } => (
+                "Int",
+                match bits {
+                    IntBits::_16 => " @bits(16)",
+                    IntBits::_32 => "",
+                    IntBits::_64 => " @bits(64)",
+                }
+                .to_string(),
+            ),
+
+            PhysicalColumnType::String { length } => (
+                "String",
+                match length {
+                    Some(length) => format!(" @length({})", length),
+                    None => "".to_string(),
+                },
+            ),
+
+            PhysicalColumnType::Boolean => ("Boolean", "".to_string()),
+
+            PhysicalColumnType::Timestamp {
+                timezone,
+                precision,
+            } => (
+                if *timezone {
+                    "Instant"
+                } else {
+                    "LocalDateTime"
+                },
+                match precision {
+                    Some(precision) => format!(" @precision({})", precision),
+                    None => "".to_string(),
+                },
+            ),
+
+            PhysicalColumnType::Time { precision } => (
+                "LocalTime",
+                match precision {
+                    Some(precision) => format!(" @precision({})", precision),
+                    None => "".to_string(),
+                },
+            ),
+
+            PhysicalColumnType::Date => ("LocalDate", "".to_string()),
+        };
+
+        format!("{}{}", stmt, annotations)
+    }
+
+    pub fn to_sql(&self, is_autoincrement: bool) -> SQLStatement {
         match self {
             PhysicalColumnType::Int { bits } => {
                 if is_autoincrement {

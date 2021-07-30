@@ -49,12 +49,6 @@ fn main() {
                     SubCommand::with_name("import")
                         .about("Create claytip model file based on a database schema")
                         .arg(
-                            Arg::with_name("database")
-                                .help("Database source (postgres, git)")
-                                .required(true)
-                                .index(1),
-                        )
-                        .arg(
                             Arg::with_name("output")
                                 .help("Claytip model output file")
                                 .short("o")
@@ -144,7 +138,6 @@ fn main() {
         }),
         ("model", Some(matches)) => match matches.subcommand() {
             ("import", Some(matches)) => Box::new(model::ImportCommand {
-                database: matches.value_of("database").unwrap().to_owned(),
                 output: PathBuf::from(matches.value_of("output").unwrap()),
             }),
             _ => panic!("Unhandled command name"),
