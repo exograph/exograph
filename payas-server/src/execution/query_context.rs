@@ -118,9 +118,7 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
                 };
                 Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
             }
-            _ => query_context
-                .system
-                .resolve(&field, &self.ty, query_context),
+            _ => query_context.system.resolve(field, &self.ty, query_context),
         }
     }
 }

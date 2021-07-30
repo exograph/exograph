@@ -45,7 +45,7 @@ impl Drop for TestfileContext {
         // drop the database
         if let Some(dburl) = &self.dburl {
             if let Some(dbname) = &self.dbname {
-                if let e @ Err(_) = dropdb_psql(&dbname, &dburl) {
+                if let e @ Err(_) = dropdb_psql(dbname, dburl) {
                     println!("Error dropping {} using {}: {:?}", dbname, dburl, e)
                 }
             }
@@ -71,8 +71,8 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
         .collect();
 
     // create a database
-    dropdb_psql(&dbname, &bootstrap_dburl).ok(); // clear any existing databases
-    let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &bootstrap_dburl)?;
+    dropdb_psql(dbname, &bootstrap_dburl).ok(); // clear any existing databases
+    let (dburl_for_clay, dbusername) = createdb_psql(dbname, &bootstrap_dburl)?;
     ctx.dburl = Some(dburl_for_clay.clone());
 
     // create the schema
@@ -135,7 +135,7 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     println!("{} Testing ...", log_prefix);
     let result = run_operation(
         &endpoint,
-        &testfile.test_operation.as_ref().unwrap(),
+        testfile.test_operation.as_ref().unwrap(),
         &jwtsecret,
         &dburl_for_clay,
     );
