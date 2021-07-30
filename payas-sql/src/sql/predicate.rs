@@ -15,9 +15,16 @@ pub enum Predicate<'a> {
     Not(Box<Predicate<'a>>),
 
     // string predicates
-    Like(&'a Column<'a>, &'a Column<'a>),
-    StartsWith(&'a Column<'a>, &'a Column<'a>),
-    EndsWith(&'a Column<'a>, &'a Column<'a>),
+    StringLike(&'a Column<'a>, &'a Column<'a>),
+    StringStartsWith(&'a Column<'a>, &'a Column<'a>),
+    StringEndsWith(&'a Column<'a>, &'a Column<'a>),
+
+    // json predicates
+    JsonContains(&'a Column<'a>, &'a Column<'a>),
+    JsonContainedBy(&'a Column<'a>, &'a Column<'a>),
+    JsonMatchKey(&'a Column<'a>, &'a Column<'a>),
+    JsonMatchAnyKey(&'a Column<'a>, &'a Column<'a>),
+    JsonMatchAllKeys(&'a Column<'a>, &'a Column<'a>),
 }
 
 impl<'a> Predicate<'a> {
@@ -29,9 +36,14 @@ impl<'a> Predicate<'a> {
             "lte" => Predicate::Lte(lhs, &rhs),
             "gt" => Predicate::Gt(lhs, &rhs),
             "gte" => Predicate::Gte(lhs, &rhs),
-            "like" => Predicate::Like(lhs, &rhs),
-            "startsWith" => Predicate::StartsWith(lhs, &rhs),
-            "endsWith" => Predicate::EndsWith(lhs, &rhs),
+            "like" => Predicate::StringLike(lhs, &rhs),
+            "startsWith" => Predicate::StringStartsWith(lhs, &rhs),
+            "endsWith" => Predicate::StringEndsWith(lhs, &rhs),
+            "contains" => Predicate::JsonContains(lhs, &rhs),
+            "containedBy" => Predicate::JsonContainedBy(lhs, &rhs),
+            "matchKey" => Predicate::JsonMatchKey(lhs, &rhs),
+            "matchAnyKey" => Predicate::JsonMatchAnyKey(lhs, &rhs),
+            "matchAllKeys" => Predicate::JsonMatchAllKeys(lhs, &rhs),
             _ => todo!(),
         }
     }
@@ -104,21 +116,46 @@ impl<'a> Expression for Predicate<'a> {
                 let expr = predicate.binding(expression_context);
                 ParameterBinding::new(format!("NOT {}", expr.stmt), expr.params)
             }
-            Predicate::Like(column1, column2) => {
+            Predicate::StringLike(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
                     format!("{} LIKE {}", stmt1, stmt2)
                 })
             }
             // we use the postgres concat operator (||) in order to handle both literals
             // and column references
-            Predicate::StartsWith(column1, column2) => {
+            Predicate::StringStartsWith(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
                     format!("{} LIKE {} || '%'", stmt1, stmt2)
                 })
             }
-            Predicate::EndsWith(column1, column2) => {
+            Predicate::StringEndsWith(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
                     format!("{} LIKE '%' || {}", stmt1, stmt2)
+                })
+            }
+            Predicate::JsonContains(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} @> {}", stmt1, stmt2)
+                })
+            }
+            Predicate::JsonContainedBy(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} <@ {}", stmt1, stmt2)
+                })
+            }
+            Predicate::JsonMatchKey(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} ? {}", stmt1, stmt2)
+                })
+            }
+            Predicate::JsonMatchAnyKey(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} ?| {}", stmt1, stmt2)
+                })
+            }
+            Predicate::JsonMatchAllKeys(column1, column2) => {
+                combine(*column1, *column2, expression_context, |stmt1, stmt2| {
+                    format!("{} ?& {}", stmt1, stmt2)
                 })
             }
         }
@@ -235,7 +272,7 @@ mod tests {
 
         // like
         let mut expression_context = ExpressionContext::default();
-        let like_predicate = Predicate::Like(&title_col, &title_value_col);
+        let like_predicate = Predicate::StringLike(&title_col, &title_value_col);
         assert_binding!(
             &like_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE $1"#,
@@ -244,7 +281,7 @@ mod tests {
 
         // startsWith
         let mut expression_context = ExpressionContext::default();
-        let starts_with_predicate = Predicate::StartsWith(&title_col, &title_value_col);
+        let starts_with_predicate = Predicate::StringStartsWith(&title_col, &title_value_col);
         assert_binding!(
             &starts_with_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE $1 || '%'"#,
@@ -253,11 +290,93 @@ mod tests {
 
         // endsWith
         let mut expression_context = ExpressionContext::default();
-        let ends_with_predicate = Predicate::EndsWith(&title_col, &title_value_col);
+        let ends_with_predicate = Predicate::StringEndsWith(&title_col, &title_value_col);
         assert_binding!(
             &ends_with_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE '%' || $1"#,
             "utawaku"
+        );
+    }
+
+    #[test]
+    fn json_predicates() {
+        //// Setup
+
+        let json_col = PhysicalColumn {
+            table_name: "card".to_string(),
+            column_name: "data".to_string(),
+            typ: PhysicalColumnType::Json,
+            is_pk: false,
+            is_autoincrement: false,
+            references: None,
+        };
+        let json_col = Column::Physical(&json_col);
+
+        let json_value: Box<serde_json::Value> = Box::new(
+            serde_json::from_str(
+                r#"
+            {
+                "a": 1,
+                "b": 2,
+                "c": 3
+            }
+            "#,
+            )
+            .unwrap(),
+        );
+        let json_value_col = Column::Literal(json_value.clone());
+
+        let json_key_list: Box<serde_json::Value> =
+            Box::new(serde_json::from_str(r#"["a", "b"]"#).unwrap());
+        let json_key_list_col = Column::Literal(json_key_list.clone());
+
+        let json_key_col = Column::Literal(Box::new("a"));
+
+        //// Test bindings starting now
+
+        // contains
+        let mut expression_context = ExpressionContext::default();
+        let contains_predicate = Predicate::JsonContains(&json_col, &json_value_col);
+        assert_binding!(
+            &contains_predicate.binding(&mut expression_context),
+            r#""card"."data" @> $1"#,
+            *json_value
+        );
+
+        // containedBy
+        let mut expression_context = ExpressionContext::default();
+        let contained_by_predicate = Predicate::JsonContainedBy(&json_col, &json_value_col);
+        assert_binding!(
+            &contained_by_predicate.binding(&mut expression_context),
+            r#""card"."data" <@ $1"#,
+            *json_value
+        );
+
+        // matchKey
+        let mut expression_context = ExpressionContext::default();
+        let match_key_predicate = Predicate::JsonMatchKey(&json_col, &json_key_col);
+        assert_binding!(
+            &match_key_predicate.binding(&mut expression_context),
+            r#""card"."data" ? $1"#,
+            "a"
+        );
+
+        // matchAnyKey
+        let mut expression_context = ExpressionContext::default();
+        let match_any_key_predicate = Predicate::JsonMatchAnyKey(&json_col, &json_key_list_col);
+        assert_binding!(
+            &match_any_key_predicate.binding(&mut expression_context),
+            r#""card"."data" ?| $1"#,
+            *json_key_list
+        );
+
+        // matchAllKeys
+        let mut expression_context = ExpressionContext::default();
+        let match_all_keys_predicate = Predicate::JsonMatchAllKeys(&json_col, &json_key_list_col);
+        assert_binding!(
+            &match_all_keys_predicate.binding(&mut expression_context),
+            r#""card"."data" ?& $1"#,
+            *json_key_list
         );
     }
 }

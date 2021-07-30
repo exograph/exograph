@@ -1,0 +1,51 @@
+operation: |
+    mutation($user_history: [String]!, $piece_neighbors: [[String]]!) {
+        insertion: createChessPiece(data: {
+            name: "rook",
+            position_history: $user_history,
+            neighbor_info: $piece_neighbors
+        }) {
+            name
+            position_history
+            neighbor_info
+        }
+    }
+variable: |
+  {
+    "user_history": ["Rh1", "Rh5", "Rd5"],
+    "piece_neighbors": [
+      ["none", "none", "none"],
+      ["pawn", "rook", "none"],
+      ["none", "none", "none"]
+    ]
+  }
+response: |
+    {
+      "data": {
+        "insertion": {
+          "name": "rook",
+          "position_history": [
+            "Rh1",
+            "Rh5",
+            "Rd5"
+          ],
+          "neighbor_info": [
+            [
+              "none",
+              "none",
+              "none"
+            ],
+            [
+              "pawn",
+              "rook",
+              "none"
+            ],
+            [
+              "none",
+              "none",
+              "none"
+            ]
+          ]
+        }
+      }
+    }

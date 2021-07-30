@@ -1,0 +1,5 @@
+@table("todos")
+model Todo {
+  id: Int @pk @autoincrement
+  data: Json
+}

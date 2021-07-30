@@ -20,7 +20,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
                 let type_name = pt.name();
                 // One for queries such as {id: 1}, where the type name is the same as the model type name (in this case `Int`)
                 building.predicate_types.add(
-                    type_name,
+                    &type_name,
                     PredicateParameterType {
                         name: type_name.to_string(),
                         kind: PredicateParameterTypeKind::ImplicitEqual {},
@@ -28,7 +28,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
                 );
 
                 // Another one for operators
-                let param_type_name = get_parameter_type_name(type_name);
+                let param_type_name = get_parameter_type_name(&type_name);
                 building.predicate_types.add(
                     &param_type_name,
                     PredicateParameterType {
@@ -114,6 +114,11 @@ lazy_static! {
         supported_operators.insert("LocalDate", datetime_operators.clone());
         supported_operators.insert("Instant", datetime_operators.clone());
 
+        supported_operators.insert(
+            "Json",
+            Some(vec!["contains", "containedBy", "matchKey", "matchAllKeys", "matchAnyKey"])
+        );
+
         supported_operators
     };
 }
@@ -146,7 +151,7 @@ fn create_operator_filter_type_kind(
             PredicateParameterTypeKind::ImplicitEqual
         }
     } else {
-        todo!()
+        todo!("{} does not support any operators", scalar_model_type.name)
     } // type given is not listed in TYPE_OPERATORS?
 }
 

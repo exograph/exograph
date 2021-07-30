@@ -14,5 +14,8 @@ postgres-openssl = "0.5.0"
 chrono = "0.4.19"
 id-arena = "2.2.1"
 
+[dev-dependencies]
+serde = ""
+serde_json = ""
 
 [lib]

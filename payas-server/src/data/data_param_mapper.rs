@@ -2,19 +2,22 @@ use async_graphql_value::Value;
 
 use crate::sql::column::Column;
 
-use payas_model::model::{
-    operation::MutationDataParameter, relation::GqlRelation, types::GqlTypeKind,
-    GqlCompositeTypeKind,
+use payas_model::{
+    model::{
+        operation::MutationDataParameter, relation::GqlRelation, types::GqlTypeKind,
+        GqlCompositeTypeKind,
+    },
+    sql::column::PhysicalColumn,
 };
 
 use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
 
-impl<'a> SQLMapper<'a, Vec<(&'a Column<'a>, &'a Column<'a>)>> for MutationDataParameter {
+impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for MutationDataParameter {
     fn map_to_sql(
         &'a self,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> Vec<(&Column, &Column)> {
+    ) -> Vec<(&PhysicalColumn, &Column)> {
         let system = &operation_context.query_context.system;
         let model_type = &system.mutation_types[self.type_id];
 
@@ -32,9 +35,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a Column<'a>, &'a Column<'a>)>> for MutationDataPa
                         operation_context
                             .get_argument_field(argument, &field.name)
                             .map(|argument_value| {
-                                let key_physical_column = key_column_id.get_column(system);
-                                let key_column = operation_context
-                                    .create_column(Column::Physical(&key_physical_column));
+                                let key_column = key_column_id.get_column(system);
                                 let argument_value = match &field.relation {
                                     GqlRelation::ManyToOne { other_type_id, .. } => {
                                         let other_type = &system.types[*other_type_id];
@@ -54,7 +55,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a Column<'a>, &'a Column<'a>)>> for MutationDataPa
                                     _ => argument_value,
                                 };
                                 let value_column = operation_context
-                                    .literal_column(argument_value, key_physical_column);
+                                    .literal_column(argument_value.clone(), key_column);
                                 (key_column, value_column)
                             })
                     })

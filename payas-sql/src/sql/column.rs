@@ -1,8 +1,9 @@
 use crate::spec::{ModelStatement, SQLStatement};
 
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
+use std::fmt::Write;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
@@ -12,13 +13,13 @@ pub struct PhysicalColumn {
     pub references: Option<ColumnReferece>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ColumnReferece {
     pub table_name: String,
     pub column_name: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PhysicalColumnType {
     Int {
         bits: IntBits,
@@ -35,9 +36,13 @@ pub enum PhysicalColumnType {
     Time {
         precision: Option<usize>,
     },
+    Json,
+    Array {
+        typ: Box<PhysicalColumnType>,
+    },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IntBits {
     _16,
     _32,
@@ -210,6 +215,34 @@ impl PhysicalColumnType {
             }
 
             PhysicalColumnType::Date => "DATE".to_owned(),
+
+            PhysicalColumnType::Json => "JSONB".to_owned(),
+
+            PhysicalColumnType::Array { typ } => {
+                // 'unwrap' nested arrays all the way to the underlying primitive type
+
+                let mut underlying_typ = typ;
+                let mut dimensions = 1;
+
+                while let PhysicalColumnType::Array { typ } = &**underlying_typ {
+                    underlying_typ = &typ;
+                    dimensions += 1;
+                }
+
+                // build dimensions
+
+                let mut dimensions_part = String::new();
+
+                for _dim in 0..dimensions {
+                    write!(&mut dimensions_part, "[]").unwrap();
+                }
+
+                format!(
+                    "{}{}",
+                    underlying_typ.db_type(is_autoincrement),
+                    dimensions_part
+                )
+            }
         }
     }
 }
@@ -217,6 +250,7 @@ impl PhysicalColumnType {
 #[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
+    Array(Vec<&'a Column<'a>>),
     Literal(Box<dyn SQLParam>),
     JsonObject(Vec<(String, &'a Column<'a>)>),
     JsonAgg(&'a Column<'a>),
@@ -244,20 +278,34 @@ impl<'a> PartialEq for Column<'a> {
     }
 }
 
+impl<'a> Expression for PhysicalColumn {
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+        let col_stmt = if expression_context.plain {
+            format!("\"{}\"", self.column_name)
+        } else {
+            format!("\"{}\".\"{}\"", self.table_name, self.column_name)
+        };
+        ParameterBinding::new(col_stmt, vec![])
+    }
+}
+
 impl<'a> Expression for Column<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
-            Column::Physical(PhysicalColumn {
-                table_name,
-                column_name,
-                ..
-            }) => {
-                let col_stmt = if expression_context.plain {
-                    format!("\"{}\"", column_name)
-                } else {
-                    format!("\"{}\".\"{}\"", table_name, column_name)
-                };
-                ParameterBinding::new(col_stmt, vec![])
+            Column::Physical(pc) => pc.binding(expression_context),
+            Column::Array(list) => {
+                let (elem_stmt, elem_params): (Vec<_>, Vec<_>) = list
+                    .iter()
+                    .map(|elem| {
+                        let elem_binding = elem.binding(expression_context);
+                        (elem_binding.stmt, elem_binding.params)
+                    })
+                    .unzip();
+
+                let stmt = format!("ARRAY[{}]", elem_stmt.join(", "));
+                let params = elem_params.into_iter().flatten().collect();
+
+                ParameterBinding::new(stmt, params)
             }
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();

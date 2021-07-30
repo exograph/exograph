@@ -99,10 +99,16 @@ pub enum PrimitiveType {
     LocalTime,
     LocalDateTime,
     Instant,
+    Json,
+    Array(Box<PrimitiveType>),
 }
 
 impl PrimitiveType {
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> String {
+        if let PrimitiveType::Array(pt) = &self {
+            return format!("[{}]", pt.name());
+        }
+
         match &self {
             PrimitiveType::Int => "Int",
             PrimitiveType::String => "String",
@@ -111,12 +117,15 @@ impl PrimitiveType {
             PrimitiveType::LocalTime => "LocalTime",
             PrimitiveType::LocalDateTime => "LocalDateTime",
             PrimitiveType::Instant => "Instant",
+            PrimitiveType::Json => "Json",
+            PrimitiveType::Array(_) => panic!(),
         }
+        .to_owned()
     }
 }
 
 impl Display for PrimitiveType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.name())
+        f.write_str(&self.name())
     }
 }

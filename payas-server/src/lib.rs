@@ -10,7 +10,7 @@ use anyhow::{bail, Result};
 
 use introspection::schema::Schema;
 use payas_model::{model::system::ModelSystem, sql::database::Database};
-use payas_parser::builder::system_builder;
+use payas_parser::builder;
 use serde_json::Value;
 
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
@@ -166,7 +166,7 @@ pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
         let model_file = model_file.as_ref().to_path_buf();
 
         let (ast_system, codemap) = parser::parse_file(model_file);
-        let system = system_builder::build(ast_system, codemap);
+        let system = builder::build(ast_system, codemap)?;
         let schema = Schema::new(&system);
 
         let database = Database::from_env()?; // TODO: error handling here
