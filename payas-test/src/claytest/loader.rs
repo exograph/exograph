@@ -119,7 +119,7 @@ fn load_testfiles_from_dir_(
             // recurse and try to find one
             let mut parsed = vec![];
             for directory in directories {
-                let parsed_testfiles = load_testfiles_from_dir_(&directory, None, &init_ops)?;
+                let parsed_testfiles = load_testfiles_from_dir_(&directory, None, init_ops)?;
                 parsed.extend(parsed_testfiles);
             }
 
@@ -141,7 +141,7 @@ fn load_testfiles_from_dir_(
     let mut testfiles = vec![];
 
     for testfile_path in claytest_files.iter() {
-        let mut testfile = parse_testfile(&testfile_path)?;
+        let mut testfile = parse_testfile(testfile_path)?;
 
         // annotate testfile with our prefix and our init operations collection
         testfile.name = format!("{}/{}", prefix, testfile.name);

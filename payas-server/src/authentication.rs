@@ -32,7 +32,7 @@ impl JwtAuthenticator {
     // TODO: Expand to work with extenral authentication providers such as auth0 (that require JWK support)
     fn validate_jwt(&self, token: &str) -> Result<TokenData<Value>, jsonwebtoken::errors::Error> {
         decode::<Value>(
-            &token,
+            token,
             &DecodingKey::from_secret(self.secret.as_ref()),
             &Validation::default(),
         )

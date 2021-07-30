@@ -87,7 +87,7 @@ pub fn pk_predicate_param(
         type_name: pk_field.typ.type_name().to_string(),
         type_id: building
             .predicate_types
-            .get_id(&pk_field.typ.type_name())
+            .get_id(pk_field.typ.type_name())
             .unwrap(),
         type_modifier: GqlTypeModifier::NonNull,
         column_id: pk_field.relation.self_column(),

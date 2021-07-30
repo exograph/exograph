@@ -75,7 +75,7 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                             false
                         }
                     } else {
-                        let context_type = env.get_by_key(&i).and_then(|t| match t {
+                        let context_type = env.get_by_key(i).and_then(|t| match t {
                             Type::Composite(c) if c.kind == CompositeTypeKind::Context => Some(c),
                             _ => None,
                         });

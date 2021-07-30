@@ -83,7 +83,7 @@ impl Parameter for GqlField {
 impl<T: Parameter> InputValueProvider for T {
     fn input_value(&self) -> InputValueDefinition {
         let field_type =
-            util::default_positioned(util::value_type(&self.type_name(), &self.type_modifier()));
+            util::default_positioned(util::value_type(self.type_name(), self.type_modifier()));
 
         InputValueDefinition {
             description: None,
@@ -99,7 +99,7 @@ impl<T: Parameter> InputValueProvider for T {
 impl InputValueProvider for &dyn Parameter {
     fn input_value(&self) -> InputValueDefinition {
         let field_type =
-            util::default_positioned(util::value_type(&self.type_name(), &self.type_modifier()));
+            util::default_positioned(util::value_type(self.type_name(), self.type_modifier()));
 
         InputValueDefinition {
             description: None,
