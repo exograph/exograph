@@ -76,9 +76,9 @@ impl<'a> OperationContext<'a> {
             Value::Null => Column::Null,
             Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from database to do a correct translation
             Value::List(v) => {
-                let values: Vec<&'a Column<'a>> = v
+                let values = v
                     .into_iter()
-                    .map(|x| Self::literal_column(self, x, associated_column))
+                    .map(|elem| Self::literal_column(self, elem, associated_column))
                     .collect();
 
                 Column::Array(values)

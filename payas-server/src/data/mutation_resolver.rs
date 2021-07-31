@@ -14,6 +14,7 @@ use payas_model::{
 };
 
 use super::{
+    create_data_param_mapper::InsertionInfo,
     operation_context::OperationContext,
     sql_mapper::{OperationResolver, SQLMapper},
 };
@@ -91,19 +92,10 @@ fn create_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let (table, _, _) = return_type_info(mutation, operation_context);
+    let info = insertion_info(data_param, &field.arguments, operation_context).unwrap();
+    let ops = info.operation(operation_context);
 
-    let (column_names, column_values_seq) =
-        insertion_columns(data_param, &field.arguments, operation_context).unwrap();
-
-    Ok(vec![(
-        table.name.clone(),
-        SQLOperation::Insert(table.insert(
-            column_names,
-            column_values_seq,
-            vec![operation_context.create_column(Column::Star)],
-        )),
-    )])
+    Ok(ops)
 }
 
 fn delete_operation<'a>(
@@ -181,16 +173,16 @@ fn update_operation<'a>(
     )])
 }
 
-fn insertion_columns<'a>(
+fn insertion_info<'a>(
     data_param: &'a CreateDataParameter,
     arguments: &'a Arguments,
     operation_context: &'a OperationContext<'a>,
-) -> Option<(Vec<&'a PhysicalColumn>, Vec<Vec<&'a Column<'a>>>)> {
+) -> Option<InsertionInfo<'a>> {
     let system = &operation_context.query_context.system;
-    let model_type = &system.mutation_types[data_param.type_id];
+    let input_type = &system.mutation_types[data_param.type_id];
 
     let argument_value = super::find_arg(arguments, &data_param.name);
-    argument_value.map(|argument_value| model_type.map_to_sql(argument_value, operation_context))
+    argument_value.map(|argument_value| input_type.map_to_sql(argument_value, operation_context))
 }
 
 fn update_columns<'a>(
