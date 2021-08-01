@@ -94,17 +94,17 @@ pub enum ResolvedFieldType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedTypeHint {
-    ExplicitHint {
+    Explicit {
         dbtype: String,
     },
-    IntHint {
+    Int {
         bits: Option<usize>,
         range: Option<(i64, i64)>,
     },
-    StringHint {
+    String {
         length: usize,
     },
-    DateTimeHint {
+    DateTime {
         precision: usize,
     },
 }
@@ -142,7 +142,7 @@ impl ResolvedType {
 impl ResolvedFieldType {
     pub fn deref<'a>(&'a self, types: &'a MappedArena<ResolvedType>) -> &'a ResolvedType {
         match self {
-            ResolvedFieldType::Plain(name) => types.get_by_key(&name).unwrap(),
+            ResolvedFieldType::Plain(name) => types.get_by_key(name).unwrap(),
             ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
                 underlying.deref(types)
             }
@@ -281,11 +281,11 @@ fn build_expanded_persistent_type(
             .iter()
             .map(|field| ResolvedField {
                 name: field.name.clone(),
-                typ: resolve_field_type(&field.typ, &types, resolved_types),
-                column_name: compute_column_name(ct, field, &types),
+                typ: resolve_field_type(&field.typ, types, resolved_types),
+                column_name: compute_column_name(ct, field, types),
                 is_pk: field.annotations.pk().is_some(),
                 is_autoincrement: field.annotations.auto_increment().is_some(),
-                type_hint: build_type_hint(&field),
+                type_hint: build_type_hint(field),
             })
             .collect();
 
@@ -350,7 +350,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
         };
 
         if bits_hint.is_some() || range_hint.is_some() {
-            Some(ResolvedTypeHint::IntHint {
+            Some(ResolvedTypeHint::Int {
                 bits: bits_hint,
                 range: range_hint,
             })
@@ -367,14 +367,14 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
             .map(|a| a.value().as_number() as usize);
 
         // None if there is no length annotation
-        length_annotation.map(|length| ResolvedTypeHint::StringHint { length })
+        length_annotation.map(|length| ResolvedTypeHint::String { length })
     };
 
     let datetime_hint = {
         field
             .annotations
             .precision()
-            .map(|a| ResolvedTypeHint::DateTimeHint {
+            .map(|a| ResolvedTypeHint::DateTime {
                 precision: a.value().as_number() as usize,
             })
     };
@@ -385,7 +385,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
         .annotations
         .db_type()
         .map(|a| a.value().as_string())
-        .map(|s| ResolvedTypeHint::ExplicitHint {
+        .map(|s| ResolvedTypeHint::Explicit {
             dbtype: s.to_uppercase(),
         });
 
@@ -443,7 +443,7 @@ fn build_expanded_context_type(
         .iter()
         .map(|field| ResolvedContextField {
             name: field.name.clone(),
-            typ: resolve_field_type(&field.typ, &types, resolved_types),
+            typ: resolve_field_type(&field.typ, types, resolved_types),
             source: extract_context_source(field),
         })
         .collect();
@@ -506,7 +506,7 @@ fn compute_column_name(
                 format!("{}_id", enclosing_type.name.to_ascii_lowercase())
             }
             Type::Reference(type_name) => {
-                let field_type = types.get_by_key(&type_name).unwrap();
+                let field_type = types.get_by_key(type_name).unwrap();
                 match field_type {
                     Type::Composite(_) => format!("{}_id", field.name),
                     _ => field.name.clone(),

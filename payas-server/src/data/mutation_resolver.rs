@@ -33,10 +33,10 @@ impl<'a> OperationResolver<'a> for Mutation {
     ) -> Result<SQLOperation<'a>> {
         let core_operation = match &self.kind {
             MutationKind::Create(data_param) => {
-                create_operation(self, data_param, &field.node, &operation_context)
+                create_operation(self, data_param, &field.node, operation_context)
             }
             MutationKind::Delete(predicate_param) => {
-                delete_operation(self, predicate_param, &field.node, &operation_context)
+                delete_operation(self, predicate_param, &field.node, operation_context)
             }
             MutationKind::Update {
                 data_param,
@@ -46,7 +46,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                 data_param,
                 predicate_param,
                 &field.node,
-                &operation_context,
+                operation_context,
             )?,
         };
 

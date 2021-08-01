@@ -63,7 +63,7 @@ fn order_by_pair<'a>(
 
     let column_id = parameter.as_ref().and_then(|p| p.column_id.as_ref());
 
-    let column = operation_context.create_column_with_id(&column_id.unwrap());
+    let column = operation_context.create_column_with_id(column_id.unwrap());
 
     (column, ordering(parameter_value))
 }

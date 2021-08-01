@@ -61,7 +61,7 @@ impl FieldDefinitionProvider for GqlField {
             GqlFieldType::List(_) => GqlTypeModifier::List,
         };
         let field_type =
-            util::default_positioned(util::value_type(&self.typ.type_name(), &type_modifier));
+            util::default_positioned(util::value_type(self.typ.type_name(), &type_modifier));
 
         let arguments = match self.relation {
             GqlRelation::Pk { .. } | GqlRelation::Scalar { .. } | GqlRelation::ManyToOne { .. } => {

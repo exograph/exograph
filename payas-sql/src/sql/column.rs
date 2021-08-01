@@ -225,7 +225,7 @@ impl PhysicalColumnType {
                 let mut dimensions = 1;
 
                 while let PhysicalColumnType::Array { typ } = &**underlying_typ {
-                    underlying_typ = &typ;
+                    underlying_typ = typ;
                     dimensions += 1;
                 }
 

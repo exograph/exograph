@@ -118,7 +118,7 @@ impl<'a> AnnotVariants<'a> {
                         fields
                             .named
                             .iter()
-                            .map(|field| (field, is_optional(&field)))
+                            .map(|field| (field, is_optional(field)))
                             .collect::<Vec<_>>(),
                     ),
                     _ => None,

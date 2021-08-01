@@ -30,7 +30,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
         let param_type_name = get_parameter_type_name(&model_type.name, model_type.is_primitive());
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
-        let new_kind = expand_type(&model_type, &building);
+        let new_kind = expand_type(model_type, building);
         building.order_by_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
@@ -131,7 +131,7 @@ fn order_by_param_type(
     is_primitive: bool,
     building: &SystemContextBuilding,
 ) -> (String, Id<OrderByParameterType>) {
-    let param_type_name = get_parameter_type_name(&model_type_name, is_primitive);
+    let param_type_name = get_parameter_type_name(model_type_name, is_primitive);
 
     let param_type_id = building.order_by_types.get_id(&param_type_name).unwrap();
 

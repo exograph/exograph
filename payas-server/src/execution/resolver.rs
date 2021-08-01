@@ -64,11 +64,11 @@ where
         match &selection.node {
             Selection::Field(field) => Ok(vec![(
                 field.output_name(),
-                self.resolve_field(query_context, &field)?,
+                self.resolve_field(query_context, field)?,
             )]),
             Selection::FragmentSpread(fragment_spread) => {
                 let fragment_definition =
-                    query_context.fragment_definition(&fragment_spread).unwrap();
+                    query_context.fragment_definition(fragment_spread).unwrap();
                 self.resolve_selection_set(query_context, &fragment_definition.selection_set)
             }
             Selection::InlineFragment(_inline_fragment) => {
@@ -87,7 +87,7 @@ where
             .items
             .iter()
             .flat_map(
-                |selection| match self.resolve_selection(query_context, &selection) {
+                |selection| match self.resolve_selection(query_context, selection) {
                     Ok(s) => s.into_iter().map(Ok).collect(),
                     Err(err) => vec![Err(err)],
                 },
