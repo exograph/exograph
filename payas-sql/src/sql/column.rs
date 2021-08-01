@@ -63,6 +63,7 @@ impl PhysicalColumnType {
 
             "TEXT" => PhysicalColumnType::String { length: None },
             "BOOLEAN" => PhysicalColumnType::Boolean,
+            "JSONB" => PhysicalColumnType::Json,
             s => {
                 // parse types with arguments
                 // TODO: more robust parsing
@@ -104,7 +105,7 @@ impl PhysicalColumnType {
     pub fn to_model(&self) -> ModelStatement {
         let (stmt, annotations) = match self {
             PhysicalColumnType::Int { bits } => (
-                "Int",
+                "Int".to_string(),
                 match bits {
                     IntBits::_16 => " @bits(16)",
                     IntBits::_32 => "",
@@ -114,14 +115,14 @@ impl PhysicalColumnType {
             ),
 
             PhysicalColumnType::String { length } => (
-                "String",
+                "String".to_string(),
                 match length {
                     Some(length) => format!(" @length({})", length),
                     None => "".to_string(),
                 },
             ),
 
-            PhysicalColumnType::Boolean => ("Boolean", "".to_string()),
+            PhysicalColumnType::Boolean => ("Boolean".to_string(), "".to_string()),
 
             PhysicalColumnType::Timestamp {
                 timezone,
@@ -131,7 +132,8 @@ impl PhysicalColumnType {
                     "Instant"
                 } else {
                     "LocalDateTime"
-                },
+                }
+                .to_string(),
                 match precision {
                     Some(precision) => format!(" @precision({})", precision),
                     None => "".to_string(),
@@ -139,14 +141,16 @@ impl PhysicalColumnType {
             ),
 
             PhysicalColumnType::Time { precision } => (
-                "LocalTime",
+                "LocalTime".to_string(),
                 match precision {
                     Some(precision) => format!(" @precision({})", precision),
                     None => "".to_string(),
                 },
             ),
 
-            PhysicalColumnType::Date => ("LocalDate", "".to_string()),
+            PhysicalColumnType::Date => ("LocalDate".to_string(), "".to_string()),
+            PhysicalColumnType::Json => ("Json".to_string(), "".to_string()),
+            PhysicalColumnType::Array { typ } => (format!("[{}]", typ.to_model()), "".to_string()),
         };
 
         format!("{}{}", stmt, annotations)
@@ -239,7 +243,7 @@ impl PhysicalColumnType {
 
                 format!(
                     "{}{}",
-                    underlying_typ.db_type(is_autoincrement),
+                    underlying_typ.to_sql(is_autoincrement),
                     dimensions_part
                 )
             }
