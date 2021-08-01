@@ -163,62 +163,55 @@ impl ColumnSpec {
     }
 
     fn from_db(database: &Database, table_name: &str, column_name: &str) -> Result<ColumnSpec> {
-        let query = format!(
-            "SELECT data_type, datetime_precision FROM information_schema.columns WHERE table_name = '{}' AND column_name = '{}'",
-             table_name, column_name
+        let db_type_query = format!(
+            "
+            SELECT pg_catalog.format_type(a.atttypid, a.atttypmod)
+            FROM pg_catalog.pg_attribute a
+            WHERE a.attrelid = '{}'::regclass AND a.attname = '{}'",
+            table_name, column_name
         );
 
-        let pk_query = format!("
-            SELECT pg_attribute.attname
-            FROM
-                pg_class
-                JOIN pg_index ON pg_class.oid = pg_index.indrelid AND pg_index.indisprimary
-                JOIN pg_attribute ON pg_class.oid = pg_attribute.attrelid AND pg_attribute.attnum = ANY(pg_index.indkey)
-            WHERE pg_class.oid = '{}'::regclass",
+        let pk_query = format!(
+            "
+            SELECT a.attname
+            FROM pg_index i
+                JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+            WHERE i.indrelid = '{}'::regclass AND i.indisprimary",
             table_name
         );
 
+        let serial_columns_query = "SELECT relname FROM pg_class WHERE relkind = 'S'";
+
         let mut db_client = database.create_client()?;
-        let row = db_client
-            .query(query.as_str(), &[])?
+
+        let db_type = db_client
+            .query(db_type_query.as_str(), &[])?
             .into_iter()
             .next()
+            .map(|row| -> String { row.get("format_type") })
+            .map(|typ| PhysicalColumnType::from_string(&typ))
             .unwrap();
-        let primary_keys = db_client
+
+        let is_pk = db_client
             .query(pk_query.as_str(), &[])?
             .into_iter()
+            .next()
             .map(|row| -> String { row.get("attname") })
+            .map(|name| name == column_name)
+            .unwrap();
+
+        let serial_columns = db_client
+            .query(serial_columns_query, &[])?
+            .into_iter()
+            .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
-
-        let data_type = {
-            let r: String = row.get("data_type");
-            r.to_uppercase()
-        };
-
-        let datetime_precision = {
-            let r: Option<i32> = row.get("datetime_precision");
-            r.map(|p| p as usize)
-        };
-
-        let mut db_type = PhysicalColumnType::from_string(&data_type);
-        match &mut db_type {
-            PhysicalColumnType::Timestamp {
-                timezone: _,
-                precision,
-            } => {
-                *precision = datetime_precision;
-            }
-            PhysicalColumnType::Time { precision } => {
-                *precision = datetime_precision;
-            }
-            _ => (),
-        }
 
         Ok(ColumnSpec {
             name: column_name.to_string(),
             db_type,
-            is_pk: primary_keys.contains(column_name),
-            is_autoincrement: false,  // TODO
+            is_pk,
+            is_autoincrement: serial_columns
+                .contains(&format!("{}_{}_seq", table_name, column_name)),
             foreign_constraint: None, // TODO
         })
     }
@@ -231,10 +224,12 @@ impl ColumnSpec {
             ""
         };
 
+        let (data_type, annots) = self.db_type.to_model();
+
         format!(
             "{}: {}{}{}",
             self.name,
-            self.db_type.to_model(),
+            data_type + &annots,
             pk_str,
             autoinc_str
         )

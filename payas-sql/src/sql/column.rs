@@ -51,59 +51,94 @@ pub enum IntBits {
 
 impl PhysicalColumnType {
     pub fn from_string(s: &str) -> PhysicalColumnType {
-        match s {
-            // TODO: not really correct...
-            "SMALLSERIAL" => PhysicalColumnType::Int { bits: IntBits::_16 },
-            "SMALLINT" => PhysicalColumnType::Int { bits: IntBits::_16 },
-            "INT" => PhysicalColumnType::Int { bits: IntBits::_32 },
-            "INTEGER" => PhysicalColumnType::Int { bits: IntBits::_32 },
-            "SERIAL" => PhysicalColumnType::Int { bits: IntBits::_32 },
-            "BIGINT" => PhysicalColumnType::Int { bits: IntBits::_64 },
-            "BIGSERIAL" => PhysicalColumnType::Int { bits: IntBits::_64 },
+        let s = s.to_uppercase();
+        match s.find('[') {
+            Some(idx) => {
+                let db_type = &s[..idx];
+                let mut dims = &s[idx..];
 
-            "TEXT" => PhysicalColumnType::String { length: None },
-            "BOOLEAN" => PhysicalColumnType::Boolean,
-            "JSONB" => PhysicalColumnType::Json,
-            s => {
-                // parse types with arguments
-                // TODO: more robust parsing
+                let mut count = 0;
+                loop {
+                    if !dims.is_empty() {
+                        if dims.len() >= 2 && &dims[0..2] == "[]" {
+                            dims = &dims[2..];
+                            count += 1;
+                        } else {
+                            panic!("Unknown dbtype {}", s)
+                        }
+                    } else {
+                        break;
+                    }
+                }
 
-                let get_num = |s: &str| {
-                    s.chars()
-                        .filter(|c| c.is_numeric())
-                        .collect::<String>()
-                        .parse::<usize>()
-                        .ok()
+                let mut array_type = PhysicalColumnType::Array {
+                    typ: Box::new(PhysicalColumnType::from_string(db_type)),
                 };
-
-                if s.starts_with("VARCHAR") || s.starts_with("CHAR[") {
-                    return PhysicalColumnType::String { length: get_num(s) };
-                }
-
-                if s.starts_with("TIMESTAMP") {
-                    return PhysicalColumnType::Timestamp {
-                        precision: get_num(s),
-                        timezone: s.contains("WITH TIME ZONE"),
+                for _ in 0..count - 1 {
+                    array_type = PhysicalColumnType::Array {
+                        typ: Box::new(array_type),
                     };
                 }
-
-                if s.starts_with("TIME") {
-                    return PhysicalColumnType::Time {
-                        precision: get_num(s),
-                    };
-                }
-
-                if s.starts_with("DATE") {
-                    return PhysicalColumnType::Date;
-                }
-
-                panic!("Unknown dbtype {}", s)
+                array_type
             }
+
+            None => match s.as_str() {
+                // TODO: not really correct...
+                "SMALLSERIAL" => PhysicalColumnType::Int { bits: IntBits::_16 },
+                "SMALLINT" => PhysicalColumnType::Int { bits: IntBits::_16 },
+                "INT" => PhysicalColumnType::Int { bits: IntBits::_32 },
+                "INTEGER" => PhysicalColumnType::Int { bits: IntBits::_32 },
+                "SERIAL" => PhysicalColumnType::Int { bits: IntBits::_32 },
+                "BIGINT" => PhysicalColumnType::Int { bits: IntBits::_64 },
+                "BIGSERIAL" => PhysicalColumnType::Int { bits: IntBits::_64 },
+
+                "TEXT" => PhysicalColumnType::String { length: None },
+                "BOOLEAN" => PhysicalColumnType::Boolean,
+                "JSONB" => PhysicalColumnType::Json,
+                s => {
+                    // parse types with arguments
+                    // TODO: more robust parsing
+
+                    let get_num = |s: &str| {
+                        s.chars()
+                            .filter(|c| c.is_numeric())
+                            .collect::<String>()
+                            .parse::<usize>()
+                            .ok()
+                    };
+
+                    if s.starts_with("CHARACTER VARYING")
+                        || s.starts_with("VARCHAR")
+                        || s.starts_with("CHAR[")
+                    {
+                        return PhysicalColumnType::String { length: get_num(s) };
+                    }
+
+                    if s.starts_with("TIMESTAMP") {
+                        return PhysicalColumnType::Timestamp {
+                            precision: get_num(s),
+                            timezone: s.contains("WITH TIME ZONE"),
+                        };
+                    }
+
+                    if s.starts_with("TIME") {
+                        return PhysicalColumnType::Time {
+                            precision: get_num(s),
+                        };
+                    }
+
+                    if s.starts_with("DATE") {
+                        return PhysicalColumnType::Date;
+                    }
+
+                    panic!("Unknown dbtype {}", s)
+                }
+            },
         }
     }
 
-    pub fn to_model(&self) -> ModelStatement {
-        let (stmt, annotations) = match self {
+    pub fn to_model(&self) -> (ModelStatement, ModelStatement) {
+        match self {
             PhysicalColumnType::Int { bits } => (
                 "Int".to_string(),
                 match bits {
@@ -150,10 +185,11 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::Date => ("LocalDate".to_string(), "".to_string()),
             PhysicalColumnType::Json => ("Json".to_string(), "".to_string()),
-            PhysicalColumnType::Array { typ } => (format!("[{}]", typ.to_model()), "".to_string()),
-        };
-
-        format!("{}{}", stmt, annotations)
+            PhysicalColumnType::Array { typ } => {
+                let (data_type, annotations) = typ.to_model();
+                (format!("[{}]", data_type), annotations)
+            }
+        }
     }
 
     pub fn to_sql(&self, is_autoincrement: bool) -> SQLStatement {
