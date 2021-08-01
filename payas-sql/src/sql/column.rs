@@ -177,7 +177,7 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::String { length } => {
                 if let Some(length) = length {
-                    format!("CHAR[{}]", length)
+                    format!("VARCHAR({})", length)
                 } else {
                     "TEXT".to_owned()
                 }
