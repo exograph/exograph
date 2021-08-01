@@ -165,9 +165,9 @@ impl ColumnSpec {
     fn from_db(database: &Database, table_name: &str, column_name: &str) -> Result<ColumnSpec> {
         let db_type_query = format!(
             "
-            SELECT pg_catalog.format_type(a.atttypid, a.atttypmod)
-            FROM pg_catalog.pg_attribute a
-            WHERE a.attrelid = '{}'::regclass AND a.attname = '{}'",
+            SELECT format_type(atttypid, atttypmod), attndims
+            FROM pg_attribute
+            WHERE attrelid = '{}'::regclass AND attname = '{}'",
             table_name, column_name
         );
 
@@ -188,8 +188,11 @@ impl ColumnSpec {
             .query(db_type_query.as_str(), &[])?
             .into_iter()
             .next()
-            .map(|row| -> String { row.get("format_type") })
-            .map(|typ| PhysicalColumnType::from_string(&typ))
+            .map(|row| -> (String, i32) { (row.get("format_type"), row.get("attndims")) })
+            .map(|(db_type, dims)| {
+                db_type + &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize })
+            })
+            .map(|db_type| PhysicalColumnType::from_string(&db_type))
             .unwrap();
 
         let is_pk = db_client
