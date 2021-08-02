@@ -1,0 +1,15 @@
+operation: |
+    mutation {
+        A1a: createArtist(data: {name: "A1a"}) {
+            id
+        }
+        A1b: createArtist(data: {name: "A1b"}) {
+            id
+        }
+        A2a: createArtist(data: {name: "A2a"}) {
+            id
+        }
+        A2b: createArtist(data: {name: "A2b"}) {
+            id
+        }                    
+    }  
