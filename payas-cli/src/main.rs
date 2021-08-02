@@ -3,12 +3,10 @@ use std::{env, path::PathBuf, process};
 use clap::{App, AppSettings, Arg, SubCommand};
 
 use crate::commands::{
-    model, schema as schema_cmds, BuildCommand, Command, MigrateCommand, ServeCommand, TestCommand,
-    YoloCommand,
+    model, schema, BuildCommand, Command, MigrateCommand, ServeCommand, TestCommand, YoloCommand,
 };
 
 mod commands;
-mod schema;
 
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
@@ -50,12 +48,6 @@ fn main() {
                 .subcommand(
                     SubCommand::with_name("import")
                         .about("Create claytip model file based on a database schema")
-                        .arg(
-                            Arg::with_name("database")
-                                .help("Database source (postgres, git)")
-                                .required(true)
-                                .index(1),
-                        )
                         .arg(
                             Arg::with_name("output")
                                 .help("Claytip model output file")
@@ -146,16 +138,15 @@ fn main() {
         }),
         ("model", Some(matches)) => match matches.subcommand() {
             ("import", Some(matches)) => Box::new(model::ImportCommand {
-                database: matches.value_of("database").unwrap().to_owned(),
                 output: PathBuf::from(matches.value_of("output").unwrap()),
             }),
             _ => panic!("Unhandled command name"),
         },
         ("schema", Some(matches)) => match matches.subcommand() {
-            ("create", Some(matches)) => Box::new(schema_cmds::CreateCommand {
+            ("create", Some(matches)) => Box::new(schema::CreateCommand {
                 model: PathBuf::from(matches.value_of("model").unwrap()),
             }),
-            ("verify", Some(matches)) => Box::new(schema_cmds::VerifyCommand {
+            ("verify", Some(matches)) => Box::new(schema::VerifyCommand {
                 model: PathBuf::from(matches.value_of("model").unwrap()),
                 database: matches.value_of("database").unwrap().to_owned(),
             }),

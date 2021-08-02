@@ -4,8 +4,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 use payas_parser::{builder, parser};
-
-use crate::schema;
+use payas_sql::spec::SchemaSpec;
 
 use super::Command;
 
@@ -19,10 +18,10 @@ impl Command for CreateCommand {
         let (ast_system, codemap) = parser::parse_file(&self.model);
         let system = builder::build(ast_system, codemap)?;
 
-        let schema_stmt = schema::schema_stmt(system.tables);
-
-        println!("{}", schema_stmt);
-
+        println!(
+            "{}",
+            SchemaSpec::from_model(system.tables).to_sql().to_string()
+        );
         Ok(())
     }
 }
