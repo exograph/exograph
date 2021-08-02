@@ -1,3 +1,7 @@
+//! Conversions between claytip models and SQL tables.
+//!
+//! Used by `model import` and `schema create` commands.
+
 use std::collections::{HashMap, HashSet};
 
 use crate::sql::{
@@ -9,6 +13,8 @@ use anyhow::Result;
 use id_arena::Arena;
 use regex::Regex;
 
+/// An SQL statement along with any foreign constraint statements that should follow after all the
+/// statements have been executed.
 pub struct SQLStatement {
     pub statement: String,
     pub foreign_constraints: Vec<String>,
@@ -24,11 +30,15 @@ impl ToString for SQLStatement {
     }
 }
 
+/// Specification for the overall schema.
+///
+/// Represented by a claytip file or an SQL database.
 pub struct SchemaSpec {
     table_specs: Vec<TableSpec>,
 }
 
 impl SchemaSpec {
+    /// Creates a new schema specification from the tables of a claytip model file.
     pub fn from_model(tables: Arena<PhysicalTable>) -> SchemaSpec {
         let table_specs: Vec<_> = tables
             .iter()
@@ -38,7 +48,9 @@ impl SchemaSpec {
         SchemaSpec { table_specs }
     }
 
+    /// Creates a new schema specification from an SQL database.
     pub fn from_db(database: &Database) -> Result<SchemaSpec> {
+        // Query to get a list of all the tables in the database
         const QUERY: &str =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
 
@@ -55,6 +67,7 @@ impl SchemaSpec {
         Ok(SchemaSpec { table_specs })
     }
 
+    /// Converts the schema specification to a claytip file.
     pub fn to_model(&self) -> String {
         self.table_specs
             .iter()
@@ -62,6 +75,7 @@ impl SchemaSpec {
             .collect()
     }
 
+    /// Converts the schema specification to SQL statements.
     pub fn to_sql(&self) -> SQLStatement {
         let mut table_stmts = Vec::new();
         let mut foreign_constraints = Vec::new();
@@ -81,12 +95,16 @@ impl SchemaSpec {
     }
 }
 
+/// Specification for a single table.
+///
+/// Represented by a claytip model or an SQL table.
 struct TableSpec {
     name: String,
     column_specs: Vec<ColumnSpec>,
 }
 
 impl TableSpec {
+    /// Creates a new table specification from a claytip model.
     fn from_model(table: &PhysicalTable) -> TableSpec {
         let column_specs: Vec<_> = table.columns.iter().map(ColumnSpec::from_model).collect();
 
@@ -96,7 +114,9 @@ impl TableSpec {
         }
     }
 
+    /// Creates a new table specification from an SQL table.
     fn from_db(database: &Database, table_name: &str) -> Result<TableSpec> {
+        // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
             SELECT contype, pg_get_constraintdef(oid, true) as condef
@@ -106,6 +126,7 @@ impl TableSpec {
             table_name
         );
 
+        // Query to get a list of columns in the table
         let columns_query = format!(
             "SELECT column_name FROM information_schema.columns WHERE table_name = '{}'",
             table_name
@@ -117,25 +138,32 @@ impl TableSpec {
 
         let mut db_client = database.create_client()?;
 
+        // Get all the constraints in the table
         let constraints = db_client
             .query(constraints_query.as_str(), &[])?
             .iter()
-            .map(|row| -> (i8, String) { (row.get("contype"), row.get("condef")) })
-            .map(|(contype, condef)| (contype as u8 as char, condef))
+            .map(|row| {
+                let contype: i8 = row.get("contype");
+                let condef: String = row.get("condef");
+
+                (contype as u8 as char, condef)
+            })
             .collect::<Vec<_>>();
 
+        // Filter out primary key constraints to find which columns are primary keys
         let primary_keys = constraints
             .iter()
             .filter(|(contype, _)| *contype == 'p')
             .map(|(_, condef)| primary_key_re.captures_iter(condef).next().unwrap()[1].to_owned())
             .collect::<HashSet<_>>();
 
+        // Filter out foreign key constraints to find which columns require foreign key constraints
         let mut foreign_constraints = HashMap::new();
         for (_, condef) in constraints.iter().filter(|(contype, _)| *contype == 'f') {
             let matches = foreign_key_re.captures_iter(condef).next().unwrap();
-            let column_name = matches[1].to_owned();
-            let ref_table_name = matches[2].to_owned();
-            let ref_column_name = matches[3].to_owned();
+            let column_name = matches[1].to_owned(); // name of the column
+            let ref_table_name = matches[2].to_owned(); // name of the table the column refers to
+            let ref_column_name = matches[3].to_owned(); // name of the column in the referenced table
 
             foreign_constraints.insert(
                 column_name.clone(),
@@ -177,6 +205,7 @@ impl TableSpec {
         })
     }
 
+    /// Converts the table specification to a claytip model.
     fn to_model(&self) -> String {
         let table_annot = format!("@table(\"{}\")", self.name);
         let column_stmts = self
@@ -191,13 +220,14 @@ impl TableSpec {
         )
     }
 
+    /// Converts the table specification to SQL statements.
     fn to_sql(&self) -> SQLStatement {
         let mut foreign_constraints = Vec::new();
         let column_stmts: String = self
             .column_specs
             .iter()
-            .map(|c| c.to_sql(&self.name))
-            .map(|mut s| {
+            .map(|c| {
+                let mut s = c.to_sql(&self.name);
                 foreign_constraints.append(&mut s.foreign_constraints);
                 s.statement
             })
@@ -211,6 +241,9 @@ impl TableSpec {
     }
 }
 
+/// Specification for a single column.
+///
+/// Represented by a claytip model field or an SQL column.
 struct ColumnSpec {
     name: String,
     db_type: PhysicalColumnType,
@@ -219,6 +252,7 @@ struct ColumnSpec {
 }
 
 impl ColumnSpec {
+    /// Creates a new column specification from a claytip model field.
     fn from_model(column: &PhysicalColumn) -> ColumnSpec {
         ColumnSpec {
             name: column.column_name.clone(),
@@ -228,6 +262,10 @@ impl ColumnSpec {
         }
     }
 
+    /// Creates a new column specification from an SQL column.
+    ///
+    /// If the column references another claytip model, the column's type in the claytip file will
+    /// be the model's name. The referenced model's name can be specified with `explicit_type`.
     fn from_db(
         database: &Database,
         table_name: &str,
@@ -235,27 +273,37 @@ impl ColumnSpec {
         is_pk: bool,
         explicit_type: Option<PhysicalColumnType>,
     ) -> Result<ColumnSpec> {
+        // Find all sequences in the database that are used for SERIAL (autoincrement) columns
+        // e.g. an autoincrement column `id` in the table `users` will create a sequence called
+        // `users_id_seq`
         let serial_columns_query = "SELECT relname FROM pg_class WHERE relkind = 'S'";
 
         let mut db_client = database.create_client()?;
 
         let db_type = explicit_type.unwrap_or({
+            // Query to find the type of the column and the # of dimensions if the type is an array
             let db_type_query = format!(
                 "
-                    SELECT format_type(atttypid, atttypmod), attndims
-                    FROM pg_attribute
-                    WHERE attrelid = '{}'::regclass AND attname = '{}'",
+                SELECT format_type(atttypid, atttypmod), attndims
+                FROM pg_attribute
+                WHERE attrelid = '{}'::regclass AND attname = '{}'",
                 table_name, column_name
             );
 
             db_client
                 .query(db_type_query.as_str(), &[])?
                 .get(0)
-                .map(|row| -> (String, i32) { (row.get("format_type"), row.get("attndims")) })
-                .map(|(db_type, dims)| {
-                    db_type + &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize })
+                .map(|row| {
+                    let mut db_type: String = row.get("format_type");
+                    let dims: i32 = row.get("attndims");
+
+                    // When querying array types, the number of dimensions is not correctly shown
+                    // e.g. a column declared as `INT[][][]` will be shown as `INT[]`
+                    // So we manually query how many dimensions the column has and append `[]` to
+                    // the type
+                    db_type += &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize });
+                    PhysicalColumnType::from_string(&db_type)
                 })
-                .map(|db_type| PhysicalColumnType::from_string(&db_type))
                 .unwrap()
         });
 
@@ -274,6 +322,7 @@ impl ColumnSpec {
         })
     }
 
+    /// Converts the column specification to a claytip model.
     fn to_model(&self) -> String {
         let pk_str = if self.is_pk { " @pk" } else { "" };
         let autoinc_str = if self.is_autoincrement {
@@ -293,6 +342,7 @@ impl ColumnSpec {
         )
     }
 
+    /// Converts the column specification to SQL statements.
     fn to_sql(&self, table_name: &str) -> SQLStatement {
         let SQLStatement {
             statement,

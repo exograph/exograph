@@ -48,13 +48,17 @@ pub enum IntBits {
 }
 
 impl PhysicalColumnType {
+    /// Create a new physical column type given the SQL type string.
     pub fn from_string(s: &str) -> PhysicalColumnType {
         let s = s.to_uppercase();
-        match s.find('[') {
-            Some(idx) => {
-                let db_type = &s[..idx];
-                let mut dims = &s[idx..];
 
+        match s.find('[') {
+            // If the type contains `[`, then it's an array type
+            Some(idx) => {
+                let db_type = &s[..idx]; // The underlying data type (e.g. `INT` in `INT[][]`)
+                let mut dims = &s[idx..]; // The array brackets (e.g. `[][]` in `INT[][]`)
+
+                // Count how many `[]` exist in `dims` (how many dimensions does this array have)
                 let mut count = 0;
                 loop {
                     if !dims.is_empty() {
@@ -69,6 +73,7 @@ impl PhysicalColumnType {
                     }
                 }
 
+                // Wrap the underlying type with `PhysicalColumnType::Array`
                 let mut array_type = PhysicalColumnType::Array {
                     typ: Box::new(PhysicalColumnType::from_string(db_type)),
                 };
