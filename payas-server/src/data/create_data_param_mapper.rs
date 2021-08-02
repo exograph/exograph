@@ -158,8 +158,8 @@ fn map_single<'a>(
         let field_self_column = field.relation.self_column();
         let field_arg = operation_context.get_argument_field(argument, &field.name);
 
-        match field_arg {
-            Some(field_arg) => match field_self_column {
+        if let Some(field_arg) = field_arg {
+            match field_self_column {
                 Some(field_self_column) => {
                     let (col, value) =
                         map_self_column(field_self_column, field, field_arg, operation_context);
@@ -171,8 +171,7 @@ fn map_single<'a>(
                     input_data_type,
                     operation_context,
                 )),
-            },
-            None => (), // TODO: Report an error if the field is non-optional
+            } // TODO: Report an error if the field is non-optional and the if-let doesn't match
         }
     });
 
@@ -296,9 +295,9 @@ fn map_foreign<'a>(
         .for_each(|value| value.push(parent_id_selection));
 
     InsertionInfo {
-        table: table,
-        columns: columns,
-        values: values,
-        nested: nested,
+        table,
+        columns,
+        values,
+        nested,
     }
 }
