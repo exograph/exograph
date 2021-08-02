@@ -6,10 +6,13 @@ use crate::sql::column::Column;
 
 use payas_model::{
     model::{
-        column_id::ColumnId, relation::GqlRelation, types::GqlTypeKind, GqlCompositeTypeKind,
-        GqlField, GqlType,
+        column_id::ColumnId, relation::GqlRelation, system::ModelSystem, types::GqlTypeKind,
+        GqlCompositeTypeKind, GqlField, GqlType,
     },
-    sql::{column::PhysicalColumn, PhysicalTable, SQLOperation},
+    sql::{
+        column::{ColumnReferece, PhysicalColumn},
+        PhysicalTable, SQLOperation, Select,
+    },
 };
 
 use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
@@ -133,7 +136,7 @@ fn align<'a>(unaligned: Vec<SingleInsertion<'a>>, table: &'a PhysicalTable) -> I
 /// Map a single item from the data parameter
 /// Specifically, either the whole of a single insert one of the element of multiuple inserts
 fn map_single<'a>(
-    typ: &'a GqlType,
+    input_data_type: &'a GqlType,
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> SingleInsertion<'a> {
@@ -142,7 +145,7 @@ fn map_single<'a>(
         _ => argument,
     };
 
-    let fields = match &typ.kind {
+    let fields = match &input_data_type.kind {
         GqlTypeKind::Primitive => panic!("Query attempted on a primitive type"),
         GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields,
     };
@@ -162,7 +165,12 @@ fn map_single<'a>(
                         map_self_column(field_self_column, field, field_arg, operation_context);
                     self_row.insert(col, value);
                 }
-                None => nested_rows.push(map_foreign(field, field_arg, operation_context)),
+                None => nested_rows.push(map_foreign(
+                    field,
+                    field_arg,
+                    input_data_type,
+                    operation_context,
+                )),
             },
             None => (), // TODO: Report an error if the field is non-optional
         }
@@ -203,16 +211,94 @@ fn map_self_column<'a>(
 }
 
 /// Map foreign elements of a data parameter
-/// For example, if the data parameter is `data: {name: "venue-name", concerts: [{<concert-info1>}, {<concert-info1>}]} }
+/// For example, if the data parameter is `data: {name: "venue-name", concerts: [{<concert-info1>}, {<concert-info2>}]} }
 /// this needs to be called for the `concerts` part (which is mapped to a separate table)
 fn map_foreign<'a>(
     field: &'a GqlField,
     argument: &'a Value,
+    parent_data_type: &'a GqlType,
     operation_context: &'a OperationContext<'a>,
 ) -> InsertionInfo<'a> {
     let system = &operation_context.query_context.system;
 
+    fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
+        // TODO: Unhack this. Most likely, we need to separate input types from output types and have input types carry
+        //       additional information (such as the associated model type) so that we can get the id column more directly
+        match data_type.kind {
+            GqlTypeKind::Primitive => todo!(),
+            GqlTypeKind::Composite(GqlCompositeTypeKind { pk_query, .. }) => {
+                &system.types[system.queries[pk_query].return_type.type_id]
+            }
+        }
+    }
+
     let field_type = field.typ.base_type(&system.mutation_types);
 
-    field_type.map_to_sql(argument, operation_context)
+    // TODO: Cleanup in the next round
+
+    // Find the column corresponding to the primary key in the parent
+    // For example, if the mutation is (assume `Venue -> [Concert]` relation)
+    // `createVenue(data: {name: "V1", published: true, concerts: [{title: "C1V1", published: true}, {title: "C1V2", published: false}]})`
+    // we need to create a column that evaluates to `select "venues"."id" from "venues"`
+    let (parent_pk_physical_column, parent_id_selection) = {
+        let parent_type = underlying_type(parent_data_type, system);
+        let parent_table = &system.tables[parent_type.table_id().unwrap()];
+        let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(system);
+        let parent_pk_column =
+            operation_context.create_column(Column::Physical(parent_pk_physical_column));
+
+        (
+            parent_pk_physical_column,
+            operation_context.create_column(Column::SelectionTableWrapper(Select {
+                underlying: parent_table,
+                columns: vec![parent_pk_column],
+                predicate: None,
+                order_by: None,
+                top_level_selection: false,
+            })),
+        )
+    };
+
+    // Find the column that the current entity refers to in the parent entity
+    // In the above example, this would be "venue_id"
+    let self_type = underlying_type(field_type, system);
+    let self_reference_column = self_type
+        .model_fields()
+        .iter()
+        .find(|self_field| match self_field.relation.self_column() {
+            Some(column_id) => {
+                column_id.get_column(system).references
+                    == Some(ColumnReferece {
+                        table_name: parent_pk_physical_column.table_name.clone(),
+                        column_name: parent_pk_physical_column.column_name.clone(),
+                    })
+            }
+            None => false,
+        })
+        .unwrap()
+        .relation
+        .self_column()
+        .unwrap()
+        .get_column(system);
+
+    // First map the user-specified information (arguments)
+    let InsertionInfo {
+        table,
+        mut columns,
+        mut values,
+        nested,
+    } = field_type.map_to_sql(argument, operation_context);
+
+    // Then, push the information to have the nested entity refer to the parent entity
+    columns.push(self_reference_column);
+    values
+        .iter_mut()
+        .for_each(|value| value.push(parent_id_selection));
+
+    InsertionInfo {
+        table: table,
+        columns: columns,
+        values: values,
+        nested: nested,
+    }
 }
