@@ -122,6 +122,7 @@ impl<'a> OperationContext<'a> {
                 IntBits::_64 => Box::new(number.as_i64().unwrap() as i64),
             },
             PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
+                // TODO assumes that `id` columns are always integers
                 Self::cast_number(number, ref_pk_type)
             }
             // TODO: Expand for other number types such as float
