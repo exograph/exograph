@@ -1,6 +1,7 @@
 use crate::spec::SQLStatement;
 
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
+use anyhow::{bail, Result};
 use std::fmt::Write;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -49,7 +50,7 @@ pub enum IntBits {
 
 impl PhysicalColumnType {
     /// Create a new physical column type given the SQL type string.
-    pub fn from_string(s: &str) -> PhysicalColumnType {
+    pub fn from_string(s: &str) -> Result<PhysicalColumnType> {
         let s = s.to_uppercase();
 
         match s.find('[') {
@@ -66,7 +67,7 @@ impl PhysicalColumnType {
                             dims = &dims[2..];
                             count += 1;
                         } else {
-                            panic!("Unknown dbtype {}", s)
+                            bail!("unknown type {}", s);
                         }
                     } else {
                         break;
@@ -75,17 +76,17 @@ impl PhysicalColumnType {
 
                 // Wrap the underlying type with `PhysicalColumnType::Array`
                 let mut array_type = PhysicalColumnType::Array {
-                    typ: Box::new(PhysicalColumnType::from_string(db_type)),
+                    typ: Box::new(PhysicalColumnType::from_string(db_type)?),
                 };
                 for _ in 0..count - 1 {
                     array_type = PhysicalColumnType::Array {
                         typ: Box::new(array_type),
                     };
                 }
-                array_type
+                Ok(array_type)
             }
 
-            None => match s.as_str() {
+            None => Ok(match s.as_str() {
                 // TODO: not really correct...
                 "SMALLSERIAL" => PhysicalColumnType::Int { bits: IntBits::_16 },
                 "SMALLINT" => PhysicalColumnType::Int { bits: IntBits::_16 },
@@ -112,31 +113,25 @@ impl PhysicalColumnType {
 
                     if s.starts_with("CHARACTER VARYING")
                         || s.starts_with("VARCHAR")
-                        || s.starts_with("CHAR[")
+                        || s.starts_with("CHAR")
                     {
-                        return PhysicalColumnType::String { length: get_num(s) };
-                    }
-
-                    if s.starts_with("TIMESTAMP") {
-                        return PhysicalColumnType::Timestamp {
+                        PhysicalColumnType::String { length: get_num(s) }
+                    } else if s.starts_with("TIMESTAMP") {
+                        PhysicalColumnType::Timestamp {
                             precision: get_num(s),
                             timezone: s.contains("WITH TIME ZONE"),
-                        };
-                    }
-
-                    if s.starts_with("TIME") {
-                        return PhysicalColumnType::Time {
+                        }
+                    } else if s.starts_with("TIME") {
+                        PhysicalColumnType::Time {
                             precision: get_num(s),
-                        };
+                        }
+                    } else if s.starts_with("DATE") {
+                        PhysicalColumnType::Date
+                    } else {
+                        bail!("unknown type {}", s)
                     }
-
-                    if s.starts_with("DATE") {
-                        return PhysicalColumnType::Date;
-                    }
-
-                    panic!("Unknown dbtype {}", s)
                 }
-            },
+            }),
         }
     }
 

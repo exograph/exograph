@@ -468,7 +468,9 @@ fn determine_column_type<'a>(
 
     if let Some(hint) = &field.type_hint {
         match hint {
-            ResolvedTypeHint::Explicit { dbtype } => PhysicalColumnType::from_string(dbtype),
+            ResolvedTypeHint::Explicit { dbtype } => {
+                PhysicalColumnType::from_string(dbtype).unwrap()
+            }
 
             ResolvedTypeHint::Int { bits, range } => {
                 assert!(matches!(pt, PrimitiveType::Int));

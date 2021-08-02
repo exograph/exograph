@@ -3,13 +3,14 @@
 //! Used by `model import` and `schema create` commands.
 
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 
 use crate::sql::{
     column::{PhysicalColumn, PhysicalColumnType},
     database::Database,
     PhysicalTable,
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use id_arena::Arena;
 use regex::Regex;
 
@@ -28,6 +29,26 @@ impl ToString for SQLStatement {
             self.foreign_constraints.join("\n")
         )
     }
+}
+
+pub enum SpecIssue {
+    Warning(String),
+    Hint(String),
+}
+
+impl Display for SpecIssue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            SpecIssue::Warning(msg) => format!("warning: {}", msg),
+            SpecIssue::Hint(msg) => format!("hint: {}", msg),
+        };
+        write!(f, "{}", str)
+    }
+}
+
+pub struct Spec<T> {
+    pub spec: T,
+    pub issues: Vec<SpecIssue>,
 }
 
 /// Specification for the overall schema.
@@ -49,22 +70,29 @@ impl SchemaSpec {
     }
 
     /// Creates a new schema specification from an SQL database.
-    pub fn from_db(database: &Database) -> Result<SchemaSpec> {
+    pub fn from_db(database: &Database) -> Result<Spec<SchemaSpec>> {
         // Query to get a list of all the tables in the database
         const QUERY: &str =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
 
-        let table_specs: Vec<TableSpec> = database
-            .create_client()?
-            .query(QUERY, &[])?
-            .iter()
-            .map(|r| {
-                let name = r.get("table_name");
-                TableSpec::from_db(database, name)
-            })
-            .collect::<Result<_>>()?;
+        let mut issues = Vec::new();
+        let mut table_specs = Vec::new();
 
-        Ok(SchemaSpec { table_specs })
+        for row in database
+            .create_client()?
+            .query(QUERY, &[])
+            .map_err(|e| anyhow!(e))?
+        {
+            let name: String = row.get("table_name");
+            let mut table = TableSpec::from_db(database, &name)?;
+            issues.append(&mut table.issues);
+            table_specs.push(table.spec);
+        }
+
+        Ok(Spec {
+            spec: SchemaSpec { table_specs },
+            issues,
+        })
     }
 
     /// Converts the schema specification to a claytip file.
@@ -115,7 +143,7 @@ impl TableSpec {
     }
 
     /// Creates a new table specification from an SQL table.
-    fn from_db(database: &Database, table_name: &str) -> Result<TableSpec> {
+    fn from_db(database: &Database, table_name: &str) -> Result<Spec<TableSpec>> {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
@@ -137,6 +165,7 @@ impl TableSpec {
             Regex::new(r"FOREIGN KEY \(([^)]+)\) REFERENCES ([^\(]+)\(([^)]+)\)").unwrap();
 
         let mut db_client = database.create_client()?;
+        let mut issues = Vec::new();
 
         // Get all the constraints in the table
         let constraints = db_client
@@ -165,43 +194,60 @@ impl TableSpec {
             let ref_table_name = matches[2].to_owned(); // name of the table the column refers to
             let ref_column_name = matches[3].to_owned(); // name of the column in the referenced table
 
-            foreign_constraints.insert(
-                column_name.clone(),
-                PhysicalColumnType::ColumnReference {
-                    column_name: column_name.clone(),
-                    ref_table_name: ref_table_name.clone(),
-                    ref_pk_type: Box::new(
-                        ColumnSpec::from_db(
-                            database,
-                            &ref_table_name,
-                            &ref_column_name,
-                            true,
-                            None,
-                        )?
-                        .db_type,
-                    ),
-                },
-            );
+            let mut column =
+                ColumnSpec::from_db(database, &ref_table_name, &ref_column_name, true, None)?;
+            issues.append(&mut column.issues);
+
+            if let Some(spec) = column.spec {
+                foreign_constraints.insert(
+                    column_name.clone(),
+                    PhysicalColumnType::ColumnReference {
+                        column_name: column_name.clone(),
+                        ref_table_name: ref_table_name.clone(),
+                        ref_pk_type: Box::new(spec.db_type),
+                    },
+                );
+            }
         }
 
-        let column_specs = db_client
-            .query(columns_query.as_str(), &[])?
-            .iter()
-            .map(|r| {
-                let name = r.get("column_name");
-                ColumnSpec::from_db(
-                    database,
-                    table_name,
-                    name,
-                    primary_keys.contains(name),
-                    foreign_constraints.get(name).cloned(),
-                )
-            })
-            .collect::<Result<Vec<_>>>()?;
+        let mut column_specs = Vec::new();
+        for row in db_client.query(columns_query.as_str(), &[])? {
+            let name: String = row.get("column_name");
+            let mut column = ColumnSpec::from_db(
+                database,
+                table_name,
+                &name,
+                primary_keys.contains(&name),
+                foreign_constraints.get(&name).cloned(),
+            )?;
+            issues.append(&mut column.issues);
 
-        Ok(TableSpec {
-            name: table_name.to_string(),
-            column_specs,
+            if let Some(spec) = column.spec {
+                column_specs.push(spec);
+            }
+        }
+
+        if table_name.contains('_') || table_name.chars().next().unwrap().is_lowercase() {
+            issues.push(SpecIssue::Hint(format!(
+                "model name `{}` should be changed to PascalCase",
+                table_name
+            )));
+        }
+
+        // not a robust check
+        if table_name.ends_with('s') {
+            issues.push(SpecIssue::Hint(format!(
+                "model name `{}` should be changed to singular",
+                table_name
+            )));
+        }
+
+        Ok(Spec {
+            spec: TableSpec {
+                name: table_name.to_string(),
+                column_specs,
+            },
+            issues,
         })
     }
 
@@ -272,40 +318,62 @@ impl ColumnSpec {
         column_name: &str,
         is_pk: bool,
         explicit_type: Option<PhysicalColumnType>,
-    ) -> Result<ColumnSpec> {
+    ) -> Result<Spec<Option<ColumnSpec>>> {
         // Find all sequences in the database that are used for SERIAL (autoincrement) columns
         // e.g. an autoincrement column `id` in the table `users` will create a sequence called
         // `users_id_seq`
         let serial_columns_query = "SELECT relname FROM pg_class WHERE relkind = 'S'";
 
         let mut db_client = database.create_client()?;
+        let mut issues = Vec::new();
 
-        let db_type = explicit_type.unwrap_or({
-            // Query to find the type of the column and the # of dimensions if the type is an array
-            let db_type_query = format!(
-                "
-                SELECT format_type(atttypid, atttypmod), attndims
-                FROM pg_attribute
-                WHERE attrelid = '{}'::regclass AND attname = '{}'",
-                table_name, column_name
-            );
+        let db_type = match explicit_type {
+            Some(t) => {
+                if let PhysicalColumnType::ColumnReference { ref_table_name, .. } = &t {
+                    issues.push(SpecIssue::Hint(format!(
+                        "consider adding a field to `{ref_table_name}` of type `[{table_name}]` to create a one-to-many relationship", 
+                        table_name=table_name,
+                        ref_table_name=ref_table_name
+                    )));
+                }
 
-            db_client
-                .query(db_type_query.as_str(), &[])?
-                .get(0)
-                .map(|row| {
-                    let mut db_type: String = row.get("format_type");
-                    let dims: i32 = row.get("attndims");
+                Some(t)
+            }
+            None => {
+                // Query to find the type of the column and the # of dimensions if the type is an array
+                let db_type_query = format!(
+                    "
+                    SELECT format_type(atttypid, atttypmod), attndims
+                    FROM pg_attribute
+                    WHERE attrelid = '{}'::regclass AND attname = '{}'",
+                    table_name, column_name
+                );
 
-                    // When querying array types, the number of dimensions is not correctly shown
-                    // e.g. a column declared as `INT[][][]` will be shown as `INT[]`
-                    // So we manually query how many dimensions the column has and append `[]` to
-                    // the type
-                    db_type += &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize });
-                    PhysicalColumnType::from_string(&db_type)
-                })
-                .unwrap()
-        });
+                let rows = db_client.query(db_type_query.as_str(), &[])?;
+                let row = rows.get(0).unwrap();
+
+                let mut sql_type: String = row.get("format_type");
+                let dims: i32 = row.get("attndims");
+
+                // When querying array types, the number of dimensions is not correctly shown
+                // e.g. a column declared as `INT[][][]` will be shown as `INT[]`
+                // So we manually query how many dimensions the column has and append `[]` to
+                // the type
+                sql_type += &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize });
+                match PhysicalColumnType::from_string(&sql_type) {
+                    Ok(t) => Some(t),
+                    Err(e) => {
+                        issues.push(SpecIssue::Warning(format!(
+                            "skipped column `{}.{}` ({})",
+                            table_name,
+                            column_name,
+                            e.to_string()
+                        )));
+                        None
+                    }
+                }
+            }
+        };
 
         let serial_columns = db_client
             .query(serial_columns_query, &[])?
@@ -313,12 +381,15 @@ impl ColumnSpec {
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
-        Ok(ColumnSpec {
-            name: column_name.to_string(),
-            db_type,
-            is_pk,
-            is_autoincrement: serial_columns
-                .contains(&format!("{}_{}_seq", table_name, column_name)),
+        Ok(Spec {
+            spec: db_type.map(|db_type| ColumnSpec {
+                name: column_name.to_string(),
+                db_type,
+                is_pk,
+                is_autoincrement: serial_columns
+                    .contains(&format!("{}_{}_seq", table_name, column_name)),
+            }),
+            issues,
         })
     }
 

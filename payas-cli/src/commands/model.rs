@@ -17,9 +17,10 @@ impl Command for ImportCommand {
         let database = Database::from_env()?; // TODO: error handling here
         database.create_client()?;
 
-        File::create(&self.output)?
-            .write_all(SchemaSpec::from_db(&database)?.to_model().as_bytes())?;
-        println!("Claytip model written to `{}`", self.output.display());
+        let schema = SchemaSpec::from_db(&database)?;
+        File::create(&self.output)?.write_all(schema.spec.to_model().as_bytes())?;
+        schema.issues.iter().for_each(|i| println!("{}", i));
+        println!("\nClaytip model written to `{}`", self.output.display());
         Ok(())
     }
 }
