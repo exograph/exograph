@@ -10,7 +10,7 @@ use payas_model::{
         GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
-        column::{ColumnReferece, IntBits, PhysicalColumn, PhysicalColumnType},
+        column::{IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     },
 };
@@ -395,11 +395,9 @@ fn create_column(
                         table_name: table_name.to_string(),
                         column_name: field.column_name.clone(),
                         typ: PhysicalColumnType::ColumnReference {
-                            reference: ColumnReferece {
-                                table_name: ct.table_name.clone(),
-                                column_name: other_pk_field.column_name.clone(),
-                            },
-                            reference_pk_type: Box::new(determine_column_type(
+                            column_name: field.column_name.clone(),
+                            ref_table_name: ct.table_name.clone(),
+                            ref_pk_type: Box::new(determine_column_type(
                                 &other_pk_field.typ.deref(env).as_primitive(),
                                 field,
                             )),

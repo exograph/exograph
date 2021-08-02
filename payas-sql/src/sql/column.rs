@@ -13,12 +13,6 @@ pub struct PhysicalColumn {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ColumnReferece {
-    pub table_name: String,
-    pub column_name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PhysicalColumnType {
     Int {
         bits: IntBits,
@@ -40,8 +34,9 @@ pub enum PhysicalColumnType {
         typ: Box<PhysicalColumnType>,
     },
     ColumnReference {
-        reference: ColumnReferece,
-        reference_pk_type: Box<PhysicalColumnType>,
+        column_name: String,
+        ref_table_name: String,
+        ref_pk_type: Box<PhysicalColumnType>,
     },
 }
 
@@ -195,8 +190,8 @@ impl PhysicalColumnType {
                 (format!("[{}]", data_type), annotations)
             }
 
-            PhysicalColumnType::ColumnReference { reference, .. } => {
-                (reference.table_name.clone(), "".to_string())
+            PhysicalColumnType::ColumnReference { ref_table_name, .. } => {
+                (ref_table_name.clone(), "".to_string())
             }
         }
     }
@@ -309,15 +304,16 @@ impl PhysicalColumnType {
             }
 
             PhysicalColumnType::ColumnReference {
-                reference,
-                reference_pk_type,
+                column_name,
+                ref_table_name,
+                ref_pk_type,
             } => {
-                let mut sql_statement = reference_pk_type.to_sql(table_name, is_autoincrement);
+                let mut sql_statement = ref_pk_type.to_sql(table_name, is_autoincrement);
                 let foreign_constraint = format!(
-                    "ALTER TABLE {table} ADD CONSTRAINT {referenced_table}_fk FOREIGN KEY ({column}) REFERENCES {referenced_table};",
+                    "ALTER TABLE {table} ADD CONSTRAINT {ref_table}_fk FOREIGN KEY ({column}) REFERENCES {ref_table};",
                     table = table_name,
-                    referenced_table = reference.table_name,
-                    column = reference.column_name,
+                    column = column_name,
+                    ref_table = ref_table_name,
                 );
 
                 sql_statement.foreign_constraints.push(foreign_constraint);

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::sql::{
     column::{PhysicalColumn, PhysicalColumnType},
@@ -7,6 +7,7 @@ use crate::sql::{
 };
 use anyhow::Result;
 use id_arena::Arena;
+use regex::Regex;
 
 pub struct SQLStatement {
     pub statement: String,
@@ -16,7 +17,7 @@ pub struct SQLStatement {
 impl ToString for SQLStatement {
     fn to_string(&self) -> String {
         format!(
-            "{}\n\n\n{}",
+            "{}\n{}",
             self.statement,
             self.foreign_constraints.join("\n")
         )
@@ -69,7 +70,7 @@ impl SchemaSpec {
             .iter()
             .map(|t| t.to_sql())
             .for_each(|mut s| {
-                table_stmts.push(s.statement);
+                table_stmts.push(s.statement + "\n");
                 foreign_constraints.append(&mut s.foreign_constraints);
             });
 
@@ -96,16 +97,77 @@ impl TableSpec {
     }
 
     fn from_db(database: &Database, table_name: &str) -> Result<TableSpec> {
-        const QUERY: &str =
-            "SELECT column_name FROM information_schema.columns WHERE table_name = $1";
+        let constraints_query = format!(
+            "
+            SELECT contype, pg_get_constraintdef(oid, true) as condef
+            FROM pg_constraint
+            WHERE
+                conrelid = '{}'::regclass AND conparentid = 0",
+            table_name
+        );
 
-        let column_specs = database
-            .create_client()?
-            .query(QUERY, &[&table_name])?
+        let columns_query = format!(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = '{}'",
+            table_name
+        );
+
+        let primary_key_re = Regex::new(r"PRIMARY KEY \(([^)]+)\)").unwrap();
+        let foreign_key_re =
+            Regex::new(r"FOREIGN KEY \(([^)]+)\) REFERENCES ([^\(]+)\(([^)]+)\)").unwrap();
+
+        let mut db_client = database.create_client()?;
+
+        let constraints = db_client
+            .query(constraints_query.as_str(), &[])?
+            .iter()
+            .map(|row| -> (i8, String) { (row.get("contype"), row.get("condef")) })
+            .map(|(contype, condef)| (contype as u8 as char, condef))
+            .collect::<Vec<_>>();
+
+        let primary_keys = constraints
+            .iter()
+            .filter(|(contype, _)| *contype == 'p')
+            .map(|(_, condef)| primary_key_re.captures_iter(condef).next().unwrap()[1].to_owned())
+            .collect::<HashSet<_>>();
+
+        let mut foreign_constraints = HashMap::new();
+        for (_, condef) in constraints.iter().filter(|(contype, _)| *contype == 'f') {
+            let matches = foreign_key_re.captures_iter(condef).next().unwrap();
+            let column_name = matches[1].to_owned();
+            let ref_table_name = matches[2].to_owned();
+            let ref_column_name = matches[3].to_owned();
+
+            foreign_constraints.insert(
+                column_name.clone(),
+                PhysicalColumnType::ColumnReference {
+                    column_name: column_name.clone(),
+                    ref_table_name: ref_table_name.clone(),
+                    ref_pk_type: Box::new(
+                        ColumnSpec::from_db(
+                            database,
+                            &ref_table_name,
+                            &ref_column_name,
+                            true,
+                            None,
+                        )?
+                        .db_type,
+                    ),
+                },
+            );
+        }
+
+        let column_specs = db_client
+            .query(columns_query.as_str(), &[])?
             .iter()
             .map(|r| {
                 let name = r.get("column_name");
-                ColumnSpec::from_db(database, table_name, name)
+                ColumnSpec::from_db(
+                    database,
+                    table_name,
+                    name,
+                    primary_keys.contains(name),
+                    foreign_constraints.get(name).cloned(),
+                )
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -166,50 +228,40 @@ impl ColumnSpec {
         }
     }
 
-    fn from_db(database: &Database, table_name: &str, column_name: &str) -> Result<ColumnSpec> {
-        let db_type_query = format!(
-            "
-            SELECT format_type(atttypid, atttypmod), attndims
-            FROM pg_attribute
-            WHERE attrelid = '{}'::regclass AND attname = '{}'",
-            table_name, column_name
-        );
-
-        let pk_query = format!(
-            "
-            SELECT a.attname
-            FROM pg_index i
-                JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-            WHERE i.indrelid = '{}'::regclass AND i.indisprimary",
-            table_name
-        );
-
+    fn from_db(
+        database: &Database,
+        table_name: &str,
+        column_name: &str,
+        is_pk: bool,
+        explicit_type: Option<PhysicalColumnType>,
+    ) -> Result<ColumnSpec> {
         let serial_columns_query = "SELECT relname FROM pg_class WHERE relkind = 'S'";
 
         let mut db_client = database.create_client()?;
 
-        let db_type = db_client
-            .query(db_type_query.as_str(), &[])?
-            .into_iter()
-            .next()
-            .map(|row| -> (String, i32) { (row.get("format_type"), row.get("attndims")) })
-            .map(|(db_type, dims)| {
-                db_type + &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize })
-            })
-            .map(|db_type| PhysicalColumnType::from_string(&db_type))
-            .unwrap();
+        let db_type = explicit_type.unwrap_or({
+            let db_type_query = format!(
+                "
+                    SELECT format_type(atttypid, atttypmod), attndims
+                    FROM pg_attribute
+                    WHERE attrelid = '{}'::regclass AND attname = '{}'",
+                table_name, column_name
+            );
 
-        let is_pk = db_client
-            .query(pk_query.as_str(), &[])?
-            .into_iter()
-            .next()
-            .map(|row| -> String { row.get("attname") })
-            .map(|name| name == column_name)
-            .unwrap();
+            db_client
+                .query(db_type_query.as_str(), &[])?
+                .get(0)
+                .map(|row| -> (String, i32) { (row.get("format_type"), row.get("attndims")) })
+                .map(|(db_type, dims)| {
+                    db_type + &"[]".repeat(if dims == 0 { 0 } else { (dims - 1) as usize })
+                })
+                .map(|db_type| PhysicalColumnType::from_string(&db_type))
+                .unwrap()
+        });
 
         let serial_columns = db_client
             .query(serial_columns_query, &[])?
-            .into_iter()
+            .iter()
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
