@@ -121,6 +121,9 @@ impl<'a> OperationContext<'a> {
                 IntBits::_32 => Box::new(number.as_i64().unwrap() as i32),
                 IntBits::_64 => Box::new(number.as_i64().unwrap() as i64),
             },
+            PhysicalColumnType::ColumnReference {
+                reference_pk_type, ..
+            } => Self::cast_number(number, reference_pk_type),
             // TODO: Expand for other number types such as float
             _ => panic!("Unexpected destination_type for number value"),
         }

@@ -8,8 +8,20 @@ use crate::sql::{
 use anyhow::Result;
 use id_arena::Arena;
 
-pub type ModelStatement = String;
-pub type SQLStatement = String;
+pub struct SQLStatement {
+    pub statement: String,
+    pub foreign_constraints: Vec<String>,
+}
+
+impl ToString for SQLStatement {
+    fn to_string(&self) -> String {
+        format!(
+            "{}\n\n\n{}",
+            self.statement,
+            self.foreign_constraints.join("\n")
+        )
+    }
+}
 
 pub struct SchemaSpec {
     table_specs: Vec<TableSpec>,
@@ -42,7 +54,7 @@ impl SchemaSpec {
         Ok(SchemaSpec { table_specs })
     }
 
-    pub fn to_model(&self) -> ModelStatement {
+    pub fn to_model(&self) -> String {
         self.table_specs
             .iter()
             .map(|table_spec| format!("{}\n\n", table_spec.to_model()))
@@ -50,22 +62,21 @@ impl SchemaSpec {
     }
 
     pub fn to_sql(&self) -> SQLStatement {
-        let table_stmts = self
-            .table_specs
+        let mut table_stmts = Vec::new();
+        let mut foreign_constraints = Vec::new();
+
+        self.table_specs
             .iter()
             .map(|t| t.to_sql())
-            .collect::<Vec<_>>()
-            .join("\n\n");
+            .for_each(|mut s| {
+                table_stmts.push(s.statement);
+                foreign_constraints.append(&mut s.foreign_constraints);
+            });
 
-        let foreign_constraint_stmts = self
-            .table_specs
-            .iter()
-            .map(|t| t.foreign_constraints_sql())
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>()
-            .join("\n");
-
-        format!("{}\n\n\n{}", table_stmts, foreign_constraint_stmts)
+        SQLStatement {
+            statement: table_stmts.join("\n"),
+            foreign_constraints,
+        }
     }
 }
 
@@ -104,7 +115,7 @@ impl TableSpec {
         })
     }
 
-    fn to_model(&self) -> ModelStatement {
+    fn to_model(&self) -> String {
         let table_annot = format!("@table(\"{}\")", self.name);
         let column_stmts = self
             .column_specs
@@ -119,22 +130,22 @@ impl TableSpec {
     }
 
     fn to_sql(&self) -> SQLStatement {
+        let mut foreign_constraints = Vec::new();
         let column_stmts: String = self
             .column_specs
             .iter()
-            .map(|c| c.to_sql())
+            .map(|c| c.to_sql(&self.name))
+            .map(|mut s| {
+                foreign_constraints.append(&mut s.foreign_constraints);
+                s.statement
+            })
             .collect::<Vec<_>>()
             .join(",\n\t");
 
-        format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts)
-    }
-
-    fn foreign_constraints_sql(&self) -> SQLStatement {
-        self.column_specs
-            .iter()
-            .flat_map(|c| c.foreign_constraint_sql())
-            .map(|stmt| format!("ALTER TABLE \"{}\" ADD CONSTRAINT {};\n", self.name, stmt))
-            .collect()
+        SQLStatement {
+            statement: format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts),
+            foreign_constraints,
+        }
     }
 }
 
@@ -143,22 +154,15 @@ struct ColumnSpec {
     db_type: PhysicalColumnType,
     is_pk: bool,
     is_autoincrement: bool,
-    foreign_constraint: Option<(String, String)>, // column, foreign table
 }
 
 impl ColumnSpec {
     fn from_model(column: &PhysicalColumn) -> ColumnSpec {
-        let foreign_constraint = column
-            .references
-            .as_ref()
-            .map(|references| (column.column_name.clone(), references.table_name.clone()));
-
         ColumnSpec {
             name: column.column_name.clone(),
             db_type: column.typ.clone(),
             is_pk: column.is_pk,
             is_autoincrement: column.is_autoincrement,
-            foreign_constraint,
         }
     }
 
@@ -215,11 +219,10 @@ impl ColumnSpec {
             is_pk,
             is_autoincrement: serial_columns
                 .contains(&format!("{}_{}_seq", table_name, column_name)),
-            foreign_constraint: None, // TODO
         })
     }
 
-    fn to_model(&self) -> ModelStatement {
+    fn to_model(&self) -> String {
         let pk_str = if self.is_pk { " @pk" } else { "" };
         let autoinc_str = if self.is_autoincrement {
             " @autoincrement"
@@ -238,26 +241,16 @@ impl ColumnSpec {
         )
     }
 
-    fn to_sql(&self) -> SQLStatement {
+    fn to_sql(&self, table_name: &str) -> SQLStatement {
+        let SQLStatement {
+            statement,
+            foreign_constraints,
+        } = self.db_type.to_sql(table_name, self.is_autoincrement);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
 
-        format!(
-            "\"{}\" {}{}",
-            self.name,
-            self.db_type.to_sql(self.is_autoincrement),
-            pk_str
-        )
-    }
-
-    fn foreign_constraint_sql(&self) -> Option<SQLStatement> {
-        self.foreign_constraint
-            .as_ref()
-            .map(|(column, foreign_table)| {
-                format!(
-                    "{table}_fk FOREIGN KEY ({column}) REFERENCES \"{table}\"",
-                    table = foreign_table,
-                    column = column
-                )
-            })
+        SQLStatement {
+            statement: format!("\"{}\" {}{}", self.name, statement, pk_str),
+            foreign_constraints,
+        }
     }
 }

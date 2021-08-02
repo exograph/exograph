@@ -18,7 +18,10 @@ impl Command for CreateCommand {
         let (ast_system, codemap) = parser::parse_file(&self.model);
         let system = builder::build(ast_system, codemap)?;
 
-        println!("{}", SchemaSpec::from_model(system.tables).to_sql());
+        println!(
+            "{}",
+            SchemaSpec::from_model(system.tables).to_sql().to_string()
+        );
         Ok(())
     }
 }

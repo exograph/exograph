@@ -1,4 +1,4 @@
-use crate::spec::{ModelStatement, SQLStatement};
+use crate::spec::SQLStatement;
 
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
 use std::fmt::Write;
@@ -10,7 +10,6 @@ pub struct PhysicalColumn {
     pub typ: PhysicalColumnType,
     pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
-    pub references: Option<ColumnReferece>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -39,6 +38,10 @@ pub enum PhysicalColumnType {
     Json,
     Array {
         typ: Box<PhysicalColumnType>,
+    },
+    ColumnReference {
+        reference: ColumnReferece,
+        reference_pk_type: Box<PhysicalColumnType>,
     },
 }
 
@@ -137,7 +140,7 @@ impl PhysicalColumnType {
         }
     }
 
-    pub fn to_model(&self) -> (ModelStatement, ModelStatement) {
+    pub fn to_model(&self) -> (String, String) {
         match self {
             PhysicalColumnType::Int { bits } => (
                 "Int".to_string(),
@@ -184,79 +187,102 @@ impl PhysicalColumnType {
             ),
 
             PhysicalColumnType::Date => ("LocalDate".to_string(), "".to_string()),
+
             PhysicalColumnType::Json => ("Json".to_string(), "".to_string()),
+
             PhysicalColumnType::Array { typ } => {
                 let (data_type, annotations) = typ.to_model();
                 (format!("[{}]", data_type), annotations)
             }
+
+            PhysicalColumnType::ColumnReference { reference, .. } => {
+                (reference.table_name.clone(), "".to_string())
+            }
         }
     }
 
-    pub fn to_sql(&self, is_autoincrement: bool) -> SQLStatement {
+    pub fn to_sql(&self, table_name: &str, is_autoincrement: bool) -> SQLStatement {
         match self {
-            PhysicalColumnType::Int { bits } => {
-                if is_autoincrement {
-                    match bits {
-                        IntBits::_16 => "SMALLSERIAL",
-                        IntBits::_32 => "SERIAL",
-                        IntBits::_64 => "BIGSERIAL",
-                    }
-                } else {
-                    match bits {
-                        IntBits::_16 => "SMALLINT",
-                        IntBits::_32 => "INT",
-                        IntBits::_64 => "BIGINT",
+            PhysicalColumnType::Int { bits } => SQLStatement {
+                statement: {
+                    if is_autoincrement {
+                        match bits {
+                            IntBits::_16 => "SMALLSERIAL",
+                            IntBits::_32 => "SERIAL",
+                            IntBits::_64 => "BIGSERIAL",
+                        }
+                    } else {
+                        match bits {
+                            IntBits::_16 => "SMALLINT",
+                            IntBits::_32 => "INT",
+                            IntBits::_64 => "BIGINT",
+                        }
                     }
                 }
-            }
-            .to_owned(),
+                .to_owned(),
+                foreign_constraints: Vec::new(),
+            },
 
-            PhysicalColumnType::String { length } => {
-                if let Some(length) = length {
+            PhysicalColumnType::String { length } => SQLStatement {
+                statement: if let Some(length) = length {
                     format!("VARCHAR({})", length)
                 } else {
                     "TEXT".to_owned()
-                }
-            }
+                },
+                foreign_constraints: Vec::new(),
+            },
 
-            PhysicalColumnType::Boolean => "BOOLEAN".to_owned(),
+            PhysicalColumnType::Boolean => SQLStatement {
+                statement: "BOOLEAN".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
 
             PhysicalColumnType::Timestamp {
                 timezone,
                 precision,
-            } => {
-                let timezone_option = if *timezone {
-                    "WITH TIME ZONE"
-                } else {
-                    "WITHOUT TIME ZONE"
-                };
-                let precision_option = if let Some(p) = precision {
-                    format!("({})", p)
-                } else {
-                    String::default()
-                };
+            } => SQLStatement {
+                statement: {
+                    let timezone_option = if *timezone {
+                        "WITH TIME ZONE"
+                    } else {
+                        "WITHOUT TIME ZONE"
+                    };
+                    let precision_option = if let Some(p) = precision {
+                        format!("({})", p)
+                    } else {
+                        String::default()
+                    };
 
-                let typ = match self {
-                    PhysicalColumnType::Timestamp { .. } => "TIMESTAMP",
-                    PhysicalColumnType::Time { .. } => "TIME",
-                    _ => panic!(),
-                };
+                    let typ = match self {
+                        PhysicalColumnType::Timestamp { .. } => "TIMESTAMP",
+                        PhysicalColumnType::Time { .. } => "TIME",
+                        _ => panic!(),
+                    };
 
-                // e.g. "TIMESTAMP(3) WITH TIME ZONE"
-                format!("{}{} {}", typ, precision_option, timezone_option)
-            }
+                    // e.g. "TIMESTAMP(3) WITH TIME ZONE"
+                    format!("{}{} {}", typ, precision_option, timezone_option)
+                },
+                foreign_constraints: Vec::new(),
+            },
 
-            PhysicalColumnType::Time { precision } => {
-                if let Some(p) = precision {
+            PhysicalColumnType::Time { precision } => SQLStatement {
+                statement: if let Some(p) = precision {
                     format!("TIME({})", p)
                 } else {
                     "TIME".to_owned()
-                }
-            }
+                },
+                foreign_constraints: Vec::new(),
+            },
 
-            PhysicalColumnType::Date => "DATE".to_owned(),
+            PhysicalColumnType::Date => SQLStatement {
+                statement: "DATE".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
 
-            PhysicalColumnType::Json => "JSONB".to_owned(),
+            PhysicalColumnType::Json => SQLStatement {
+                statement: "JSONB".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
 
             PhysicalColumnType::Array { typ } => {
                 // 'unwrap' nested arrays all the way to the underlying primitive type
@@ -273,15 +299,29 @@ impl PhysicalColumnType {
 
                 let mut dimensions_part = String::new();
 
-                for _dim in 0..dimensions {
+                for _ in 0..dimensions {
                     write!(&mut dimensions_part, "[]").unwrap();
                 }
 
-                format!(
-                    "{}{}",
-                    underlying_typ.to_sql(is_autoincrement),
-                    dimensions_part
-                )
+                let mut sql_statement = underlying_typ.to_sql(table_name, is_autoincrement);
+                sql_statement.statement += &dimensions_part;
+                sql_statement
+            }
+
+            PhysicalColumnType::ColumnReference {
+                reference,
+                reference_pk_type,
+            } => {
+                let mut sql_statement = reference_pk_type.to_sql(table_name, is_autoincrement);
+                let foreign_constraint = format!(
+                    "ALTER TABLE {table} ADD CONSTRAINT {referenced_table}_fk FOREIGN KEY ({column}) REFERENCES {referenced_table};",
+                    table = table_name,
+                    referenced_table = reference.table_name,
+                    column = reference.column_name,
+                );
+
+                sql_statement.foreign_constraints.push(foreign_constraint);
+                sql_statement
             }
         }
     }

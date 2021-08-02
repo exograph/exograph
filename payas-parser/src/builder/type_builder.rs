@@ -385,7 +385,6 @@ fn create_column(
                     } else {
                         false
                     },
-                    references: None,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -395,16 +394,18 @@ fn create_column(
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
                         column_name: field.column_name.clone(),
-                        typ: determine_column_type(
-                            &other_pk_field.typ.deref(env).as_primitive(),
-                            field,
-                        ),
+                        typ: PhysicalColumnType::ColumnReference {
+                            reference: ColumnReferece {
+                                table_name: ct.table_name.clone(),
+                                column_name: other_pk_field.column_name.clone(),
+                            },
+                            reference_pk_type: Box::new(determine_column_type(
+                                &other_pk_field.typ.deref(env).as_primitive(),
+                                field,
+                            )),
+                        },
                         is_pk: false,
                         is_autoincrement: false,
-                        references: Some(ColumnReferece {
-                            table_name: ct.table_name.clone(),
-                            column_name: other_pk_field.column_name.clone(),
-                        }),
                     })
                 }
             }
@@ -448,7 +449,6 @@ fn create_column(
                     typ: determine_column_type(&pt, field),
                     is_pk: false,
                     is_autoincrement: false,
-                    references: None,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column
