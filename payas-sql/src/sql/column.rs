@@ -1,4 +1,7 @@
+use crate::spec::SQLStatement;
+
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
+use anyhow::{bail, Result};
 use std::fmt::Write;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -8,13 +11,6 @@ pub struct PhysicalColumn {
     pub typ: PhysicalColumnType,
     pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
-    pub references: Option<ColumnReferece>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ColumnReferece {
-    pub table_name: String,
-    pub column_name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -38,6 +34,11 @@ pub enum PhysicalColumnType {
     Array {
         typ: Box<PhysicalColumnType>,
     },
+    ColumnReference {
+        column_name: String,
+        ref_table_name: String,
+        ref_pk_type: Box<PhysicalColumnType>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -48,121 +49,235 @@ pub enum IntBits {
 }
 
 impl PhysicalColumnType {
-    pub fn from_string(s: &str) -> PhysicalColumnType {
-        match s {
-            // TODO: not really correct...
-            "SMALLSERIAL" => PhysicalColumnType::Int { bits: IntBits::_16 },
-            "SMALLINT" => PhysicalColumnType::Int { bits: IntBits::_16 },
-            "INT" => PhysicalColumnType::Int { bits: IntBits::_32 },
-            "SERIAL" => PhysicalColumnType::Int { bits: IntBits::_32 },
-            "BIGINT" => PhysicalColumnType::Int { bits: IntBits::_64 },
-            "BIGSERIAL" => PhysicalColumnType::Int { bits: IntBits::_64 },
+    /// Create a new physical column type given the SQL type string.
+    pub fn from_string(s: &str) -> Result<PhysicalColumnType> {
+        let s = s.to_uppercase();
 
-            "TEXT" => PhysicalColumnType::String { length: None },
-            "BOOLEAN" => PhysicalColumnType::Boolean,
-            s => {
-                // parse types with arguments
-                // TODO: more robust parsing
+        match s.find('[') {
+            // If the type contains `[`, then it's an array type
+            Some(idx) => {
+                let db_type = &s[..idx]; // The underlying data type (e.g. `INT` in `INT[][]`)
+                let mut dims = &s[idx..]; // The array brackets (e.g. `[][]` in `INT[][]`)
 
-                let get_num = |s: &str| {
-                    s.chars()
-                        .filter(|c| c.is_numeric())
-                        .collect::<String>()
-                        .parse::<usize>()
-                        .ok()
+                // Count how many `[]` exist in `dims` (how many dimensions does this array have)
+                let mut count = 0;
+                loop {
+                    if !dims.is_empty() {
+                        if dims.len() >= 2 && &dims[0..2] == "[]" {
+                            dims = &dims[2..];
+                            count += 1;
+                        } else {
+                            bail!("unknown type {}", s);
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                // Wrap the underlying type with `PhysicalColumnType::Array`
+                let mut array_type = PhysicalColumnType::Array {
+                    typ: Box::new(PhysicalColumnType::from_string(db_type)?),
                 };
-
-                if s.starts_with("VARCHAR") || s.starts_with("CHAR[") {
-                    return PhysicalColumnType::String { length: get_num(s) };
-                }
-
-                if s.starts_with("TIMESTAMP") {
-                    return PhysicalColumnType::Timestamp {
-                        precision: get_num(s),
-                        timezone: s.contains("WITH TIME ZONE"),
+                for _ in 0..count - 1 {
+                    array_type = PhysicalColumnType::Array {
+                        typ: Box::new(array_type),
                     };
                 }
-
-                if s.starts_with("TIME") {
-                    return PhysicalColumnType::Time {
-                        precision: get_num(s),
-                    };
-                }
-
-                if s.starts_with("DATE") {
-                    return PhysicalColumnType::Date;
-                }
-
-                panic!("Unknown dbtype {}", s)
+                Ok(array_type)
             }
+
+            None => Ok(match s.as_str() {
+                // TODO: not really correct...
+                "SMALLSERIAL" => PhysicalColumnType::Int { bits: IntBits::_16 },
+                "SMALLINT" => PhysicalColumnType::Int { bits: IntBits::_16 },
+                "INT" => PhysicalColumnType::Int { bits: IntBits::_32 },
+                "INTEGER" => PhysicalColumnType::Int { bits: IntBits::_32 },
+                "SERIAL" => PhysicalColumnType::Int { bits: IntBits::_32 },
+                "BIGINT" => PhysicalColumnType::Int { bits: IntBits::_64 },
+                "BIGSERIAL" => PhysicalColumnType::Int { bits: IntBits::_64 },
+
+                "TEXT" => PhysicalColumnType::String { length: None },
+                "BOOLEAN" => PhysicalColumnType::Boolean,
+                "JSONB" => PhysicalColumnType::Json,
+                s => {
+                    // parse types with arguments
+                    // TODO: more robust parsing
+
+                    let get_num = |s: &str| {
+                        s.chars()
+                            .filter(|c| c.is_numeric())
+                            .collect::<String>()
+                            .parse::<usize>()
+                            .ok()
+                    };
+
+                    if s.starts_with("CHARACTER VARYING")
+                        || s.starts_with("VARCHAR")
+                        || s.starts_with("CHAR")
+                    {
+                        PhysicalColumnType::String { length: get_num(s) }
+                    } else if s.starts_with("TIMESTAMP") {
+                        PhysicalColumnType::Timestamp {
+                            precision: get_num(s),
+                            timezone: s.contains("WITH TIME ZONE"),
+                        }
+                    } else if s.starts_with("TIME") {
+                        PhysicalColumnType::Time {
+                            precision: get_num(s),
+                        }
+                    } else if s.starts_with("DATE") {
+                        PhysicalColumnType::Date
+                    } else {
+                        bail!("unknown type {}", s)
+                    }
+                }
+            }),
         }
     }
 
-    pub fn db_type(&self, is_autoincrement: bool) -> String {
+    pub fn to_model(&self) -> (String, String) {
         match self {
-            PhysicalColumnType::Int { bits } => {
-                if is_autoincrement {
-                    match bits {
-                        IntBits::_16 => "SMALLSERIAL",
-                        IntBits::_32 => "SERIAL",
-                        IntBits::_64 => "BIGSERIAL",
-                    }
-                } else {
-                    match bits {
-                        IntBits::_16 => "SMALLINT",
-                        IntBits::_32 => "INT",
-                        IntBits::_64 => "BIGINT",
-                    }
+            PhysicalColumnType::Int { bits } => (
+                "Int".to_string(),
+                match bits {
+                    IntBits::_16 => " @bits(16)",
+                    IntBits::_32 => "",
+                    IntBits::_64 => " @bits(64)",
                 }
-            }
-            .to_owned(),
+                .to_string(),
+            ),
 
-            PhysicalColumnType::String { length } => {
-                if let Some(length) = length {
-                    format!("CHAR[{}]", length)
-                } else {
-                    "TEXT".to_owned()
-                }
-            }
+            PhysicalColumnType::String { length } => (
+                "String".to_string(),
+                match length {
+                    Some(length) => format!(" @length({})", length),
+                    None => "".to_string(),
+                },
+            ),
 
-            PhysicalColumnType::Boolean => "BOOLEAN".to_owned(),
+            PhysicalColumnType::Boolean => ("Boolean".to_string(), "".to_string()),
 
             PhysicalColumnType::Timestamp {
                 timezone,
                 precision,
-            } => {
-                let timezone_option = if *timezone {
-                    "WITH TIME ZONE"
+            } => (
+                if *timezone {
+                    "Instant"
                 } else {
-                    "WITHOUT TIME ZONE"
-                };
-                let precision_option = if let Some(p) = precision {
-                    format!("({})", p)
-                } else {
-                    String::default()
-                };
+                    "LocalDateTime"
+                }
+                .to_string(),
+                match precision {
+                    Some(precision) => format!(" @precision({})", precision),
+                    None => "".to_string(),
+                },
+            ),
 
-                let typ = match self {
-                    PhysicalColumnType::Timestamp { .. } => "TIMESTAMP",
-                    PhysicalColumnType::Time { .. } => "TIME",
-                    _ => panic!(),
-                };
+            PhysicalColumnType::Time { precision } => (
+                "LocalTime".to_string(),
+                match precision {
+                    Some(precision) => format!(" @precision({})", precision),
+                    None => "".to_string(),
+                },
+            ),
 
-                // e.g. "TIMESTAMP(3) WITH TIME ZONE"
-                format!("{}{} {}", typ, precision_option, timezone_option)
+            PhysicalColumnType::Date => ("LocalDate".to_string(), "".to_string()),
+
+            PhysicalColumnType::Json => ("Json".to_string(), "".to_string()),
+
+            PhysicalColumnType::Array { typ } => {
+                let (data_type, annotations) = typ.to_model();
+                (format!("[{}]", data_type), annotations)
             }
 
-            PhysicalColumnType::Time { precision } => {
-                if let Some(p) = precision {
+            PhysicalColumnType::ColumnReference { ref_table_name, .. } => {
+                (ref_table_name.clone(), "".to_string())
+            }
+        }
+    }
+
+    pub fn to_sql(&self, table_name: &str, is_autoincrement: bool) -> SQLStatement {
+        match self {
+            PhysicalColumnType::Int { bits } => SQLStatement {
+                statement: {
+                    if is_autoincrement {
+                        match bits {
+                            IntBits::_16 => "SMALLSERIAL",
+                            IntBits::_32 => "SERIAL",
+                            IntBits::_64 => "BIGSERIAL",
+                        }
+                    } else {
+                        match bits {
+                            IntBits::_16 => "SMALLINT",
+                            IntBits::_32 => "INT",
+                            IntBits::_64 => "BIGINT",
+                        }
+                    }
+                }
+                .to_owned(),
+                foreign_constraints: Vec::new(),
+            },
+
+            PhysicalColumnType::String { length } => SQLStatement {
+                statement: if let Some(length) = length {
+                    format!("VARCHAR({})", length)
+                } else {
+                    "TEXT".to_owned()
+                },
+                foreign_constraints: Vec::new(),
+            },
+
+            PhysicalColumnType::Boolean => SQLStatement {
+                statement: "BOOLEAN".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
+
+            PhysicalColumnType::Timestamp {
+                timezone,
+                precision,
+            } => SQLStatement {
+                statement: {
+                    let timezone_option = if *timezone {
+                        "WITH TIME ZONE"
+                    } else {
+                        "WITHOUT TIME ZONE"
+                    };
+                    let precision_option = if let Some(p) = precision {
+                        format!("({})", p)
+                    } else {
+                        String::default()
+                    };
+
+                    let typ = match self {
+                        PhysicalColumnType::Timestamp { .. } => "TIMESTAMP",
+                        PhysicalColumnType::Time { .. } => "TIME",
+                        _ => panic!(),
+                    };
+
+                    // e.g. "TIMESTAMP(3) WITH TIME ZONE"
+                    format!("{}{} {}", typ, precision_option, timezone_option)
+                },
+                foreign_constraints: Vec::new(),
+            },
+
+            PhysicalColumnType::Time { precision } => SQLStatement {
+                statement: if let Some(p) = precision {
                     format!("TIME({})", p)
                 } else {
                     "TIME".to_owned()
-                }
-            }
+                },
+                foreign_constraints: Vec::new(),
+            },
 
-            PhysicalColumnType::Date => "DATE".to_owned(),
+            PhysicalColumnType::Date => SQLStatement {
+                statement: "DATE".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
 
-            PhysicalColumnType::Json => "JSONB".to_owned(),
+            PhysicalColumnType::Json => SQLStatement {
+                statement: "JSONB".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
 
             PhysicalColumnType::Array { typ } => {
                 // 'unwrap' nested arrays all the way to the underlying primitive type
@@ -179,15 +294,30 @@ impl PhysicalColumnType {
 
                 let mut dimensions_part = String::new();
 
-                for _dim in 0..dimensions {
+                for _ in 0..dimensions {
                     write!(&mut dimensions_part, "[]").unwrap();
                 }
 
-                format!(
-                    "{}{}",
-                    underlying_typ.db_type(is_autoincrement),
-                    dimensions_part
-                )
+                let mut sql_statement = underlying_typ.to_sql(table_name, is_autoincrement);
+                sql_statement.statement += &dimensions_part;
+                sql_statement
+            }
+
+            PhysicalColumnType::ColumnReference {
+                column_name,
+                ref_table_name,
+                ref_pk_type,
+            } => {
+                let mut sql_statement = ref_pk_type.to_sql(table_name, is_autoincrement);
+                let foreign_constraint = format!(
+                    "ALTER TABLE {table} ADD CONSTRAINT {ref_table}_fk FOREIGN KEY ({column}) REFERENCES {ref_table};",
+                    table = table_name,
+                    column = column_name,
+                    ref_table = ref_table_name,
+                );
+
+                sql_statement.foreign_constraints.push(foreign_constraint);
+                sql_statement
             }
         }
     }

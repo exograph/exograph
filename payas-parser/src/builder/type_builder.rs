@@ -10,7 +10,7 @@ use payas_model::{
         GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
-        column::{ColumnReferece, IntBits, PhysicalColumn, PhysicalColumnType},
+        column::{IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     },
 };
@@ -385,7 +385,6 @@ fn create_column(
                     } else {
                         false
                     },
-                    references: None,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -395,16 +394,16 @@ fn create_column(
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
                         column_name: field.column_name.clone(),
-                        typ: determine_column_type(
-                            &other_pk_field.typ.deref(env).as_primitive(),
-                            field,
-                        ),
+                        typ: PhysicalColumnType::ColumnReference {
+                            column_name: field.column_name.clone(),
+                            ref_table_name: ct.table_name.clone(),
+                            ref_pk_type: Box::new(determine_column_type(
+                                &other_pk_field.typ.deref(env).as_primitive(),
+                                field,
+                            )),
+                        },
                         is_pk: false,
                         is_autoincrement: false,
-                        references: Some(ColumnReferece {
-                            table_name: ct.table_name.clone(),
-                            column_name: other_pk_field.column_name.clone(),
-                        }),
                     })
                 }
             }
@@ -448,7 +447,6 @@ fn create_column(
                     typ: determine_column_type(&pt, field),
                     is_pk: false,
                     is_autoincrement: false,
-                    references: None,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column
@@ -470,7 +468,9 @@ fn determine_column_type<'a>(
 
     if let Some(hint) = &field.type_hint {
         match hint {
-            ResolvedTypeHint::Explicit { dbtype } => PhysicalColumnType::from_string(dbtype),
+            ResolvedTypeHint::Explicit { dbtype } => {
+                PhysicalColumnType::from_string(dbtype).unwrap()
+            }
 
             ResolvedTypeHint::Int { bits, range } => {
                 assert!(matches!(pt, PrimitiveType::Int));

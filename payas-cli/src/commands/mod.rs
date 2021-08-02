@@ -33,7 +33,7 @@ impl Command for MigrateCommand {
     }
 }
 
-/// Claytip model utilities
+/// Run local claytip server
 pub struct ServeCommand {
     pub model: PathBuf,
     pub watch: bool,

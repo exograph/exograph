@@ -1779,6 +1779,7 @@ dependencies = [
  "openssl",
  "postgres",
  "postgres-openssl",
+ "regex",
  "serde",
  "serde_json",
 ]
