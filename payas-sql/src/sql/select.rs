@@ -1,6 +1,6 @@
 use super::{
-    column::Column, order::OrderBy, physical_table::PhysicalTable, predicate::Predicate,
-    Expression, ExpressionContext, ParameterBinding,
+    column::Column, limit::Limit, offset::Offset, order::OrderBy, physical_table::PhysicalTable,
+    predicate::Predicate, Expression, ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -9,6 +9,8 @@ pub struct Select<'a> {
     pub columns: Vec<&'a Column<'a>>,
     pub predicate: Option<&'a Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
+    pub offset: Option<Offset>,
+    pub limit: Option<Limit>,
     pub top_level_selection: bool,
 }
 
@@ -77,6 +79,24 @@ impl<'a> Expression for Select<'a> {
                     }
                 }
             }
+        };
+
+        let stmt = match &self.offset {
+            Some(offset) => {
+                let offset_binding = offset.binding(expression_context);
+                params.extend(offset_binding.params);
+                format!("{} {}", stmt, offset_binding.stmt)
+            }
+            None => stmt,
+        };
+
+        let stmt = match &self.limit {
+            Some(limit) => {
+                let limit_binding = limit.binding(expression_context);
+                params.extend(limit_binding.params);
+                format!("{} {}", stmt, limit_binding.stmt)
+            }
+            None => stmt,
         };
 
         ParameterBinding::new(stmt, params)

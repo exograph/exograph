@@ -11,7 +11,7 @@ use payas_model::{
     },
     sql::{
         column::{ColumnReferece, PhysicalColumn},
-        PhysicalTable, SQLOperation, Select,
+        Limit, Offset, PhysicalTable, SQLOperation, Select,
     },
 };
 
@@ -80,13 +80,14 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
             Value::List(elems) => {
                 let unaligned: Vec<_> = elems
                     .iter()
-                    .map(|elem| map_single(self, elem, operation_context))
+                    .enumerate()
+                    .map(|(index, elem)| map_single(self, elem, Some(index), operation_context))
                     .collect();
 
                 align(unaligned, table)
             }
             _ => {
-                let raw = map_single(self, argument, operation_context);
+                let raw = map_single(self, argument, None, operation_context);
                 let (columns, values) = raw.self_row.into_iter().unzip();
                 InsertionInfo {
                     table,
@@ -138,6 +139,7 @@ fn align<'a>(unaligned: Vec<SingleInsertion<'a>>, table: &'a PhysicalTable) -> I
 fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a Value,
+    index: Option<usize>, // Index if the multiple entries are being inserted (such as createVenues (note the plural form))
     operation_context: &'a OperationContext<'a>,
 ) -> SingleInsertion<'a> {
     let argument = match argument {
@@ -168,6 +170,7 @@ fn map_single<'a>(
                 None => nested_rows.push(map_foreign(
                     field,
                     field_arg,
+                    index,
                     input_data_type,
                     operation_context,
                 )),
@@ -215,6 +218,7 @@ fn map_self_column<'a>(
 fn map_foreign<'a>(
     field: &'a GqlField,
     argument: &'a Value,
+    parent_index: Option<usize>,
     parent_data_type: &'a GqlType,
     operation_context: &'a OperationContext<'a>,
 ) -> InsertionInfo<'a> {
@@ -253,6 +257,8 @@ fn map_foreign<'a>(
                 columns: vec![parent_pk_column],
                 predicate: None,
                 order_by: None,
+                offset: parent_index.map(|index| Offset(index as i8)),
+                limit: parent_index.map(|_| Limit(1)),
                 top_level_selection: false,
             })),
         )
