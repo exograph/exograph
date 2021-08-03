@@ -10,7 +10,7 @@ use payas_model::{
         GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
-        column::{IntBits, PhysicalColumn, PhysicalColumnType},
+        column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     },
 };
@@ -516,6 +516,24 @@ fn determine_column_type<'a>(
                 }
             }
 
+            ResolvedTypeHint::Float { bits } => {
+                assert!(matches!(pt, PrimitiveType::Float));
+
+                let bits = *bits;
+
+                if bits >= 1 && bits <= 24 {
+                    PhysicalColumnType::Float {
+                        bits: FloatBits::_24,
+                    }
+                } else if bits > 24 && bits <= 53 {
+                    PhysicalColumnType::Float {
+                        bits: FloatBits::_53,
+                    }
+                } else {
+                    panic!("Invalid bits")
+                }
+            }
+
             ResolvedTypeHint::String { length } => {
                 assert!(matches!(pt, PrimitiveType::String));
 
@@ -544,6 +562,9 @@ fn determine_column_type<'a>(
         match pt {
             // choose a default SQL type
             PrimitiveType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
+            PrimitiveType::Float => PhysicalColumnType::Float {
+                bits: FloatBits::_24,
+            },
             PrimitiveType::String => PhysicalColumnType::String { length: None },
             PrimitiveType::Boolean => PhysicalColumnType::Boolean,
             PrimitiveType::LocalTime => PhysicalColumnType::Time { precision: None },

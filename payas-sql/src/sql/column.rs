@@ -39,6 +39,9 @@ pub enum PhysicalColumnType {
         ref_table_name: String,
         ref_pk_type: Box<PhysicalColumnType>,
     },
+    Float {
+        bits: FloatBits,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -46,6 +49,13 @@ pub enum IntBits {
     _16,
     _32,
     _64,
+}
+
+/// Number of bits in the float's mantissa.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FloatBits {
+    _24,
+    _53,
 }
 
 impl PhysicalColumnType {
@@ -96,6 +106,13 @@ impl PhysicalColumnType {
                 "BIGINT" => PhysicalColumnType::Int { bits: IntBits::_64 },
                 "BIGSERIAL" => PhysicalColumnType::Int { bits: IntBits::_64 },
 
+                "REAL" => PhysicalColumnType::Float {
+                    bits: FloatBits::_24,
+                },
+                "DOUBLE PRECISION" => PhysicalColumnType::Float {
+                    bits: FloatBits::_53,
+                },
+
                 "TEXT" => PhysicalColumnType::String { length: None },
                 "BOOLEAN" => PhysicalColumnType::Boolean,
                 "JSONB" => PhysicalColumnType::Json,
@@ -145,6 +162,15 @@ impl PhysicalColumnType {
                     IntBits::_64 => " @bits(64)",
                 }
                 .to_string(),
+            ),
+
+            PhysicalColumnType::Float { bits } => (
+                "Float".to_string(),
+                match bits {
+                    FloatBits::_24 => " @bits(24)",
+                    FloatBits::_53 => " @bits(53)",
+                }
+                .to_owned(),
             ),
 
             PhysicalColumnType::String { length } => (
@@ -213,6 +239,15 @@ impl PhysicalColumnType {
                             IntBits::_64 => "BIGINT",
                         }
                     }
+                }
+                .to_owned(),
+                foreign_constraints: Vec::new(),
+            },
+
+            PhysicalColumnType::Float { bits } => SQLStatement {
+                statement: match bits {
+                    FloatBits::_24 => "REAL",
+                    FloatBits::_53 => "DOUBLE PRECISION",
                 }
                 .to_owned(),
                 foreign_constraints: Vec::new(),

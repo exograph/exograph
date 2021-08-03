@@ -63,6 +63,7 @@ expression: normalized_system(&resolved)
           BooleanLiteral:
             - true
             - Primitive: Boolean
+  - Primitive: Float
   - Primitive: Instant
   - Primitive: Int
   - Primitive: Json

@@ -8,6 +8,7 @@ operation: |
                 id
                 title
                 published
+                price
             }
         }
         venue2: venue(id:2) { # Use alias. Needed anyway, but also tests for how we process aliases
@@ -18,11 +19,13 @@ operation: |
                 id
                 title
                 published
+                price
             }
             concerts(where: {id: {eq: 2}}) {
                 id
                 title
                 published
+                price
             }
         }
     } 
@@ -41,7 +44,8 @@ response: |
             {
               "id": 1,
               "title": "Concert1",
-              "published": true
+              "published": true,
+              "price": 20.5
             }
           ]
         },
@@ -54,7 +58,8 @@ response: |
             {
               "id": 2,
               "title": "Concert2",
-              "published": false
+              "published": false,
+              "price": 12.5
             }
           ]
         }
