@@ -392,12 +392,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
                 bits_annotation
             };
 
-            if let Some(bits) = bits_hint {
-                Some(ResolvedTypeHint::Float { bits })
-            } else {
-                // no useful hints to pass along
-                None
-            }
+            bits_hint.map(|bits| ResolvedTypeHint::Float { bits })
         }
     };
 

@@ -521,7 +521,7 @@ fn determine_column_type<'a>(
 
                 let bits = *bits;
 
-                if bits >= 1 && bits <= 24 {
+                if (1..=24).contains(&bits) {
                     PhysicalColumnType::Float {
                         bits: FloatBits::_24,
                     }
