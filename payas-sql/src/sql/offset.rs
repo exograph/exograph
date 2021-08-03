@@ -3,7 +3,7 @@ use crate::sql::SQLParam;
 use super::{Expression, ExpressionContext, ParameterBinding};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Offset(pub i8);
+pub struct Offset(pub i64);
 
 impl Expression for Offset {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {

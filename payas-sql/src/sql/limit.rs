@@ -3,7 +3,7 @@ use crate::sql::SQLParam;
 use super::{Expression, ExpressionContext, ParameterBinding};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Limit(pub i8);
+pub struct Limit(pub i64);
 
 impl Expression for Limit {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {

@@ -257,7 +257,7 @@ fn map_foreign<'a>(
                 columns: vec![parent_pk_column],
                 predicate: None,
                 order_by: None,
-                offset: parent_index.map(|index| Offset(index as i8)),
+                offset: parent_index.map(|index| Offset(index as i64)),
                 limit: parent_index.map(|_| Limit(1)),
                 top_level_selection: false,
             })),
