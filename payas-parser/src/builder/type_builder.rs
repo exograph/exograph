@@ -396,6 +396,7 @@ fn create_column(
                         column_name: field.column_name.clone(),
                         typ: PhysicalColumnType::ColumnReference {
                             ref_table_name: ct.table_name.clone(),
+                            ref_column_name: other_pk_field.column_name.clone(),
                             ref_pk_type: Box::new(determine_column_type(
                                 &other_pk_field.typ.deref(env).as_primitive(),
                                 field,

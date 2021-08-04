@@ -36,6 +36,7 @@ pub enum PhysicalColumnType {
     },
     ColumnReference {
         ref_table_name: String,
+        ref_column_name: String,
         ref_pk_type: Box<PhysicalColumnType>,
     },
 }
@@ -311,6 +312,7 @@ impl PhysicalColumnType {
             PhysicalColumnType::ColumnReference {
                 ref_table_name,
                 ref_pk_type,
+                ..
             } => {
                 let mut sql_statement =
                     ref_pk_type.to_sql(table_name, column_name, is_autoincrement);

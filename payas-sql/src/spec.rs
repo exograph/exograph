@@ -203,6 +203,7 @@ impl TableSpec {
                     column_name.clone(),
                     PhysicalColumnType::ColumnReference {
                         ref_table_name: ref_table_name.clone(),
+                        ref_column_name: ref_column_name.clone(),
                         ref_pk_type: Box::new(spec.db_type),
                     },
                 );
