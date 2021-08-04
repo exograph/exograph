@@ -27,6 +27,7 @@ pub enum ContextSource {
 #[derive(Debug, Clone)]
 pub struct GqlType {
     pub name: String,
+    pub plural_name: String,
     pub kind: GqlTypeKind,
     pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
 }

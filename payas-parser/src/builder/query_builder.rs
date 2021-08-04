@@ -11,6 +11,7 @@ use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
 };
+use heck::MixedCase;
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {
@@ -33,13 +34,13 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
         if let GqlTypeKind::Composite { .. } = &model_type.kind {
             {
-                let operation_name = pk_query_name(&model_type.name);
+                let operation_name = query_name(&model_type.name);
                 let query = expanded_pk_query(model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
             }
             {
-                let operation_name = collection_query_name(&model_type.name);
+                let operation_name = query_name(&model_type.plural_name);
                 let query = expanded_collection_query(model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
@@ -49,7 +50,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 }
 
 fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &ResolvedCompositeType) -> Query {
-    let operation_name = pk_query_name(typ.name.as_str());
+    let operation_name = query_name(&typ.name);
     Query {
         name: operation_name,
         predicate_param: None,
@@ -63,7 +64,7 @@ fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &ResolvedCompositeType) -> 
 }
 
 fn expanded_pk_query(model_type: &GqlType, building: &SystemContextBuilding) -> Query {
-    let operation_name = pk_query_name(&model_type.name);
+    let operation_name = query_name(&model_type.name);
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
     let pk_param = pk_predicate_param(model_type, building);
@@ -95,7 +96,7 @@ pub fn pk_predicate_param(
 }
 
 fn shallow_collection_query(model_type_id: Id<GqlType>, model: &ResolvedCompositeType) -> Query {
-    let operation_name = collection_query_name(model.name.as_str());
+    let operation_name = query_name(&model.plural_name);
     Query {
         name: operation_name,
         predicate_param: None,
@@ -109,7 +110,7 @@ fn shallow_collection_query(model_type_id: Id<GqlType>, model: &ResolvedComposit
 }
 
 fn expanded_collection_query(model_type: &GqlType, building: &SystemContextBuilding) -> Query {
-    let operation_name = collection_query_name(&model_type.name);
+    let operation_name = query_name(&model_type.plural_name);
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
     let predicate_param = collection_predicate_param(model_type, building);
@@ -137,16 +138,6 @@ pub fn collection_predicate_param(
     }
 }
 
-pub fn pk_query_name(name: &str) -> String {
-    // Concert -> concert, SavingsAccount -> savingsAccount i.e. lowercase the first letter
-    let mut ret = name.to_owned();
-    if let Some(r) = ret.get_mut(0..1) {
-        r.make_ascii_lowercase();
-    }
-    ret
-}
-
-// TODO: Bring in a proper pluralize implementation
-pub fn collection_query_name(input: &str) -> String {
-    format!("{}s", pk_query_name(input))
+pub fn query_name(name: &str) -> String {
+    name.to_mixed_case()
 }

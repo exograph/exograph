@@ -57,6 +57,7 @@ impl ResolvedAccess {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedCompositeType {
     pub name: String,
+    pub plural_name: String,
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
     pub access: ResolvedAccess,
@@ -123,6 +124,15 @@ impl ResolvedType {
         }
     }
 
+    pub fn plural_name(&self) -> String {
+        match self {
+            ResolvedType::Primitive(_) => "".to_string(), // unused
+            ResolvedType::Composite(ResolvedCompositeType { plural_name, .. }) => {
+                plural_name.to_owned()
+            }
+        }
+    }
+
     pub fn as_primitive(&self) -> PrimitiveType {
         match &self {
             ResolvedType::Primitive(p) => p.clone(),
@@ -176,6 +186,11 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
+                        plural_name: ct
+                            .annotations
+                            .plural_name()
+                            .map(|a| a.value().as_string())
+                            .unwrap_or(ct.name.clone() + "s"),
                         fields: vec![],
                         table_name,
                         access,
@@ -271,6 +286,7 @@ fn build_expanded_persistent_type(
 
     if let ResolvedType::Composite(ResolvedCompositeType {
         name,
+        plural_name,
         table_name,
         access,
         ..
@@ -291,6 +307,7 @@ fn build_expanded_persistent_type(
 
         let expanded = ResolvedType::Composite(ResolvedCompositeType {
             name: name.clone(),
+            plural_name: plural_name.clone(),
             fields: resolved_fields,
             table_name: table_name.clone(),
             access: access.clone(),

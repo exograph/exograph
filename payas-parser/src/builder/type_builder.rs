@@ -66,6 +66,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
         &type_name,
         GqlType {
             name: type_name.to_string(),
+            plural_name: resolved_type.plural_name(),
             kind: GqlTypeKind::Primitive,
             is_input: false,
         },
@@ -104,12 +105,12 @@ fn expand_type_no_fields(
 
     let pk_query = building
         .queries
-        .get_id(&query_builder::pk_query_name(&resolved_type.name))
+        .get_id(&query_builder::query_name(&resolved_type.name))
         .unwrap();
 
     let collection_query = building
         .queries
-        .get_id(&query_builder::collection_query_name(&resolved_type.name))
+        .get_id(&query_builder::query_name(&resolved_type.plural_name))
         .unwrap();
 
     let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {

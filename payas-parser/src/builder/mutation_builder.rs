@@ -70,6 +70,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
                 mutation_type_name,
                 GqlType {
                     name: mutation_type_name.to_string(),
+                    plural_name: "".to_string(), // unused
                     kind: GqlTypeKind::Primitive,
                     is_input: true,
                 },
@@ -105,7 +106,7 @@ fn build_create_mutation(
     };
 
     let multi_create = Mutation {
-        name: format!("create{}s", model_type.name.as_str()),
+        name: format!("create{}", model_type.plural_name.as_str()),
         kind: MutationKind::Create(MutationDataParameter {
             name: "data".to_string(),
             type_name: data_param_type_name,
@@ -138,7 +139,7 @@ fn build_delete_mutations(
     };
 
     let by_predicate_delete = Mutation {
-        name: format!("delete{}s", model_type.name),
+        name: format!("delete{}", model_type.plural_name),
         kind: MutationKind::Delete(query_builder::collection_predicate_param(
             model_type, building,
         )),
@@ -182,7 +183,7 @@ fn build_update_mutations(
     };
 
     let by_predicate_update = Mutation {
-        name: format!("update{}s", model_type.name),
+        name: format!("update{}", model_type.plural_name),
         kind: MutationKind::Update {
             data_param: MutationDataParameter {
                 name: "data".to_string(),

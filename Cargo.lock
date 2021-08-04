@@ -1736,6 +1736,7 @@ dependencies = [
  "cc",
  "codemap",
  "codemap-diagnostic",
+ "heck",
  "id-arena",
  "insta",
  "lazy_static",
