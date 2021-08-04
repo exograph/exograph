@@ -1723,6 +1723,7 @@ dependencies = [
 name = "payas-model"
 version = "0.1.0"
 dependencies = [
+ "heck",
  "id-arena",
  "payas-sql",
 ]
@@ -1736,7 +1737,6 @@ dependencies = [
  "cc",
  "codemap",
  "codemap-diagnostic",
- "heck",
  "id-arena",
  "insta",
  "lazy_static",

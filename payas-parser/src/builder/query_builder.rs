@@ -1,4 +1,5 @@
 use id_arena::Id;
+use payas_model::model::naming::ToGqlQueryName;
 use payas_model::model::{
     mapped_arena::MappedArena,
     operation::{OperationReturnType, Query},
@@ -11,7 +12,6 @@ use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
 };
-use heck::MixedCase;
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {
@@ -34,13 +34,13 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
         if let GqlTypeKind::Composite { .. } = &model_type.kind {
             {
-                let operation_name = query_name(&model_type.name);
+                let operation_name = model_type.pk_query();
                 let query = expanded_pk_query(model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
             }
             {
-                let operation_name = query_name(&model_type.plural_name);
+                let operation_name = model_type.collection_query();
                 let query = expanded_collection_query(model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
@@ -50,7 +50,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 }
 
 fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &ResolvedCompositeType) -> Query {
-    let operation_name = query_name(&typ.name);
+    let operation_name = typ.pk_query();
     Query {
         name: operation_name,
         predicate_param: None,
@@ -64,7 +64,7 @@ fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &ResolvedCompositeType) -> 
 }
 
 fn expanded_pk_query(model_type: &GqlType, building: &SystemContextBuilding) -> Query {
-    let operation_name = query_name(&model_type.name);
+    let operation_name = model_type.pk_query();
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
     let pk_param = pk_predicate_param(model_type, building);
@@ -96,7 +96,7 @@ pub fn pk_predicate_param(
 }
 
 fn shallow_collection_query(model_type_id: Id<GqlType>, model: &ResolvedCompositeType) -> Query {
-    let operation_name = query_name(&model.plural_name);
+    let operation_name = model.collection_query();
     Query {
         name: operation_name,
         predicate_param: None,
@@ -110,7 +110,7 @@ fn shallow_collection_query(model_type_id: Id<GqlType>, model: &ResolvedComposit
 }
 
 fn expanded_collection_query(model_type: &GqlType, building: &SystemContextBuilding) -> Query {
-    let operation_name = query_name(&model_type.plural_name);
+    let operation_name = model_type.collection_query();
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
     let predicate_param = collection_predicate_param(model_type, building);
@@ -136,8 +136,4 @@ pub fn collection_predicate_param(
         type_modifier: GqlTypeModifier::Optional,
         column_id: None,
     }
-}
-
-pub fn query_name(name: &str) -> String {
-    name.to_mixed_case()
 }

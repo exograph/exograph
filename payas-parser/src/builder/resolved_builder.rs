@@ -6,6 +6,7 @@
 
 use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::naming::ToPlural;
 
 use crate::typechecker::{
     AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
@@ -61,6 +62,16 @@ pub struct ResolvedCompositeType {
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
     pub access: ResolvedAccess,
+}
+
+impl ToPlural for ResolvedCompositeType {
+    fn to_singular(&self) -> String {
+        self.name.clone()
+    }
+
+    fn to_plural(&self) -> String {
+        self.plural_name.clone()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -190,7 +201,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                             .annotations
                             .plural_name()
                             .map(|a| a.value().as_string())
-                            .unwrap_or(ct.name.clone() + "s"), // TODO improve default pluralization
+                            .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
                         fields: vec![],
                         table_name,
                         access,

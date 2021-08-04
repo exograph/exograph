@@ -4,6 +4,7 @@
 use id_arena::Id;
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::{operation::Mutation, types::GqlType};
 use payas_model::model::{GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind};
@@ -15,7 +16,7 @@ use payas_model::model::{
     types::GqlTypeModifier,
 };
 
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
+use super::resolved_builder::ResolvedType;
 use super::system_builder::SystemContextBuilding;
 
 /// Build shallow mutaiton input types
@@ -58,12 +59,8 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 }
 
 fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
-    if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) = resolved_type {
-        let mutation_type_names = [
-            input_creation_type_name(name),
-            input_update_type_name(name),
-            input_reference_type_name(name),
-        ];
+    if let ResolvedType::Composite(c) = resolved_type {
+        let mutation_type_names = [c.creation_type(), c.update_type(), c.reference_type()];
 
         for mutation_type_name in mutation_type_names.iter() {
             building.mutation_types.add(
@@ -84,14 +81,14 @@ fn build_create_mutation(
     model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> Vec<Mutation> {
-    let data_param_type_name = input_creation_type_name(model_type.name.as_str());
+    let data_param_type_name = model_type.creation_type();
     let data_param_type_id = building
         .mutation_types
         .get_id(&data_param_type_name)
         .unwrap();
 
     let single_create = Mutation {
-        name: format!("create{}", model_type.name.as_str()),
+        name: model_type.pk_create(),
         kind: MutationKind::Create(MutationDataParameter {
             name: "data".to_string(),
             type_name: data_param_type_name.clone(),
@@ -106,7 +103,7 @@ fn build_create_mutation(
     };
 
     let multi_create = Mutation {
-        name: format!("create{}", model_type.plural_name.as_str()),
+        name: model_type.collection_create(),
         kind: MutationKind::Create(MutationDataParameter {
             name: "data".to_string(),
             type_name: data_param_type_name,
@@ -129,7 +126,7 @@ fn build_delete_mutations(
     building: &SystemContextBuilding,
 ) -> Vec<Mutation> {
     let by_pk_delete = Mutation {
-        name: format!("delete{}", model_type.name),
+        name: model_type.pk_delete(),
         kind: MutationKind::Delete(query_builder::pk_predicate_param(model_type, building)),
         return_type: OperationReturnType {
             type_id: model_type_id,
@@ -139,7 +136,7 @@ fn build_delete_mutations(
     };
 
     let by_predicate_delete = Mutation {
-        name: format!("delete{}", model_type.plural_name),
+        name: model_type.collection_delete(),
         kind: MutationKind::Delete(query_builder::collection_predicate_param(
             model_type, building,
         )),
@@ -158,14 +155,14 @@ fn build_update_mutations(
     model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> Vec<Mutation> {
-    let data_param_type_name = input_update_type_name(model_type.name.as_str());
+    let data_param_type_name = model_type.update_type();
     let data_param_type_id = building
         .mutation_types
         .get_id(&data_param_type_name)
         .unwrap();
 
     let by_pk_update = Mutation {
-        name: format!("update{}", model_type.name),
+        name: model_type.pk_update(),
         kind: MutationKind::Update {
             data_param: MutationDataParameter {
                 name: "data".to_string(),
@@ -183,7 +180,7 @@ fn build_update_mutations(
     };
 
     let by_predicate_update = Mutation {
-        name: format!("update{}", model_type.plural_name),
+        name: model_type.collection_update(),
         kind: MutationKind::Update {
             data_param: MutationDataParameter {
                 name: "data".to_string(),
@@ -201,18 +198,6 @@ fn build_update_mutations(
     };
 
     vec![by_pk_update, by_predicate_update]
-}
-
-fn input_creation_type_name(model_type_name: &str) -> String {
-    format!("{}CreationInput", model_type_name)
-}
-
-fn input_update_type_name(model_type_name: &str) -> String {
-    format!("{}UpdateInput", model_type_name)
-}
-
-fn input_reference_type_name(model_type_name: &str) -> String {
-    format!("{}ReferenceInput", model_type_name)
 }
 
 fn expanded_mutation_types(
@@ -241,7 +226,7 @@ fn expanded_mutation_types(
                 })
                 .collect();
 
-            let existing_type_name = input_reference_type_name(model_type.name.as_str());
+            let existing_type_name = model_type.reference_type();
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
             (
@@ -259,7 +244,7 @@ fn expanded_mutation_types(
         let creation_type = {
             let input_type_fields = compute_input_fields(model_fields, building, false);
 
-            let existing_type_name = input_creation_type_name(model_type.name.as_str());
+            let existing_type_name = model_type.creation_type();
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
             (
@@ -277,7 +262,7 @@ fn expanded_mutation_types(
         let update_type = {
             let input_type_fields = compute_input_fields(model_fields, building, true);
 
-            let existing_type_name = input_update_type_name(model_type.name.as_str());
+            let existing_type_name = model_type.update_type();
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
             (
@@ -312,7 +297,7 @@ fn compute_input_fields(
                 ..field.clone()
             }),
             GqlRelation::ManyToOne { .. } | GqlRelation::OneToMany { .. } => {
-                let field_type_name = input_reference_type_name(field.typ.type_name());
+                let field_type_name = field.typ.type_name().reference_type();
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = GqlFieldType::Reference {
                     type_name: field_type_name,
