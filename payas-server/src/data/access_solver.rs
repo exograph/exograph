@@ -236,7 +236,7 @@ mod tests {
         let operation_context = unsafe {
             let null_query_context: *const QueryContext = ptr::null();
             let query_context: &QueryContext = &*null_query_context;
-            OperationContext::new(&query_context)
+            OperationContext::new(query_context)
         };
 
         let test_ae = AccessExpression::RelationalOp(AccessRelationalOp::Eq(

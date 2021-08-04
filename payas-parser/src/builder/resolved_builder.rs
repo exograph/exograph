@@ -581,6 +581,7 @@ mod tests {
         }
         
         @table("venues")
+        @plural_name("Venuess")
         model Venue {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")
