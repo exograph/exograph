@@ -202,7 +202,6 @@ impl TableSpec {
                 foreign_constraints.insert(
                     column_name.clone(),
                     PhysicalColumnType::ColumnReference {
-                        column_name: column_name.clone(),
                         ref_table_name: ref_table_name.clone(),
                         ref_pk_type: Box::new(spec.db_type),
                     },
@@ -418,7 +417,9 @@ impl ColumnSpec {
         let SQLStatement {
             statement,
             foreign_constraints,
-        } = self.db_type.to_sql(table_name, self.is_autoincrement);
+        } = self
+            .db_type
+            .to_sql(table_name, &self.name, self.is_autoincrement);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
 
         SQLStatement {

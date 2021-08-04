@@ -35,7 +35,6 @@ pub enum PhysicalColumnType {
         typ: Box<PhysicalColumnType>,
     },
     ColumnReference {
-        column_name: String,
         ref_table_name: String,
         ref_pk_type: Box<PhysicalColumnType>,
     },
@@ -196,7 +195,12 @@ impl PhysicalColumnType {
         }
     }
 
-    pub fn to_sql(&self, table_name: &str, is_autoincrement: bool) -> SQLStatement {
+    pub fn to_sql(
+        &self,
+        table_name: &str,
+        column_name: &str,
+        is_autoincrement: bool,
+    ) -> SQLStatement {
         match self {
             PhysicalColumnType::Int { bits } => SQLStatement {
                 statement: {
@@ -298,17 +302,18 @@ impl PhysicalColumnType {
                     write!(&mut dimensions_part, "[]").unwrap();
                 }
 
-                let mut sql_statement = underlying_typ.to_sql(table_name, is_autoincrement);
+                let mut sql_statement =
+                    underlying_typ.to_sql(table_name, column_name, is_autoincrement);
                 sql_statement.statement += &dimensions_part;
                 sql_statement
             }
 
             PhysicalColumnType::ColumnReference {
-                column_name,
                 ref_table_name,
                 ref_pk_type,
             } => {
-                let mut sql_statement = ref_pk_type.to_sql(table_name, is_autoincrement);
+                let mut sql_statement =
+                    ref_pk_type.to_sql(table_name, column_name, is_autoincrement);
                 let foreign_constraint = format!(
                     "ALTER TABLE {table} ADD CONSTRAINT {ref_table}_fk FOREIGN KEY ({column}) REFERENCES {ref_table};",
                     table = table_name,
