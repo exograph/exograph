@@ -190,7 +190,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                             .annotations
                             .plural_name()
                             .map(|a| a.value().as_string())
-                            .unwrap_or(ct.name.clone() + "s"),
+                            .unwrap_or(ct.name.clone() + "s"), // TODO improve default pluralization
                         fields: vec![],
                         table_name,
                         access,
