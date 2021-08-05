@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 id-arena = "2.2.1"
+heck = "0.3"
 payas-sql = { path = "../payas-sql" }
 
 [lib]

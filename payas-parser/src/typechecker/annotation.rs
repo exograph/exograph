@@ -49,6 +49,11 @@ pub enum LengthAnnotation {
     Single(TypedExpression),
 }
 
+#[annotation("plural_name")]
+pub enum PluralNameAnnotation {
+    Single(TypedExpression),
+}
+
 #[annotation("precision")]
 pub enum PrecisionAnnotation {
     Single(TypedExpression),
@@ -91,6 +96,7 @@ pub enum TypedAnnotation {
     Column(ColumnAnnotation),
     DbType(DbTypeAnnotation),
     Length(LengthAnnotation),
+    PluralName(PluralNameAnnotation),
     Precision(PrecisionAnnotation),
     Jwt(JwtAnnotation),
     Pk(PkAnnotation),
@@ -108,6 +114,7 @@ impl TypedAnnotation {
             TypedAnnotation::Column(_) => ColumnAnnotation::name(),
             TypedAnnotation::DbType(_) => DbTypeAnnotation::name(),
             TypedAnnotation::Length(_) => LengthAnnotation::name(),
+            TypedAnnotation::PluralName(_) => PluralNameAnnotation::name(),
             TypedAnnotation::Precision(_) => PrecisionAnnotation::name(),
             TypedAnnotation::Jwt(_) => JwtAnnotation::name(),
             TypedAnnotation::Pk(_) => PkAnnotation::name(),
@@ -148,6 +155,10 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
             Ok(TypedAnnotation::Length(LengthAnnotation::from_params(
                 self, params, errors,
             )?))
+        } else if name == PluralNameAnnotation::name() {
+            Ok(TypedAnnotation::PluralName(
+                PluralNameAnnotation::from_params(self, params, errors)?,
+            ))
         } else if name == PrecisionAnnotation::name() {
             Ok(TypedAnnotation::Precision(
                 PrecisionAnnotation::from_params(self, params, errors)?,
@@ -201,6 +212,7 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
             TypedAnnotation::Column(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::DbType(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Length(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::PluralName(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Precision(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Jwt(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Pk(a) => a.pass(&self.params, env, scope, errors),

@@ -6,6 +6,7 @@ use payas_model::{
         },
         column_id::ColumnId,
         mapped_arena::MappedArena,
+        naming::ToGqlQueryName,
         relation::GqlRelation,
         GqlCompositeTypeKind, GqlFieldType,
     },
@@ -15,11 +16,8 @@ use payas_model::{
     },
 };
 
-use super::{
-    query_builder,
-    resolved_builder::{
-        ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType, ResolvedTypeHint,
-    },
+use super::resolved_builder::{
+    ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType, ResolvedTypeHint,
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
@@ -66,6 +64,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
         &type_name,
         GqlType {
             name: type_name.to_string(),
+            plural_name: resolved_type.plural_name(),
             kind: GqlTypeKind::Primitive,
             is_input: false,
         },
@@ -102,14 +101,11 @@ fn expand_type_no_fields(
 
     let table_id = building.tables.add(&table_name, table);
 
-    let pk_query = building
-        .queries
-        .get_id(&query_builder::pk_query_name(&resolved_type.name))
-        .unwrap();
+    let pk_query = building.queries.get_id(&resolved_type.pk_query()).unwrap();
 
     let collection_query = building
         .queries
-        .get_id(&query_builder::collection_query_name(&resolved_type.name))
+        .get_id(&resolved_type.collection_query())
         .unwrap();
 
     let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {

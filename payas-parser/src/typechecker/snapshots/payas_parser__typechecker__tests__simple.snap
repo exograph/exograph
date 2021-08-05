@@ -20,6 +20,7 @@ expression: types
             column: ~
             db_type: ~
             length: ~
+            plural_name: ~
             precision: ~
             jwt: ~
             pk: ~
@@ -33,6 +34,7 @@ expression: types
         column: ~
         db_type: ~
         length: ~
+        plural_name: ~
         precision: ~
         jwt: ~
         pk: ~
@@ -119,6 +121,7 @@ expression: types
                     - Primitive: String
             db_type: ~
             length: ~
+            plural_name: ~
             precision: ~
             jwt: ~
             pk: ~
@@ -135,6 +138,7 @@ expression: types
             column: ~
             db_type: ~
             length: ~
+            plural_name: ~
             precision: ~
             jwt: ~
             pk: ~
@@ -148,6 +152,7 @@ expression: types
         column: ~
         db_type: ~
         length: ~
+        plural_name: ~
         precision: ~
         jwt: ~
         pk: ~
