@@ -13,6 +13,8 @@ mod physical_table;
 mod select;
 mod sql_operation;
 
+mod limit;
+mod offset;
 pub mod order;
 pub mod predicate;
 mod update;
@@ -20,6 +22,8 @@ mod update;
 pub use cte::Cte;
 pub use delete::Delete;
 pub use insert::Insert;
+pub use limit::Limit;
+pub use offset::Offset;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
 pub use sql_operation::SQLOperation;

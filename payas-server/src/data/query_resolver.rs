@@ -126,13 +126,25 @@ impl<'a> QueryOperations<'a> for Query {
             .physical_table(operation_context.query_context.system);
 
         Ok(match self.return_type.type_modifier {
-            GqlTypeModifier::Optional | GqlTypeModifier::NonNull => {
-                table.select(vec![content_object], predicate, None, top_level_selection)
-            }
+            GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
+                vec![content_object],
+                predicate,
+                None,
+                None,
+                None,
+                top_level_selection,
+            ),
             GqlTypeModifier::List => {
                 let order_by = self.compute_order_by(&field.arguments, operation_context);
                 let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
-                table.select(vec![agg_column], predicate, order_by, top_level_selection)
+                table.select(
+                    vec![agg_column],
+                    predicate,
+                    order_by,
+                    None,
+                    None,
+                    top_level_selection,
+                )
             }
         })
     }
