@@ -1,7 +1,7 @@
 //! Subcommands under the `schema` subcommand
 
 use anyhow::Result;
-use payas_model::import::FromModel;
+use payas_model::spec::FromModel;
 use std::path::PathBuf;
 
 use payas_parser::{builder, parser};

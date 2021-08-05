@@ -1,7 +1,7 @@
 //! Subcommands under the `model` subcommand
 
 use anyhow::Result;
-use payas_model::import::ToModel;
+use payas_model::spec::ToModel;
 use payas_model::sql::database::Database;
 use payas_sql::spec::SchemaSpec;
 use std::{fs::File, io::Write, path::PathBuf};
