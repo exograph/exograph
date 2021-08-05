@@ -9,10 +9,7 @@ use payas_model::{
         column_id::ColumnId, relation::GqlRelation, system::ModelSystem, types::GqlTypeKind,
         GqlCompositeTypeKind, GqlField, GqlType,
     },
-    sql::{
-        column::{ColumnReferece, PhysicalColumn},
-        Limit, Offset, PhysicalTable, SQLOperation, Select,
-    },
+    sql::{column::PhysicalColumn, Limit, Offset, PhysicalTable, SQLOperation, Select},
 };
 
 use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
@@ -271,13 +268,17 @@ fn map_foreign<'a>(
         .model_fields()
         .iter()
         .find(|self_field| match self_field.relation.self_column() {
-            Some(column_id) => {
-                column_id.get_column(system).references
-                    == Some(ColumnReferece {
-                        table_name: parent_pk_physical_column.table_name.clone(),
-                        column_name: parent_pk_physical_column.column_name.clone(),
-                    })
-            }
+            Some(column_id) => match &column_id.get_column(system).typ {
+                payas_model::sql::column::PhysicalColumnType::ColumnReference {
+                    ref_table_name,
+                    ref_column_name,
+                    ..
+                } => {
+                    ref_table_name == &parent_pk_physical_column.table_name
+                        && ref_column_name == &parent_pk_physical_column.column_name
+                }
+                _ => false,
+            },
             None => false,
         })
         .unwrap()
