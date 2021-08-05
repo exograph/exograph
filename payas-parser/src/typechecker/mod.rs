@@ -44,8 +44,10 @@ pub trait Typecheck<T> {
 }
 
 fn populate_standard_env(env: &mut MappedArena<Type>) {
+    // TODO: maybe we don't need to do this manually
     env.add("Boolean", Type::Primitive(PrimitiveType::Boolean));
     env.add("Int", Type::Primitive(PrimitiveType::Int));
+    env.add("Float", Type::Primitive(PrimitiveType::Float));
     env.add("String", Type::Primitive(PrimitiveType::String));
     env.add("LocalTime", Type::Primitive(PrimitiveType::LocalTime));
     env.add(
