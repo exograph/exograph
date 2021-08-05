@@ -1,6 +1,7 @@
 //! Subcommands under the `schema` subcommand
 
 use anyhow::Result;
+use payas_model::spec::FromModel;
 use std::path::PathBuf;
 
 use payas_parser::{builder, parser};
@@ -18,10 +19,7 @@ impl Command for CreateCommand {
         let (ast_system, codemap) = parser::parse_file(&self.model);
         let system = builder::build(ast_system, codemap)?;
 
-        println!(
-            "{}",
-            SchemaSpec::from_model(system.tables).to_sql().to_string()
-        );
+        println!("{}", SchemaSpec::from_model(system.tables).to_sql());
         Ok(())
     }
 }
