@@ -6,6 +6,7 @@
 
 use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::naming::ToPlural;
 
 use crate::typechecker::{
     AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
@@ -57,9 +58,20 @@ impl ResolvedAccess {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedCompositeType {
     pub name: String,
+    pub plural_name: String,
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
     pub access: ResolvedAccess,
+}
+
+impl ToPlural for ResolvedCompositeType {
+    fn to_singular(&self) -> String {
+        self.name.clone()
+    }
+
+    fn to_plural(&self) -> String {
+        self.plural_name.clone()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -126,6 +138,15 @@ impl ResolvedType {
         }
     }
 
+    pub fn plural_name(&self) -> String {
+        match self {
+            ResolvedType::Primitive(_) => "".to_string(), // unused
+            ResolvedType::Composite(ResolvedCompositeType { plural_name, .. }) => {
+                plural_name.to_owned()
+            }
+        }
+    }
+
     pub fn as_primitive(&self) -> PrimitiveType {
         match &self {
             ResolvedType::Primitive(p) => p.clone(),
@@ -179,6 +200,11 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
+                        plural_name: ct
+                            .annotations
+                            .plural_name()
+                            .map(|a| a.value().as_string())
+                            .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
                         fields: vec![],
                         table_name,
                         access,
@@ -274,6 +300,7 @@ fn build_expanded_persistent_type(
 
     if let ResolvedType::Composite(ResolvedCompositeType {
         name,
+        plural_name,
         table_name,
         access,
         ..
@@ -294,6 +321,7 @@ fn build_expanded_persistent_type(
 
         let expanded = ResolvedType::Composite(ResolvedCompositeType {
             name: name.clone(),
+            plural_name: plural_name.clone(),
             fields: resolved_fields,
             table_name: table_name.clone(),
             access: access.clone(),
@@ -601,6 +629,7 @@ mod tests {
         }
         
         @table("venues")
+        @plural_name("Venuess")
         model Venue {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")
