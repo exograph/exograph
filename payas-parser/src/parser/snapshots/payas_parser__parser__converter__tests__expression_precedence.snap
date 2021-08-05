@@ -29,8 +29,10 @@ models:
                                   - FieldSelection:
                                       Select:
                                         - Single:
-                                            - self
+                                            - - self
+                                            - ~
                                         - - role
+                                        - ~
                             - StringLiteral:
                                 - role_admin
                       - RelationalOp:
@@ -38,8 +40,10 @@ models:
                             - FieldSelection:
                                 Select:
                                   - Single:
-                                      - self
+                                      - - self
+                                      - ~
                                   - - role
+                                  - ~
                             - StringLiteral:
                                 - role_superuser
     annotations: []

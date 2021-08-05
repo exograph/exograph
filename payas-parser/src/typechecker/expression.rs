@@ -2,16 +2,16 @@ use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstExpr;
+use crate::ast::ast_types::{AstExpr, FieldSelection, Untyped};
 
 use super::{
-    logical_op::TypedLogicalOp, relational_op::TypedRelationalOp, selection::TypedFieldSelection,
-    PrimitiveType, Scope, Type, Typecheck,
+    logical_op::TypedLogicalOp, relational_op::TypedRelationalOp, PrimitiveType, Scope, Type,
+    Typecheck, Typed,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TypedExpression {
-    FieldSelection(TypedFieldSelection),
+    FieldSelection(FieldSelection<Typed>),
     LogicalOp(TypedLogicalOp),
     RelationalOp(TypedRelationalOp),
     StringLiteral(String, Type),
@@ -46,7 +46,7 @@ impl TypedExpression {
     }
 }
 
-impl Typecheck<TypedExpression> for AstExpr {
+impl Typecheck<TypedExpression> for AstExpr<Untyped> {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedExpression> {
         Ok(match &self {
             AstExpr::FieldSelection(select) => {

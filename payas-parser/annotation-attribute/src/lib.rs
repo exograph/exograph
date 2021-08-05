@@ -296,7 +296,7 @@ fn build_from_params_fn(claytip_name: &str, variants: &AnnotVariants) -> proc_ma
     };
 
     quote! {
-        fn from_params(ast_annot: &AstAnnotation, params: TypedAnnotationParams, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Self> {
+        fn from_params(ast_annot: &AstAnnotation<crate::ast::ast_types::Untyped>, params: TypedAnnotationParams, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Self> {
             match params {
                 TypedAnnotationParams::None => { #from_none },
                 TypedAnnotationParams::Single(expr) => { #from_single },
@@ -365,7 +365,7 @@ fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
     quote! {
         fn pass(
             &mut self,
-            params: &AstAnnotationParams,
+            params: &AstAnnotationParams<crate::ast::ast_types::Untyped>,
             env: &MappedArena<Type>,
             scope: &Scope,
             errors: &mut Vec<codemap_diagnostic::Diagnostic>

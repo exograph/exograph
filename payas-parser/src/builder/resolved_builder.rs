@@ -8,9 +8,12 @@ use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::ToPlural;
 
-use crate::typechecker::{
-    AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
-    TypedExpression, TypedField, TypedFieldSelection,
+use crate::{
+    ast::ast_types::FieldSelection,
+    typechecker::{
+        AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
+        TypedExpression, TypedField,
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -588,7 +591,7 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
 
             match annot_param {
                 Some(TypedExpression::FieldSelection(selection)) => match selection {
-                    TypedFieldSelection::Single(claim, _) => claim.0.clone(),
+                    FieldSelection::Single(claim, _) => claim.0.clone(),
                     _ => panic!("Only simple jwt claim supported"),
                 },
                 Some(TypedExpression::StringLiteral(name, _)) => name.clone(),

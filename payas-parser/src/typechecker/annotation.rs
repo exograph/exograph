@@ -1,4 +1,4 @@
-use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams};
+use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
 use anyhow::{bail, Result};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -132,7 +132,7 @@ impl TypedAnnotation {
     }
 }
 
-impl Typecheck<TypedAnnotation> for AstAnnotation {
+impl Typecheck<TypedAnnotation> for AstAnnotation<Untyped> {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedAnnotation> {
         let params = self.params.shallow(errors)?;
         let name = self.name.as_str();

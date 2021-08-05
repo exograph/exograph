@@ -4,7 +4,7 @@ use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstAnnotationParams;
+use crate::ast::ast_types::{AstAnnotationParams, Untyped};
 
 use super::{Typecheck, TypedExpression};
 
@@ -15,7 +15,7 @@ pub enum TypedAnnotationParams {
     Map(HashMap<String, TypedExpression>),
 }
 
-impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
+impl Typecheck<TypedAnnotationParams> for AstAnnotationParams<Untyped> {
     fn shallow(
         &self,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,

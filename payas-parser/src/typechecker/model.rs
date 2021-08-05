@@ -1,11 +1,11 @@
 use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::ast::ast_types::{AstModel, AstModelKind};
+use crate::ast::ast_types::{AstModel, AstModelKind, Untyped};
 
 use super::{typ::CompositeTypeKind, AnnotationMap, CompositeType, Scope, Type, Typecheck};
 
-impl Typecheck<Type> for AstModel {
+impl Typecheck<Type> for AstModel<Untyped> {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Type> {
         let mut annotations = Box::new(AnnotationMap::default());
 

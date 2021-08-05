@@ -1,40 +1,34 @@
 use anyhow::Result;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
 
 use crate::{
-    ast::ast_types::{FieldSelection, Identifier},
+    ast::ast_types::{FieldSelection, Identifier, Untyped},
     typechecker::typ::CompositeTypeKind,
 };
 
-use super::{Scope, Type, Typecheck};
+use super::{Scope, Type, Typecheck, Typed};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum TypedFieldSelection {
-    Single(Identifier, Type),
-    Select(Box<TypedFieldSelection>, Identifier, Type),
-}
-
-impl TypedFieldSelection {
+impl FieldSelection<Typed> {
     pub fn typ(&self) -> &Type {
         match &self {
-            TypedFieldSelection::Single(_, typ) => typ,
-            TypedFieldSelection::Select(_, _, typ) => typ,
+            FieldSelection::Single(_, typ) => typ,
+            FieldSelection::Select(_, _, _, typ) => typ,
         }
     }
 }
 
-impl Typecheck<TypedFieldSelection> for FieldSelection {
+impl Typecheck<FieldSelection<Typed>> for FieldSelection<Untyped> {
     fn shallow(
         &self,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<TypedFieldSelection> {
+    ) -> Result<FieldSelection<Typed>> {
         Ok(match &self {
-            FieldSelection::Single(v) => TypedFieldSelection::Single(v.clone(), Type::Defer),
-            FieldSelection::Select(selection, i, _) => TypedFieldSelection::Select(
+            FieldSelection::Single(v, _) => FieldSelection::Single(v.clone(), Type::Defer),
+            FieldSelection::Select(selection, i, span, _) => FieldSelection::Select(
                 Box::new(selection.shallow(errors)?),
                 i.clone(),
+                *span,
                 Type::Defer,
             ),
         })
@@ -42,24 +36,23 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
 
     fn pass(
         &self,
-        typ: &mut TypedFieldSelection,
+        typ: &mut FieldSelection<Typed>,
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
         match &self {
-            FieldSelection::Single(Identifier(i, s)) => {
+            FieldSelection::Single(Identifier(i, s), _) => {
                 if typ.typ().is_incomplete() {
                     if i.as_str() == "self" {
                         if let Some(enclosing) = &scope.enclosing_model {
-                            *typ = TypedFieldSelection::Single(
+                            *typ = FieldSelection::Single(
                                 Identifier(i.clone(), *s),
                                 Type::Reference(enclosing.clone()),
                             );
                             true
                         } else {
-                            *typ =
-                                TypedFieldSelection::Single(Identifier(i.clone(), *s), Type::Error);
+                            *typ = FieldSelection::Single(Identifier(i.clone(), *s), Type::Error);
 
                             errors.push(Diagnostic {
                                 level: Level::Error,
@@ -81,13 +74,12 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                         });
 
                         if let Some(context_type) = context_type {
-                            *typ = TypedFieldSelection::Single(
+                            *typ = FieldSelection::Single(
                                 Identifier(i.clone(), *s),
                                 Type::Reference(context_type.name.clone()),
                             );
                         } else {
-                            *typ =
-                                TypedFieldSelection::Single(Identifier(i.clone(), *s), Type::Error);
+                            *typ = FieldSelection::Single(Identifier(i.clone(), *s), Type::Error);
 
                             errors.push(Diagnostic {
                                 level: Level::Error,
@@ -106,8 +98,8 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                     false
                 }
             }
-            FieldSelection::Select(selection, i, _) => {
-                if let TypedFieldSelection::Select(prefix, _, typ) = typ {
+            FieldSelection::Select(selection, i, _, _) => {
+                if let FieldSelection::Select(prefix, _, _, typ) = typ {
                     let in_updated = selection.pass(prefix, env, scope, errors);
                     let out_updated = if typ.is_incomplete() {
                         if let Type::Composite(c) = prefix.typ().deref(env) {

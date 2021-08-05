@@ -2,7 +2,7 @@ use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstField;
+use crate::ast::ast_types::{AstField, Untyped};
 
 use super::{AnnotationMap, Scope, Type, Typecheck};
 
@@ -13,7 +13,7 @@ pub struct TypedField {
     pub annotations: Box<AnnotationMap>,
 }
 
-impl Typecheck<TypedField> for AstField {
+impl Typecheck<TypedField> for AstField<Untyped> {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedField> {
         let mut annotations = Box::new(AnnotationMap::default());
 

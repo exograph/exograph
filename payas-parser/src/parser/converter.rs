@@ -20,7 +20,12 @@ fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
     )
 }
 
-pub fn convert_root(node: Node, source: &[u8], codemap: &CodeMap, source_span: Span) -> AstSystem {
+pub fn convert_root(
+    node: Node,
+    source: &[u8],
+    codemap: &CodeMap,
+    source_span: Span,
+) -> AstSystem<Untyped> {
     assert_eq!(node.kind(), "source_file");
     if node.has_error() {
         let mut errors = vec![];
@@ -100,7 +105,7 @@ fn collect_parsing_errors(
     }
 }
 
-pub fn convert_declaration(node: Node, source: &[u8], source_span: Span) -> AstModel {
+pub fn convert_declaration(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
     assert_eq!(node.kind(), "declaration");
     let first_child = node.child(0).unwrap();
 
@@ -110,7 +115,7 @@ pub fn convert_declaration(node: Node, source: &[u8], source_span: Span) -> AstM
     }
 }
 
-pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel {
+pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
     assert_eq!(node.kind(), "model");
 
     let mut cursor = node.walk();
@@ -147,14 +152,14 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel {
     }
 }
 
-pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField> {
+pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
     let mut cursor = node.walk();
     node.children_by_field_name("field", &mut cursor)
         .map(|c| convert_field(c, source, source_span))
         .collect()
 }
 
-pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField {
+pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
     assert_eq!(node.kind(), "field");
 
     let mut cursor = node.walk();
@@ -201,7 +206,7 @@ pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldTyp
     }
 }
 
-fn convert_annotation(node: Node, source: &[u8], source_span: Span) -> AstAnnotation {
+fn convert_annotation(node: Node, source: &[u8], source_span: Span) -> AstAnnotation<Untyped> {
     assert_eq!(node.kind(), "annotation");
 
     let name_node = node.child_by_field_name("name").unwrap();
@@ -216,7 +221,11 @@ fn convert_annotation(node: Node, source: &[u8], source_span: Span) -> AstAnnota
     }
 }
 
-fn convert_annotation_params(node: Node, source: &[u8], source_span: Span) -> AstAnnotationParams {
+fn convert_annotation_params(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> AstAnnotationParams<Untyped> {
     assert_eq!(node.kind(), "annotation_params");
     let mut cursor = node.walk();
     let first_child = node.child(0).unwrap();
@@ -265,7 +274,7 @@ fn convert_annotation_params(node: Node, source: &[u8], source_span: Span) -> As
     }
 }
 
-fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr {
+fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<Untyped> {
     assert_eq!(node.kind(), "expression");
     let first_child = node.child(0).unwrap();
 
@@ -311,7 +320,7 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr {
     }
 }
 
-fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp {
+fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp<Untyped> {
     assert_eq!(node.kind(), "logical_op");
     let first_child = node.child(0).unwrap();
 
@@ -352,7 +361,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
     }
 }
 
-fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> RelationalOp {
+fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> RelationalOp<Untyped> {
     assert_eq!(node.kind(), "relational_op");
     let first_child = node.child(0).unwrap();
 
@@ -433,7 +442,7 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
     }
 }
 
-fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelection {
+fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelection<Untyped> {
     assert_eq!(node.kind(), "selection");
     let first_child = node.child(0).unwrap();
 
@@ -457,11 +466,15 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
                 ),
             ),
             span_from_node(source_span, first_child),
+            (),
         ),
-        "term" => FieldSelection::Single(Identifier(
-            first_child.utf8_text(source).unwrap().to_string(),
-            span_from_node(source_span, first_child),
-        )),
+        "term" => FieldSelection::Single(
+            Identifier(
+                first_child.utf8_text(source).unwrap().to_string(),
+                span_from_node(source_span, first_child),
+            ),
+            (),
+        ),
         o => panic!("unsupported logical op kind: {}", o),
     }
 }

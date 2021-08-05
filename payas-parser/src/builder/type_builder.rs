@@ -21,8 +21,9 @@ use super::resolved_builder::{
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
-use crate::typechecker::{
-    PrimitiveType, TypedExpression, TypedFieldSelection, TypedLogicalOp, TypedRelationalOp,
+use crate::{
+    ast::ast_types::FieldSelection,
+    typechecker::{PrimitiveType, Typed, TypedExpression, TypedLogicalOp, TypedRelationalOp},
 };
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
@@ -195,13 +196,13 @@ enum PathSelection<'a> {
 }
 
 fn compute_selection<'a>(
-    selection: &TypedFieldSelection,
+    selection: &FieldSelection<Typed>,
     self_type_info: &'a GqlCompositeTypeKind,
 ) -> PathSelection<'a> {
-    fn flatten(selection: &TypedFieldSelection, acc: &mut Vec<String>) {
+    fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
         match selection {
-            TypedFieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
-            TypedFieldSelection::Select(path, identifier, _) => {
+            FieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
+            FieldSelection::Select(path, identifier, _, _) => {
                 flatten(path, acc);
                 acc.push(identifier.0.clone());
             }

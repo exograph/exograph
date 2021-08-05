@@ -13,6 +13,7 @@ mod typ;
 use anyhow::{anyhow, Result};
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
+use serde::{Deserialize, Serialize};
 
 pub(super) use annotation::*;
 pub(super) use annotation_map::AnnotationMap;
@@ -20,17 +21,25 @@ pub(super) use annotation_map::AnnotationMap;
 pub(super) use expression::TypedExpression;
 pub use logical_op::TypedLogicalOp;
 pub use relational_op::TypedRelationalOp;
-pub(super) use selection::TypedFieldSelection;
 
 pub(super) use field::TypedField;
 pub(super) use typ::{CompositeType, CompositeTypeKind, PrimitiveType, Type};
 
-use crate::ast::ast_types::AstSystem;
+use crate::ast::ast_types::NodeTypedness;
+use crate::ast::ast_types::{AstSystem, Untyped};
 use payas_model::model::mapped_arena::MappedArena;
 
 pub struct Scope {
     pub enclosing_model: Option<String>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct Typed;
+impl NodeTypedness for Typed {
+    type Field = Type;
+    type FieldSelection = Type;
+}
+
 pub trait Typecheck<T> {
     #[allow(clippy::result_unit_err)] // Use unit result since errors are tracked as a parameter
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<T>;
@@ -60,7 +69,7 @@ fn populate_standard_env(env: &mut MappedArena<Type>) {
     env.add("Json", Type::Primitive(PrimitiveType::Json));
 }
 
-pub fn build(ast_system: AstSystem, codemap: CodeMap) -> Result<MappedArena<Type>> {
+pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedArena<Type>> {
     let ast_types = &ast_system.models;
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();

@@ -3,7 +3,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::RelationalOp;
+use crate::ast::ast_types::{RelationalOp, Untyped};
 
 use super::{PrimitiveType, Scope, Type, Typecheck, TypedExpression};
 
@@ -30,7 +30,7 @@ impl TypedRelationalOp {
     }
 }
 
-impl Typecheck<TypedRelationalOp> for RelationalOp {
+impl Typecheck<TypedRelationalOp> for RelationalOp<Untyped> {
     fn shallow(
         &self,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,

@@ -2,7 +2,7 @@ use anyhow::Result;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::ast::ast_types::LogicalOp;
+use crate::ast::ast_types::{LogicalOp, Untyped};
 use serde::{Deserialize, Serialize};
 
 use super::{expression::TypedExpression, PrimitiveType, Scope, Type, Typecheck};
@@ -23,7 +23,7 @@ impl TypedLogicalOp {
         }
     }
 }
-impl Typecheck<TypedLogicalOp> for LogicalOp {
+impl Typecheck<TypedLogicalOp> for LogicalOp<Untyped> {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedLogicalOp> {
         Ok(match &self {
             LogicalOp::Not(v, _) => TypedLogicalOp::Not(Box::new(v.shallow(errors)?), Type::Defer),

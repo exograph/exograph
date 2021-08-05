@@ -4,7 +4,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstAnnotation;
+use crate::ast::ast_types::{AstAnnotation, Untyped};
 
 use super::{
     AccessAnnotation, AutoIncrementAnnotation, BitsAnnotation, ColumnAnnotation, DbTypeAnnotation,
@@ -88,7 +88,7 @@ impl AnnotationMap {
 
     pub fn pass(
         &mut self,
-        ast_annotations: &[AstAnnotation],
+        ast_annotations: &[AstAnnotation<Untyped>],
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
