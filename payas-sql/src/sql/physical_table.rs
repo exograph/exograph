@@ -1,5 +1,7 @@
 use super::{
     column::{Column, PhysicalColumn},
+    limit::Limit,
+    offset::Offset,
     order::OrderBy,
     predicate::Predicate,
     select::Select,
@@ -29,6 +31,8 @@ impl PhysicalTable {
         columns: Vec<&'a Column>,
         predicate: Option<&'a Predicate<'a>>,
         order_by: Option<OrderBy<'a>>,
+        offset: Option<Offset>,
+        limit: Option<Limit>,
         top_level_selection: bool,
     ) -> Select {
         Select {
@@ -36,6 +40,8 @@ impl PhysicalTable {
             columns,
             predicate,
             order_by,
+            offset,
+            limit,
             top_level_selection,
         }
     }
