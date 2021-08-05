@@ -1,18 +1,8 @@
-//! Conversions between claytip models and SQL tables.
-//!
-//! Used by `model import` and `schema create` commands.
-
 use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
+use std::fmt::{self, Display, Formatter};
 
-use crate::sql::{
-    column::{PhysicalColumn, PhysicalColumnType},
-    database::Database,
-    PhysicalTable,
-};
+use crate::sql::{column::PhysicalColumnType, database::Database};
 use anyhow::{anyhow, Result};
-use heck::CamelCase;
-use id_arena::Arena;
 use regex::Regex;
 
 /// An SQL statement along with any foreign constraint statements that should follow after all the
@@ -22,9 +12,10 @@ pub struct SQLStatement {
     pub foreign_constraints: Vec<String>,
 }
 
-impl ToString for SQLStatement {
-    fn to_string(&self) -> String {
-        format!(
+impl Display for SQLStatement {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
             "{}\n{}",
             self.statement,
             self.foreign_constraints.join("\n")
@@ -32,50 +23,38 @@ impl ToString for SQLStatement {
     }
 }
 
-pub enum SpecIssue {
+/// An issue that a user may encounter when dealing with the database schema.
+///
+/// Used in `model import` command.
+pub enum Issue {
     Warning(String),
     Hint(String),
 }
 
-impl Display for SpecIssue {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl Display for Issue {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let str = match self {
-            SpecIssue::Warning(msg) => format!("warning: {}", msg),
-            SpecIssue::Hint(msg) => format!("hint: {}", msg),
+            Issue::Warning(msg) => format!("warning: {}", msg),
+            Issue::Hint(msg) => format!("hint: {}", msg),
         };
         write!(f, "{}", str)
     }
 }
 
-pub struct Spec<T> {
-    pub spec: T,
-    pub issues: Vec<SpecIssue>,
-}
-
-fn to_model_name(name: &str) -> String {
-    name.to_camel_case()
+/// Wraps a value with a list of issues.
+pub struct WithIssues<T> {
+    pub value: T,
+    pub issues: Vec<Issue>,
 }
 
 /// Specification for the overall schema.
-///
-/// Represented by a claytip file or an SQL database.
 pub struct SchemaSpec {
-    table_specs: Vec<TableSpec>,
+    pub table_specs: Vec<TableSpec>,
 }
 
 impl SchemaSpec {
-    /// Creates a new schema specification from the tables of a claytip model file.
-    pub fn from_model(tables: Arena<PhysicalTable>) -> SchemaSpec {
-        let table_specs: Vec<_> = tables
-            .iter()
-            .map(|(_, table)| TableSpec::from_model(table))
-            .collect();
-
-        SchemaSpec { table_specs }
-    }
-
     /// Creates a new schema specification from an SQL database.
-    pub fn from_db(database: &Database) -> Result<Spec<SchemaSpec>> {
+    pub fn from_db(database: &Database) -> Result<WithIssues<SchemaSpec>> {
         // Query to get a list of all the tables in the database
         const QUERY: &str =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
@@ -91,21 +70,13 @@ impl SchemaSpec {
             let name: String = row.get("table_name");
             let mut table = TableSpec::from_db(database, &name)?;
             issues.append(&mut table.issues);
-            table_specs.push(table.spec);
+            table_specs.push(table.value);
         }
 
-        Ok(Spec {
-            spec: SchemaSpec { table_specs },
+        Ok(WithIssues {
+            value: SchemaSpec { table_specs },
             issues,
         })
-    }
-
-    /// Converts the schema specification to a claytip file.
-    pub fn to_model(&self) -> String {
-        self.table_specs
-            .iter()
-            .map(|table_spec| format!("{}\n\n", table_spec.to_model()))
-            .collect()
     }
 
     /// Converts the schema specification to SQL statements.
@@ -129,26 +100,14 @@ impl SchemaSpec {
 }
 
 /// Specification for a single table.
-///
-/// Represented by a claytip model or an SQL table.
-struct TableSpec {
-    name: String,
-    column_specs: Vec<ColumnSpec>,
+pub struct TableSpec {
+    pub name: String,
+    pub column_specs: Vec<ColumnSpec>,
 }
 
 impl TableSpec {
-    /// Creates a new table specification from a claytip model.
-    fn from_model(table: &PhysicalTable) -> TableSpec {
-        let column_specs: Vec<_> = table.columns.iter().map(ColumnSpec::from_model).collect();
-
-        TableSpec {
-            name: table.name.clone(),
-            column_specs,
-        }
-    }
-
     /// Creates a new table specification from an SQL table.
-    fn from_db(database: &Database, table_name: &str) -> Result<Spec<TableSpec>> {
+    pub fn from_db(database: &Database, table_name: &str) -> Result<WithIssues<TableSpec>> {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
@@ -203,7 +162,7 @@ impl TableSpec {
                 ColumnSpec::from_db(database, &ref_table_name, &ref_column_name, true, None)?;
             issues.append(&mut column.issues);
 
-            if let Some(spec) = column.spec {
+            if let Some(spec) = column.value {
                 foreign_constraints.insert(
                     column_name.clone(),
                     PhysicalColumnType::ColumnReference {
@@ -227,21 +186,13 @@ impl TableSpec {
             )?;
             issues.append(&mut column.issues);
 
-            if let Some(spec) = column.spec {
+            if let Some(spec) = column.value {
                 column_specs.push(spec);
             }
         }
 
-        // not a robust check
-        if table_name.ends_with('s') {
-            issues.push(SpecIssue::Hint(format!(
-                "model name `{}` should be changed to singular",
-                to_model_name(table_name)
-            )));
-        }
-
-        Ok(Spec {
-            spec: TableSpec {
+        Ok(WithIssues {
+            value: TableSpec {
                 name: table_name.to_string(),
                 column_specs,
             },
@@ -249,25 +200,8 @@ impl TableSpec {
         })
     }
 
-    /// Converts the table specification to a claytip model.
-    fn to_model(&self) -> String {
-        let table_annot = format!("@table(\"{}\")", self.name);
-        let column_stmts = self
-            .column_specs
-            .iter()
-            .map(|c| format!("  {}\n", c.to_model()))
-            .collect::<String>();
-
-        format!(
-            "{}\nmodel {} {{\n{}}}",
-            table_annot,
-            to_model_name(&self.name),
-            column_stmts
-        )
-    }
-
     /// Converts the table specification to SQL statements.
-    fn to_sql(&self) -> SQLStatement {
+    pub fn to_sql(&self) -> SQLStatement {
         let mut foreign_constraints = Vec::new();
         let column_stmts: String = self
             .column_specs
@@ -288,37 +222,26 @@ impl TableSpec {
 }
 
 /// Specification for a single column.
-///
-/// Represented by a claytip model field or an SQL column.
-struct ColumnSpec {
-    name: String,
-    db_type: PhysicalColumnType,
-    is_pk: bool,
-    is_autoincrement: bool,
+pub struct ColumnSpec {
+    pub table_name: String,
+    pub column_name: String,
+    pub db_type: PhysicalColumnType,
+    pub is_pk: bool,
+    pub is_autoincrement: bool,
 }
 
 impl ColumnSpec {
-    /// Creates a new column specification from a claytip model field.
-    fn from_model(column: &PhysicalColumn) -> ColumnSpec {
-        ColumnSpec {
-            name: column.column_name.clone(),
-            db_type: column.typ.clone(),
-            is_pk: column.is_pk,
-            is_autoincrement: column.is_autoincrement,
-        }
-    }
-
     /// Creates a new column specification from an SQL column.
     ///
-    /// If the column references another claytip model, the column's type in the claytip file will
-    /// be the model's name. The referenced model's name can be specified with `explicit_type`.
-    fn from_db(
+    /// If the column references another table's column, the column's type can be specified with
+    /// `explicit_type`.
+    pub fn from_db(
         database: &Database,
         table_name: &str,
         column_name: &str,
         is_pk: bool,
         explicit_type: Option<PhysicalColumnType>,
-    ) -> Result<Spec<Option<ColumnSpec>>> {
+    ) -> Result<WithIssues<Option<ColumnSpec>>> {
         // Find all sequences in the database that are used for SERIAL (autoincrement) columns
         // e.g. an autoincrement column `id` in the table `users` will create a sequence called
         // `users_id_seq`
@@ -328,17 +251,7 @@ impl ColumnSpec {
         let mut issues = Vec::new();
 
         let db_type = match explicit_type {
-            Some(t) => {
-                if let PhysicalColumnType::ColumnReference { ref_table_name, .. } = &t {
-                    issues.push(SpecIssue::Hint(format!(
-                        "consider adding a field to `{ref_table_name}` of type `[{model_name}]` to create a one-to-many relationship", 
-                        model_name=to_model_name(table_name),
-                        ref_table_name=ref_table_name
-                    )));
-                }
-
-                Some(t)
-            }
+            Some(t) => Some(t),
             None => {
                 // Query to find the type of the column and the # of dimensions if the type is an array
                 let db_type_query = format!(
@@ -363,7 +276,7 @@ impl ColumnSpec {
                 match PhysicalColumnType::from_string(&sql_type) {
                     Ok(t) => Some(t),
                     Err(e) => {
-                        issues.push(SpecIssue::Warning(format!(
+                        issues.push(Issue::Warning(format!(
                             "skipped column `{}.{}` ({})",
                             table_name,
                             column_name,
@@ -381,9 +294,10 @@ impl ColumnSpec {
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
-        Ok(Spec {
-            spec: db_type.map(|db_type| ColumnSpec {
-                name: column_name.to_string(),
+        Ok(WithIssues {
+            value: db_type.map(|db_type| ColumnSpec {
+                table_name: table_name.to_owned(),
+                column_name: column_name.to_owned(),
                 db_type,
                 is_pk,
                 is_autoincrement: serial_columns
@@ -393,41 +307,18 @@ impl ColumnSpec {
         })
     }
 
-    /// Converts the column specification to a claytip model.
-    fn to_model(&self) -> String {
-        let pk_str = if self.is_pk { " @pk" } else { "" };
-        let autoinc_str = if self.is_autoincrement {
-            " @autoincrement"
-        } else {
-            ""
-        };
-
-        let (mut data_type, annots) = self.db_type.to_model();
-        if let PhysicalColumnType::ColumnReference { .. } = self.db_type {
-            data_type = to_model_name(&data_type);
-        }
-
-        format!(
-            "{}: {}{}{}",
-            self.name,
-            data_type + &annots,
-            pk_str,
-            autoinc_str
-        )
-    }
-
     /// Converts the column specification to SQL statements.
-    fn to_sql(&self, table_name: &str) -> SQLStatement {
+    pub fn to_sql(&self, table_name: &str) -> SQLStatement {
         let SQLStatement {
             statement,
             foreign_constraints,
         } = self
             .db_type
-            .to_sql(table_name, &self.name, self.is_autoincrement);
+            .to_sql(table_name, &self.column_name, self.is_autoincrement);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
 
         SQLStatement {
-            statement: format!("\"{}\" {}{}", self.name, statement, pk_str),
+            statement: format!("\"{}\" {}{}", self.column_name, statement, pk_str),
             foreign_constraints,
         }
     }
