@@ -13,7 +13,7 @@ jsonwebtoken = "7.2"
 isahc = { version = "1.4", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8.17"
-serde_json = "1.0"
+serde_json = { version = "1.0", features = ["arbitrary_precision"] }
 postgres = { version = "0.19.0", features = ["with-chrono-0_4"] }
 postgres-openssl = "0.5.0"
 rand = "0.8"

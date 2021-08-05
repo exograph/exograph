@@ -82,21 +82,14 @@ lazy_static! {
     static ref TYPE_OPERATORS: HashMap<&'static str, Option<Vec<&'static str>>> = {
         let mut supported_operators = HashMap::new();
 
-        supported_operators.insert(
-            "Int",
-            Some(vec![
-                "eq", "neq",
-                "lt", "lte", "gt", "gte"
-            ])
-        );
+        let numeric_operators = Some(vec![
+            "eq", "neq",
+            "lt", "lte", "gt", "gte"
+        ]);
 
-        supported_operators.insert(
-            "Float",
-            Some(vec![
-                "eq", "neq",
-                "lt", "lte", "gt", "gte"
-            ])
-        );
+        supported_operators.insert("Int", numeric_operators.clone());
+        supported_operators.insert("Float", numeric_operators.clone());
+        supported_operators.insert("Number", numeric_operators.clone());
 
         supported_operators.insert(
             "String",

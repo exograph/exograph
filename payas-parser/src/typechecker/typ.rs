@@ -104,6 +104,7 @@ pub enum CompositeTypeKind {
 pub enum PrimitiveType {
     Int,
     Float,
+    Number,
     String,
     Boolean,
     LocalDate,
@@ -123,6 +124,7 @@ impl PrimitiveType {
         match &self {
             PrimitiveType::Int => "Int",
             PrimitiveType::Float => "Float",
+            PrimitiveType::Number => "Number",
             PrimitiveType::String => "String",
             PrimitiveType::Boolean => "Boolean",
             PrimitiveType::LocalDate => "LocalDate",

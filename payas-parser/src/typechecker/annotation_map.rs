@@ -8,7 +8,7 @@ use crate::ast::ast_types::AstAnnotation;
 
 use super::{
     AccessAnnotation, AutoIncrementAnnotation, BitsAnnotation, ColumnAnnotation, DbTypeAnnotation,
-    JwtAnnotation, LengthAnnotation, PkAnnotation, PluralNameAnnotation, PrecisionAnnotation,
+    JwtAnnotation, LengthAnnotation, PkAnnotation, PluralNameAnnotation, PrecisionAnnotation, ScaleAnnotation,
     RangeAnnotation, Scope, SizeAnnotation, TableAnnotation, Type, Typecheck, TypedAnnotation,
 };
 
@@ -22,6 +22,7 @@ pub struct AnnotationMap {
     length: Option<TypedAnnotation>,
     plural_name: Option<TypedAnnotation>,
     precision: Option<TypedAnnotation>,
+    scale: Option<TypedAnnotation>,
     jwt: Option<TypedAnnotation>,
     pk: Option<TypedAnnotation>,
     range: Option<TypedAnnotation>,
@@ -74,6 +75,7 @@ impl AnnotationMap {
             TypedAnnotation::Length(_) => s!(self.length, errors, annotation, span),
             TypedAnnotation::PluralName(_) => s!(self.plural_name, errors, annotation, span),
             TypedAnnotation::Precision(_) => s!(self.precision, errors, annotation, span),
+            TypedAnnotation::Scale(_) => s!(self.scale, errors, annotation, span),
             TypedAnnotation::Jwt(_) => s!(self.jwt, errors, annotation, span),
             TypedAnnotation::Pk(_) => s!(self.pk, errors, annotation, span),
             TypedAnnotation::Range(_) => s!(self.range, errors, annotation, span),
@@ -101,6 +103,7 @@ impl AnnotationMap {
             &mut self.length,
             &mut self.plural_name,
             &mut self.precision,
+            &mut self.scale,
             &mut self.jwt,
             &mut self.pk,
             &mut self.range,
@@ -152,6 +155,10 @@ impl AnnotationMap {
 
     pub fn precision(&self) -> Option<&PrecisionAnnotation> {
         coerce!(self.precision, TypedAnnotation::Precision)
+    }
+
+    pub fn scale(&self) -> Option<&ScaleAnnotation> {
+        coerce!(self.scale, TypedAnnotation::Scale)
     }
 
     pub fn jwt(&self) -> Option<&JwtAnnotation> {

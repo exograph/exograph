@@ -4,11 +4,13 @@ operation: |
             id
             name
             published
+            latitude
         }
         venue2: venue(id:2) { # Use alias. Needed anyway, but also tests for how we process aliases
             id
             name
             published
+            latitude
         }
     } 
 variable: |
@@ -21,12 +23,14 @@ response: |
         "venue": {
           "id": 1,
           "name": "Venue1",
-          "published": true
+          "published": true,
+          "latitude": 37.7749
         },
         "venue2": {
           "id": 2,
           "name": "Venue2",
-          "published": false
+          "published": false,
+          "latitude": 35.6762
         }
       }
     }

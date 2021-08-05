@@ -71,6 +71,7 @@ expression: normalized_system(&resolved)
   - Primitive: LocalDate
   - Primitive: LocalDateTime
   - Primitive: LocalTime
+  - Primitive: Number
   - Primitive: String
   - Composite:
       name: Venue

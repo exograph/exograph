@@ -56,13 +56,14 @@ expression: normalized_system(&resolved)
               precision: 4
         - name: price
           typ:
-            Plain: Float
+            Plain: Number
           column_name: price
           is_pk: false
           is_autoincrement: false
           type_hint:
-            Float:
-              bits: 24
+            Number:
+              precision: 10
+              scale: 2
       table_name: custom_concerts
       access:
         creation:
@@ -88,6 +89,7 @@ expression: normalized_system(&resolved)
   - Primitive: LocalDate
   - Primitive: LocalDateTime
   - Primitive: LocalTime
+  - Primitive: Number
   - Primitive: String
   - Composite:
       name: Venue
@@ -125,6 +127,15 @@ expression: normalized_system(&resolved)
             Int:
               bits: 16
               range: ~
+        - name: latitude
+          typ:
+            Plain: Float
+          column_name: latitude
+          is_pk: false
+          is_autoincrement: false
+          type_hint:
+            Float:
+              bits: 24
       table_name: venues
       access:
         creation:

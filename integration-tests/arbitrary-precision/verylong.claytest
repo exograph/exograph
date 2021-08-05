@@ -1,0 +1,37 @@
+operation: |
+  # TODO: behavior of this type is not correct
+
+  # our current library for PostgreSQL Numeric support is rust_decimal,
+  # which unfortunately only supports a scale of up to 28.
+
+  # this is why the test results are rounded
+
+  # we should move to a real arbitrary precision library like bigdecimal once
+  # they implement ToSql, FromSql for their types
+  # we could also implement the traits ourselves
+
+  mutation($verylong_string: Number, $verylong_number: Number) {
+    string_test: createFoo(data: { verylong: $verylong_string }) {
+      verylong
+    }
+
+    number_test: createFoo(data: { verylong: $verylong_number }) {
+      verylong
+    }
+  }
+variable: |
+  {
+    "verylong_string": "1.00000000000000000000000012345",
+    "verylong_number": 1.00000000000000000000000012345
+  }
+response: |
+  {
+    "data": {
+      "string_test": {
+        "verylong": 1.000000000000000000000000123500
+      },
+      "number_test": {
+        "verylong": 1.000000000000000000000000123500
+      }
+    }
+  }

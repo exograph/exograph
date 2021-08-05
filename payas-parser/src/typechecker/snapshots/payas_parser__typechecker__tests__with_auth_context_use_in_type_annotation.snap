@@ -20,6 +20,7 @@ expression: types
             length: ~
             plural_name: ~
             precision: ~
+            scale: ~
             jwt:
               Jwt: None
             pk: ~
@@ -35,6 +36,7 @@ expression: types
         length: ~
         plural_name: ~
         precision: ~
+        scale: ~
         jwt: ~
         pk: ~
         range: ~
@@ -59,6 +61,7 @@ expression: types
             length: ~
             plural_name: ~
             precision: ~
+            scale: ~
             jwt: ~
             pk: ~
             range: ~
@@ -76,6 +79,7 @@ expression: types
             length: ~
             plural_name: ~
             precision: ~
+            scale: ~
             jwt: ~
             pk: ~
             range: ~
@@ -115,6 +119,7 @@ expression: types
         length: ~
         plural_name: ~
         precision: ~
+        scale: ~
         jwt: ~
         pk: ~
         range: ~
@@ -134,6 +139,8 @@ expression: types
   - Primitive: LocalDateTime
 - - LocalTime
   - Primitive: LocalTime
+- - Number
+  - Primitive: Number
 - - String
   - Primitive: String
 

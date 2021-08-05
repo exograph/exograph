@@ -116,6 +116,10 @@ pub enum ResolvedTypeHint {
     Float {
         bits: usize,
     },
+    Number {
+        precision: Option<usize>,
+        scale: Option<usize>,
+    },
     String {
         length: usize,
     },
@@ -424,6 +428,32 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
         }
     };
 
+    let number_hint = {
+        // needed to disambiguate between DateTime and Number hints
+        if field.typ.get_underlying_typename().unwrap() != "Number" {
+            None
+        } else {
+            let precision_hint = field
+                .annotations
+                .precision()
+                .map(|a| a.value().as_number() as usize);
+
+            let scale_hint = field
+                .annotations
+                .scale()
+                .map(|a| a.value().as_number() as usize);
+
+            if scale_hint.is_some() && precision_hint.is_none() {
+                panic!("@scale is not allowed without specifying @precision")
+            }
+
+            Some(ResolvedTypeHint::Number {
+                precision: precision_hint,
+                scale: scale_hint,
+            })
+        }
+    };
+
     let string_hint = {
         let length_annotation = field
             .annotations
@@ -435,15 +465,37 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     };
 
     let datetime_hint = {
-        field
-            .annotations
-            .precision()
-            .map(|a| ResolvedTypeHint::DateTime {
-                precision: a.value().as_number() as usize,
-            })
+        // needed to disambiguate between DateTime and Number hints
+        if field
+            .typ
+            .get_underlying_typename()
+            .unwrap()
+            .contains("Date")
+            || field
+                .typ
+                .get_underlying_typename()
+                .unwrap()
+                .contains("Time")
+            || field.typ.get_underlying_typename().unwrap() != "Instant"
+        {
+            None
+        } else {
+            field
+                .annotations
+                .precision()
+                .map(|a| ResolvedTypeHint::DateTime {
+                    precision: a.value().as_number() as usize,
+                })
+        }
     };
 
-    let primitive_hints = vec![int_hint, float_hint, string_hint, datetime_hint];
+    let primitive_hints = vec![
+        int_hint,
+        float_hint,
+        number_hint,
+        string_hint,
+        datetime_hint,
+    ];
 
     let explicit_dbtype_hint = field
         .annotations
@@ -625,7 +677,7 @@ mod tests {
           venue: Venue @column("custom_venue_id")
           reserved: Int @range(min=0, max=300)
           time: Instant @precision(4)
-          price: Float @size(4)
+          price: Number @precision(10) @scale(2)
         }
         
         @table("venues")
@@ -635,6 +687,7 @@ mod tests {
           name: String @column("custom_name")
           concerts: [Concert] @column("custom_venueid")
           capacity: Int @bits(16)
+          latitude: Float @size(4)
         }        
         "#;
 
