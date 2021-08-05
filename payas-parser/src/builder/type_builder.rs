@@ -6,20 +6,18 @@ use payas_model::{
         },
         column_id::ColumnId,
         mapped_arena::MappedArena,
+        naming::ToGqlQueryName,
         relation::GqlRelation,
         GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
-        column::{IntBits, PhysicalColumn, PhysicalColumnType},
+        column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     },
 };
 
-use super::{
-    query_builder,
-    resolved_builder::{
-        ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType, ResolvedTypeHint,
-    },
+use super::resolved_builder::{
+    ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType, ResolvedTypeHint,
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
@@ -66,6 +64,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
         &type_name,
         GqlType {
             name: type_name.to_string(),
+            plural_name: resolved_type.plural_name(),
             kind: GqlTypeKind::Primitive,
             is_input: false,
         },
@@ -102,14 +101,11 @@ fn expand_type_no_fields(
 
     let table_id = building.tables.add(&table_name, table);
 
-    let pk_query = building
-        .queries
-        .get_id(&query_builder::pk_query_name(&resolved_type.name))
-        .unwrap();
+    let pk_query = building.queries.get_id(&resolved_type.pk_query()).unwrap();
 
     let collection_query = building
         .queries
-        .get_id(&query_builder::collection_query_name(&resolved_type.name))
+        .get_id(&resolved_type.collection_query())
         .unwrap();
 
     let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
@@ -516,6 +512,24 @@ fn determine_column_type<'a>(
                 }
             }
 
+            ResolvedTypeHint::Float { bits } => {
+                assert!(matches!(pt, PrimitiveType::Float));
+
+                let bits = *bits;
+
+                if (1..=24).contains(&bits) {
+                    PhysicalColumnType::Float {
+                        bits: FloatBits::_24,
+                    }
+                } else if bits > 24 && bits <= 53 {
+                    PhysicalColumnType::Float {
+                        bits: FloatBits::_53,
+                    }
+                } else {
+                    panic!("Invalid bits")
+                }
+            }
+
             ResolvedTypeHint::String { length } => {
                 assert!(matches!(pt, PrimitiveType::String));
 
@@ -544,6 +558,9 @@ fn determine_column_type<'a>(
         match pt {
             // choose a default SQL type
             PrimitiveType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
+            PrimitiveType::Float => PhysicalColumnType::Float {
+                bits: FloatBits::_24,
+            },
             PrimitiveType::String => PhysicalColumnType::String { length: None },
             PrimitiveType::Boolean => PhysicalColumnType::Boolean,
             PrimitiveType::LocalTime => PhysicalColumnType::Time { precision: None },

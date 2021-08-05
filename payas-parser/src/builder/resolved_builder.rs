@@ -6,6 +6,7 @@
 
 use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::naming::ToPlural;
 
 use crate::typechecker::{
     AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
@@ -57,9 +58,20 @@ impl ResolvedAccess {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedCompositeType {
     pub name: String,
+    pub plural_name: String,
     pub fields: Vec<ResolvedField>,
     pub table_name: String,
     pub access: ResolvedAccess,
+}
+
+impl ToPlural for ResolvedCompositeType {
+    fn to_singular(&self) -> String {
+        self.name.clone()
+    }
+
+    fn to_plural(&self) -> String {
+        self.plural_name.clone()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -101,6 +113,9 @@ pub enum ResolvedTypeHint {
         bits: Option<usize>,
         range: Option<(i64, i64)>,
     },
+    Float {
+        bits: usize,
+    },
     String {
         length: usize,
     },
@@ -120,6 +135,15 @@ impl ResolvedType {
         match self {
             ResolvedType::Primitive(pt) => pt.name(),
             ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name.to_owned(),
+        }
+    }
+
+    pub fn plural_name(&self) -> String {
+        match self {
+            ResolvedType::Primitive(_) => "".to_string(), // unused
+            ResolvedType::Composite(ResolvedCompositeType { plural_name, .. }) => {
+                plural_name.to_owned()
+            }
         }
     }
 
@@ -176,6 +200,11 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
+                        plural_name: ct
+                            .annotations
+                            .plural_name()
+                            .map(|a| a.value().as_string())
+                            .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
                         fields: vec![],
                         table_name,
                         access,
@@ -271,6 +300,7 @@ fn build_expanded_persistent_type(
 
     if let ResolvedType::Composite(ResolvedCompositeType {
         name,
+        plural_name,
         table_name,
         access,
         ..
@@ -291,6 +321,7 @@ fn build_expanded_persistent_type(
 
         let expanded = ResolvedType::Composite(ResolvedCompositeType {
             name: name.clone(),
+            plural_name: plural_name.clone(),
             fields: resolved_fields,
             table_name: table_name.clone(),
             access: access.clone(),
@@ -304,59 +335,92 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     // Part 1: parse out and validate hints for each primitive
     ////
 
+    let size_annotation = field
+        .annotations
+        .size()
+        .map(|a| a.value().as_number() as usize);
+
+    let bits_annotation = field
+        .annotations
+        .bits()
+        .map(|a| a.value().as_number() as usize);
+
+    if size_annotation.is_some() && bits_annotation.is_some() {
+        panic!("Cannot have both @size and @bits for {}", field.name)
+    }
+
     let int_hint = {
-        let size_annotation = field
-            .annotations
-            .size()
-            .map(|a| a.value().as_number() as usize);
+        // TODO: not great that we're 'type checking' here
+        // but we need to know the type of the field before constructing the
+        // appropriate type hint
+        // needed to disambiguate between Int and Float hints
+        if field.typ.get_underlying_typename().unwrap() != "Int" {
+            None
+        } else {
+            let range_hint =
+                field
+                    .annotations
+                    .range()
+                    .map(|range_annotation| match range_annotation {
+                        RangeAnnotation::Map { min, max } => (min.as_number(), max.as_number()),
+                    });
 
-        let bits_annotation = field
-            .annotations
-            .bits()
-            .map(|a| a.value().as_number() as usize);
+            let bits_hint = if let Some(size) = size_annotation {
+                Some(
+                    // normalize size into bits
+                    if size <= 2 {
+                        16
+                    } else if size <= 4 {
+                        32
+                    } else if size <= 8 {
+                        64
+                    } else {
+                        panic!("@size of {} cannot be larger than 8 bytes", field.name)
+                    },
+                )
+            } else if let Some(bits) = bits_annotation {
+                if !(bits == 16 || bits == 32 || bits == 64) {
+                    panic!("@bits of {} is not 16, 32, or 64", field.name)
+                }
 
-        if size_annotation.is_some() && bits_annotation.is_some() {
-            panic!("Cannot have both @size and @bits for {}", field.name)
-        }
+                Some(bits)
+            } else {
+                None
+            };
 
-        let range_hint = field
-            .annotations
-            .range()
-            .map(|range_annotation| match range_annotation {
-                RangeAnnotation::Map { min, max } => (min.as_number(), max.as_number()),
-            });
-
-        let bits_hint = if let Some(size) = size_annotation {
-            Some(
-                // normalize size into bits
-                if size <= 2 {
-                    16
-                } else if size <= 4 {
-                    32
-                } else if size <= 8 {
-                    64
-                } else {
-                    panic!("@size of {} cannot be larger than 8 bytes", field.name)
-                },
-            )
-        } else if let Some(bits) = bits_annotation {
-            if !(bits == 16 || bits == 32 || bits == 64) {
-                panic!("@bits of {} is not 16, 32, or 64", field.name)
+            if bits_hint.is_some() || range_hint.is_some() {
+                Some(ResolvedTypeHint::Int {
+                    bits: bits_hint,
+                    range: range_hint,
+                })
+            } else {
+                // no useful hints to pass along
+                None
             }
+        }
+    };
 
-            Some(bits)
-        } else {
+    let float_hint = {
+        // needed to disambiguate between Int and Float hints
+        if field.typ.get_underlying_typename().unwrap() != "Float" {
             None
-        };
+        } else {
+            let bits_hint = if let Some(size) = size_annotation {
+                Some(
+                    // normalize size into bits
+                    if size <= 4 {
+                        24
+                    } else if size <= 8 {
+                        53
+                    } else {
+                        panic!("@size of {} cannot be larger than 8 bytes", field.name)
+                    },
+                )
+            } else {
+                bits_annotation
+            };
 
-        if bits_hint.is_some() || range_hint.is_some() {
-            Some(ResolvedTypeHint::Int {
-                bits: bits_hint,
-                range: range_hint,
-            })
-        } else {
-            // no useful hints to pass along
-            None
+            bits_hint.map(|bits| ResolvedTypeHint::Float { bits })
         }
     };
 
@@ -379,7 +443,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
             })
     };
 
-    let primitive_hints = vec![int_hint, string_hint, datetime_hint];
+    let primitive_hints = vec![int_hint, float_hint, string_hint, datetime_hint];
 
     let explicit_dbtype_hint = field
         .annotations
@@ -561,9 +625,11 @@ mod tests {
           venue: Venue @column("custom_venue_id")
           reserved: Int @range(min=0, max=300)
           time: Instant @precision(4)
+          price: Float @size(4)
         }
         
         @table("venues")
+        @plural_name("Venuess")
         model Venue {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")

@@ -11,6 +11,7 @@ use crate::sql::{
     PhysicalTable,
 };
 use anyhow::{anyhow, Result};
+use heck::CamelCase;
 use id_arena::Arena;
 use regex::Regex;
 
@@ -49,6 +50,10 @@ impl Display for SpecIssue {
 pub struct Spec<T> {
     pub spec: T,
     pub issues: Vec<SpecIssue>,
+}
+
+fn to_model_name(name: &str) -> String {
+    name.to_camel_case()
 }
 
 /// Specification for the overall schema.
@@ -227,18 +232,11 @@ impl TableSpec {
             }
         }
 
-        if table_name.contains('_') || table_name.chars().next().unwrap().is_lowercase() {
-            issues.push(SpecIssue::Hint(format!(
-                "model name `{}` should be changed to PascalCase",
-                table_name
-            )));
-        }
-
         // not a robust check
         if table_name.ends_with('s') {
             issues.push(SpecIssue::Hint(format!(
                 "model name `{}` should be changed to singular",
-                table_name
+                to_model_name(table_name)
             )));
         }
 
@@ -262,7 +260,9 @@ impl TableSpec {
 
         format!(
             "{}\nmodel {} {{\n{}}}",
-            table_annot, self.name, column_stmts
+            table_annot,
+            to_model_name(&self.name),
+            column_stmts
         )
     }
 
@@ -331,8 +331,8 @@ impl ColumnSpec {
             Some(t) => {
                 if let PhysicalColumnType::ColumnReference { ref_table_name, .. } = &t {
                     issues.push(SpecIssue::Hint(format!(
-                        "consider adding a field to `{ref_table_name}` of type `[{table_name}]` to create a one-to-many relationship", 
-                        table_name=table_name,
+                        "consider adding a field to `{ref_table_name}` of type `[{model_name}]` to create a one-to-many relationship", 
+                        model_name=to_model_name(table_name),
                         ref_table_name=ref_table_name
                     )));
                 }
@@ -402,7 +402,10 @@ impl ColumnSpec {
             ""
         };
 
-        let (data_type, annots) = self.db_type.to_model();
+        let (mut data_type, annots) = self.db_type.to_model();
+        if let PhysicalColumnType::ColumnReference { .. } = self.db_type {
+            data_type = to_model_name(&data_type);
+        }
 
         format!(
             "{}: {}{}{}",

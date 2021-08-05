@@ -8,8 +8,8 @@ use crate::ast::ast_types::AstAnnotation;
 
 use super::{
     AccessAnnotation, AutoIncrementAnnotation, BitsAnnotation, ColumnAnnotation, DbTypeAnnotation,
-    JwtAnnotation, LengthAnnotation, PkAnnotation, PrecisionAnnotation, RangeAnnotation, Scope,
-    SizeAnnotation, TableAnnotation, Type, Typecheck, TypedAnnotation,
+    JwtAnnotation, LengthAnnotation, PkAnnotation, PluralNameAnnotation, PrecisionAnnotation,
+    RangeAnnotation, Scope, SizeAnnotation, TableAnnotation, Type, Typecheck, TypedAnnotation,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -20,6 +20,7 @@ pub struct AnnotationMap {
     column: Option<TypedAnnotation>,
     db_type: Option<TypedAnnotation>,
     length: Option<TypedAnnotation>,
+    plural_name: Option<TypedAnnotation>,
     precision: Option<TypedAnnotation>,
     jwt: Option<TypedAnnotation>,
     pk: Option<TypedAnnotation>,
@@ -71,6 +72,7 @@ impl AnnotationMap {
             TypedAnnotation::Column(_) => s!(self.column, errors, annotation, span),
             TypedAnnotation::DbType(_) => s!(self.db_type, errors, annotation, span),
             TypedAnnotation::Length(_) => s!(self.length, errors, annotation, span),
+            TypedAnnotation::PluralName(_) => s!(self.plural_name, errors, annotation, span),
             TypedAnnotation::Precision(_) => s!(self.precision, errors, annotation, span),
             TypedAnnotation::Jwt(_) => s!(self.jwt, errors, annotation, span),
             TypedAnnotation::Pk(_) => s!(self.pk, errors, annotation, span),
@@ -97,6 +99,7 @@ impl AnnotationMap {
             &mut self.column,
             &mut self.db_type,
             &mut self.length,
+            &mut self.plural_name,
             &mut self.precision,
             &mut self.jwt,
             &mut self.pk,
@@ -141,6 +144,10 @@ impl AnnotationMap {
 
     pub fn length(&self) -> Option<&LengthAnnotation> {
         coerce!(self.length, TypedAnnotation::Length)
+    }
+
+    pub fn plural_name(&self) -> Option<&PluralNameAnnotation> {
+        coerce!(self.plural_name, TypedAnnotation::PluralName)
     }
 
     pub fn precision(&self) -> Option<&PrecisionAnnotation> {

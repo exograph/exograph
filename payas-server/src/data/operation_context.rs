@@ -1,7 +1,10 @@
 use async_graphql_value::{Number, Value};
 use chrono::prelude::*;
 use chrono::DateTime;
-use payas_model::{model::column_id::ColumnId, sql::column::IntBits};
+use payas_model::{
+    model::column_id::ColumnId,
+    sql::column::{FloatBits, IntBits},
+};
 use typed_arena::Arena;
 
 use crate::{
@@ -120,6 +123,10 @@ impl<'a> OperationContext<'a> {
                 IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
                 IntBits::_32 => Box::new(number.as_i64().unwrap() as i32),
                 IntBits::_64 => Box::new(number.as_i64().unwrap() as i64),
+            },
+            PhysicalColumnType::Float { bits } => match bits {
+                FloatBits::_24 => Box::new(number.as_f64().unwrap() as f32),
+                FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
             },
             PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
                 // TODO assumes that `id` columns are always integers

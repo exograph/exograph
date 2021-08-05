@@ -6,6 +6,7 @@ expression: normalized_system(&resolved)
 - - Primitive: Boolean
   - Composite:
       name: Concert
+      plural_name: Concerts
       fields:
         - name: id
           typ:
@@ -63,6 +64,7 @@ expression: normalized_system(&resolved)
           BooleanLiteral:
             - true
             - Primitive: Boolean
+  - Primitive: Float
   - Primitive: Instant
   - Primitive: Int
   - Primitive: Json
@@ -72,6 +74,7 @@ expression: normalized_system(&resolved)
   - Primitive: String
   - Composite:
       name: Venue
+      plural_name: Venues
       fields:
         - name: id
           typ:

@@ -112,7 +112,7 @@ pub struct SystemContextBuilding {
 #[cfg(test)]
 mod tests {
     use id_arena::Arena;
-    use payas_model::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
+    use payas_model::sql::column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;
     use crate::parser;
@@ -125,6 +125,8 @@ mod tests {
               id: Int @dbtype("bigint") @pk @autoincrement
               nonce: Int @bits(16)
               hash: Int @size(8)
+              float: Float @size(4)
+              double: Float @bits(40)
               weird: Int @range(min=0, max=32770)
               prefix: String @length(15)
               log: String
@@ -139,6 +141,8 @@ mod tests {
         let logs_id = get_column_from_table("id", logs);
         let logs_nonce = get_column_from_table("nonce", logs);
         let logs_hash = get_column_from_table("hash", logs);
+        let logs_float = get_column_from_table("float", logs);
+        let logs_double = get_column_from_table("double", logs);
         let logs_weird = get_column_from_table("weird", logs);
         let logs_prefix = get_column_from_table("prefix", logs);
         let logs_granular = get_column_from_table("granular", logs);
@@ -150,16 +154,30 @@ mod tests {
             panic!()
         }
 
-        // @bits(16)
+        // Int @bits(16)
         if let PhysicalColumnType::Int { bits } = &logs_nonce.typ {
             assert!(*bits == IntBits::_16)
         } else {
             panic!()
         }
 
-        // @size(8)
+        // Int @size(8)
         if let PhysicalColumnType::Int { bits } = &logs_hash.typ {
             assert!(*bits == IntBits::_64)
+        } else {
+            panic!()
+        }
+
+        // Float @size(4)
+        if let PhysicalColumnType::Float { bits } = &logs_float.typ {
+            assert!(*bits == FloatBits::_24)
+        } else {
+            panic!()
+        }
+
+        // Double @bits(40)
+        if let PhysicalColumnType::Float { bits } = &logs_double.typ {
+            assert!(*bits == FloatBits::_53)
         } else {
             panic!()
         }

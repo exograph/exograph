@@ -4,6 +4,7 @@ model Concert {
   title: String
   venue: Venue @column("venueid")
   published: Boolean
+  price: Float @size(4)
 }
 
 @table("venues")
