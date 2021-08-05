@@ -1,15 +1,19 @@
 operation: |
-    mutation ($venue_name1: String!, $venue_name2: String!, $concert_title1: String!, $concert_title2: String!) {
+    mutation (
+        $venue_name1: String!, $venue_name2: String!, 
+        $concert_price1: Float!, $concert_price2: Float!,
+        $concert_title1: String!, $concert_title2: String!
+    ) {
         venue1: createVenue(data: {name: $venue_name1, published: true}) {
             id
         }
         venue2: createVenue(data: {name: $venue_name2, published: false}) {
             id
         }
-        concert1: createConcert(data: {title: $concert_title1, venue: {id: 1}, published: true}) {
+        concert1: createConcert(data: {title: $concert_title1, venue: {id: 1}, published: true, price: $concert_price1}) {
             id
         }
-        concert2:createConcert(data: {title: $concert_title2, venue: {id: 2}, published: false}) {
+        concert2:createConcert(data: {title: $concert_title2, venue: {id: 2}, published: false, price: $concert_price2}) {
             id
         }
     }  
@@ -17,6 +21,8 @@ variable: |
     {
         "venue_name1": "Venue1",
         "venue_name2": "Venue2",
+        "concert_price1": 20.50,
+        "concert_price2": 12.50,
         "concert_title1": "Concert1",
         "concert_title2": "Concert2"
     }

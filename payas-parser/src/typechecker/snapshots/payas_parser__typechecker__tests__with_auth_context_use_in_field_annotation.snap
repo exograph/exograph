@@ -115,6 +115,8 @@ expression: types
         range: ~
         size: ~
         table: ~
+- - Float
+  - Primitive: Float
 - - Instant
   - Primitive: Instant
 - - Int

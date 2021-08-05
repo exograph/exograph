@@ -91,6 +91,14 @@ lazy_static! {
         );
 
         supported_operators.insert(
+            "Float",
+            Some(vec![
+                "eq", "neq",
+                "lt", "lte", "gt", "gte"
+            ])
+        );
+
+        supported_operators.insert(
             "String",
             Some(vec![
                 "eq", "neq",

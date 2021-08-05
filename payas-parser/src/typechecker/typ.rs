@@ -60,6 +60,16 @@ impl Type {
         self.is_defer() || self.is_error()
     }
 
+    pub fn get_underlying_typename(&self) -> Option<String> {
+        match &self {
+            Type::Reference(name) => Some(name.to_owned()),
+            Type::Primitive(pt) => Some(pt.name()),
+            Type::Optional(underlying) => underlying.get_underlying_typename(),
+            Type::List(underlying) => underlying.get_underlying_typename(),
+            _ => None,
+        }
+    }
+
     pub fn deref<'a>(&'a self, env: &'a MappedArena<Type>) -> Type {
         match &self {
             Type::Reference(name) => env.get_by_key(name).unwrap().clone(),
@@ -93,6 +103,7 @@ pub enum CompositeTypeKind {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveType {
     Int,
+    Float,
     String,
     Boolean,
     LocalDate,
@@ -111,6 +122,7 @@ impl PrimitiveType {
 
         match &self {
             PrimitiveType::Int => "Int",
+            PrimitiveType::Float => "Float",
             PrimitiveType::String => "String",
             PrimitiveType::Boolean => "Boolean",
             PrimitiveType::LocalDate => "LocalDate",
