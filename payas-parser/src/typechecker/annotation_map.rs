@@ -8,8 +8,9 @@ use crate::ast::ast_types::AstAnnotation;
 
 use super::{
     AccessAnnotation, AutoIncrementAnnotation, BitsAnnotation, ColumnAnnotation, DbTypeAnnotation,
-    JwtAnnotation, LengthAnnotation, PkAnnotation, PluralNameAnnotation, PrecisionAnnotation, ScaleAnnotation,
-    RangeAnnotation, Scope, SizeAnnotation, TableAnnotation, Type, Typecheck, TypedAnnotation,
+    JwtAnnotation, LengthAnnotation, PkAnnotation, PluralNameAnnotation, PrecisionAnnotation,
+    RangeAnnotation, ScaleAnnotation, Scope, SizeAnnotation, TableAnnotation, Type, Typecheck,
+    TypedAnnotation,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

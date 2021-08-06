@@ -452,7 +452,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
                 if p > 28 {
                     eprint!("Warning for {}: we currently only support 28 digits of precision for this type! ", field.name);
                     eprint!("You specified {}, values will be rounded: ", p);
-                    eprint!("https://github.com/payalabs/payas/issues/149\n");
+                    eprintln!("https://github.com/payalabs/payas/issues/149");
                 }
             }
 
