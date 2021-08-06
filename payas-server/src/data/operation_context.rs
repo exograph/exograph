@@ -16,6 +16,8 @@ use crate::{
     },
 };
 
+use rust_decimal::prelude::*;
+
 pub struct OperationContext<'a> {
     pub query_context: &'a QueryContext<'a>,
     columns: Arena<Column<'a>>,
@@ -128,6 +130,10 @@ impl<'a> OperationContext<'a> {
                 FloatBits::_24 => Box::new(number.as_f64().unwrap() as f32),
                 FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
             },
+            PhysicalColumnType::Numeric { .. } => {
+                let decimal = Decimal::from_str(&number.to_string());
+                Box::new(decimal.unwrap())
+            }
             PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
                 // TODO assumes that `id` columns are always integers
                 Self::cast_number(number, ref_pk_type)
@@ -139,6 +145,8 @@ impl<'a> OperationContext<'a> {
 
     fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
         match destination_type {
+            PhysicalColumnType::Numeric { .. } => Box::new(Decimal::from_str(string).unwrap()),
+
             PhysicalColumnType::Timestamp { timezone, .. } => {
                 if *timezone {
                     let dt = DateTime::parse_from_rfc3339(string).unwrap();

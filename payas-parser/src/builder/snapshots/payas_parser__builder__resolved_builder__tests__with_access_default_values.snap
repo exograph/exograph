@@ -127,6 +127,7 @@ expression: normalized_system(&resolved)
                     - - public
                     - Reference: Boolean
               - Primitive: Boolean
+  - Primitive: Decimal
   - Primitive: Float
   - Primitive: Instant
   - Primitive: Int
