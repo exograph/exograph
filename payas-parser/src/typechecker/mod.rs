@@ -48,6 +48,7 @@ fn populate_standard_env(env: &mut MappedArena<Type>) {
     env.add("Boolean", Type::Primitive(PrimitiveType::Boolean));
     env.add("Int", Type::Primitive(PrimitiveType::Int));
     env.add("Float", Type::Primitive(PrimitiveType::Float));
+    env.add("Decimal", Type::Primitive(PrimitiveType::Decimal));
     env.add("String", Type::Primitive(PrimitiveType::String));
     env.add("LocalTime", Type::Primitive(PrimitiveType::LocalTime));
     env.add(

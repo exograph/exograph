@@ -4,7 +4,7 @@ model Concert {
   title: String
   venue: Venue @column("venueid")
   published: Boolean
-  price: Float @size(4)
+  price: Decimal @precision(20) @scale(2)
 }
 
 @table("venues")
@@ -13,4 +13,5 @@ model Venue {
   name: String
   concerts: [Concert] @column("venueid")
   published: Boolean
+  latitude: Float @size(4)
 }

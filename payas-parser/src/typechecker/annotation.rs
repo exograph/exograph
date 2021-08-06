@@ -59,6 +59,11 @@ pub enum PrecisionAnnotation {
     Single(TypedExpression),
 }
 
+#[annotation("scale")]
+pub enum ScaleAnnotation {
+    Single(TypedExpression),
+}
+
 #[annotation("jwt")]
 pub enum JwtAnnotation {
     None,
@@ -98,6 +103,7 @@ pub enum TypedAnnotation {
     Length(LengthAnnotation),
     PluralName(PluralNameAnnotation),
     Precision(PrecisionAnnotation),
+    Scale(ScaleAnnotation),
     Jwt(JwtAnnotation),
     Pk(PkAnnotation),
     Range(RangeAnnotation),
@@ -116,6 +122,7 @@ impl TypedAnnotation {
             TypedAnnotation::Length(_) => LengthAnnotation::name(),
             TypedAnnotation::PluralName(_) => PluralNameAnnotation::name(),
             TypedAnnotation::Precision(_) => PrecisionAnnotation::name(),
+            TypedAnnotation::Scale(_) => ScaleAnnotation::name(),
             TypedAnnotation::Jwt(_) => JwtAnnotation::name(),
             TypedAnnotation::Pk(_) => PkAnnotation::name(),
             TypedAnnotation::Range(_) => RangeAnnotation::name(),
@@ -163,6 +170,10 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
             Ok(TypedAnnotation::Precision(
                 PrecisionAnnotation::from_params(self, params, errors)?,
             ))
+        } else if name == ScaleAnnotation::name() {
+            Ok(TypedAnnotation::Scale(ScaleAnnotation::from_params(
+                self, params, errors,
+            )?))
         } else if name == JwtAnnotation::name() {
             Ok(TypedAnnotation::Jwt(JwtAnnotation::from_params(
                 self, params, errors,
@@ -214,6 +225,7 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
             TypedAnnotation::Length(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::PluralName(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Precision(a) => a.pass(&self.params, env, scope, errors),
+            TypedAnnotation::Scale(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Jwt(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Pk(a) => a.pass(&self.params, env, scope, errors),
             TypedAnnotation::Range(a) => a.pass(&self.params, env, scope, errors),
