@@ -89,7 +89,7 @@ lazy_static! {
 
         supported_operators.insert("Int", numeric_operators.clone());
         supported_operators.insert("Float", numeric_operators.clone());
-        supported_operators.insert("Number", numeric_operators.clone());
+        supported_operators.insert("Decimal", numeric_operators.clone());
 
         supported_operators.insert(
             "String",

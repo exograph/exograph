@@ -10,7 +10,7 @@ operation: |
   # they implement ToSql, FromSql for their types
   # we could also implement the traits ourselves
 
-  mutation($verylong_string: Number, $verylong_number: Number) {
+  mutation($verylong_string: Decimal, $verylong_number: Decimal) {
     string_test: createFoo(data: { verylong: $verylong_string }) {
       verylong
     }

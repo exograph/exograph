@@ -44,6 +44,8 @@ expression: types
         table: ~
 - - Boolean
   - Primitive: Boolean
+- - Decimal
+  - Primitive: Decimal
 - - Doc
   - Composite:
       name: Doc
@@ -139,8 +141,6 @@ expression: types
   - Primitive: LocalDateTime
 - - LocalTime
   - Primitive: LocalTime
-- - Number
-  - Primitive: Number
 - - String
   - Primitive: String
 

@@ -56,12 +56,12 @@ expression: normalized_system(&resolved)
               precision: 4
         - name: price
           typ:
-            Plain: Number
+            Plain: Decimal
           column_name: price
           is_pk: false
           is_autoincrement: false
           type_hint:
-            Number:
+            Decimal:
               precision: 10
               scale: 2
       table_name: custom_concerts
@@ -82,6 +82,7 @@ expression: normalized_system(&resolved)
           BooleanLiteral:
             - true
             - Primitive: Boolean
+  - Primitive: Decimal
   - Primitive: Float
   - Primitive: Instant
   - Primitive: Int
@@ -89,7 +90,6 @@ expression: normalized_system(&resolved)
   - Primitive: LocalDate
   - Primitive: LocalDateTime
   - Primitive: LocalTime
-  - Primitive: Number
   - Primitive: String
   - Composite:
       name: Venue

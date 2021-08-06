@@ -4,7 +4,7 @@ model Concert {
   title: String
   venue: Venue @column("venueid")
   published: Boolean
-  price: Number @precision(20) @scale(2)
+  price: Decimal @precision(20) @scale(2)
 }
 
 @table("venues")

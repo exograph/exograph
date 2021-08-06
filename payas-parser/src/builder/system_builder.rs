@@ -127,8 +127,8 @@ mod tests {
               hash: Int @size(8)
               float: Float @size(4)
               double: Float @bits(40)
-              latitude: Number @precision(4)
-              longitude: Number @precision(5) @scale(2)
+              latitude: Decimal @precision(4)
+              longitude: Decimal @precision(5) @scale(2)
               weird: Int @range(min=0, max=32770)
               prefix: String @length(15)
               log: String
@@ -186,13 +186,13 @@ mod tests {
             panic!()
         }
 
-        // Number @precision(4)
+        // Decimal @precision(4)
         if let PhysicalColumnType::Numeric { precision, scale } = &logs_latitude.typ {
             assert!(*precision == Some(4));
             assert!(*scale == None);
         }
 
-        // Number @precision(5) @scale(2)
+        // Decimal @precision(5) @scale(2)
         if let PhysicalColumnType::Numeric { precision, scale } = &logs_longitude.typ {
             assert!(*precision == Some(5));
             assert!(*scale == Some(2));

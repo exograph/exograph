@@ -1,7 +1,7 @@
 operation: |
     mutation (
         $venue_name1: String!, $venue_name2: String!, 
-        $venue_latitude1: Number!, $venue_latitude2: Number!, 
+        $venue_latitude1: Decimal!, $venue_latitude2: Decimal!, 
         $concert_price1: Float!, $concert_price2: Float!,
         $concert_title1: String!, $concert_title2: String!
     ) {

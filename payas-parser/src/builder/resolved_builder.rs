@@ -116,7 +116,7 @@ pub enum ResolvedTypeHint {
     Float {
         bits: usize,
     },
-    Number {
+    Decimal {
         precision: Option<usize>,
         scale: Option<usize>,
     },
@@ -429,8 +429,8 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     };
 
     let number_hint = {
-        // needed to disambiguate between DateTime and Number hints
-        if field.typ.get_underlying_typename().unwrap() != "Number" {
+        // needed to disambiguate between DateTime and Decimal hints
+        if field.typ.get_underlying_typename().unwrap() != "Decimal" {
             None
         } else {
             let precision_hint = field
@@ -456,7 +456,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
                 }
             }
 
-            Some(ResolvedTypeHint::Number {
+            Some(ResolvedTypeHint::Decimal {
                 precision: precision_hint,
                 scale: scale_hint,
             })
@@ -474,7 +474,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     };
 
     let datetime_hint = {
-        // needed to disambiguate between DateTime and Number hints
+        // needed to disambiguate between DateTime and Decimal hints
         if field
             .typ
             .get_underlying_typename()
@@ -686,7 +686,7 @@ mod tests {
           venue: Venue @column("custom_venue_id")
           reserved: Int @range(min=0, max=300)
           time: Instant @precision(4)
-          price: Number @precision(10) @scale(2)
+          price: Decimal @precision(10) @scale(2)
         }
         
         @table("venues")
