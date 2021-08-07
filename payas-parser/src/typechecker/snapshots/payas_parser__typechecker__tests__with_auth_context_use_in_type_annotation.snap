@@ -104,7 +104,6 @@ expression: types
                               - Reference: String
                         - StringLiteral:
                             - ROLE_ADMIN
-                            - Primitive: String
                         - Primitive: Boolean
                   - FieldSelection:
                       Select:

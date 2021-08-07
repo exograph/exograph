@@ -88,7 +88,6 @@ expression: types
                                         - Reference: String
                                   - StringLiteral:
                                       - role_admin
-                                      - Primitive: String
                                   - Primitive: Boolean
                             - RelationalOp:
                                 Eq:
@@ -101,7 +100,6 @@ expression: types
                                         - Reference: String
                                   - StringLiteral:
                                       - role_superuser
-                                      - Primitive: String
                                   - Primitive: Boolean
                             - Primitive: Boolean
                       - FieldSelection:
@@ -122,7 +120,6 @@ expression: types
                 Single:
                   StringLiteral:
                     - custom_column
-                    - Primitive: String
             db_type: ~
             length: ~
             plural_name: ~

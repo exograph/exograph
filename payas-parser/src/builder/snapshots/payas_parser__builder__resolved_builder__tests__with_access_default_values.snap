@@ -45,7 +45,6 @@ expression: normalized_system(&resolved)
                           - Reference: String
                     - StringLiteral:
                         - ROLE_ADMIN
-                        - Primitive: String
                     - Primitive: Boolean
               - FieldSelection:
                   Select:
@@ -69,7 +68,6 @@ expression: normalized_system(&resolved)
                           - Reference: String
                     - StringLiteral:
                         - ROLE_ADMIN
-                        - Primitive: String
                     - Primitive: Boolean
               - FieldSelection:
                   Select:
@@ -93,7 +91,6 @@ expression: normalized_system(&resolved)
                           - Reference: String
                     - StringLiteral:
                         - ROLE_ADMIN
-                        - Primitive: String
                     - Primitive: Boolean
               - FieldSelection:
                   Select:
@@ -117,7 +114,6 @@ expression: normalized_system(&resolved)
                           - Reference: String
                     - StringLiteral:
                         - ROLE_ADMIN
-                        - Primitive: String
                     - Primitive: Boolean
               - FieldSelection:
                   Select:

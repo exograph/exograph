@@ -1,67 +1,56 @@
 use anyhow::Result;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::{RelationalOp, Untyped};
 
-use super::{PrimitiveType, Scope, Type, Typecheck, TypedExpression};
+use super::{PrimitiveType, Scope, Type, Typecheck, Typed};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum TypedRelationalOp {
-    Eq(Box<TypedExpression>, Box<TypedExpression>, Type),
-    Neq(Box<TypedExpression>, Box<TypedExpression>, Type),
-    Lt(Box<TypedExpression>, Box<TypedExpression>, Type),
-    Lte(Box<TypedExpression>, Box<TypedExpression>, Type),
-    Gt(Box<TypedExpression>, Box<TypedExpression>, Type),
-    Gte(Box<TypedExpression>, Box<TypedExpression>, Type),
-}
-
-impl TypedRelationalOp {
+impl RelationalOp<Typed> {
     pub fn typ(&self) -> &Type {
         match &self {
-            TypedRelationalOp::Eq(_, _, typ) => typ,
-            TypedRelationalOp::Neq(_, _, typ) => typ,
-            TypedRelationalOp::Lt(_, _, typ) => typ,
-            TypedRelationalOp::Lte(_, _, typ) => typ,
-            TypedRelationalOp::Gt(_, _, typ) => typ,
-            TypedRelationalOp::Gte(_, _, typ) => typ,
+            RelationalOp::Eq(_, _, typ) => typ,
+            RelationalOp::Neq(_, _, typ) => typ,
+            RelationalOp::Lt(_, _, typ) => typ,
+            RelationalOp::Lte(_, _, typ) => typ,
+            RelationalOp::Gt(_, _, typ) => typ,
+            RelationalOp::Gte(_, _, typ) => typ,
         }
     }
 }
 
-impl Typecheck<TypedRelationalOp> for RelationalOp<Untyped> {
+impl Typecheck<RelationalOp<Typed>> for RelationalOp<Untyped> {
     fn shallow(
         &self,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<TypedRelationalOp> {
+    ) -> Result<RelationalOp<Typed>> {
         Ok(match &self {
-            RelationalOp::Eq(left, right) => TypedRelationalOp::Eq(
+            RelationalOp::Eq(left, right, _) => RelationalOp::Eq(
                 Box::new(left.shallow(errors)?),
                 Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
-            RelationalOp::Neq(left, right) => TypedRelationalOp::Neq(
+            RelationalOp::Neq(left, right, _) => RelationalOp::Neq(
                 Box::new(left.shallow(errors)?),
                 Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
-            RelationalOp::Lt(left, right) => TypedRelationalOp::Lt(
+            RelationalOp::Lt(left, right, _) => RelationalOp::Lt(
                 Box::new(left.shallow(errors)?),
                 Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
-            RelationalOp::Lte(left, right) => TypedRelationalOp::Lte(
+            RelationalOp::Lte(left, right, _) => RelationalOp::Lte(
                 Box::new(left.shallow(errors)?),
                 Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
-            RelationalOp::Gt(left, right) => TypedRelationalOp::Gt(
+            RelationalOp::Gt(left, right, _) => RelationalOp::Gt(
                 Box::new(left.shallow(errors)?),
                 Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
-            RelationalOp::Gte(left, right) => TypedRelationalOp::Gte(
+            RelationalOp::Gte(left, right, _) => RelationalOp::Gte(
                 Box::new(left.shallow(errors)?),
                 Box::new(right.shallow(errors)?),
                 Type::Defer,
@@ -71,14 +60,14 @@ impl Typecheck<TypedRelationalOp> for RelationalOp<Untyped> {
 
     fn pass(
         &self,
-        typ: &mut TypedRelationalOp,
+        typ: &mut RelationalOp<Typed>,
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
         match &self {
-            RelationalOp::Eq(left, right) => {
-                if let TypedRelationalOp::Eq(left_typ, right_typ, o_typ) = typ {
+            RelationalOp::Eq(left, right, _) => {
+                if let RelationalOp::Eq(left_typ, right_typ, o_typ) = typ {
                     let in_updated = left.pass(left_typ, env, scope, errors)
                         || right.pass(right_typ, env, scope, errors);
                     let out_updated = if o_typ.is_incomplete() {
@@ -125,8 +114,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp<Untyped> {
                     panic!()
                 }
             }
-            RelationalOp::Neq(left, right) => {
-                if let TypedRelationalOp::Neq(left_typ, right_typ, _) = typ {
+            RelationalOp::Neq(left, right, _) => {
+                if let RelationalOp::Neq(left_typ, right_typ, _) = typ {
                     let in_updated = left.pass(left_typ, env, scope, errors)
                         || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
@@ -135,8 +124,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp<Untyped> {
                     panic!()
                 }
             }
-            RelationalOp::Lt(left, right) => {
-                if let TypedRelationalOp::Lt(left_typ, right_typ, _) = typ {
+            RelationalOp::Lt(left, right, _) => {
+                if let RelationalOp::Lt(left_typ, right_typ, _) = typ {
                     let in_updated = left.pass(left_typ, env, scope, errors)
                         || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
@@ -145,8 +134,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp<Untyped> {
                     panic!()
                 }
             }
-            RelationalOp::Lte(left, right) => {
-                if let TypedRelationalOp::Lte(left_typ, right_typ, _) = typ {
+            RelationalOp::Lte(left, right, _) => {
+                if let RelationalOp::Lte(left_typ, right_typ, _) = typ {
                     let in_updated = left.pass(left_typ, env, scope, errors)
                         || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
@@ -155,8 +144,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp<Untyped> {
                     panic!()
                 }
             }
-            RelationalOp::Gt(left, right) => {
-                if let TypedRelationalOp::Gt(left_typ, right_typ, _) = typ {
+            RelationalOp::Gt(left, right, _) => {
+                if let RelationalOp::Gt(left_typ, right_typ, _) = typ {
                     let in_updated = left.pass(left_typ, env, scope, errors)
                         || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;
@@ -165,8 +154,8 @@ impl Typecheck<TypedRelationalOp> for RelationalOp<Untyped> {
                     panic!()
                 }
             }
-            RelationalOp::Gte(left, right) => {
-                if let TypedRelationalOp::Gte(left_typ, right_typ, _) = typ {
+            RelationalOp::Gte(left, right, _) => {
+                if let RelationalOp::Gte(left_typ, right_typ, _) = typ {
                     let in_updated = left.pass(left_typ, env, scope, errors)
                         || right.pass(right_typ, env, scope, errors);
                     let out_updated = false;

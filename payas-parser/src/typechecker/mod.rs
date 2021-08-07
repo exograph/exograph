@@ -18,10 +18,6 @@ use serde::{Deserialize, Serialize};
 pub(super) use annotation::*;
 pub(super) use annotation_map::AnnotationMap;
 
-pub(super) use expression::TypedExpression;
-pub use logical_op::TypedLogicalOp;
-pub use relational_op::TypedRelationalOp;
-
 pub(super) use field::TypedField;
 pub(super) use typ::{CompositeType, CompositeTypeKind, PrimitiveType, Type};
 
@@ -38,6 +34,9 @@ pub struct Typed;
 impl NodeTypedness for Typed {
     type Field = Type;
     type FieldSelection = Type;
+    type RelationalOp = Type;
+    type Expr = Type;
+    type LogicalOp = Type;
 }
 
 pub trait Typecheck<T> {
@@ -217,7 +216,9 @@ mod tests {
 
         "#;
 
-        assert_eq!(parse_sorted(typical), parse_sorted(with_whitespace));
+        let typical_parsed = serde_json::to_string(&parse_sorted(typical)).unwrap();
+        let with_whitespace_parsed = serde_json::to_string(&parse_sorted(with_whitespace)).unwrap();
+        assert_eq!(typical_parsed, with_whitespace_parsed);
     }
 
     fn assert_typechecking(src: &str) {

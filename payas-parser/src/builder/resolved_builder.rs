@@ -9,11 +9,12 @@ use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::ToPlural;
 
 use crate::{
-    ast::ast_types::FieldSelection,
+    ast::ast_types::{AstExpr, FieldSelection},
     typechecker::{
         AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
-        TypedExpression, TypedField,
+        Typed, TypedField,
     },
+    util::null_span,
 };
 use serde::{Deserialize, Serialize};
 
@@ -38,22 +39,19 @@ pub struct ResolvedContext {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedAccess {
-    pub creation: TypedExpression,
-    pub read: TypedExpression,
-    pub update: TypedExpression,
-    pub delete: TypedExpression,
+    pub creation: AstExpr<Typed>,
+    pub read: AstExpr<Typed>,
+    pub update: AstExpr<Typed>,
+    pub delete: AstExpr<Typed>,
 }
 
 impl ResolvedAccess {
     fn permissive() -> Self {
         ResolvedAccess {
-            creation: TypedExpression::BooleanLiteral(
-                true,
-                Type::Primitive(PrimitiveType::Boolean),
-            ),
-            read: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
-            update: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
-            delete: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
+            creation: AstExpr::BooleanLiteral(true, null_span()),
+            read: AstExpr::BooleanLiteral(true, null_span()),
+            update: AstExpr::BooleanLiteral(true, null_span()),
+            delete: AstExpr::BooleanLiteral(true, null_span()),
         }
     }
 }
@@ -243,8 +241,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
 fn build_access(access_annotation: Option<&AccessAnnotation>) -> ResolvedAccess {
     match access_annotation {
         Some(access) => {
-            let restrictive =
-                TypedExpression::BooleanLiteral(false, Type::Primitive(PrimitiveType::Boolean));
+            let restrictive = AstExpr::BooleanLiteral(false, null_span());
 
             // The annotation parameter hierarchy is:
             // value -> query
@@ -590,11 +587,11 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
             let annot_param = &annot.value();
 
             match annot_param {
-                Some(TypedExpression::FieldSelection(selection)) => match selection {
+                Some(AstExpr::FieldSelection(selection)) => match selection {
                     FieldSelection::Single(claim, _) => claim.0.clone(),
                     _ => panic!("Only simple jwt claim supported"),
                 },
-                Some(TypedExpression::StringLiteral(name, _)) => name.clone(),
+                Some(AstExpr::StringLiteral(name, _)) => name.clone(),
                 None => field.name.clone(),
                 _ => panic!("Expression type other than selection unsupported"),
             }

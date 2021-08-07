@@ -24,7 +24,7 @@ impl Typecheck<TypedField> for AstField<Untyped> {
 
         Ok(TypedField {
             name: self.name.clone(),
-            typ: self.typ.shallow(errors)?,
+            typ: self.ast_typ.shallow(errors)?,
             annotations,
         })
     }
@@ -36,7 +36,7 @@ impl Typecheck<TypedField> for AstField<Untyped> {
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        let typ_changed = self.typ.pass(&mut typ.typ, env, scope, errors);
+        let typ_changed = self.ast_typ.pass(&mut typ.typ, env, scope, errors);
 
         let annot_changed = typ.annotations.pass(&self.annotations, env, scope, errors);
 

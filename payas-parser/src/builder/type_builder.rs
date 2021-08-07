@@ -22,8 +22,8 @@ use super::resolved_builder::{
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
 use crate::{
-    ast::ast_types::FieldSelection,
-    typechecker::{PrimitiveType, Typed, TypedExpression, TypedLogicalOp, TypedRelationalOp},
+    ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
+    typechecker::{PrimitiveType, Typed},
 };
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
@@ -253,13 +253,13 @@ fn compute_selection<'a>(
 }
 
 fn compute_expression(
-    expr: &TypedExpression,
+    expr: &AstExpr<Typed>,
     self_type_info: &GqlCompositeTypeKind,
     building: &SystemContextBuilding,
     coerce_boolean: bool,
 ) -> AccessExpression {
     match expr {
-        TypedExpression::FieldSelection(selection) => {
+        AstExpr::FieldSelection(selection) => {
             match compute_selection(selection, self_type_info) {
                 PathSelection::Column(column_id, column_type) => {
                     let column = AccessExpression::Column(column_id);
@@ -282,47 +282,45 @@ fn compute_expression(
                 PathSelection::Context(c) => AccessExpression::ContextSelection(c),
             }
         }
-        TypedExpression::LogicalOp(op) => match op {
-            TypedLogicalOp::And(left, right, _) => {
-                AccessExpression::LogicalOp(AccessLogicalOp::And(
-                    Box::new(compute_expression(left, self_type_info, building, true)),
-                    Box::new(compute_expression(right, self_type_info, building, true)),
-                ))
-            }
-            TypedLogicalOp::Or(left, right, _) => AccessExpression::LogicalOp(AccessLogicalOp::Or(
+        AstExpr::LogicalOp(op) => match op {
+            LogicalOp::And(left, right, _) => AccessExpression::LogicalOp(AccessLogicalOp::And(
                 Box::new(compute_expression(left, self_type_info, building, true)),
                 Box::new(compute_expression(right, self_type_info, building, true)),
             )),
-            TypedLogicalOp::Not(value, _) => AccessExpression::LogicalOp(AccessLogicalOp::Not(
+            LogicalOp::Or(left, right, _) => AccessExpression::LogicalOp(AccessLogicalOp::Or(
+                Box::new(compute_expression(left, self_type_info, building, true)),
+                Box::new(compute_expression(right, self_type_info, building, true)),
+            )),
+            LogicalOp::Not(value, _, _) => AccessExpression::LogicalOp(AccessLogicalOp::Not(
                 Box::new(compute_expression(value, self_type_info, building, true)),
             )),
         },
-        TypedExpression::RelationalOp(op) => match op {
-            TypedRelationalOp::Eq(left, right, _) => {
+        AstExpr::RelationalOp(op) => match op {
+            RelationalOp::Eq(left, right, _) => {
                 AccessExpression::RelationalOp(AccessRelationalOp::Eq(
                     Box::new(compute_expression(left, self_type_info, building, false)),
                     Box::new(compute_expression(right, self_type_info, building, false)),
                 ))
             }
-            TypedRelationalOp::Neq(_left, _right, _) => {
+            RelationalOp::Neq(_left, _right, _) => {
                 todo!()
             }
-            TypedRelationalOp::Lt(_left, _right, _) => {
+            RelationalOp::Lt(_left, _right, _) => {
                 todo!()
             }
-            TypedRelationalOp::Lte(_left, _right, _) => {
+            RelationalOp::Lte(_left, _right, _) => {
                 todo!()
             }
-            TypedRelationalOp::Gt(_left, _right, _) => {
+            RelationalOp::Gt(_left, _right, _) => {
                 todo!()
             }
-            TypedRelationalOp::Gte(_left, _right, _) => {
+            RelationalOp::Gte(_left, _right, _) => {
                 todo!()
             }
         },
-        TypedExpression::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
-        TypedExpression::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),
-        TypedExpression::NumberLiteral(value, _) => AccessExpression::NumberLiteral(*value),
+        AstExpr::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
+        AstExpr::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),
+        AstExpr::NumberLiteral(value, _) => AccessExpression::NumberLiteral(*value),
     }
 }
 

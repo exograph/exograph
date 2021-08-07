@@ -384,7 +384,7 @@ fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
 fn build_value_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
     if !variants.none && variants.single && variants.map.is_none() {
         quote! {
-            pub fn value(&self) -> &TypedExpression {
+            pub fn value(&self) -> &AstExpr<Typed> {
                 match &self {
                     Self::Single(value) => value,
                     _ => panic!(),
@@ -393,7 +393,7 @@ fn build_value_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
         }
     } else if variants.none && variants.single && variants.map.is_none() {
         quote! {
-            pub fn value(&self) -> Option<&TypedExpression> {
+            pub fn value(&self) -> Option<&AstExpr<Typed>> {
                 match &self {
                     Self::None => None,
                     Self::Single(value) => Some(value),

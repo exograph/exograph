@@ -3,36 +3,33 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{LogicalOp, Untyped};
-use serde::{Deserialize, Serialize};
 
-use super::{expression::TypedExpression, PrimitiveType, Scope, Type, Typecheck};
+use super::{PrimitiveType, Scope, Type, Typecheck, Typed};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum TypedLogicalOp {
-    Not(Box<TypedExpression>, Type),
-    And(Box<TypedExpression>, Box<TypedExpression>, Type),
-    Or(Box<TypedExpression>, Box<TypedExpression>, Type),
-}
-
-impl TypedLogicalOp {
+impl LogicalOp<Typed> {
     pub fn typ(&self) -> &Type {
         match &self {
-            TypedLogicalOp::Not(_, typ) => typ,
-            TypedLogicalOp::And(_, _, typ) => typ,
-            TypedLogicalOp::Or(_, _, typ) => typ,
+            LogicalOp::Not(_, _, typ) => typ,
+            LogicalOp::And(_, _, typ) => typ,
+            LogicalOp::Or(_, _, typ) => typ,
         }
     }
 }
-impl Typecheck<TypedLogicalOp> for LogicalOp<Untyped> {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedLogicalOp> {
+impl Typecheck<LogicalOp<Typed>> for LogicalOp<Untyped> {
+    fn shallow(
+        &self,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> Result<LogicalOp<Typed>> {
         Ok(match &self {
-            LogicalOp::Not(v, _) => TypedLogicalOp::Not(Box::new(v.shallow(errors)?), Type::Defer),
-            LogicalOp::And(left, right) => TypedLogicalOp::And(
+            LogicalOp::Not(v, s, _) => {
+                LogicalOp::Not(Box::new(v.shallow(errors)?), *s, Type::Defer)
+            }
+            LogicalOp::And(left, right, _) => LogicalOp::And(
                 Box::new(left.shallow(errors)?),
                 Box::new(right.shallow(errors)?),
                 Type::Defer,
             ),
-            LogicalOp::Or(left, right) => TypedLogicalOp::Or(
+            LogicalOp::Or(left, right, _) => LogicalOp::Or(
                 Box::new(left.shallow(errors)?),
                 Box::new(right.shallow(errors)?),
                 Type::Defer,
@@ -42,14 +39,14 @@ impl Typecheck<TypedLogicalOp> for LogicalOp<Untyped> {
 
     fn pass(
         &self,
-        typ: &mut TypedLogicalOp,
+        typ: &mut LogicalOp<Typed>,
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
         match &self {
-            LogicalOp::Not(v, _) => {
-                if let TypedLogicalOp::Not(v_typ, o_typ) = typ {
+            LogicalOp::Not(v, _, _) => {
+                if let LogicalOp::Not(v_typ, _, o_typ) = typ {
                     let in_updated = v.pass(v_typ, env, scope, errors);
                     let out_updated = if o_typ.is_incomplete() {
                         match v_typ.typ().deref(env) {
@@ -87,8 +84,8 @@ impl Typecheck<TypedLogicalOp> for LogicalOp<Untyped> {
                     panic!()
                 }
             }
-            LogicalOp::And(left, right) => {
-                if let TypedLogicalOp::And(left_typ, right_typ, o_typ) = typ {
+            LogicalOp::And(left, right, _) => {
+                if let LogicalOp::And(left_typ, right_typ, o_typ) = typ {
                     let in_updated = left.pass(left_typ, env, scope, errors)
                         || right.pass(right_typ, env, scope, errors);
                     let out_updated = if o_typ.is_incomplete() {
@@ -142,8 +139,8 @@ impl Typecheck<TypedLogicalOp> for LogicalOp<Untyped> {
                     panic!()
                 }
             }
-            LogicalOp::Or(left, right) => {
-                if let TypedLogicalOp::Or(left_typ, right_typ, o_typ) = typ {
+            LogicalOp::Or(left, right, _) => {
+                if let LogicalOp::Or(left_typ, right_typ, o_typ) = typ {
                     let in_updated = left.pass(left_typ, env, scope, errors)
                         || right.pass(right_typ, env, scope, errors);
                     let out_updated = if o_typ.is_incomplete() {

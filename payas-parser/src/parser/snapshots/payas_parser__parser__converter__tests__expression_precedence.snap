@@ -8,9 +8,10 @@ models:
     kind: Persistent
     fields:
       - name: bar
-        typ:
+        ast_typ:
           Plain:
             - Baz
+        typ: ~
         annotations:
           - name: column
             params:
@@ -33,8 +34,10 @@ models:
                                             - ~
                                         - - role
                                         - ~
+                                  - ~
                             - StringLiteral:
                                 - role_admin
+                            - ~
                       - RelationalOp:
                           Eq:
                             - FieldSelection:
@@ -46,5 +49,7 @@ models:
                                   - ~
                             - StringLiteral:
                                 - role_superuser
+                            - ~
+                      - ~
     annotations: []
 

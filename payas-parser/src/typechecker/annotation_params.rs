@@ -4,15 +4,15 @@ use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::{AstAnnotationParams, Untyped};
+use crate::ast::ast_types::{AstAnnotationParams, AstExpr, Untyped};
 
-use super::{Typecheck, TypedExpression};
+use super::{Typecheck, Typed};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum TypedAnnotationParams {
     None,
-    Single(TypedExpression),
-    Map(HashMap<String, TypedExpression>),
+    Single(AstExpr<Typed>),
+    Map(HashMap<String, AstExpr<Typed>>),
 }
 
 impl Typecheck<TypedAnnotationParams> for AstAnnotationParams<Untyped> {

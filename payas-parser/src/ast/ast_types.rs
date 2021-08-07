@@ -7,16 +7,25 @@ pub trait NodeTypedness
 where
     Self::Field: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::FieldSelection: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::RelationalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::Expr: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::LogicalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
 {
     type Field;
     type FieldSelection;
+    type RelationalOp;
+    type Expr;
+    type LogicalOp;
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Untyped;
 impl NodeTypedness for Untyped {
-    type Field = AstFieldType;
+    type Field = ();
     type FieldSelection = ();
+    type RelationalOp = ();
+    type Expr = ();
+    type LogicalOp = ();
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -41,6 +50,7 @@ pub enum AstModelKind {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstField<T: NodeTypedness> {
     pub name: String,
+    pub ast_typ: AstFieldType,
     pub typ: T::Field,
     pub annotations: Vec<AstAnnotation<T>>,
 }
@@ -176,19 +186,20 @@ pub enum LogicalOp<T: NodeTypedness> {
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         Span,
+        T::LogicalOp,
     ),
-    And(Box<AstExpr<T>>, Box<AstExpr<T>>),
-    Or(Box<AstExpr<T>>, Box<AstExpr<T>>),
+    And(Box<AstExpr<T>>, Box<AstExpr<T>>, T::LogicalOp),
+    Or(Box<AstExpr<T>>, Box<AstExpr<T>>, T::LogicalOp),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum RelationalOp<T: NodeTypedness> {
-    Eq(Box<AstExpr<T>>, Box<AstExpr<T>>),
-    Neq(Box<AstExpr<T>>, Box<AstExpr<T>>),
-    Lt(Box<AstExpr<T>>, Box<AstExpr<T>>),
-    Lte(Box<AstExpr<T>>, Box<AstExpr<T>>),
-    Gt(Box<AstExpr<T>>, Box<AstExpr<T>>),
-    Gte(Box<AstExpr<T>>, Box<AstExpr<T>>),
+    Eq(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Neq(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Lt(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Lte(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Gt(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Gte(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

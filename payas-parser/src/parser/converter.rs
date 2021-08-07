@@ -171,11 +171,12 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
             .utf8_text(source)
             .unwrap()
             .to_string(),
-        typ: convert_type(
+        ast_typ: convert_type(
             node.child_by_field_name("type").unwrap(),
             source,
             source_span,
         ),
+        typ: (),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
@@ -336,6 +337,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source,
                 source_span,
             )),
+            (),
         ),
         "logical_and" => LogicalOp::And(
             Box::new(convert_expression(
@@ -348,6 +350,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source,
                 source_span,
             )),
+            (),
         ),
         "logical_not" => LogicalOp::Not(
             Box::new(convert_expression(
@@ -356,6 +359,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source_span,
             )),
             span_from_node(source_span, first_child),
+            (),
         ),
         o => panic!("unsupported logical op kind: {}", o),
     }
@@ -377,6 +381,7 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
                 source,
                 source_span,
             )),
+            (),
         ),
         "relational_neq" => RelationalOp::Neq(
             Box::new(convert_expression(
@@ -389,6 +394,7 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
                 source,
                 source_span,
             )),
+            (),
         ),
         "relational_lt" => RelationalOp::Lt(
             Box::new(convert_expression(
@@ -401,6 +407,7 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
                 source,
                 source_span,
             )),
+            (),
         ),
         "relational_lte" => RelationalOp::Lte(
             Box::new(convert_expression(
@@ -413,6 +420,7 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
                 source,
                 source_span,
             )),
+            (),
         ),
         "relational_gt" => RelationalOp::Gt(
             Box::new(convert_expression(
@@ -425,6 +433,7 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
                 source,
                 source_span,
             )),
+            (),
         ),
         "relational_gte" => RelationalOp::Gte(
             Box::new(convert_expression(
@@ -437,6 +446,7 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
                 source,
                 source_span,
             )),
+            (),
         ),
         o => panic!("unsupported relational op kind: {}", o),
     }

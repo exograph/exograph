@@ -1,4 +1,4 @@
-use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
+use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, AstExpr, Untyped};
 use anyhow::{bail, Result};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -7,20 +7,20 @@ use serde::{Deserialize, Serialize};
 
 use std::collections::{HashMap, HashSet};
 
-use super::{annotation_params::TypedAnnotationParams, Scope, Type, Typecheck, TypedExpression};
+use super::{annotation_params::TypedAnnotationParams, Scope, Type, Typecheck, Typed};
 
 use annotation_attribute::annotation;
 
 #[annotation("access")]
 #[allow(clippy::large_enum_variant)]
 pub enum AccessAnnotation {
-    Single(TypedExpression), // default access
+    Single(AstExpr<Typed>), // default access
     Map {
-        query: Option<TypedExpression>,
-        mutation: Option<TypedExpression>,
-        create: Option<TypedExpression>,
-        update: Option<TypedExpression>,
-        delete: Option<TypedExpression>,
+        query: Option<AstExpr<Typed>>,
+        mutation: Option<AstExpr<Typed>>,
+        create: Option<AstExpr<Typed>>,
+        update: Option<AstExpr<Typed>>,
+        delete: Option<AstExpr<Typed>>,
     },
 }
 
@@ -31,22 +31,22 @@ pub enum AutoIncrementAnnotation {
 
 #[annotation("bits")]
 pub enum BitsAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("column")]
 pub enum ColumnAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("dbtype")]
 pub enum DbTypeAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("length")]
 pub enum LengthAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("plural_name")]
@@ -56,7 +56,7 @@ pub enum PluralNameAnnotation {
 
 #[annotation("precision")]
 pub enum PrecisionAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("scale")]
@@ -67,7 +67,7 @@ pub enum ScaleAnnotation {
 #[annotation("jwt")]
 pub enum JwtAnnotation {
     None,
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("pk")]
@@ -78,19 +78,19 @@ pub enum PkAnnotation {
 #[annotation("range")]
 pub enum RangeAnnotation {
     Map {
-        min: TypedExpression,
-        max: TypedExpression,
+        min: AstExpr<Typed>,
+        max: AstExpr<Typed>,
     },
 }
 
 #[annotation("size")]
 pub enum SizeAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("table")]
 pub enum TableAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
