@@ -64,6 +64,7 @@ expression: normalized_system(&resolved)
           BooleanLiteral:
             - true
             - Primitive: Boolean
+  - Primitive: Decimal
   - Primitive: Float
   - Primitive: Instant
   - Primitive: Int

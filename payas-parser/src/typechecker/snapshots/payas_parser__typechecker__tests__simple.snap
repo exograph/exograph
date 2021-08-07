@@ -5,6 +5,8 @@ expression: types
 ---
 - - Boolean
   - Primitive: Boolean
+- - Decimal
+  - Primitive: Decimal
 - - Doc
   - Composite:
       name: Doc
@@ -22,6 +24,7 @@ expression: types
             length: ~
             plural_name: ~
             precision: ~
+            scale: ~
             jwt: ~
             pk: ~
             range: ~
@@ -36,6 +39,7 @@ expression: types
         length: ~
         plural_name: ~
         precision: ~
+        scale: ~
         jwt: ~
         pk: ~
         range: ~
@@ -123,6 +127,7 @@ expression: types
             length: ~
             plural_name: ~
             precision: ~
+            scale: ~
             jwt: ~
             pk: ~
             range: ~
@@ -140,6 +145,7 @@ expression: types
             length: ~
             plural_name: ~
             precision: ~
+            scale: ~
             jwt: ~
             pk: ~
             range: ~
@@ -154,6 +160,7 @@ expression: types
         length: ~
         plural_name: ~
         precision: ~
+        scale: ~
         jwt: ~
         pk: ~
         range: ~

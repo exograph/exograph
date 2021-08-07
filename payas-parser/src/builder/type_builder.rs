@@ -530,6 +530,20 @@ fn determine_column_type<'a>(
                 }
             }
 
+            ResolvedTypeHint::Decimal { precision, scale } => {
+                assert!(matches!(pt, PrimitiveType::Decimal));
+
+                // cannot have scale and no precision specified
+                if precision.is_none() {
+                    assert!(scale.is_none())
+                }
+
+                PhysicalColumnType::Numeric {
+                    precision: *precision,
+                    scale: *scale,
+                }
+            }
+
             ResolvedTypeHint::String { length } => {
                 assert!(matches!(pt, PrimitiveType::String));
 
@@ -560,6 +574,10 @@ fn determine_column_type<'a>(
             PrimitiveType::Int => PhysicalColumnType::Int { bits: IntBits::_32 },
             PrimitiveType::Float => PhysicalColumnType::Float {
                 bits: FloatBits::_24,
+            },
+            PrimitiveType::Decimal => PhysicalColumnType::Numeric {
+                precision: None,
+                scale: None,
             },
             PrimitiveType::String => PhysicalColumnType::String { length: None },
             PrimitiveType::Boolean => PhysicalColumnType::Boolean,

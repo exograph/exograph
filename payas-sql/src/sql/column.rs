@@ -42,6 +42,10 @@ pub enum PhysicalColumnType {
     Float {
         bits: FloatBits,
     },
+    Numeric {
+        precision: Option<usize>,
+        scale: Option<usize>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -173,6 +177,16 @@ impl PhysicalColumnType {
                 .to_owned(),
             ),
 
+            PhysicalColumnType::Numeric { precision, scale } => ("Numeric".to_string(), {
+                let precision_part = precision
+                    .map(|p| format!("@precision({})", p))
+                    .unwrap_or_default();
+
+                let scale_part = scale.map(|s| format!("@scale({})", s)).unwrap_or_default();
+
+                format!(" {} {}", precision_part, scale_part)
+            }),
+
             PhysicalColumnType::String { length } => (
                 "String".to_string(),
                 match length {
@@ -255,6 +269,22 @@ impl PhysicalColumnType {
                     FloatBits::_53 => "DOUBLE PRECISION",
                 }
                 .to_owned(),
+                foreign_constraints: Vec::new(),
+            },
+
+            PhysicalColumnType::Numeric { precision, scale } => SQLStatement {
+                statement: {
+                    if let Some(p) = precision {
+                        if let Some(s) = scale {
+                            format!("NUMERIC({}, {})", p, s)
+                        } else {
+                            format!("NUMERIC({})", p)
+                        }
+                    } else {
+                        assert!(scale.is_none()); // can't have a scale and no precision
+                        "NUMERIC".to_owned()
+                    }
+                },
                 foreign_constraints: Vec::new(),
             },
 

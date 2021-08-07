@@ -127,6 +127,8 @@ mod tests {
               hash: Int @size(8)
               float: Float @size(4)
               double: Float @bits(40)
+              latitude: Decimal @precision(4)
+              longitude: Decimal @precision(5) @scale(2)
               weird: Int @range(min=0, max=32770)
               prefix: String @length(15)
               log: String
@@ -143,6 +145,8 @@ mod tests {
         let logs_hash = get_column_from_table("hash", logs);
         let logs_float = get_column_from_table("float", logs);
         let logs_double = get_column_from_table("double", logs);
+        let logs_latitude = get_column_from_table("latitude", logs);
+        let logs_longitude = get_column_from_table("longitude", logs);
         let logs_weird = get_column_from_table("weird", logs);
         let logs_prefix = get_column_from_table("prefix", logs);
         let logs_granular = get_column_from_table("granular", logs);
@@ -180,6 +184,18 @@ mod tests {
             assert!(*bits == FloatBits::_53)
         } else {
             panic!()
+        }
+
+        // Decimal @precision(4)
+        if let PhysicalColumnType::Numeric { precision, scale } = &logs_latitude.typ {
+            assert!(*precision == Some(4));
+            assert!(*scale == None);
+        }
+
+        // Decimal @precision(5) @scale(2)
+        if let PhysicalColumnType::Numeric { precision, scale } = &logs_longitude.typ {
+            assert!(*precision == Some(5));
+            assert!(*scale == Some(2));
         }
 
         // @range(min=0, max=32770)
