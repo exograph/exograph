@@ -1,0 +1,18 @@
+model Concert {
+  id: Int @pk @autoincrement
+  title: String
+  concertArtists: [ConcertArtist]
+}
+
+model ConcertArtist {
+  id: Int @pk @autoincrement
+  concert: Concert
+  artist: Artist
+  rank: Int
+  role: String
+}
+
+model Artist {
+  id: Int @pk @autoincrement
+  name: String
+}

@@ -1,5 +1,5 @@
 pub mod access_solver;
-mod data_param_mapper;
+mod create_data_param_mapper;
 pub mod data_resolver;
 pub mod mutation_resolver;
 pub mod operation_context;
@@ -7,6 +7,7 @@ pub mod order_by_mapper;
 pub mod predicate_mapper;
 pub mod query_resolver;
 pub mod sql_mapper;
+mod update_data_param_mapper;
 
 use async_graphql_parser::Positioned;
 use async_graphql_value::{Name, Value};

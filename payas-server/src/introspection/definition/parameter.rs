@@ -4,8 +4,12 @@ use async_graphql_parser::types::InputValueDefinition;
 use crate::introspection::util;
 
 use payas_model::model::{
-    operation::MutationDataParameter, order::*, predicate::PredicateParameter, types::GqlField,
-    types::GqlTypeModifier, GqlFieldType,
+    operation::{CreateDataParameter, UpdateDataParameter},
+    order::*,
+    predicate::PredicateParameter,
+    types::GqlField,
+    types::GqlTypeModifier,
+    GqlFieldType,
 };
 
 use super::provider::InputValueProvider;
@@ -44,7 +48,7 @@ impl Parameter for PredicateParameter {
     }
 }
 
-impl Parameter for MutationDataParameter {
+impl Parameter for CreateDataParameter {
     fn name(&self) -> &str {
         &self.name
     }
@@ -59,6 +63,20 @@ impl Parameter for MutationDataParameter {
         } else {
             &GqlTypeModifier::NonNull
         }
+    }
+}
+
+impl Parameter for UpdateDataParameter {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn type_name(&self) -> &str {
+        &self.type_name
+    }
+
+    fn type_modifier(&self) -> &GqlTypeModifier {
+        &GqlTypeModifier::NonNull
     }
 }
 

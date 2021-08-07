@@ -71,7 +71,7 @@ pub fn run_psql(query: &str, url: &str) -> Result<()> {
     let mut client = url.parse::<Config>()?.connect(NoTls)?;
     client
         .simple_query(query)
-        .context("PostgreSQL query failed to execute")
+        .context(format!("PostgreSQL query failed: {}", query))
         .map(|_| ())
 }
 
