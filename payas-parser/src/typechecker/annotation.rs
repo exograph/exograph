@@ -51,7 +51,7 @@ pub enum LengthAnnotation {
 
 #[annotation("plural_name")]
 pub enum PluralNameAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("precision")]
@@ -61,7 +61,7 @@ pub enum PrecisionAnnotation {
 
 #[annotation("scale")]
 pub enum ScaleAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("jwt")]

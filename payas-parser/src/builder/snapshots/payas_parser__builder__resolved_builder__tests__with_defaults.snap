@@ -60,6 +60,8 @@ expression: normalized_system(&resolved)
         delete:
           BooleanLiteral:
             - true
+  - Primitive: Decimal
+  - Primitive: Float
   - Primitive: Instant
   - Primitive: Int
   - Primitive: Json
