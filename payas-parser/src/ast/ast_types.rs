@@ -5,13 +5,11 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub trait NodeTypedness
 where
-    Self::Field: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::FieldSelection: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::RelationalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::Expr: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::LogicalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
 {
-    type Field;
     type FieldSelection;
     type RelationalOp;
     type Expr;
@@ -21,7 +19,6 @@ where
 #[derive(Serialize, Deserialize)]
 pub struct Untyped;
 impl NodeTypedness for Untyped {
-    type Field = ();
     type FieldSelection = ();
     type RelationalOp = ();
     type Expr = ();
@@ -51,7 +48,6 @@ pub enum AstModelKind {
 pub struct AstField<T: NodeTypedness> {
     pub name: String,
     pub ast_typ: AstFieldType,
-    pub typ: T::Field,
     pub annotations: Vec<AstAnnotation<T>>,
 }
 

@@ -32,7 +32,6 @@ pub struct Scope {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Typed;
 impl NodeTypedness for Typed {
-    type Field = Type;
     type FieldSelection = Type;
     type RelationalOp = Type;
     type Expr = Type;

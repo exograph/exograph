@@ -176,7 +176,6 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
             source,
             source_span,
         ),
-        typ: (),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
