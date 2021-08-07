@@ -382,7 +382,7 @@ impl PhysicalColumnType {
                 let mut sql_statement =
                     ref_pk_type.to_sql(table_name, column_name, is_autoincrement);
                 let foreign_constraint = format!(
-                    "ALTER TABLE {table} ADD CONSTRAINT {ref_table}_fk FOREIGN KEY ({column}) REFERENCES {ref_table};",
+                    r#"ALTER TABLE "{table}" ADD CONSTRAINT "{ref_table}_fk" FOREIGN KEY ("{column}") REFERENCES "{ref_table}";"#,
                     table = table_name,
                     column = column_name,
                     ref_table = ref_table_name,

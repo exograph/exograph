@@ -27,20 +27,27 @@ pub struct Mutation {
 
 #[derive(Debug, Clone)]
 pub enum MutationKind {
-    Create(MutationDataParameter),
+    Create(CreateDataParameter),
     Delete(PredicateParameter),
     Update {
-        data_param: MutationDataParameter,
+        data_param: UpdateDataParameter,
         predicate_param: PredicateParameter,
     },
 }
 
 #[derive(Debug, Clone)]
-pub struct MutationDataParameter {
+pub struct CreateDataParameter {
     pub name: String,
     pub type_name: String,
     pub type_id: Id<GqlType>,
     pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
+}
+
+#[derive(Debug, Clone)]
+pub struct UpdateDataParameter {
+    pub name: String,
+    pub type_name: String,
+    pub type_id: Id<GqlType>,
 }
 
 #[derive(Debug, Clone)]

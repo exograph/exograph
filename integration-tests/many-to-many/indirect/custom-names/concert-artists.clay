@@ -1,0 +1,22 @@
+@table("concerts")
+model Concert {
+  id: Int @pk @autoincrement
+  title: String
+  concertArtists: [ConcertArtist]
+}
+
+@table("concert_artists")
+model ConcertArtist {
+  id: Int @pk @autoincrement
+  concert: Concert @column("concert_id")
+  artist: Artist @column("artist_id")
+  rank: Int
+  role: String
+}
+
+@table("artists")
+model Artist {
+  id: Int @pk @autoincrement
+  name: String
+  aristsConcerts: [ConcertArtist]
+}
