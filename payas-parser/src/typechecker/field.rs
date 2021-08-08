@@ -10,16 +10,15 @@ use super::{AnnotationMap, Scope, Type, Typecheck};
 pub struct TypedField {
     pub name: String,
     pub typ: Type,
-    pub annotations: Box<AnnotationMap>,
+    pub annotations: AnnotationMap,
 }
 
 impl Typecheck<TypedField> for AstField {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedField> {
-        let mut annotations = Box::new(AnnotationMap::default());
+        let mut annotations = AnnotationMap::default();
 
         for a in &self.annotations {
-            let annotation = a.shallow(errors)?;
-            annotations.add(errors, annotation, a.span)?;
+            annotations.add(a.shallow(errors)?);
         }
 
         Ok(TypedField {
@@ -37,7 +36,6 @@ impl Typecheck<TypedField> for AstField {
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
         let typ_changed = self.typ.pass(&mut typ.typ, env, scope, errors);
-
         let annot_changed = typ.annotations.pass(&self.annotations, env, scope, errors);
 
         typ_changed || annot_changed

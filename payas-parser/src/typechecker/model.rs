@@ -7,11 +7,10 @@ use super::{typ::CompositeTypeKind, AnnotationMap, CompositeType, Scope, Type, T
 
 impl Typecheck<Type> for AstModel {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Type> {
-        let mut annotations = Box::new(AnnotationMap::default());
+        let mut annotations = AnnotationMap::default();
 
         for a in &self.annotations {
-            let annotation = a.shallow(errors)?;
-            annotations.add(errors, annotation, a.span)?;
+            annotations.add(a.shallow(errors)?);
         }
 
         Ok(Type::Composite(CompositeType {

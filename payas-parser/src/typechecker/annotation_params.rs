@@ -15,6 +15,22 @@ pub enum TypedAnnotationParams {
     Map(HashMap<String, TypedExpression>),
 }
 
+impl TypedAnnotationParams {
+    pub fn as_single(&self) -> &TypedExpression {
+        match self {
+            Self::Single(expr) => expr,
+            _ => panic!(),
+        }
+    }
+
+    pub fn as_map(&self) -> &HashMap<String, TypedExpression> {
+        match self {
+            Self::Map(map) => map,
+            _ => panic!(),
+        }
+    }
+}
+
 impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
     fn shallow(
         &self,
@@ -42,7 +58,7 @@ impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
         match &self {
-            AstAnnotationParams::None => true,
+            AstAnnotationParams::None => false,
             AstAnnotationParams::Single(expr, _) => {
                 if let TypedAnnotationParams::Single(expr_typ) = typ {
                     expr.pass(expr_typ, env, scope, errors)

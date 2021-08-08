@@ -14,8 +14,9 @@ use anyhow::{anyhow, Result};
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 
-pub(super) use annotation::*;
+pub(super) use annotation::TypedAnnotation;
 pub(super) use annotation_map::AnnotationMap;
+pub(super) use annotation_params::TypedAnnotationParams;
 
 pub(super) use expression::TypedExpression;
 pub use logical_op::TypedLogicalOp;
