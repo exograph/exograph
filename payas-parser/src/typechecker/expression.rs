@@ -1,9 +1,9 @@
 use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::ast::ast_types::{AstExpr, Untyped};
+use crate::ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp, Untyped};
 
-use super::{PrimitiveType, Scope, Type, Typecheck, Typed};
+use super::{PrimitiveType, Scope, Type, TypecheckNew, Typed};
 
 static STR_TYP: Type = Type::Primitive(PrimitiveType::String);
 static BOOL_TYP: Type = Type::Primitive(PrimitiveType::Boolean);
@@ -36,12 +36,19 @@ impl AstExpr<Typed> {
     }
 }
 
-impl Typecheck<AstExpr<Typed>> for AstExpr<Untyped> {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<AstExpr<Typed>> {
-        Ok(match &self {
-            AstExpr::FieldSelection(select) => AstExpr::FieldSelection(select.shallow(errors)?),
-            AstExpr::LogicalOp(logic) => AstExpr::LogicalOp(logic.shallow(errors)?),
-            AstExpr::RelationalOp(relation) => AstExpr::RelationalOp(relation.shallow(errors)?),
+impl TypecheckNew<AstExpr<Untyped>> for AstExpr<Typed> {
+    fn shallow(
+        untyped: &AstExpr<Untyped>,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> Result<AstExpr<Typed>> {
+        Ok(match untyped {
+            AstExpr::FieldSelection(select) => {
+                AstExpr::FieldSelection(FieldSelection::shallow(select, errors)?)
+            }
+            AstExpr::LogicalOp(logic) => AstExpr::LogicalOp(LogicalOp::shallow(logic, errors)?),
+            AstExpr::RelationalOp(relation) => {
+                AstExpr::RelationalOp(RelationalOp::shallow(relation, errors)?)
+            }
             AstExpr::StringLiteral(v, s) => AstExpr::StringLiteral(v.clone(), *s),
             AstExpr::BooleanLiteral(v, s) => AstExpr::BooleanLiteral(*v, *s),
             AstExpr::NumberLiteral(v, s) => AstExpr::NumberLiteral(*v, *s),
@@ -49,34 +56,15 @@ impl Typecheck<AstExpr<Typed>> for AstExpr<Untyped> {
     }
 
     fn pass(
-        &self,
-        typ: &mut AstExpr<Typed>,
+        &mut self,
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        match &self {
-            AstExpr::FieldSelection(select) => {
-                if let AstExpr::FieldSelection(select_typ) = typ {
-                    select.pass(select_typ, env, scope, errors)
-                } else {
-                    panic!()
-                }
-            }
-            AstExpr::LogicalOp(logic) => {
-                if let AstExpr::LogicalOp(logic_typ) = typ {
-                    logic.pass(logic_typ, env, scope, errors)
-                } else {
-                    panic!("type {:?}", typ);
-                }
-            }
-            AstExpr::RelationalOp(relation) => {
-                if let AstExpr::RelationalOp(relation_typ) = typ {
-                    relation.pass(relation_typ, env, scope, errors)
-                } else {
-                    panic!()
-                }
-            }
+        match self {
+            AstExpr::FieldSelection(select) => select.pass(env, scope, errors),
+            AstExpr::LogicalOp(logic) => logic.pass(env, scope, errors),
+            AstExpr::RelationalOp(relation) => relation.pass(env, scope, errors),
             AstExpr::StringLiteral(_, _)
             | AstExpr::BooleanLiteral(_, _)
             | AstExpr::NumberLiteral(_, _) => false,

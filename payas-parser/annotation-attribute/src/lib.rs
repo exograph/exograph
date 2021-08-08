@@ -311,7 +311,7 @@ fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
     let pass_single = if variants.single {
         quote! {
             if let Self::Single(expr) = self {
-                ast_expr.pass(expr, env, scope, errors)
+                expr.pass(env, scope, errors)
             } else {
                 panic!();
             }
@@ -331,18 +331,16 @@ fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
             .iter()
             .zip(is_optionals)
             .map(|(ident, is_optional)| {
-                let n = ident.to_string();
-
                 if is_optional {
                     quote! {
                         if let Some(#ident) = #ident {
-                            let param_changed = ast_params[#n].pass(#ident, env, scope, errors);
+                            let param_changed = #ident.pass(env, scope, errors);
                             changed = changed || param_changed;
                         }
                     }
                 } else {
                     quote! {
-                        let param_changed = ast_params[#n].pass(#ident, env, scope, errors);
+                        let param_changed = #ident.pass(env, scope, errors);
                         changed = changed || param_changed;
                     }
                 }

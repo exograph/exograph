@@ -50,6 +50,20 @@ pub trait Typecheck<T> {
     ) -> bool;
 }
 
+pub trait TypecheckNew<T>
+where
+    Self: Sized,
+{
+    #[allow(clippy::result_unit_err)] // Use unit result since errors are tracked as a parameter
+    fn shallow(untyped: &T, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Self>;
+    fn pass(
+        &mut self,
+        env: &MappedArena<Type>,
+        scope: &Scope,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> bool;
+}
+
 fn populate_standard_env(env: &mut MappedArena<Type>) {
     // TODO: maybe we don't need to do this manually
     env.add("Boolean", Type::Primitive(PrimitiveType::Boolean));
