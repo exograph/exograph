@@ -4,7 +4,7 @@ use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, RelationalOp, Untyped};
 
-use super::{PrimitiveType, Scope, Type, TypecheckNew, Typed};
+use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
 impl RelationalOp<Typed> {
     pub fn typ(&self) -> &Type {
@@ -19,7 +19,7 @@ impl RelationalOp<Typed> {
     }
 }
 
-impl TypecheckNew<RelationalOp<Untyped>> for RelationalOp<Typed> {
+impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
     fn shallow(
         untyped: &RelationalOp<Untyped>,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,

@@ -3,7 +3,7 @@ use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp, Untyped};
 
-use super::{PrimitiveType, Scope, Type, TypecheckNew, Typed};
+use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
 static STR_TYP: Type = Type::Primitive(PrimitiveType::String);
 static BOOL_TYP: Type = Type::Primitive(PrimitiveType::Boolean);
@@ -36,7 +36,7 @@ impl AstExpr<Typed> {
     }
 }
 
-impl TypecheckNew<AstExpr<Untyped>> for AstExpr<Typed> {
+impl TypecheckFrom<AstExpr<Untyped>> for AstExpr<Typed> {
     fn shallow(
         untyped: &AstExpr<Untyped>,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,

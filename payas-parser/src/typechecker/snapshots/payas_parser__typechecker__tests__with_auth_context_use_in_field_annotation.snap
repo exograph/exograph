@@ -9,8 +9,14 @@ expression: types
       kind: Context
       fields:
         - name: role
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
+          ast_annotations:
+            - name: jwt
+              params: None
           annotations:
             access: ~
             auto_increment: ~
@@ -27,6 +33,7 @@ expression: types
             range: ~
             size: ~
             table: ~
+      ast_annotations: []
       annotations:
         access: ~
         auto_increment: ~
@@ -52,8 +59,12 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
+          ast_typ:
+            Plain:
+              - Boolean
           typ:
             Reference: Boolean
+          ast_annotations: []
           annotations:
             access: ~
             auto_increment: ~
@@ -70,8 +81,37 @@ expression: types
             size: ~
             table: ~
         - name: content
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
+          ast_annotations:
+            - name: access
+              params:
+                Single:
+                  - LogicalOp:
+                      Or:
+                        - RelationalOp:
+                            Eq:
+                              - FieldSelection:
+                                  Select:
+                                    - Single:
+                                        - - AuthContext
+                                        - ~
+                                    - - role
+                                    - ~
+                              - StringLiteral:
+                                  - ROLE_ADMIN
+                              - ~
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - self
+                                  - ~
+                              - - is_public
+                              - ~
+                        - ~
           annotations:
             access:
               Access:
@@ -111,6 +151,7 @@ expression: types
             range: ~
             size: ~
             table: ~
+      ast_annotations: []
       annotations:
         access: ~
         auto_increment: ~

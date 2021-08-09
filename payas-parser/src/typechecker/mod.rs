@@ -18,10 +18,9 @@ use serde::{Deserialize, Serialize};
 pub(super) use annotation::*;
 pub(super) use annotation_map::AnnotationMap;
 
-pub(super) use field::TypedField;
-pub(super) use typ::{CompositeType, CompositeTypeKind, PrimitiveType, Type};
+pub(super) use typ::{PrimitiveType, Type};
 
-use crate::ast::ast_types::NodeTypedness;
+use crate::ast::ast_types::{AstModel, NodeTypedness};
 use crate::ast::ast_types::{AstSystem, Untyped};
 use payas_model::model::mapped_arena::MappedArena;
 
@@ -36,9 +35,11 @@ impl NodeTypedness for Typed {
     type RelationalOp = Type;
     type Expr = Type;
     type LogicalOp = Type;
+    type Field = Type;
+    type Annotations = Box<AnnotationMap>;
 }
 
-pub trait Typecheck<T> {
+pub trait TypecheckInto<T> {
     #[allow(clippy::result_unit_err)] // Use unit result since errors are tracked as a parameter
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<T>;
     fn pass(
@@ -50,7 +51,7 @@ pub trait Typecheck<T> {
     ) -> bool;
 }
 
-pub trait TypecheckNew<T>
+pub trait TypecheckFrom<T>
 where
     Self: Sized,
 {
@@ -91,9 +92,9 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
     let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
     for model in ast_types {
-        match model.shallow(&mut errors) {
+        match AstModel::shallow(model, &mut errors) {
             Ok(typ) => {
-                types_arena.add(model.name.as_str(), typ);
+                types_arena.add(model.name.as_str(), Type::Composite(typ));
             }
             Err(_) => {
                 assert!(!errors.is_empty());
@@ -112,13 +113,15 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
         let mut errors = Vec::new();
 
         for model in ast_types {
-            let orig = types_arena.get_by_key(model.name.as_str()).unwrap();
             let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
-            let pass_res = model.pass(&mut typ, &types_arena, &init_scope, &mut errors);
-            if pass_res {
-                assert!(*orig != typ);
-                *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
-                did_change = true;
+            if let Type::Composite(c) = &mut typ {
+                let pass_res = c.pass(&types_arena, &init_scope, &mut errors);
+                if pass_res {
+                    *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
+                    did_change = true;
+                }
+            } else {
+                panic!()
             }
         }
 

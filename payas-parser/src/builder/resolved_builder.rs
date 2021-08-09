@@ -9,11 +9,8 @@ use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::ToPlural;
 
 use crate::{
-    ast::ast_types::{AstExpr, FieldSelection},
-    typechecker::{
-        AccessAnnotation, CompositeType, CompositeTypeKind, PrimitiveType, RangeAnnotation, Type,
-        Typed, TypedField,
-    },
+    ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
+    typechecker::{AccessAnnotation, PrimitiveType, RangeAnnotation, Type, Typed},
     util::null_span,
 };
 use serde::{Deserialize, Serialize};
@@ -194,7 +191,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
             Type::Primitive(pt) => {
                 resolved_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
-            Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
+            Type::Composite(ct) if ct.kind == AstModelKind::Persistent => {
                 let table_name = ct
                     .annotations
                     .table()
@@ -216,7 +213,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     }),
                 );
             }
-            Type::Composite(ct) if ct.kind == CompositeTypeKind::Context => {
+            Type::Composite(ct) if ct.kind == AstModelKind::Context => {
                 resolved_contexts.add(
                     &ct.name,
                     ResolvedContext {
@@ -283,7 +280,7 @@ fn build_access(access_annotation: Option<&AccessAnnotation>) -> ResolvedAccess 
 fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
-            if ct.kind == CompositeTypeKind::Persistent {
+            if ct.kind == AstModelKind::Persistent {
                 build_expanded_persistent_type(ct, &types, resolved_system);
             } else {
                 build_expanded_context_type(ct, &types, resolved_system);
@@ -293,7 +290,7 @@ fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem
 }
 
 fn build_expanded_persistent_type(
-    ct: &CompositeType,
+    ct: &AstModel<Typed>,
     types: &MappedArena<Type>,
     resolved_system: &mut ResolvedSystem,
 ) {
@@ -334,7 +331,7 @@ fn build_expanded_persistent_type(
     }
 }
 
-fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
+fn build_type_hint(field: &AstField<Typed>) -> Option<ResolvedTypeHint> {
     ////
     // Part 1: parse out and validate hints for each primitive
     ////
@@ -554,7 +551,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
 }
 
 fn build_expanded_context_type(
-    ct: &CompositeType,
+    ct: &AstModel<Typed>,
     types: &MappedArena<Type>,
     resolved_system: &mut ResolvedSystem,
 ) {
@@ -580,7 +577,7 @@ fn build_expanded_context_type(
     resolved_contexts[existing_type_id] = expanded;
 }
 
-fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
+fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
     let jwt_annot = field.annotations.jwt();
     let claim = jwt_annot
         .map(|annot| {
@@ -602,13 +599,13 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
 }
 
 fn compute_column_name(
-    enclosing_type: &CompositeType,
-    field: &TypedField,
+    enclosing_type: &AstModel<Typed>,
+    field: &AstField<Typed>,
     types: &MappedArena<Type>,
 ) -> String {
     fn default_column_name(
-        enclosing_type: &CompositeType,
-        field: &TypedField,
+        enclosing_type: &AstModel<Typed>,
+        field: &AstField<Typed>,
         types: &MappedArena<Type>,
     ) -> String {
         match &field.typ {

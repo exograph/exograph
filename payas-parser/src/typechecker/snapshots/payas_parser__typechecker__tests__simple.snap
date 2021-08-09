@@ -13,8 +13,12 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
+          ast_typ:
+            Plain:
+              - Boolean
           typ:
             Reference: Boolean
+          ast_annotations: []
           annotations:
             access: ~
             auto_increment: ~
@@ -30,6 +34,7 @@ expression: types
             range: ~
             size: ~
             table: ~
+      ast_annotations: []
       annotations:
         access: ~
         auto_increment: ~
@@ -67,8 +72,60 @@ expression: types
       kind: Persistent
       fields:
         - name: doc
+          ast_typ:
+            Plain:
+              - Doc
           typ:
             Reference: Doc
+          ast_annotations:
+            - name: column
+              params:
+                Single:
+                  - StringLiteral:
+                      - custom_column
+            - name: access
+              params:
+                Single:
+                  - LogicalOp:
+                      Or:
+                        - LogicalOp:
+                            Or:
+                              - RelationalOp:
+                                  Eq:
+                                    - FieldSelection:
+                                        Select:
+                                          - Single:
+                                              - - self
+                                              - ~
+                                          - - role
+                                          - ~
+                                    - StringLiteral:
+                                        - role_admin
+                                    - ~
+                              - RelationalOp:
+                                  Eq:
+                                    - FieldSelection:
+                                        Select:
+                                          - Single:
+                                              - - self
+                                              - ~
+                                          - - role
+                                          - ~
+                                    - StringLiteral:
+                                        - role_superuser
+                                    - ~
+                              - ~
+                        - FieldSelection:
+                            Select:
+                              - Select:
+                                  - Single:
+                                      - - self
+                                      - ~
+                                  - - doc
+                                  - ~
+                              - - is_public
+                              - ~
+                        - ~
           annotations:
             access:
               Access:
@@ -131,8 +188,12 @@ expression: types
             size: ~
             table: ~
         - name: role
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
+          ast_annotations: []
           annotations:
             access: ~
             auto_increment: ~
@@ -148,6 +209,7 @@ expression: types
             range: ~
             size: ~
             table: ~
+      ast_annotations: []
       annotations:
         access: ~
         auto_increment: ~

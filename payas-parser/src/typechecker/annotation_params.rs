@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::{AstAnnotationParams, AstExpr, Untyped};
 
-use super::{TypecheckNew, Typed};
+use super::{TypecheckFrom, Typed};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum TypedAnnotationParams {
@@ -15,7 +15,7 @@ pub enum TypedAnnotationParams {
     Map(HashMap<String, AstExpr<Typed>>),
 }
 
-impl TypecheckNew<AstAnnotationParams<Untyped>> for TypedAnnotationParams {
+impl TypecheckFrom<AstAnnotationParams<Untyped>> for TypedAnnotationParams {
     fn shallow(
         untyped: &AstAnnotationParams<Untyped>,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,

@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter},
+};
 
 use codemap::{CodeMap, Span};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -9,20 +12,26 @@ where
     Self::RelationalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::Expr: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::LogicalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::Field: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::Annotations: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
 {
     type FieldSelection;
     type RelationalOp;
     type Expr;
     type LogicalOp;
+    type Field;
+    type Annotations;
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Untyped;
 impl NodeTypedness for Untyped {
     type FieldSelection = ();
     type RelationalOp = ();
     type Expr = ();
     type LogicalOp = ();
+    type Field = ();
+    type Annotations = ();
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -35,7 +44,14 @@ pub struct AstModel<T: NodeTypedness> {
     pub name: String,
     pub kind: AstModelKind,
     pub fields: Vec<AstField<T>>,
-    pub annotations: Vec<AstAnnotation<T>>,
+    pub ast_annotations: Vec<AstAnnotation<Untyped>>,
+    pub annotations: T::Annotations,
+}
+
+impl<T: NodeTypedness> Display for AstModel<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name.as_str())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -48,7 +64,9 @@ pub enum AstModelKind {
 pub struct AstField<T: NodeTypedness> {
     pub name: String,
     pub ast_typ: AstFieldType,
-    pub annotations: Vec<AstAnnotation<T>>,
+    pub typ: T::Field,
+    pub ast_annotations: Vec<AstAnnotation<Untyped>>,
+    pub annotations: T::Annotations,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

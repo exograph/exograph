@@ -2,12 +2,9 @@ use anyhow::Result;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::{
-    ast::ast_types::{FieldSelection, Identifier, Untyped},
-    typechecker::typ::CompositeTypeKind,
-};
+use crate::ast::ast_types::{AstModelKind, FieldSelection, Identifier, Untyped};
 
-use super::{Scope, Type, TypecheckNew, Typed};
+use super::{Scope, Type, TypecheckFrom, Typed};
 
 impl FieldSelection<Typed> {
     pub fn typ(&self) -> &Type {
@@ -18,7 +15,7 @@ impl FieldSelection<Typed> {
     }
 }
 
-impl TypecheckNew<FieldSelection<Untyped>> for FieldSelection<Typed> {
+impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
     fn shallow(
         untyped: &FieldSelection<Untyped>,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
@@ -65,7 +62,7 @@ impl TypecheckNew<FieldSelection<Untyped>> for FieldSelection<Typed> {
                         }
                     } else {
                         let context_type = env.get_by_key(i).and_then(|t| match t {
-                            Type::Composite(c) if c.kind == CompositeTypeKind::Context => Some(c),
+                            Type::Composite(c) if c.kind == AstModelKind::Context => Some(c),
                             _ => None,
                         });
 

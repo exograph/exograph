@@ -9,7 +9,7 @@ use crate::ast::ast_types::{AstAnnotation, Untyped};
 use super::{
     AccessAnnotation, AutoIncrementAnnotation, BitsAnnotation, ColumnAnnotation, DbTypeAnnotation,
     JwtAnnotation, LengthAnnotation, PkAnnotation, PluralNameAnnotation, PrecisionAnnotation,
-    RangeAnnotation, ScaleAnnotation, Scope, SizeAnnotation, TableAnnotation, Type, Typecheck,
+    RangeAnnotation, ScaleAnnotation, Scope, SizeAnnotation, TableAnnotation, Type, TypecheckInto,
     TypedAnnotation,
 };
 

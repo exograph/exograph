@@ -145,10 +145,11 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
             source,
             source_span,
         ),
-        annotations: node
+        ast_annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        annotations: (),
     }
 }
 
@@ -176,10 +177,12 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
             source,
             source_span,
         ),
-        annotations: node
+        typ: (),
+        ast_annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        annotations: (),
     }
 }
 

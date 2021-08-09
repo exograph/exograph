@@ -4,7 +4,7 @@ use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, LogicalOp, Untyped};
 
-use super::{PrimitiveType, Scope, Type, TypecheckNew, Typed};
+use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
 impl LogicalOp<Typed> {
     pub fn typ(&self) -> &Type {
@@ -15,7 +15,7 @@ impl LogicalOp<Typed> {
         }
     }
 }
-impl TypecheckNew<LogicalOp<Untyped>> for LogicalOp<Typed> {
+impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
     fn shallow(
         untyped: &LogicalOp<Untyped>,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,

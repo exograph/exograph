@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 use super::{
-    annotation_params::TypedAnnotationParams, Scope, Type, Typecheck, TypecheckNew, Typed,
+    annotation_params::TypedAnnotationParams, Scope, Type, TypecheckFrom, TypecheckInto, Typed,
 };
 
 use annotation_attribute::annotation;
@@ -134,7 +134,7 @@ impl TypedAnnotation {
     }
 }
 
-impl Typecheck<TypedAnnotation> for AstAnnotation<Untyped> {
+impl TypecheckInto<TypedAnnotation> for AstAnnotation<Untyped> {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedAnnotation> {
         let params = TypedAnnotationParams::shallow(&self.params, errors)?;
         let name = self.name.as_str();
