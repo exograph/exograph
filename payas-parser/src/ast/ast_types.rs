@@ -31,7 +31,7 @@ impl NodeTypedness for Untyped {
     type Expr = ();
     type LogicalOp = ();
     type Field = ();
-    type Annotations = ();
+    type Annotations = Vec<AstAnnotation<Untyped>>;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -44,7 +44,6 @@ pub struct AstModel<T: NodeTypedness> {
     pub name: String,
     pub kind: AstModelKind,
     pub fields: Vec<AstField<T>>,
-    pub ast_annotations: Vec<AstAnnotation<Untyped>>,
     pub annotations: T::Annotations,
 }
 
@@ -65,7 +64,6 @@ pub struct AstField<T: NodeTypedness> {
     pub name: String,
     pub ast_typ: AstFieldType,
     pub typ: T::Field,
-    pub ast_annotations: Vec<AstAnnotation<Untyped>>,
     pub annotations: T::Annotations,
 }
 

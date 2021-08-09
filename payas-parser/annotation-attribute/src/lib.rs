@@ -308,16 +308,22 @@ fn build_from_params_fn(claytip_name: &str, variants: &AnnotVariants) -> proc_ma
 
 /// Build the `pass` function, which performs a pass on every parameter of the annotation.
 fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
+    let pass_none = if variants.none {
+        quote! {
+            Self::None => { false }
+        }
+    } else {
+        quote! {}
+    };
+
     let pass_single = if variants.single {
         quote! {
-            if let Self::Single(expr) = self {
+            Self::Single(expr) => {
                 expr.pass(env, scope, errors)
-            } else {
-                panic!();
             }
         }
     } else {
-        quote! { panic!(); }
+        quote! {}
     };
 
     let pass_map = if let Some(map_fields) = &variants.map {
@@ -348,30 +354,27 @@ fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
             .collect::<Vec<_>>();
 
         quote! {
-            if let Self::Map { #(#idents),* } = self {
+            Self::Map { #(#idents),* } => {
                 let mut changed = false;
                 #(#passes)*
                 changed
-            } else {
-                panic!();
             }
         }
     } else {
-        quote! { panic!(); }
+        quote! {}
     };
 
     quote! {
         fn pass(
             &mut self,
-            params: &AstAnnotationParams<crate::ast::ast_types::Untyped>,
             env: &MappedArena<Type>,
             scope: &Scope,
             errors: &mut Vec<codemap_diagnostic::Diagnostic>
         ) -> bool {
-            match params {
-                AstAnnotationParams::None => false,
-                AstAnnotationParams::Single(ast_expr, _) => { #pass_single }
-                AstAnnotationParams::Map(ast_params, _) => { #pass_map }
+            match self {
+                #pass_none
+                #pass_single
+                #pass_map
             }
         }
     }

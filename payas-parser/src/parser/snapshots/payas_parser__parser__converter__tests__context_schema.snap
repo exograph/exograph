@@ -12,23 +12,20 @@ models:
           Plain:
             - Int
         typ: ~
-        ast_annotations:
+        annotations:
           - name: jwt
             params:
               Single:
                 - StringLiteral:
                     - sub
-        annotations: ~
       - name: roles
         ast_typ:
           List:
             Plain:
               - String
         typ: ~
-        ast_annotations:
+        annotations:
           - name: jwt
             params: None
-        annotations: ~
-    ast_annotations: []
-    annotations: ~
+    annotations: []
 

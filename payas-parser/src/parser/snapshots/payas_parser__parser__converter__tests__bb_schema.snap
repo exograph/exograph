@@ -12,38 +12,34 @@ models:
           Plain:
             - Int
         typ: ~
-        ast_annotations:
+        annotations:
           - name: pk
             params: None
           - name: autoincrement
             params: None
-        annotations: ~
       - name: title
         ast_typ:
           Plain:
             - String
         typ: ~
-        ast_annotations: []
-        annotations: ~
+        annotations: []
       - name: venue
         ast_typ:
           Plain:
             - Venue
         typ: ~
-        ast_annotations:
+        annotations:
           - name: column
             params:
               Single:
                 - StringLiteral:
                     - venueid
-        annotations: ~
-    ast_annotations:
+    annotations:
       - name: table
         params:
           Single:
             - StringLiteral:
                 - concerts
-    annotations: ~
   - name: Venue
     kind: Persistent
     fields:
@@ -52,37 +48,33 @@ models:
           Plain:
             - Int
         typ: ~
-        ast_annotations:
+        annotations:
           - name: pk
             params: None
           - name: autoincrement
             params: None
-        annotations: ~
       - name: name
         ast_typ:
           Plain:
             - String
         typ: ~
-        ast_annotations: []
-        annotations: ~
+        annotations: []
       - name: concerts
         ast_typ:
           List:
             Plain:
               - Concert
         typ: ~
-        ast_annotations:
+        annotations:
           - name: column
             params:
               Single:
                 - StringLiteral:
                     - venueid
-        annotations: ~
-    ast_annotations:
+    annotations:
       - name: table
         params:
           Single:
             - StringLiteral:
                 - venues
-    annotations: ~
 

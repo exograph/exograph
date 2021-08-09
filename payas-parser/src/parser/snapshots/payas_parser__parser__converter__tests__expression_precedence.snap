@@ -12,7 +12,7 @@ models:
           Plain:
             - Baz
         typ: ~
-        ast_annotations:
+        annotations:
           - name: column
             params:
               Single:
@@ -51,7 +51,5 @@ models:
                                 - role_superuser
                             - ~
                       - ~
-        annotations: ~
-    ast_annotations: []
-    annotations: ~
+    annotations: []
 

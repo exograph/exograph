@@ -3,7 +3,7 @@ use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstField, AstModel, Untyped};
 
-use super::{AnnotationMap, Scope, Type, TypecheckFrom, TypecheckInto, Typed};
+use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed, TypedAnnotation};
 
 impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
     fn shallow(
@@ -12,15 +12,14 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
     ) -> Result<AstModel<Typed>> {
         let mut annotations = Box::new(AnnotationMap::default());
 
-        for a in &untyped.ast_annotations {
-            let annotation = a.shallow(errors)?;
+        for a in &untyped.annotations {
+            let annotation = TypedAnnotation::shallow(a, errors)?;
             annotations.add(errors, annotation, a.span)?;
         }
 
         Ok(AstModel {
             name: untyped.name.clone(),
             kind: untyped.kind.clone(),
-            ast_annotations: untyped.ast_annotations.clone(),
             fields: untyped
                 .fields
                 .iter()
@@ -47,9 +46,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             .count()
             > 0;
 
-        let annot_changed = self
-            .annotations
-            .pass(&self.ast_annotations, env, &model_scope, errors);
+        let annot_changed = self.annotations.pass(env, &model_scope, errors);
 
         fields_changed || annot_changed
     }
