@@ -8,9 +8,9 @@ use payas_model::model::relation::GqlRelation;
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeTypeKind, GqlTypeKind};
 
-use super::Builder;
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
+use super::Builder;
 
 pub struct ReferenceInputTypeBuilder;
 

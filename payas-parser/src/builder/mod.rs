@@ -18,7 +18,10 @@ pub use system_builder::build;
 
 use payas_model::model::{mapped_arena::MappedArena, GqlType, GqlTypeKind};
 
-use self::{resolved_builder::{ResolvedCompositeType, ResolvedType}, system_builder::SystemContextBuilding};
+use self::{
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+};
 
 // TODO: Ensure it works for all builders (this one makes the assumption that it is building only input types)
 // TODO: Abstract out build_expanded (currently loops in it are repeated in each implementation)
