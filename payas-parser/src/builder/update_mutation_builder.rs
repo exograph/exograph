@@ -12,10 +12,10 @@ use crate::builder::query_builder;
 
 use payas_model::model::operation::{MutationKind, UpdateDataParameter};
 
-use super::builder::Builder;
 use super::mutation_builder::CreateUpdateBuilder;
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
+use super::Builder;
 
 pub struct UpdateMutationBuilder;
 
@@ -69,7 +69,7 @@ impl CreateUpdateBuilder for UpdateMutationBuilder {
     fn mark_fields_optional() -> bool {
         true
     }
-    
+
     fn base_input_type_name(model_type_name: &str) -> String {
         model_type_name.update_type()
     }

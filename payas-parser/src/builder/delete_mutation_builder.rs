@@ -15,9 +15,9 @@ use payas_model::model::{
     types::GqlTypeModifier,
 };
 
-use super::builder::Builder;
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
+use super::Builder;
 
 pub struct DeleteMutationBuilder;
 

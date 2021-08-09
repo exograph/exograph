@@ -11,10 +11,10 @@ use payas_model::model::GqlTypeKind;
 
 use payas_model::model::operation::{CreateDataParameter, MutationKind};
 
-use super::builder::Builder;
 use super::mutation_builder::CreateUpdateBuilder;
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
+use super::Builder;
 
 pub struct CreateMutationBuilder;
 

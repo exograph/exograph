@@ -20,7 +20,7 @@ use super::resolved_builder::{ResolvedCompositeType, ResolvedFieldType, Resolved
 use super::system_builder::SystemContextBuilding;
 use super::update_mutation_builder::UpdateMutationBuilder;
 
-use super::builder::Builder;
+use super::Builder;
 
 // TODO: Introduce this as a struct (and have it hold the sub-builders)
 // TODO: Abstract the concept of compisite builders
@@ -123,7 +123,7 @@ pub trait CreateUpdateBuilder {
     fn compute_input_field(
         &self,
         field: &GqlField,
-        container_types: &Vec<&str>,
+        container_types: &[&str],
         building: &SystemContextBuilding,
     ) -> Option<GqlField> {
         let optional = Self::mark_fields_optional();
