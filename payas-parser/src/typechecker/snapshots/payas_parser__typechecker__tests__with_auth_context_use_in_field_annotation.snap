@@ -9,6 +9,9 @@ expression: types
       kind: Context
       fields:
         - name: role
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
           annotations:
@@ -52,6 +55,9 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
+          ast_typ:
+            Plain:
+              - Boolean
           typ:
             Reference: Boolean
           annotations:
@@ -70,6 +76,9 @@ expression: types
             size: ~
             table: ~
         - name: content
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
           annotations:
@@ -89,7 +98,6 @@ expression: types
                                   - Reference: String
                             - StringLiteral:
                                 - ROLE_ADMIN
-                                - Primitive: String
                             - Primitive: Boolean
                       - FieldSelection:
                           Select:

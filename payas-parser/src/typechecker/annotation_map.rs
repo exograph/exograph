@@ -4,12 +4,10 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstAnnotation;
-
 use super::{
     AccessAnnotation, AutoIncrementAnnotation, BitsAnnotation, ColumnAnnotation, DbTypeAnnotation,
     JwtAnnotation, LengthAnnotation, PkAnnotation, PluralNameAnnotation, PrecisionAnnotation,
-    RangeAnnotation, ScaleAnnotation, Scope, SizeAnnotation, TableAnnotation, Type, Typecheck,
+    RangeAnnotation, ScaleAnnotation, Scope, SizeAnnotation, TableAnnotation, Type, TypecheckFrom,
     TypedAnnotation,
 };
 
@@ -88,7 +86,6 @@ impl AnnotationMap {
 
     pub fn pass(
         &mut self,
-        ast_annotations: &[AstAnnotation],
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
@@ -112,11 +109,7 @@ impl AnnotationMap {
             &mut self.table,
         ] {
             let annot_changed = if let Some(annot) = annot.as_mut() {
-                ast_annotations
-                    .iter()
-                    .find(|a| a.name.as_str() == annot.name())
-                    .unwrap()
-                    .pass(annot, env, scope, errors)
+                annot.pass(env, scope, errors)
             } else {
                 false
             };

@@ -13,6 +13,9 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
+          ast_typ:
+            Plain:
+              - Boolean
           typ:
             Reference: Boolean
           annotations:
@@ -67,6 +70,9 @@ expression: types
       kind: Persistent
       fields:
         - name: doc
+          ast_typ:
+            Plain:
+              - Doc
           typ:
             Reference: Doc
           annotations:
@@ -88,7 +94,6 @@ expression: types
                                         - Reference: String
                                   - StringLiteral:
                                       - role_admin
-                                      - Primitive: String
                                   - Primitive: Boolean
                             - RelationalOp:
                                 Eq:
@@ -101,7 +106,6 @@ expression: types
                                         - Reference: String
                                   - StringLiteral:
                                       - role_superuser
-                                      - Primitive: String
                                   - Primitive: Boolean
                             - Primitive: Boolean
                       - FieldSelection:
@@ -122,7 +126,6 @@ expression: types
                 Single:
                   StringLiteral:
                     - custom_column
-                    - Primitive: String
             db_type: ~
             length: ~
             plural_name: ~
@@ -134,6 +137,9 @@ expression: types
             size: ~
             table: ~
         - name: role
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
           annotations:

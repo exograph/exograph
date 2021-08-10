@@ -51,19 +51,15 @@ expression: normalized_system(&resolved)
         creation:
           BooleanLiteral:
             - true
-            - Primitive: Boolean
         read:
           BooleanLiteral:
             - true
-            - Primitive: Boolean
         update:
           BooleanLiteral:
             - true
-            - Primitive: Boolean
         delete:
           BooleanLiteral:
             - true
-            - Primitive: Boolean
   - Primitive: Decimal
   - Primitive: Float
   - Primitive: Instant
@@ -104,18 +100,14 @@ expression: normalized_system(&resolved)
         creation:
           BooleanLiteral:
             - true
-            - Primitive: Boolean
         read:
           BooleanLiteral:
             - true
-            - Primitive: Boolean
         update:
           BooleanLiteral:
             - true
-            - Primitive: Boolean
         delete:
           BooleanLiteral:
             - true
-            - Primitive: Boolean
 - []
 

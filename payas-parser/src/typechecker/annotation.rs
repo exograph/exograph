@@ -1,4 +1,4 @@
-use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams};
+use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, AstExpr, Untyped};
 use anyhow::{bail, Result};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -7,20 +7,20 @@ use serde::{Deserialize, Serialize};
 
 use std::collections::{HashMap, HashSet};
 
-use super::{annotation_params::TypedAnnotationParams, Scope, Type, Typecheck, TypedExpression};
+use super::{annotation_params::TypedAnnotationParams, Scope, Type, TypecheckFrom, Typed};
 
 use annotation_attribute::annotation;
 
 #[annotation("access")]
 #[allow(clippy::large_enum_variant)]
 pub enum AccessAnnotation {
-    Single(TypedExpression), // default access
+    Single(AstExpr<Typed>), // default access
     Map {
-        query: Option<TypedExpression>,
-        mutation: Option<TypedExpression>,
-        create: Option<TypedExpression>,
-        update: Option<TypedExpression>,
-        delete: Option<TypedExpression>,
+        query: Option<AstExpr<Typed>>,
+        mutation: Option<AstExpr<Typed>>,
+        create: Option<AstExpr<Typed>>,
+        update: Option<AstExpr<Typed>>,
+        delete: Option<AstExpr<Typed>>,
     },
 }
 
@@ -31,43 +31,43 @@ pub enum AutoIncrementAnnotation {
 
 #[annotation("bits")]
 pub enum BitsAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("column")]
 pub enum ColumnAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("dbtype")]
 pub enum DbTypeAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("length")]
 pub enum LengthAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("plural_name")]
 pub enum PluralNameAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("precision")]
 pub enum PrecisionAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("scale")]
 pub enum ScaleAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("jwt")]
 pub enum JwtAnnotation {
     None,
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("pk")]
@@ -78,19 +78,19 @@ pub enum PkAnnotation {
 #[annotation("range")]
 pub enum RangeAnnotation {
     Map {
-        min: TypedExpression,
-        max: TypedExpression,
+        min: AstExpr<Typed>,
+        max: AstExpr<Typed>,
     },
 }
 
 #[annotation("size")]
 pub enum SizeAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[annotation("table")]
 pub enum TableAnnotation {
-    Single(TypedExpression),
+    Single(AstExpr<Typed>),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -132,67 +132,70 @@ impl TypedAnnotation {
     }
 }
 
-impl Typecheck<TypedAnnotation> for AstAnnotation {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedAnnotation> {
-        let params = self.params.shallow(errors)?;
-        let name = self.name.as_str();
+impl TypecheckFrom<AstAnnotation<Untyped>> for TypedAnnotation {
+    fn shallow(
+        untyped: &AstAnnotation<Untyped>,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> Result<TypedAnnotation> {
+        let params = TypedAnnotationParams::shallow(&untyped.params, errors)?;
+        let name = untyped.name.as_str();
 
         // Can't use match https://github.com/rust-lang/rust/issues/57240
         if name == AccessAnnotation::name() {
             Ok(TypedAnnotation::Access(AccessAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == AutoIncrementAnnotation::name() {
             Ok(TypedAnnotation::AutoIncrement(
-                AutoIncrementAnnotation::from_params(self, params, errors)?,
+                AutoIncrementAnnotation::from_params(untyped, params, errors)?,
             ))
         } else if name == BitsAnnotation::name() {
             Ok(TypedAnnotation::Bits(BitsAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == ColumnAnnotation::name() {
             Ok(TypedAnnotation::Column(ColumnAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == DbTypeAnnotation::name() {
             Ok(TypedAnnotation::DbType(DbTypeAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == LengthAnnotation::name() {
             Ok(TypedAnnotation::Length(LengthAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == PluralNameAnnotation::name() {
             Ok(TypedAnnotation::PluralName(
-                PluralNameAnnotation::from_params(self, params, errors)?,
+                PluralNameAnnotation::from_params(untyped, params, errors)?,
             ))
         } else if name == PrecisionAnnotation::name() {
             Ok(TypedAnnotation::Precision(
-                PrecisionAnnotation::from_params(self, params, errors)?,
+                PrecisionAnnotation::from_params(untyped, params, errors)?,
             ))
         } else if name == ScaleAnnotation::name() {
             Ok(TypedAnnotation::Scale(ScaleAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == JwtAnnotation::name() {
             Ok(TypedAnnotation::Jwt(JwtAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == PkAnnotation::name() {
             Ok(TypedAnnotation::Pk(PkAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == RangeAnnotation::name() {
             Ok(TypedAnnotation::Range(RangeAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == SizeAnnotation::name() {
             Ok(TypedAnnotation::Size(SizeAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else if name == TableAnnotation::name() {
             Ok(TypedAnnotation::Table(TableAnnotation::from_params(
-                self, params, errors,
+                untyped, params, errors,
             )?))
         } else {
             errors.push(Diagnostic {
@@ -200,7 +203,7 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
                 message: format!("Unknown annotation `{}`", name),
                 code: Some("A000".to_string()),
                 spans: vec![SpanLabel {
-                    span: self.span,
+                    span: untyped.span,
                     label: None,
                     style: SpanStyle::Primary,
                 }],
@@ -210,27 +213,26 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
     }
 
     fn pass(
-        &self,
-        typ: &mut TypedAnnotation,
+        &mut self,
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        match typ {
-            TypedAnnotation::Access(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::AutoIncrement(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Bits(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Column(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::DbType(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Length(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::PluralName(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Precision(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Scale(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Jwt(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Pk(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Range(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Size(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Table(a) => a.pass(&self.params, env, scope, errors),
+        match self {
+            TypedAnnotation::Access(a) => a.pass(env, scope, errors),
+            TypedAnnotation::AutoIncrement(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Bits(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Column(a) => a.pass(env, scope, errors),
+            TypedAnnotation::DbType(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Length(a) => a.pass(env, scope, errors),
+            TypedAnnotation::PluralName(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Precision(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Scale(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Jwt(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Pk(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Range(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Size(a) => a.pass(env, scope, errors),
+            TypedAnnotation::Table(a) => a.pass(env, scope, errors),
         }
     }
 }

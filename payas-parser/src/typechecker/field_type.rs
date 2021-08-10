@@ -4,9 +4,9 @@ use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::AstFieldType;
 
-use super::{Scope, Type, Typecheck};
+use super::{Scope, Type, TypecheckInto};
 
-impl Typecheck<Type> for AstFieldType {
+impl TypecheckInto<Type> for AstFieldType {
     fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Type> {
         Ok(match &self {
             AstFieldType::Plain(_, _) => Type::Defer,

@@ -1,102 +1,70 @@
 use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstExpr;
+use crate::ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp, Untyped};
 
-use super::{
-    logical_op::TypedLogicalOp, relational_op::TypedRelationalOp, selection::TypedFieldSelection,
-    PrimitiveType, Scope, Type, Typecheck,
-};
+use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum TypedExpression {
-    FieldSelection(TypedFieldSelection),
-    LogicalOp(TypedLogicalOp),
-    RelationalOp(TypedRelationalOp),
-    StringLiteral(String, Type),
-    BooleanLiteral(bool, Type),
-    NumberLiteral(i64, Type),
-}
+static STR_TYP: Type = Type::Primitive(PrimitiveType::String);
+static BOOL_TYP: Type = Type::Primitive(PrimitiveType::Boolean);
+static INT_TYP: Type = Type::Primitive(PrimitiveType::Int);
 
-impl TypedExpression {
+impl AstExpr<Typed> {
     pub fn typ(&self) -> &Type {
         match &self {
-            TypedExpression::FieldSelection(select) => select.typ(),
-            TypedExpression::LogicalOp(logic) => logic.typ(),
-            TypedExpression::RelationalOp(relation) => relation.typ(),
-            TypedExpression::StringLiteral(_, t) => t,
-            TypedExpression::BooleanLiteral(_, t) => t,
-            TypedExpression::NumberLiteral(_, t) => t,
+            AstExpr::FieldSelection(select) => select.typ(),
+            AstExpr::LogicalOp(logic) => logic.typ(),
+            AstExpr::RelationalOp(relation) => relation.typ(),
+            AstExpr::StringLiteral(_, _) => &STR_TYP,
+            AstExpr::BooleanLiteral(_, _) => &BOOL_TYP,
+            AstExpr::NumberLiteral(_, _) => &INT_TYP,
         }
     }
 
     pub fn as_string(&self) -> String {
         match &self {
-            TypedExpression::StringLiteral(s, _) => s.clone(),
+            AstExpr::StringLiteral(s, _) => s.clone(),
             _ => panic!(),
         }
     }
 
     pub fn as_number(&self) -> i64 {
         match &self {
-            TypedExpression::NumberLiteral(n, _) => *n,
+            AstExpr::NumberLiteral(n, _) => *n,
             _ => panic!(),
         }
     }
 }
 
-impl Typecheck<TypedExpression> for AstExpr {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedExpression> {
-        Ok(match &self {
+impl TypecheckFrom<AstExpr<Untyped>> for AstExpr<Typed> {
+    fn shallow(
+        untyped: &AstExpr<Untyped>,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> Result<AstExpr<Typed>> {
+        Ok(match untyped {
             AstExpr::FieldSelection(select) => {
-                TypedExpression::FieldSelection(select.shallow(errors)?)
+                AstExpr::FieldSelection(FieldSelection::shallow(select, errors)?)
             }
-            AstExpr::LogicalOp(logic) => TypedExpression::LogicalOp(logic.shallow(errors)?),
+            AstExpr::LogicalOp(logic) => AstExpr::LogicalOp(LogicalOp::shallow(logic, errors)?),
             AstExpr::RelationalOp(relation) => {
-                TypedExpression::RelationalOp(relation.shallow(errors)?)
+                AstExpr::RelationalOp(RelationalOp::shallow(relation, errors)?)
             }
-            AstExpr::StringLiteral(v, _) => {
-                TypedExpression::StringLiteral(v.clone(), Type::Primitive(PrimitiveType::String))
-            }
-            AstExpr::BooleanLiteral(v, _) => {
-                TypedExpression::BooleanLiteral(*v, Type::Primitive(PrimitiveType::Boolean))
-            }
-            AstExpr::NumberLiteral(v, _) => {
-                TypedExpression::NumberLiteral(*v, Type::Primitive(PrimitiveType::Int))
-            }
+            AstExpr::StringLiteral(v, s) => AstExpr::StringLiteral(v.clone(), *s),
+            AstExpr::BooleanLiteral(v, s) => AstExpr::BooleanLiteral(*v, *s),
+            AstExpr::NumberLiteral(v, s) => AstExpr::NumberLiteral(*v, *s),
         })
     }
 
     fn pass(
-        &self,
-        typ: &mut TypedExpression,
+        &mut self,
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        match &self {
-            AstExpr::FieldSelection(select) => {
-                if let TypedExpression::FieldSelection(select_typ) = typ {
-                    select.pass(select_typ, env, scope, errors)
-                } else {
-                    panic!()
-                }
-            }
-            AstExpr::LogicalOp(logic) => {
-                if let TypedExpression::LogicalOp(logic_typ) = typ {
-                    logic.pass(logic_typ, env, scope, errors)
-                } else {
-                    panic!("type {:?}", typ);
-                }
-            }
-            AstExpr::RelationalOp(relation) => {
-                if let TypedExpression::RelationalOp(relation_typ) = typ {
-                    relation.pass(relation_typ, env, scope, errors)
-                } else {
-                    panic!()
-                }
-            }
+        match self {
+            AstExpr::FieldSelection(select) => select.pass(env, scope, errors),
+            AstExpr::LogicalOp(logic) => logic.pass(env, scope, errors),
+            AstExpr::RelationalOp(relation) => relation.pass(env, scope, errors),
             AstExpr::StringLiteral(_, _)
             | AstExpr::BooleanLiteral(_, _)
             | AstExpr::NumberLiteral(_, _) => false,
