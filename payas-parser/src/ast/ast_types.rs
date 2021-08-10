@@ -87,7 +87,7 @@ pub enum AstAnnotationParams {
         HashMap<String, AstExpr>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
-        Vec<(String, Span)>, // store as Vec to check for duplicates later on
+        HashMap<String, Vec<Span>>, // store as Vec to check for duplicates later on
     ),
 }
 

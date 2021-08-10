@@ -1,26 +1,52 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::ast::ast_types::AstAnnotation;
 
+use super::annotation::AnnotationSpec;
 use super::annotation_params::TypedAnnotationParams;
 use super::{Scope, Type, Typecheck, TypedAnnotation};
+use codemap::Span;
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AnnotationMap {
+    #[serde(serialize_with = "ordered_map")] // serialize with ordered_map to sort by key
     annotations: HashMap<String, TypedAnnotation>,
+
+    /// Spans of the annotations (also keeps track of duplicate annotations).
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    spans: HashMap<String, Vec<Span>>,
 }
 
-impl Default for AnnotationMap {
-    fn default() -> Self {
-        AnnotationMap {
-            annotations: HashMap::new(),
-        }
-    }
+fn ordered_map<S: Serializer>(
+    value: &HashMap<String, TypedAnnotation>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let ordered = value.iter().collect::<BTreeMap<_, _>>();
+    ordered.serialize(serializer)
 }
 
 impl AnnotationMap {
+    pub fn new(ast_annotations: &[AstAnnotation]) -> Self {
+        let mut annotations = HashMap::new();
+        let mut spans: HashMap<String, Vec<Span>> = HashMap::new();
+
+        for a in ast_annotations {
+            match spans.get_mut(&a.name) {
+                Some(spans) => spans.push(a.span),
+                None => {
+                    annotations.insert(a.name.clone(), a.shallow());
+                    spans.insert(a.name.clone(), vec![a.span]);
+                }
+            }
+        }
+
+        AnnotationMap { annotations, spans }
+    }
+
     pub fn add(&mut self, annotation: TypedAnnotation) {
         self.annotations.insert(annotation.name.clone(), annotation);
     }
@@ -36,22 +62,47 @@ impl AnnotationMap {
     pub fn pass(
         &mut self,
         ast_annotations: &[AstAnnotation],
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        // TODO check name exists
-        // TODO check params are correct format
+        for (name, spans) in &self.spans {
+            if spans.len() > 1 {
+                let mut span_labels = vec![SpanLabel {
+                    span: spans[0],
+                    label: Some("previously defined here".to_owned()),
+                    style: SpanStyle::Secondary,
+                }];
+
+                for span in &spans[1..] {
+                    span_labels.push(SpanLabel {
+                        span: *span,
+                        label: Some("redefined here".to_owned()),
+                        style: SpanStyle::Primary,
+                    });
+                }
+
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!("Duplicate definitions of annotation `{}`", name),
+                    code: Some("A000".to_string()),
+                    spans: span_labels,
+                });
+            }
+        }
+
         let mut changed = false;
         for (name, annotation) in &mut self.annotations {
             let annot_changed = ast_annotations
                 .iter()
                 .find(|a| a.name.as_str() == name)
                 .unwrap()
-                .pass(annotation, env, scope, errors);
+                .pass(annotation, type_env, annotation_env, scope, errors);
 
             changed |= annot_changed;
         }
+
         changed
     }
 }

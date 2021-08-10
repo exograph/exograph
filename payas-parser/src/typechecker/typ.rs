@@ -85,7 +85,7 @@ pub struct CompositeType {
     pub name: String,
     pub kind: CompositeTypeKind,
     pub fields: Vec<TypedField>,
-    pub annotations: AnnotationMap,
+    pub annotation_map: AnnotationMap,
 }
 
 impl Display for CompositeType {

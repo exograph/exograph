@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::AstAnnotationParams;
 
-use super::{Typecheck, TypedExpression};
+use super::annotation::AnnotationSpec;
+use super::{Type, Typecheck, TypedExpression};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
 pub enum TypedAnnotationParams {
     None,
     Single(TypedExpression),
@@ -32,28 +33,24 @@ impl TypedAnnotationParams {
 }
 
 impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
-    fn shallow(
-        &self,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<TypedAnnotationParams> {
-        Ok(match &self {
+    fn shallow(&self) -> TypedAnnotationParams {
+        match &self {
             AstAnnotationParams::None => TypedAnnotationParams::None,
-            AstAnnotationParams::Single(expr, _) => {
-                TypedAnnotationParams::Single(expr.shallow(errors)?)
-            }
+            AstAnnotationParams::Single(expr, _) => TypedAnnotationParams::Single(expr.shallow()),
             AstAnnotationParams::Map(params, _) => TypedAnnotationParams::Map(
                 params
                     .iter()
-                    .map(|(name, expr)| expr.shallow(errors).map(|t| (name.clone(), t)))
-                    .collect::<Result<_, _>>()?,
+                    .map(|(name, expr)| (name.clone(), expr.shallow()))
+                    .collect(),
             ),
-        })
+        }
     }
 
     fn pass(
         &self,
         typ: &mut TypedAnnotationParams,
-        env: &MappedArena<super::Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
@@ -61,7 +58,7 @@ impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
             AstAnnotationParams::None => false,
             AstAnnotationParams::Single(expr, _) => {
                 if let TypedAnnotationParams::Single(expr_typ) = typ {
-                    expr.pass(expr_typ, env, scope, errors)
+                    expr.pass(expr_typ, type_env, annotation_env, scope, errors)
                 } else {
                     panic!();
                 }
@@ -71,7 +68,13 @@ impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
                     params
                         .iter()
                         .map(|(name, expr)| {
-                            expr.pass(params_typ.get_mut(name).unwrap(), env, scope, errors)
+                            expr.pass(
+                                params_typ.get_mut(name).unwrap(),
+                                type_env,
+                                annotation_env,
+                                scope,
+                                errors,
+                            )
                         })
                         .any(|b| b)
                 } else {

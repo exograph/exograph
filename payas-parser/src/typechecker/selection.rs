@@ -1,4 +1,5 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
@@ -8,6 +9,7 @@ use crate::{
     typechecker::typ::CompositeTypeKind,
 };
 
+use super::annotation::AnnotationSpec;
 use super::{Scope, Type, Typecheck};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -26,24 +28,20 @@ impl TypedFieldSelection {
 }
 
 impl Typecheck<TypedFieldSelection> for FieldSelection {
-    fn shallow(
-        &self,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<TypedFieldSelection> {
-        Ok(match &self {
+    fn shallow(&self) -> TypedFieldSelection {
+        match &self {
             FieldSelection::Single(v) => TypedFieldSelection::Single(v.clone(), Type::Defer),
-            FieldSelection::Select(selection, i, _) => TypedFieldSelection::Select(
-                Box::new(selection.shallow(errors)?),
-                i.clone(),
-                Type::Defer,
-            ),
-        })
+            FieldSelection::Select(selection, i, _) => {
+                TypedFieldSelection::Select(Box::new(selection.shallow()), i.clone(), Type::Defer)
+            }
+        }
     }
 
     fn pass(
         &self,
         typ: &mut TypedFieldSelection,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
@@ -75,7 +73,7 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                             false
                         }
                     } else {
-                        let context_type = env.get_by_key(i).and_then(|t| match t {
+                        let context_type = type_env.get_by_key(i).and_then(|t| match t {
                             Type::Composite(c) if c.kind == CompositeTypeKind::Context => Some(c),
                             _ => None,
                         });
@@ -108,9 +106,10 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
             }
             FieldSelection::Select(selection, i, _) => {
                 if let TypedFieldSelection::Select(prefix, _, typ) = typ {
-                    let in_updated = selection.pass(prefix, env, scope, errors);
+                    let in_updated =
+                        selection.pass(prefix, type_env, annotation_env, scope, errors);
                     let out_updated = if typ.is_incomplete() {
-                        if let Type::Composite(c) = prefix.typ().deref(env) {
+                        if let Type::Composite(c) = prefix.typ().deref(type_env) {
                             if let Some(field) = c.fields.iter().find(|f| f.name == i.0) {
                                 if !field.typ.is_incomplete() {
                                     *typ = field.typ.clone();
@@ -143,7 +142,7 @@ impl Typecheck<TypedFieldSelection> for FieldSelection {
                                     message: format!(
                                         "Cannot read field {} from a non-composite type {}",
                                         i.0,
-                                        prefix.typ().deref(env)
+                                        prefix.typ().deref(type_env)
                                     ),
                                     code: Some("C000".to_string()),
                                     spans: vec![SpanLabel {

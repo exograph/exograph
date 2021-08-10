@@ -1,9 +1,11 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
 use payas_model::model::mapped_arena::MappedArena;
 use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_types::AstExpr;
 
+use super::annotation::AnnotationSpec;
 use super::{
     logical_op::TypedLogicalOp, relational_op::TypedRelationalOp, selection::TypedFieldSelection,
     PrimitiveType, Scope, Type, Typecheck,
@@ -47,15 +49,11 @@ impl TypedExpression {
 }
 
 impl Typecheck<TypedExpression> for AstExpr {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedExpression> {
-        Ok(match &self {
-            AstExpr::FieldSelection(select) => {
-                TypedExpression::FieldSelection(select.shallow(errors)?)
-            }
-            AstExpr::LogicalOp(logic) => TypedExpression::LogicalOp(logic.shallow(errors)?),
-            AstExpr::RelationalOp(relation) => {
-                TypedExpression::RelationalOp(relation.shallow(errors)?)
-            }
+    fn shallow(&self) -> TypedExpression {
+        match &self {
+            AstExpr::FieldSelection(select) => TypedExpression::FieldSelection(select.shallow()),
+            AstExpr::LogicalOp(logic) => TypedExpression::LogicalOp(logic.shallow()),
+            AstExpr::RelationalOp(relation) => TypedExpression::RelationalOp(relation.shallow()),
             AstExpr::StringLiteral(v, _) => {
                 TypedExpression::StringLiteral(v.clone(), Type::Primitive(PrimitiveType::String))
             }
@@ -65,34 +63,35 @@ impl Typecheck<TypedExpression> for AstExpr {
             AstExpr::NumberLiteral(v, _) => {
                 TypedExpression::NumberLiteral(*v, Type::Primitive(PrimitiveType::Int))
             }
-        })
+        }
     }
 
     fn pass(
         &self,
         typ: &mut TypedExpression,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
         match &self {
             AstExpr::FieldSelection(select) => {
                 if let TypedExpression::FieldSelection(select_typ) = typ {
-                    select.pass(select_typ, env, scope, errors)
+                    select.pass(select_typ, type_env, annotation_env, scope, errors)
                 } else {
                     panic!()
                 }
             }
             AstExpr::LogicalOp(logic) => {
                 if let TypedExpression::LogicalOp(logic_typ) = typ {
-                    logic.pass(logic_typ, env, scope, errors)
+                    logic.pass(logic_typ, type_env, annotation_env, scope, errors)
                 } else {
                     panic!("type {:?}", typ);
                 }
             }
             AstExpr::RelationalOp(relation) => {
                 if let TypedExpression::RelationalOp(relation_typ) = typ {
-                    relation.pass(relation_typ, env, scope, errors)
+                    relation.pass(relation_typ, type_env, annotation_env, scope, errors)
                 } else {
                     panic!()
                 }

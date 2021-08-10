@@ -1,31 +1,34 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::AstFieldType;
 
+use super::annotation::AnnotationSpec;
 use super::{Scope, Type, Typecheck};
 
 impl Typecheck<Type> for AstFieldType {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Type> {
-        Ok(match &self {
+    fn shallow(&self) -> Type {
+        match &self {
             AstFieldType::Plain(_, _) => Type::Defer,
-            AstFieldType::Optional(u) => Type::Optional(Box::new(u.shallow(errors)?)),
-            AstFieldType::List(u) => Type::List(Box::new(u.shallow(errors)?)),
-        })
+            AstFieldType::Optional(u) => Type::Optional(Box::new(u.shallow())),
+            AstFieldType::List(u) => Type::List(Box::new(u.shallow())),
+        }
     }
 
     fn pass(
         &self,
         typ: &mut Type,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
         if typ.is_incomplete() {
             match &self {
                 AstFieldType::Plain(name, s) => {
-                    if env.get_id(name.as_str()).is_some() {
+                    if type_env.get_id(name.as_str()).is_some() {
                         *typ = Type::Reference(name.clone());
                         true
                     } else {
@@ -47,7 +50,7 @@ impl Typecheck<Type> for AstFieldType {
 
                 AstFieldType::Optional(inner_ast) => {
                     if let Type::Optional(inner_typ) = typ {
-                        inner_ast.pass(inner_typ, env, scope, errors)
+                        inner_ast.pass(inner_typ, type_env, annotation_env, scope, errors)
                     } else {
                         panic!()
                     }
@@ -55,7 +58,7 @@ impl Typecheck<Type> for AstFieldType {
 
                 AstFieldType::List(inner_ast) => {
                     if let Type::List(inner_typ) = typ {
-                        inner_ast.pass(inner_typ, env, scope, errors)
+                        inner_ast.pass(inner_typ, type_env, annotation_env, scope, errors)
                     } else {
                         panic!()
                     }

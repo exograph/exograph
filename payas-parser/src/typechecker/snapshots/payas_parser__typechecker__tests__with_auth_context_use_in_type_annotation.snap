@@ -11,12 +11,12 @@ expression: types
         - name: role
           typ:
             Reference: String
-          annotations:
+          annotation_map:
             annotations:
               jwt:
                 name: jwt
                 params: None
-      annotations:
+      annotation_map:
         annotations: {}
 - - Boolean
   - Primitive: Boolean
@@ -30,14 +30,14 @@ expression: types
         - name: is_public
           typ:
             Reference: Boolean
-          annotations:
+          annotation_map:
             annotations: {}
         - name: content
           typ:
             Reference: String
-          annotations:
+          annotation_map:
             annotations: {}
-      annotations:
+      annotation_map:
         annotations:
           access:
             name: access

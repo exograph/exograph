@@ -1737,6 +1737,7 @@ dependencies = [
  "lazy_static",
  "payas-model",
  "serde",
+ "serde_json",
  "tree-sitter",
 ]
 

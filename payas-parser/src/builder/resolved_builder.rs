@@ -195,17 +195,17 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
             }
             Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
                 let table_name = ct
-                    .annotations
+                    .annotation_map
                     .get("table")
                     .map(|p| p.as_single().as_string())
                     .unwrap_or_else(|| ct.name.clone());
-                let access = build_access(ct.annotations.get("access"));
+                let access = build_access(ct.annotation_map.get("access"));
                 resolved_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
                         plural_name: ct
-                            .annotations
+                            .annotation_map
                             .get("plural_name")
                             .map(|p| p.as_single().as_string())
                             .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
@@ -319,8 +319,8 @@ fn build_expanded_persistent_type(
                 name: field.name.clone(),
                 typ: resolve_field_type(&field.typ, types, resolved_types),
                 column_name: compute_column_name(ct, field, types),
-                is_pk: field.annotations.contains("pk"),
-                is_autoincrement: field.annotations.contains("autoincrement"),
+                is_pk: field.annotation_map.contains("pk"),
+                is_autoincrement: field.annotation_map.contains("autoincrement"),
                 type_hint: build_type_hint(field),
             })
             .collect();
@@ -342,12 +342,12 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     ////
 
     let size_annotation = field
-        .annotations
+        .annotation_map
         .get("size")
         .map(|params| params.as_single().as_number() as usize);
 
     let bits_annotation = field
-        .annotations
+        .annotation_map
         .get("bits")
         .map(|params| params.as_single().as_number() as usize);
 
@@ -363,7 +363,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
         if field.typ.get_underlying_typename().unwrap() != "Int" {
             None
         } else {
-            let range_hint = field.annotations.get("range").map(|params| {
+            let range_hint = field.annotation_map.get("range").map(|params| {
                 (
                     params.as_map().get("min").unwrap().as_number(),
                     params.as_map().get("max").unwrap().as_number(),
@@ -435,12 +435,12 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
             None
         } else {
             let precision_hint = field
-                .annotations
+                .annotation_map
                 .get("precision")
                 .map(|a| a.as_single().as_number() as usize);
 
             let scale_hint = field
-                .annotations
+                .annotation_map
                 .get("scale")
                 .map(|a| a.as_single().as_number() as usize);
 
@@ -466,7 +466,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
 
     let string_hint = {
         let length_annotation = field
-            .annotations
+            .annotation_map
             .get("length")
             .map(|p| p.as_single().as_number() as usize);
 
@@ -491,7 +491,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
             None
         } else {
             field
-                .annotations
+                .annotation_map
                 .get("precision")
                 .map(|p| ResolvedTypeHint::DateTime {
                     precision: p.as_single().as_number() as usize,
@@ -508,7 +508,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     ];
 
     let explicit_dbtype_hint = field
-        .annotations
+        .annotation_map
         .get("dbtype")
         .map(|p| p.as_single().as_string())
         .map(|s| ResolvedTypeHint::Explicit {
@@ -583,7 +583,7 @@ fn build_expanded_context_type(
 
 fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
     let claim = field
-        .annotations
+        .annotation_map
         .get("jwt")
         .map(|p| match p {
             TypedAnnotationParams::Single(TypedExpression::FieldSelection(selection)) => {
@@ -642,7 +642,7 @@ fn compute_column_name(
     }
 
     field
-        .annotations
+        .annotation_map
         .get("column")
         .map(|p| p.as_single().as_string())
         .unwrap_or_else(|| default_column_name(enclosing_type, field, types))

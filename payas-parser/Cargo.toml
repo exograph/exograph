@@ -19,5 +19,6 @@ cc="*"
 
 [dev-dependencies]
 insta = "1.7.0"
+serde_json = "1.0"
 
 [lib]

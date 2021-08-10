@@ -1,38 +1,33 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstModel, AstModelKind};
 
+use super::annotation::AnnotationSpec;
 use super::{typ::CompositeTypeKind, AnnotationMap, CompositeType, Scope, Type, Typecheck};
 
 impl Typecheck<Type> for AstModel {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Type> {
-        let mut annotations = AnnotationMap::default();
+    fn shallow(&self) -> Type {
+        let annotation_map = AnnotationMap::new(&self.annotations);
 
-        for a in &self.annotations {
-            annotations.add(a.shallow(errors)?);
-        }
-
-        Ok(Type::Composite(CompositeType {
+        Type::Composite(CompositeType {
             name: self.name.clone(),
             kind: if self.kind == AstModelKind::Persistent {
                 CompositeTypeKind::Persistent
             } else {
                 CompositeTypeKind::Context
             },
-            fields: self
-                .fields
-                .iter()
-                .map(|f| f.shallow(errors))
-                .collect::<Result<_, _>>()?,
-            annotations,
-        }))
+            fields: self.fields.iter().map(|f| f.shallow()).collect(),
+            annotation_map,
+        })
     }
 
     fn pass(
         &self,
         typ: &mut Type,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         _scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
@@ -44,14 +39,18 @@ impl Typecheck<Type> for AstModel {
                 .fields
                 .iter()
                 .zip(c.fields.iter_mut())
-                .map(|(f, tf)| f.pass(tf, env, &model_scope, errors))
+                .map(|(f, tf)| f.pass(tf, type_env, annotation_env, &model_scope, errors))
                 .filter(|v| *v)
                 .count()
                 > 0;
 
-            let annot_changed = c
-                .annotations
-                .pass(&self.annotations, env, &model_scope, errors);
+            let annot_changed = c.annotation_map.pass(
+                &self.annotations,
+                type_env,
+                annotation_env,
+                &model_scope,
+                errors,
+            );
 
             fields_changed || annot_changed
         } else {
