@@ -28,7 +28,8 @@ use self::{
 
 /// Trait for all builders to abstract out the implementation of shallow and expanded building
 pub trait Builder {
-    /// Names of types produced by this builder
+    /// Names of types produced by this builder.
+    /// Shallow building use these type names (since not much else is needed)
     fn type_names(
         &self,
         resolved_composite_type: &ResolvedCompositeType,

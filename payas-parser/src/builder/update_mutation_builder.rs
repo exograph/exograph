@@ -2,7 +2,6 @@
 
 use std::collections::HashSet;
 
-use id_arena::Id;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
@@ -12,7 +11,7 @@ use crate::builder::query_builder;
 
 use payas_model::model::operation::{MutationKind, UpdateDataParameter};
 
-use super::mutation_builder::CreateUpdateBuilder;
+use super::mutation_builder::{DataParamBuilder, MutationBuilder};
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
@@ -39,7 +38,7 @@ impl Builder for UpdateMutationBuilder {
 
         for (_, model_type) in building.types.iter() {
             if let GqlTypeKind::Composite { .. } = &model_type.kind {
-                for (existing_id, expanded_kind) in self.expanded_type(
+                for (existing_id, expanded_kind) in self.expanded_data_type(
                     model_type,
                     building,
                     vec![],
@@ -62,31 +61,17 @@ impl Builder for UpdateMutationBuilder {
     }
 }
 
-impl CreateUpdateBuilder for UpdateMutationBuilder {
-    fn mark_fields_optional() -> bool {
-        true
-    }
-
-    fn base_input_type_name(model_type_name: &str) -> String {
-        model_type_name.update_type()
-    }
-
+impl MutationBuilder for UpdateMutationBuilder {
     fn single_mutation_name(model_type: &GqlType) -> String {
         model_type.pk_update()
     }
 
     fn single_mutation_kind(
         model_type: &GqlType,
-        param_type_name: &str,
-        param_type_id: Id<GqlType>,
         building: &SystemContextBuilding,
     ) -> MutationKind {
         MutationKind::Update {
-            data_param: UpdateDataParameter {
-                name: "data".to_string(),
-                type_name: param_type_name.to_string(),
-                type_id: param_type_id,
-            },
+            data_param: Self::data_param(model_type, building, false),
             predicate_param: query_builder::pk_predicate_param(model_type, building),
         }
     }
@@ -95,19 +80,38 @@ impl CreateUpdateBuilder for UpdateMutationBuilder {
         model_type.collection_update()
     }
 
-    fn multi_mutation_kind(
-        model_type: &GqlType,
-        param_type_name: &str,
-        param_type_id: Id<GqlType>,
-        building: &SystemContextBuilding,
-    ) -> MutationKind {
+    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind {
         MutationKind::Update {
-            data_param: UpdateDataParameter {
-                name: "data".to_string(),
-                type_name: param_type_name.to_string(),
-                type_id: param_type_id,
-            },
+            data_param: Self::data_param(model_type, building, true),
             predicate_param: query_builder::collection_predicate_param(model_type, building),
+        }
+    }
+}
+
+impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
+    fn mark_fields_optional() -> bool {
+        true
+    }
+
+    fn base_data_type_name(model_type_name: &str) -> String {
+        model_type_name.update_type()
+    }
+
+    fn data_param(
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+        _array: bool,
+    ) -> UpdateDataParameter {
+        let data_param_type_name = Self::base_data_type_name(&model_type.name);
+        let data_param_type_id = building
+            .mutation_types
+            .get_id(&data_param_type_name)
+            .unwrap();
+
+        UpdateDataParameter {
+            name: "data".to_string(),
+            type_name: data_param_type_name.to_string(),
+            type_id: data_param_type_id,
         }
     }
 }

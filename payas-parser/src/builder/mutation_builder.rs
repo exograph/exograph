@@ -43,34 +43,13 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     DeleteMutationBuilder {}.build_expanded(building);
 }
 
-pub trait CreateUpdateBuilder {
-    fn input_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
-        let base_name = Self::base_input_type_name(model_type_name);
-        match container_type {
-            Some(container_type) => {
-                format!("{}From{}", base_name, container_type)
-            }
-            None => base_name,
-        }
-    }
-
+pub trait MutationBuilder {
     fn single_mutation_name(model_type: &GqlType) -> String;
-    fn single_mutation_kind(
-        model_type: &GqlType,
-        param_type_name: &str,
-        param_type_id: Id<GqlType>,
-        building: &SystemContextBuilding,
-    ) -> MutationKind;
+    fn single_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding)
+        -> MutationKind;
 
     fn multi_mutation_name(model_type: &GqlType) -> String;
-    fn multi_mutation_kind(
-        model_type: &GqlType,
-        param_type_name: &str,
-        param_type_id: Id<GqlType>,
-        building: &SystemContextBuilding,
-    ) -> MutationKind;
-
-    fn base_input_type_name(model_type_name: &str) -> String;
+    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind;
 
     fn build_mutations(
         &self,
@@ -78,20 +57,9 @@ pub trait CreateUpdateBuilder {
         model_type: &GqlType,
         building: &SystemContextBuilding,
     ) -> Vec<Mutation> {
-        let data_param_type_name = Self::base_input_type_name(&model_type.name);
-        let data_param_type_id = building
-            .mutation_types
-            .get_id(&data_param_type_name)
-            .unwrap();
-
         let single_mutation = Mutation {
             name: Self::single_mutation_name(model_type),
-            kind: Self::single_mutation_kind(
-                model_type,
-                &data_param_type_name,
-                data_param_type_id,
-                building,
-            ),
+            kind: Self::single_mutation_kind(model_type, building),
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
@@ -101,12 +69,7 @@ pub trait CreateUpdateBuilder {
 
         let multi_mutation = Mutation {
             name: Self::multi_mutation_name(model_type),
-            kind: Self::multi_mutation_kind(
-                model_type,
-                &data_param_type_name,
-                data_param_type_id,
-                building,
-            ),
+            kind: Self::multi_mutation_kind(model_type, building),
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
@@ -116,11 +79,68 @@ pub trait CreateUpdateBuilder {
 
         vec![single_mutation, multi_mutation]
     }
+}
+
+pub trait DataParamBuilder<D> {
+    fn base_data_type_name(model_type_name: &str) -> String;
+
+    fn data_param(model_type: &GqlType, building: &SystemContextBuilding, array: bool) -> D;
+
+    fn data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
+        let base_name = Self::base_data_type_name(model_type_name);
+        match container_type {
+            Some(container_type) => {
+                format!("{}From{}", base_name, container_type)
+            }
+            None => base_name,
+        }
+    }
+
+    fn compute_data_fields(
+        &self,
+        gql_fields: &[GqlField],
+        container_types: Vec<&str>,
+        building: &SystemContextBuilding,
+    ) -> Vec<GqlField> {
+        gql_fields
+            .iter()
+            .flat_map(|field| self.compute_data_field(field, &container_types, building))
+            .collect()
+    }
 
     // TODO: Revisit this after nested update mutation works
     fn mark_fields_optional() -> bool;
 
-    fn compute_input_field(
+    fn field_type_names(
+        &self,
+        resolved_composite_type: &ResolvedCompositeType,
+        resolved_types: &MappedArena<ResolvedType>,
+    ) -> Vec<String> {
+        resolved_composite_type
+            .fields
+            .iter()
+            .filter_map(|field| {
+                // Create a nested input data type only if it refers to a many side
+                // So for Venue <-> [Concert] case, create only ConcertCreationInputFromVenue
+                if let ResolvedFieldType::List(_) = field.typ {
+                    if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) =
+                        field.typ.deref(resolved_types)
+                    {
+                        Some(Self::data_type_name(
+                            name,
+                            Some(&resolved_composite_type.name),
+                        ))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn compute_data_field(
         &self,
         field: &GqlField,
         container_types: &[&str],
@@ -140,7 +160,7 @@ pub trait CreateUpdateBuilder {
             }),
             GqlRelation::OneToMany { .. } => {
                 let field_type_name =
-                    Self::input_type_name(field.typ.type_name(), container_types.first().copied());
+                    Self::data_type_name(field.typ.type_name(), container_types.first().copied());
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = GqlFieldType::Reference {
                     type_name: field_type_name,
@@ -188,19 +208,7 @@ pub trait CreateUpdateBuilder {
         }
     }
 
-    fn compute_input_fields(
-        &self,
-        gql_fields: &[GqlField],
-        container_types: Vec<&str>,
-        building: &SystemContextBuilding,
-    ) -> Vec<GqlField> {
-        gql_fields
-            .iter()
-            .flat_map(|field| self.compute_input_field(field, &container_types, building))
-            .collect()
-    }
-
-    fn expanded_type(
+    fn expanded_data_type(
         &self,
         model_type: &GqlType,
         building: &SystemContextBuilding,
@@ -220,14 +228,14 @@ pub trait CreateUpdateBuilder {
             let mut new_container_types = container_types.clone();
             new_container_types.push(&model_type.name);
 
-            let mut creation_types: Vec<_> = model_fields
+            let mut field_types: Vec<_> = model_fields
                 .iter()
                 .flat_map(|field| {
                     let field_type = field.typ.base_type(&building.types.values);
                     if let (GqlTypeKind::Composite(_), GqlFieldType::List(_)) =
                         (&field_type.kind, &field.typ)
                     {
-                        let existing_type_name = Self::input_type_name(
+                        let existing_type_name = Self::data_type_name(
                             &field_type.name,
                             container_types.first().copied(),
                         );
@@ -235,7 +243,7 @@ pub trait CreateUpdateBuilder {
                         // Protect against going into an infinite loop when cycles are present
                         if !expanded_nested_mutation_types.contains(&existing_type_name) {
                             expanded_nested_mutation_types.insert(existing_type_name);
-                            self.expanded_type(
+                            self.expanded_data_type(
                                 field_type,
                                 building,
                                 new_container_types.clone(),
@@ -251,12 +259,12 @@ pub trait CreateUpdateBuilder {
                 .collect();
 
             let existing_type_name =
-                Self::input_type_name(model_type.name.as_str(), container_types.first().copied());
+                Self::data_type_name(model_type.name.as_str(), container_types.first().copied());
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
             let input_type_fields =
-                self.compute_input_fields(model_fields, new_container_types, building);
-            creation_types.push((
+                self.compute_data_fields(model_fields, new_container_types, building);
+            field_types.push((
                 existing_type_id,
                 GqlTypeKind::Composite(GqlCompositeTypeKind {
                     fields: input_type_fields,
@@ -267,38 +275,9 @@ pub trait CreateUpdateBuilder {
                 }),
             ));
 
-            creation_types
+            field_types
         } else {
             vec![]
         }
-    }
-
-    fn field_type_names(
-        &self,
-        resolved_composite_type: &ResolvedCompositeType,
-        resolved_types: &MappedArena<ResolvedType>,
-    ) -> Vec<String> {
-        resolved_composite_type
-            .fields
-            .iter()
-            .filter_map(|field| {
-                // Create a nested input data type only if it refers to a many side
-                // So for Venue <-> [Concert] case, create only ConcertCreationInputFromVenue
-                if let ResolvedFieldType::List(_) = field.typ {
-                    if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) =
-                        field.typ.deref(resolved_types)
-                    {
-                        Some(Self::input_type_name(
-                            name,
-                            Some(&resolved_composite_type.name),
-                        ))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 }

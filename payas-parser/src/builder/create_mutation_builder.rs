@@ -3,7 +3,6 @@
 
 use std::collections::HashSet;
 
-use id_arena::Id;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
@@ -11,7 +10,7 @@ use payas_model::model::GqlTypeKind;
 
 use payas_model::model::operation::{CreateDataParameter, MutationKind};
 
-use super::mutation_builder::CreateUpdateBuilder;
+use super::mutation_builder::{DataParamBuilder, MutationBuilder};
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
@@ -37,7 +36,7 @@ impl Builder for CreateMutationBuilder {
 
         for (_, model_type) in building.types.iter() {
             if let GqlTypeKind::Composite { .. } = &model_type.kind {
-                for (existing_id, expanded_kind) in self.expanded_type(
+                for (existing_id, expanded_kind) in self.expanded_data_type(
                     model_type,
                     building,
                     vec![],
@@ -59,48 +58,52 @@ impl Builder for CreateMutationBuilder {
     }
 }
 
-impl CreateUpdateBuilder for CreateMutationBuilder {
-    fn mark_fields_optional() -> bool {
-        false
-    }
-
-    fn base_input_type_name(model_type_name: &str) -> String {
-        model_type_name.creation_type()
-    }
-
+impl MutationBuilder for CreateMutationBuilder {
     fn single_mutation_name(model_type: &GqlType) -> String {
         model_type.pk_create()
     }
 
     fn single_mutation_kind(
-        _model_type: &GqlType,
-        param_type_name: &str,
-        param_type_id: Id<GqlType>,
-        _building: &SystemContextBuilding,
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
     ) -> MutationKind {
-        MutationKind::Create(CreateDataParameter {
-            name: "data".to_string(),
-            type_name: param_type_name.to_string(),
-            type_id: param_type_id,
-            array_input: false,
-        })
+        MutationKind::Create(Self::data_param(model_type, building, false))
     }
 
     fn multi_mutation_name(model_type: &GqlType) -> String {
         model_type.collection_create()
     }
 
-    fn multi_mutation_kind(
-        _model_type: &GqlType,
-        param_type_name: &str,
-        param_type_id: Id<GqlType>,
-        _building: &SystemContextBuilding,
-    ) -> MutationKind {
-        MutationKind::Create(CreateDataParameter {
+    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind {
+        MutationKind::Create(Self::data_param(model_type, building, true))
+    }
+}
+
+impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
+    fn mark_fields_optional() -> bool {
+        false
+    }
+
+    fn base_data_type_name(model_type_name: &str) -> String {
+        model_type_name.creation_type()
+    }
+
+    fn data_param(
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+        array: bool,
+    ) -> CreateDataParameter {
+        let data_param_type_name = Self::base_data_type_name(&model_type.name);
+        let data_param_type_id = building
+            .mutation_types
+            .get_id(&data_param_type_name)
+            .unwrap();
+
+        CreateDataParameter {
             name: "data".to_string(),
-            type_name: param_type_name.to_string(),
-            type_id: param_type_id,
-            array_input: true,
-        })
+            type_name: data_param_type_name.to_string(),
+            type_id: data_param_type_id,
+            array_input: array,
+        }
     }
 }
