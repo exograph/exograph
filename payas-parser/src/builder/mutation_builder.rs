@@ -276,7 +276,7 @@ pub trait CreateUpdateBuilder {
     fn field_type_names(
         &self,
         resolved_composite_type: &ResolvedCompositeType,
-        models: &MappedArena<ResolvedType>,
+        resolved_types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
         resolved_composite_type
             .fields
@@ -286,7 +286,7 @@ pub trait CreateUpdateBuilder {
                 // So for Venue <-> [Concert] case, create only ConcertCreationInputFromVenue
                 if let ResolvedFieldType::List(_) = field.typ {
                     if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) =
-                        field.typ.deref(models)
+                        field.typ.deref(resolved_types)
                     {
                         Some(Self::input_type_name(
                             name,

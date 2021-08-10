@@ -32,17 +32,17 @@ pub trait Builder {
     fn type_names(
         &self,
         resolved_composite_type: &ResolvedCompositeType,
-        models: &MappedArena<ResolvedType>,
+        resolved_types: &MappedArena<ResolvedType>,
     ) -> Vec<String>;
 
     fn create_shallow_type(
         &self,
         resolved_type: &ResolvedType,
-        models: &MappedArena<ResolvedType>,
+        resolved_types: &MappedArena<ResolvedType>,
         building: &mut SystemContextBuilding,
     ) {
         if let ResolvedType::Composite(c) = resolved_type {
-            for mutation_type_name in self.type_names(c, models).iter() {
+            for mutation_type_name in self.type_names(c, resolved_types).iter() {
                 building.mutation_types.add(
                     mutation_type_name,
                     GqlType {
@@ -58,11 +58,11 @@ pub trait Builder {
 
     fn build_shallow(
         &self,
-        models: &MappedArena<ResolvedType>,
+        resolved_types: &MappedArena<ResolvedType>,
         building: &mut SystemContextBuilding,
     ) {
-        for (_, model_type) in models.iter() {
-            self.create_shallow_type(model_type, models, building);
+        for (_, model_type) in resolved_types.iter() {
+            self.create_shallow_type(model_type, resolved_types, building);
         }
     }
 

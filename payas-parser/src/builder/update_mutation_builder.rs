@@ -19,10 +19,7 @@ use super::Builder;
 
 pub struct UpdateMutationBuilder;
 
-impl Builder for UpdateMutationBuilder
-where
-    Self: CreateUpdateBuilder,
-{
+impl Builder for UpdateMutationBuilder {
     fn type_names(
         &self,
         resolved_composite_type: &ResolvedCompositeType,
