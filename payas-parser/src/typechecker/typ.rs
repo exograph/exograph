@@ -5,11 +5,13 @@ use std::{
     ops::Deref,
 };
 
-use super::{AnnotationMap, TypedField};
+use super::Typed;
+use crate::ast::ast_types::AstModel;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
     Primitive(PrimitiveType),
-    Composite(CompositeType),
+    Composite(AstModel<Typed>),
     Optional(Box<Type>),
     List(Box<Type>),
     Reference(String),
@@ -78,26 +80,6 @@ impl Type {
             o => o.deref().clone(),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CompositeType {
-    pub name: String,
-    pub kind: CompositeTypeKind,
-    pub fields: Vec<TypedField>,
-    pub annotations: Box<AnnotationMap>,
-}
-
-impl Display for CompositeType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.name.as_str())
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum CompositeTypeKind {
-    Persistent,
-    Context,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

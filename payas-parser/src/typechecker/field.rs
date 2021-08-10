@@ -1,44 +1,39 @@
 use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstField;
+use crate::ast::ast_types::{AstField, Untyped};
 
-use super::{AnnotationMap, Scope, Type, Typecheck};
+use super::{AnnotationMap, Scope, Type, TypecheckFrom, TypecheckInto, Typed, TypedAnnotation};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TypedField {
-    pub name: String,
-    pub typ: Type,
-    pub annotations: Box<AnnotationMap>,
-}
-
-impl Typecheck<TypedField> for AstField {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedField> {
+impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
+    fn shallow(
+        untyped: &AstField<Untyped>,
+        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+    ) -> Result<AstField<Typed>> {
         let mut annotations = Box::new(AnnotationMap::default());
 
-        for a in &self.annotations {
-            let annotation = a.shallow(errors)?;
+        for a in &untyped.annotations {
+            let annotation = TypedAnnotation::shallow(a, errors)?;
             annotations.add(errors, annotation, a.span)?;
         }
 
-        Ok(TypedField {
-            name: self.name.clone(),
-            typ: self.typ.shallow(errors)?,
+        Ok(AstField {
+            name: untyped.name.clone(),
+            ast_typ: untyped.ast_typ.clone(),
+            typ: untyped.ast_typ.shallow(errors)?,
             annotations,
         })
     }
 
     fn pass(
-        &self,
-        typ: &mut TypedField,
+        &mut self,
         env: &MappedArena<Type>,
         scope: &Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        let typ_changed = self.typ.pass(&mut typ.typ, env, scope, errors);
+        let typ_changed = self.ast_typ.pass(&mut self.typ, env, scope, errors);
 
-        let annot_changed = typ.annotations.pass(&self.annotations, env, scope, errors);
+        let annot_changed = self.annotations.pass(env, scope, errors);
 
         typ_changed || annot_changed
     }

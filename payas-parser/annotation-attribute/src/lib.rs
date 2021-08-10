@@ -296,7 +296,7 @@ fn build_from_params_fn(claytip_name: &str, variants: &AnnotVariants) -> proc_ma
     };
 
     quote! {
-        fn from_params(ast_annot: &AstAnnotation, params: TypedAnnotationParams, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Self> {
+        fn from_params(ast_annot: &AstAnnotation<crate::ast::ast_types::Untyped>, params: TypedAnnotationParams, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Self> {
             match params {
                 TypedAnnotationParams::None => { #from_none },
                 TypedAnnotationParams::Single(expr) => { #from_single },
@@ -308,16 +308,22 @@ fn build_from_params_fn(claytip_name: &str, variants: &AnnotVariants) -> proc_ma
 
 /// Build the `pass` function, which performs a pass on every parameter of the annotation.
 fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
+    let pass_none = if variants.none {
+        quote! {
+            Self::None => { false }
+        }
+    } else {
+        quote! {}
+    };
+
     let pass_single = if variants.single {
         quote! {
-            if let Self::Single(expr) = self {
-                ast_expr.pass(expr, env, scope, errors)
-            } else {
-                panic!();
+            Self::Single(expr) => {
+                expr.pass(env, scope, errors)
             }
         }
     } else {
-        quote! { panic!(); }
+        quote! {}
     };
 
     let pass_map = if let Some(map_fields) = &variants.map {
@@ -331,18 +337,16 @@ fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
             .iter()
             .zip(is_optionals)
             .map(|(ident, is_optional)| {
-                let n = ident.to_string();
-
                 if is_optional {
                     quote! {
                         if let Some(#ident) = #ident {
-                            let param_changed = ast_params[#n].pass(#ident, env, scope, errors);
+                            let param_changed = #ident.pass(env, scope, errors);
                             changed = changed || param_changed;
                         }
                     }
                 } else {
                     quote! {
-                        let param_changed = ast_params[#n].pass(#ident, env, scope, errors);
+                        let param_changed = #ident.pass(env, scope, errors);
                         changed = changed || param_changed;
                     }
                 }
@@ -350,30 +354,27 @@ fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
             .collect::<Vec<_>>();
 
         quote! {
-            if let Self::Map { #(#idents),* } = self {
+            Self::Map { #(#idents),* } => {
                 let mut changed = false;
                 #(#passes)*
                 changed
-            } else {
-                panic!();
             }
         }
     } else {
-        quote! { panic!(); }
+        quote! {}
     };
 
     quote! {
         fn pass(
             &mut self,
-            params: &AstAnnotationParams,
             env: &MappedArena<Type>,
             scope: &Scope,
             errors: &mut Vec<codemap_diagnostic::Diagnostic>
         ) -> bool {
-            match params {
-                AstAnnotationParams::None => false,
-                AstAnnotationParams::Single(ast_expr, _) => { #pass_single }
-                AstAnnotationParams::Map(ast_params, _) => { #pass_map }
+            match self {
+                #pass_none
+                #pass_single
+                #pass_map
             }
         }
     }
@@ -384,7 +385,7 @@ fn build_pass_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
 fn build_value_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
     if !variants.none && variants.single && variants.map.is_none() {
         quote! {
-            pub fn value(&self) -> &TypedExpression {
+            pub fn value(&self) -> &AstExpr<Typed> {
                 match &self {
                     Self::Single(value) => value,
                     _ => panic!(),
@@ -393,7 +394,7 @@ fn build_value_fn(variants: &AnnotVariants) -> proc_macro2::TokenStream {
         }
     } else if variants.none && variants.single && variants.map.is_none() {
         quote! {
-            pub fn value(&self) -> Option<&TypedExpression> {
+            pub fn value(&self) -> Option<&AstExpr<Typed>> {
                 match &self {
                     Self::None => None,
                     Self::Single(value) => Some(value),
