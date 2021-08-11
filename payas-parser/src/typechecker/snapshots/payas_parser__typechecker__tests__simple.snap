@@ -13,11 +13,14 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
+          ast_typ:
+            Plain:
+              - Boolean
           typ:
             Reference: Boolean
-          annotation_map:
+          annotations:
             annotations: {}
-      annotation_map:
+      annotations:
         annotations: {}
 - - Float
   - Primitive: Float
@@ -41,68 +44,71 @@ expression: types
       kind: Persistent
       fields:
         - name: doc
+          ast_typ:
+            Plain:
+              - Doc
           typ:
             Reference: Doc
-          annotation_map:
+          annotations:
             annotations:
               access:
                 name: access
                 params:
                   Single:
-                    LogicalOp:
-                      Or:
-                        - LogicalOp:
-                            Or:
-                              - RelationalOp:
-                                  Eq:
-                                    - FieldSelection:
-                                        Select:
-                                          - Single:
-                                              - - self
-                                              - Reference: User
-                                          - - role
-                                          - Reference: String
-                                    - StringLiteral:
-                                        - role_admin
-                                        - Primitive: String
-                                    - Primitive: Boolean
-                              - RelationalOp:
-                                  Eq:
-                                    - FieldSelection:
-                                        Select:
-                                          - Single:
-                                              - - self
-                                              - Reference: User
-                                          - - role
-                                          - Reference: String
-                                    - StringLiteral:
-                                        - role_superuser
-                                        - Primitive: String
-                                    - Primitive: Boolean
-                              - Primitive: Boolean
-                        - FieldSelection:
-                            Select:
-                              - Select:
-                                  - Single:
-                                      - - self
-                                      - Reference: User
-                                  - - doc
-                                  - Reference: Doc
-                              - - is_public
-                              - Reference: Boolean
-                        - Primitive: Boolean
+                    - LogicalOp:
+                        Or:
+                          - LogicalOp:
+                              Or:
+                                - RelationalOp:
+                                    Eq:
+                                      - FieldSelection:
+                                          Select:
+                                            - Single:
+                                                - - self
+                                                - Reference: User
+                                            - - role
+                                            - Reference: String
+                                      - StringLiteral:
+                                          - role_admin
+                                      - Primitive: Boolean
+                                - RelationalOp:
+                                    Eq:
+                                      - FieldSelection:
+                                          Select:
+                                            - Single:
+                                                - - self
+                                                - Reference: User
+                                            - - role
+                                            - Reference: String
+                                      - StringLiteral:
+                                          - role_superuser
+                                      - Primitive: Boolean
+                                - Primitive: Boolean
+                          - FieldSelection:
+                              Select:
+                                - Select:
+                                    - Single:
+                                        - - self
+                                        - Reference: User
+                                    - - doc
+                                    - Reference: Doc
+                                - - is_public
+                                - Reference: Boolean
+                          - Primitive: Boolean
               column:
                 name: column
                 params:
                   Single:
-                    StringLiteral:
-                      - custom_column
-                      - Primitive: String
+                    - StringLiteral:
+                        - custom_column
         - name: role
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
-          annotation_map:
+          annotations:
             annotations: {}
-      annotation_map:
+      annotations:
         annotations: {}
 

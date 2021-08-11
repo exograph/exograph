@@ -9,14 +9,17 @@ expression: types
       kind: Context
       fields:
         - name: role
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
-          annotation_map:
+          annotations:
             annotations:
               jwt:
                 name: jwt
                 params: None
-      annotation_map:
+      annotations:
         annotations: {}
 - - Boolean
   - Primitive: Boolean
@@ -28,43 +31,48 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
+          ast_typ:
+            Plain:
+              - Boolean
           typ:
             Reference: Boolean
-          annotation_map:
+          annotations:
             annotations: {}
         - name: content
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
-          annotation_map:
+          annotations:
             annotations:
               access:
                 name: access
                 params:
                   Single:
-                    LogicalOp:
-                      Or:
-                        - RelationalOp:
-                            Eq:
-                              - FieldSelection:
-                                  Select:
-                                    - Single:
-                                        - - AuthContext
-                                        - Reference: AuthContext
-                                    - - role
-                                    - Reference: String
-                              - StringLiteral:
-                                  - ROLE_ADMIN
-                                  - Primitive: String
-                              - Primitive: Boolean
-                        - FieldSelection:
-                            Select:
-                              - Single:
-                                  - - self
-                                  - Reference: Doc
-                              - - is_public
-                              - Reference: Boolean
-                        - Primitive: Boolean
-      annotation_map:
+                    - LogicalOp:
+                        Or:
+                          - RelationalOp:
+                              Eq:
+                                - FieldSelection:
+                                    Select:
+                                      - Single:
+                                          - - AuthContext
+                                          - Reference: AuthContext
+                                      - - role
+                                      - Reference: String
+                                - StringLiteral:
+                                    - ROLE_ADMIN
+                                - Primitive: Boolean
+                          - FieldSelection:
+                              Select:
+                                - Single:
+                                    - - self
+                                    - Reference: Doc
+                                - - is_public
+                                - Reference: Boolean
+                          - Primitive: Boolean
+      annotations:
         annotations: {}
 - - Float
   - Primitive: Float

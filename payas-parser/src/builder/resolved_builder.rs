@@ -8,9 +8,11 @@ use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::ToPlural;
 
-use crate::typechecker::{
-    CompositeType, CompositeTypeKind, PrimitiveType, Type, TypedAnnotationParams, TypedExpression,
-    TypedField, TypedFieldSelection,
+use crate::ast::ast_types::AstAnnotationParams;
+use crate::{
+    ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
+    typechecker::{PrimitiveType, Type, Typed},
+    util::null_span,
 };
 use serde::{Deserialize, Serialize};
 
@@ -35,22 +37,19 @@ pub struct ResolvedContext {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedAccess {
-    pub creation: TypedExpression,
-    pub read: TypedExpression,
-    pub update: TypedExpression,
-    pub delete: TypedExpression,
+    pub creation: AstExpr<Typed>,
+    pub read: AstExpr<Typed>,
+    pub update: AstExpr<Typed>,
+    pub delete: AstExpr<Typed>,
 }
 
 impl ResolvedAccess {
     fn permissive() -> Self {
         ResolvedAccess {
-            creation: TypedExpression::BooleanLiteral(
-                true,
-                Type::Primitive(PrimitiveType::Boolean),
-            ),
-            read: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
-            update: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
-            delete: TypedExpression::BooleanLiteral(true, Type::Primitive(PrimitiveType::Boolean)),
+            creation: AstExpr::BooleanLiteral(true, null_span()),
+            read: AstExpr::BooleanLiteral(true, null_span()),
+            update: AstExpr::BooleanLiteral(true, null_span()),
+            delete: AstExpr::BooleanLiteral(true, null_span()),
         }
     }
 }
@@ -193,19 +192,19 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
             Type::Primitive(pt) => {
                 resolved_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
-            Type::Composite(ct) if ct.kind == CompositeTypeKind::Persistent => {
+            Type::Composite(ct) if ct.kind == AstModelKind::Persistent => {
                 let table_name = ct
-                    .annotation_map
+                    .annotations
                     .get("table")
                     .map(|p| p.as_single().as_string())
                     .unwrap_or_else(|| ct.name.clone());
-                let access = build_access(ct.annotation_map.get("access"));
+                let access = build_access(ct.annotations.get("access"));
                 resolved_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
                         plural_name: ct
-                            .annotation_map
+                            .annotations
                             .get("plural_name")
                             .map(|p| p.as_single().as_string())
                             .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
@@ -215,7 +214,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     }),
                 );
             }
-            Type::Composite(ct) if ct.kind == CompositeTypeKind::Context => {
+            Type::Composite(ct) if ct.kind == AstModelKind::Context => {
                 resolved_contexts.add(
                     &ct.name,
                     ResolvedContext {
@@ -237,11 +236,10 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
     })
 }
 
-fn build_access(access_annotation_params: Option<&TypedAnnotationParams>) -> ResolvedAccess {
+fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -> ResolvedAccess {
     match access_annotation_params {
         Some(p) => {
-            let restrictive =
-                TypedExpression::BooleanLiteral(false, Type::Primitive(PrimitiveType::Boolean));
+            let restrictive = AstExpr::BooleanLiteral(false, null_span());
 
             // The annotation parameter hierarchy is:
             // value -> query
@@ -251,8 +249,8 @@ fn build_access(access_annotation_params: Option<&TypedAnnotationParams>) -> Res
             // Any lower node in the hierarchy get a priority over it parent.
 
             let (creation, read, update, delete) = match p {
-                TypedAnnotationParams::Single(default) => (default, default, default, default),
-                TypedAnnotationParams::Map(m) => {
+                AstAnnotationParams::Single(default, _) => (default, default, default, default),
+                AstAnnotationParams::Map(m, _) => {
                     let query = m.get("query");
                     let mutation = m.get("mutation");
                     let create = m.get("create");
@@ -285,7 +283,7 @@ fn build_access(access_annotation_params: Option<&TypedAnnotationParams>) -> Res
 fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
-            if ct.kind == CompositeTypeKind::Persistent {
+            if ct.kind == AstModelKind::Persistent {
                 build_expanded_persistent_type(ct, &types, resolved_system);
             } else {
                 build_expanded_context_type(ct, &types, resolved_system);
@@ -295,7 +293,7 @@ fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem
 }
 
 fn build_expanded_persistent_type(
-    ct: &CompositeType,
+    ct: &AstModel<Typed>,
     types: &MappedArena<Type>,
     resolved_system: &mut ResolvedSystem,
 ) {
@@ -319,8 +317,8 @@ fn build_expanded_persistent_type(
                 name: field.name.clone(),
                 typ: resolve_field_type(&field.typ, types, resolved_types),
                 column_name: compute_column_name(ct, field, types),
-                is_pk: field.annotation_map.contains("pk"),
-                is_autoincrement: field.annotation_map.contains("autoincrement"),
+                is_pk: field.annotations.contains("pk"),
+                is_autoincrement: field.annotations.contains("autoincrement"),
                 type_hint: build_type_hint(field),
             })
             .collect();
@@ -336,18 +334,18 @@ fn build_expanded_persistent_type(
     }
 }
 
-fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
+fn build_type_hint(field: &AstField<Typed>) -> Option<ResolvedTypeHint> {
     ////
     // Part 1: parse out and validate hints for each primitive
     ////
 
     let size_annotation = field
-        .annotation_map
+        .annotations
         .get("size")
         .map(|params| params.as_single().as_number() as usize);
 
     let bits_annotation = field
-        .annotation_map
+        .annotations
         .get("bits")
         .map(|params| params.as_single().as_number() as usize);
 
@@ -363,7 +361,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
         if field.typ.get_underlying_typename().unwrap() != "Int" {
             None
         } else {
-            let range_hint = field.annotation_map.get("range").map(|params| {
+            let range_hint = field.annotations.get("range").map(|params| {
                 (
                     params.as_map().get("min").unwrap().as_number(),
                     params.as_map().get("max").unwrap().as_number(),
@@ -435,14 +433,14 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
             None
         } else {
             let precision_hint = field
-                .annotation_map
+                .annotations
                 .get("precision")
-                .map(|a| a.as_single().as_number() as usize);
+                .map(|p| p.as_single().as_number() as usize);
 
             let scale_hint = field
-                .annotation_map
+                .annotations
                 .get("scale")
-                .map(|a| a.as_single().as_number() as usize);
+                .map(|p| p.as_single().as_number() as usize);
 
             if scale_hint.is_some() && precision_hint.is_none() {
                 panic!("@scale is not allowed without specifying @precision")
@@ -466,7 +464,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
 
     let string_hint = {
         let length_annotation = field
-            .annotation_map
+            .annotations
             .get("length")
             .map(|p| p.as_single().as_number() as usize);
 
@@ -491,7 +489,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
             None
         } else {
             field
-                .annotation_map
+                .annotations
                 .get("precision")
                 .map(|p| ResolvedTypeHint::DateTime {
                     precision: p.as_single().as_number() as usize,
@@ -508,7 +506,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
     ];
 
     let explicit_dbtype_hint = field
-        .annotation_map
+        .annotations
         .get("dbtype")
         .map(|p| p.as_single().as_string())
         .map(|s| ResolvedTypeHint::Explicit {
@@ -555,7 +553,7 @@ fn build_type_hint(field: &TypedField) -> Option<ResolvedTypeHint> {
 }
 
 fn build_expanded_context_type(
-    ct: &CompositeType,
+    ct: &AstModel<Typed>,
     types: &MappedArena<Type>,
     resolved_system: &mut ResolvedSystem,
 ) {
@@ -581,19 +579,17 @@ fn build_expanded_context_type(
     resolved_contexts[existing_type_id] = expanded;
 }
 
-fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
+fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
     let claim = field
-        .annotation_map
+        .annotations
         .get("jwt")
         .map(|p| match p {
-            TypedAnnotationParams::Single(TypedExpression::FieldSelection(selection)) => {
-                match selection {
-                    TypedFieldSelection::Single(claim, _) => claim.0.clone(),
-                    _ => panic!("Only simple jwt claim supported"),
-                }
-            }
-            TypedAnnotationParams::Single(TypedExpression::StringLiteral(name, _)) => name.clone(),
-            TypedAnnotationParams::None => field.name.clone(),
+            AstAnnotationParams::Single(AstExpr::FieldSelection(selection), _) => match selection {
+                FieldSelection::Single(claim, _) => claim.0.clone(),
+                _ => panic!("Only simple jwt claim supported"),
+            },
+            AstAnnotationParams::Single(AstExpr::StringLiteral(name, _), _) => name.clone(),
+            AstAnnotationParams::None => field.name.clone(),
             _ => panic!("Expression type other than selection unsupported"),
         })
         .unwrap();
@@ -602,13 +598,13 @@ fn extract_context_source(field: &TypedField) -> ResolvedContextSource {
 }
 
 fn compute_column_name(
-    enclosing_type: &CompositeType,
-    field: &TypedField,
+    enclosing_type: &AstModel<Typed>,
+    field: &AstField<Typed>,
     types: &MappedArena<Type>,
 ) -> String {
     fn default_column_name(
-        enclosing_type: &CompositeType,
-        field: &TypedField,
+        enclosing_type: &AstModel<Typed>,
+        field: &AstField<Typed>,
         types: &MappedArena<Type>,
     ) -> String {
         match &field.typ {
@@ -642,7 +638,7 @@ fn compute_column_name(
     }
 
     field
-        .annotation_map
+        .annotations
         .get("column")
         .map(|p| p.as_single().as_string())
         .unwrap_or_else(|| default_column_name(enclosing_type, field, types))

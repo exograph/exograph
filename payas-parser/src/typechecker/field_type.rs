@@ -6,9 +6,9 @@ use payas_model::model::mapped_arena::MappedArena;
 use crate::ast::ast_types::AstFieldType;
 
 use super::annotation::AnnotationSpec;
-use super::{Scope, Type, Typecheck};
+use super::{Scope, Type, TypecheckInto};
 
-impl Typecheck<Type> for AstFieldType {
+impl TypecheckInto<Type> for AstFieldType {
     fn shallow(&self) -> Type {
         match &self {
             AstFieldType::Plain(_, _) => Type::Defer,
@@ -23,7 +23,7 @@ impl Typecheck<Type> for AstFieldType {
         type_env: &MappedArena<Type>,
         annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
         if typ.is_incomplete() {
             match &self {

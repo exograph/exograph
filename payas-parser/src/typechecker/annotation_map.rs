@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, HashMap};
 
-use crate::ast::ast_types::AstAnnotation;
+use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
+use crate::typechecker::TypecheckFrom;
 
 use super::annotation::AnnotationSpec;
-use super::annotation_params::TypedAnnotationParams;
-use super::{Scope, Type, Typecheck, TypedAnnotation};
+use super::{Scope, Type, Typed};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize, Serializer};
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AnnotationMap {
     #[serde(serialize_with = "ordered_map")] // serialize with ordered_map to sort by key
-    annotations: HashMap<String, TypedAnnotation>,
+    annotations: HashMap<String, AstAnnotation<Typed>>,
 
     /// Spans of the annotations (also keeps track of duplicate annotations).
     #[serde(skip_serializing)]
@@ -22,7 +22,7 @@ pub struct AnnotationMap {
 }
 
 fn ordered_map<S: Serializer>(
-    value: &HashMap<String, TypedAnnotation>,
+    value: &HashMap<String, AstAnnotation<Typed>>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
     let ordered = value.iter().collect::<BTreeMap<_, _>>();
@@ -30,7 +30,7 @@ fn ordered_map<S: Serializer>(
 }
 
 impl AnnotationMap {
-    pub fn new(ast_annotations: &[AstAnnotation]) -> Self {
+    pub fn new(ast_annotations: &[AstAnnotation<Untyped>]) -> Self {
         let mut annotations = HashMap::new();
         let mut spans: HashMap<String, Vec<Span>> = HashMap::new();
 
@@ -38,7 +38,7 @@ impl AnnotationMap {
             match spans.get_mut(&a.name) {
                 Some(spans) => spans.push(a.span),
                 None => {
-                    annotations.insert(a.name.clone(), a.shallow());
+                    annotations.insert(a.name.clone(), AstAnnotation::shallow(a));
                     spans.insert(a.name.clone(), vec![a.span]);
                 }
             }
@@ -47,7 +47,7 @@ impl AnnotationMap {
         AnnotationMap { annotations, spans }
     }
 
-    pub fn add(&mut self, annotation: TypedAnnotation) {
+    pub fn add(&mut self, annotation: AstAnnotation<Typed>) {
         self.annotations.insert(annotation.name.clone(), annotation);
     }
 
@@ -55,13 +55,12 @@ impl AnnotationMap {
         self.annotations.contains_key(name)
     }
 
-    pub fn get(&self, name: &str) -> Option<&TypedAnnotationParams> {
+    pub fn get(&self, name: &str) -> Option<&AstAnnotationParams<Typed>> {
         self.annotations.get(name).map(|a| &a.params)
     }
 
     pub fn pass(
         &mut self,
-        ast_annotations: &[AstAnnotation],
         type_env: &MappedArena<Type>,
         annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
@@ -93,13 +92,8 @@ impl AnnotationMap {
         }
 
         let mut changed = false;
-        for (name, annotation) in &mut self.annotations {
-            let annot_changed = ast_annotations
-                .iter()
-                .find(|a| a.name.as_str() == name)
-                .unwrap()
-                .pass(annotation, type_env, annotation_env, scope, errors);
-
+        for annotation in self.annotations.values_mut() {
+            let annot_changed = annotation.pass(type_env, annotation_env, scope, errors);
             changed |= annot_changed;
         }
 

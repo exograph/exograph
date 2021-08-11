@@ -9,7 +9,7 @@ mod sitter_ffi;
 
 use self::converter::*;
 
-pub fn parse_file<P: AsRef<Path>>(path: P) -> (AstSystem, CodeMap) {
+pub fn parse_file<P: AsRef<Path>>(path: P) -> (AstSystem<Untyped>, CodeMap) {
     let file_content = fs::read_to_string(path.as_ref()).unwrap();
     let mut codemap = CodeMap::new();
     let file_span = codemap
@@ -30,7 +30,7 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> (AstSystem, CodeMap) {
     )
 }
 
-pub fn parse_str(str: &str) -> (AstSystem, CodeMap) {
+pub fn parse_str(str: &str) -> (AstSystem<Untyped>, CodeMap) {
     let mut codemap = CodeMap::new();
     let file_span = codemap
         .add_file("input.payas".to_string(), str.to_string())

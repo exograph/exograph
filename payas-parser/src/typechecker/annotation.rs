@@ -1,11 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams};
+use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
 
-use super::{annotation_params::TypedAnnotationParams, Scope, Type, Typecheck};
+use super::{Scope, Type, TypecheckFrom, Typed};
 
 /// Specification for an annotation.
 pub struct AnnotationSpec {
@@ -25,23 +24,17 @@ pub struct MappedAnnotationParamSpec {
     pub optional: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct TypedAnnotation {
-    pub name: String,
-    pub params: TypedAnnotationParams,
-}
-
-impl Typecheck<TypedAnnotation> for AstAnnotation {
-    fn shallow(&self) -> TypedAnnotation {
-        TypedAnnotation {
-            name: self.name.clone(),
-            params: self.params.shallow(),
+impl TypecheckFrom<AstAnnotation<Untyped>> for AstAnnotation<Typed> {
+    fn shallow(untyped: &AstAnnotation<Untyped>) -> AstAnnotation<Typed> {
+        AstAnnotation {
+            name: untyped.name.clone(),
+            params: AstAnnotationParams::shallow(&untyped.params),
+            span: untyped.span,
         }
     }
 
     fn pass(
-        &self,
-        typ: &mut TypedAnnotation,
+        &mut self,
         type_env: &MappedArena<Type>,
         annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
@@ -192,8 +185,7 @@ impl Typecheck<TypedAnnotation> for AstAnnotation {
             }
         };
 
-        self.params
-            .pass(&mut typ.params, type_env, annotation_env, scope, errors)
+        self.params.pass(type_env, annotation_env, scope, errors)
     }
 }
 
