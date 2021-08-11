@@ -1,9 +1,11 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, LogicalOp, Untyped};
 
+use super::annotation::AnnotationSpec;
 use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
 impl LogicalOp<Typed> {
@@ -16,38 +18,36 @@ impl LogicalOp<Typed> {
     }
 }
 impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
-    fn shallow(
-        untyped: &LogicalOp<Untyped>,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<LogicalOp<Typed>> {
-        Ok(match untyped {
+    fn shallow(untyped: &LogicalOp<Untyped>) -> LogicalOp<Typed> {
+        match untyped {
             LogicalOp::Not(v, s, _) => {
-                LogicalOp::Not(Box::new(AstExpr::shallow(v, errors)?), *s, Type::Defer)
+                LogicalOp::Not(Box::new(AstExpr::shallow(v)), *s, Type::Defer)
             }
             LogicalOp::And(left, right, _) => LogicalOp::And(
-                Box::new(AstExpr::shallow(left, errors)?),
-                Box::new(AstExpr::shallow(right, errors)?),
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
             LogicalOp::Or(left, right, _) => LogicalOp::Or(
-                Box::new(AstExpr::shallow(left, errors)?),
-                Box::new(AstExpr::shallow(right, errors)?),
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
-        })
+        }
     }
 
     fn pass(
         &mut self,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
             LogicalOp::Not(v, _, o_typ) => {
-                let in_updated = v.pass(env, scope, errors);
+                let in_updated = v.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if o_typ.is_incomplete() {
-                    match v.typ().deref(env) {
+                    match v.typ().deref(type_env) {
                         Type::Primitive(PrimitiveType::Boolean) => {
                             *o_typ = Type::Primitive(PrimitiveType::Boolean);
                             true
@@ -77,10 +77,11 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                 in_updated || out_updated
             }
             LogicalOp::And(left, right, o_typ) => {
-                let in_updated = left.pass(env, scope, errors) || right.pass(env, scope, errors);
+                let in_updated = left.pass(type_env, annotation_env, scope, errors)
+                    || right.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if o_typ.is_incomplete() {
-                    let left_typ = left.typ().deref(env);
-                    let right_typ = right.typ().deref(env);
+                    let left_typ = left.typ().deref(type_env);
+                    let right_typ = right.typ().deref(type_env);
                     if left_typ == Type::Primitive(PrimitiveType::Boolean)
                         && right_typ == Type::Primitive(PrimitiveType::Boolean)
                     {
@@ -127,10 +128,11 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                 in_updated || out_updated
             }
             LogicalOp::Or(left, right, o_typ) => {
-                let in_updated = left.pass(env, scope, errors) || right.pass(env, scope, errors);
+                let in_updated = left.pass(type_env, annotation_env, scope, errors)
+                    || right.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if o_typ.is_incomplete() {
-                    let left_typ = left.typ().deref(env);
-                    let right_typ = right.typ().deref(env);
+                    let left_typ = left.typ().deref(type_env);
+                    let right_typ = right.typ().deref(type_env);
 
                     if left_typ == Type::Primitive(PrimitiveType::Boolean)
                         && right_typ == Type::Primitive(PrimitiveType::Boolean)

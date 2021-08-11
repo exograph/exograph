@@ -304,16 +304,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "annotation-attribute"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1738,7 +1728,6 @@ dependencies = [
 name = "payas-parser"
 version = "0.1.0"
 dependencies = [
- "annotation-attribute",
  "anyhow",
  "cc",
  "codemap",
