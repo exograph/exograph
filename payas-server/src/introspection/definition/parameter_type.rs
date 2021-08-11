@@ -79,8 +79,23 @@ impl TypeDefinitionProvider for OrderByParameterType {
 impl TypeDefinitionProvider for PredicateParameterType {
     fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         match &self.kind {
-            PredicateParameterTypeKind::Opeartor(parameters)
-            | PredicateParameterTypeKind::Composite(parameters) => {
+            PredicateParameterTypeKind::Opeartor(parameters) => {
+                let fields = parameters
+                    .iter()
+                    .map(|parameter| default_positioned(parameter.input_value()))
+                    .collect();
+
+                TypeDefinition {
+                    extend: false,
+                    description: None,
+                    name: default_positioned_name(self.name()),
+                    directives: vec![],
+                    kind: TypeKind::InputObject(InputObjectType { fields }),
+                }
+            }
+            PredicateParameterTypeKind::Composite(parameters, comparison_params) => {
+                let parameters = [parameters, &comparison_params[..]].concat();
+
                 let fields = parameters
                     .iter()
                     .map(|parameter| default_positioned(parameter.input_value()))

@@ -102,7 +102,7 @@ impl<'a> Expression for Predicate<'a> {
                         predicate1,
                         predicate2,
                         expression_context,
-                        |stmt1, stmt2| format!("{} AND {}", stmt1, stmt2),
+                        |stmt1, stmt2| format!("({} AND {})", stmt1, stmt2),
                     ),
                 }
             }
@@ -110,15 +110,15 @@ impl<'a> Expression for Predicate<'a> {
                 predicate1,
                 predicate2,
                 expression_context,
-                |stmt1, stmt2| format!("{} OR {}", stmt1, stmt2),
+                |stmt1, stmt2| format!("({} OR {})", stmt1, stmt2),
             ),
             Predicate::Not(predicate) => {
                 let expr = predicate.binding(expression_context);
-                ParameterBinding::new(format!("NOT {}", expr.stmt), expr.params)
+                ParameterBinding::new(format!("NOT ({})", expr.stmt), expr.params)
             }
             Predicate::StringLike(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
-                    format!("{} LIKE {}", stmt1, stmt2)
+                    format!("({} LIKE {})", stmt1, stmt2)
                 })
             }
             // we use the postgres concat operator (||) in order to handle both literals
