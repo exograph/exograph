@@ -5,7 +5,7 @@ use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstField, Untyped};
 
-use super::annotation::AnnotationSpec;
+use super::annotation::{AnnotationSpec, AnnotationTarget};
 use super::{AnnotationMap, Scope, Type, TypecheckFrom, TypecheckInto, Typed};
 
 impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
@@ -31,9 +31,13 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             .ast_typ
             .pass(&mut self.typ, type_env, annotation_env, scope, errors);
 
-        let annot_changed = self
-            .annotations
-            .pass(type_env, annotation_env, scope, errors);
+        let annot_changed = self.annotations.pass(
+            AnnotationTarget::Field,
+            type_env,
+            annotation_env,
+            scope,
+            errors,
+        );
 
         typ_changed || annot_changed
     }

@@ -25,7 +25,7 @@ use crate::ast::ast_types::{AstModel, NodeTypedness};
 use crate::ast::ast_types::{AstSystem, Untyped};
 use payas_model::model::mapped_arena::MappedArena;
 
-use self::annotation::{AnnotationSpec, MappedAnnotationParamSpec};
+use self::annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec};
 
 pub struct Scope {
     pub enclosing_model: Option<String>,
@@ -90,6 +90,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "access",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Model, AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
                 mapped_params: Some(&[
@@ -119,6 +120,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "autoincrement",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: false,
                 mapped_params: None,
@@ -127,6 +129,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "bits",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
@@ -135,6 +138,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "column",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
@@ -143,6 +147,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "dbtype",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
@@ -151,6 +156,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "jwt",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: true,
                 mapped_params: None,
@@ -159,6 +165,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "length",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
@@ -167,6 +174,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "pk",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: true,
                 single_params: false,
                 mapped_params: None,
@@ -175,6 +183,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "plural_name",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Model],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
@@ -183,6 +192,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "precision",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
@@ -191,6 +201,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "range",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: false,
                 mapped_params: Some(&[
@@ -208,6 +219,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "scale",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
@@ -216,6 +228,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "size",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
@@ -224,6 +237,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "table",
             AnnotationSpec {
+                targets: &[AnnotationTarget::Model],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,

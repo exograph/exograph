@@ -5,15 +5,25 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use super::{Scope, Type, TypecheckFrom, Typed};
+use crate::util;
 
 /// Specification for an annotation.
 pub struct AnnotationSpec {
+    /// List of targets the annotation is allowed to be applied to.
+    pub targets: &'static [AnnotationTarget],
     /// Is this annotation allowed to have no parameters?
     pub no_params: bool,
     /// Is this annotation allowed to have a single parameter?
     pub single_params: bool,
     /// List of mapped parameters if mapped parameters are allowed (`None` if not).
     pub mapped_params: Option<&'static [MappedAnnotationParamSpec]>,
+}
+
+/// Target for an annotation.
+#[derive(Debug, PartialEq)]
+pub enum AnnotationTarget {
+    Model,
+    Field,
 }
 
 /// Specification for a mapped parameter of an annotation.
@@ -67,21 +77,21 @@ impl TypecheckFrom<AstAnnotation<Untyped>> for AstAnnotation<Typed> {
                     if let Some(params) = spec.mapped_params {
                         expected.push(format!(
                             "({})",
-                            join_strings(
-                                params
+                            util::join_strings(
+                                &params
                                     .iter()
                                     .map(|param_spec| format!(
                                         "{}{}",
                                         param_spec.name,
                                         if param_spec.optional { "?" } else { "" }
                                     ))
-                                    .collect(),
+                                    .collect::<Vec<_>>(),
                                 None,
                             )
                         ));
                     }
 
-                    format!("expected {}", join_strings(expected, Some("or")))
+                    format!("expected {}", util::join_strings(&expected, Some("or")))
                 };
 
                 let base_diagnostic = Diagnostic {
@@ -186,31 +196,5 @@ impl TypecheckFrom<AstAnnotation<Untyped>> for AstAnnotation<Typed> {
         };
 
         self.params.pass(type_env, annotation_env, scope, errors)
-    }
-}
-
-/// Join strings together with commas and an optional separator before the last word.
-///
-/// e.g. `join_strings(vec!["a", "b", "c"], Some("or")) == "a, b, or c"`
-fn join_strings(strs: Vec<String>, last_sep: Option<&'static str>) -> String {
-    match strs.len() {
-        1 => strs[0].to_string(),
-        2 => match last_sep {
-            Some(last_sep) => format!("{} {} {}", strs[0], last_sep, strs[1]),
-            None => format!("{}, {}", strs[0], strs[1]),
-        },
-        _ => {
-            let mut joined = String::new();
-            for i in 0..strs.len() {
-                joined.push_str(&strs[i]);
-                if i < strs.len() - 1 {
-                    joined.push_str(", ");
-                }
-                if i == strs.len() - 2 {
-                    joined.push_str(last_sep.unwrap_or(""));
-                }
-            }
-            joined
-        }
     }
 }

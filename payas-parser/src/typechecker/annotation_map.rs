@@ -1,9 +1,11 @@
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::Debug;
 
 use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
 use crate::typechecker::TypecheckFrom;
+use crate::util;
 
-use super::annotation::AnnotationSpec;
+use super::annotation::{AnnotationSpec, AnnotationTarget};
 use super::{Scope, Type, Typed};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -61,11 +63,35 @@ impl AnnotationMap {
 
     pub fn pass(
         &mut self,
+        target: AnnotationTarget,
         type_env: &MappedArena<Type>,
         annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
+        for (name, annotation) in &self.annotations {
+            let targets = annotation_env[name].targets;
+            if !targets.contains(&target) {
+                let targets_str = util::join_strings(
+                    &targets
+                        .iter()
+                        .map(|t| format!("{:?}", t).to_lowercase())
+                        .collect::<Vec<_>>(),
+                    Some("or"),
+                );
+
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!("Invalid target for annotation `{}`", name),
+                    code: Some("A000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: annotation.span,
+                        label: Some(format!("only applies to targets: {}", targets_str)),
+                        style: SpanStyle::Primary,
+                    }],
+                });
+            }
+        }
         for (name, spans) in &self.spans {
             if spans.len() > 1 {
                 let mut span_labels = vec![SpanLabel {
