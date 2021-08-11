@@ -110,7 +110,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
 
         UpdateDataParameter {
             name: "data".to_string(),
-            type_name: data_param_type_name.to_string(),
+            type_name: data_param_type_name,
             type_id: data_param_type_id,
         }
     }
