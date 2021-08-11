@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::convert::TryInto;
 
 use codemap::{CodeMap, Span};
@@ -251,25 +252,33 @@ fn convert_annotation_params(
                 })
                 .collect::<Vec<_>>();
 
-            AstAnnotationParams::Map(
-                params
-                    .iter()
-                    .map(|(name, p)| {
-                        (
-                            name.clone(),
-                            convert_expression(
-                                p.child_by_field_name("expr").unwrap(),
-                                source,
-                                source_span,
-                            ),
-                        )
-                    })
-                    .collect(),
-                params
-                    .iter()
-                    .map(|(name, p)| (name.clone(), span_from_node(source_span, *p)))
-                    .collect(),
-            )
+            let exprs = params
+                .iter()
+                .map(|(name, p)| {
+                    (
+                        name.clone(),
+                        convert_expression(
+                            p.child_by_field_name("expr").unwrap(),
+                            source,
+                            source_span,
+                        ),
+                    )
+                })
+                .collect();
+
+            let mut spans: HashMap<String, Vec<Span>> = HashMap::new();
+
+            for (name, node) in &params {
+                let span = span_from_node(source_span, *node);
+                match spans.get_mut(name) {
+                    Some(spans) => spans.push(span),
+                    None => {
+                        spans.insert(name.clone(), vec![span]);
+                    }
+                }
+            }
+
+            AstAnnotationParams::Map(exprs, spans)
         }
         o => panic!("unsupported annotation params kind: {}", o),
     }

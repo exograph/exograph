@@ -19,35 +19,9 @@ expression: types
           typ:
             Reference: Boolean
           annotations:
-            access: ~
-            auto_increment: ~
-            bits: ~
-            column: ~
-            db_type: ~
-            length: ~
-            plural_name: ~
-            precision: ~
-            scale: ~
-            jwt: ~
-            pk: ~
-            range: ~
-            size: ~
-            table: ~
+            annotations: {}
       annotations:
-        access: ~
-        auto_increment: ~
-        bits: ~
-        column: ~
-        db_type: ~
-        length: ~
-        plural_name: ~
-        precision: ~
-        scale: ~
-        jwt: ~
-        pk: ~
-        range: ~
-        size: ~
-        table: ~
+        annotations: {}
 - - Float
   - Primitive: Float
 - - Instant
@@ -76,66 +50,57 @@ expression: types
           typ:
             Reference: Doc
           annotations:
-            access:
-              Access:
-                Single:
-                  LogicalOp:
-                    Or:
-                      - LogicalOp:
-                          Or:
-                            - RelationalOp:
-                                Eq:
-                                  - FieldSelection:
-                                      Select:
-                                        - Single:
-                                            - - self
-                                            - Reference: User
-                                        - - role
-                                        - Reference: String
-                                  - StringLiteral:
-                                      - role_admin
-                                  - Primitive: Boolean
-                            - RelationalOp:
-                                Eq:
-                                  - FieldSelection:
-                                      Select:
-                                        - Single:
-                                            - - self
-                                            - Reference: User
-                                        - - role
-                                        - Reference: String
-                                  - StringLiteral:
-                                      - role_superuser
-                                  - Primitive: Boolean
-                            - Primitive: Boolean
-                      - FieldSelection:
-                          Select:
-                            - Select:
-                                - Single:
-                                    - - self
-                                    - Reference: User
-                                - - doc
-                                - Reference: Doc
-                            - - is_public
-                            - Reference: Boolean
-                      - Primitive: Boolean
-            auto_increment: ~
-            bits: ~
-            column:
-              Column:
-                Single:
-                  StringLiteral:
-                    - custom_column
-            db_type: ~
-            length: ~
-            plural_name: ~
-            precision: ~
-            scale: ~
-            jwt: ~
-            pk: ~
-            range: ~
-            size: ~
-            table: ~
+            annotations:
+              access:
+                name: access
+                params:
+                  Single:
+                    - LogicalOp:
+                        Or:
+                          - LogicalOp:
+                              Or:
+                                - RelationalOp:
+                                    Eq:
+                                      - FieldSelection:
+                                          Select:
+                                            - Single:
+                                                - - self
+                                                - Reference: User
+                                            - - role
+                                            - Reference: String
+                                      - StringLiteral:
+                                          - role_admin
+                                      - Primitive: Boolean
+                                - RelationalOp:
+                                    Eq:
+                                      - FieldSelection:
+                                          Select:
+                                            - Single:
+                                                - - self
+                                                - Reference: User
+                                            - - role
+                                            - Reference: String
+                                      - StringLiteral:
+                                          - role_superuser
+                                      - Primitive: Boolean
+                                - Primitive: Boolean
+                          - FieldSelection:
+                              Select:
+                                - Select:
+                                    - Single:
+                                        - - self
+                                        - Reference: User
+                                    - - doc
+                                    - Reference: Doc
+                                - - is_public
+                                - Reference: Boolean
+                          - Primitive: Boolean
+              column:
+                name: column
+                params:
+                  Single:
+                    - StringLiteral:
+                        - custom_column
         - name: role
           ast_typ:
             Plain:
@@ -143,33 +108,7 @@ expression: types
           typ:
             Reference: String
           annotations:
-            access: ~
-            auto_increment: ~
-            bits: ~
-            column: ~
-            db_type: ~
-            length: ~
-            plural_name: ~
-            precision: ~
-            scale: ~
-            jwt: ~
-            pk: ~
-            range: ~
-            size: ~
-            table: ~
+            annotations: {}
       annotations:
-        access: ~
-        auto_increment: ~
-        bits: ~
-        column: ~
-        db_type: ~
-        length: ~
-        plural_name: ~
-        precision: ~
-        scale: ~
-        jwt: ~
-        pk: ~
-        range: ~
-        size: ~
-        table: ~
+        annotations: {}
 

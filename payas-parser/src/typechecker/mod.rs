@@ -10,12 +10,13 @@ mod relational_op;
 mod selection;
 mod typ;
 
+use std::collections::HashMap;
+
 use anyhow::{anyhow, Result};
 use codemap::CodeMap;
-use codemap_diagnostic::{ColorConfig, Emitter};
+use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter};
 use serde::{Deserialize, Serialize};
 
-pub(super) use annotation::*;
 pub(super) use annotation_map::AnnotationMap;
 
 pub(super) use typ::{PrimitiveType, Type};
@@ -23,6 +24,8 @@ pub(super) use typ::{PrimitiveType, Type};
 use crate::ast::ast_types::{AstModel, NodeTypedness};
 use crate::ast::ast_types::{AstSystem, Untyped};
 use payas_model::model::mapped_arena::MappedArena;
+
+use self::annotation::{AnnotationSpec, MappedAnnotationParamSpec};
 
 pub struct Scope {
     pub enclosing_model: Option<String>,
@@ -36,18 +39,18 @@ impl NodeTypedness for Typed {
     type Expr = Type;
     type LogicalOp = Type;
     type Field = Type;
-    type Annotations = Box<AnnotationMap>;
+    type Annotations = AnnotationMap;
 }
 
 pub trait TypecheckInto<T> {
-    #[allow(clippy::result_unit_err)] // Use unit result since errors are tracked as a parameter
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<T>;
+    fn shallow(&self) -> T;
     fn pass(
         &self,
         typ: &mut T,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool;
 }
 
@@ -55,17 +58,17 @@ pub trait TypecheckFrom<T>
 where
     Self: Sized,
 {
-    #[allow(clippy::result_unit_err)] // Use unit result since errors are tracked as a parameter
-    fn shallow(untyped: &T, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<Self>;
+    fn shallow(untyped: &T) -> Self;
     fn pass(
         &mut self,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool;
 }
 
-fn populate_standard_env(env: &mut MappedArena<Type>) {
+fn populate_type_env(env: &mut MappedArena<Type>) {
     // TODO: maybe we don't need to do this manually
     env.add("Boolean", Type::Primitive(PrimitiveType::Boolean));
     env.add("Int", Type::Primitive(PrimitiveType::Int));
@@ -82,26 +85,172 @@ fn populate_standard_env(env: &mut MappedArena<Type>) {
     env.add("Json", Type::Primitive(PrimitiveType::Json));
 }
 
+fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
+    let annotations = [
+        (
+            "access",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: Some(&[
+                    MappedAnnotationParamSpec {
+                        name: "query",
+                        optional: true,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "mutation",
+                        optional: true,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "create",
+                        optional: true,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "update",
+                        optional: true,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "delete",
+                        optional: true,
+                    },
+                ]),
+            },
+        ),
+        (
+            "autoincrement",
+            AnnotationSpec {
+                no_params: true,
+                single_params: false,
+                mapped_params: None,
+            },
+        ),
+        (
+            "bits",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "column",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "dbtype",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "jwt",
+            AnnotationSpec {
+                no_params: true,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "length",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "pk",
+            AnnotationSpec {
+                no_params: true,
+                single_params: false,
+                mapped_params: None,
+            },
+        ),
+        (
+            "plural_name",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "precision",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "range",
+            AnnotationSpec {
+                no_params: false,
+                single_params: false,
+                mapped_params: Some(&[
+                    MappedAnnotationParamSpec {
+                        name: "min",
+                        optional: false,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "max",
+                        optional: false,
+                    },
+                ]),
+            },
+        ),
+        (
+            "scale",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "size",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "table",
+            AnnotationSpec {
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+    ];
+
+    for (name, spec) in annotations {
+        env.insert(name.to_owned(), spec);
+    }
+}
+
 pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedArena<Type>> {
     let ast_types = &ast_system.models;
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
-    populate_standard_env(&mut types_arena);
+    let mut annotation_env = HashMap::new();
+    populate_type_env(&mut types_arena);
+    populate_annotation_env(&mut annotation_env);
 
-    let mut errors = Vec::new();
     let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
     for model in ast_types {
-        match AstModel::shallow(model, &mut errors) {
-            Ok(typ) => {
-                types_arena.add(model.name.as_str(), Type::Composite(typ));
-            }
-            Err(_) => {
-                assert!(!errors.is_empty());
-                emitter.emit(&errors);
-                return Err(anyhow!("Could not process input clay files"));
-            }
-        }
+        types_arena.add(
+            model.name.as_str(),
+            Type::Composite(AstModel::shallow(model)),
+        );
     }
 
     loop {
@@ -115,7 +264,7 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
         for model in ast_types {
             let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
             if let Type::Composite(c) = &mut typ {
-                let pass_res = c.pass(&types_arena, &init_scope, &mut errors);
+                let pass_res = c.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
                 if pass_res {
                     *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
                     did_change = true;

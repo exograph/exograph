@@ -1,9 +1,11 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstModelKind, FieldSelection, Identifier, Untyped};
 
+use super::annotation::AnnotationSpec;
 use super::{Scope, Type, TypecheckFrom, Typed};
 
 impl FieldSelection<Typed> {
@@ -16,26 +18,24 @@ impl FieldSelection<Typed> {
 }
 
 impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
-    fn shallow(
-        untyped: &FieldSelection<Untyped>,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<FieldSelection<Typed>> {
-        Ok(match untyped {
+    fn shallow(untyped: &FieldSelection<Untyped>) -> FieldSelection<Typed> {
+        match untyped {
             FieldSelection::Single(v, _) => FieldSelection::Single(v.clone(), Type::Defer),
             FieldSelection::Select(selection, i, span, _) => FieldSelection::Select(
-                Box::new(FieldSelection::shallow(selection, errors)?),
+                Box::new(FieldSelection::shallow(selection)),
                 i.clone(),
                 *span,
                 Type::Defer,
             ),
-        })
+        }
     }
 
     fn pass(
         &mut self,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
             FieldSelection::Single(Identifier(i, s), typ) => {
@@ -61,7 +61,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                             false
                         }
                     } else {
-                        let context_type = env.get_by_key(i).and_then(|t| match t {
+                        let context_type = type_env.get_by_key(i).and_then(|t| match t {
                             Type::Composite(c) if c.kind == AstModelKind::Context => Some(c),
                             _ => None,
                         });
@@ -89,9 +89,9 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 }
             }
             FieldSelection::Select(prefix, i, _, typ) => {
-                let in_updated = prefix.pass(env, scope, errors);
+                let in_updated = prefix.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if typ.is_incomplete() {
-                    if let Type::Composite(c) = prefix.typ().deref(env) {
+                    if let Type::Composite(c) = prefix.typ().deref(type_env) {
                         if let Some(field) = c.fields.iter().find(|f| f.name == i.0) {
                             if !field.typ.is_incomplete() {
                                 *typ = field.typ.clone();
@@ -124,7 +124,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                                 message: format!(
                                     "Cannot read field {} from a non-composite type {}",
                                     i.0,
-                                    prefix.typ().deref(env)
+                                    prefix.typ().deref(type_env)
                                 ),
                                 code: Some("C000".to_string()),
                                 spans: vec![SpanLabel {

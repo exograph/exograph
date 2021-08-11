@@ -1,8 +1,11 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
+use codemap_diagnostic::Diagnostic;
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp, Untyped};
 
+use super::annotation::AnnotationSpec;
 use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
 static STR_TYP: Type = Type::Primitive(PrimitiveType::String);
@@ -37,34 +40,34 @@ impl AstExpr<Typed> {
 }
 
 impl TypecheckFrom<AstExpr<Untyped>> for AstExpr<Typed> {
-    fn shallow(
-        untyped: &AstExpr<Untyped>,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<AstExpr<Typed>> {
-        Ok(match untyped {
+    fn shallow(untyped: &AstExpr<Untyped>) -> AstExpr<Typed> {
+        match untyped {
             AstExpr::FieldSelection(select) => {
-                AstExpr::FieldSelection(FieldSelection::shallow(select, errors)?)
+                AstExpr::FieldSelection(FieldSelection::shallow(select))
             }
-            AstExpr::LogicalOp(logic) => AstExpr::LogicalOp(LogicalOp::shallow(logic, errors)?),
+            AstExpr::LogicalOp(logic) => AstExpr::LogicalOp(LogicalOp::shallow(logic)),
             AstExpr::RelationalOp(relation) => {
-                AstExpr::RelationalOp(RelationalOp::shallow(relation, errors)?)
+                AstExpr::RelationalOp(RelationalOp::shallow(relation))
             }
             AstExpr::StringLiteral(v, s) => AstExpr::StringLiteral(v.clone(), *s),
             AstExpr::BooleanLiteral(v, s) => AstExpr::BooleanLiteral(*v, *s),
             AstExpr::NumberLiteral(v, s) => AstExpr::NumberLiteral(*v, *s),
-        })
+        }
     }
 
     fn pass(
         &mut self,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
-            AstExpr::FieldSelection(select) => select.pass(env, scope, errors),
-            AstExpr::LogicalOp(logic) => logic.pass(env, scope, errors),
-            AstExpr::RelationalOp(relation) => relation.pass(env, scope, errors),
+            AstExpr::FieldSelection(select) => select.pass(type_env, annotation_env, scope, errors),
+            AstExpr::LogicalOp(logic) => logic.pass(type_env, annotation_env, scope, errors),
+            AstExpr::RelationalOp(relation) => {
+                relation.pass(type_env, annotation_env, scope, errors)
+            }
             AstExpr::StringLiteral(_, _)
             | AstExpr::BooleanLiteral(_, _)
             | AstExpr::NumberLiteral(_, _) => false,

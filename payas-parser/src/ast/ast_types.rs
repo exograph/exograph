@@ -125,7 +125,7 @@ pub enum AstAnnotationParams<T: NodeTypedness> {
         HashMap<String, AstExpr<T>>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
-        Vec<(String, Span)>, // store as Vec to check for duplicates later on
+        HashMap<String, Vec<Span>>, // store as Vec to check for duplicates later on
     ),
 }
 

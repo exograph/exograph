@@ -1,39 +1,35 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
+use codemap_diagnostic::Diagnostic;
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstField, AstModel, Untyped};
 
-use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed, TypedAnnotation};
+use super::annotation::AnnotationSpec;
+use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed};
 
 impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
-    fn shallow(
-        untyped: &AstModel<Untyped>,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<AstModel<Typed>> {
-        let mut annotations = Box::new(AnnotationMap::default());
+    fn shallow(untyped: &AstModel<Untyped>) -> AstModel<Typed> {
+        let annotation_map = AnnotationMap::new(&untyped.annotations);
 
-        for a in &untyped.annotations {
-            let annotation = TypedAnnotation::shallow(a, errors)?;
-            annotations.add(errors, annotation, a.span)?;
-        }
-
-        Ok(AstModel {
+        AstModel {
             name: untyped.name.clone(),
             kind: untyped.kind.clone(),
             fields: untyped
                 .fields
                 .iter()
-                .map(|f| AstField::shallow(f, errors))
-                .collect::<Result<_, _>>()?,
-            annotations,
-        })
+                .map(|f| AstField::shallow(f))
+                .collect(),
+            annotations: annotation_map,
+        }
     }
 
     fn pass(
         &mut self,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         _scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
         let model_scope = Scope {
             enclosing_model: Some(self.name.clone()),
@@ -41,12 +37,14 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
         let fields_changed = self
             .fields
             .iter_mut()
-            .map(|tf| tf.pass(env, &model_scope, errors))
+            .map(|tf| tf.pass(type_env, annotation_env, &model_scope, errors))
             .filter(|v| *v)
             .count()
             > 0;
 
-        let annot_changed = self.annotations.pass(env, &model_scope, errors);
+        let annot_changed = self
+            .annotations
+            .pass(type_env, annotation_env, &model_scope, errors);
 
         fields_changed || annot_changed
     }

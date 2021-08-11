@@ -1,9 +1,11 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, RelationalOp, Untyped};
 
+use super::annotation::AnnotationSpec;
 use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
 impl RelationalOp<Typed> {
@@ -20,56 +22,55 @@ impl RelationalOp<Typed> {
 }
 
 impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
-    fn shallow(
-        untyped: &RelationalOp<Untyped>,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<RelationalOp<Typed>> {
-        Ok(match untyped {
+    fn shallow(untyped: &RelationalOp<Untyped>) -> RelationalOp<Typed> {
+        match untyped {
             RelationalOp::Eq(left, right, _) => RelationalOp::Eq(
-                Box::new(AstExpr::shallow(left, errors)?),
-                Box::new(AstExpr::shallow(right, errors)?),
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
             RelationalOp::Neq(left, right, _) => RelationalOp::Neq(
-                Box::new(AstExpr::shallow(left, errors)?),
-                Box::new(AstExpr::shallow(right, errors)?),
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
             RelationalOp::Lt(left, right, _) => RelationalOp::Lt(
-                Box::new(AstExpr::shallow(left, errors)?),
-                Box::new(AstExpr::shallow(right, errors)?),
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
             RelationalOp::Lte(left, right, _) => RelationalOp::Lte(
-                Box::new(AstExpr::shallow(left, errors)?),
-                Box::new(AstExpr::shallow(right, errors)?),
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
             RelationalOp::Gt(left, right, _) => RelationalOp::Gt(
-                Box::new(AstExpr::shallow(left, errors)?),
-                Box::new(AstExpr::shallow(right, errors)?),
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
             RelationalOp::Gte(left, right, _) => RelationalOp::Gte(
-                Box::new(AstExpr::shallow(left, errors)?),
-                Box::new(AstExpr::shallow(right, errors)?),
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
-        })
+        }
     }
 
     fn pass(
         &mut self,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
             RelationalOp::Eq(left, right, o_typ) => {
-                let in_updated = left.pass(env, scope, errors) || right.pass(env, scope, errors);
+                let in_updated = left.pass(type_env, annotation_env, scope, errors)
+                    || right.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if o_typ.is_incomplete() {
-                    let left_typ = left.typ().deref(env);
-                    let right_typ = right.typ().deref(env);
+                    let left_typ = left.typ().deref(type_env);
+                    let right_typ = right.typ().deref(type_env);
                     if left_typ == right_typ && !left_typ.is_incomplete() {
                         *o_typ = Type::Primitive(PrimitiveType::Boolean);
                         true
@@ -109,7 +110,8 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
                 in_updated || out_updated
             }
             RelationalOp::Neq(left, right, _) => {
-                let in_updated = left.pass(env, scope, errors) || right.pass(env, scope, errors);
+                let in_updated = left.pass(type_env, annotation_env, scope, errors)
+                    || right.pass(type_env, annotation_env, scope, errors);
                 let out_updated = false;
                 in_updated || out_updated
             }
@@ -117,7 +119,8 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
             | RelationalOp::Lte(left, right, _)
             | RelationalOp::Gt(left, right, _)
             | RelationalOp::Gte(left, right, _) => {
-                let in_updated = left.pass(env, scope, errors) || right.pass(env, scope, errors);
+                let in_updated = left.pass(type_env, annotation_env, scope, errors)
+                    || right.pass(type_env, annotation_env, scope, errors);
                 let out_updated = false;
                 in_updated || out_updated
             }
