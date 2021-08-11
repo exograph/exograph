@@ -98,12 +98,10 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                                 "Cannot specify both {} and {} at same level in query",
                                 acc_name, &comparison_param.name
                             )
+                        } else if lookup_result.is_some() {
+                            (&comparison_param.name, lookup_result)
                         } else {
-                            if let Some(_) = lookup_result {
-                                (&comparison_param.name, lookup_result)
-                            } else {
-                                (acc_name, acc_value)
-                            }
+                            (acc_name, acc_value)
                         }
                     },
                 );
@@ -184,7 +182,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                 }
 
                 generate_predicate_chain(
-                    &|a, b| Predicate::And(a, b).clone(),
+                    &|a, b| Predicate::And(a, b),
                     Predicate::True,
                     parameters,
                     argument_value,

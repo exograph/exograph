@@ -177,42 +177,40 @@ fn create_composite_filter_type_kind(
         .collect();
 
     // TODO: reduce duplication here
-    // populate oparison operators for composite filter
+    // populate comparison operators for composite filter
 
-    let mut comparison_params = vec![];
-
-    comparison_params.push(PredicateParameter {
-        name: "and".to_string(),
-        type_name: get_parameter_type_name(&composite_type.name.to_string()),
-        type_id: building
-            .predicate_types
-            .get_id(&get_parameter_type_name(&composite_type.name))
-            .unwrap(),
-        type_modifier: GqlTypeModifier::List,
-        column_id: None,
-    });
-
-    comparison_params.push(PredicateParameter {
-        name: "or".to_string(),
-        type_name: get_parameter_type_name(&composite_type.name.to_string()),
-        type_id: building
-            .predicate_types
-            .get_id(&get_parameter_type_name(&composite_type.name))
-            .unwrap(),
-        type_modifier: GqlTypeModifier::List,
-        column_id: None,
-    });
-
-    comparison_params.push(PredicateParameter {
-        name: "not".to_string(),
-        type_name: get_parameter_type_name(&composite_type.name.to_string()),
-        type_id: building
-            .predicate_types
-            .get_id(&get_parameter_type_name(&composite_type.name))
-            .unwrap(),
-        type_modifier: GqlTypeModifier::List,
-        column_id: None,
-    });
+    let comparison_params = vec![
+        PredicateParameter {
+            name: "and".to_string(),
+            type_name: get_parameter_type_name(&composite_type.name.to_string()),
+            type_id: building
+                .predicate_types
+                .get_id(&get_parameter_type_name(&composite_type.name))
+                .unwrap(),
+            type_modifier: GqlTypeModifier::List,
+            column_id: None,
+        },
+        PredicateParameter {
+            name: "or".to_string(),
+            type_name: get_parameter_type_name(&composite_type.name.to_string()),
+            type_id: building
+                .predicate_types
+                .get_id(&get_parameter_type_name(&composite_type.name))
+                .unwrap(),
+            type_modifier: GqlTypeModifier::List,
+            column_id: None,
+        },
+        PredicateParameter {
+            name: "not".to_string(),
+            type_name: get_parameter_type_name(&composite_type.name.to_string()),
+            type_id: building
+                .predicate_types
+                .get_id(&get_parameter_type_name(&composite_type.name))
+                .unwrap(),
+            type_modifier: GqlTypeModifier::List,
+            column_id: None,
+        },
+    ];
 
     PredicateParameterTypeKind::Composite(parameters, comparison_params)
 }
