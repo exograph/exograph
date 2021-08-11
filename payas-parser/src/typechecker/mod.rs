@@ -304,9 +304,13 @@ pub mod test_support {
     use super::*;
     use crate::parser::*;
 
-    pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {
+    pub fn build(src: &str) -> Result<MappedArena<Type>> {
         let (parsed, codemap) = parse_str(src);
-        let checked = build(parsed, codemap).unwrap();
+        super::build(parsed, codemap)
+    }
+
+    pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {
+        let checked = build(src).unwrap();
 
         let mut entries: Vec<_> = checked
             .keys()
@@ -400,8 +404,95 @@ mod tests {
         assert_eq!(typical_parsed, with_whitespace_parsed);
     }
 
+    #[test]
+    fn unknown_annotation() {
+        let src = r#"
+        @asdf
+        model User {
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    fn duplicate_annotation() {
+        let src = r#"
+        @table("users")
+        @table("users")
+        model User {
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    fn invalid_annotation_parameter_type() {
+        let expected_none = r#"
+        model User {
+            id: Int @pk("asdf")
+        }
+        "#;
+
+        let expected_single = r#"
+        @table
+        model User {
+        }
+        "#;
+
+        let expected_map = r#"
+        model User {
+            id: Int @range(5)
+        }
+        "#;
+
+        assert_err(expected_none);
+        assert_err(expected_single);
+        assert_err(expected_map);
+    }
+
+    fn duplicate_annotation_mapped_param() {
+        let src = r#"
+        model User {
+            id: Int @range(min=5, max=10, min=3)
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    fn unknown_annotation_mapped_param() {
+        let src = r#"
+        model User {
+            id: Int @range(min=5, maxx=10)
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    fn invalid_annotation_target() {
+        let model = r#"
+        @pk
+        model User {
+        }
+        "#;
+
+        let field = r#"
+        model User {
+            id: Int @table("asdf")
+        }
+        "#;
+
+        assert_err(model);
+        assert_err(field);
+    }
+
     fn assert_typechecking(src: &str) {
         let types = parse_sorted(src);
         insta::assert_yaml_snapshot!(types);
+    }
+
+    fn assert_err(src: &str) {
+        assert!(build(src).is_err());
     }
 }

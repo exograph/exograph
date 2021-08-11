@@ -69,29 +69,6 @@ impl AnnotationMap {
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        for (name, annotation) in &self.annotations {
-            let targets = annotation_env[name].targets;
-            if !targets.contains(&target) {
-                let targets_str = util::join_strings(
-                    &targets
-                        .iter()
-                        .map(|t| format!("{:?}", t).to_lowercase())
-                        .collect::<Vec<_>>(),
-                    Some("or"),
-                );
-
-                errors.push(Diagnostic {
-                    level: Level::Error,
-                    message: format!("Invalid target for annotation `{}`", name),
-                    code: Some("A000".to_string()),
-                    spans: vec![SpanLabel {
-                        span: annotation.span,
-                        label: Some(format!("only applies to targets: {}", targets_str)),
-                        style: SpanStyle::Primary,
-                    }],
-                });
-            }
-        }
         for (name, spans) in &self.spans {
             if spans.len() > 1 {
                 let mut span_labels = vec![SpanLabel {
@@ -119,8 +96,47 @@ impl AnnotationMap {
 
         let mut changed = false;
         for annotation in self.annotations.values_mut() {
-            let annot_changed = annotation.pass(type_env, annotation_env, scope, errors);
-            changed |= annot_changed;
+            match annotation_env.get(&annotation.name) {
+                Some(spec) => {
+                    let targets = spec.targets;
+                    if !targets.contains(&target) {
+                        let targets_str = util::join_strings(
+                            &targets
+                                .iter()
+                                .map(|t| format!("{:?}", t).to_lowercase())
+                                .collect::<Vec<_>>(),
+                            Some("or"),
+                        );
+
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!("Invalid target for annotation `{}`", annotation.name),
+                            code: Some("A000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: annotation.span,
+                                label: Some(format!("only applies to targets: {}", targets_str)),
+                                style: SpanStyle::Primary,
+                            }],
+                        });
+                    }
+
+                    let annot_changed = annotation.pass(type_env, annotation_env, scope, errors);
+                    changed |= annot_changed;
+                }
+                None => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!("Unknown annotation `{}`", annotation.name),
+                        code: Some("A000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: annotation.span,
+                            label: None,
+                            style: SpanStyle::Primary,
+                        }],
+                    });
+                    return false;
+                }
+            }
         }
 
         changed
