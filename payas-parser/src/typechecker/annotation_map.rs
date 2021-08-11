@@ -1,9 +1,11 @@
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::Debug;
 
 use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
 use crate::typechecker::TypecheckFrom;
+use crate::util;
 
-use super::annotation::AnnotationSpec;
+use super::annotation::{AnnotationSpec, AnnotationTarget};
 use super::{Scope, Type, Typed};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -61,6 +63,7 @@ impl AnnotationMap {
 
     pub fn pass(
         &mut self,
+        target: AnnotationTarget,
         type_env: &MappedArena<Type>,
         annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
@@ -93,8 +96,47 @@ impl AnnotationMap {
 
         let mut changed = false;
         for annotation in self.annotations.values_mut() {
-            let annot_changed = annotation.pass(type_env, annotation_env, scope, errors);
-            changed |= annot_changed;
+            match annotation_env.get(&annotation.name) {
+                Some(spec) => {
+                    let targets = spec.targets;
+                    if !targets.contains(&target) {
+                        let targets_str = util::join_strings(
+                            &targets
+                                .iter()
+                                .map(|t| format!("{:?}", t).to_lowercase())
+                                .collect::<Vec<_>>(),
+                            Some("or"),
+                        );
+
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!("Invalid target for annotation `{}`", annotation.name),
+                            code: Some("A000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: annotation.span,
+                                label: Some(format!("only applies to targets: {}", targets_str)),
+                                style: SpanStyle::Primary,
+                            }],
+                        });
+                    }
+
+                    let annot_changed = annotation.pass(type_env, annotation_env, scope, errors);
+                    changed |= annot_changed;
+                }
+                None => {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: format!("Unknown annotation `{}`", annotation.name),
+                        code: Some("A000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: annotation.span,
+                            label: None,
+                            style: SpanStyle::Primary,
+                        }],
+                    });
+                    return false;
+                }
+            }
         }
 
         changed
