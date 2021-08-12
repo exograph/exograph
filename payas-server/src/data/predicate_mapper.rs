@@ -75,6 +75,11 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                         match boolean_predicate_name {
                             "and" | "or" => {
                                 if let List(arguments) = boolean_argument_value {
+                                    // first make sure we have arguments
+                                    if arguments.is_empty() {
+                                        panic!("Boolean predicate does not have any arguments")
+                                    }
+
                                     // build our predicate chain from the array of arguments provided
                                     let identity_predicate = match boolean_predicate_name {
                                         "and" => Predicate::True,

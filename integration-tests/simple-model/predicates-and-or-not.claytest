@@ -34,13 +34,19 @@ operation: |
       text
     }
 
-    #test_error: logs(where: {
+    #test_error_multiple_boolean_predicates: logs(where: {
     #  and: [
     #    {id: {eq: 1}}
+    #    {id: {eq: 2}}
     #  ],
     #  or: [
     #    {id: {eq: 1}}
+    #    {id: {eq: 2}}
     #  ]
+    #})
+
+    #test_error_empty_boolean_predicate: logs(where: {
+    #  and: []
     #})
   }
 response: |
