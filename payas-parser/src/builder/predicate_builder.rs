@@ -207,7 +207,7 @@ fn create_composite_filter_type_kind(
                 .predicate_types
                 .get_id(&get_parameter_type_name(&composite_type.name))
                 .unwrap(),
-            type_modifier: GqlTypeModifier::List,
+            type_modifier: GqlTypeModifier::Optional,
             column_id: None,
         },
     ];

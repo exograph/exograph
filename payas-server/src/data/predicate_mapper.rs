@@ -42,151 +42,85 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                     Predicate::And(Box::new(acc), Box::new(new_predicate))
                 })
             }
-            PredicateParameterTypeKind::Composite(parameters, comparison_params) => {
-                // generate_predicate_chain
-                // generate a Predicate chain from a Vec<PredicateParameter>.
-                //      for example, Predicate::And(Predicate::And(... Predicate::Eq(some, columns))) ...
-                //
-                // Pre:
-                //      predicate_connector:
-                //          a reference to a closure that 'connects' two Predicate values and returns the new connected Predicate
-                //          for example: &|a, b| Predicate::Or(a, b)
-                //      identity_predicate:
-                //          this predicate should satisfy the property i <> x = x
-                //          where i = identity_predicate (usually Predicate::True or Predicate::False)
-                //                x = an arbitrary predicate
-                //                <> = predicate_connector
-                //          when evaluated with any predicate x
-                //      parameters:
-                //          a reference to a Vec<PredicateParameter> specifying column information
-                //      argument_value:
-                //          a reference to our current argument_value that we will pass recursively to map_to_sql()
-                // Post: a chain of Predicates that will match
-                let generate_predicate_chain =
-                    |predicate_connector: &'a dyn Fn(
-                        Box<Predicate<'a>>,
-                        Box<Predicate<'a>>,
-                    ) -> Predicate<'a>,
-                     identity_predicate: Predicate<'a>,
-                     parameters: &'a Vec<PredicateParameter>,
-                     argument_value: &'a Value|
-                     -> Predicate<'a> {
-                        parameters
-                            .iter()
-                            .fold(identity_predicate.clone(), |acc, parameter| {
-                                let arg = operation_context
-                                    .get_argument_field(argument_value, &parameter.name);
-
-                                let new_predicate = match arg {
-                                    Some(argument_value_component) => parameter
-                                        .map_to_sql(argument_value_component, operation_context),
-                                    None => identity_predicate.clone(),
-                                };
-
-                                predicate_connector(Box::new(acc), Box::new(new_predicate))
-                            })
-                    };
-
-                let (comparison_param_name, comparison_arg_value) = comparison_params.iter().fold(
-                    ("", None),
-                    |(acc_name, acc_value), comparison_param| {
-                        let lookup_result = operation_context
-                            .get_argument_field(argument_value, &comparison_param.name);
-
-                        if lookup_result.is_some() && acc_value.is_some() {
+            PredicateParameterTypeKind::Composite(parameters, boolean_params) => {
+                // first, match any boolean predicates the argument_value might contain
+                let boolean_argument_value: (&str, Option<&Value>) = boolean_params
+                    .iter()
+                    .map(|parameter| {
+                        (
+                            parameter.name.as_str(),
+                            operation_context.get_argument_field(argument_value, &parameter.name),
+                        )
+                    })
+                    .fold(("", None), |(acc_name, acc_result), (name, result)| {
+                        if acc_result.is_some() && result.is_some() {
                             panic!(
-                                "Cannot specify both {} and {} at same level in query",
-                                acc_name, &comparison_param.name
+                                "Cannot specify more than one boolean predicate on the same level"
                             )
-                        } else if lookup_result.is_some() {
-                            (&comparison_param.name, lookup_result)
+                        } else if acc_result.is_some() && result.is_none() {
+                            (acc_name, acc_result)
                         } else {
-                            (acc_name, acc_value)
-                        }
-                    },
-                );
-
-                if let Some(List(clauses)) = comparison_arg_value {
-                    let initial_predicate = match comparison_param_name {
-                        "and" | "not" => Predicate::True,
-                        "or" => Predicate::False,
-                        _ => todo!("No such initial predicate implemented"),
-                    };
-
-                    let ret = clauses.iter().fold(initial_predicate, |acc, clause| {
-                        match comparison_param_name {
-                            "and" => {
-                                let and_chain = generate_predicate_chain(
-                                    &|a, b| Predicate::And(a, b),
-                                    Predicate::True,
-                                    parameters,
-                                    clause,
-                                );
-
-                                Predicate::And(Box::new(acc), Box::new(and_chain))
-                            }
-                            "or" => {
-                                let or_chain = generate_predicate_chain(
-                                    &|a, b| Predicate::Or(a, b),
-                                    Predicate::False,
-                                    parameters,
-                                    clause,
-                                );
-
-                                Predicate::Or(Box::new(acc), Box::new(or_chain))
-                            }
-                            "not" => {
-                                // start with a regular Or chain
-                                let or_chain = generate_predicate_chain(
-                                    &|a, b| Predicate::Or(a, b),
-                                    Predicate::False,
-                                    parameters,
-                                    clause,
-                                );
-
-                                // negate it (De Morgan's)
-                                // (A | B)' = A' & B'
-                                Predicate::And(
-                                    Box::new(acc),
-                                    Box::new(Predicate::Not(Box::new(or_chain))),
-                                )
-                            }
-                            _ => todo!("Comparison predicate not implemented"),
+                            (name, result)
                         }
                     });
 
-                    // TODO: we generate an unwieldly structure above us:
-                    //
-                    // And(
-                    //    And(
-                    //        True,
-                    //        Or(
-                    //            Or(
-                    //                Or(
-                    //                    False,
-                    //                    And(
-                    //                        And(
-                    //                            And(
-                    //                                And(
-                    //                                    And(
-                    //                                        And(
-                    //                                            True,
-                    //                                            Eq(..
-                    //
-                    // don't know if this will affect performance too much, but it's something to
-                    // improve later on
-                    // see for yourself:
-                    // eprintln!("{:#?}", ret);
+                // do we have a match?
+                match boolean_argument_value {
+                    (boolean_predicate_name, Some(boolean_argument_value)) => {
+                        // we have a single boolean predicate argument
+                        // e.g. and: [..], or: [..], not: {..}
 
-                    return ret;
+                        // we will now build a predicate from it
+
+                        match boolean_predicate_name {
+                            "and" | "or" => {
+                                if let List(arguments) = boolean_argument_value {
+                                    // build our predicate chain from the array of arguments provided
+                                    let identity_predicate = match boolean_predicate_name {
+                                        "and" => Predicate::True,
+                                        "or" => Predicate::False,
+                                        _ => panic!(),
+                                    };
+
+                                    let predicate_connector = match boolean_predicate_name {
+                                        "and" => |a, b| Predicate::And(Box::new(a), Box::new(b)),
+                                        "or" => |a, b| Predicate::Or(Box::new(a), Box::new(b)),
+                                        _ => panic!(),
+                                    };
+
+                                    arguments.iter().fold(identity_predicate, |acc, argument| {
+                                        let mapped = self.map_to_sql(argument, operation_context);
+                                        predicate_connector(acc, mapped)
+                                    })
+                                } else {
+                                    panic!("This boolean predicate needs a list of queries")
+                                }
+                            }
+
+                            "not" => Predicate::Not(Box::new(
+                                self.map_to_sql(boolean_argument_value, operation_context),
+                            )),
+
+                            _ => panic!(),
+                        }
+                    }
+
+                    _ => {
+                        // we are dealing with field predicate arguments
+                        // map field argument values into their respective predicates
+                        parameters.iter().fold(Predicate::True, |acc, parameter| {
+                            let arg = operation_context
+                                .get_argument_field(argument_value, &parameter.name);
+                            let new_predicate = match arg {
+                                Some(argument_value_component) => parameter
+                                    .map_to_sql(argument_value_component, operation_context),
+                                None => Predicate::True,
+                            };
+
+                            Predicate::And(Box::new(acc), Box::new(new_predicate))
+                        })
+                    }
                 }
-
-                generate_predicate_chain(
-                    &|a, b| Predicate::And(a, b),
-                    Predicate::True,
-                    parameters,
-                    argument_value,
-                )
             }
         }
     }

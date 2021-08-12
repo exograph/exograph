@@ -20,25 +20,18 @@ operation: |
     }
 
     test_not: logs(where: {
-      not: [
-        {text: {startsWith: "[NORMAL]"}},
-        {text: {startsWith: "[ERROR]"}},
-      ]
+      not: {text: {startsWith: "[NORMAL]"}}
     }) {
       text
     }
 
     test_nested: logs(where: {
-      or: [
-        {text: {startsWith: "[WARNING]"}},
-        {and: [
-          {timestamp: {gte: 11}},
-          {text: {startsWith: "[NORMAL]"}}
-        ]}
+      and: [
+        {not: {text: {startsWith: "[NORMAL]"}}},
+        {not: {text: {startsWith: "[ERROR]"}}},
       ]
     }) {
       text
-      timestamp
     }
 
     #test_error: logs(where: {
@@ -70,16 +63,14 @@ response: |
       "test_not": [
         {
           "text": "[WARNING] disk usage 50%"
+        },
+        {
+          "text": "[ERROR] service stopped"
         }
       ],
       "test_nested": [
         {
-          "text": "[WARNING] disk usage 50%",
-          "timestamp": 6
-        },
-        {
-          "text": "[NORMAL] it's 12:00pm!",
-          "timestamp": 12
+          "text": "[WARNING] disk usage 50%"
         }
       ]
     }
