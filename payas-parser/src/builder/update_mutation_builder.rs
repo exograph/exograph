@@ -1,10 +1,13 @@
 //! Build update mutation typ name: (), typ: (), relation: () es <Type>UpdateInput, update<Type>, and update<Type>s fields: (), table_id: (), pk_query: (), collection_query: (), access: ()  fields: (), table_id: (), pk_query: (), collection_query: (), access: ()
 
+use id_arena::Id;
+use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
-use payas_model::model::GqlTypeKind;
+use payas_model::model::{GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind};
 
+use crate::builder::mutation_builder::{create_data_type_name, update_data_type_name};
 use crate::builder::query_builder;
 
 use payas_model::model::operation::{MutationKind, UpdateDataParameter};
@@ -24,7 +27,7 @@ impl Builder for UpdateMutationBuilder {
     ) -> Vec<String> {
         // TODO: This implementation is the same for CreateMutationBuilder. Fix it when we refactor non-mutations builders
         let mut field_types = self.data_param_field_type_names(resolved_composite_type, models);
-        field_types.push(self.data_param_type_name(resolved_composite_type));
+        field_types.push(Self::data_param_type_name(resolved_composite_type));
         field_types
     }
 
@@ -116,21 +119,19 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         let nested = format!("{}Nested", &base);
         vec![base, nested]
     }
-    /*
+
     fn expand_one_to_many(
         &self,
         model_type: &GqlType,
         field: &GqlField,
         field_type: &GqlType,
         building: &SystemContextBuilding,
-        container_types: &[&str],
-        _new_container_types: &[&str],
+        _top_level_type: Option<&str>,
+        container_type: Option<&str>,
     ) -> Vec<(Id<GqlType>, GqlTypeKind)> {
-        let existing_type_name =
-            Self::data_type_name(&field_type.name, container_types.first().copied());
+        let existing_type_name = Self::data_type_name(&field_type.name, &container_type);
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-        dbg!(&existing_type_name, container_types, _new_container_types);
         if let GqlTypeKind::Composite(GqlCompositeTypeKind {
             table_id,
             pk_query,
@@ -138,18 +139,39 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             ..
         }) = model_type.kind
         {
-            println!("Creating {}", &existing_type_name);
             // If not already expanded (i.e. the kind is primitive)
             if let GqlTypeKind::Primitive = building.mutation_types[existing_type_id].kind {
+                let fields_info = vec![
+                    (
+                        "create",
+                        create_data_type_name(field.typ.type_name(), &container_type),
+                    ),
+                    (
+                        "update",
+                        update_data_type_name(field.typ.type_name(), &container_type) + "Nested",
+                    ),
+                    ("delete", field.typ.type_name().reference_type()),
+                ];
+
+                let fields = fields_info
+                    .into_iter()
+                    .map(|(name, field_type_name)| {
+                        let field_type = GqlFieldType::Reference {
+                            type_id: building.mutation_types.get_id(&field_type_name).unwrap(),
+                            type_name: field_type_name,
+                        };
+                        GqlField {
+                            name: String::from(name),
+                            typ: field_type,
+                            relation: field.relation.clone(),
+                        }
+                    })
+                    .collect();
                 vec![(
                     existing_type_id,
                     GqlTypeKind::Composite(GqlCompositeTypeKind {
-                        fields: vec![GqlField {
-                            name: String::from("create"),
-                            typ: field.typ.clone(),
-                            relation: field.relation.clone(),
-                        }],
-                        table_id: table_id,
+                        fields,
+                        table_id: table_id, // TODO: Introduce GqlTypeKind::CompositeInput that shouldn't need table_id etc
                         pk_query: pk_query,
                         collection_query: collection_query,
                         access: Access::restrictive(),
@@ -162,5 +184,5 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         } else {
             vec![]
         }
-    }*/
+    }
 }

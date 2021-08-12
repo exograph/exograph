@@ -80,7 +80,7 @@ pub trait MutationBuilder {
 }
 
 pub trait DataParamBuilder<D> {
-    fn data_param_type_name(&self, resolved_composite_type: &ResolvedCompositeType) -> String {
+    fn data_param_type_name(resolved_composite_type: &ResolvedCompositeType) -> String {
         Self::base_data_type_name(&resolved_composite_type.name)
     }
 
@@ -202,7 +202,6 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
     ) -> Option<GqlField> {
         let optional = Self::mark_fields_optional();
-        // dbg!(&field.name, container_type);
 
         let field_type_name = Self::data_type_name(field.typ.type_name(), container_type);
         let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
@@ -309,5 +308,24 @@ pub trait DataParamBuilder<D> {
         } else {
             vec![]
         }
+    }
+}
+
+pub fn create_data_type_name(model_type_name: &str, container_type: &Option<&str>) -> String {
+    let base_name = model_type_name.creation_type();
+    data_type_name(base_name, container_type)
+}
+
+pub fn update_data_type_name(model_type_name: &str, container_type: &Option<&str>) -> String {
+    let base_name = model_type_name.update_type();
+    data_type_name(base_name, container_type)
+}
+
+fn data_type_name(base_name: String, container_type: &Option<&str>) -> String {
+    match container_type {
+        Some(container_type) => {
+            format!("{}From{}", base_name, container_type)
+        }
+        None => base_name,
     }
 }
