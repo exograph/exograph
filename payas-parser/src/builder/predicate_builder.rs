@@ -177,9 +177,9 @@ fn create_composite_filter_type_kind(
         .collect();
 
     // TODO: reduce duplication here
-    // populate comparison operators for composite filter
+    // populate boolean predicate parameters for composite filter
 
-    let comparison_params = vec![
+    let boolean_params = vec![
         PredicateParameter {
             name: "and".to_string(),
             type_name: get_parameter_type_name(&composite_type.name.to_string()),
@@ -212,5 +212,5 @@ fn create_composite_filter_type_kind(
         },
     ];
 
-    PredicateParameterTypeKind::Composite(parameters, comparison_params)
+    PredicateParameterTypeKind::Composite(parameters, boolean_params)
 }
