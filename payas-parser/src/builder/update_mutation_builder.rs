@@ -1,6 +1,4 @@
-//! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
-
-use std::collections::HashSet;
+//! Build update mutation typ name: (), typ: (), relation: () es <Type>UpdateInput, update<Type>, and update<Type>s fields: (), table_id: (), pk_query: (), collection_query: (), access: ()  fields: (), table_id: (), pk_query: (), collection_query: (), access: ()
 
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
@@ -24,26 +22,19 @@ impl Builder for UpdateMutationBuilder {
         resolved_composite_type: &ResolvedCompositeType,
         models: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
-        let mutation_type_names = vec![resolved_composite_type.update_type()];
-
-        self.field_type_names(resolved_composite_type, models)
-            .into_iter()
-            .chain(mutation_type_names.into_iter())
-            .collect()
+        // TODO: This implementation is the same for CreateMutationBuilder. Fix it when we refactor non-mutations builders
+        let mut field_types = self.data_param_field_type_names(resolved_composite_type, models);
+        field_types.push(self.data_param_type_name(resolved_composite_type));
+        field_types
     }
 
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
-        let mut expanded_nested_mutation_types = HashSet::new();
-
         for (_, model_type) in building.types.iter() {
             if let GqlTypeKind::Composite { .. } = &model_type.kind {
-                for (existing_id, expanded_kind) in self.expanded_data_type(
-                    model_type,
-                    building,
-                    vec![],
-                    &mut expanded_nested_mutation_types,
-                ) {
+                for (existing_id, expanded_kind) in
+                    self.expanded_data_type(model_type, building, Some(&model_type.name), None)
+                {
                     building.mutation_types[existing_id].kind = expanded_kind;
                 }
             }
@@ -114,4 +105,62 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             type_id: data_param_type_id,
         }
     }
+
+    fn data_param_field_one_to_many_type_names(
+        field_type_name: &str,
+        resolved_composite_type: &ResolvedCompositeType,
+    ) -> Vec<String> {
+        // Base: ConcertArtistUpdateInputFromConcert (will have create, insert, and update fields)
+        // Nested: ConcertArtistUpdateInputFromConcertNested (will have the model fields to be updated)
+        let base = Self::data_type_name(field_type_name, &Some(&resolved_composite_type.name));
+        let nested = format!("{}Nested", &base);
+        vec![base, nested]
+    }
+    /*
+    fn expand_one_to_many(
+        &self,
+        model_type: &GqlType,
+        field: &GqlField,
+        field_type: &GqlType,
+        building: &SystemContextBuilding,
+        container_types: &[&str],
+        _new_container_types: &[&str],
+    ) -> Vec<(Id<GqlType>, GqlTypeKind)> {
+        let existing_type_name =
+            Self::data_type_name(&field_type.name, container_types.first().copied());
+        let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+
+        dbg!(&existing_type_name, container_types, _new_container_types);
+        if let GqlTypeKind::Composite(GqlCompositeTypeKind {
+            table_id,
+            pk_query,
+            collection_query,
+            ..
+        }) = model_type.kind
+        {
+            println!("Creating {}", &existing_type_name);
+            // If not already expanded (i.e. the kind is primitive)
+            if let GqlTypeKind::Primitive = building.mutation_types[existing_type_id].kind {
+                vec![(
+                    existing_type_id,
+                    GqlTypeKind::Composite(GqlCompositeTypeKind {
+                        fields: vec![GqlField {
+                            name: String::from("create"),
+                            typ: field.typ.clone(),
+                            relation: field.relation.clone(),
+                        }],
+                        table_id: table_id,
+                        pk_query: pk_query,
+                        collection_query: collection_query,
+                        access: Access::restrictive(),
+                    }),
+                )]
+                //self.expanded_data_type(field_type, building, new_container_types.to_owned())
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        }
+    }*/
 }

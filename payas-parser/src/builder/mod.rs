@@ -43,11 +43,11 @@ pub trait Builder {
         building: &mut SystemContextBuilding,
     ) {
         if let ResolvedType::Composite(c) = resolved_type {
-            for mutation_type_name in self.type_names(c, resolved_types).iter() {
+            for type_name in self.type_names(c, resolved_types).iter() {
                 building.mutation_types.add(
-                    mutation_type_name,
+                    type_name,
                     GqlType {
-                        name: mutation_type_name.to_string(),
+                        name: type_name.to_string(),
                         plural_name: "".to_string(), // unused
                         kind: GqlTypeKind::Primitive,
                         is_input: true,

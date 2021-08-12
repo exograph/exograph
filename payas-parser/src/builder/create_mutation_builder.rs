@@ -1,8 +1,6 @@
 //! Build mutation input types associatd with creation (<Type>CreationInput) and
 //! the create mutations (create<Type>, and create<Type>s)
 
-use std::collections::HashSet;
-
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
@@ -23,25 +21,17 @@ impl Builder for CreateMutationBuilder {
         resolved_composite_type: &ResolvedCompositeType,
         models: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
-        let mutation_type_names = vec![resolved_composite_type.creation_type()];
-
-        self.field_type_names(resolved_composite_type, models)
-            .into_iter()
-            .chain(mutation_type_names.into_iter())
-            .collect()
+        let mut field_types = self.data_param_field_type_names(resolved_composite_type, models);
+        field_types.push(self.data_param_type_name(resolved_composite_type));
+        field_types
     }
 
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
-        let mut expanded_nested_mutation_types = HashSet::new();
-
         for (_, model_type) in building.types.iter() {
             if let GqlTypeKind::Composite { .. } = &model_type.kind {
-                for (existing_id, expanded_kind) in self.expanded_data_type(
-                    model_type,
-                    building,
-                    vec![],
-                    &mut expanded_nested_mutation_types,
-                ) {
+                for (existing_id, expanded_kind) in
+                    self.expanded_data_type(model_type, building, Some(&model_type.name), None)
+                {
                     building.mutation_types[existing_id].kind = expanded_kind;
                 }
             }
