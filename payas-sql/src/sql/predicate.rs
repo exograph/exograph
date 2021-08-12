@@ -118,7 +118,7 @@ impl<'a> Expression for Predicate<'a> {
             }
             Predicate::StringLike(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
-                    format!("({} LIKE {})", stmt1, stmt2)
+                    format!("{} LIKE {}", stmt1, stmt2)
                 })
             }
             // we use the postgres concat operator (||) in order to handle both literals
@@ -247,7 +247,7 @@ mod tests {
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
             &predicate.binding(&mut expression_context),
-            r#""people"."name" = $1 AND "people"."age" = $2"#,
+            r#"("people"."name" = $1 AND "people"."age" = $2)"#,
             "foo",
             5
         );
