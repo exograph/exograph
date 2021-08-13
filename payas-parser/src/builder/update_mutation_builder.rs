@@ -1,4 +1,4 @@
-//! Build update mutation typ name: (), typ: (), relation: () es <Type>UpdateInput, update<Type>, and update<Type>s fields: (), table_id: (), pk_query: (), collection_query: (), access: ()  fields: (), table_id: (), pk_query: (), collection_query: (), access: ()
+//! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
 
 use id_arena::Id;
 use payas_model::model::access::Access;
@@ -38,7 +38,8 @@ impl Builder for UpdateMutationBuilder {
                 for (existing_id, expanded_kind) in
                     self.expanded_data_type(model_type, building, Some(&model_type.name), None)
                 {
-                    building.mutation_types[existing_id].kind = expanded_kind;
+                    building.mutation_types[existing_id].kind =
+                        GqlTypeKind::Composite(expanded_kind);
                 }
             }
         }
@@ -120,17 +121,62 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         vec![base, nested]
     }
 
+    /// The field corresponding to the a one-to-many data parameter is different for update.
+    /// Such a field needs three subfields:
+    /// "create" to allow adding new items. The shape of this fields is the same as if it were a top-level field.
+    /// "delete" to allow removing items. The shape of this fields is the same as if it were a top-level field (i.e. a reference type).
+    /// "update" to allow updating items. The shape of this fields is the same as if it were a top-level field, except it also includes the "id" field.
+    ///
+    /// In this function we create four types. Three as described above, and one to include those three types. To differentiate the nested "update" type
+    // from the containing "update" type, we add a "Nested" suffix.
     fn expand_one_to_many(
         &self,
         model_type: &GqlType,
         field: &GqlField,
         field_type: &GqlType,
         building: &SystemContextBuilding,
-        _top_level_type: Option<&str>,
+        top_level_type: Option<&str>,
         container_type: Option<&str>,
-    ) -> Vec<(Id<GqlType>, GqlTypeKind)> {
+    ) -> Vec<(Id<GqlType>, GqlCompositeTypeKind)> {
         let existing_type_name = Self::data_type_name(&field_type.name, &container_type);
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
+
+        let nested_type = {
+            let nested_existing_type_id = {
+                let nested_existing_type_name =
+                    Self::data_type_name(&field_type.name, &container_type) + "Nested";
+                building
+                    .mutation_types
+                    .get_id(&nested_existing_type_name)
+                    .unwrap()
+            };
+
+            &self
+                .expanded_data_type(field_type, building, top_level_type, container_type)
+                .first()
+                .map(|tpe| {
+                    let base_type = tpe.1.clone();
+                    let mut fields_with_id = Vec::with_capacity(base_type.fields.len() + 1);
+
+                    let model_pk_field = model_type.pk_field().unwrap();
+
+                    let update_pk_field = GqlField {
+                        typ: model_pk_field.typ.clone(),
+                        ..model_pk_field.clone()
+                    };
+                    fields_with_id.push(update_pk_field);
+
+                    fields_with_id.extend(base_type.fields.into_iter());
+
+                    let type_with_id = GqlCompositeTypeKind {
+                        fields: fields_with_id,
+                        ..base_type
+                    };
+
+                    (nested_existing_type_id, type_with_id)
+                })
+        }
+        .clone();
 
         if let GqlTypeKind::Composite(GqlCompositeTypeKind {
             table_id,
@@ -156,28 +202,33 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                 let fields = fields_info
                     .into_iter()
                     .map(|(name, field_type_name)| {
-                        let field_type = GqlFieldType::Reference {
+                        let plain_field_type = GqlFieldType::Reference {
                             type_id: building.mutation_types.get_id(&field_type_name).unwrap(),
                             type_name: field_type_name,
                         };
                         GqlField {
                             name: String::from(name),
-                            typ: field_type,
+                            typ: GqlFieldType::List(Box::new(plain_field_type)),
                             relation: field.relation.clone(),
                         }
                     })
                     .collect();
-                vec![(
+                let mut types = vec![(
                     existing_type_id,
-                    GqlTypeKind::Composite(GqlCompositeTypeKind {
+                    GqlCompositeTypeKind {
                         fields,
-                        table_id: table_id, // TODO: Introduce GqlTypeKind::CompositeInput that shouldn't need table_id etc
-                        pk_query: pk_query,
-                        collection_query: collection_query,
+                        table_id, // TODO: Introduce GqlTypeKind::CompositeInput that shouldn't need table_id etc
+                        pk_query,
+                        collection_query,
                         access: Access::restrictive(),
-                    }),
-                )]
-                //self.expanded_data_type(field_type, building, new_container_types.to_owned())
+                    },
+                )];
+
+                if let Some(nested_type) = nested_type {
+                    types.push(nested_type);
+                }
+
+                types
             } else {
                 vec![]
             }

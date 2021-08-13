@@ -32,7 +32,8 @@ impl Builder for CreateMutationBuilder {
                 for (existing_id, expanded_kind) in
                     self.expanded_data_type(model_type, building, Some(&model_type.name), None)
                 {
-                    building.mutation_types[existing_id].kind = expanded_kind;
+                    building.mutation_types[existing_id].kind =
+                        GqlTypeKind::Composite(expanded_kind);
                 }
             }
         }

@@ -20,7 +20,7 @@ use super::update_mutation_builder::UpdateMutationBuilder;
 
 use super::Builder;
 
-// TODO: Introduce this as a struct (and have it hold the sub-builders)
+// TODO: Introduce this module as a struct (and have it hold the sub-builders)
 // TODO: Abstract the concept of compisite builders
 
 /// Build shallow mutaiton input types
@@ -178,7 +178,13 @@ pub trait DataParamBuilder<D> {
                     type_id: field_type_id,
                 };
                 let field_type = match field.typ {
-                    GqlFieldType::Reference { .. } => field_plain_type,
+                    GqlFieldType::Reference { .. } => {
+                        if optional {
+                            field_plain_type.optional()
+                        } else {
+                            field_plain_type
+                        }
+                    }
                     GqlFieldType::Optional(_) => GqlFieldType::Optional(Box::new(field_plain_type)),
                     GqlFieldType::List(_) => GqlFieldType::List(Box::new(field_plain_type)),
                 };
@@ -231,7 +237,7 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&str>,
         container_type: Option<&str>,
-    ) -> Vec<(Id<GqlType>, GqlTypeKind)> {
+    ) -> Vec<(Id<GqlType>, GqlCompositeTypeKind)> {
         if let GqlTypeKind::Composite(GqlCompositeTypeKind {
             ref fields,
             table_id,
@@ -271,13 +277,13 @@ pub trait DataParamBuilder<D> {
                 self.compute_data_fields(model_fields, top_level_type, building);
             field_types.push((
                 existing_type_id,
-                GqlTypeKind::Composite(GqlCompositeTypeKind {
+                GqlCompositeTypeKind {
                     fields: input_type_fields,
                     table_id,
                     pk_query,
                     collection_query,
                     access: Access::restrictive(),
-                }),
+                },
             ));
 
             field_types
@@ -294,7 +300,7 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&str>,
         container_type: Option<&str>,
-    ) -> Vec<(Id<GqlType>, GqlTypeKind)> {
+    ) -> Vec<(Id<GqlType>, GqlCompositeTypeKind)> {
         let existing_type_name = Self::data_type_name(&field_type.name, &container_type);
 
         if let GqlTypeKind::Primitive = building
@@ -304,7 +310,7 @@ pub trait DataParamBuilder<D> {
             .kind
         {
             // If not already expanded (i.e. the kind is primitive)
-            self.expanded_data_type(&field_type, building, top_level_type, container_type)
+            self.expanded_data_type(field_type, building, top_level_type, container_type)
         } else {
             vec![]
         }
