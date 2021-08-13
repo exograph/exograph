@@ -87,8 +87,8 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     type_builder::build_expanded(resolved_types, building);
     context_builder::build_expanded(resolved_contexts, building);
 
-    // Which is then used to expand query and query parameters (the order of the next three is unimportant) but must be executed
-    // after running type_builder::build_expanded
+    // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
+    // after running type_builder::build_expanded (since they depend on expanded GqlTypes (note the next ones do not access resolved_types))
     order_by_type_builder::build_expanded(building);
     predicate_builder::build_expanded(building);
 

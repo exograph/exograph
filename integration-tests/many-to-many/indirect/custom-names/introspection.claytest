@@ -1,0 +1,160 @@
+operation: |
+  {
+    ConcertArtistUpdateInputFromConcert: __type(
+      name: "ConcertArtistUpdateInputFromConcert"
+    ) {
+      ...type_info
+    }
+    ConcertArtistCreationInputFromConcert: __type(name: "ConcertArtistCreationInputFromConcert") {
+      ...type_info
+    }  
+    ConcertArtistUpdateInputFromConcertNested: __type(name: "ConcertArtistUpdateInputFromConcertNested") {
+      ...type_info
+    }
+    ConcertArtistReferenceInput: __type(name: "ConcertArtistReferenceInput") {
+      ...type_info
+    }
+  }
+
+  fragment type_info on __Type {
+    name
+    inputFields {
+      name
+      type {
+        name
+        ofType {
+          name
+        }
+        kind
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "ConcertArtistUpdateInputFromConcert": {
+        "name": "ConcertArtistUpdateInputFromConcert",
+        "inputFields": [
+          {
+            "name": "create",
+            "type": {
+              "name": null,
+              "ofType": {
+                "name": "ConcertArtistCreationInputFromConcert"
+              },
+              "kind": "LIST"
+            }
+          },
+          {
+            "name": "update",
+            "type": {
+              "name": null,
+              "ofType": {
+                "name": "ConcertArtistUpdateInputFromConcertNested"
+              },
+              "kind": "LIST"
+            }
+          },
+          {
+            "name": "delete",
+            "type": {
+              "name": null,
+              "ofType": {
+                "name": "ConcertArtistReferenceInput"
+              },
+              "kind": "LIST"
+            }
+          }
+        ]
+      },
+      "ConcertArtistCreationInputFromConcert": {
+        "name": "ConcertArtistCreationInputFromConcert",
+        "inputFields": [
+          {
+            "name": "artist",
+            "type": {
+              "name": null,
+              "ofType": {
+                "name": "ArtistReferenceInput"
+              },
+              "kind": "NON_NULL"
+            }
+          },
+          {
+            "name": "rank",
+            "type": {
+              "name": null,
+              "ofType": {
+                "name": "Int"
+              },
+              "kind": "NON_NULL"
+            }
+          },
+          {
+            "name": "role",
+            "type": {
+              "name": null,
+              "ofType": {
+                "name": "String"
+              },
+              "kind": "NON_NULL"
+            }
+          }
+        ]
+      },
+      "ConcertArtistUpdateInputFromConcertNested": {
+        "name": "ConcertArtistUpdateInputFromConcertNested",
+        "inputFields": [
+          {
+            "name": "id",
+            "type": {
+              "name": null,
+              "ofType": {
+                "name": "Int"
+              },
+              "kind": "NON_NULL"
+            }
+          },
+          {
+            "name": "artist",
+            "type": {
+              "name": "ArtistReferenceInput",
+              "ofType": null,
+              "kind": "INPUT_OBJECT"
+            }
+          },
+          {
+            "name": "rank",
+            "type": {
+              "name": "Int",
+              "ofType": null,
+              "kind": "SCALAR"
+            }
+          },
+          {
+            "name": "role",
+            "type": {
+              "name": "String",
+              "ofType": null,
+              "kind": "SCALAR"
+            }
+          }
+        ]
+      },
+      "ConcertArtistReferenceInput": {
+        "name": "ConcertArtistReferenceInput",
+        "inputFields": [
+          {
+            "name": "id",
+            "type": {
+              "name": null,
+              "ofType": {
+                "name": "Int"
+              },
+              "kind": "NON_NULL"
+            }
+          }
+        ]
+      }
+    }
+  }
