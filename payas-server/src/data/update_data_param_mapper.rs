@@ -1,3 +1,4 @@
+use anyhow::*;
 use async_graphql_value::Value;
 
 use crate::sql::column::Column;
@@ -17,7 +18,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for UpdateData
         &'a self,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> Vec<(&PhysicalColumn, &Column)> {
+    ) -> Result<Vec<(&PhysicalColumn, &Column)>> {
         let system = &operation_context.query_context.system;
         let model_type = &system.mutation_types[self.type_id];
 
@@ -26,7 +27,7 @@ impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for UpdateData
             _ => argument,
         };
 
-        match &model_type.kind {
+        let mapping = match &model_type.kind {
             GqlTypeKind::Primitive => panic!(),
             GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
                 .iter()
@@ -62,6 +63,8 @@ impl<'a> SQLMapper<'a, Vec<(&'a PhysicalColumn, &'a Column<'a>)>> for UpdateData
                     })
                 })
                 .collect(),
-        }
+        };
+
+        Ok(mapping)
     }
 }

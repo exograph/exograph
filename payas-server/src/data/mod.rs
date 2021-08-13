@@ -9,6 +9,7 @@ pub mod query_resolver;
 pub mod sql_mapper;
 mod update_data_param_mapper;
 
+use anyhow::*;
 use async_graphql_parser::Positioned;
 use async_graphql_value::{Name, Value};
 
@@ -36,17 +37,22 @@ fn compute_predicate<'a>(
     arguments: &'a Arguments,
     additional_predicate: Predicate<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Option<&'a Predicate<'a>> {
-    let predicate = predicate_param.as_ref().and_then(|predicate_parameter| {
-        let argument_value = find_arg(arguments, &predicate_parameter.name);
-        argument_value
-            .map(|argument_value| predicate_parameter.map_to_sql(argument_value, operation_context))
-    });
+) -> Result<&'a Predicate<'a>> {
+    let predicate = predicate_param
+        .as_ref()
+        .and_then(|predicate_parameter| {
+            let argument_value = find_arg(arguments, &predicate_parameter.name);
+            argument_value.map(|argument_value| {
+                predicate_parameter.map_to_sql(argument_value, operation_context)
+            })
+        })
+        .transpose()
+        .context("While mapping predicate parameters to SQL")?;
 
     let predicate = match predicate {
         Some(predicate) => Predicate::And(Box::new(predicate), Box::new(additional_predicate)),
         None => additional_predicate,
     };
 
-    Some(operation_context.create_predicate(predicate))
+    Ok(operation_context.create_predicate(predicate))
 }

@@ -7,7 +7,7 @@ use crate::{
     sql::{column::Column, predicate::Predicate, Cte, PhysicalTable, SQLOperation},
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::*;
 use payas_model::{
     model::{operation::*, predicate::PredicateParameter, types::*},
     sql::column::PhysicalColumn,
@@ -92,7 +92,7 @@ fn create_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let info = insertion_info(data_param, &field.arguments, operation_context).unwrap();
+    let info = insertion_info(data_param, &field.arguments, operation_context)?.unwrap();
     let ops = info.operation(operation_context);
 
     Ok(ops)
@@ -122,12 +122,18 @@ fn delete_operation<'a>(
         &field.arguments,
         access_predicate.clone(),
         operation_context,
-    );
+    )
+    .with_context(|| {
+        format!(
+            "During predicate computation for parameter {}",
+            predicate_param.name
+        )
+    })?;
 
     Ok(vec![(
         table_name(mutation, operation_context),
         SQLOperation::Delete(table.delete(
-            predicate,
+            Some(predicate),
             vec![operation_context.create_column(Column::Star)],
         )),
     )])
@@ -159,9 +165,16 @@ fn update_operation<'a>(
         Predicate::True,
         operation_context,
     )
-    .unwrap();
+    .with_context(|| {
+        format!(
+            "During predicate computation for parameter {}",
+            predicate_param.name
+        )
+    })?;
 
-    let column_values = update_columns(data_param, &field.arguments, operation_context).unwrap();
+    let column_values = update_columns(data_param, &field.arguments, operation_context)
+        .with_context(|| format!("While generating update columns for field {}", field.name))?
+        .unwrap();
 
     Ok(vec![(
         table_name(mutation, operation_context),
@@ -177,21 +190,25 @@ fn insertion_info<'a>(
     data_param: &'a CreateDataParameter,
     arguments: &'a Arguments,
     operation_context: &'a OperationContext<'a>,
-) -> Option<InsertionInfo<'a>> {
+) -> Result<Option<InsertionInfo<'a>>> {
     let system = &operation_context.query_context.system;
     let input_type = &system.mutation_types[data_param.type_id];
 
     let argument_value = super::find_arg(arguments, &data_param.name);
-    argument_value.map(|argument_value| input_type.map_to_sql(argument_value, operation_context))
+    argument_value
+        .map(|argument_value| input_type.map_to_sql(argument_value, operation_context))
+        .transpose()
 }
 
 fn update_columns<'a>(
     data_param: &'a UpdateDataParameter,
     arguments: &'a Arguments,
     operation_context: &'a OperationContext<'a>,
-) -> Option<Vec<(&'a PhysicalColumn, &'a Column<'a>)>> {
+) -> Result<Option<Vec<(&'a PhysicalColumn, &'a Column<'a>)>>> {
     let argument_value = super::find_arg(arguments, &data_param.name);
-    argument_value.map(|argument_value| data_param.map_to_sql(argument_value, operation_context))
+    argument_value
+        .map(|argument_value| data_param.map_to_sql(argument_value, operation_context))
+        .transpose()
 }
 
 fn return_type_info<'a>(
