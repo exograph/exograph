@@ -14,19 +14,22 @@ variable: |
     }
 response: |
     {
-    	"data": {
-    		"eq_test": [
-    			{
-    				"text": "[NORMAL] http request"
-    			}
-    		],
-    		"neq_test": [
-    			{
-    				"text": "[WARNING] disk usage 50%"
-    			},
-    			{
-    				"text": "[ERROR] service stopped"
-    			}
-    		]
-    	}
+        "data": {
+            "eq_test": [
+                {
+                    "text": "[NORMAL] http request"
+                }
+            ],
+            "neq_test": [
+                {
+                    "text": "[WARNING] disk usage 50%"
+                },
+                {
+                    "text": "[ERROR] service stopped"
+                },
+            {
+                    "text": "[NORMAL] it's 12:00pm!"
+                  }
+            ]
+        }
     }

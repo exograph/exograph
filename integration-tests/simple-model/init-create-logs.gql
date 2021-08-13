@@ -9,6 +9,9 @@ operation: |
         log3: createLog(data: {timestamp: 9, text: $log3_text}) {
             id
         }
+        log4: createLog(data: {timestamp: 12, text: "[NORMAL] it's 12:00pm!"}) {
+            id
+        }
     }  
 variable: |
     {
