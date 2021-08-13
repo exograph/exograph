@@ -1,66 +1,65 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
+use codemap_diagnostic::Diagnostic;
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstAnnotationParams;
+use crate::ast::ast_types::{AstAnnotationParams, AstExpr, Untyped};
 
-use super::{Typecheck, TypedExpression};
+use super::annotation::AnnotationSpec;
+use super::{Type, TypecheckFrom, Typed};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum TypedAnnotationParams {
-    None,
-    Single(TypedExpression),
-    Map(HashMap<String, TypedExpression>),
+impl AstAnnotationParams<Typed> {
+    pub fn as_single(&self) -> &AstExpr<Typed> {
+        match self {
+            Self::Single(expr, _) => expr,
+            _ => panic!(),
+        }
+    }
+
+    pub fn as_map(&self) -> &HashMap<String, AstExpr<Typed>> {
+        match self {
+            Self::Map(map, _) => map,
+            _ => panic!(),
+        }
+    }
 }
 
-impl Typecheck<TypedAnnotationParams> for AstAnnotationParams {
-    fn shallow(
-        &self,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
-    ) -> Result<TypedAnnotationParams> {
-        Ok(match &self {
-            AstAnnotationParams::None => TypedAnnotationParams::None,
-            AstAnnotationParams::Single(expr, _) => {
-                TypedAnnotationParams::Single(expr.shallow(errors)?)
+impl TypecheckFrom<AstAnnotationParams<Untyped>> for AstAnnotationParams<Typed> {
+    fn shallow(untyped: &AstAnnotationParams<Untyped>) -> AstAnnotationParams<Typed> {
+        match untyped {
+            AstAnnotationParams::None => AstAnnotationParams::None,
+            AstAnnotationParams::Single(expr, span) => {
+                AstAnnotationParams::Single(AstExpr::shallow(expr), *span)
             }
-            AstAnnotationParams::Map(params, _) => TypedAnnotationParams::Map(
+            AstAnnotationParams::Map(params, spans) => AstAnnotationParams::Map(
                 params
                     .iter()
-                    .map(|(name, expr)| expr.shallow(errors).map(|t| (name.clone(), t)))
-                    .collect::<Result<_, _>>()?,
+                    .map(|(name, expr)| (name.clone(), AstExpr::shallow(expr)))
+                    .collect(),
+                spans.clone(),
             ),
-        })
+        }
     }
 
     fn pass(
-        &self,
-        typ: &mut TypedAnnotationParams,
-        env: &MappedArena<super::Type>,
+        &mut self,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &super::Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        match &self {
-            AstAnnotationParams::None => true,
+        match self {
+            AstAnnotationParams::None => false,
             AstAnnotationParams::Single(expr, _) => {
-                if let TypedAnnotationParams::Single(expr_typ) = typ {
-                    expr.pass(expr_typ, env, scope, errors)
-                } else {
-                    panic!();
-                }
+                expr.pass(type_env, annotation_env, scope, errors)
             }
             AstAnnotationParams::Map(params, _) => {
-                if let TypedAnnotationParams::Map(params_typ) = typ {
-                    params
-                        .iter()
-                        .map(|(name, expr)| {
-                            expr.pass(params_typ.get_mut(name).unwrap(), env, scope, errors)
-                        })
-                        .any(|b| b)
-                } else {
-                    panic!();
-                }
+                params
+                    .values_mut()
+                    .map(|param| param.pass(type_env, annotation_env, scope, errors))
+                    .filter(|b| *b)
+                    .count()
+                    > 0
             }
         }
     }

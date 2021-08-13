@@ -1,44 +1,43 @@
-use anyhow::Result;
+use std::collections::HashMap;
+
+use codemap_diagnostic::Diagnostic;
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
 
-use crate::ast::ast_types::AstField;
+use crate::ast::ast_types::{AstField, Untyped};
 
-use super::{AnnotationMap, Scope, Type, Typecheck};
+use super::annotation::{AnnotationSpec, AnnotationTarget};
+use super::{AnnotationMap, Scope, Type, TypecheckFrom, TypecheckInto, Typed};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TypedField {
-    pub name: String,
-    pub typ: Type,
-    pub annotations: Box<AnnotationMap>,
-}
+impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
+    fn shallow(untyped: &AstField<Untyped>) -> AstField<Typed> {
+        let annotation_map = AnnotationMap::new(&untyped.annotations);
 
-impl Typecheck<TypedField> for AstField {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedField> {
-        let mut annotations = Box::new(AnnotationMap::default());
-
-        for a in &self.annotations {
-            let annotation = a.shallow(errors)?;
-            annotations.add(errors, annotation, a.span)?;
+        AstField {
+            name: untyped.name.clone(),
+            ast_typ: untyped.ast_typ.clone(),
+            typ: untyped.ast_typ.shallow(),
+            annotations: annotation_map,
         }
-
-        Ok(TypedField {
-            name: self.name.clone(),
-            typ: self.typ.shallow(errors)?,
-            annotations,
-        })
     }
 
     fn pass(
-        &self,
-        typ: &mut TypedField,
-        env: &MappedArena<Type>,
+        &mut self,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        let typ_changed = self.typ.pass(&mut typ.typ, env, scope, errors);
+        let typ_changed = self
+            .ast_typ
+            .pass(&mut self.typ, type_env, annotation_env, scope, errors);
 
-        let annot_changed = typ.annotations.pass(&self.annotations, env, scope, errors);
+        let annot_changed = self.annotations.pass(
+            AnnotationTarget::Field,
+            type_env,
+            annotation_env,
+            scope,
+            errors,
+        );
 
         typ_changed || annot_changed
     }

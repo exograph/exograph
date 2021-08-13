@@ -1,19 +1,56 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter},
+};
 
 use codemap::{CodeMap, Span};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct AstSystem {
-    pub models: Vec<AstModel>,
+pub trait NodeTypedness
+where
+    Self::FieldSelection: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::RelationalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::Expr: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::LogicalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::Field: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::Annotations: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+{
+    type FieldSelection;
+    type RelationalOp;
+    type Expr;
+    type LogicalOp;
+    type Field;
+    type Annotations;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct AstModel {
+pub struct Untyped;
+impl NodeTypedness for Untyped {
+    type FieldSelection = ();
+    type RelationalOp = ();
+    type Expr = ();
+    type LogicalOp = ();
+    type Field = ();
+    type Annotations = Vec<AstAnnotation<Untyped>>;
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstSystem<T: NodeTypedness> {
+    pub models: Vec<AstModel<T>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstModel<T: NodeTypedness> {
     pub name: String,
     pub kind: AstModelKind,
-    pub fields: Vec<AstField>,
-    pub annotations: Vec<AstAnnotation>,
+    pub fields: Vec<AstField<T>>,
+    pub annotations: T::Annotations,
+}
+
+impl<T: NodeTypedness> Display for AstModel<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name.as_str())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -23,10 +60,11 @@ pub enum AstModelKind {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct AstField {
+pub struct AstField<T: NodeTypedness> {
     pub name: String,
-    pub typ: AstFieldType,
-    pub annotations: Vec<AstAnnotation>,
+    pub ast_typ: AstFieldType,
+    pub typ: T::Field,
+    pub annotations: T::Annotations,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -61,9 +99,9 @@ impl AstFieldType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct AstAnnotation {
+pub struct AstAnnotation<T: NodeTypedness> {
     pub name: String,
-    pub params: AstAnnotationParams,
+    pub params: AstAnnotationParams<T>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
@@ -71,12 +109,12 @@ pub struct AstAnnotation {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum AstAnnotationParams {
+pub enum AstAnnotationParams<T: NodeTypedness> {
     /// No parameters (e.g. `@pk`)
     None,
     /// Single parameter (e.g. `@table("concerts"))
     Single(
-        AstExpr,
+        AstExpr<T>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
@@ -84,18 +122,18 @@ pub enum AstAnnotationParams {
     ),
     /// Named parameters (e.g. `@range(min=-10, max=10)`)
     Map(
-        HashMap<String, AstExpr>,
+        HashMap<String, AstExpr<T>>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
-        Vec<(String, Span)>, // store as Vec to check for duplicates later on
+        HashMap<String, Vec<Span>>, // store as Vec to check for duplicates later on
     ),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum AstExpr {
-    FieldSelection(FieldSelection),
-    LogicalOp(LogicalOp),
-    RelationalOp(RelationalOp),
+pub enum AstExpr<T: NodeTypedness> {
+    FieldSelection(FieldSelection<T>),
+    LogicalOp(LogicalOp<T>),
+    RelationalOp(RelationalOp<T>),
     StringLiteral(
         String,
         #[serde(skip_serializing)]
@@ -119,7 +157,7 @@ pub enum AstExpr {
     ),
 }
 
-impl AstExpr {
+impl<T: NodeTypedness> AstExpr<T> {
     pub fn span(&self) -> &Span {
         match &self {
             AstExpr::FieldSelection(s) => s.span(),
@@ -130,48 +168,50 @@ impl AstExpr {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum FieldSelection {
-    Single(Identifier),
+pub enum FieldSelection<T: NodeTypedness> {
+    Single(Identifier, T::FieldSelection),
     Select(
-        Box<FieldSelection>,
+        Box<FieldSelection<T>>,
         Identifier,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         Span,
+        T::FieldSelection,
     ),
 }
 
-impl FieldSelection {
+impl<T: NodeTypedness> FieldSelection<T> {
     pub fn span(&self) -> &Span {
         match &self {
-            FieldSelection::Select(_, _, s) => s,
+            FieldSelection::Select(_, _, s, _) => s,
             _ => panic!(),
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum LogicalOp {
+pub enum LogicalOp<T: NodeTypedness> {
     Not(
-        Box<AstExpr>,
+        Box<AstExpr<T>>,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         Span,
+        T::LogicalOp,
     ),
-    And(Box<AstExpr>, Box<AstExpr>),
-    Or(Box<AstExpr>, Box<AstExpr>),
+    And(Box<AstExpr<T>>, Box<AstExpr<T>>, T::LogicalOp),
+    Or(Box<AstExpr<T>>, Box<AstExpr<T>>, T::LogicalOp),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum RelationalOp {
-    Eq(Box<AstExpr>, Box<AstExpr>),
-    Neq(Box<AstExpr>, Box<AstExpr>),
-    Lt(Box<AstExpr>, Box<AstExpr>),
-    Lte(Box<AstExpr>, Box<AstExpr>),
-    Gt(Box<AstExpr>, Box<AstExpr>),
-    Gte(Box<AstExpr>, Box<AstExpr>),
+pub enum RelationalOp<T: NodeTypedness> {
+    Eq(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Neq(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Lt(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Lte(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Gt(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    Gte(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

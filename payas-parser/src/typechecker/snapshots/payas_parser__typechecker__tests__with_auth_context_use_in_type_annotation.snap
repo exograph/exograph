@@ -9,39 +9,18 @@ expression: types
       kind: Context
       fields:
         - name: role
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
           annotations:
-            access: ~
-            auto_increment: ~
-            bits: ~
-            column: ~
-            db_type: ~
-            length: ~
-            plural_name: ~
-            precision: ~
-            scale: ~
-            jwt:
-              Jwt: None
-            pk: ~
-            range: ~
-            size: ~
-            table: ~
+            annotations:
+              jwt:
+                name: jwt
+                params: None
       annotations:
-        access: ~
-        auto_increment: ~
-        bits: ~
-        column: ~
-        db_type: ~
-        length: ~
-        plural_name: ~
-        precision: ~
-        scale: ~
-        jwt: ~
-        pk: ~
-        range: ~
-        size: ~
-        table: ~
+        annotations: {}
 - - Boolean
   - Primitive: Boolean
 - - Decimal
@@ -52,81 +31,49 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
+          ast_typ:
+            Plain:
+              - Boolean
           typ:
             Reference: Boolean
           annotations:
-            access: ~
-            auto_increment: ~
-            bits: ~
-            column: ~
-            db_type: ~
-            length: ~
-            plural_name: ~
-            precision: ~
-            scale: ~
-            jwt: ~
-            pk: ~
-            range: ~
-            size: ~
-            table: ~
+            annotations: {}
         - name: content
+          ast_typ:
+            Plain:
+              - String
           typ:
             Reference: String
           annotations:
-            access: ~
-            auto_increment: ~
-            bits: ~
-            column: ~
-            db_type: ~
-            length: ~
-            plural_name: ~
-            precision: ~
-            scale: ~
-            jwt: ~
-            pk: ~
-            range: ~
-            size: ~
-            table: ~
+            annotations: {}
       annotations:
-        access:
-          Access:
-            Single:
-              LogicalOp:
-                Or:
-                  - RelationalOp:
-                      Eq:
-                        - FieldSelection:
-                            Select:
-                              - Single:
-                                  - - AuthContext
-                                  - Reference: AuthContext
-                              - - role
-                              - Reference: String
-                        - StringLiteral:
-                            - ROLE_ADMIN
-                            - Primitive: String
-                        - Primitive: Boolean
-                  - FieldSelection:
-                      Select:
-                        - Single:
-                            - - self
-                            - Reference: Doc
-                        - - is_public
-                        - Reference: Boolean
-                  - Primitive: Boolean
-        auto_increment: ~
-        bits: ~
-        column: ~
-        db_type: ~
-        length: ~
-        plural_name: ~
-        precision: ~
-        scale: ~
-        jwt: ~
-        pk: ~
-        range: ~
-        size: ~
-        table: ~
+        annotations:
+          access:
+            name: access
+            params:
+              Single:
+                - LogicalOp:
+                    Or:
+                      - RelationalOp:
+                          Eq:
+                            - FieldSelection:
+                                Select:
+                                  - Single:
+                                      - - AuthContext
+                                      - Reference: AuthContext
+                                  - - role
+                                  - Reference: String
+                            - StringLiteral:
+                                - ROLE_ADMIN
+                            - Primitive: Boolean
+                      - FieldSelection:
+                          Select:
+                            - Single:
+                                - - self
+                                - Reference: Doc
+                            - - is_public
+                            - Reference: Boolean
+                      - Primitive: Boolean
 - - Float
   - Primitive: Float
 - - Instant

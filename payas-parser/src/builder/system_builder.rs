@@ -13,7 +13,7 @@ use payas_model::{
     sql::PhysicalTable,
 };
 
-use crate::ast::ast_types::AstSystem;
+use crate::ast::ast_types::{AstSystem, Untyped};
 
 use super::{
     context_builder, mutation_builder, order_by_type_builder, predicate_builder, query_builder,
@@ -40,7 +40,7 @@ use crate::typechecker;
 /// (this is done in place, so references created from elsewhere remain valid). Since all model
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
-pub fn build(ast_system: AstSystem, codemap: CodeMap) -> Result<ModelSystem> {
+pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSystem> {
     let typechecked_system = typechecker::build(ast_system, codemap)?;
     let resolved_system = resolved_builder::build(typechecked_system)?;
 

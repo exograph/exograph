@@ -1,236 +1,182 @@
-use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams};
-use anyhow::{bail, Result};
-use codemap::Span;
-use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize};
-
 use std::collections::{HashMap, HashSet};
 
-use super::{annotation_params::TypedAnnotationParams, Scope, Type, Typecheck, TypedExpression};
+use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_model::model::mapped_arena::MappedArena;
 
-use annotation_attribute::annotation;
+use super::{Scope, Type, TypecheckFrom, Typed};
+use crate::util;
 
-#[annotation("access")]
-#[allow(clippy::large_enum_variant)]
-pub enum AccessAnnotation {
-    Single(TypedExpression), // default access
-    Map {
-        query: Option<TypedExpression>,
-        mutation: Option<TypedExpression>,
-        create: Option<TypedExpression>,
-        update: Option<TypedExpression>,
-        delete: Option<TypedExpression>,
-    },
+/// Specification for an annotation.
+pub struct AnnotationSpec {
+    /// List of targets the annotation is allowed to be applied to.
+    pub targets: &'static [AnnotationTarget],
+    /// Is this annotation allowed to have no parameters?
+    pub no_params: bool,
+    /// Is this annotation allowed to have a single parameter?
+    pub single_params: bool,
+    /// List of mapped parameters if mapped parameters are allowed (`None` if not).
+    pub mapped_params: Option<&'static [MappedAnnotationParamSpec]>,
 }
 
-#[annotation("autoincrement")]
-pub enum AutoIncrementAnnotation {
-    None,
+/// Target for an annotation.
+#[derive(Debug, PartialEq)]
+pub enum AnnotationTarget {
+    Model,
+    Field,
 }
 
-#[annotation("bits")]
-pub enum BitsAnnotation {
-    Single(TypedExpression),
+/// Specification for a mapped parameter of an annotation.
+pub struct MappedAnnotationParamSpec {
+    /// Name of the parameter.
+    pub name: &'static str,
+    /// Is this parameter optional?
+    pub optional: bool,
 }
 
-#[annotation("column")]
-pub enum ColumnAnnotation {
-    Single(TypedExpression),
-}
-
-#[annotation("dbtype")]
-pub enum DbTypeAnnotation {
-    Single(TypedExpression),
-}
-
-#[annotation("length")]
-pub enum LengthAnnotation {
-    Single(TypedExpression),
-}
-
-#[annotation("plural_name")]
-pub enum PluralNameAnnotation {
-    Single(TypedExpression),
-}
-
-#[annotation("precision")]
-pub enum PrecisionAnnotation {
-    Single(TypedExpression),
-}
-
-#[annotation("scale")]
-pub enum ScaleAnnotation {
-    Single(TypedExpression),
-}
-
-#[annotation("jwt")]
-pub enum JwtAnnotation {
-    None,
-    Single(TypedExpression),
-}
-
-#[annotation("pk")]
-pub enum PkAnnotation {
-    None,
-}
-
-#[annotation("range")]
-pub enum RangeAnnotation {
-    Map {
-        min: TypedExpression,
-        max: TypedExpression,
-    },
-}
-
-#[annotation("size")]
-pub enum SizeAnnotation {
-    Single(TypedExpression),
-}
-
-#[annotation("table")]
-pub enum TableAnnotation {
-    Single(TypedExpression),
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum TypedAnnotation {
-    Access(AccessAnnotation),
-    AutoIncrement(AutoIncrementAnnotation),
-    Bits(BitsAnnotation),
-    Column(ColumnAnnotation),
-    DbType(DbTypeAnnotation),
-    Length(LengthAnnotation),
-    PluralName(PluralNameAnnotation),
-    Precision(PrecisionAnnotation),
-    Scale(ScaleAnnotation),
-    Jwt(JwtAnnotation),
-    Pk(PkAnnotation),
-    Range(RangeAnnotation),
-    Size(SizeAnnotation),
-    Table(TableAnnotation),
-}
-
-impl TypedAnnotation {
-    pub fn name(&self) -> &str {
-        match &self {
-            TypedAnnotation::Access(_) => AccessAnnotation::name(),
-            TypedAnnotation::AutoIncrement(_) => AutoIncrementAnnotation::name(),
-            TypedAnnotation::Bits(_) => BitsAnnotation::name(),
-            TypedAnnotation::Column(_) => ColumnAnnotation::name(),
-            TypedAnnotation::DbType(_) => DbTypeAnnotation::name(),
-            TypedAnnotation::Length(_) => LengthAnnotation::name(),
-            TypedAnnotation::PluralName(_) => PluralNameAnnotation::name(),
-            TypedAnnotation::Precision(_) => PrecisionAnnotation::name(),
-            TypedAnnotation::Scale(_) => ScaleAnnotation::name(),
-            TypedAnnotation::Jwt(_) => JwtAnnotation::name(),
-            TypedAnnotation::Pk(_) => PkAnnotation::name(),
-            TypedAnnotation::Range(_) => RangeAnnotation::name(),
-            TypedAnnotation::Size(_) => SizeAnnotation::name(),
-            TypedAnnotation::Table(_) => TableAnnotation::name(),
-        }
-    }
-}
-
-impl Typecheck<TypedAnnotation> for AstAnnotation {
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<TypedAnnotation> {
-        let params = self.params.shallow(errors)?;
-        let name = self.name.as_str();
-
-        // Can't use match https://github.com/rust-lang/rust/issues/57240
-        if name == AccessAnnotation::name() {
-            Ok(TypedAnnotation::Access(AccessAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == AutoIncrementAnnotation::name() {
-            Ok(TypedAnnotation::AutoIncrement(
-                AutoIncrementAnnotation::from_params(self, params, errors)?,
-            ))
-        } else if name == BitsAnnotation::name() {
-            Ok(TypedAnnotation::Bits(BitsAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == ColumnAnnotation::name() {
-            Ok(TypedAnnotation::Column(ColumnAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == DbTypeAnnotation::name() {
-            Ok(TypedAnnotation::DbType(DbTypeAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == LengthAnnotation::name() {
-            Ok(TypedAnnotation::Length(LengthAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == PluralNameAnnotation::name() {
-            Ok(TypedAnnotation::PluralName(
-                PluralNameAnnotation::from_params(self, params, errors)?,
-            ))
-        } else if name == PrecisionAnnotation::name() {
-            Ok(TypedAnnotation::Precision(
-                PrecisionAnnotation::from_params(self, params, errors)?,
-            ))
-        } else if name == ScaleAnnotation::name() {
-            Ok(TypedAnnotation::Scale(ScaleAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == JwtAnnotation::name() {
-            Ok(TypedAnnotation::Jwt(JwtAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == PkAnnotation::name() {
-            Ok(TypedAnnotation::Pk(PkAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == RangeAnnotation::name() {
-            Ok(TypedAnnotation::Range(RangeAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == SizeAnnotation::name() {
-            Ok(TypedAnnotation::Size(SizeAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else if name == TableAnnotation::name() {
-            Ok(TypedAnnotation::Table(TableAnnotation::from_params(
-                self, params, errors,
-            )?))
-        } else {
-            errors.push(Diagnostic {
-                level: Level::Error,
-                message: format!("Unknown annotation `{}`", name),
-                code: Some("A000".to_string()),
-                spans: vec![SpanLabel {
-                    span: self.span,
-                    label: None,
-                    style: SpanStyle::Primary,
-                }],
-            });
-            bail!("")
+impl TypecheckFrom<AstAnnotation<Untyped>> for AstAnnotation<Typed> {
+    fn shallow(untyped: &AstAnnotation<Untyped>) -> AstAnnotation<Typed> {
+        AstAnnotation {
+            name: untyped.name.clone(),
+            params: AstAnnotationParams::shallow(&untyped.params),
+            span: untyped.span,
         }
     }
 
     fn pass(
-        &self,
-        typ: &mut TypedAnnotation,
-        env: &MappedArena<Type>,
+        &mut self,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        match typ {
-            TypedAnnotation::Access(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::AutoIncrement(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Bits(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Column(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::DbType(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Length(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::PluralName(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Precision(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Scale(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Jwt(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Pk(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Range(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Size(a) => a.pass(&self.params, env, scope, errors),
-            TypedAnnotation::Table(a) => a.pass(&self.params, env, scope, errors),
+        let spec = &annotation_env[&self.name];
+
+        // Message for what parameters were expected in case of a type error
+        let diagnostic_msg = {
+            let mut expected = Vec::new();
+
+            if spec.no_params {
+                expected.push("no parameters".to_string());
+            }
+            if spec.single_params {
+                expected.push("a single parameter".to_string());
+            }
+            if let Some(params) = spec.mapped_params {
+                expected.push(format!(
+                    "({})",
+                    util::join_strings(
+                        &params
+                            .iter()
+                            .map(|param_spec| format!(
+                                "{}{}",
+                                param_spec.name,
+                                if param_spec.optional { "?" } else { "" }
+                            ))
+                            .collect::<Vec<_>>(),
+                        None,
+                    )
+                ));
+            }
+
+            format!("expected {}", util::join_strings(&expected, Some("or")))
+        };
+
+        let base_diagnostic = Diagnostic {
+            level: Level::Error,
+            message: format!("Incorrect parameters for annotation `{}`", self.name),
+            code: Some("A000".to_string()),
+            spans: vec![SpanLabel {
+                span: self.span,
+                label: Some(diagnostic_msg),
+                style: SpanStyle::Primary,
+            }],
+        };
+
+        match &self.params {
+            AstAnnotationParams::None => {
+                // Given no parameters, but expected single or mapped
+                if !spec.no_params {
+                    errors.push(base_diagnostic);
+                }
+            }
+            AstAnnotationParams::Single(_, span) => {
+                // Given a single parameter, but expected none or mapped
+                if !spec.single_params {
+                    let mut diagnostic = base_diagnostic;
+                    diagnostic.spans.push(SpanLabel {
+                        span: *span,
+                        label: Some("unexpected parameter".to_owned()),
+                        style: SpanStyle::Secondary,
+                    });
+                    errors.push(diagnostic);
+                }
+            }
+            AstAnnotationParams::Map(params, spans) => match spec.mapped_params {
+                // Given mapped parameters, but expected none or some
+                None => errors.push(base_diagnostic),
+
+                // Check given parameters are correct
+                Some(param_specs) => {
+                    let mut span_labels = Vec::new();
+                    let mut missing_param = false;
+
+                    // Check for any duplicate parameters
+                    for (name, spans) in spans.iter() {
+                        if spans.len() > 1 {
+                            let mut span_labels = vec![SpanLabel {
+                                span: spans[0],
+                                label: Some("previously defined here".to_owned()),
+                                style: SpanStyle::Secondary,
+                            }];
+
+                            for span in &spans[1..] {
+                                span_labels.push(SpanLabel {
+                                    span: *span,
+                                    label: Some("redefined here".to_owned()),
+                                    style: SpanStyle::Primary,
+                                });
+                            }
+
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: format!("Duplicate definitions of parameter `{}`", name),
+                                code: Some("A000".to_string()),
+                                spans: span_labels,
+                            });
+                        }
+                    }
+
+                    // Keep track of extra unused parameters
+                    let mut unexpected_params = params.keys().cloned().collect::<HashSet<_>>();
+
+                    // For each field, check if it is given or if it's optional
+                    for param_spec in param_specs {
+                        if params.contains_key(param_spec.name) {
+                            unexpected_params.remove(param_spec.name);
+                        } else if !param_spec.optional {
+                            missing_param = true;
+                        }
+                    }
+
+                    // For any unexpected parameters, push an error
+                    for unexpected in unexpected_params {
+                        span_labels.push(SpanLabel {
+                            span: *spans[&unexpected].first().unwrap(),
+                            label: Some("unexpected parameter".to_owned()),
+                            style: SpanStyle::Secondary,
+                        });
+                    }
+
+                    if !span_labels.is_empty() || missing_param {
+                        let mut diagnostic = base_diagnostic;
+                        diagnostic.spans.append(&mut span_labels);
+                        errors.push(diagnostic);
+                    }
+                }
+            },
         }
+
+        self.params.pass(type_env, annotation_env, scope, errors)
     }
 }

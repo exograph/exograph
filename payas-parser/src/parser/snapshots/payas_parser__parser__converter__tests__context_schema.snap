@@ -8,9 +8,10 @@ models:
     kind: Context
     fields:
       - name: id
-        typ:
+        ast_typ:
           Plain:
             - Int
+        typ: ~
         annotations:
           - name: jwt
             params:
@@ -18,10 +19,11 @@ models:
                 - StringLiteral:
                     - sub
       - name: roles
-        typ:
+        ast_typ:
           List:
             Plain:
               - String
+        typ: ~
         annotations:
           - name: jwt
             params: None

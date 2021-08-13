@@ -10,40 +10,65 @@ mod relational_op;
 mod selection;
 mod typ;
 
+use std::collections::HashMap;
+
 use anyhow::{anyhow, Result};
 use codemap::CodeMap;
-use codemap_diagnostic::{ColorConfig, Emitter};
+use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter};
+use serde::{Deserialize, Serialize};
 
-pub(super) use annotation::*;
 pub(super) use annotation_map::AnnotationMap;
 
-pub(super) use expression::TypedExpression;
-pub use logical_op::TypedLogicalOp;
-pub use relational_op::TypedRelationalOp;
-pub(super) use selection::TypedFieldSelection;
+pub(super) use typ::{PrimitiveType, Type};
 
-pub(super) use field::TypedField;
-pub(super) use typ::{CompositeType, CompositeTypeKind, PrimitiveType, Type};
-
-use crate::ast::ast_types::AstSystem;
+use crate::ast::ast_types::{AstModel, NodeTypedness};
+use crate::ast::ast_types::{AstSystem, Untyped};
 use payas_model::model::mapped_arena::MappedArena;
+
+use self::annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec};
 
 pub struct Scope {
     pub enclosing_model: Option<String>,
 }
-pub trait Typecheck<T> {
-    #[allow(clippy::result_unit_err)] // Use unit result since errors are tracked as a parameter
-    fn shallow(&self, errors: &mut Vec<codemap_diagnostic::Diagnostic>) -> Result<T>;
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct Typed;
+impl NodeTypedness for Typed {
+    type FieldSelection = Type;
+    type RelationalOp = Type;
+    type Expr = Type;
+    type LogicalOp = Type;
+    type Field = Type;
+    type Annotations = AnnotationMap;
+}
+
+pub trait TypecheckInto<T> {
+    fn shallow(&self) -> T;
     fn pass(
         &self,
         typ: &mut T,
-        env: &MappedArena<Type>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
-        errors: &mut Vec<codemap_diagnostic::Diagnostic>,
+        errors: &mut Vec<Diagnostic>,
     ) -> bool;
 }
 
-fn populate_standard_env(env: &mut MappedArena<Type>) {
+pub trait TypecheckFrom<T>
+where
+    Self: Sized,
+{
+    fn shallow(untyped: &T) -> Self;
+    fn pass(
+        &mut self,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
+        scope: &Scope,
+        errors: &mut Vec<Diagnostic>,
+    ) -> bool;
+}
+
+fn populate_type_env(env: &mut MappedArena<Type>) {
     // TODO: maybe we don't need to do this manually
     env.add("Boolean", Type::Primitive(PrimitiveType::Boolean));
     env.add("Int", Type::Primitive(PrimitiveType::Int));
@@ -60,26 +85,186 @@ fn populate_standard_env(env: &mut MappedArena<Type>) {
     env.add("Json", Type::Primitive(PrimitiveType::Json));
 }
 
-pub fn build(ast_system: AstSystem, codemap: CodeMap) -> Result<MappedArena<Type>> {
+fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
+    let annotations = [
+        (
+            "access",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Model, AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: Some(&[
+                    MappedAnnotationParamSpec {
+                        name: "query",
+                        optional: true,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "mutation",
+                        optional: true,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "create",
+                        optional: true,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "update",
+                        optional: true,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "delete",
+                        optional: true,
+                    },
+                ]),
+            },
+        ),
+        (
+            "autoincrement",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: false,
+                mapped_params: None,
+            },
+        ),
+        (
+            "bits",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "column",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "dbtype",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "jwt",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "length",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "pk",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: false,
+                mapped_params: None,
+            },
+        ),
+        (
+            "plural_name",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Model],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "precision",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "range",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: false,
+                mapped_params: Some(&[
+                    MappedAnnotationParamSpec {
+                        name: "min",
+                        optional: false,
+                    },
+                    MappedAnnotationParamSpec {
+                        name: "max",
+                        optional: false,
+                    },
+                ]),
+            },
+        ),
+        (
+            "scale",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "size",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "table",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Model],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+    ];
+
+    for (name, spec) in annotations {
+        env.insert(name.to_owned(), spec);
+    }
+}
+
+pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedArena<Type>> {
     let ast_types = &ast_system.models;
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
-    populate_standard_env(&mut types_arena);
+    let mut annotation_env = HashMap::new();
+    populate_type_env(&mut types_arena);
+    populate_annotation_env(&mut annotation_env);
 
-    let mut errors = Vec::new();
     let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
     for model in ast_types {
-        match model.shallow(&mut errors) {
-            Ok(typ) => {
-                types_arena.add(model.name.as_str(), typ);
-            }
-            Err(_) => {
-                assert!(!errors.is_empty());
-                emitter.emit(&errors);
-                return Err(anyhow!("Could not process input clay files"));
-            }
-        }
+        types_arena.add(
+            model.name.as_str(),
+            Type::Composite(AstModel::shallow(model)),
+        );
     }
 
     loop {
@@ -91,13 +276,15 @@ pub fn build(ast_system: AstSystem, codemap: CodeMap) -> Result<MappedArena<Type
         let mut errors = Vec::new();
 
         for model in ast_types {
-            let orig = types_arena.get_by_key(model.name.as_str()).unwrap();
             let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
-            let pass_res = model.pass(&mut typ, &types_arena, &init_scope, &mut errors);
-            if pass_res {
-                assert!(*orig != typ);
-                *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
-                did_change = true;
+            if let Type::Composite(c) = &mut typ {
+                let pass_res = c.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
+                if pass_res {
+                    *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
+                    did_change = true;
+                }
+            } else {
+                panic!()
             }
         }
 
@@ -117,9 +304,13 @@ pub mod test_support {
     use super::*;
     use crate::parser::*;
 
-    pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {
+    pub fn build(src: &str) -> Result<MappedArena<Type>> {
         let (parsed, codemap) = parse_str(src);
-        let checked = build(parsed, codemap).unwrap();
+        super::build(parsed, codemap)
+    }
+
+    pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {
+        let checked = build(src).unwrap();
 
         let mut entries: Vec<_> = checked
             .keys()
@@ -208,11 +399,100 @@ mod tests {
 
         "#;
 
-        assert_eq!(parse_sorted(typical), parse_sorted(with_whitespace));
+        let typical_parsed = serde_json::to_string(&parse_sorted(typical)).unwrap();
+        let with_whitespace_parsed = serde_json::to_string(&parse_sorted(with_whitespace)).unwrap();
+        assert_eq!(typical_parsed, with_whitespace_parsed);
+    }
+
+    #[test]
+    fn unknown_annotation() {
+        let src = r#"
+        @asdf
+        model User {
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    fn duplicate_annotation() {
+        let src = r#"
+        @table("users")
+        @table("users")
+        model User {
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    fn invalid_annotation_parameter_type() {
+        let expected_none = r#"
+        model User {
+            id: Int @pk("asdf")
+        }
+        "#;
+
+        let expected_single = r#"
+        @table
+        model User {
+        }
+        "#;
+
+        let expected_map = r#"
+        model User {
+            id: Int @range(5)
+        }
+        "#;
+
+        assert_err(expected_none);
+        assert_err(expected_single);
+        assert_err(expected_map);
+    }
+
+    fn duplicate_annotation_mapped_param() {
+        let src = r#"
+        model User {
+            id: Int @range(min=5, max=10, min=3)
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    fn unknown_annotation_mapped_param() {
+        let src = r#"
+        model User {
+            id: Int @range(min=5, maxx=10)
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    fn invalid_annotation_target() {
+        let model = r#"
+        @pk
+        model User {
+        }
+        "#;
+
+        let field = r#"
+        model User {
+            id: Int @table("asdf")
+        }
+        "#;
+
+        assert_err(model);
+        assert_err(field);
     }
 
     fn assert_typechecking(src: &str) {
         let types = parse_sorted(src);
         insta::assert_yaml_snapshot!(types);
+    }
+
+    fn assert_err(src: &str) {
+        assert!(build(src).is_err());
     }
 }
