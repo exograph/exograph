@@ -1,0 +1,83 @@
+operation: |
+  query {
+    test_or: logs(where: {
+      or: [
+        {id: {eq: 1} },
+        {id: {eq: 2} }
+      ]
+    }) {
+      text
+    }
+
+    test_and: logs(where: {
+      and: [
+        {text: {startsWith: "[NORMAL]"}},
+        {timestamp: {gte: 6}}
+      ]
+    }) {
+      text
+      timestamp
+    }
+
+    test_not: logs(where: {
+      not: {text: {startsWith: "[NORMAL]"}}
+    }) {
+      text
+    }
+
+    test_nested: logs(where: {
+      and: [
+        {not: {text: {startsWith: "[NORMAL]"}}},
+        {not: {text: {startsWith: "[ERROR]"}}},
+      ]
+    }) {
+      text
+    }
+
+    #test_error_multiple_boolean_predicates: logs(where: {
+    #  and: [
+    #    {id: {eq: 1}}
+    #    {id: {eq: 2}}
+    #  ],
+    #  or: [
+    #    {id: {eq: 1}}
+    #    {id: {eq: 2}}
+    #  ]
+    #})
+
+    #test_error_empty_boolean_predicate: logs(where: {
+    #  and: []
+    #})
+  }
+response: |
+  {
+    "data": {
+      "test_or": [
+        {
+          "text": "[NORMAL] http request"
+        },
+        {
+          "text": "[WARNING] disk usage 50%"
+        }
+      ],
+      "test_and": [
+        {
+          "text": "[NORMAL] it's 12:00pm!",
+          "timestamp": 12
+        }
+      ],
+      "test_not": [
+        {
+          "text": "[WARNING] disk usage 50%"
+        },
+        {
+          "text": "[ERROR] service stopped"
+        }
+      ],
+      "test_nested": [
+        {
+          "text": "[WARNING] disk usage 50%"
+        }
+      ]
+    }
+  }

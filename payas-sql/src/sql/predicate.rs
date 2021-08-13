@@ -102,7 +102,7 @@ impl<'a> Expression for Predicate<'a> {
                         predicate1,
                         predicate2,
                         expression_context,
-                        |stmt1, stmt2| format!("{} AND {}", stmt1, stmt2),
+                        |stmt1, stmt2| format!("({} AND {})", stmt1, stmt2),
                     ),
                 }
             }
@@ -110,11 +110,11 @@ impl<'a> Expression for Predicate<'a> {
                 predicate1,
                 predicate2,
                 expression_context,
-                |stmt1, stmt2| format!("{} OR {}", stmt1, stmt2),
+                |stmt1, stmt2| format!("({} OR {})", stmt1, stmt2),
             ),
             Predicate::Not(predicate) => {
                 let expr = predicate.binding(expression_context);
-                ParameterBinding::new(format!("NOT {}", expr.stmt), expr.params)
+                ParameterBinding::new(format!("NOT ({})", expr.stmt), expr.params)
             }
             Predicate::StringLike(column1, column2) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
@@ -247,7 +247,7 @@ mod tests {
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
             &predicate.binding(&mut expression_context),
-            r#""people"."name" = $1 AND "people"."age" = $2"#,
+            r#"("people"."name" = $1 AND "people"."age" = $2)"#,
             "foo",
             5
         );
