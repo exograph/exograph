@@ -71,7 +71,7 @@ fn expand_type(gql_type: &GqlType, building: &SystemContextBuilding) -> Predicat
     match &gql_type.kind {
         GqlTypeKind::Primitive => create_operator_filter_type_kind(gql_type, building),
         GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
-            create_composite_filter_type_kind(fields, building)
+            create_composite_filter_type_kind(gql_type, fields, building)
         }
     }
 }
@@ -157,10 +157,12 @@ fn create_operator_filter_type_kind(
 }
 
 fn create_composite_filter_type_kind(
+    composite_type: &GqlType,
     fields: &[GqlField],
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
-    let parameters = fields
+    // populate field names for composite filter
+    let parameters: Vec<PredicateParameter> = fields
         .iter()
         .map(|field| {
             let param_type_name = get_parameter_type_name(field.typ.type_name());
@@ -174,5 +176,41 @@ fn create_composite_filter_type_kind(
         })
         .collect();
 
-    PredicateParameterTypeKind::Composite(parameters)
+    // TODO: reduce duplication here
+    // populate boolean predicate parameters for composite filter
+
+    let boolean_params = vec![
+        PredicateParameter {
+            name: "and".to_string(),
+            type_name: get_parameter_type_name(&composite_type.name.to_string()),
+            type_id: building
+                .predicate_types
+                .get_id(&get_parameter_type_name(&composite_type.name))
+                .unwrap(),
+            type_modifier: GqlTypeModifier::List,
+            column_id: None,
+        },
+        PredicateParameter {
+            name: "or".to_string(),
+            type_name: get_parameter_type_name(&composite_type.name.to_string()),
+            type_id: building
+                .predicate_types
+                .get_id(&get_parameter_type_name(&composite_type.name))
+                .unwrap(),
+            type_modifier: GqlTypeModifier::List,
+            column_id: None,
+        },
+        PredicateParameter {
+            name: "not".to_string(),
+            type_name: get_parameter_type_name(&composite_type.name.to_string()),
+            type_id: building
+                .predicate_types
+                .get_id(&get_parameter_type_name(&composite_type.name))
+                .unwrap(),
+            type_modifier: GqlTypeModifier::Optional,
+            column_id: None,
+        },
+    ];
+
+    PredicateParameterTypeKind::Composite(parameters, boolean_params)
 }

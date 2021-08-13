@@ -19,9 +19,16 @@ pub struct PredicateParameterType {
     pub kind: PredicateParameterTypeKind,
 }
 
+type ModelPredicateParameters = Vec<PredicateParameter>;
+type BooleanPredicateParameters = Vec<PredicateParameter>;
+
 #[derive(Debug, Clone)]
 pub enum PredicateParameterTypeKind {
-    ImplicitEqual,                      // {id: 3}
-    Opeartor(Vec<PredicateParameter>),  // {lt: ..,gt: ..} such as IntFilter
-    Composite(Vec<PredicateParameter>), // {where: {id: .., name: ..}} such as AccountFilter
+    ImplicitEqual,                     // {id: 3}
+    Opeartor(Vec<PredicateParameter>), // {lt: ..,gt: ..} such as IntFilter
+    Composite(ModelPredicateParameters, BooleanPredicateParameters), // {where: {id: .., name: ..}} such as AccountFilter
+                                                                     // also includes boolean predicates like
+                                                                     // {where: {
+                                                                     //   and: [{name: ..}, {id: ..}]
+                                                                     // }}
 }

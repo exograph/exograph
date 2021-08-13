@@ -23,44 +23,50 @@ variable: |
     }
 response: |
     {
-    	"data": {
-    		"lt_test": [
-    			{
-    				"text": "[NORMAL] http request"
-    			},
-    			{
-    				"text": "[WARNING] disk usage 50%"
-    			}
-    		],
-    		"lte_test": [
-    			{
-    				"text": "[NORMAL] http request"
-    			},
-    			{
-    				"text": "[WARNING] disk usage 50%"
-    			},
-    			{
-    				"text": "[ERROR] service stopped"
-    			}
-    		],
-    		"gt_test": [
-    			{
-    				"text": "[WARNING] disk usage 50%"
-    			},
-    			{
-    				"text": "[ERROR] service stopped"
-    			}
-    		],
-    		"gte_test": [
-    			{
-    				"text": "[NORMAL] http request"
-    			},
-    			{
-    				"text": "[WARNING] disk usage 50%"
-    			},
-    			{
-    				"text": "[ERROR] service stopped"
-    			}
-    		]
-    	}
+        "data": {
+            "lt_test": [
+                {
+                    "text": "[NORMAL] http request"
+                },
+                {
+                    "text": "[WARNING] disk usage 50%"
+                }
+            ],
+            "lte_test": [
+                {
+                    "text": "[NORMAL] http request"
+                },
+                {
+                    "text": "[WARNING] disk usage 50%"
+                },
+                {
+                    "text": "[ERROR] service stopped"
+                }
+            ],
+            "gt_test": [
+                {
+                    "text": "[WARNING] disk usage 50%"
+                },
+                {
+                    "text": "[ERROR] service stopped"
+                },
+                {
+                    "text": "[NORMAL] it's 12:00pm!"
+                }
+            ],
+            "gte_test": [
+                {
+                    "text": "[NORMAL] http request"
+                },
+                {
+                    "text": "[WARNING] disk usage 50%"
+                },
+                {
+                    "text": "[ERROR] service stopped"
+                },
+                {
+                    "text": "[NORMAL] it's 12:00pm!"
+                }
+            ]
+        }
     }

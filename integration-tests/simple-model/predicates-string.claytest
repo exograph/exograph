@@ -24,7 +24,10 @@ response: |
     		"starts_with": [
     			{
     				"text": "[NORMAL] http request"
-    			}
+    			},
+                {
+                    "text": "[NORMAL] it's 12:00pm!"
+                }
     		],
     		"ends_with": [
     			{
