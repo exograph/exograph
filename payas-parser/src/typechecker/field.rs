@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use codemap_diagnostic::Diagnostic;
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::ast::ast_types::{AstField, Untyped};
+use crate::ast::ast_types::{AstField, AstFieldType, Untyped};
 
 use super::annotation::{AnnotationSpec, AnnotationTarget};
-use super::{AnnotationMap, Scope, Type, TypecheckFrom, TypecheckInto, Typed};
+use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed};
 
 impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
     fn shallow(untyped: &AstField<Untyped>) -> AstField<Typed> {
@@ -14,8 +14,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
 
         AstField {
             name: untyped.name.clone(),
-            ast_typ: untyped.ast_typ.clone(),
-            typ: untyped.ast_typ.shallow(),
+            typ: AstFieldType::shallow(&untyped.typ),
             annotations: annotation_map,
         }
     }
@@ -27,9 +26,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        let typ_changed = self
-            .ast_typ
-            .pass(&mut self.typ, type_env, annotation_env, scope, errors);
+        let typ_changed = self.typ.pass(type_env, annotation_env, scope, errors);
 
         let annot_changed = self.annotations.pass(
             AnnotationTarget::Field,

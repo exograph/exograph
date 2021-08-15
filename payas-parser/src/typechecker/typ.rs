@@ -13,7 +13,7 @@ pub enum Type {
     Primitive(PrimitiveType),
     Composite(AstModel<Typed>),
     Optional(Box<Type>),
-    List(Box<Type>),
+    Set(Box<Type>),
     Reference(String),
     Defer,
     Error,
@@ -28,8 +28,8 @@ impl Display for Type {
                 o.fmt(f)?;
                 f.write_str("?")
             }
-            Type::List(l) => {
-                f.write_str("[")?;
+            Type::Set(l) => {
+                f.write_str("Set[")?;
                 l.fmt(f)?;
                 f.write_str("]")
             }
@@ -44,7 +44,7 @@ impl Type {
         match &self {
             Type::Defer => true,
             Type::Optional(underlying) => underlying.deref().is_defer(),
-            Type::List(underlying) => underlying.deref().is_defer(),
+            Type::Set(underlying) => underlying.deref().is_defer(),
             _ => false,
         }
     }
@@ -53,7 +53,7 @@ impl Type {
         match &self {
             Type::Error => true,
             Type::Optional(underlying) => underlying.deref().is_error(),
-            Type::List(underlying) => underlying.deref().is_error(),
+            Type::Set(underlying) => underlying.deref().is_error(),
             _ => false,
         }
     }
@@ -67,7 +67,7 @@ impl Type {
             Type::Reference(name) => Some(name.to_owned()),
             Type::Primitive(pt) => Some(pt.name()),
             Type::Optional(underlying) => underlying.get_underlying_typename(),
-            Type::List(underlying) => underlying.get_underlying_typename(),
+            Type::Set(underlying) => underlying.get_underlying_typename(),
             _ => None,
         }
     }
@@ -76,7 +76,7 @@ impl Type {
         match &self {
             Type::Reference(name) => env.get_by_key(name).unwrap().clone(),
             Type::Optional(underlying) => Type::Optional(Box::new(underlying.deref().deref(env))),
-            Type::List(underlying) => Type::List(Box::new(underlying.deref().deref(env))),
+            Type::Set(underlying) => Type::Set(Box::new(underlying.deref().deref(env))),
             o => o.deref().clone(),
         }
     }

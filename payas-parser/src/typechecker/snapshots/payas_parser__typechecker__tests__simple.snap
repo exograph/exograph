@@ -13,11 +13,11 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
-          ast_typ:
+          typ:
             Plain:
               - Boolean
-          typ:
-            Reference: Boolean
+              - []
+              - true
           annotations:
             annotations: {}
       annotations:
@@ -44,11 +44,11 @@ expression: types
       kind: Persistent
       fields:
         - name: doc
-          ast_typ:
+          typ:
             Plain:
               - Doc
-          typ:
-            Reference: Doc
+              - []
+              - true
           annotations:
             annotations:
               access:
@@ -102,11 +102,11 @@ expression: types
                     - StringLiteral:
                         - custom_column
         - name: role
-          ast_typ:
+          typ:
             Plain:
               - String
-          typ:
-            Reference: String
+              - []
+              - true
           annotations:
             annotations: {}
       annotations:
