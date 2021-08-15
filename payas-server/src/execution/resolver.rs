@@ -82,7 +82,7 @@ where
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
     ) -> Result<Vec<(String, R)>> {
-        let resolved: Result<Vec<(String, R)>> = selection_set
+        selection_set
             .node
             .items
             .iter()
@@ -92,9 +92,7 @@ where
                     Err(err) => vec![Err(err)],
                 },
             )
-            .collect();
-
-        Ok(resolved?)
+            .collect()
     }
 }
 
