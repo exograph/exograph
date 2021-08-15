@@ -93,11 +93,8 @@ where
                 },
             )
             .collect();
-        let resolved = resolved?;
 
-        check_duplicate_keys(&resolved)?;
-
-        Ok(resolved)
+        Ok(resolved?)
     }
 }
 
@@ -133,25 +130,6 @@ impl std::fmt::Display for GraphQLExecutionError {
                 write!(f, "Not authorized")
             }
         }
-    }
-}
-
-pub fn check_duplicate_keys<R>(resolved: &[(String, R)]) -> Result<(), GraphQLExecutionError> {
-    let mut names = HashSet::new();
-    let mut duplicates = HashSet::new();
-
-    resolved.iter().for_each(|(name, _)| {
-        if names.contains(name) {
-            duplicates.insert(name.to_owned());
-        } else {
-            names.insert(name);
-        }
-    });
-
-    if duplicates.is_empty() {
-        Ok(())
-    } else {
-        Err(GraphQLExecutionError::DuplicateKeys(duplicates))
     }
 }
 
