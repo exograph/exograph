@@ -14,6 +14,7 @@ pub enum Type {
     Composite(AstModel<Typed>),
     Optional(Box<Type>),
     Set(Box<Type>),
+    Array(Box<Type>),
     Reference(String),
     Defer,
     Error,
@@ -33,6 +34,11 @@ impl Display for Type {
                 l.fmt(f)?;
                 f.write_str("]")
             }
+            Type::Array(l) => {
+                f.write_str("Set[")?;
+                l.fmt(f)?;
+                f.write_str("]")
+            }
             Type::Reference(r) => f.write_str(r.as_str()),
             _ => Result::Err(std::fmt::Error),
         }
@@ -45,6 +51,7 @@ impl Type {
             Type::Defer => true,
             Type::Optional(underlying) => underlying.deref().is_defer(),
             Type::Set(underlying) => underlying.deref().is_defer(),
+            Type::Array(underlying) => underlying.deref().is_defer(),
             _ => false,
         }
     }
@@ -54,6 +61,7 @@ impl Type {
             Type::Error => true,
             Type::Optional(underlying) => underlying.deref().is_error(),
             Type::Set(underlying) => underlying.deref().is_error(),
+            Type::Array(underlying) => underlying.deref().is_error(),
             _ => false,
         }
     }
@@ -68,16 +76,18 @@ impl Type {
             Type::Primitive(pt) => Some(pt.name()),
             Type::Optional(underlying) => underlying.get_underlying_typename(),
             Type::Set(underlying) => underlying.get_underlying_typename(),
+            Type::Array(underlying) => underlying.get_underlying_typename(),
             _ => None,
         }
     }
 
     pub fn deref<'a>(&'a self, env: &'a MappedArena<Type>) -> Type {
-        match &self {
+        match self {
             Type::Reference(name) => env.get_by_key(name).unwrap().clone(),
-            Type::Optional(underlying) => Type::Optional(Box::new(underlying.deref().deref(env))),
-            Type::Set(underlying) => Type::Set(Box::new(underlying.deref().deref(env))),
-            o => o.deref().clone(),
+            Type::Optional(underlying) => Type::Optional(Box::new(underlying.as_ref().deref(env))),
+            Type::Set(underlying) => Type::Set(Box::new(underlying.as_ref().deref(env))),
+            Type::Array(underlying) => Type::Array(Box::new(underlying.as_ref().deref(env))),
+            o => o.clone(),
         }
     }
 }

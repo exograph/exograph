@@ -614,20 +614,29 @@ fn compute_column_name(
                 match field_type {
                     Type::Composite(_) => format!("{}_id", field.name),
                     Type::Set(typ) => {
+                        if let Type::Composite(_) = typ.deref(types) {
+                            // OneToMany
+                            format!("{}_id", enclosing_type.name.to_ascii_lowercase())
+                        } else {
+                            panic!("Sets of non-composites are not supported");
+                        }
+                    }
+
+                    Type::Array(typ) => {
                         // unwrap type
                         let mut underlying_typ = &typ;
-                        while let Type::Set(t) = &**underlying_typ {
+                        while let Type::Array(t) = &**underlying_typ {
                             underlying_typ = t;
                         }
 
-                        if let Type::Primitive(_) = underlying_typ.as_ref() {
+                        if let Type::Primitive(_) = underlying_typ.deref(types) {
                             // base type is a primitive, which means this is an Array
-                            return field.name.clone();
+                            field.name.clone()
+                        } else {
+                            panic!("Arrays of non-primitives are not supported");
                         }
-
-                        // OneToMany
-                        format!("{}_id", enclosing_type.name.to_ascii_lowercase())
                     }
+
                     _ => field.name.clone(),
                 }
             }
@@ -653,11 +662,9 @@ fn resolve_field_type(
             resolved_types,
         ))),
         Type::Reference(name) => ResolvedFieldType::Plain(name.to_owned()),
-        Type::Set(underlying) => ResolvedFieldType::List(Box::new(resolve_field_type(
-            underlying.as_ref(),
-            types,
-            resolved_types,
-        ))),
+        Type::Set(underlying) | Type::Array(underlying) => ResolvedFieldType::List(Box::new(
+            resolve_field_type(underlying.as_ref(), types, resolved_types),
+        )),
         _ => todo!("Unsupported field type"),
     }
 }
@@ -706,10 +713,10 @@ mod tests {
           id: Int @pk @autoincrement 
           title: String 
           venue: Venue 
-          attending: Set[String]
-          seating: Set[Set[Boolean]]
+          attending: Array[String]
+          seating: Array[Array[Boolean]]
         }
-        
+
         model Venue             {
           id: Int  @autoincrement @pk 
           name:String 

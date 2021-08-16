@@ -563,7 +563,7 @@ mod tests {
             r#"
         context AuthUser {
             id: Int @jwt("sub") 
-            roles: Set[String] @jwt
+            roles: Array[String] @jwt
          }
         "#,
         );

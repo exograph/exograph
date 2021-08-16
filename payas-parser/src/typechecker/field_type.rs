@@ -24,7 +24,7 @@ impl AstFieldType<Typed> {
                 } else {
                     match name.as_str() {
                         "Set" => Type::Set(Box::new(params[0].to_typ())),
-                        "Array" => Type::Set(Box::new(params[0].to_typ())),
+                        "Array" => Type::Array(Box::new(params[0].to_typ())),
                         o => Type::Reference(o.to_string()),
                     }
                 }

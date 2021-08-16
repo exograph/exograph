@@ -22,7 +22,7 @@ models:
       - name: roles
         typ:
           Plain:
-            - Set
+            - Array
             - - Plain:
                   - String
                   - []
