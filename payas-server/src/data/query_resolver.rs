@@ -17,7 +17,7 @@ use async_graphql_parser::{
     Positioned,
 };
 
-use crate::execution::resolver::{check_duplicate_keys, GraphQLExecutionError, OutputName};
+use crate::execution::resolver::{GraphQLExecutionError, OutputName};
 
 impl<'a> OperationResolver<'a> for Query {
     fn map_to_sql(
@@ -82,11 +82,7 @@ impl<'a> QueryOperations<'a> for Query {
             )
             .collect();
 
-        let column_specs = column_specs?;
-
-        check_duplicate_keys(&column_specs)?;
-
-        Ok(operation_context.create_column(Column::JsonObject(column_specs)))
+        Ok(operation_context.create_column(Column::JsonObject(column_specs?)))
     }
 
     fn operation(
