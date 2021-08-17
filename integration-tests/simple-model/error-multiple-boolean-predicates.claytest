@@ -1,0 +1,21 @@
+operation: |
+  query {
+    test_error_multiple_boolean_predicates: logs(where: {
+      and: [
+        {id: {eq: 1}}
+        {id: {eq: 2}}
+      ],
+      or: [
+        {id: {eq: 1}}
+        {id: {eq: 2}}
+      ]
+    })
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Cannot specify more than one boolean predicate on the same level"
+      }
+    ]
+  }

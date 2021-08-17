@@ -2,7 +2,7 @@ use crate::sql::{column::Column, predicate::Predicate, SQLOperation, Select};
 
 use crate::sql::order::OrderBy;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::*;
 use payas_model::model::{operation::*, relation::*, types::*};
 
 use super::sql_mapper::{compute_access_predicate, OperationKind};
@@ -58,11 +58,16 @@ impl<'a> QueryOperations<'a> for Query {
         arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<OrderBy<'a>> {
-        self.order_by_param.as_ref().and_then(|order_by_param| {
-            let argument_value = super::find_arg(arguments, &order_by_param.name);
-            argument_value
-                .map(|argument_value| order_by_param.map_to_sql(argument_value, operation_context))
-        })
+        self.order_by_param
+            .as_ref()
+            .and_then(|order_by_param| {
+                let argument_value = super::find_arg(arguments, &order_by_param.name);
+                argument_value.map(|argument_value| {
+                    order_by_param.map_to_sql(argument_value, operation_context)
+                })
+            })
+            .transpose()
+            .unwrap() // TODO: handle properly
     }
 
     fn content_select(
@@ -113,7 +118,8 @@ impl<'a> QueryOperations<'a> for Query {
                 Box::new(predicate.clone()),
                 Box::new(access_predicate.clone()),
             ))
-        });
+        })
+        .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
         let content_object = self.content_select(&field.selection_set, operation_context)?;
 
@@ -124,7 +130,7 @@ impl<'a> QueryOperations<'a> for Query {
         Ok(match self.return_type.type_modifier {
             GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
                 vec![content_object],
-                predicate,
+                Some(predicate),
                 None,
                 None,
                 None,
@@ -135,7 +141,7 @@ impl<'a> QueryOperations<'a> for Query {
                 let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
                 table.select(
                     vec![agg_column],
-                    predicate,
+                    Some(predicate),
                     order_by,
                     None,
                     None,

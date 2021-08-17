@@ -1,6 +1,7 @@
 use crate::sql::column::Column;
 
 use crate::sql::order::{OrderBy, Ordering};
+use anyhow::*;
 use async_graphql_value::Value;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
 
@@ -11,7 +12,7 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameter {
         &self,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> OrderBy<'a> {
+    ) -> Result<OrderBy<'a>> {
         let parameter_type = &operation_context.query_context.system.order_by_types[self.type_id];
         parameter_type.map_to_sql(argument, operation_context)
     }
@@ -22,22 +23,31 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
         &'a self,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> OrderBy<'a> {
+    ) -> Result<OrderBy<'a>> {
         match argument {
             Value::Object(elems) => {
                 // TODO: Reject elements with multiple elements (see the comment in query.rs)
                 let mapped: Vec<(&'a Column<'a>, Ordering)> = elems
                     .iter()
                     .map(|elem| order_by_pair(self, elem.0, elem.1, operation_context))
-                    .collect();
-                OrderBy(mapped)
+                    .collect::<Result<Vec<_>>>()?;
+                Ok(OrderBy(mapped))
             }
             Value::List(elems) => {
                 let mapped: Vec<(&'a Column<'a>, Ordering)> = elems
                     .iter()
-                    .flat_map(|elem| self.map_to_sql(elem, operation_context).0)
+                    .map(|elem| self.map_to_sql(elem, operation_context))
+                    .collect::<Result<Vec<_>>>()
+                    .with_context(|| {
+                        format!(
+                            "While mapping list elements to SQL for parameter {}",
+                            self.name
+                        )
+                    })?
+                    .into_iter()
+                    .flat_map(|elem| elem.0)
                     .collect();
-                OrderBy(mapped)
+                Ok(OrderBy(mapped))
             }
             Value::Variable(name) => {
                 let resolved = operation_context.resolve_variable(name.as_str());
@@ -53,7 +63,7 @@ fn order_by_pair<'a>(
     parameter_name: &str,
     parameter_value: &Value,
     operation_context: &'a OperationContext<'a>,
-) -> (&'a Column<'a>, Ordering) {
+) -> Result<(&'a Column<'a>, Ordering)> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
             parameters.iter().find(|p| p.name == parameter_name)
@@ -65,23 +75,23 @@ fn order_by_pair<'a>(
 
     let column = operation_context.create_column_with_id(column_id.unwrap());
 
-    (column, ordering(parameter_value))
+    ordering(parameter_value).map(|ordering| (column, ordering))
 }
 
-fn ordering(argument: &Value) -> Ordering {
-    fn str_ordering(value: &str) -> Ordering {
+fn ordering(argument: &Value) -> Result<Ordering> {
+    fn str_ordering(value: &str) -> Result<Ordering> {
         if value == "ASC" {
-            Ordering::Asc
+            Ok(Ordering::Asc)
         } else if value == "DESC" {
-            Ordering::Desc
+            Ok(Ordering::Desc)
         } else {
-            todo!() // return an error
+            bail!("Cannot match {} as valid ordering", value) // return an error
         }
     }
 
     match argument {
         Value::Enum(value) => str_ordering(value.as_str()),
         Value::String(value) => str_ordering(value.as_str()), // Needed when processing values from variables (that don't get mapped to the Enum type)
-        arg => panic!("Unable to process ordering argument {}", arg), // return an error
+        arg => bail!("Unable to process ordering argument {}", arg), // return an error
     }
 }
