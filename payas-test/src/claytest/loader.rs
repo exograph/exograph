@@ -127,7 +127,7 @@ fn load_testfiles_from_dir_(
         }
     };
 
-    let prefix = model_path.file_name().unwrap().to_str().unwrap();
+    let prefix = model_path.to_str().unwrap();
 
     // Parse init files and populate init_ops
     let mut init_ops = init_ops.to_owned();
@@ -144,7 +144,7 @@ fn load_testfiles_from_dir_(
         let mut testfile = parse_testfile(testfile_path)?;
 
         // annotate testfile with our prefix and our init operations collection
-        testfile.name = format!("{}/{}", prefix, testfile.name);
+        testfile.name = format!("{} : {}", prefix, testfile.name);
         testfile.unique_dbname = to_postgres(&format!("{}/{}", prefix, testfile.unique_dbname));
         testfile.model_path = Some(model_path.to_str().unwrap().to_string());
         testfile.init_operations = init_ops.clone();
@@ -228,24 +228,7 @@ fn from_json(json: String) -> Result<serde_json::Value> {
     serde_json::from_str(&json).context("Failed to parse JSON")
 }
 
-// Generate a PostgreSQL-friendly name from a `str`.
+// Generate a unique, PostgreSQL-friendly name from a `str`.
 fn to_postgres(name: &str) -> String {
-    let mut index: usize = 0;
-
-    name.chars()
-        .map(|c| {
-            let nextchar = if !(c.is_ascii_alphanumeric() || c == '_') {
-                // only alphanumeric and underscores
-                'X'
-            } else if index == 0 && c.is_ascii_digit() {
-                // names in SQL cannot begin with a digit
-                'Z'
-            } else {
-                c
-            };
-
-            index += 1;
-            nextchar
-        })
-        .collect()
+    format!("{:x}", md5::compute(name))
 }
