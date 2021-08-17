@@ -9,7 +9,11 @@ use payas_model::{
 };
 
 pub trait SQLMapper<'a, R> {
-    fn map_to_sql(&'a self, argument: &'a Value, operation_context: &'a OperationContext<'a>) -> R;
+    fn map_to_sql(
+        &'a self,
+        argument: &'a Value,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Result<R>;
 }
 
 pub trait OperationResolver<'a> {
