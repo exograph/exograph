@@ -172,12 +172,11 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
             .utf8_text(source)
             .unwrap()
             .to_string(),
-        ast_typ: convert_type(
+        typ: convert_type(
             node.child_by_field_name("type").unwrap(),
             source,
             source_span,
         ),
-        typ: (),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
@@ -185,20 +184,20 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
     }
 }
 
-pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType {
+pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
     assert_eq!(node.kind(), "type");
     let first_child = node.child(0).unwrap();
+    let mut cursor = node.walk();
 
     match first_child.kind() {
         "term" => AstFieldType::Plain(
             first_child.utf8_text(source).unwrap().to_string(),
+            node.children_by_field_name("type_param", &mut cursor)
+                .map(|p| convert_type(p, source, source_span))
+                .collect(),
+            (),
             span_from_node(source_span, first_child),
         ),
-        "array_type" => AstFieldType::List(Box::new(convert_type(
-            first_child.child_by_field_name("inner").unwrap(),
-            source,
-            source_span,
-        ))),
         "optional_type" => AstFieldType::Optional(Box::new(convert_type(
             first_child.child_by_field_name("inner").unwrap(),
             source,
@@ -552,7 +551,7 @@ mod tests {
         model Venue {
           id: Int @pk @autoincrement
           name: String
-          concerts: [Concert /* here too! */] @column("venueid")
+          concerts: Set[Concert /* here too! */] @column("venueid")
         }
         "#,
         );
@@ -564,7 +563,7 @@ mod tests {
             r#"
         context AuthUser {
             id: Int @jwt("sub") 
-            roles: [String] @jwt
+            roles: Array[String] @jwt
          }
         "#,
         );

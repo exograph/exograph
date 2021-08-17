@@ -45,9 +45,8 @@ module.exports = grammar({
       repeat(field("annotation", $.annotation))
     ),
     type: $ => choice(
-      $.array_type,
       $.optional_type,
-      $.term
+      seq($.term, optional(seq("[", commaSep(field("type_param", $.type)), "]")))
     ),
     array_type: $ => seq("[", field("inner", $.type), "]"),
     optional_type: $ => seq(field("inner", $.type), "?"),

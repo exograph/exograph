@@ -8,10 +8,11 @@ models:
     kind: Persistent
     fields:
       - name: bar
-        ast_typ:
+        typ:
           Plain:
             - Baz
-        typ: ~
+            - []
+            - ~
         annotations:
           - name: column
             params:

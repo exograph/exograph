@@ -8,7 +8,7 @@ use anyhow::Result;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::ToPlural;
 
-use crate::ast::ast_types::AstAnnotationParams;
+use crate::ast::ast_types::{AstAnnotationParams, AstFieldType};
 use crate::{
     ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
     typechecker::{PrimitiveType, Type, Typed},
@@ -315,7 +315,7 @@ fn build_expanded_persistent_type(
             .iter()
             .map(|field| ResolvedField {
                 name: field.name.clone(),
-                typ: resolve_field_type(&field.typ, types, resolved_types),
+                typ: resolve_field_type(&field.typ.to_typ(), types, resolved_types),
                 column_name: compute_column_name(ct, field, types),
                 is_pk: field.annotations.contains("pk"),
                 is_autoincrement: field.annotations.contains("autoincrement"),
@@ -567,7 +567,7 @@ fn build_expanded_context_type(
         .iter()
         .map(|field| ResolvedContextField {
             name: field.name.clone(),
-            typ: resolve_field_type(&field.typ, types, resolved_types),
+            typ: resolve_field_type(&field.typ.to_typ(), types, resolved_types),
             source: extract_context_source(field),
         })
         .collect();
@@ -608,32 +608,38 @@ fn compute_column_name(
         types: &MappedArena<Type>,
     ) -> String {
         match &field.typ {
-            Type::Optional(_) => field.name.to_string(),
-            Type::List(typ) => {
-                // unwrap type
-                let mut underlying_typ = typ;
-                while let Type::List(t) = &**underlying_typ {
-                    underlying_typ = t;
-                }
-
-                if let Type::Reference(type_name) = &**underlying_typ {
-                    if let Some(Type::Primitive(_)) = types.get_by_key(type_name) {
-                        // base type is a primitive, which means this is an Array
-                        return field.name.clone();
-                    }
-                }
-
-                // OneToMany
-                format!("{}_id", enclosing_type.name.to_ascii_lowercase())
-            }
-            Type::Reference(type_name) => {
-                let field_type = types.get_by_key(type_name).unwrap();
+            AstFieldType::Optional(_) => field.name.to_string(),
+            AstFieldType::Plain(_, _, _, _) => {
+                let field_type = field.typ.to_typ().deref(types);
                 match field_type {
                     Type::Composite(_) => format!("{}_id", field.name),
+                    Type::Set(typ) => {
+                        if let Type::Composite(_) = typ.deref(types) {
+                            // OneToMany
+                            format!("{}_id", enclosing_type.name.to_ascii_lowercase())
+                        } else {
+                            panic!("Sets of non-composites are not supported");
+                        }
+                    }
+
+                    Type::Array(typ) => {
+                        // unwrap type
+                        let mut underlying_typ = &typ;
+                        while let Type::Array(t) = &**underlying_typ {
+                            underlying_typ = t;
+                        }
+
+                        if let Type::Primitive(_) = underlying_typ.deref(types) {
+                            // base type is a primitive, which means this is an Array
+                            field.name.clone()
+                        } else {
+                            panic!("Arrays of non-primitives are not supported");
+                        }
+                    }
+
                     _ => field.name.clone(),
                 }
             }
-            _ => panic!(""),
         }
     }
 
@@ -651,17 +657,15 @@ fn resolve_field_type(
 ) -> ResolvedFieldType {
     match typ {
         Type::Optional(underlying) => ResolvedFieldType::Optional(Box::new(resolve_field_type(
-            underlying,
-            types,
-            resolved_types,
-        ))),
-        Type::List(underlying) => ResolvedFieldType::List(Box::new(resolve_field_type(
-            underlying,
+            underlying.as_ref(),
             types,
             resolved_types,
         ))),
         Type::Reference(name) => ResolvedFieldType::Plain(name.to_owned()),
-        t => panic!("Invalid type {:?}", t),
+        Type::Set(underlying) | Type::Array(underlying) => ResolvedFieldType::List(Box::new(
+            resolve_field_type(underlying.as_ref(), types, resolved_types),
+        )),
+        _ => todo!("Unsupported field type"),
     }
 }
 
@@ -690,7 +694,7 @@ mod tests {
         model Venue {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")
-          concerts: [Concert] @column("custom_venueid")
+          concerts: Set[Concert] @column("custom_venueid")
           capacity: Int @bits(16)
           latitude: Float @size(4)
         }        
@@ -709,14 +713,14 @@ mod tests {
           id: Int @pk @autoincrement 
           title: String 
           venue: Venue 
-          attending: [String]
-          seating: [[Boolean]]
+          attending: Array[String]
+          seating: Array[Array[Boolean]]
         }
-        
+
         model Venue             {
           id: Int  @autoincrement @pk 
           name:String 
-          concerts: [Concert] 
+          concerts: Set[Concert] 
         }        
         "#;
 

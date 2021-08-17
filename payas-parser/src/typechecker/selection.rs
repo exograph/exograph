@@ -93,8 +93,9 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 let out_updated = if typ.is_incomplete() {
                     if let Type::Composite(c) = prefix.typ().deref(type_env) {
                         if let Some(field) = c.fields.iter().find(|f| f.name == i.0) {
-                            if !field.typ.is_incomplete() {
-                                *typ = field.typ.clone();
+                            let resolved_typ = field.typ.to_typ();
+                            if !resolved_typ.is_incomplete() {
+                                *typ = resolved_typ;
                                 true
                             } else {
                                 *typ = Type::Error;

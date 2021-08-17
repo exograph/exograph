@@ -13,7 +13,8 @@ pub enum Type {
     Primitive(PrimitiveType),
     Composite(AstModel<Typed>),
     Optional(Box<Type>),
-    List(Box<Type>),
+    Set(Box<Type>),
+    Array(Box<Type>),
     Reference(String),
     Defer,
     Error,
@@ -28,8 +29,13 @@ impl Display for Type {
                 o.fmt(f)?;
                 f.write_str("?")
             }
-            Type::List(l) => {
-                f.write_str("[")?;
+            Type::Set(l) => {
+                f.write_str("Set[")?;
+                l.fmt(f)?;
+                f.write_str("]")
+            }
+            Type::Array(l) => {
+                f.write_str("Array[")?;
                 l.fmt(f)?;
                 f.write_str("]")
             }
@@ -43,8 +49,9 @@ impl Type {
     pub fn is_defer(&self) -> bool {
         match &self {
             Type::Defer => true,
-            Type::Optional(underlying) => underlying.deref().is_defer(),
-            Type::List(underlying) => underlying.deref().is_defer(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.deref().is_defer()
+            }
             _ => false,
         }
     }
@@ -52,8 +59,9 @@ impl Type {
     pub fn is_error(&self) -> bool {
         match &self {
             Type::Error => true,
-            Type::Optional(underlying) => underlying.deref().is_error(),
-            Type::List(underlying) => underlying.deref().is_error(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.deref().is_error()
+            }
             _ => false,
         }
     }
@@ -66,18 +74,20 @@ impl Type {
         match &self {
             Type::Reference(name) => Some(name.to_owned()),
             Type::Primitive(pt) => Some(pt.name()),
-            Type::Optional(underlying) => underlying.get_underlying_typename(),
-            Type::List(underlying) => underlying.get_underlying_typename(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.get_underlying_typename()
+            }
             _ => None,
         }
     }
 
     pub fn deref<'a>(&'a self, env: &'a MappedArena<Type>) -> Type {
-        match &self {
+        match self {
             Type::Reference(name) => env.get_by_key(name).unwrap().clone(),
-            Type::Optional(underlying) => Type::Optional(Box::new(underlying.deref().deref(env))),
-            Type::List(underlying) => Type::List(Box::new(underlying.deref().deref(env))),
-            o => o.deref().clone(),
+            Type::Optional(underlying) => Type::Optional(Box::new(underlying.as_ref().deref(env))),
+            Type::Set(underlying) => Type::Set(Box::new(underlying.as_ref().deref(env))),
+            Type::Array(underlying) => Type::Array(Box::new(underlying.as_ref().deref(env))),
+            o => o.clone(),
         }
     }
 }
