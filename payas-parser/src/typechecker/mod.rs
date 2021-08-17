@@ -40,6 +40,7 @@ impl NodeTypedness for Typed {
     type LogicalOp = Type;
     type Field = Type;
     type Annotations = AnnotationMap;
+    type Type = bool;
 }
 
 pub trait TypecheckInto<T> {

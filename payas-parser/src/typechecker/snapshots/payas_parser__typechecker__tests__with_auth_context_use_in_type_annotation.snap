@@ -9,11 +9,11 @@ expression: types
       kind: Context
       fields:
         - name: role
-          ast_typ:
+          typ:
             Plain:
               - String
-          typ:
-            Reference: String
+              - []
+              - true
           annotations:
             annotations:
               jwt:
@@ -31,19 +31,19 @@ expression: types
       kind: Persistent
       fields:
         - name: is_public
-          ast_typ:
+          typ:
             Plain:
               - Boolean
-          typ:
-            Reference: Boolean
+              - []
+              - true
           annotations:
             annotations: {}
         - name: content
-          ast_typ:
+          typ:
             Plain:
               - String
-          typ:
-            Reference: String
+              - []
+              - true
           annotations:
             annotations: {}
       annotations:
