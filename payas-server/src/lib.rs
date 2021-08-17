@@ -68,7 +68,7 @@ async fn resolve(
                     .with_header("Content-Type", "application/json"),
                 Err(err) => {
                     let mut response = String::from(r#"{"errors": [{"message":""#);
-                    response.push_str(&format!("{}", err));
+                    response.push_str(&format!("{}", err.chain().last().unwrap()));
                     eprintln!("{:?}", err);
                     response.push_str(r#""}]}"#);
 
