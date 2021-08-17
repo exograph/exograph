@@ -35,7 +35,7 @@ impl Display for Type {
                 f.write_str("]")
             }
             Type::Array(l) => {
-                f.write_str("Set[")?;
+                f.write_str("Array[")?;
                 l.fmt(f)?;
                 f.write_str("]")
             }
@@ -49,9 +49,9 @@ impl Type {
     pub fn is_defer(&self) -> bool {
         match &self {
             Type::Defer => true,
-            Type::Optional(underlying) => underlying.deref().is_defer(),
-            Type::Set(underlying) => underlying.deref().is_defer(),
-            Type::Array(underlying) => underlying.deref().is_defer(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.deref().is_defer()
+            }
             _ => false,
         }
     }
@@ -59,9 +59,9 @@ impl Type {
     pub fn is_error(&self) -> bool {
         match &self {
             Type::Error => true,
-            Type::Optional(underlying) => underlying.deref().is_error(),
-            Type::Set(underlying) => underlying.deref().is_error(),
-            Type::Array(underlying) => underlying.deref().is_error(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.deref().is_error()
+            }
             _ => false,
         }
     }
@@ -74,9 +74,9 @@ impl Type {
         match &self {
             Type::Reference(name) => Some(name.to_owned()),
             Type::Primitive(pt) => Some(pt.name()),
-            Type::Optional(underlying) => underlying.get_underlying_typename(),
-            Type::Set(underlying) => underlying.get_underlying_typename(),
-            Type::Array(underlying) => underlying.get_underlying_typename(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.get_underlying_typename()
+            }
             _ => None,
         }
     }
