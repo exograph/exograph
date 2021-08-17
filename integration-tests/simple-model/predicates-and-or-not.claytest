@@ -44,10 +44,6 @@ operation: |
     #    {id: {eq: 2}}
     #  ]
     #})
-
-    #test_error_empty_boolean_predicate: logs(where: {
-    #  and: []
-    #})
   }
 response: |
   {
