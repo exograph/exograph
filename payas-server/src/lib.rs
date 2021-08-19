@@ -1,12 +1,18 @@
+use async_stream::AsyncStream;
 use std::path::Path;
 use std::thread;
 use std::{env, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::http::StatusCode;
 use actix_web::rt::System;
+use actix_web::web::Bytes;
+use actix_web::Error;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::{bail, Result};
+
+use crate::execution::query_context::QueryResponse;
+
+use async_stream::try_stream;
 
 use introspection::schema::Schema;
 use payas_model::{model::system::ModelSystem, sql::database::Database};
@@ -46,6 +52,9 @@ async fn resolve(
 ) -> impl Responder {
     let auth = authenticator.extract_authentication(req);
 
+    let to_bytes = |s: String| Bytes::from(s);
+    let to_bytes_static = |s: &'static str| Bytes::from_static(s.as_bytes());
+
     match auth {
         Ok(claims) => {
             let (system, schema, database) = system_info.as_ref().as_ref();
@@ -63,40 +72,65 @@ async fn resolve(
                 variables,
                 claims,
             ) {
-                Ok(response) => response
-                    .with_status(StatusCode::OK)
-                    .with_header("Content-Type", "application/json"),
-                Err(err) => {
-                    let mut response = String::from(r#"{"errors": [{"message":""#);
-                    response.push_str(&format!("{}", err.chain().last().unwrap()));
-                    eprintln!("{:?}", err);
-                    response.push_str(r#""}]}"#);
+                Ok(parts) => {
+                    let response_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
+                        let parts_len = parts.len();
 
-                    response
-                        .with_status(StatusCode::OK)
-                        .with_header("Content-Type", "application/json")
+                        yield to_bytes_static(r#"{"data": {"#);
+                        for (index, part) in parts.into_iter().enumerate() {
+                            yield to_bytes_static("\"");
+                            yield to_bytes(part.0);
+                            yield to_bytes_static(r#"":"#);
+                            match &part.1 {
+                                QueryResponse::Json(value) => yield to_bytes(value.to_string()),
+                                QueryResponse::Raw(value) => yield to_bytes(value.to_string()),
+                            };
+                            if index != parts_len - 1 {
+                                yield to_bytes_static(", ");
+                            }
+                        };
+                        yield to_bytes_static("}}");
+                    };
+
+                    HttpResponse::Ok()
+                        .content_type("application/json")
+                        .streaming(Box::pin(response_stream))
+                }
+                Err(err) => {
+                    let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
+                        yield to_bytes_static(r#"{"errors": [{"message":""#);
+                        yield to_bytes(format!("{}", err.chain().last().unwrap()));
+                        eprintln!("{:?}", err);
+                        yield to_bytes_static(r#""}]}"#);
+                    };
+
+                    HttpResponse::Ok()
+                        .content_type("application/json")
+                        .streaming(Box::pin(error_stream))
                 }
             }
         }
         Err(err) => {
-            let (message, status_code) = match err {
+            let (message, mut base_response) = match err {
                 JwtAuthenticationError::ExpiredToken => {
-                    ("Expired JWT token", StatusCode::UNAUTHORIZED)
+                    ("Expired JWT token", HttpResponse::Unauthorized())
                 }
                 JwtAuthenticationError::TamperedToken => {
                     // No need to reveal more info for a tampered token, so mark is as a generic bad request
-                    ("Unexpected error", StatusCode::BAD_REQUEST)
+                    ("Unexpected error", HttpResponse::BadRequest())
                 }
-                JwtAuthenticationError::Unknown => ("Unknown error", StatusCode::UNAUTHORIZED),
+                JwtAuthenticationError::Unknown => ("Unknown error", HttpResponse::Unauthorized()),
             };
 
-            let mut response = String::from(r#"{"errors": [{"message":""#);
-            response.push_str(message);
-            response.push_str(r#""}]}"#);
+            let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
+                yield to_bytes_static(r#"{"errors": [{"message":""#);
+                yield to_bytes_static(message);
+                yield to_bytes_static(r#""}]}"#);
+            };
 
-            response
-                .with_status(status_code)
-                .with_header("Content-Type", "application/json")
+            base_response
+                .content_type("application/json")
+                .streaming(Box::pin(error_stream))
         }
     }
 }

@@ -76,7 +76,7 @@ pub fn execute<'a>(
     query_str: &'a str,
     variables: Option<&'a Map<String, Value>>,
     jwt_claims: Option<Value>,
-) -> Result<String> {
+) -> Result<Vec<(String, QueryResponse)>> {
     let request_context = create_request_contexts(&system.contexts, jwt_claims);
 
     let (operations, query_context) = create_query_context(
@@ -89,31 +89,11 @@ pub fn execute<'a>(
         &request_context,
     );
 
-    let parts: Result<Vec<(String, QueryResponse)>> = operations
+    operations
         .iter()
         .flat_map(|query| match query_context.resolve_operation(query) {
             Ok(resolved) => resolved.into_iter().map(Ok).collect(),
             Err(err) => vec![Err(err)],
         })
-        .collect();
-
-    let parts = parts?;
-
-    // TODO: More efficient (and ideally zero-copy) way to push the values to network
-    let mut response = String::from(r#"{"data": {"#);
-    parts.iter().enumerate().for_each(|(index, part)| {
-        response.push('\"');
-        response.push_str(part.0.as_str());
-        response.push_str(r#"":"#);
-        match &part.1 {
-            QueryResponse::Json(value) => response.push_str(value.to_string().as_str()),
-            QueryResponse::Raw(value) => response.push_str(value.as_str()),
-        };
-        if index != parts.len() - 1 {
-            response.push_str(", ");
-        }
-    });
-    response.push_str("}}");
-
-    Ok(response)
+        .collect()
 }
