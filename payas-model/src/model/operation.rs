@@ -1,16 +1,17 @@
-use id_arena::Id;
 use payas_sql::sql::PhysicalTable;
+use serde::{Deserialize, Serialize};
 
 use crate::model::{GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
+    mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
     predicate::PredicateParameter,
     system::ModelSystem,
     types::{GqlType, GqlTypeModifier},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Query {
     pub name: String,
     pub predicate_param: Option<PredicateParameter>,
@@ -18,14 +19,14 @@ pub struct Query {
     pub return_type: OperationReturnType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Mutation {
     pub name: String,
     pub kind: MutationKind,
     pub return_type: OperationReturnType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MutationKind {
     Create(CreateDataParameter),
     Delete(PredicateParameter),
@@ -35,24 +36,24 @@ pub enum MutationKind {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateDataParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: Id<GqlType>,
+    pub type_id: SerializableSlabIndex<GqlType>,
     pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UpdateDataParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: Id<GqlType>,
+    pub type_id: SerializableSlabIndex<GqlType>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {
-    pub type_id: Id<GqlType>,
+    pub type_id: SerializableSlabIndex<GqlType>,
     pub type_name: String,
     pub type_modifier: GqlTypeModifier,
 }

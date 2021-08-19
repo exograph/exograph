@@ -9,27 +9,29 @@ use super::annotation::AnnotationSpec;
 use super::{Scope, Type, TypecheckFrom, Typed};
 
 impl AstFieldType<Typed> {
-    pub fn get_underlying_typename(&self) -> Option<String> {
+    pub fn get_underlying_typename(&self, types: &MappedArena<Type>) -> Option<String> {
         match &self {
-            AstFieldType::Plain(_, _, _, _) => self.to_typ().get_underlying_typename(),
-            AstFieldType::Optional(underlying) => underlying.get_underlying_typename(),
+            AstFieldType::Plain(_, _, _, _) => self.to_typ(types).get_underlying_typename(types),
+            AstFieldType::Optional(underlying) => underlying.get_underlying_typename(types),
         }
     }
 
-    pub fn to_typ(&self) -> Type {
+    pub fn to_typ(&self, types: &MappedArena<Type>) -> Type {
         match &self {
             AstFieldType::Plain(name, params, ok, _) => {
                 if !ok {
                     Type::Error
                 } else {
                     match name.as_str() {
-                        "Set" => Type::Set(Box::new(params[0].to_typ())),
-                        "Array" => Type::Array(Box::new(params[0].to_typ())),
-                        o => Type::Reference(o.to_string()),
+                        "Set" => Type::Set(Box::new(params[0].to_typ(types))),
+                        "Array" => Type::Array(Box::new(params[0].to_typ(types))),
+                        o => Type::Reference(types.get_id(o).unwrap()),
                     }
                 }
             }
-            AstFieldType::Optional(underlying) => Type::Optional(Box::new(underlying.to_typ())),
+            AstFieldType::Optional(underlying) => {
+                Type::Optional(Box::new(underlying.to_typ(types)))
+            }
         }
     }
 }

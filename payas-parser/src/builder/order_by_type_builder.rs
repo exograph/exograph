@@ -1,7 +1,6 @@
-use id_arena::Id;
 use payas_model::model::{
     column_id::ColumnId,
-    mapped_arena::MappedArena,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
     order::{OrderByParameterType, OrderByParameterTypeKind},
 };
 
@@ -130,7 +129,7 @@ fn order_by_param_type(
     model_type_name: &str,
     is_primitive: bool,
     building: &SystemContextBuilding,
-) -> (String, Id<OrderByParameterType>) {
+) -> (String, SerializableSlabIndex<OrderByParameterType>) {
     let param_type_name = get_parameter_type_name(model_type_name, is_primitive);
 
     let param_type_id = building.order_by_types.get_id(&param_type_name).unwrap();

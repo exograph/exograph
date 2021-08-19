@@ -1,9 +1,8 @@
 //! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
-use id_arena::Id;
 use payas_model::model::access::Access;
-use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::ToGqlTypeNames;
 use payas_model::model::operation::{Mutation, MutationKind, OperationReturnType};
 use payas_model::model::relation::GqlRelation;
@@ -51,7 +50,7 @@ pub trait MutationBuilder {
 
     fn build_mutations(
         &self,
-        model_type_id: Id<GqlType>,
+        model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
     ) -> Vec<Mutation> {
@@ -237,7 +236,7 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&str>,
         container_type: Option<&str>,
-    ) -> Vec<(Id<GqlType>, GqlCompositeTypeKind)> {
+    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
         if let GqlTypeKind::Composite(GqlCompositeTypeKind {
             ref fields,
             table_id,
@@ -300,7 +299,7 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&str>,
         container_type: Option<&str>,
-    ) -> Vec<(Id<GqlType>, GqlCompositeTypeKind)> {
+    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
         let existing_type_name = Self::data_type_name(&field_type.name, &container_type);
 
         if let GqlTypeKind::Primitive = building

@@ -1,30 +1,31 @@
 use super::access::Access;
+use super::mapped_arena::{SerializableSlab, SerializableSlabIndex};
 use super::{column_id::ColumnId, relation::GqlRelation};
 use crate::model::operation::*;
 
 use crate::sql::PhysicalTable;
 
-use id_arena::{Arena, Id};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ContextType {
     pub name: String,
     pub fields: Vec<ContextField>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ContextField {
     pub name: String,
     pub typ: GqlFieldType,
     pub source: ContextSource,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ContextSource {
     Jwt { claim: String },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GqlType {
     pub name: String,
     pub plural_name: String,
@@ -61,7 +62,7 @@ impl GqlType {
             .and_then(|pk_field| pk_field.relation.self_column())
     }
 
-    pub fn table_id(&self) -> Option<Id<PhysicalTable>> {
+    pub fn table_id(&self) -> Option<SerializableSlabIndex<PhysicalTable>> {
         match &self.kind {
             GqlTypeKind::Primitive => None,
             GqlTypeKind::Composite(GqlCompositeTypeKind { table_id, .. }) => Some(*table_id),
@@ -73,48 +74,48 @@ impl GqlType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum GqlTypeKind {
     Primitive,
     Composite(GqlCompositeTypeKind),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GqlCompositeTypeKind {
     pub fields: Vec<GqlField>,
-    pub table_id: Id<PhysicalTable>,
-    pub pk_query: Id<Query>,
-    pub collection_query: Id<Query>,
+    pub table_id: SerializableSlabIndex<PhysicalTable>,
+    pub pk_query: SerializableSlabIndex<Query>,
+    pub collection_query: SerializableSlabIndex<Query>,
     pub access: Access,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum GqlTypeModifier {
     Optional,
     NonNull,
     List,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GqlField {
     pub name: String,
     pub typ: GqlFieldType,
     pub relation: GqlRelation,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum GqlFieldType {
     Optional(Box<GqlFieldType>),
     Reference {
-        type_id: Id<GqlType>,
+        type_id: SerializableSlabIndex<GqlType>,
         type_name: String,
     },
     List(Box<GqlFieldType>),
 }
 
 impl GqlFieldType {
-    pub fn type_id(&self) -> &Id<GqlType> {
+    pub fn type_id(&self) -> &SerializableSlabIndex<GqlType> {
         match self {
             GqlFieldType::Optional(underlying) | GqlFieldType::List(underlying) => {
                 underlying.type_id()
@@ -123,7 +124,7 @@ impl GqlFieldType {
         }
     }
 
-    pub fn base_type<'a>(&self, types: &'a Arena<GqlType>) -> &'a GqlType {
+    pub fn base_type<'a>(&self, types: &'a SerializableSlab<GqlType>) -> &'a GqlType {
         match self {
             GqlFieldType::Optional(underlying) | GqlFieldType::List(underlying) => {
                 underlying.base_type(types)

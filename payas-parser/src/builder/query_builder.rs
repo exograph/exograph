@@ -1,4 +1,4 @@
-use id_arena::Id;
+use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::naming::ToGqlQueryName;
 use payas_model::model::{
     mapped_arena::MappedArena,
@@ -49,7 +49,10 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
-fn shallow_pk_query(model_type_id: Id<GqlType>, typ: &ResolvedCompositeType) -> Query {
+fn shallow_pk_query(
+    model_type_id: SerializableSlabIndex<GqlType>,
+    typ: &ResolvedCompositeType,
+) -> Query {
     let operation_name = typ.pk_query();
     Query {
         name: operation_name,
@@ -95,7 +98,10 @@ pub fn pk_predicate_param(
     }
 }
 
-fn shallow_collection_query(model_type_id: Id<GqlType>, model: &ResolvedCompositeType) -> Query {
+fn shallow_collection_query(
+    model_type_id: SerializableSlabIndex<GqlType>,
+    model: &ResolvedCompositeType,
+) -> Query {
     let operation_name = model.collection_query();
     Query {
         name: operation_name,
