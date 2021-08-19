@@ -80,6 +80,10 @@ impl<'a> ParameterBinding<'a> {
     }
 }
 
+pub trait OperationExpression {
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding;
+}
+
 pub trait Expression {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding;
 }

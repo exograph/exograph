@@ -17,7 +17,7 @@ pub trait OperationResolver<'a> {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLOperation<'a>>;
+    ) -> Result<Vec<SQLOperation<'a>>>;
 }
 
 pub enum OperationKind {

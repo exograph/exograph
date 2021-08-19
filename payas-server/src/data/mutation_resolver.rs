@@ -10,13 +10,14 @@ use crate::{
 use anyhow::{anyhow, bail, Result};
 use payas_model::{
     model::{operation::*, predicate::PredicateParameter, types::*},
-    sql::column::PhysicalColumn,
+    sql::Select,
 };
 
 use super::{
     create_data_param_mapper::InsertionInfo,
     operation_context::OperationContext,
     sql_mapper::{OperationResolver, SQLMapper},
+    update_data_param_mapper::MappedUpdateDataParameter,
 };
 
 use async_graphql_parser::{types::Field, Positioned};
@@ -29,14 +30,28 @@ impl<'a> OperationResolver<'a> for Mutation {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLOperation<'a>> {
-        let core_operation = match &self.kind {
+    ) -> Result<Vec<SQLOperation<'a>>> {
+        let select = {
+            let (_, pk_query, collection_query) = return_type_info(self, operation_context);
+            let selection_query = match &self.return_type.type_modifier {
+                GqlTypeModifier::List => collection_query,
+                GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
+            };
+
+            selection_query.operation(&field.node, Predicate::True, operation_context, true)?
+        };
+
+        match &self.kind {
             MutationKind::Create(data_param) => {
-                create_operation(self, data_param, &field.node, operation_context)
+                create_operation(self, data_param, &field.node, select, operation_context)
             }
-            MutationKind::Delete(predicate_param) => {
-                delete_operation(self, predicate_param, &field.node, operation_context)
-            }
+            MutationKind::Delete(predicate_param) => delete_operation(
+                self,
+                predicate_param,
+                &field.node,
+                select,
+                operation_context,
+            ),
             MutationKind::Update {
                 data_param,
                 predicate_param,
@@ -45,23 +60,10 @@ impl<'a> OperationResolver<'a> for Mutation {
                 data_param,
                 predicate_param,
                 &field.node,
+                select,
                 operation_context,
             ),
-        }?;
-
-        let (_, pk_query, collection_query) = return_type_info(self, operation_context);
-        let selection_query = match &self.return_type.type_modifier {
-            GqlTypeModifier::List => collection_query,
-            GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
-        };
-
-        let select =
-            selection_query.operation(&field.node, Predicate::True, operation_context, true)?;
-
-        Ok(SQLOperation::Cte(Cte {
-            ctes: core_operation,
-            select,
-        }))
+        }
     }
 }
 
@@ -77,8 +79,9 @@ fn create_operation<'a>(
     mutation: &'a Mutation,
     data_param: &'a CreateDataParameter,
     field: &'a Field,
+    select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<(String, SQLOperation<'a>)>> {
+) -> Result<Vec<SQLOperation<'a>>> {
     let access_predicate = compute_access_predicate(
         &mutation.return_type,
         &OperationKind::Create,
@@ -95,15 +98,16 @@ fn create_operation<'a>(
     let info = insertion_info(data_param, &field.arguments, operation_context).unwrap();
     let ops = info.operation(operation_context);
 
-    Ok(ops)
+    Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
 }
 
 fn delete_operation<'a>(
     mutation: &'a Mutation,
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
+    select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<(String, SQLOperation<'a>)>> {
+) -> Result<Vec<SQLOperation<'a>>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -124,13 +128,15 @@ fn delete_operation<'a>(
         operation_context,
     );
 
-    Ok(vec![(
+    let ops = vec![(
         table_name(mutation, operation_context),
         SQLOperation::Delete(table.delete(
             predicate,
             vec![operation_context.create_column(Column::Star)],
         )),
-    )])
+    )];
+
+    Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
 }
 
 fn update_operation<'a>(
@@ -138,8 +144,9 @@ fn update_operation<'a>(
     data_param: &'a UpdateDataParameter,
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
+    select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<(String, SQLOperation<'a>)>> {
+) -> Result<Vec<SQLOperation<'a>>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -161,16 +168,30 @@ fn update_operation<'a>(
     )
     .unwrap();
 
-    let column_values = update_columns(data_param, &field.arguments, operation_context).unwrap();
+    let MappedUpdateDataParameter {
+        self_update_columns,
+        nested_updates,
+    } = update_columns(data_param, &field.arguments, operation_context).unwrap();
 
-    Ok(vec![(
-        table_name(mutation, operation_context),
-        SQLOperation::Update(table.update(
-            column_values,
-            predicate,
-            vec![operation_context.create_column(Column::Star)],
-        )),
-    )])
+    // let ops = vec![(
+    //     table_name(mutation, operation_context),
+    //     SQLOperation::Update(table.update(
+    //         column_values,
+    //         predicate,
+    //         vec![operation_context.create_column(Column::Star)],
+    //     )),
+    // )];
+
+    // Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
+
+    let mut ops = vec![SQLOperation::Update(table.update(
+        self_update_columns,
+        predicate,
+        vec![],
+    ))];
+    ops.extend(nested_updates);
+    ops.push(SQLOperation::Select(select));
+    Ok(ops)
 }
 
 fn insertion_info<'a>(
@@ -189,7 +210,7 @@ fn update_columns<'a>(
     data_param: &'a UpdateDataParameter,
     arguments: &'a Arguments,
     operation_context: &'a OperationContext<'a>,
-) -> Option<Vec<(&'a PhysicalColumn, &'a Column<'a>)>> {
+) -> Option<MappedUpdateDataParameter<'a>> {
     let argument_value = super::find_arg(arguments, &data_param.name);
     argument_value.map(|argument_value| data_param.map_to_sql(argument_value, operation_context))
 }

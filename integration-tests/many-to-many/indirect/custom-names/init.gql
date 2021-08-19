@@ -1,15 +1,35 @@
 operation: |
     mutation {
-        A1a: createArtist(data: {name: "A1a"}) {
+        A1: createArtist(data: {name: "A1"}) {
             id
         }
-        A1b: createArtist(data: {name: "A1b"}) {
+        A2: createArtist(data: {name: "A2"}) {
             id
         }
-        A2a: createArtist(data: {name: "A2a"}) {
+        A3: createArtist(data: {name: "A3"}) {
             id
         }
-        A2b: createArtist(data: {name: "A2b"}) {
+        A4: createArtist(data: {name: "A4"}) {
             id
-        }                    
+        }
+        A5: createArtist(data: {name: "A5"}) {
+            id
+        }
+        A6: createArtist(data: {name: "A6"}) {   
+            id
+        }     
+        createConcert(data: {title: "C1", concertArtists: [
+            {artist: {id: 1}, rank: 1, role: "main"},
+            {artist: {id: 2}, rank: 2, role: "main"}, 
+            {artist: {id: 3}, rank: 3, role: "accompanying"}
+        ]}) {
+            id
+            title
+            mainArtists: concertArtists(where: {role: {eq: "main"}}) {
+                id
+            }
+            accArtists: concertArtists(where: {role: {eq: "accompanying"}}) {
+                id
+            }
+        }                  
     }  

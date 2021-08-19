@@ -102,8 +102,7 @@ impl<'a> OperationContext<'a> {
 
         resolved.map(|json_value| {
             let value = Value::from_json(json_value.to_owned()).unwrap();
-            let non_mut_value: &Value = self.resolved_variables.alloc(value);
-            non_mut_value
+            self.resolved_variables.alloc(value) as &Value
         })
     }
 
