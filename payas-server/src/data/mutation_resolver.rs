@@ -173,6 +173,7 @@ fn update_operation<'a>(
         nested_updates,
     } = update_columns(data_param, &field.arguments, operation_context).unwrap();
 
+    // TODO: Restore the following CTE style for updates that have no nested updates/creations/deletions
     // let ops = vec![(
     //     table_name(mutation, operation_context),
     //     SQLOperation::Update(table.update(
