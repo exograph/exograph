@@ -5,6 +5,7 @@
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
 use anyhow::Result;
+
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::ToPlural;
 
@@ -17,6 +18,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 /// Consume typed-checked types and build resolved types
+#[derive(Deserialize, Serialize)]
 pub struct ResolvedSystem {
     pub types: MappedArena<ResolvedType>,
     pub contexts: MappedArena<ResolvedContext>,
@@ -315,11 +317,11 @@ fn build_expanded_persistent_type(
             .iter()
             .map(|field| ResolvedField {
                 name: field.name.clone(),
-                typ: resolve_field_type(&field.typ.to_typ(), types, resolved_types),
+                typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
                 column_name: compute_column_name(ct, field, types),
                 is_pk: field.annotations.contains("pk"),
                 is_autoincrement: field.annotations.contains("autoincrement"),
-                type_hint: build_type_hint(field),
+                type_hint: build_type_hint(field, types),
             })
             .collect();
 
@@ -334,7 +336,7 @@ fn build_expanded_persistent_type(
     }
 }
 
-fn build_type_hint(field: &AstField<Typed>) -> Option<ResolvedTypeHint> {
+fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option<ResolvedTypeHint> {
     ////
     // Part 1: parse out and validate hints for each primitive
     ////
@@ -358,7 +360,7 @@ fn build_type_hint(field: &AstField<Typed>) -> Option<ResolvedTypeHint> {
         // but we need to know the type of the field before constructing the
         // appropriate type hint
         // needed to disambiguate between Int and Float hints
-        if field.typ.get_underlying_typename().unwrap() != "Int" {
+        if field.typ.get_underlying_typename(types).unwrap() != "Int" {
             None
         } else {
             let range_hint = field.annotations.get("range").map(|params| {
@@ -405,7 +407,7 @@ fn build_type_hint(field: &AstField<Typed>) -> Option<ResolvedTypeHint> {
 
     let float_hint = {
         // needed to disambiguate between Int and Float hints
-        if field.typ.get_underlying_typename().unwrap() != "Float" {
+        if field.typ.get_underlying_typename(types).unwrap() != "Float" {
             None
         } else {
             let bits_hint = if let Some(size) = size_annotation {
@@ -429,7 +431,7 @@ fn build_type_hint(field: &AstField<Typed>) -> Option<ResolvedTypeHint> {
 
     let number_hint = {
         // needed to disambiguate between DateTime and Decimal hints
-        if field.typ.get_underlying_typename().unwrap() != "Decimal" {
+        if field.typ.get_underlying_typename(types).unwrap() != "Decimal" {
             None
         } else {
             let precision_hint = field
@@ -476,15 +478,15 @@ fn build_type_hint(field: &AstField<Typed>) -> Option<ResolvedTypeHint> {
         // needed to disambiguate between DateTime and Decimal hints
         if field
             .typ
-            .get_underlying_typename()
+            .get_underlying_typename(types)
             .unwrap()
             .contains("Date")
             || field
                 .typ
-                .get_underlying_typename()
+                .get_underlying_typename(types)
                 .unwrap()
                 .contains("Time")
-            || field.typ.get_underlying_typename().unwrap() != "Instant"
+            || field.typ.get_underlying_typename(types).unwrap() != "Instant"
         {
             None
         } else {
@@ -567,7 +569,7 @@ fn build_expanded_context_type(
         .iter()
         .map(|field| ResolvedContextField {
             name: field.name.clone(),
-            typ: resolve_field_type(&field.typ.to_typ(), types, resolved_types),
+            typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
             source: extract_context_source(field),
         })
         .collect();
@@ -610,7 +612,7 @@ fn compute_column_name(
         match &field.typ {
             AstFieldType::Optional(_) => field.name.to_string(),
             AstFieldType::Plain(_, _, _, _) => {
-                let field_type = field.typ.to_typ().deref(types);
+                let field_type = field.typ.to_typ(types).deref(types);
                 match field_type {
                     Type::Composite(_) => format!("{}_id", field.name),
                     Type::Set(typ) => {
@@ -661,7 +663,9 @@ fn resolve_field_type(
             types,
             resolved_types,
         ))),
-        Type::Reference(name) => ResolvedFieldType::Plain(name.to_owned()),
+        Type::Reference(id) => {
+            ResolvedFieldType::Plain(types[*id].get_underlying_typename(types).unwrap())
+        }
         Type::Set(underlying) | Type::Array(underlying) => ResolvedFieldType::List(Box::new(
             resolve_field_type(underlying.as_ref(), types, resolved_types),
         )),
@@ -671,8 +675,6 @@ fn resolve_field_type(
 
 #[cfg(test)]
 mod tests {
-    use payas_model::model::mapped_arena::sorted_values;
-
     use super::*;
     use crate::{parser, typechecker};
 
@@ -702,7 +704,9 @@ mod tests {
 
         let resolved = create_resolved_system(src);
 
-        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
     }
 
     #[test]
@@ -726,7 +730,9 @@ mod tests {
 
         let resolved = create_resolved_system(src);
 
-        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
     }
 
     #[test]
@@ -746,7 +752,9 @@ mod tests {
 
         let resolved = create_resolved_system(src);
 
-        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
     }
 
     #[test]
@@ -766,7 +774,9 @@ mod tests {
 
         let resolved = create_resolved_system(src);
 
-        insta::assert_yaml_snapshot!(normalized_system(&resolved));
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
     }
 
     fn create_resolved_system(src: &str) -> ResolvedSystem {
@@ -774,12 +784,5 @@ mod tests {
         let types = typechecker::build(parsed, codemap).unwrap();
 
         build(types).unwrap()
-    }
-
-    fn normalized_system(input: &ResolvedSystem) -> (Vec<&ResolvedType>, Vec<&ResolvedContext>) {
-        (
-            sorted_values(&input.types).clone(),
-            sorted_values(&input.contexts),
-        )
     }
 }

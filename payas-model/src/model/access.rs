@@ -1,6 +1,8 @@
 use super::column_id::ColumnId;
 
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Access {
     pub creation: AccessExpression,
     pub read: AccessExpression,
@@ -19,7 +21,7 @@ impl Access {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessExpression {
     ContextSelection(AccessConextSelection), // AuthContext.role
     Column(ColumnId), // self.id (special case of a boolean column such as self.published will be expanded to self.published == true when building an AccessExpression)
@@ -30,20 +32,20 @@ pub enum AccessExpression {
     RelationalOp(AccessRelationalOp),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessConextSelection {
     Single(String),
     Select(Box<AccessConextSelection>, String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessLogicalOp {
     Not(Box<AccessExpression>),
     And(Box<AccessExpression>, Box<AccessExpression>),
     Or(Box<AccessExpression>, Box<AccessExpression>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessRelationalOp {
     Eq(Box<AccessExpression>, Box<AccessExpression>),
     Neq(Box<AccessExpression>, Box<AccessExpression>),

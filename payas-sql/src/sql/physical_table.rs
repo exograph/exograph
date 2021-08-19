@@ -8,7 +8,9 @@ use super::{
     Delete, Expression, ExpressionContext, Insert, ParameterBinding, Update,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PhysicalTable {
     pub name: String,
     pub columns: Vec<PhysicalColumn>,

@@ -2,9 +2,10 @@ use crate::spec::SQLStatement;
 
 use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
 use anyhow::{bail, Result};
+use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
@@ -13,7 +14,7 @@ pub struct PhysicalColumn {
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PhysicalColumnType {
     Int {
         bits: IntBits,
@@ -48,7 +49,7 @@ pub enum PhysicalColumnType {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IntBits {
     _16,
     _32,
@@ -56,7 +57,7 @@ pub enum IntBits {
 }
 
 /// Number of bits in the float's mantissa.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FloatBits {
     _24,
     _53,

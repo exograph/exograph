@@ -1,4 +1,4 @@
-use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
@@ -15,7 +15,7 @@ pub enum Type {
     Optional(Box<Type>),
     Set(Box<Type>),
     Array(Box<Type>),
-    Reference(String),
+    Reference(SerializableSlabIndex<Type>),
     Defer,
     Error,
 }
@@ -39,7 +39,10 @@ impl Display for Type {
                 l.fmt(f)?;
                 f.write_str("]")
             }
-            Type::Reference(r) => f.write_str(r.as_str()),
+            Type::Reference(r) => {
+                f.write_str("ref#")?;
+                r.arr_idx().fmt(f)
+            }
             _ => Result::Err(std::fmt::Error),
         }
     }
@@ -70,23 +73,26 @@ impl Type {
         self.is_defer() || self.is_error()
     }
 
-    pub fn get_underlying_typename(&self) -> Option<String> {
+    pub fn get_underlying_typename(&self, types: &MappedArena<Type>) -> Option<String> {
         match &self {
-            Type::Reference(name) => Some(name.to_owned()),
+            Type::Composite(c) => Some(c.name.clone()),
+            Type::Reference(_id) => self.deref(types).get_underlying_typename(types),
             Type::Primitive(pt) => Some(pt.name()),
             Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
-                underlying.get_underlying_typename()
+                underlying.get_underlying_typename(types)
             }
             _ => None,
         }
     }
 
-    pub fn deref<'a>(&'a self, env: &'a MappedArena<Type>) -> Type {
+    pub fn deref<'a>(&'a self, types: &'a MappedArena<Type>) -> Type {
         match self {
-            Type::Reference(name) => env.get_by_key(name).unwrap().clone(),
-            Type::Optional(underlying) => Type::Optional(Box::new(underlying.as_ref().deref(env))),
-            Type::Set(underlying) => Type::Set(Box::new(underlying.as_ref().deref(env))),
-            Type::Array(underlying) => Type::Array(Box::new(underlying.as_ref().deref(env))),
+            Type::Reference(idx) => types[*idx].clone(),
+            Type::Optional(underlying) => {
+                Type::Optional(Box::new(underlying.as_ref().deref(types)))
+            }
+            Type::Set(underlying) => Type::Set(Box::new(underlying.as_ref().deref(types))),
+            Type::Array(underlying) => Type::Array(Box::new(underlying.as_ref().deref(types))),
             o => o.clone(),
         }
     }

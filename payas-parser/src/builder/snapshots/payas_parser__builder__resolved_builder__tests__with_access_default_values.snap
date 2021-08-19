@@ -1,143 +1,237 @@
 ---
 source: payas-parser/src/builder/resolved_builder.rs
-expression: normalized_system(&resolved)
+expression: resolved
 
 ---
-- - Primitive: Boolean
-  - Composite:
-      name: Concert
-      plural_name: Concerts
-      fields:
-        - name: id
-          typ:
-            Plain: Int
-          column_name: id
-          is_pk: true
-          is_autoincrement: true
-          type_hint: ~
-        - name: title
-          typ:
-            Plain: String
-          column_name: title
-          is_pk: false
-          is_autoincrement: false
-          type_hint: ~
-        - name: public
-          typ:
-            Plain: Boolean
-          column_name: public
-          is_pk: false
-          is_autoincrement: false
-          type_hint: ~
-      table_name: Concert
-      access:
-        creation:
-          LogicalOp:
-            Or:
-              - RelationalOp:
-                  Eq:
-                    - FieldSelection:
-                        Select:
-                          - Single:
-                              - - AuthContext
-                              - Reference: AuthContext
-                          - - role
-                          - Reference: String
-                    - StringLiteral:
-                        - ROLE_ADMIN
-                    - Primitive: Boolean
-              - FieldSelection:
-                  Select:
-                    - Single:
-                        - - self
-                        - Reference: Concert
-                    - - public
-                    - Reference: Boolean
-              - Primitive: Boolean
-        read:
-          LogicalOp:
-            Or:
-              - RelationalOp:
-                  Eq:
-                    - FieldSelection:
-                        Select:
-                          - Single:
-                              - - AuthContext
-                              - Reference: AuthContext
-                          - - role
-                          - Reference: String
-                    - StringLiteral:
-                        - ROLE_ADMIN
-                    - Primitive: Boolean
-              - FieldSelection:
-                  Select:
-                    - Single:
-                        - - self
-                        - Reference: Concert
-                    - - public
-                    - Reference: Boolean
-              - Primitive: Boolean
-        update:
-          LogicalOp:
-            Or:
-              - RelationalOp:
-                  Eq:
-                    - FieldSelection:
-                        Select:
-                          - Single:
-                              - - AuthContext
-                              - Reference: AuthContext
-                          - - role
-                          - Reference: String
-                    - StringLiteral:
-                        - ROLE_ADMIN
-                    - Primitive: Boolean
-              - FieldSelection:
-                  Select:
-                    - Single:
-                        - - self
-                        - Reference: Concert
-                    - - public
-                    - Reference: Boolean
-              - Primitive: Boolean
-        delete:
-          LogicalOp:
-            Or:
-              - RelationalOp:
-                  Eq:
-                    - FieldSelection:
-                        Select:
-                          - Single:
-                              - - AuthContext
-                              - Reference: AuthContext
-                          - - role
-                          - Reference: String
-                    - StringLiteral:
-                        - ROLE_ADMIN
-                    - Primitive: Boolean
-              - FieldSelection:
-                  Select:
-                    - Single:
-                        - - self
-                        - Reference: Concert
-                    - - public
-                    - Reference: Boolean
-              - Primitive: Boolean
-  - Primitive: Decimal
-  - Primitive: Float
-  - Primitive: Instant
-  - Primitive: Int
-  - Primitive: Json
-  - Primitive: LocalDate
-  - Primitive: LocalDateTime
-  - Primitive: LocalTime
-  - Primitive: String
-- - name: AuthContext
-    fields:
-      - name: role
-        typ:
-          Plain: String
-        source:
-          Jwt:
-            claim: role
+types:
+  values:
+    - - ~
+      - Primitive: Boolean
+    - - ~
+      - Primitive: Int
+    - - ~
+      - Primitive: Float
+    - - ~
+      - Primitive: Decimal
+    - - ~
+      - Primitive: String
+    - - ~
+      - Primitive: LocalTime
+    - - ~
+      - Primitive: LocalDateTime
+    - - ~
+      - Primitive: LocalDate
+    - - ~
+      - Primitive: Instant
+    - - ~
+      - Primitive: Json
+    - - ~
+      - Composite:
+          name: Concert
+          plural_name: Concerts
+          fields:
+            - name: id
+              typ:
+                Plain: Int
+              column_name: id
+              is_pk: true
+              is_autoincrement: true
+              type_hint: ~
+            - name: title
+              typ:
+                Plain: String
+              column_name: title
+              is_pk: false
+              is_autoincrement: false
+              type_hint: ~
+            - name: public
+              typ:
+                Plain: Boolean
+              column_name: public
+              is_pk: false
+              is_autoincrement: false
+              type_hint: ~
+          table_name: Concert
+          access:
+            creation:
+              LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - AuthContext
+                                  - Reference:
+                                      index: 10
+                                      generation: ~
+                              - - role
+                              - Reference:
+                                  index: 4
+                                  generation: ~
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - - self
+                            - Reference:
+                                index: 11
+                                generation: ~
+                        - - public
+                        - Reference:
+                            index: 0
+                            generation: ~
+                  - Primitive: Boolean
+            read:
+              LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - AuthContext
+                                  - Reference:
+                                      index: 10
+                                      generation: ~
+                              - - role
+                              - Reference:
+                                  index: 4
+                                  generation: ~
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - - self
+                            - Reference:
+                                index: 11
+                                generation: ~
+                        - - public
+                        - Reference:
+                            index: 0
+                            generation: ~
+                  - Primitive: Boolean
+            update:
+              LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - AuthContext
+                                  - Reference:
+                                      index: 10
+                                      generation: ~
+                              - - role
+                              - Reference:
+                                  index: 4
+                                  generation: ~
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - - self
+                            - Reference:
+                                index: 11
+                                generation: ~
+                        - - public
+                        - Reference:
+                            index: 0
+                            generation: ~
+                  - Primitive: Boolean
+            delete:
+              LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - AuthContext
+                                  - Reference:
+                                      index: 10
+                                      generation: ~
+                              - - role
+                              - Reference:
+                                  index: 4
+                                  generation: ~
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - - self
+                            - Reference:
+                                index: 11
+                                generation: ~
+                        - - public
+                        - Reference:
+                            index: 0
+                            generation: ~
+                  - Primitive: Boolean
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+  map:
+    Boolean:
+      index: 0
+      generation: ~
+    Concert:
+      index: 10
+      generation: ~
+    Decimal:
+      index: 3
+      generation: ~
+    Float:
+      index: 2
+      generation: ~
+    Instant:
+      index: 8
+      generation: ~
+    Int:
+      index: 1
+      generation: ~
+    Json:
+      index: 9
+      generation: ~
+    LocalDate:
+      index: 7
+      generation: ~
+    LocalDateTime:
+      index: 6
+      generation: ~
+    LocalTime:
+      index: 5
+      generation: ~
+    String:
+      index: 4
+      generation: ~
+contexts:
+  values:
+    - - ~
+      - name: AuthContext
+        fields:
+          - name: role
+            typ:
+              Plain: String
+            source:
+              Jwt:
+                claim: role
+    - ~
+    - ~
+    - ~
+  map:
+    AuthContext:
+      index: 0
+      generation: ~
 

@@ -1,8 +1,7 @@
 //! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
 
-use id_arena::Id;
 use payas_model::model::access::Access;
-use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind};
@@ -137,7 +136,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         building: &SystemContextBuilding,
         top_level_type: Option<&str>,
         container_type: Option<&str>,
-    ) -> Vec<(Id<GqlType>, GqlCompositeTypeKind)> {
+    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
         let existing_type_name = Self::data_type_name(&field_type.name, &container_type);
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
