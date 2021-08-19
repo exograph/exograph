@@ -111,8 +111,10 @@ pub struct SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
-    use id_arena::Arena;
-    use payas_model::sql::column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
+    use payas_model::{
+        model::mapped_arena::SerializableSlab,
+        sql::column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
+    };
 
     use super::*;
     use crate::parser;
@@ -228,7 +230,7 @@ mod tests {
 
     fn get_table_from_arena<'a>(
         name: &'a str,
-        tables: &'a Arena<PhysicalTable>,
+        tables: &'a SerializableSlab<PhysicalTable>,
     ) -> &'a PhysicalTable {
         for (_, item) in tables.iter() {
             if item.name == name {

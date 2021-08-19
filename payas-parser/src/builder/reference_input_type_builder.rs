@@ -1,8 +1,7 @@
 //! Build the reference input type (used to refer to an entity by its pk)
 
-use id_arena::Id;
 use payas_model::model::access::Access;
-use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::ToGqlTypeNames;
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::types::GqlType;
@@ -38,7 +37,7 @@ impl Builder for ReferenceInputTypeBuilder {
 fn expanded_reference_types(
     model_type: &GqlType,
     building: &SystemContextBuilding,
-) -> Vec<(Id<GqlType>, GqlTypeKind)> {
+) -> Vec<(SerializableSlabIndex<GqlType>, GqlTypeKind)> {
     let existing_type = model_type;
 
     if let GqlTypeKind::Composite(GqlCompositeTypeKind {

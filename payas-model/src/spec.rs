@@ -1,8 +1,10 @@
 use heck::CamelCase;
-use id_arena::Arena;
+
 use payas_sql::spec::{ColumnSpec, Issue, SchemaSpec, TableSpec, WithIssues};
 use payas_sql::sql::column::{PhysicalColumn, PhysicalColumnType};
 use payas_sql::sql::PhysicalTable;
+
+use crate::model::mapped_arena::SerializableSlab;
 
 pub trait FromModel<T> {
     fn from_model(_: T) -> Self;
@@ -17,9 +19,9 @@ fn to_model_name(name: &str) -> String {
     name.to_camel_case() // PascalCase is called CamelCase in heck
 }
 
-impl FromModel<Arena<PhysicalTable>> for SchemaSpec {
+impl FromModel<SerializableSlab<PhysicalTable>> for SchemaSpec {
     /// Creates a new schema specification from the tables of a claytip model file.
-    fn from_model(tables: Arena<PhysicalTable>) -> Self {
+    fn from_model(tables: SerializableSlab<PhysicalTable>) -> Self {
         let table_specs: Vec<_> = tables
             .iter()
             .map(|(_, table)| TableSpec::from_model(table))

@@ -3,20 +3,25 @@ use std::{
     ops,
 };
 
-use id_arena::{Arena, Id};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+use typed_generational_arena::{Arena, IgnoreGeneration, Index};
+
+pub type SerializableSlab<T> = Arena<T, usize, IgnoreGeneration>;
+pub type SerializableSlabIndex<T> = Index<T, usize, IgnoreGeneration>;
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MappedArena<V> {
-    pub values: Arena<V>,
-    map: HashMap<String, Id<V>>,
+    pub values: SerializableSlab<V>,
+    map: HashMap<String, SerializableSlabIndex<V>>,
 }
 
-impl<V> MappedArena<V> {
-    pub fn keys(&self) -> Keys<String, Id<V>> {
+impl<V: DeserializeOwned + Serialize> MappedArena<V> {
+    pub fn keys(&self) -> Keys<String, SerializableSlabIndex<V>> {
         self.map.keys()
     }
 
-    pub fn get_id(&self, key: &str) -> Option<Id<V>> {
+    pub fn get_id(&self, key: &str) -> Option<SerializableSlabIndex<V>> {
         self.map.get(key).copied()
     }
 
@@ -33,23 +38,23 @@ impl<V> MappedArena<V> {
         }
     }
 
-    pub fn add(&mut self, key: &str, typ: V) -> Id<V> {
-        let id = self.values.alloc(typ);
+    pub fn add(&mut self, key: &str, typ: V) -> SerializableSlabIndex<V> {
+        let id = self.values.insert(typ);
         self.map.insert(key.to_string(), id);
         id
     }
 
-    pub fn iter(&self) -> id_arena::Iter<V, impl id_arena::ArenaBehavior> {
+    pub fn iter(&self) -> typed_generational_arena::Iter<V, usize, IgnoreGeneration> {
         self.values.iter()
     }
 
-    pub fn iter_mut(&mut self) -> id_arena::IterMut<V, id_arena::DefaultArenaBehavior<V>> {
+    pub fn iter_mut(&mut self) -> typed_generational_arena::IterMut<V, usize, IgnoreGeneration> {
         self.values.iter_mut()
     }
 }
 
 // Needed for tests, should get DCEd for the main binary
-pub fn sorted_values<V>(arena: &MappedArena<V>) -> Vec<&V> {
+pub fn sorted_values<V: DeserializeOwned + Serialize>(arena: &MappedArena<V>) -> Vec<&V> {
     let mut values = Vec::new();
     let mut keys = arena.keys().collect::<Vec<&String>>();
     keys.sort();
@@ -59,27 +64,27 @@ pub fn sorted_values<V>(arena: &MappedArena<V>) -> Vec<&V> {
     values
 }
 
-impl<V> Default for MappedArena<V> {
+impl<V: DeserializeOwned + Serialize> Default for MappedArena<V> {
     fn default() -> Self {
         MappedArena {
-            values: Arena::default(),
+            values: SerializableSlab::new(),
             map: HashMap::default(),
         }
     }
 }
 
-impl<T> ops::Index<Id<T>> for MappedArena<T> {
+impl<T: DeserializeOwned + Serialize> ops::Index<SerializableSlabIndex<T>> for MappedArena<T> {
     type Output = T;
 
     #[inline]
-    fn index(&self, id: Id<T>) -> &T {
+    fn index(&self, id: SerializableSlabIndex<T>) -> &T {
         &self.values[id]
     }
 }
 
-impl<T> ops::IndexMut<Id<T>> for MappedArena<T> {
+impl<T: DeserializeOwned + Serialize> ops::IndexMut<SerializableSlabIndex<T>> for MappedArena<T> {
     #[inline]
-    fn index_mut(&mut self, id: Id<T>) -> &mut T {
+    fn index_mut(&mut self, id: SerializableSlabIndex<T>) -> &mut T {
         &mut self.values[id]
     }
 }
