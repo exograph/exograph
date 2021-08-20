@@ -81,9 +81,9 @@ async fn resolve(
                             yield to_bytes_static("\"");
                             yield to_bytes(part.0);
                             yield to_bytes_static(r#"":"#);
-                            match &part.1 {
+                            match part.1 {
                                 QueryResponse::Json(value) => yield to_bytes(value.to_string()),
-                                QueryResponse::Raw(value) => yield to_bytes(value.to_string()),
+                                QueryResponse::Raw(value) => yield to_bytes(value),
                             };
                             if index != parts_len - 1 {
                                 yield to_bytes_static(", ");
