@@ -184,26 +184,26 @@ fn update_operation<'a>(
         nested_updates,
     } = update_columns(data_param, &field.arguments, operation_context)?.unwrap();
 
-    // TODO: Restore the following CTE style for updates that have no nested updates/creations/deletions
-    // let ops = vec![(
-    //     table_name(mutation, operation_context),
-    //     SQLOperation::Update(table.update(
-    //         column_values,
-    //         predicate,
-    //         vec![operation_context.create_column(Column::Star)],
-    //     )),
-    // )];
-
-    // Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
-
-    let mut ops = vec![SQLOperation::Update(table.update(
-        self_update_columns,
-        predicate,
-        vec![],
-    ))];
-    ops.extend(nested_updates);
-    ops.push(SQLOperation::Select(select));
-    Ok(ops)
+    if nested_updates.is_empty() {
+        let ops = vec![(
+            table_name(mutation, operation_context),
+            SQLOperation::Update(table.update(
+                self_update_columns,
+                predicate,
+                vec![operation_context.create_column(Column::Star)],
+            )),
+        )];
+        Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
+    } else {
+        let mut ops = vec![SQLOperation::Update(table.update(
+            self_update_columns,
+            predicate,
+            vec![],
+        ))];
+        ops.extend(nested_updates);
+        ops.push(SQLOperation::Select(select));
+        Ok(ops)
+    }
 }
 
 fn insertion_info<'a>(
