@@ -8,26 +8,29 @@ models:
     kind: Persistent
     fields:
       - name: id
-        ast_typ:
+        typ:
           Plain:
             - Int
-        typ: ~
+            - []
+            - ~
         annotations:
           - name: pk
             params: None
           - name: autoincrement
             params: None
       - name: title
-        ast_typ:
+        typ:
           Plain:
             - String
-        typ: ~
+            - []
+            - ~
         annotations: []
       - name: venue
-        ast_typ:
+        typ:
           Plain:
             - Venue
-        typ: ~
+            - []
+            - ~
         annotations:
           - name: column
             params:
@@ -44,27 +47,32 @@ models:
     kind: Persistent
     fields:
       - name: id
-        ast_typ:
+        typ:
           Plain:
             - Int
-        typ: ~
+            - []
+            - ~
         annotations:
           - name: pk
             params: None
           - name: autoincrement
             params: None
       - name: name
-        ast_typ:
+        typ:
           Plain:
             - String
-        typ: ~
+            - []
+            - ~
         annotations: []
       - name: concerts
-        ast_typ:
-          List:
-            Plain:
-              - Concert
-        typ: ~
+        typ:
+          Plain:
+            - Set
+            - - Plain:
+                  - Concert
+                  - []
+                  - ~
+            - ~
         annotations:
           - name: column
             params:

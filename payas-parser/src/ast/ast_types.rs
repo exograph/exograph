@@ -14,6 +14,8 @@ where
     Self::LogicalOp: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::Field: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
     Self::Annotations: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self::Type: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
+    Self: Clone,
 {
     type FieldSelection;
     type RelationalOp;
@@ -21,6 +23,7 @@ where
     type LogicalOp;
     type Field;
     type Annotations;
+    type Type;
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -32,6 +35,7 @@ impl NodeTypedness for Untyped {
     type LogicalOp = ();
     type Field = ();
     type Annotations = Vec<AstAnnotation<Untyped>>;
+    type Type = ();
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -62,31 +66,29 @@ pub enum AstModelKind {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstField<T: NodeTypedness> {
     pub name: String,
-    pub ast_typ: AstFieldType,
-    pub typ: T::Field,
+    pub typ: AstFieldType<T>,
     pub annotations: T::Annotations,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum AstFieldType {
+pub enum AstFieldType<T: NodeTypedness> {
     Plain(
         String,
+        Vec<AstFieldType<T>>,
+        T::Type,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]
         #[serde(default = "default_span")]
         Span,
     ),
-    Optional(Box<AstFieldType>),
-    List(Box<AstFieldType>),
+    Optional(Box<AstFieldType<T>>),
 }
 
-impl AstFieldType {
+impl<T: NodeTypedness> AstFieldType<T> {
     pub fn name(&self) -> String {
         match self {
-            AstFieldType::Optional(underlying) | AstFieldType::List(underlying) => {
-                underlying.name()
-            }
-            AstFieldType::Plain(base_type, _) => base_type.clone(),
+            AstFieldType::Optional(underlying) => underlying.name(),
+            AstFieldType::Plain(base_type, _, _, _) => base_type.clone(),
         }
     }
 

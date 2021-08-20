@@ -83,6 +83,7 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
         .output()?;
 
     if !cli_child.status.success() {
+        eprintln!("{}", std::str::from_utf8(&cli_child.stderr).unwrap());
         bail!("Could not build schema.");
     }
 

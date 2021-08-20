@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use anyhow::*;
 use async_graphql_value::Value;
 
 use crate::sql::column::Column;
@@ -67,7 +68,7 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
         &'a self,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> InsertionInfo<'a> {
+    ) -> Result<InsertionInfo<'a>> {
         let table = self
             .table_id()
             .map(|table_id| &operation_context.query_context.system.tables[table_id])
@@ -75,23 +76,23 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
 
         match argument {
             Value::List(elems) => {
-                let unaligned: Vec<_> = elems
+                let unaligned = elems
                     .iter()
                     .enumerate()
                     .map(|(index, elem)| map_single(self, elem, Some(index), operation_context))
-                    .collect();
+                    .collect::<Result<Vec<_>>>()?;
 
-                align(unaligned, table)
+                Ok(align(unaligned, table))
             }
             _ => {
-                let raw = map_single(self, argument, None, operation_context);
+                let raw = map_single(self, argument, None, operation_context)?;
                 let (columns, values) = raw.self_row.into_iter().unzip();
-                InsertionInfo {
+                Ok(InsertionInfo {
                     table,
                     columns,
                     values: vec![values],
                     nested: raw.nested_rows,
-                }
+                })
             }
         }
     }
@@ -132,25 +133,25 @@ fn align<'a>(unaligned: Vec<SingleInsertion<'a>>, table: &'a PhysicalTable) -> I
 }
 
 /// Map a single item from the data parameter
-/// Specifically, either the whole of a single insert one of the element of multiuple inserts
+/// Specifically, either the whole of a single insert one of the element of multiple inserts
 fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a Value,
     index: Option<usize>, // Index if the multiple entries are being inserted (such as createVenues (note the plural form))
     operation_context: &'a OperationContext<'a>,
-) -> SingleInsertion<'a> {
+) -> Result<SingleInsertion<'a>> {
     let argument = match argument {
         Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
         _ => argument,
     };
 
     let fields = match &input_data_type.kind {
-        GqlTypeKind::Primitive => panic!("Query attempted on a primitive type"),
+        GqlTypeKind::Primitive => bail!("Query attempted on a primitive type"),
         GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields,
     };
 
     let mut self_row = HashMap::new();
-    let mut nested_rows = Vec::new();
+    let mut nested_rows_results = Vec::new();
 
     fields.iter().for_each(|field| {
         // Process fields that map to a column in the current table
@@ -164,7 +165,7 @@ fn map_single<'a>(
                         map_self_column(field_self_column, field, field_arg, operation_context);
                     self_row.insert(col, value);
                 }
-                None => nested_rows.push(map_foreign(
+                None => nested_rows_results.push(map_foreign(
                     field,
                     field_arg,
                     index,
@@ -175,10 +176,15 @@ fn map_single<'a>(
         }
     });
 
-    SingleInsertion {
+    let nested_rows = nested_rows_results
+        .into_iter()
+        .collect::<Result<Vec<_>>>()
+        .context("While mapping foreign elements as nested rows")?;
+
+    Ok(SingleInsertion {
         self_row,
         nested_rows,
-    }
+    })
 }
 
 fn map_self_column<'a>(
@@ -218,7 +224,7 @@ fn map_foreign<'a>(
     parent_index: Option<usize>,
     parent_data_type: &'a GqlType,
     operation_context: &'a OperationContext<'a>,
-) -> InsertionInfo<'a> {
+) -> Result<InsertionInfo<'a>> {
     let system = &operation_context.query_context.system;
 
     fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
@@ -293,7 +299,7 @@ fn map_foreign<'a>(
         mut columns,
         mut values,
         nested,
-    } = field_type.map_to_sql(argument, operation_context);
+    } = field_type.map_to_sql(argument, operation_context)?;
 
     // Then, push the information to have the nested entity refer to the parent entity
     columns.push(self_reference_column);
@@ -301,10 +307,10 @@ fn map_foreign<'a>(
         .iter_mut()
         .for_each(|value| value.push(parent_id_selection));
 
-    InsertionInfo {
+    Ok(InsertionInfo {
         table,
         columns,
         values,
         nested,
-    }
+    })
 }

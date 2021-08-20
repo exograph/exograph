@@ -3,9 +3,9 @@ use crate::introspection::schema::Schema;
 use async_graphql_parser::{parse_query, types::DocumentOperations};
 
 use anyhow::Result;
-use id_arena::Arena;
+
 use payas_model::{
-    model::{system::ModelSystem, ContextSource, ContextType},
+    model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
     sql::database::Database,
 };
 use query_context::*;
@@ -37,7 +37,10 @@ pub fn create_query_context<'a>(
 }
 
 // TODO: Generalize to handle other context types and sources
-fn create_request_contexts(contexts: &Arena<ContextType>, jwt_claims: Option<Value>) -> Value {
+fn create_request_contexts(
+    contexts: &SerializableSlab<ContextType>,
+    jwt_claims: Option<Value>,
+) -> Value {
     let mapped_contexts = contexts
         .iter()
         .flat_map(|(_, context)| {

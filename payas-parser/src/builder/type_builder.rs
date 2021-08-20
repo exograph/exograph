@@ -1,11 +1,10 @@
-use id_arena::Id;
 use payas_model::{
     model::{
         access::{
             Access, AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp,
         },
         column_id::ColumnId,
-        mapped_arena::MappedArena,
+        mapped_arena::{MappedArena, SerializableSlabIndex},
         naming::ToGqlQueryName,
         relation::GqlRelation,
         GqlCompositeTypeKind, GqlFieldType,
@@ -326,7 +325,7 @@ fn compute_expression(
 
 fn create_field(
     field: &ResolvedField,
-    table_id: Id<PhysicalTable>,
+    table_id: SerializableSlabIndex<PhysicalTable>,
     building: &SystemContextBuilding,
     env: &MappedArena<ResolvedType>,
 ) -> GqlField {
@@ -598,13 +597,13 @@ fn determine_column_type<'a>(
 
 fn create_relation(
     field: &ResolvedField,
-    table_id: Id<PhysicalTable>,
+    table_id: SerializableSlabIndex<PhysicalTable>,
     building: &SystemContextBuilding,
     env: &MappedArena<ResolvedType>,
 ) -> GqlRelation {
     fn compute_column_id(
         table: &PhysicalTable,
-        table_id: Id<PhysicalTable>,
+        table_id: SerializableSlabIndex<PhysicalTable>,
         field: &ResolvedField,
     ) -> Option<ColumnId> {
         let column_name = field.column_name.clone();

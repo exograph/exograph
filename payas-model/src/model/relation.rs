@@ -1,10 +1,11 @@
-use id_arena::Id;
+use serde::{Deserialize, Serialize};
 
 use super::column_id::ColumnId;
 
+use super::mapped_arena::SerializableSlabIndex;
 use super::types::GqlType;
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum GqlRelation {
     Pk {
         column_id: ColumnId,
@@ -14,12 +15,12 @@ pub enum GqlRelation {
     },
     ManyToOne {
         column_id: ColumnId,
-        other_type_id: Id<GqlType>,
+        other_type_id: SerializableSlabIndex<GqlType>,
         optional: bool,
     },
     OneToMany {
         other_type_column_id: ColumnId,
-        other_type_id: Id<GqlType>,
+        other_type_id: SerializableSlabIndex<GqlType>,
     },
 }
 

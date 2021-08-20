@@ -42,7 +42,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 if typ.is_incomplete() {
                     if i.as_str() == "self" {
                         if let Some(enclosing) = &scope.enclosing_model {
-                            *typ = Type::Reference(enclosing.clone());
+                            *typ = Type::Reference(type_env.get_id(enclosing).unwrap());
                             true
                         } else {
                             *typ = Type::Error;
@@ -67,7 +67,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                         });
 
                         if let Some(context_type) = context_type {
-                            *typ = Type::Reference(context_type.name.clone());
+                            *typ = Type::Reference(type_env.get_id(&context_type.name).unwrap());
                         } else {
                             *typ = Type::Error;
 
@@ -93,8 +93,9 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 let out_updated = if typ.is_incomplete() {
                     if let Type::Composite(c) = prefix.typ().deref(type_env) {
                         if let Some(field) = c.fields.iter().find(|f| f.name == i.0) {
-                            if !field.typ.is_incomplete() {
-                                *typ = field.typ.clone();
+                            let resolved_typ = field.typ.to_typ(type_env);
+                            if !resolved_typ.is_incomplete() {
+                                *typ = resolved_typ;
                                 true
                             } else {
                                 *typ = Type::Error;

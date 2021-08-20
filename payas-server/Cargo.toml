@@ -19,9 +19,9 @@ postgres-openssl = "0.5.0"
 rust_decimal = { version = "1.15", features = ["db-postgres", "serde-arbitrary-precision"] }
 chrono = "0.4.19"
 typed-arena = "2.0.1"
-id-arena = "2.2.1"
 notify = "4.0.17"
 ctrlc = "3.1.9"
+typed-generational-arena = { version = "0.2", features = ["serde"] }
 
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }

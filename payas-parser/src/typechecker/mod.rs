@@ -40,6 +40,7 @@ impl NodeTypedness for Typed {
     type LogicalOp = Type;
     type Field = Type;
     type Annotations = AnnotationMap;
+    type Type = bool;
 }
 
 pub trait TypecheckInto<T> {
@@ -488,8 +489,9 @@ mod tests {
     }
 
     fn assert_typechecking(src: &str) {
-        let types = parse_sorted(src);
-        insta::assert_yaml_snapshot!(types);
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(build(src).unwrap())
+        });
     }
 
     fn assert_err(src: &str) {

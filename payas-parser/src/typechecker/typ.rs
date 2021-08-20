@@ -1,4 +1,4 @@
-use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter},
@@ -13,8 +13,9 @@ pub enum Type {
     Primitive(PrimitiveType),
     Composite(AstModel<Typed>),
     Optional(Box<Type>),
-    List(Box<Type>),
-    Reference(String),
+    Set(Box<Type>),
+    Array(Box<Type>),
+    Reference(SerializableSlabIndex<Type>),
     Defer,
     Error,
 }
@@ -28,12 +29,20 @@ impl Display for Type {
                 o.fmt(f)?;
                 f.write_str("?")
             }
-            Type::List(l) => {
-                f.write_str("[")?;
+            Type::Set(l) => {
+                f.write_str("Set[")?;
                 l.fmt(f)?;
                 f.write_str("]")
             }
-            Type::Reference(r) => f.write_str(r.as_str()),
+            Type::Array(l) => {
+                f.write_str("Array[")?;
+                l.fmt(f)?;
+                f.write_str("]")
+            }
+            Type::Reference(r) => {
+                f.write_str("ref#")?;
+                r.arr_idx().fmt(f)
+            }
             _ => Result::Err(std::fmt::Error),
         }
     }
@@ -43,8 +52,9 @@ impl Type {
     pub fn is_defer(&self) -> bool {
         match &self {
             Type::Defer => true,
-            Type::Optional(underlying) => underlying.deref().is_defer(),
-            Type::List(underlying) => underlying.deref().is_defer(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.deref().is_defer()
+            }
             _ => false,
         }
     }
@@ -52,8 +62,9 @@ impl Type {
     pub fn is_error(&self) -> bool {
         match &self {
             Type::Error => true,
-            Type::Optional(underlying) => underlying.deref().is_error(),
-            Type::List(underlying) => underlying.deref().is_error(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.deref().is_error()
+            }
             _ => false,
         }
     }
@@ -62,22 +73,27 @@ impl Type {
         self.is_defer() || self.is_error()
     }
 
-    pub fn get_underlying_typename(&self) -> Option<String> {
+    pub fn get_underlying_typename(&self, types: &MappedArena<Type>) -> Option<String> {
         match &self {
-            Type::Reference(name) => Some(name.to_owned()),
+            Type::Composite(c) => Some(c.name.clone()),
+            Type::Reference(_id) => self.deref(types).get_underlying_typename(types),
             Type::Primitive(pt) => Some(pt.name()),
-            Type::Optional(underlying) => underlying.get_underlying_typename(),
-            Type::List(underlying) => underlying.get_underlying_typename(),
+            Type::Optional(underlying) | Type::Set(underlying) | Type::Array(underlying) => {
+                underlying.get_underlying_typename(types)
+            }
             _ => None,
         }
     }
 
-    pub fn deref<'a>(&'a self, env: &'a MappedArena<Type>) -> Type {
-        match &self {
-            Type::Reference(name) => env.get_by_key(name).unwrap().clone(),
-            Type::Optional(underlying) => Type::Optional(Box::new(underlying.deref().deref(env))),
-            Type::List(underlying) => Type::List(Box::new(underlying.deref().deref(env))),
-            o => o.deref().clone(),
+    pub fn deref<'a>(&'a self, types: &'a MappedArena<Type>) -> Type {
+        match self {
+            Type::Reference(idx) => types[*idx].clone(),
+            Type::Optional(underlying) => {
+                Type::Optional(Box::new(underlying.as_ref().deref(types)))
+            }
+            Type::Set(underlying) => Type::Set(Box::new(underlying.as_ref().deref(types))),
+            Type::Array(underlying) => Type::Array(Box::new(underlying.as_ref().deref(types))),
+            o => o.clone(),
         }
     }
 }

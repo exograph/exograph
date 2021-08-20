@@ -7,8 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-id-arena = "2.2.1"
 heck = "0.3"
+typed-generational-arena = { version = "0.2", features = ["serde"] }
+serde = "1.0"
 payas-sql = { path = "../payas-sql" }
 
 [lib]

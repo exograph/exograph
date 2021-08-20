@@ -1,3 +1,4 @@
+use anyhow::*;
 use async_graphql_value::Value;
 
 use crate::sql::column::Column;
@@ -22,7 +23,7 @@ impl<'a> SQLMapper<'a, MappedUpdateDataParameter<'a>> for UpdateDataParameter {
         &'a self,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> MappedUpdateDataParameter {
+    ) -> Result<MappedUpdateDataParameter> {
         let system = &operation_context.query_context.system;
         let model_type = &system.mutation_types[self.type_id];
 
@@ -35,10 +36,10 @@ impl<'a> SQLMapper<'a, MappedUpdateDataParameter<'a>> for UpdateDataParameter {
 
         let nested_update = compute_nested_updates(model_type, argument, operation_context);
 
-        MappedUpdateDataParameter {
+        Ok(MappedUpdateDataParameter {
             self_update_columns,
             nested_updates: nested_update,
-        }
+        })
     }
 }
 

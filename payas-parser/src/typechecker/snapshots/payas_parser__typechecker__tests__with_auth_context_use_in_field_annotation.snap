@@ -1,93 +1,143 @@
 ---
 source: payas-parser/src/typechecker/mod.rs
-expression: types
+expression: build(src).unwrap()
 
 ---
-- - AuthContext
-  - Composite:
-      name: AuthContext
-      kind: Context
-      fields:
-        - name: role
-          ast_typ:
-            Plain:
-              - String
-          typ:
-            Reference: String
-          annotations:
+values:
+  - - ~
+    - Primitive: Boolean
+  - - ~
+    - Primitive: Int
+  - - ~
+    - Primitive: Float
+  - - ~
+    - Primitive: Decimal
+  - - ~
+    - Primitive: String
+  - - ~
+    - Primitive: LocalTime
+  - - ~
+    - Primitive: LocalDateTime
+  - - ~
+    - Primitive: LocalDate
+  - - ~
+    - Primitive: Instant
+  - - ~
+    - Primitive: Json
+  - - ~
+    - Composite:
+        name: AuthContext
+        kind: Context
+        fields:
+          - name: role
+            typ:
+              Plain:
+                - String
+                - []
+                - true
             annotations:
-              jwt:
-                name: jwt
-                params: None
-      annotations:
-        annotations: {}
-- - Boolean
-  - Primitive: Boolean
-- - Decimal
-  - Primitive: Decimal
-- - Doc
-  - Composite:
-      name: Doc
-      kind: Persistent
-      fields:
-        - name: is_public
-          ast_typ:
-            Plain:
-              - Boolean
-          typ:
-            Reference: Boolean
-          annotations:
-            annotations: {}
-        - name: content
-          ast_typ:
-            Plain:
-              - String
-          typ:
-            Reference: String
-          annotations:
+              annotations:
+                jwt:
+                  name: jwt
+                  params: None
+        annotations:
+          annotations: {}
+  - - ~
+    - Composite:
+        name: Doc
+        kind: Persistent
+        fields:
+          - name: is_public
+            typ:
+              Plain:
+                - Boolean
+                - []
+                - true
             annotations:
-              access:
-                name: access
-                params:
-                  Single:
-                    - LogicalOp:
-                        Or:
-                          - RelationalOp:
-                              Eq:
-                                - FieldSelection:
-                                    Select:
-                                      - Single:
-                                          - - AuthContext
-                                          - Reference: AuthContext
-                                      - - role
-                                      - Reference: String
-                                - StringLiteral:
-                                    - ROLE_ADMIN
-                                - Primitive: Boolean
-                          - FieldSelection:
-                              Select:
-                                - Single:
-                                    - - self
-                                    - Reference: Doc
-                                - - is_public
-                                - Reference: Boolean
-                          - Primitive: Boolean
-      annotations:
-        annotations: {}
-- - Float
-  - Primitive: Float
-- - Instant
-  - Primitive: Instant
-- - Int
-  - Primitive: Int
-- - Json
-  - Primitive: Json
-- - LocalDate
-  - Primitive: LocalDate
-- - LocalDateTime
-  - Primitive: LocalDateTime
-- - LocalTime
-  - Primitive: LocalTime
-- - String
-  - Primitive: String
+              annotations: {}
+          - name: content
+            typ:
+              Plain:
+                - String
+                - []
+                - true
+            annotations:
+              annotations:
+                access:
+                  name: access
+                  params:
+                    Single:
+                      - LogicalOp:
+                          Or:
+                            - RelationalOp:
+                                Eq:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            - - AuthContext
+                                            - Reference:
+                                                index: 10
+                                                generation: ~
+                                        - - role
+                                        - Reference:
+                                            index: 4
+                                            generation: ~
+                                  - StringLiteral:
+                                      - ROLE_ADMIN
+                                  - Primitive: Boolean
+                            - FieldSelection:
+                                Select:
+                                  - Single:
+                                      - - self
+                                      - Reference:
+                                          index: 11
+                                          generation: ~
+                                  - - is_public
+                                  - Reference:
+                                      index: 0
+                                      generation: ~
+                            - Primitive: Boolean
+        annotations:
+          annotations: {}
+  - ~
+  - ~
+  - ~
+  - ~
+map:
+  AuthContext:
+    index: 10
+    generation: ~
+  Boolean:
+    index: 0
+    generation: ~
+  Decimal:
+    index: 3
+    generation: ~
+  Doc:
+    index: 11
+    generation: ~
+  Float:
+    index: 2
+    generation: ~
+  Instant:
+    index: 8
+    generation: ~
+  Int:
+    index: 1
+    generation: ~
+  Json:
+    index: 9
+    generation: ~
+  LocalDate:
+    index: 7
+    generation: ~
+  LocalDateTime:
+    index: 6
+    generation: ~
+  LocalTime:
+    index: 5
+    generation: ~
+  String:
+    index: 4
+    generation: ~
 

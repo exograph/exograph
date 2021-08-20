@@ -1,0 +1,14 @@
+operation: |
+  query {
+    result: logs(where: {
+      and: []
+    })
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Boolean predicate does not have any arguments"
+      }
+    ]
+  }

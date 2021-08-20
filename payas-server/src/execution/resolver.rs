@@ -82,7 +82,7 @@ where
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
     ) -> Result<Vec<(String, R)>> {
-        let resolved: Result<Vec<(String, R)>> = selection_set
+        selection_set
             .node
             .items
             .iter()
@@ -92,12 +92,7 @@ where
                     Err(err) => vec![Err(err)],
                 },
             )
-            .collect();
-        let resolved = resolved?;
-
-        check_duplicate_keys(&resolved)?;
-
-        Ok(resolved)
+            .collect()
     }
 }
 
@@ -133,25 +128,6 @@ impl std::fmt::Display for GraphQLExecutionError {
                 write!(f, "Not authorized")
             }
         }
-    }
-}
-
-pub fn check_duplicate_keys<R>(resolved: &[(String, R)]) -> Result<(), GraphQLExecutionError> {
-    let mut names = HashSet::new();
-    let mut duplicates = HashSet::new();
-
-    resolved.iter().for_each(|(name, _)| {
-        if names.contains(name) {
-            duplicates.insert(name.to_owned());
-        } else {
-            names.insert(name);
-        }
-    });
-
-    if duplicates.is_empty() {
-        Ok(())
-    } else {
-        Err(GraphQLExecutionError::DuplicateKeys(duplicates))
     }
 }
 

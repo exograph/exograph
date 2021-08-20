@@ -1,17 +1,17 @@
-use id_arena::Id;
+use serde::{Deserialize, Serialize};
 
 use crate::sql::{column::PhysicalColumn, PhysicalTable};
 
-use super::system::ModelSystem;
+use super::{mapped_arena::SerializableSlabIndex, system::ModelSystem};
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ColumnId {
-    pub table_id: Id<PhysicalTable>,
+    pub table_id: SerializableSlabIndex<PhysicalTable>,
     column_index: usize,
 }
 
 impl ColumnId {
-    pub fn new(table_id: Id<PhysicalTable>, column_index: usize) -> ColumnId {
+    pub fn new(table_id: SerializableSlabIndex<PhysicalTable>, column_index: usize) -> ColumnId {
         ColumnId {
             table_id,
             column_index,
