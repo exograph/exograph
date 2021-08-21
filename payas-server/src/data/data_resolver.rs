@@ -1,4 +1,3 @@
-use crate::sql::Expression;
 use crate::{
     execution::query_context::{QueryContext, QueryResponse},
     sql::ExpressionContext,
@@ -10,6 +9,7 @@ use async_graphql_parser::{
 };
 
 use payas_model::model::system::ModelSystem;
+use payas_model::sql::OperationExpression;
 
 use super::{operation_context::OperationContext, sql_mapper::OperationResolver};
 
@@ -31,7 +31,7 @@ impl DataResolver for ModelSystem {
     ) -> Result<QueryResponse> {
         let operation_context = OperationContext::new(query_context);
 
-        let sql_operation = match operation_type {
+        let sql_operations = match operation_type {
             OperationType::Query => {
                 let operation = self.queries.get_by_key(&field.node.name.node);
                 operation.unwrap().map_to_sql(field, &operation_context)
@@ -45,10 +45,27 @@ impl DataResolver for ModelSystem {
             }
         }?;
 
-        let mut expression_context = ExpressionContext::default();
-        let binding = sql_operation.binding(&mut expression_context);
-        Ok(QueryResponse::Raw(
-            query_context.database.execute(&binding)?,
-        ))
+        match &sql_operations.as_slice() {
+            [] => panic!("No SQL operations to execute"),
+            [head] => {
+                let mut expression_context = ExpressionContext::default();
+                let binding = head.binding(&mut expression_context);
+                Ok(QueryResponse::Raw(
+                    query_context.database.execute(&binding)?,
+                ))
+            }
+            [init @ .., last] => {
+                for sql_operation in init {
+                    let mut expression_context = ExpressionContext::default();
+                    let binding = sql_operation.binding(&mut expression_context);
+                    query_context.database.execute(&binding)?;
+                }
+                let mut expression_context = ExpressionContext::default();
+                let binding = last.binding(&mut expression_context);
+                Ok(QueryResponse::Raw(
+                    query_context.database.execute(&binding)?,
+                ))
+            }
+        }
     }
 }

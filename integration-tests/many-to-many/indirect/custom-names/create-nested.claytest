@@ -1,9 +1,9 @@
 operation: |
   mutation {
-    createConcert(data: {title: "C1", concertArtists: [
-        {artist: {id: 1}, rank: 1, role: "main"},
-        {artist: {id: 2}, rank: 2, role: "main"}, 
-        {artist: {id: 3}, rank: 3, role: "accompanying"}
+    createConcert(data: {title: "C2", concertArtists: [
+        {artist: {id: 4}, rank: 1, role: "main"},
+        {artist: {id: 5}, rank: 2, role: "main"}, 
+        {artist: {id: 1}, rank: 3, role: "accompanying"}
       ]}) {
       id
       title
@@ -27,32 +27,32 @@ response: |
   {
     "data": {
       "createConcert": {
-        "id": 1,
-        "title": "C1",
+        "id": 2,
+        "title": "C2",
         "mainArtists": [
           {
-            "id": 1,
+            "id": 4,
             "artist": {
-              "id": 1,
-              "name": "A1a"
+              "id": 4,
+              "name": "A4"
             },
             "rank": 1
           },
           {
-            "id": 2,
+            "id": 5,
             "artist": {
-              "id": 2,
-              "name": "A1b"
+              "id": 5,
+              "name": "A5"
             },
             "rank": 2
           }
         ],
         "accArtists": [
           {
-            "id": 3,
+            "id": 6,
             "artist": {
-              "id": 3,
-              "name": "A2a"
+              "id": 1,
+              "name": "A1"
             },
             "rank": 3
           }

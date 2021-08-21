@@ -1,0 +1,62 @@
+operation: |
+  mutation {
+    updateConcert(
+        id: 1, 
+        data: {
+          title: "C1-updated", 
+          concertArtists: {
+            update: {id: 1, rank: 1, role: "main", artist: {id: 4}},
+          }
+        }
+    ) {
+      id
+      title
+      concertArtists(orderBy: {id: ASC}) {
+        id
+        artist {
+          id
+          name
+        }
+        role
+        rank
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "updateConcert": {
+        "id": 1,
+        "title": "C1-updated",
+        "concertArtists": [
+          {
+            "id": 1,
+            "artist": {
+              "id": 4,
+              "name": "A4"
+            },
+            "role": "main",
+            "rank": 1
+          },
+          {
+            "id": 2,
+            "artist": {
+              "id": 2,
+              "name": "A2"
+            },
+            "role": "main",
+            "rank": 2
+          },
+          {
+            "id": 3,
+            "artist": {
+              "id": 3,
+              "name": "A3"
+            },
+            "role": "accompanying",
+            "rank": 3
+          }
+        ]
+      }
+    }
+  }

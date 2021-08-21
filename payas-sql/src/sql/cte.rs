@@ -1,3 +1,5 @@
+use crate::sql::OperationExpression;
+
 use super::{
     select::Select, sql_operation::SQLOperation, Expression, ExpressionContext, ParameterBinding,
 };
