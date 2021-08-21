@@ -178,7 +178,7 @@ fn parse_testfile(path: &Path) -> Result<ParsedTestfile> {
 
     let mut result = ParsedTestfile {
         name: testfile_name.clone(),
-        unique_dbname: to_postgres(&format!("{}", testfile_name)),
+        unique_dbname: to_postgres(&testfile_name),
 
         ..ParsedTestfile::default()
     };
