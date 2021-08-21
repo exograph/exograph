@@ -24,9 +24,9 @@ impl<'a> OperationResolver<'a> for Query {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLOperation<'a>> {
+    ) -> Result<Vec<SQLOperation<'a>>> {
         let select = self.operation(&field.node, Predicate::True, operation_context, true)?;
-        Ok(SQLOperation::Select(select))
+        Ok(vec![SQLOperation::Select(select)])
     }
 }
 

@@ -1,6 +1,6 @@
 use super::{
     cte::Cte, insert::Insert, select::Select, update::Update, Delete, Expression,
-    ExpressionContext, ParameterBinding,
+    ExpressionContext, OperationExpression, ParameterBinding,
 };
 
 pub enum SQLOperation<'a> {
@@ -11,7 +11,7 @@ pub enum SQLOperation<'a> {
     Cte(Cte<'a>),
 }
 
-impl<'a> Expression for SQLOperation<'a> {
+impl<'a> OperationExpression for SQLOperation<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
             SQLOperation::Select(select) => select.binding(expression_context),

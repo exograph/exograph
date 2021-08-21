@@ -41,7 +41,7 @@ impl<'a> Database {
         let params: Vec<&(dyn ToSql + Sync)> =
             binding.params.iter().map(|p| (*p).as_pg()).collect();
 
-        eprintln!("Executing: {}", binding.stmt);
+        println!("Executing: {}", binding.stmt);
         Self::process(&mut client, &binding.stmt, &params[..])
     }
 
