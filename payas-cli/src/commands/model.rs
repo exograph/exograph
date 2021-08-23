@@ -15,8 +15,8 @@ pub struct ImportCommand {
 
 impl Command for ImportCommand {
     fn run(&self) -> Result<()> {
-        let database = Database::from_env()?; // TODO: error handling here
-        database.create_client()?;
+        let database = Database::from_env(1)?; // TODO: error handling here
+        database.get_client()?;
 
         let mut issues = Vec::new();
 

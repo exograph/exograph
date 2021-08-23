@@ -63,7 +63,7 @@ impl SchemaSpec {
         let mut table_specs = Vec::new();
 
         for row in database
-            .create_client()?
+            .get_client()?
             .query(QUERY, &[])
             .map_err(|e| anyhow!(e))?
         {
@@ -128,7 +128,7 @@ impl TableSpec {
         let foreign_key_re =
             Regex::new(r"FOREIGN KEY \(([^)]+)\) REFERENCES ([^\(]+)\(([^)]+)\)").unwrap();
 
-        let mut db_client = database.create_client()?;
+        let mut db_client = database.get_client()?;
         let mut issues = Vec::new();
 
         // Get all the constraints in the table
@@ -247,7 +247,7 @@ impl ColumnSpec {
         // `users_id_seq`
         let serial_columns_query = "SELECT relname FROM pg_class WHERE relkind = 'S'";
 
-        let mut db_client = database.create_client()?;
+        let mut db_client = database.get_client()?;
         let mut issues = Vec::new();
 
         let db_type = match explicit_type {
