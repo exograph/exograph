@@ -196,5 +196,5 @@ fn compute_nested_create<'a>(
                 .map(|(_, op)| op)
                 .collect::<Vec<_>>()
         })
-        .unwrap_or(vec![])
+        .unwrap_or_default()
 }
