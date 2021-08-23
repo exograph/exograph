@@ -37,7 +37,7 @@ use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
 const SERVER_PORT_PARAM: &str = "CLAY_SERVER_PORT";
-const CONNECTION_POOL_SIZE: &str = "CLAY_CONNECTION_POOL_SIZE";
+const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
 
 const FILE_WATCHER_DELAY: Duration = Duration::from_millis(200);
 
@@ -204,7 +204,7 @@ pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
         let system = builder::build(ast_system, codemap)?;
         let schema = Schema::new(&system);
 
-        let pool_size = env::var(CONNECTION_POOL_SIZE)
+        let pool_size = env::var(CONNECTION_POOL_SIZE_PARAM)
             .ok()
             .map(|pool_str| pool_str.parse::<u32>().unwrap())
             .unwrap_or(10);
