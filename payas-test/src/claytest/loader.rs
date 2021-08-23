@@ -178,7 +178,7 @@ fn parse_testfile(path: &Path) -> Result<ParsedTestfile> {
 
     let mut result = ParsedTestfile {
         name: testfile_name.clone(),
-        unique_dbname: to_postgres(&format!("claytest_{}", testfile_name)),
+        unique_dbname: to_postgres(&testfile_name),
 
         ..ParsedTestfile::default()
     };
@@ -230,5 +230,5 @@ fn from_json(json: String) -> Result<serde_json::Value> {
 
 // Generate a unique, PostgreSQL-friendly name from a `str`.
 fn to_postgres(name: &str) -> String {
-    format!("{:x}", md5::compute(name))
+    format!("claytest_{:x}", md5::compute(name))
 }
