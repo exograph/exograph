@@ -18,6 +18,8 @@ serde_json = {version = "1.0", features = ["preserve_order", "arbitrary_precisio
 openssl = "0.10.30"
 postgres = { version = "0.19.0", features = ["with-chrono-0_4", "with-serde_json-1"] }
 postgres-openssl = "0.5.0"
+r2d2 = "0.8"
+r2d2_postgres = "0.18"
 rust_decimal = { version = "1.15", features = ["db-postgres", "serde-arbitrary-precision"] }
 chrono = "0.4.19"
 typed-arena = "2.0.1"
