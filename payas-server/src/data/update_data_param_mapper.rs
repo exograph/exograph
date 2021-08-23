@@ -5,8 +5,8 @@ use crate::sql::column::Column;
 
 use payas_model::{
     model::{
-        operation::UpdateDataParameter, relation::GqlRelation, types::GqlTypeKind,
-        GqlCompositeTypeKind, GqlType,
+        mapped_arena::SerializableSlabIndex, operation::UpdateDataParameter, relation::GqlRelation,
+        types::GqlTypeKind, GqlCompositeTypeKind, GqlType,
     },
     sql::{column::PhysicalColumn, predicate::Predicate, SQLOperation, Update},
 };
@@ -34,7 +34,7 @@ impl<'a> SQLMapper<'a, MappedUpdateDataParameter<'a>> for UpdateDataParameter {
 
         let self_update_columns = compute_update_columns(model_type, argument, operation_context);
 
-        let nested_update = compute_nested_updates(model_type, argument, operation_context);
+        let nested_update = compute_nested(model_type, argument, operation_context);
 
         Ok(MappedUpdateDataParameter {
             self_update_columns,
@@ -97,7 +97,7 @@ fn compute_update_columns<'a>(
 // an addtional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
-fn compute_nested_updates<'a>(
+fn compute_nested<'a>(
     model_type: &'a GqlType,
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
@@ -107,52 +107,94 @@ fn compute_nested_updates<'a>(
     match &model_type.kind {
         GqlTypeKind::Primitive => panic!(),
         GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
-            fields.iter().filter_map(|field| match &field.relation {
+            fields.iter().flat_map(|field| match &field.relation {
                 GqlRelation::OneToMany { other_type_id, .. } => {
                     let field_model_type = &system.types[*other_type_id];
                     operation_context
                         .get_argument_field(argument, &field.name)
-                        .map(|argument| {
-                            let argument = operation_context
-                                .get_argument_field(argument, "update")
-                                .unwrap();
-
-                            let nested = compute_update_columns(
+                        .iter()
+                        .flat_map(|argument| {
+                            let mut ops = vec![];
+                            if let Some(op) = compute_nested_update(
                                 field_model_type,
                                 argument,
                                 operation_context,
-                            );
+                                other_type_id,
+                            ) {
+                                ops.push(op);
+                            }
 
-                            let (pk_columns, nested): (Vec<_>, Vec<_>) =
-                                nested.iter().partition(|elem| elem.0.is_pk);
+                            ops.extend(compute_nested_create(
+                                field_model_type,
+                                argument,
+                                operation_context,
+                                other_type_id,
+                            ));
 
-                            // TODO: Add an additional predicate to ensure that this element is related to the containing entity
-                            // For example, with "updateConcert", we need add a "concert_id" column
-                            let predicate =
-                                pk_columns
-                                    .iter()
-                                    .fold(Predicate::True, |acc, (pk_col, value)| {
-                                        let pk_column = operation_context
-                                            .create_column(Column::Physical(pk_col));
-                                        Predicate::And(
-                                            Box::new(acc),
-                                            Box::new(Predicate::Eq(pk_column, value)),
-                                        )
-                                    });
-
-                            let other_type = &system.types[*other_type_id];
-                            let table = &system.tables[other_type.table_id().unwrap()];
-                            SQLOperation::Update(Update {
-                                table,
-                                predicate: operation_context.create_predicate(predicate),
-                                column_values: nested,
-                                returning: vec![],
-                            })
+                            ops
                         })
+                        .collect()
                 }
-                _ => None,
+                _ => vec![],
             })
         }
     }
     .collect()
+}
+
+// Looks for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
+fn compute_nested_update<'a>(
+    field_model_type: &'a GqlType,
+    argument: &'a Value,
+    operation_context: &'a OperationContext<'a>,
+    other_type_id: &SerializableSlabIndex<GqlType>,
+) -> Option<SQLOperation<'a>> {
+    operation_context
+        .get_argument_field(argument, "update")
+        .map(|update_argument| {
+            let system = &operation_context.query_context.system;
+
+            let nested =
+                compute_update_columns(field_model_type, update_argument, operation_context);
+            let (pk_columns, nested): (Vec<_>, Vec<_>) =
+                nested.iter().partition(|elem| elem.0.is_pk);
+            let predicate = pk_columns
+                .iter()
+                .fold(Predicate::True, |acc, (pk_col, value)| {
+                    let pk_column = operation_context.create_column(Column::Physical(pk_col));
+                    Predicate::And(Box::new(acc), Box::new(Predicate::Eq(pk_column, value)))
+                });
+            let other_type = &system.types[*other_type_id];
+            let table = &system.tables[other_type.table_id().unwrap()];
+            SQLOperation::Update(Update {
+                table,
+                predicate: operation_context.create_predicate(predicate),
+                column_values: nested,
+                returning: vec![],
+            })
+        })
+}
+
+// Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
+fn compute_nested_create<'a>(
+    field_model_type: &'a GqlType,
+    argument: &'a Value,
+    operation_context: &'a OperationContext<'a>,
+    _other_type_id: &SerializableSlabIndex<GqlType>,
+) -> Vec<SQLOperation<'a>> {
+    operation_context
+        .get_argument_field(argument, "create")
+        .map(|create_argument| {
+            field_model_type
+                .map_to_sql(create_argument, operation_context)
+                .unwrap()
+        })
+        .map(|insertion_info| {
+            insertion_info
+                .operation(operation_context, false)
+                .into_iter()
+                .map(|(_, op)| op)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or(vec![])
 }

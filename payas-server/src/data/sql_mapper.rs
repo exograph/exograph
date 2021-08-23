@@ -8,6 +8,11 @@ use payas_model::{
     sql::{predicate::Predicate, SQLOperation},
 };
 
+pub enum SQLScript<'a> {
+    Single(SQLOperation<'a>),
+    Multi(Vec<SQLOperation<'a>>),
+}
+
 pub trait SQLMapper<'a, R> {
     fn map_to_sql(
         &'a self,
@@ -21,7 +26,7 @@ pub trait OperationResolver<'a> {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<Vec<SQLOperation<'a>>>;
+    ) -> Result<SQLScript<'a>>;
 }
 
 pub enum OperationKind {

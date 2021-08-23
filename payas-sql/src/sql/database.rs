@@ -2,7 +2,10 @@ use anyhow::{bail, Context, Result};
 use std::env;
 
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres::{types::ToSql, Client, Config};
+use postgres::{
+    types::{FromSqlOwned, ToSql},
+    Client, Config,
+};
 use postgres_openssl::MakeTlsConnector;
 
 use super::ParameterBinding;
@@ -35,33 +38,32 @@ impl<'a> Database {
         })
     }
 
-    pub fn execute(&self, binding: &ParameterBinding) -> Result<String> {
+    pub fn execute<T: FromSqlOwned>(&self, binding: &ParameterBinding) -> Result<Option<T>> {
         let mut client = self.create_client()?;
 
         let params: Vec<&(dyn ToSql + Sync)> =
             binding.params.iter().map(|p| (*p).as_pg()).collect();
 
-        println!("Executing: {}", binding.stmt);
+        eprintln!("Executing: {}", binding.stmt);
         Self::process(&mut client, &binding.stmt, &params[..])
     }
 
-    fn process(
+    fn process<T: FromSqlOwned>(
         client: &mut Client,
         query_string: &str,
         params: &[&(dyn ToSql + Sync)],
-    ) -> Result<String> {
+    ) -> Result<Option<T>> {
         let rows = client
             .query(query_string, params)
             .context("PostgreSQL query failed")?;
 
         let result = if rows.len() == 1 {
             match rows[0].try_get(0) {
-                Ok(col) => col,
+                Ok(col) => Some(col),
                 Err(err) => bail!("Got row without any columns {}", err),
             }
         } else {
-            // TODO: Check if "null" is right
-            "null".to_owned()
+            None
         };
 
         Ok(result)

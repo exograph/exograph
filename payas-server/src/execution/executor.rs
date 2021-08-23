@@ -107,7 +107,15 @@ pub fn execute<'a>(
         response.push_str(r#"":"#);
         match &part.1 {
             QueryResponse::Json(value) => response.push_str(value.to_string().as_str()),
-            QueryResponse::Raw(value) => response.push_str(value.as_str()),
+            QueryResponse::Raw(value) => {
+                match value {
+                    Some(value) => response.push_str(value.as_str()),
+                    None => {
+                        // TODO: Check if "null" is right here
+                        response.push_str("null")
+                    }
+                }
+            }
         };
         if index != parts.len() - 1 {
             response.push_str(", ");

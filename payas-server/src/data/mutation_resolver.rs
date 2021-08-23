@@ -16,7 +16,7 @@ use payas_model::{
 use super::{
     create_data_param_mapper::InsertionInfo,
     operation_context::OperationContext,
-    sql_mapper::{OperationResolver, SQLMapper},
+    sql_mapper::{OperationResolver, SQLMapper, SQLScript},
     update_data_param_mapper::MappedUpdateDataParameter,
 };
 
@@ -30,7 +30,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<Vec<SQLOperation<'a>>> {
+    ) -> Result<SQLScript<'a>> {
         let select = {
             let (_, pk_query, collection_query) = return_type_info(self, operation_context);
             let selection_query = match &self.return_type.type_modifier {
@@ -81,7 +81,7 @@ fn create_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<SQLOperation<'a>>> {
+) -> Result<SQLScript<'a>> {
     let access_predicate = compute_access_predicate(
         &mutation.return_type,
         &OperationKind::Create,
@@ -96,9 +96,12 @@ fn create_operation<'a>(
     }
 
     let info = insertion_info(data_param, &field.arguments, operation_context)?.unwrap();
-    let ops = info.operation(operation_context);
+    let ops = info.operation(operation_context, true);
 
-    Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
+    Ok(SQLScript::Single(SQLOperation::Cte(Cte {
+        ctes: ops,
+        select,
+    })))
 }
 
 fn delete_operation<'a>(
@@ -107,7 +110,7 @@ fn delete_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<SQLOperation<'a>>> {
+) -> Result<SQLScript<'a>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -142,7 +145,10 @@ fn delete_operation<'a>(
         )),
     )];
 
-    Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
+    Ok(SQLScript::Single(SQLOperation::Cte(Cte {
+        ctes: ops,
+        select,
+    })))
 }
 
 fn update_operation<'a>(
@@ -152,7 +158,7 @@ fn update_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<SQLOperation<'a>>> {
+) -> Result<SQLScript<'a>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -193,16 +199,24 @@ fn update_operation<'a>(
                 vec![operation_context.create_column(Column::Star)],
             )),
         )];
-        Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
+        Ok(SQLScript::Single(SQLOperation::Cte(Cte {
+            ctes: ops,
+            select,
+        })))
     } else {
+        let pk_col = {
+            let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
+            operation_context.create_column(Column::Physical(pk_physical_col))
+        };
+
         let mut ops = vec![SQLOperation::Update(table.update(
             self_update_columns,
             predicate,
-            vec![],
+            vec![pk_col],
         ))];
         ops.extend(nested_updates);
         ops.push(SQLOperation::Select(select));
-        Ok(ops)
+        Ok(SQLScript::Multi(ops))
     }
 }
 
