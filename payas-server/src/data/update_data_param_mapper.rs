@@ -1,45 +1,77 @@
 use anyhow::*;
 use async_graphql_value::Value;
 
-use crate::sql::column::Column;
+use crate::{
+    data::mutation_resolver::{return_type_info, table_name},
+    sql::column::Column,
+};
 
 use payas_model::{
     model::{
-        mapped_arena::SerializableSlabIndex, operation::UpdateDataParameter, relation::GqlRelation,
-        types::GqlTypeKind, GqlCompositeTypeKind, GqlType,
+        mapped_arena::SerializableSlabIndex,
+        operation::{Mutation, UpdateDataParameter},
+        relation::GqlRelation,
+        types::GqlTypeKind,
+        GqlCompositeTypeKind, GqlType,
     },
-    sql::{column::PhysicalColumn, predicate::Predicate, SQLOperation, Update},
+    sql::{column::PhysicalColumn, predicate::Predicate, Cte, SQLOperation, Select, Update},
 };
 
-use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
+use super::{
+    operation_context::OperationContext,
+    sql_mapper::{SQLMapper, SQLScript, SQLUpdateMapper},
+};
 
-pub struct MappedUpdateDataParameter<'a> {
-    pub self_update_columns: Vec<(&'a PhysicalColumn, &'a Column<'a>)>,
-    pub nested_updates: Vec<SQLOperation<'a>>,
-}
-
-impl<'a> SQLMapper<'a, MappedUpdateDataParameter<'a>> for UpdateDataParameter {
-    fn map_to_sql(
+impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
+    fn update_script(
         &'a self,
+        mutation: &'a Mutation,
+        predicate: &'a Predicate,
+        select: Select<'a>,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<MappedUpdateDataParameter> {
+    ) -> Result<SQLScript<'a>> {
         let system = &operation_context.query_context.system;
-        let model_type = &system.mutation_types[self.type_id];
+        let mutation_type = &system.mutation_types[self.type_id];
 
         let argument = match argument {
             Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
             _ => argument,
         };
 
-        let self_update_columns = compute_update_columns(model_type, argument, operation_context);
+        let self_update_columns =
+            compute_update_columns(mutation_type, argument, operation_context);
 
-        let nested_update = compute_nested(model_type, argument, operation_context);
+        let nested_updates = compute_nested(mutation_type, argument, operation_context);
 
-        Ok(MappedUpdateDataParameter {
-            self_update_columns,
-            nested_updates: nested_update,
-        })
+        let (table, _, _) = return_type_info(mutation, operation_context);
+        if nested_updates.is_empty() {
+            let ops = vec![(
+                table_name(mutation, operation_context),
+                SQLOperation::Update(table.update(
+                    self_update_columns,
+                    predicate,
+                    vec![operation_context.create_column(Column::Star)],
+                )),
+            )];
+            Ok(SQLScript::Single(SQLOperation::Cte(Cte {
+                ctes: ops,
+                select,
+            })))
+        } else {
+            let pk_col = {
+                let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
+                operation_context.create_column(Column::Physical(pk_physical_col))
+            };
+
+            let update_op =
+                SQLOperation::Update(table.update(self_update_columns, predicate, vec![pk_col]));
+
+            let mut ops = vec![update_op];
+            ops.extend(nested_updates);
+            ops.push(SQLOperation::Select(select));
+            Ok(SQLScript::Multi(ops))
+        }
     }
 }
 

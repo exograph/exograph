@@ -16,8 +16,7 @@ use payas_model::{
 use super::{
     create_data_param_mapper::InsertionInfo,
     operation_context::OperationContext,
-    sql_mapper::{OperationResolver, SQLMapper, SQLScript},
-    update_data_param_mapper::MappedUpdateDataParameter,
+    sql_mapper::{OperationResolver, SQLMapper, SQLScript, SQLUpdateMapper},
 };
 
 use async_graphql_parser::{types::Field, Positioned};
@@ -67,7 +66,7 @@ impl<'a> OperationResolver<'a> for Mutation {
     }
 }
 
-fn table_name(mutation: &Mutation, operation_context: &OperationContext) -> String {
+pub fn table_name(mutation: &Mutation, operation_context: &OperationContext) -> String {
     mutation
         .return_type
         .physical_table(operation_context.query_context.system)
@@ -159,8 +158,6 @@ fn update_operation<'a>(
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
 ) -> Result<SQLScript<'a>> {
-    let (table, _, _) = return_type_info(mutation, operation_context);
-
     let access_predicate = compute_access_predicate(
         &mutation.return_type,
         &OperationKind::Update,
@@ -185,39 +182,18 @@ fn update_operation<'a>(
         )
     })?;
 
-    let MappedUpdateDataParameter {
-        self_update_columns,
-        nested_updates,
-    } = update_columns(data_param, &field.arguments, operation_context)?.unwrap();
-
-    if nested_updates.is_empty() {
-        let ops = vec![(
-            table_name(mutation, operation_context),
-            SQLOperation::Update(table.update(
-                self_update_columns,
+    let argument_value = super::find_arg(&field.arguments, &data_param.name);
+    argument_value
+        .map(|argument_value| {
+            data_param.update_script(
+                mutation,
                 predicate,
-                vec![operation_context.create_column(Column::Star)],
-            )),
-        )];
-        Ok(SQLScript::Single(SQLOperation::Cte(Cte {
-            ctes: ops,
-            select,
-        })))
-    } else {
-        let pk_col = {
-            let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
-            operation_context.create_column(Column::Physical(pk_physical_col))
-        };
-
-        let mut ops = vec![SQLOperation::Update(table.update(
-            self_update_columns,
-            predicate,
-            vec![pk_col],
-        ))];
-        ops.extend(nested_updates);
-        ops.push(SQLOperation::Select(select));
-        Ok(SQLScript::Multi(ops))
-    }
+                select,
+                argument_value,
+                operation_context,
+            )
+        })
+        .unwrap()
 }
 
 fn insertion_info<'a>(
@@ -234,18 +210,7 @@ fn insertion_info<'a>(
         .transpose()
 }
 
-fn update_columns<'a>(
-    data_param: &'a UpdateDataParameter,
-    arguments: &'a Arguments,
-    operation_context: &'a OperationContext<'a>,
-) -> Result<Option<MappedUpdateDataParameter<'a>>> {
-    let argument_value = super::find_arg(arguments, &data_param.name);
-    argument_value
-        .map(|argument_value| data_param.map_to_sql(argument_value, operation_context))
-        .transpose()
-}
-
-fn return_type_info<'a>(
+pub fn return_type_info<'a>(
     mutation: &'a Mutation,
     operation_context: &'a OperationContext<'a>,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
