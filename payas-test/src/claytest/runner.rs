@@ -140,11 +140,11 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
 
     let output: String = output_mutex.lock().unwrap().clone();
 
-    return Ok(TestOutput {
+    Ok(TestOutput {
         log_prefix: log_prefix.to_string(),
         result: success,
         output,
-    });
+    })
     // implicit ctx drop
 }
 

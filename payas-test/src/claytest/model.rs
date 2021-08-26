@@ -73,7 +73,7 @@ impl PartialOrd for TestResult {
 }
 
 /// The collected output (`stdout`, `stderr`) from a instance of `clay`.
-#[derive(PartialEq, Eq, PartialOrd)]
+#[derive(PartialEq, Eq)]
 pub struct TestOutput {
     pub log_prefix: String,
     pub result: TestResult,
@@ -83,6 +83,12 @@ pub struct TestOutput {
 impl TestOutput {
     pub fn is_success(&self) -> bool {
         matches!(self.result, TestResult::Success)
+    }
+}
+
+impl PartialOrd for TestOutput {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -101,22 +107,22 @@ impl Ord for TestOutput {
 impl fmt::Display for TestOutput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.result {
-            TestResult::Success => write!(
+            TestResult::Success => writeln!(
                 f,
-                "{} {}\n",
+                "{} {}",
                 self.log_prefix,
                 ansi_term::Color::Green.paint("OK")
             ),
-            TestResult::AssertionFail(e) => write!(
+            TestResult::AssertionFail(e) => writeln!(
                 f,
-                "{} {}\n{:?}\n",
+                "{} {}\n{:?}",
                 self.log_prefix,
                 ansi_term::Color::Yellow.paint("ASSERTION FAILED"),
                 e
             ),
-            TestResult::SetupFail(e) => write!(
+            TestResult::SetupFail(e) => writeln!(
                 f,
-                "{} {}\n{:?}\n",
+                "{} {}\n{:?}",
                 self.log_prefix,
                 ansi_term::Color::Red.paint("TEST SETUP FAILED"),
                 e
