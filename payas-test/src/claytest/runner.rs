@@ -1,116 +1,33 @@
-use crate::claytest::dbutils::{createdb_psql, dropdb_psql, run_psql};
-use crate::claytest::loader::ParsedTestfile;
-use crate::claytest::loader::TestfileOperation;
-use anyhow::{anyhow, bail, Context, Error, Result};
-use isahc::HttpClient;
-use isahc::ReadResponseExt;
-use isahc::Request;
+use anyhow::{anyhow, bail, Context, Result};
+use isahc::{HttpClient, ReadResponseExt, Request};
 use jsonwebtoken::{encode, EncodingKey, Header};
-use rand::distributions::Alphanumeric;
-use rand::Rng;
+use rand::{distributions::Alphanumeric, Rng};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
-use std::env;
-use std::fmt;
-use std::io::Read;
-use std::io::{BufRead, BufReader};
-use std::process::Child;
-use std::process::Command;
-use std::process::Stdio;
-use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
+
+use std::{
+    env,
+    io::{BufRead, BufReader, Read},
+    process::{Command, Stdio},
+    sync::{Arc, Mutex},
+    time::SystemTime,
+};
+
+use crate::claytest::dbutils::{createdb_psql, dropdb_psql, run_psql};
+use crate::claytest::loader::{ParsedTestfile, TestfileOperation};
+use crate::claytest::model::*;
 
 #[derive(Serialize)]
-struct PayasPost {
+struct ClayPost {
     query: String,
     variables: serde_json::Value,
-}
-
-/// Structure to hold open resources associated with a running testfile.
-/// When dropped, we will clean them up.
-#[derive(Default)]
-struct TestfileContext {
-    dbname: Option<String>,
-    dburl: Option<String>,
-    server: Option<Child>,
-}
-
-pub struct TestOutput {
-    log_prefix: String,
-    pub success: TestResult,
-    output: String,
-}
-
-pub enum TestResult {
-    Success,
-    AssertionFail(Error),
-    SetupFail(Error),
-}
-
-impl fmt::Display for TestOutput {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.success {
-            TestResult::Success => write!(
-                f,
-                "{} {}\n",
-                self.log_prefix,
-                ansi_term::Color::Green.paint("OK")
-            ),
-            TestResult::AssertionFail(e) => write!(
-                f,
-                "{} {}\n{:?}\n",
-                self.log_prefix,
-                ansi_term::Color::Yellow.paint("ASSERTION FAILED"),
-                e
-            ),
-            TestResult::SetupFail(e) => write!(
-                f,
-                "{} {}\n{:?}\n",
-                self.log_prefix,
-                ansi_term::Color::Red.paint("TEST SETUP FAILED"),
-                e
-            ),
-        }
-        .unwrap();
-
-        if !matches!(&self.success, TestResult::Success) {
-            write!(
-                f,
-                "{}\n{}\n",
-                ansi_term::Color::Blue.italic().paint("!! Output:"),
-                ansi_term::Color::Fixed(240).paint(&self.output)
-            )
-        } else {
-            Ok(())
-        }
-    }
-}
-
-impl Drop for TestfileContext {
-    fn drop(&mut self) {
-        // kill the started server
-        if let Some(server) = &mut self.server {
-            if let e @ Err(_) = server.kill() {
-                println!("Error killing server instance: {:?}", e)
-            }
-        }
-
-        // drop the database
-        if let Some(dburl) = &self.dburl {
-            if let Some(dbname) = &self.dbname {
-                if let e @ Err(_) = dropdb_psql(dbname, dburl) {
-                    println!("Error dropping {} using {}: {:?}", dbname, dburl, e)
-                }
-            }
-        }
-    }
 }
 
 pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Result<TestOutput> {
     // iterate through our tests
     let mut ctx = TestfileContext::default();
 
-    let log_prefix = ansi_term::Color::Purple.paint(format!("({})", testfile.name));
+    let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name));
     let dbname = &testfile.unique_dbname;
     ctx.dbname = Some(dbname.clone());
 
@@ -225,7 +142,7 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
 
     return Ok(TestOutput {
         log_prefix: log_prefix.to_string(),
-        success,
+        result: success,
         output,
     });
     // implicit ctx drop
@@ -283,7 +200,7 @@ fn run_operation(
 
             let req =
                 req.header("Content-Type", "application/json")
-                    .body(serde_json::to_string(&PayasPost {
+                    .body(serde_json::to_string(&ClayPost {
                         query: document.to_string(),
                         variables: variables
                             .as_ref()

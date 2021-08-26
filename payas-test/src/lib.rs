@@ -2,7 +2,7 @@ mod claytest;
 
 use anyhow::{bail, Result};
 use claytest::loader::load_testfiles_from_dir;
-use claytest::runner::{run_testfile, TestResult};
+use claytest::runner::run_testfile;
 use std::path::Path;
 
 pub fn run(directory: &Path) -> Result<()> {
@@ -33,23 +33,12 @@ pub fn run(directory: &Path) -> Result<()> {
         .collect();
 
     test_results.sort_by(|a, b| {
-        if (a.is_ok() && b.is_err()) {
+        if a.is_ok() && b.is_err() {
             std::cmp::Ordering::Greater
-        } else if (a.is_err() && b.is_ok()) {
+        } else if a.is_err() && b.is_ok() {
             std::cmp::Ordering::Less
         } else {
-            let a = a.as_ref().unwrap();
-            let b = b.as_ref().unwrap();
-            if matches!(a.success, TestResult::Success) && !matches!(b.success, TestResult::Success)
-            {
-                std::cmp::Ordering::Greater
-            } else if !matches!(a.success, TestResult::Success)
-                && matches!(b.success, TestResult::Success)
-            {
-                std::cmp::Ordering::Less
-            } else {
-                std::cmp::Ordering::Equal
-            }
+            a.as_ref().unwrap().cmp(b.as_ref().unwrap())
         }
     });
     test_results.reverse();
@@ -60,7 +49,7 @@ pub fn run(directory: &Path) -> Result<()> {
             Ok(result) => {
                 println!("{}", result);
 
-                if matches!(result.success, TestResult::Success) {
+                if result.is_success() {
                     number_of_succeeded_tests += 1;
                 }
             }
@@ -80,7 +69,7 @@ pub fn run(directory: &Path) -> Result<()> {
 
     println!(
         "{} {} {} out of {} total",
-        ansi_term::Color::Blue.bold().paint("* Test result:"),
+        ansi_term::Color::Blue.bold().paint("* Test results:"),
         status,
         ansi_term::Style::new()
             .bold()
