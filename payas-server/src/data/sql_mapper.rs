@@ -8,13 +8,8 @@ use payas_model::{
         operation::{Mutation, OperationReturnType},
         GqlCompositeTypeKind, GqlTypeKind,
     },
-    sql::{predicate::Predicate, SQLOperation, Select},
+    sql::{predicate::Predicate, transaction::TransactionScript, Select},
 };
-
-pub enum SQLScript<'a> {
-    Single(SQLOperation<'a>),
-    Multi(Vec<SQLOperation<'a>>),
-}
 
 pub trait SQLMapper<'a, R> {
     fn map_to_sql(
@@ -32,14 +27,14 @@ pub trait SQLUpdateMapper<'a> {
         select: Select<'a>,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLScript>;
+    ) -> Result<TransactionScript>;
 }
 pub trait OperationResolver<'a> {
     fn map_to_sql(
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLScript<'a>>;
+    ) -> Result<TransactionScript<'a>>;
 }
 
 pub enum OperationKind {

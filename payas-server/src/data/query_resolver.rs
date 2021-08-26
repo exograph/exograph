@@ -4,8 +4,9 @@ use crate::sql::order::OrderBy;
 
 use anyhow::*;
 use payas_model::model::{operation::*, relation::*, types::*};
+use payas_model::sql::transaction::TransactionScript;
 
-use super::sql_mapper::{compute_access_predicate, OperationKind, SQLScript};
+use super::sql_mapper::{compute_access_predicate, OperationKind};
 use super::{
     operation_context::OperationContext,
     sql_mapper::{OperationResolver, SQLMapper},
@@ -24,9 +25,9 @@ impl<'a> OperationResolver<'a> for Query {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLScript<'a>> {
+    ) -> Result<TransactionScript<'a>> {
         let select = self.operation(&field.node, Predicate::True, operation_context, true)?;
-        Ok(SQLScript::Single(SQLOperation::Select(select)))
+        Ok(TransactionScript::Single(SQLOperation::Select(select)))
     }
 }
 

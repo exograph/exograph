@@ -18,6 +18,7 @@ mod offset;
 pub mod order;
 pub mod predicate;
 mod update;
+pub mod transaction;
 
 pub use cte::Cte;
 pub use delete::Delete;

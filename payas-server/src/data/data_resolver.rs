@@ -8,13 +8,10 @@ use async_graphql_parser::{
     Positioned,
 };
 
-use payas_model::sql::OperationExpression;
+use payas_model::sql::{transaction::TransactionScript, OperationExpression};
 use payas_model::{model::system::ModelSystem, sql::database::extractor_single};
 
-use super::{
-    operation_context::OperationContext,
-    sql_mapper::{OperationResolver, SQLScript},
-};
+use super::{operation_context::OperationContext, sql_mapper::OperationResolver};
 
 pub trait DataResolver {
     fn resolve(
@@ -49,14 +46,14 @@ impl DataResolver for ModelSystem {
         }?;
 
         match sql_operations {
-            SQLScript::Single(head) => {
+            TransactionScript::Single(head) => {
                 let mut expression_context = ExpressionContext::default();
                 let binding = head.binding(&mut expression_context);
                 Ok(QueryResponse::Raw(
                     query_context.database.execute(&binding, extractor_single)?,
                 ))
             }
-            SQLScript::Multi(ops) => match &ops.as_slice() {
+            TransactionScript::Multi(ops) => match &ops.as_slice() {
                 [init @ .., last] => {
                     for sql_operation in init {
                         let mut expression_context = ExpressionContext::default();

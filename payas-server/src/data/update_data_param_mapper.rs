@@ -14,12 +14,15 @@ use payas_model::{
         types::GqlTypeKind,
         GqlCompositeTypeKind, GqlType,
     },
-    sql::{column::PhysicalColumn, predicate::Predicate, Cte, SQLOperation, Select, Update},
+    sql::{
+        column::PhysicalColumn, predicate::Predicate, transaction::TransactionScript, Cte,
+        SQLOperation, Select, Update,
+    },
 };
 
 use super::{
     operation_context::OperationContext,
-    sql_mapper::{SQLMapper, SQLScript, SQLUpdateMapper},
+    sql_mapper::{SQLMapper, SQLUpdateMapper},
 };
 
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
@@ -30,7 +33,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         select: Select<'a>,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLScript<'a>> {
+    ) -> Result<TransactionScript<'a>> {
         let system = &operation_context.query_context.system;
         let mutation_type = &system.mutation_types[self.type_id];
 
@@ -54,7 +57,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                     vec![operation_context.create_column(Column::Star)],
                 )),
             )];
-            Ok(SQLScript::Single(SQLOperation::Cte(Cte {
+            Ok(TransactionScript::Single(SQLOperation::Cte(Cte {
                 ctes: ops,
                 select,
             })))
@@ -70,7 +73,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
             let mut ops = vec![update_op];
             ops.extend(nested_updates);
             ops.push(SQLOperation::Select(select));
-            Ok(SQLScript::Multi(ops))
+            Ok(TransactionScript::Multi(ops))
         }
     }
 }

@@ -10,13 +10,13 @@ use crate::{
 use anyhow::*;
 use payas_model::{
     model::{operation::*, predicate::PredicateParameter, types::*},
-    sql::Select,
+    sql::{transaction::TransactionScript, Select},
 };
 
 use super::{
     create_data_param_mapper::InsertionInfo,
     operation_context::OperationContext,
-    sql_mapper::{OperationResolver, SQLMapper, SQLScript, SQLUpdateMapper},
+    sql_mapper::{OperationResolver, SQLMapper, SQLUpdateMapper},
 };
 
 use async_graphql_parser::{types::Field, Positioned};
@@ -29,7 +29,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<SQLScript<'a>> {
+    ) -> Result<TransactionScript<'a>> {
         let select = {
             let (_, pk_query, collection_query) = return_type_info(self, operation_context);
             let selection_query = match &self.return_type.type_modifier {
@@ -80,7 +80,7 @@ fn create_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<SQLScript<'a>> {
+) -> Result<TransactionScript<'a>> {
     let access_predicate = compute_access_predicate(
         &mutation.return_type,
         &OperationKind::Create,
@@ -97,7 +97,7 @@ fn create_operation<'a>(
     let info = insertion_info(data_param, &field.arguments, operation_context)?.unwrap();
     let ops = info.operation(operation_context, true);
 
-    Ok(SQLScript::Single(SQLOperation::Cte(Cte {
+    Ok(TransactionScript::Single(SQLOperation::Cte(Cte {
         ctes: ops,
         select,
     })))
@@ -109,7 +109,7 @@ fn delete_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<SQLScript<'a>> {
+) -> Result<TransactionScript<'a>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -144,7 +144,7 @@ fn delete_operation<'a>(
         )),
     )];
 
-    Ok(SQLScript::Single(SQLOperation::Cte(Cte {
+    Ok(TransactionScript::Single(SQLOperation::Cte(Cte {
         ctes: ops,
         select,
     })))
@@ -157,7 +157,7 @@ fn update_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<SQLScript<'a>> {
+) -> Result<TransactionScript<'a>> {
     let access_predicate = compute_access_predicate(
         &mutation.return_type,
         &OperationKind::Update,
