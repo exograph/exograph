@@ -1,4 +1,5 @@
-use postgres::types::{FromSqlOwned, ToSql};
+use anyhow::anyhow;
+use postgres::types::{FromSql, ToSql, Type};
 use std::any::Any;
 
 #[macro_use]
@@ -61,31 +62,54 @@ impl PartialEq for dyn SQLParam {
     }
 }
 
-pub trait SQLResult: FromSqlOwned + Sync + std::fmt::Display {
-    fn as_any(&self) -> &dyn Any;
-    // fn eq(&self, other: &dyn SQLResult) -> bool;
-
-    // fn as_pg(&self) -> &(dyn FromSqlOwned + Sync);
+#[derive(Debug)]
+pub struct SQLValue<'a> {
+    value: &'a [u8],
+    type_: Type,
 }
 
-// pub trait SQLValue: SQLParam + SQLResult {
-//     /// ...
-// }
+impl<'a> ToSql for SQLValue<'a> {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut postgres::types::private::BytesMut,
+    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    where
+        Self: Sized,
+    {
+        if *ty == self.type_ {
+            out.extend(self.value);
+            Ok(postgres::types::IsNull::No)
+        } else {
+            Err(anyhow!("Type mismatch").into())
+        }
+    }
 
-// struct SQLValue {
-//     //pub value: [u8],
-//     type_: Type,
-// }
+    fn accepts(ty: &Type) -> bool
+    where
+        Self: Sized,
+    {
+        true
+    }
 
-// impl SQLValue {
-//     pub fn to_sql(&self) -> ToSql {
-//         //
-//     }
+    postgres::types::to_sql_checked!();
+}
 
-//     pub fn from_sql(&self) -> FromSql {
-//         //
-//     }
-// }
+impl<'a> FromSql<'a> for SQLValue<'a> {
+    fn from_sql(
+        ty: &Type,
+        raw: &'a [u8],
+    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        Ok(SQLValue {
+            value: raw,
+            type_: ty.clone(),
+        })
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        true
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ParameterBinding<'a> {
