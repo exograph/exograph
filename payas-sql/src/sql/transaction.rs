@@ -1,6 +1,6 @@
 use postgres::{types::Type, Row};
 
-use super::{SQLOperation, SQLParam, SQLValue};
+use super::{SQLOperation, SQLValue};
 
 pub enum TransactionScript<'a> {
     Single(SQLOperation<'a>),

@@ -85,7 +85,7 @@ impl<'a> ToSql for SQLValue<'a> {
         }
     }
 
-    fn accepts(ty: &Type) -> bool
+    fn accepts(_ty: &Type) -> bool
     where
         Self: Sized,
     {
@@ -106,7 +106,7 @@ impl<'a> FromSql<'a> for SQLValue<'a> {
         })
     }
 
-    fn accepts(ty: &Type) -> bool {
+    fn accepts(_ty: &Type) -> bool {
         true
     }
 }
