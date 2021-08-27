@@ -1,10 +1,15 @@
-use postgres::Row;
+use postgres::{types::Type, Row};
 
-use super::SQLOperation;
+use super::{SQLOperation, SQLParam};
 
 pub enum TransactionScript<'a> {
     Single(SQLOperation<'a>),
     Multi(Vec<SQLOperation<'a>>),
+}
+
+pub enum TransactionScriptX<'a> {
+    Single(TransactionStep<'a>),
+    Multi(Vec<TransactionStep<'a>>),
 }
 
 pub enum TransactionScriptElement<'a> {
@@ -12,7 +17,9 @@ pub enum TransactionScriptElement<'a> {
     Dynamic(Vec<SQLOperation<'a>>),
 }
 
-pub struct TransactionStep<'a, T> {
-    pub operation: SQLOperation<'a>,
-    pub extractor: fn(Vec<Row>) -> T,
+pub struct TransactionStep<'a> {
+    pub operation: TransactionScriptElement<'a>,
+    pub pg_result_types: Vec<Type>,
+    pub extractor: fn(Vec<Row>) -> Vec<Vec<&'a dyn SQLParam>>, // FromSql + ToSql
 }
+

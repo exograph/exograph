@@ -1,4 +1,4 @@
-use postgres::types::ToSql;
+use postgres::types::{FromSqlOwned, ToSql};
 use std::any::Any;
 
 #[macro_use]
@@ -17,8 +17,8 @@ mod limit;
 mod offset;
 pub mod order;
 pub mod predicate;
-mod update;
 pub mod transaction;
+mod update;
 
 pub use cte::Cte;
 pub use delete::Delete;
@@ -35,10 +35,6 @@ pub trait SQLParam: ToSql + Sync + std::fmt::Display {
     fn eq(&self, other: &dyn SQLParam) -> bool;
 
     fn as_pg(&self) -> &(dyn ToSql + Sync);
-}
-
-pub fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
 }
 
 impl<T: ToSql + Sync + Any + PartialEq + std::fmt::Display> SQLParam for T {
@@ -64,6 +60,32 @@ impl PartialEq for dyn SQLParam {
         SQLParam::eq(self, other)
     }
 }
+
+pub trait SQLResult: FromSqlOwned + Sync + std::fmt::Display {
+    fn as_any(&self) -> &dyn Any;
+    // fn eq(&self, other: &dyn SQLResult) -> bool;
+
+    // fn as_pg(&self) -> &(dyn FromSqlOwned + Sync);
+}
+
+// pub trait SQLValue: SQLParam + SQLResult {
+//     /// ...
+// }
+
+// struct SQLValue {
+//     //pub value: [u8],
+//     type_: Type,
+// }
+
+// impl SQLValue {
+//     pub fn to_sql(&self) -> ToSql {
+//         //
+//     }
+
+//     pub fn from_sql(&self) -> FromSql {
+//         //
+//     }
+// }
 
 #[derive(Debug, Clone)]
 pub struct ParameterBinding<'a> {
@@ -121,4 +143,8 @@ impl ExpressionContext {
         self.plain = cur_plain;
         ret
     }
+}
+
+pub fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
 }

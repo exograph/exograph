@@ -10,6 +10,9 @@ pub struct Insert<'a> {
     pub returning: Vec<&'a Column<'a>>,
 }
 
+// INSERT INTO "concert_artists" ("rank", "role", "artist_id", "concert_id") VALUES ($1, $2, $3, $4), ($1, $2, $3, $5)
+// INSERT INTO "concert_artists" ("rank", "role", "artist_id", "concert_id") VALUES ($1, $2, $3, (select id from concerts where .. limit 1 offset 0)), ($1, $2, $3, (select id from concerts where .. limit 1 offset 1))
+
 impl<'a> Expression for Insert<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         let table_binding = self.table.binding(expression_context);
