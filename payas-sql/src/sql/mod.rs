@@ -23,11 +23,12 @@ mod update;
 
 pub use cte::Cte;
 pub use delete::Delete;
-pub use insert::Insert;
+pub use insert::{DynamicInsert, Insert};
 pub use limit::Limit;
 pub use offset::Offset;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
+pub use sql_operation::SQLDynamicOperation;
 pub use sql_operation::SQLOperation;
 pub use update::Update;
 
@@ -62,10 +63,16 @@ impl PartialEq for dyn SQLParam {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SQLValue<'a> {
     value: &'a [u8],
     type_: Type,
+}
+
+impl<'a> SQLValue<'a> {
+    fn as_sql_param(&self) -> &dyn SQLParam {
+        todo!()
+    }
 }
 
 impl<'a> ToSql for SQLValue<'a> {

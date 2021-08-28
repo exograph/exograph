@@ -4,6 +4,7 @@ use super::{
     Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
+#[derive(Debug)]
 pub struct Update<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: &'a Predicate<'a>,

@@ -2,7 +2,10 @@ use anyhow::*;
 use async_graphql_value::Value;
 
 use crate::{
-    data::mutation_resolver::{return_type_info, table_name},
+    data::{
+        create_data_param_mapper::InsertionInfo,
+        mutation_resolver::{return_type_info, table_name},
+    },
     sql::column::Column,
 };
 
@@ -16,7 +19,7 @@ use payas_model::{
     },
     sql::{
         column::PhysicalColumn, predicate::Predicate, transaction::TransactionScript, Cte,
-        SQLOperation, Select, Update,
+        DynamicInsert, Insert, SQLOperation, Select, Update,
     },
 };
 
@@ -233,3 +236,18 @@ fn compute_nested_create<'a>(
         })
         .unwrap_or_default()
 }
+
+// let returning = vec![];
+// let x = table.insert(columns, values, returning);
+// let x = {
+//     let mut column_names = x.column_names;
+//     //column_names.push("concert_id")
+//     // DynamicInsert {
+//     //     table: x.table,
+//     //     column_names,
+//     //     static_values: x.column_values_seq,
+//     //     dynamic_values: vec![],
+
+//     //     returning: (),
+//     // }
+// };

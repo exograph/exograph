@@ -6,6 +6,7 @@ use super::{
     Delete, Expression, ExpressionContext, OperationExpression, ParameterBinding,
 };
 
+#[derive(Debug)]
 pub enum SQLOperation<'a> {
     Select(Select<'a>),
     Insert(Insert<'a>),
@@ -26,9 +27,10 @@ impl<'a> OperationExpression for SQLOperation<'a> {
     }
 }
 
-pub enum DynamicOperation<'a, T> {
+#[derive(Debug)]
+pub enum SQLDynamicOperation<'a> {
     // Select(DynamicSelect),
-    Insert(DynamicInsert<'a, T>),
+    Insert(DynamicInsert<'a>),
     // Update(DynamicUpdate),
     // Delete(DynamicDelete),
 }

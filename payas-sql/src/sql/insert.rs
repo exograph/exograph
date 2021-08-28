@@ -1,8 +1,9 @@
 use super::{
     column::{Column, PhysicalColumn},
-    Expression, ExpressionContext, ParameterBinding, PhysicalTable,
+    Expression, ExpressionContext, ParameterBinding, PhysicalTable, SQLValue,
 };
 
+#[derive(Debug)]
 pub struct Insert<'a> {
     pub table: &'a PhysicalTable,
     pub column_names: Vec<&'a PhysicalColumn>,
@@ -68,28 +69,30 @@ impl<'a> Expression for Insert<'a> {
     }
 }
 
-pub struct DynamicInsert<'a, T> {
+#[derive(Debug)]
+pub struct DynamicInsert<'a> {
     pub table: &'a PhysicalTable,
     pub column_names: Vec<&'a PhysicalColumn>,
-    pub eager_values: Vec<Vec<&'a Column<'a>>>, // ($1, $2, $3)
-    pub dynamic_values: fn(T) -> Vec<Vec<&'a Column<'a>>>, // fn (array[id]) -> ($4, $5, ...)
+    pub static_values: Vec<Vec<&'a Column<'a>>>, // ($1, $2, $3)
+    // pub dynamic_values: fn() -> Vec<Vec<&'a Column<'a>>>, // fn (array[id]) -> ($4, $5, ...)
     pub returning: Vec<&'a Column<'a>>,
 }
 
-impl<'a, T> DynamicInsert<'a, T> {
-    pub fn resolve(self, value: T) -> Insert<'a> {
-        let resolved_values = (self.dynamic_values)(value);
-
+impl<'a> DynamicInsert<'a> {
+    pub fn resolve(self, resolved_values: Vec<Vec<SQLValue>>) -> Insert<'a> {
         let column_values_seq = resolved_values
             .into_iter()
             .flat_map(|resolved_value| {
-                self.eager_values
+                self.static_values
                     .clone()
                     .into_iter()
-                    .map(move |mut eager_value| {
-                        let resolved_value = resolved_value.clone();
-                        eager_value.extend(resolved_value);
-                        eager_value
+                    .map(move |mut static_value| {
+                        // let resolved_value: Vec<_> = resolved_value
+                        //     .iter()
+                        //     .map(|v| Column::Literal(Box::new(v)))
+                        //     .collect();
+                        // static_value.extend(resolved_value);
+                        static_value
                     })
             })
             .collect();

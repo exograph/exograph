@@ -1,6 +1,9 @@
 use crate::spec::SQLStatement;
 
-use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
+use super::{
+    select::*, transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
+    SQLParam,
+};
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
@@ -407,6 +410,11 @@ pub enum Column<'a> {
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
+    Lazy {
+        row_index: usize,
+        col_index: usize,
+        step: &'a TransactionStep<'a>,
+    },
 }
 
 // Due to https://github.com/rust-lang/rust/issues/39128, we have to manually implement PartialEq.
@@ -422,6 +430,7 @@ impl<'a> PartialEq for Column<'a> {
             (Column::Constant(v1), Column::Constant(v2)) => v1 == v2,
             (Column::Star, Column::Star) => true,
             (Column::Null, Column::Null) => true,
+            (Column::Lazy(v1, _), Column::Lazy(v2, _)) => v1 == v2,
             _ => false,
         }
     }
@@ -489,6 +498,16 @@ impl<'a> Expression for Column<'a> {
             Column::Constant(value) => ParameterBinding::new(format!("'{}'", value), vec![]),
             Column::Star => ParameterBinding::new("*".to_string(), vec![]),
             Column::Null => ParameterBinding::new("NULL".to_string(), vec![]),
+            Column::Lazy {
+                row_index,
+                col_index,
+                step,
+            } => {
+                let result = (step.result)();
+                let value = result[*row_index][*col_index];
+                let param_index = expression_context.next_param();
+                ParameterBinding::new(format! {"${}", param_index}, vec![value.as_ref()])
+            }
         }
     }
 }

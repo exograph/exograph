@@ -4,6 +4,7 @@ use super::{
     select::Select, sql_operation::SQLOperation, Expression, ExpressionContext, ParameterBinding,
 };
 
+#[derive(Debug)]
 pub struct Cte<'a> {
     pub ctes: Vec<(String, SQLOperation<'a>)>,
     pub select: Select<'a>,
