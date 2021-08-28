@@ -27,5 +27,5 @@ pub struct TransactionStep<'a> {
     pub result: fn() -> TransactionStepResult<'a>,
 }
 
-type RowResult<'a> = Vec<&'a SQLValue<'a>>;
-type TransactionStepResult<'a> = Vec<RowResult<'a>>;
+type RowResult<'a> = &'a [&'a SQLValue<'a>];
+type TransactionStepResult<'a> = &'a [RowResult<'a>];

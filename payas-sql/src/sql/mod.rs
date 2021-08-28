@@ -75,6 +75,12 @@ impl<'a> SQLValue<'a> {
     }
 }
 
+impl<'a> std::fmt::Display for SQLValue<'a> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        todo!()
+    }
+}
+
 impl<'a> ToSql for SQLValue<'a> {
     fn to_sql(
         &self,

@@ -1,4 +1,4 @@
-use crate::spec::SQLStatement;
+use crate::{spec::SQLStatement, sql::SQLValue};
 
 use super::{
     select::*, transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
@@ -430,7 +430,7 @@ impl<'a> PartialEq for Column<'a> {
             (Column::Constant(v1), Column::Constant(v2)) => v1 == v2,
             (Column::Star, Column::Star) => true,
             (Column::Null, Column::Null) => true,
-            (Column::Lazy(v1, _), Column::Lazy(v2, _)) => v1 == v2,
+            (a @ Column::Lazy { .. }, b @ Column::Lazy { .. }) => a == b,
             _ => false,
         }
     }
@@ -504,9 +504,9 @@ impl<'a> Expression for Column<'a> {
                 step,
             } => {
                 let result = (step.result)();
-                let value = result[*row_index][*col_index];
+                let value: &'a SQLValue = result[*row_index][*col_index];
                 let param_index = expression_context.next_param();
-                ParameterBinding::new(format! {"${}", param_index}, vec![value.as_ref()])
+                ParameterBinding::new(format! {"${}", param_index}, vec![value])
             }
         }
     }
