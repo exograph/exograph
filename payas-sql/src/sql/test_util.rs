@@ -1,3 +1,5 @@
+#![cfg(test)]
+
 // TODO: Do we really need three cases here (the middle one looks unnecessary)
 macro_rules! assert_params {
     ($actual_params:expr) => {

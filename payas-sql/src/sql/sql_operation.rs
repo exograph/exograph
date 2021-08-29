@@ -1,9 +1,6 @@
 use super::{
-    cte::Cte,
-    insert::{DynamicInsert, Insert},
-    select::Select,
-    update::Update,
-    Delete, Expression, ExpressionContext, OperationExpression, ParameterBinding,
+    cte::Cte, insert::Insert, select::Select, update::Update, Delete, Expression,
+    ExpressionContext, OperationExpression, ParameterBinding,
 };
 
 #[derive(Debug)]
@@ -25,12 +22,4 @@ impl<'a> OperationExpression for SQLOperation<'a> {
             SQLOperation::Cte(cte) => cte.binding(expression_context),
         }
     }
-}
-
-#[derive(Debug)]
-pub enum SQLDynamicOperation<'a> {
-    // Select(DynamicSelect),
-    Insert(DynamicInsert<'a>),
-    // Update(DynamicUpdate),
-    // Delete(DynamicDelete),
 }

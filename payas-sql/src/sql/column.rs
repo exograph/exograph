@@ -1,4 +1,4 @@
-use crate::{spec::SQLStatement, sql::SQLValue};
+use crate::spec::SQLStatement;
 
 use super::{
     select::*, transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
@@ -503,10 +503,9 @@ impl<'a> Expression for Column<'a> {
                 col_index,
                 step,
             } => {
-                let result = (step.result)();
-                let value: &'a SQLValue = result[*row_index][*col_index];
+                let sql_val = step.get_value(*row_index, *col_index);
                 let param_index = expression_context.next_param();
-                ParameterBinding::new(format! {"${}", param_index}, vec![value])
+                ParameterBinding::new(format! {"${}", param_index}, vec![sql_val])
             }
         }
     }

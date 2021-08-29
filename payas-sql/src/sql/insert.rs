@@ -1,6 +1,6 @@
 use super::{
     column::{Column, PhysicalColumn},
-    Expression, ExpressionContext, ParameterBinding, PhysicalTable, SQLValue,
+    Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
 #[derive(Debug)]
@@ -10,9 +10,6 @@ pub struct Insert<'a> {
     pub column_values_seq: Vec<Vec<&'a Column<'a>>>,
     pub returning: Vec<&'a Column<'a>>,
 }
-
-// INSERT INTO "concert_artists" ("rank", "role", "artist_id", "concert_id") VALUES ($1, $2, $3, $4), ($1, $2, $3, $5)
-// INSERT INTO "concert_artists" ("rank", "role", "artist_id", "concert_id") VALUES ($1, $2, $3, (select id from concerts where .. limit 1 offset 0)), ($1, $2, $3, (select id from concerts where .. limit 1 offset 1))
 
 impl<'a> Expression for Insert<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
@@ -65,43 +62,6 @@ impl<'a> Expression for Insert<'a> {
             params.extend(ret_params.into_iter().flatten());
 
             ParameterBinding { stmt, params }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct DynamicInsert<'a> {
-    pub table: &'a PhysicalTable,
-    pub column_names: Vec<&'a PhysicalColumn>,
-    pub static_values: Vec<Vec<&'a Column<'a>>>, // ($1, $2, $3)
-    // pub dynamic_values: fn() -> Vec<Vec<&'a Column<'a>>>, // fn (array[id]) -> ($4, $5, ...)
-    pub returning: Vec<&'a Column<'a>>,
-}
-
-impl<'a> DynamicInsert<'a> {
-    pub fn resolve(self, resolved_values: Vec<Vec<SQLValue>>) -> Insert<'a> {
-        let column_values_seq = resolved_values
-            .into_iter()
-            .flat_map(|resolved_value| {
-                self.static_values
-                    .clone()
-                    .into_iter()
-                    .map(move |mut static_value| {
-                        // let resolved_value: Vec<_> = resolved_value
-                        //     .iter()
-                        //     .map(|v| Column::Literal(Box::new(v)))
-                        //     .collect();
-                        // static_value.extend(resolved_value);
-                        static_value
-                    })
-            })
-            .collect();
-
-        Insert {
-            table: self.table,
-            column_names: self.column_names,
-            column_values_seq,
-            returning: self.returning,
         }
     }
 }

@@ -23,12 +23,11 @@ mod update;
 
 pub use cte::Cte;
 pub use delete::Delete;
-pub use insert::{DynamicInsert, Insert};
+pub use insert::Insert;
 pub use limit::Limit;
 pub use offset::Offset;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
-pub use sql_operation::SQLDynamicOperation;
 pub use sql_operation::SQLOperation;
 pub use update::Update;
 
@@ -64,24 +63,24 @@ impl PartialEq for dyn SQLParam {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SQLValue<'a> {
-    value: &'a [u8],
+pub struct SQLValue {
+    value: Vec<u8>,
     type_: Type,
 }
 
-impl<'a> SQLValue<'a> {
+impl SQLValue {
     fn as_sql_param(&self) -> &dyn SQLParam {
-        todo!()
+        self
     }
 }
 
-impl<'a> std::fmt::Display for SQLValue<'a> {
+impl std::fmt::Display for SQLValue {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        todo!()
+        write!(fmt, "<SQLValue containing {}>", self.type_)
     }
 }
 
-impl<'a> ToSql for SQLValue<'a> {
+impl ToSql for SQLValue {
     fn to_sql(
         &self,
         ty: &Type,
@@ -91,7 +90,7 @@ impl<'a> ToSql for SQLValue<'a> {
         Self: Sized,
     {
         if *ty == self.type_ {
-            out.extend(self.value);
+            out.extend(self.value.as_slice());
             Ok(postgres::types::IsNull::No)
         } else {
             Err(anyhow!("Type mismatch").into())
@@ -108,13 +107,10 @@ impl<'a> ToSql for SQLValue<'a> {
     postgres::types::to_sql_checked!();
 }
 
-impl<'a> FromSql<'a> for SQLValue<'a> {
-    fn from_sql(
-        ty: &Type,
-        raw: &'a [u8],
-    ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+impl<'a> FromSql<'a> for SQLValue {
+    fn from_sql(ty: &Type, raw: &[u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
         Ok(SQLValue {
-            value: raw,
+            value: raw.to_owned(), // TODO: do we need to do this?
             type_: ty.clone(),
         })
     }
