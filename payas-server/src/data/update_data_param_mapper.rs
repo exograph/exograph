@@ -2,10 +2,7 @@ use anyhow::*;
 use async_graphql_value::Value;
 
 use crate::{
-    data::{
-        create_data_param_mapper::InsertionInfo,
-        mutation_resolver::{return_type_info, table_name},
-    },
+    data::mutation_resolver::{return_type_info, table_name},
     sql::column::Column,
 };
 
