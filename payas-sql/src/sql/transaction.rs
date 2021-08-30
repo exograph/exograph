@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, rc::Rc};
 
 use anyhow::{Context, Result};
 use postgres::{
@@ -13,7 +13,7 @@ use super::{OperationExpression, SQLOperation, SQLParam, SQLValue};
 #[derive(Debug)]
 pub enum TransactionScript<'a> {
     Single(TransactionStep<'a>),
-    Multi(Vec<TransactionStep<'a>>, TransactionStep<'a>),
+    Multi(Vec<Rc<TransactionStep<'a>>>, TransactionStep<'a>),
 }
 
 impl<'a> TransactionScript<'a> {
@@ -112,8 +112,14 @@ type TransactionStepResult = Vec<SQLValue>;
 
 //#[cfg(test)]
 //mod tests {
-//    use crate::sql::{PhysicalTable, column::{Column, IntBits, PhysicalColumn, PhysicalColumnType}, select::Select};
-//    use anyhow::{Context, Result};
+//    use std::rc::Rc;
+//
+//    use crate::sql::{
+//        column::{Column, IntBits, PhysicalColumn, PhysicalColumnType},
+//        select::Select,
+//        PhysicalTable,
+//    };
+//    use anyhow::{bail, Context, Result};
 //    use postgres::NoTls;
 //    use postgres::{Client, Config};
 //
@@ -132,7 +138,7 @@ type TransactionStepResult = Vec<SQLValue>;
 //        config.dbname("payas");
 //
 //        // run creation query
-//        let mut client: Client = config.connect(NoTls)?;
+//        let client: Client = config.connect(NoTls)?;
 //
 //        // return
 //        Ok(client)
@@ -164,13 +170,18 @@ type TransactionStepResult = Vec<SQLValue>;
 //            .map(|_| ())
 //    }
 //
+//    pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
+//        match row.try_get(0) {
+//            Ok(col) => Ok(col),
+//            Err(err) => bail!("Got row without any columns {}", err),
+//        }
+//    }
 //    use super::*;
 //    #[test]
 //    fn basic_transaction_step_test() {
 //        let connection_string = "postgresql://noneucat:noneucat@localhost:5432/payas";
-//        ///
 //
-//        let mut client = get_client( connection_string).unwrap();
+//        let mut client = get_client(connection_string).unwrap();
 //
 //        let src_table = PhysicalTable {
 //            name: "people".to_string(),
@@ -202,9 +213,7 @@ type TransactionStepResult = Vec<SQLValue>;
 //
 //        let dst_table = PhysicalTable {
 //            name: "ages".to_string(),
-//            columns: vec![
-//                dst_age_col.clone()
-//            ],
+//            columns: vec![dst_age_col.clone()],
 //        };
 //
 //        let src_name_phys_col = src_table.get_physical_column("name").unwrap();
@@ -214,47 +223,30 @@ type TransactionStepResult = Vec<SQLValue>;
 //        let name_literal = Column::Literal(Box::new("abc"));
 //        let age_literal = Column::Literal(Box::new(18i16));
 //        let insertion_op = src_table.insert(
-//            vec![
-//                src_name_phys_col,
-//                src_age_phys_col
-//            ],
-//            vec![
-//                vec![
-//                    &name_literal,
-//                    &age_literal
-//                ]
-//            ],
-//            vec![&src_age_col]
+//            vec![src_name_phys_col, src_age_phys_col],
+//            vec![vec![&name_literal, &age_literal]],
+//            vec![&src_age_col],
 //        );
-//        let step_a = TransactionStep {
+//        let step_a = Rc::new(TransactionStep {
 //            operation: SQLOperation::Insert(insertion_op),
 //            values: RefCell::new(vec![]),
-//        };
+//        });
 //
 //        let lazy_col = Column::Lazy {
-//                        row_index: 0, col_index: 0,
-//                        step: &step_a,
-//                    };
-//        let insertion_op = dst_table.insert(
-//            vec![&dst_age_col],
-//            vec![
-//                vec![
-//                    &lazy_col
-//                ]
-//            ],
-//            vec![]
-//        );
+//            row_index: 0,
+//            col_index: 0,
+//            step: &step_a,
+//        };
+//        let insertion_op = dst_table.insert(vec![&dst_age_col], vec![vec![&lazy_col]], vec![]);
 //
 //        let step_b = TransactionStep {
 //            operation: SQLOperation::Insert(insertion_op),
 //            values: RefCell::new(vec![]),
 //        };
 //
-//        let mut transaction_script = TransactionScriptX::Multi(
-//            vec![&step_a], step_b
-//        );
+//        let transaction_script = TransactionScript::Multi(vec![step_a.clone()], step_b);
 //
-//        let e = transaction_script.execute(&mut client);
+//        let e = transaction_script.execute::<String>(&mut client, extractor);
 //        println!("{:?}", e)
 //    }
 //}

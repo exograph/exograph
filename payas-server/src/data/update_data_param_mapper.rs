@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use anyhow::*;
 use async_graphql_value::Value;
 
@@ -74,8 +76,12 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 vec![pk_col],
             )));
 
-            let mut ops = vec![update_op];
-            ops.extend(nested_updates.into_iter().map(TransactionStep::new));
+            let mut ops = vec![Rc::new(update_op)];
+            ops.extend(
+                nested_updates
+                    .into_iter()
+                    .map(|op| Rc::new(TransactionStep::new(op))),
+            );
 
             Ok(TransactionScript::Multi(
                 ops,
