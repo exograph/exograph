@@ -15,8 +15,10 @@ use payas_model::{
         GqlCompositeTypeKind, GqlType,
     },
     sql::{
-        column::PhysicalColumn, predicate::Predicate, transaction::TransactionScript, Cte,
-        SQLOperation, Select, Update,
+        column::PhysicalColumn,
+        predicate::Predicate,
+        transaction::{TransactionScript, TransactionStep},
+        Cte, SQLOperation, Select, Update,
     },
 };
 
@@ -57,23 +59,28 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                     vec![operation_context.create_column(Column::Star)],
                 )),
             )];
-            Ok(TransactionScript::Single(SQLOperation::Cte(Cte {
-                ctes: ops,
-                select,
-            })))
+            Ok(TransactionScript::Single(TransactionStep::new(
+                SQLOperation::Cte(Cte { ctes: ops, select }),
+            )))
         } else {
             let pk_col = {
                 let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
                 operation_context.create_column(Column::Physical(pk_physical_col))
             };
 
-            let update_op =
-                SQLOperation::Update(table.update(self_update_columns, predicate, vec![pk_col]));
+            let update_op = TransactionStep::new(SQLOperation::Update(table.update(
+                self_update_columns,
+                predicate,
+                vec![pk_col],
+            )));
 
             let mut ops = vec![update_op];
-            ops.extend(nested_updates);
-            ops.push(SQLOperation::Select(select));
-            Ok(TransactionScript::Multi(ops))
+            ops.extend(nested_updates.into_iter().map(TransactionStep::new));
+
+            Ok(TransactionScript::Multi(
+                ops,
+                TransactionStep::new(SQLOperation::Select(select)),
+            ))
         }
     }
 }

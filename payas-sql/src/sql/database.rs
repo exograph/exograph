@@ -2,15 +2,10 @@ use anyhow::{bail, Context, Result};
 use std::env;
 
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres::{
-    types::{FromSqlOwned, ToSql},
-    Config, Row,
-};
+use postgres::Config;
 use postgres_openssl::MakeTlsConnector;
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::PostgresConnectionManager;
-
-use super::ParameterBinding;
 
 fn type_of<T>(_: &T) -> &str {
     std::any::type_name::<T>()
@@ -64,51 +59,9 @@ impl<'a> Database {
         })
     }
 
-    pub fn execute<T: FromSqlOwned>(
-        &self,
-        binding: &ParameterBinding,
-        extractor: fn(Vec<Row>) -> Result<Option<T>>,
-    ) -> Result<Option<T>> {
-        let mut client = self.get_client()?;
-
-        let params: Vec<&(dyn ToSql + Sync)> =
-            binding.params.iter().map(|p| (*p).as_pg()).collect();
-
-        println!("Executing: {}", binding.stmt);
-        let rows = client
-            .query(binding.stmt.as_str(), &params[..])
-            .context("PostgreSQL query failed")?;
-        let extracted = extractor(rows)?;
-
-        Ok(extracted.into_iter().next())
-    }
-
     pub fn get_client(
         &self,
     ) -> Result<PooledConnection<PostgresConnectionManager<MakeTlsConnector>>> {
         Ok(self.pool.get()?)
     }
-}
-
-pub fn extractor_single<T: FromSqlOwned>(rows: Vec<Row>) -> Result<Option<T>> {
-    let result = if rows.len() == 1 {
-        match rows[0].try_get(0) {
-            Ok(col) => Some(col),
-            Err(err) => bail!("Got row without any columns {}", err),
-        }
-    } else {
-        None
-    };
-
-    Ok(result)
-}
-
-pub fn extractor_vec<T: FromSqlOwned>(rows: Vec<Row>) -> Result<Vec<T>> {
-    Ok(rows
-        .into_iter()
-        .flat_map(|row| match row.try_get(0) {
-            Ok(col) => Ok(col),
-            Err(err) => bail!("Got row without any columns {}", err),
-        })
-        .collect())
 }

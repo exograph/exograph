@@ -1,34 +1,36 @@
 use std::cell::RefCell;
 
 use anyhow::{Context, Result};
-use postgres::{types::ToSql, Client, Row};
+use postgres::{
+    types::{FromSqlOwned, ToSql},
+    Client, Row,
+};
 
 use crate::sql::ExpressionContext;
 
-use super::{OperationExpression, ParameterBinding, SQLOperation, SQLParam, SQLValue};
-
-pub enum TransactionScript<'a> {
-    Single(SQLOperation<'a>),
-    Multi(Vec<SQLOperation<'a>>),
-}
+use super::{OperationExpression, SQLOperation, SQLParam, SQLValue};
 
 #[derive(Debug)]
-pub enum TransactionScriptX<'a> {
+pub enum TransactionScript<'a> {
     Single(TransactionStep<'a>),
-    Multi(Vec<&'a TransactionStep<'a>>, TransactionStep<'a>),
+    Multi(Vec<TransactionStep<'a>>, TransactionStep<'a>),
 }
 
-impl<'a> TransactionScriptX<'a> {
-    pub fn execute(&'a mut self, client: &mut Client) -> Result<()> {
+impl<'a> TransactionScript<'a> {
+    pub fn execute<T: FromSqlOwned>(
+        &'a self,
+        client: &mut Client,
+        extractor: fn(Row) -> Result<T>,
+    ) -> Result<Vec<T>> {
         match self {
-            Self::Single(step) => step.execute(client),
+            Self::Single(step) => step.execute_and_extract(client, extractor),
 
             Self::Multi(init, last) => {
                 for step in init {
                     step.execute(client)?;
                 }
 
-                last.execute(client)
+                last.execute_and_extract(client, extractor)
             }
         }
     }
@@ -40,32 +42,45 @@ pub struct TransactionStep<'a> {
     pub values: RefCell<Vec<Vec<SQLValue>>>,
 }
 
-// TODO: dedup code from database.rs
 impl<'a> TransactionStep<'a> {
-    pub fn execute(&'a self, client: &mut Client) -> Result<()> {
-        let sql_operation = &self.operation;
-        let mut context = ExpressionContext::default();
-        let binding = sql_operation.binding(&mut context);
-        self.execute_with_binding(client, binding)
+    pub fn new(operation: SQLOperation<'a>) -> Self {
+        Self {
+            operation,
+            values: RefCell::new(vec![]),
+        }
     }
 
-    fn execute_with_binding(
-        &'a self,
-        client: &mut Client,
-        binding: ParameterBinding,
-    ) -> Result<()> {
-        let params: Vec<&(dyn ToSql + Sync)> =
-            binding.params.iter().map(|p| (*p).as_pg()).collect();
-
-        println!("Executing transaction step: {}", binding.stmt);
-        let rows = client
-            .query(binding.stmt.as_str(), &params[..])
-            .context("PostgreSQL query failed")?;
+    pub fn execute(&'a self, client: &mut Client) -> Result<()> {
+        let rows = self.run_query(client)?;
 
         let values = Self::result_extractor(&rows)?;
         *self.values.borrow_mut() = values;
 
         Ok(())
+    }
+
+    fn execute_and_extract<T: FromSqlOwned>(
+        &'a self,
+        client: &mut Client,
+        extractor: fn(Row) -> Result<T>,
+    ) -> Result<Vec<T>> {
+        let rows = self.run_query(client)?;
+
+        rows.into_iter().map(extractor).collect()
+    }
+
+    fn run_query(&'a self, client: &mut Client) -> Result<Vec<Row>> {
+        let sql_operation = &self.operation;
+        let mut context = ExpressionContext::default();
+        let binding = sql_operation.binding(&mut context);
+
+        let params: Vec<&(dyn ToSql + Sync)> =
+            binding.params.iter().map(|p| (*p).as_pg()).collect();
+
+        println!("Executing transaction step: {}", binding.stmt);
+        client
+            .query(binding.stmt.as_str(), &params[..])
+            .context("PostgreSQL query failed")
     }
 
     fn result_extractor(rows: &[Row]) -> Result<Vec<Vec<SQLValue>>> {
