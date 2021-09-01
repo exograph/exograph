@@ -20,7 +20,7 @@ pub fn run(directory: &Path) -> Result<()> {
     let number_of_tests = testfiles.len();
 
     // Run testfiles in parallel
-    let number_of_succeeded_tests = testfiles
+    let mut test_results: Vec<_> = testfiles
         .into_iter()
         .map(|t| {
             std::thread::spawn(move || {
@@ -30,13 +30,35 @@ pub fn run(directory: &Path) -> Result<()> {
         .collect::<Vec<_>>()
         .into_iter()
         .map(|j| j.join().unwrap())
-        .fold(0, |accum, test_status| match test_status {
-            Ok(test_result) => accum + test_result,
-            Err(e) => {
-                println!("Testfile failure: {:?}", e);
-                accum
+        .collect();
+
+    test_results.sort_by(|a, b| {
+        if a.is_ok() && b.is_err() {
+            std::cmp::Ordering::Greater
+        } else if a.is_err() && b.is_ok() {
+            std::cmp::Ordering::Less
+        } else {
+            a.as_ref().unwrap().cmp(b.as_ref().unwrap())
+        }
+    });
+    test_results.reverse();
+
+    let mut number_of_succeeded_tests = 0;
+    for result in test_results.iter() {
+        match result {
+            Ok(result) => {
+                println!("{}", result);
+
+                if result.is_success() {
+                    number_of_succeeded_tests += 1;
+                }
             }
-        });
+
+            Err(e) => {
+                println!("Testfile failure: {:?}", e)
+            }
+        }
+    }
 
     let success = number_of_succeeded_tests == number_of_tests;
     let status = if success {
@@ -47,7 +69,7 @@ pub fn run(directory: &Path) -> Result<()> {
 
     println!(
         "{} {} {} out of {} total",
-        ansi_term::Color::Blue.bold().paint("* Test result:"),
+        ansi_term::Color::Blue.bold().paint("* Test results:"),
         status,
         ansi_term::Style::new()
             .bold()

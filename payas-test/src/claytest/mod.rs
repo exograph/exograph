@@ -1,3 +1,4 @@
 pub mod dbutils;
-pub mod loader;
-pub mod runner;
+pub(crate) mod loader;
+pub mod model;
+pub(crate) mod runner;
