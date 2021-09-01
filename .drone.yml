@@ -35,7 +35,7 @@ steps:
     - name: sccache
       path: /sccache
     commands:
-      - cargo test
+      - cargo test --test '*'
 
   - name: test-integration
     image: payas-ci-image
