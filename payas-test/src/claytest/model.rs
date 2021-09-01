@@ -41,7 +41,7 @@ pub enum TestResult {
 impl Eq for TestResult {}
 
 // We use a custom implementation of PartialEq (needed for sorting)
-// that disregards the inner Error because they do not implement PartialEq themselves. 
+// that disregards the inner Error because they do not implement PartialEq themselves.
 impl PartialEq for TestResult {
     fn eq(&self, other: &Self) -> bool {
         match self {
