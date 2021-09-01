@@ -510,3 +510,12 @@ impl<'a> Expression for Column<'a> {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum ProxyColumn<'a> {
+    Concrete(Column<'a>),
+    Template {
+        col_index: usize,
+        step: &'a TransactionStep<'a>,
+    },
+}

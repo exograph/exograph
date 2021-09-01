@@ -11,7 +11,7 @@ use anyhow::*;
 use payas_model::{
     model::{operation::*, predicate::PredicateParameter, types::*},
     sql::{
-        transaction::{TransactionScript, TransactionStep},
+        transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
         Select,
     },
 };
@@ -100,8 +100,8 @@ fn create_operation<'a>(
     let info = insertion_info(data_param, &field.arguments, operation_context)?.unwrap();
     let ops = info.operation(operation_context, true);
 
-    Ok(TransactionScript::Single(TransactionStep::new(
-        SQLOperation::Cte(Cte { ctes: ops, select }),
+    Ok(TransactionScript::Single(TransactionStep::Concrete(
+        ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
     )))
 }
 
@@ -146,8 +146,8 @@ fn delete_operation<'a>(
         )),
     )];
 
-    Ok(TransactionScript::Single(TransactionStep::new(
-        SQLOperation::Cte(Cte { ctes: ops, select }),
+    Ok(TransactionScript::Single(TransactionStep::Concrete(
+        ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
     )))
 }
 

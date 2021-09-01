@@ -19,7 +19,7 @@ use payas_model::{
     sql::{
         column::PhysicalColumn,
         predicate::Predicate,
-        transaction::{TransactionScript, TransactionStep},
+        transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
         Cte, SQLOperation, Select, Update,
     },
 };
@@ -61,8 +61,8 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                     vec![operation_context.create_column(Column::Star)],
                 )),
             )];
-            Ok(TransactionScript::Single(TransactionStep::new(
-                SQLOperation::Cte(Cte { ctes: ops, select }),
+            Ok(TransactionScript::Single(TransactionStep::Concrete(
+                ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
             )))
         } else {
             let pk_col = {
@@ -70,22 +70,22 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 operation_context.create_column(Column::Physical(pk_physical_col))
             };
 
-            let update_op = TransactionStep::new(SQLOperation::Update(table.update(
-                self_update_columns,
-                predicate,
-                vec![pk_col],
-            )));
+            let update_op = TransactionStep::Concrete(ConcreteTransactionStep::new(
+                SQLOperation::Update(table.update(self_update_columns, predicate, vec![pk_col])),
+            ));
 
             let mut ops = vec![Rc::new(update_op)];
             ops.extend(
                 nested_updates
                     .into_iter()
-                    .map(|op| Rc::new(TransactionStep::new(op))),
+                    .map(|op| Rc::new(TransactionStep::Concrete(ConcreteTransactionStep::new(op)))),
             );
 
             Ok(TransactionScript::Multi(
                 ops,
-                TransactionStep::new(SQLOperation::Select(select)),
+                TransactionStep::Concrete(ConcreteTransactionStep::new(SQLOperation::Select(
+                    select,
+                ))),
             ))
         }
     }

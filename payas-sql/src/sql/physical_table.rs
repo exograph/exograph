@@ -8,6 +8,7 @@ use super::{
     Delete, Expression, ExpressionContext, Insert, ParameterBinding, Update,
 };
 
+use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -52,16 +53,22 @@ impl PhysicalTable {
         }
     }
 
-    pub fn insert<'a>(
+    pub fn insert<'a, C>(
         &'a self,
         column_names: Vec<&'a PhysicalColumn>,
-        column_values_seq: Vec<Vec<&'a Column<'a>>>,
+        column_values_seq: Vec<Vec<C>>,
         returning: Vec<&'a Column>,
-    ) -> Insert {
+    ) -> Insert
+    where
+        C: Into<MaybeOwned<'a, Column<'a>>>,
+    {
         Insert {
             table: self,
             column_names,
-            column_values_seq,
+            column_values_seq: column_values_seq
+                .into_iter()
+                .map(|rows| rows.into_iter().map(|col| col.into()).collect())
+                .collect(),
             returning,
         }
     }

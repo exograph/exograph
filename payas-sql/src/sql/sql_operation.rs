@@ -1,6 +1,10 @@
 use super::{
-    cte::Cte, insert::Insert, select::Select, update::Update, Delete, Expression,
-    ExpressionContext, OperationExpression, ParameterBinding,
+    cte::Cte,
+    insert::{Insert, TemplateInsert},
+    select::Select,
+    transaction::TransactionStep,
+    update::Update,
+    Delete, Expression, ExpressionContext, OperationExpression, ParameterBinding,
 };
 
 #[derive(Debug)]
@@ -20,6 +24,23 @@ impl<'a> OperationExpression for SQLOperation<'a> {
             SQLOperation::Delete(delete) => delete.binding(expression_context),
             SQLOperation::Update(update) => update.binding(expression_context),
             SQLOperation::Cte(cte) => cte.binding(expression_context),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum TemplateSQLOperation<'a> {
+    // Select(Select<'a>),
+    Insert(TemplateInsert<'a>),
+    // Delete(Delete<'a>),
+    // Update(Update<'a>),
+    // Cte(Cte<'a>),
+}
+
+impl<'a> TemplateSQLOperation<'a> {
+    pub fn resolve(&self, prev_step: &'a TransactionStep<'a>) -> SQLOperation<'a> {
+        match self {
+            TemplateSQLOperation::Insert(insert) => SQLOperation::Insert(insert.resolve(prev_step)),
         }
     }
 }

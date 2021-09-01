@@ -1,5 +1,8 @@
+use maybe_owned::MaybeOwned;
+
 use super::{
-    column::{Column, PhysicalColumn},
+    column::{Column, PhysicalColumn, ProxyColumn},
+    transaction::TransactionStep,
     Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
@@ -7,7 +10,7 @@ use super::{
 pub struct Insert<'a> {
     pub table: &'a PhysicalTable,
     pub column_names: Vec<&'a PhysicalColumn>,
-    pub column_values_seq: Vec<Vec<&'a Column<'a>>>,
+    pub column_values_seq: Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
     pub returning: Vec<&'a Column<'a>>,
 }
 
@@ -62,6 +65,53 @@ impl<'a> Expression for Insert<'a> {
             params.extend(ret_params.into_iter().flatten());
 
             ParameterBinding { stmt, params }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TemplateInsert<'a> {
+    pub table: &'a PhysicalTable,
+    pub column_names: Vec<&'a PhysicalColumn>,
+    pub column_values_seq: Vec<&'a ProxyColumn<'a>>,
+    pub returning: Vec<&'a Column<'a>>,
+}
+
+impl<'a> TemplateInsert<'a> {
+    pub fn resolve(&self, prev_step: &'a TransactionStep<'a>) -> Insert<'a> {
+        let rows = prev_step.resolved_value().borrow().len();
+
+        let TemplateInsert {
+            table,
+            column_names,
+            column_values_seq,
+            returning,
+        } = self;
+
+        let resolved_cols = (0..rows)
+            .map(|row_index| {
+                column_values_seq
+                    .clone()
+                    .into_iter()
+                    .map(|col| match col {
+                        ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(col),
+                        ProxyColumn::Template { col_index, step } => {
+                            MaybeOwned::Owned(Column::Lazy {
+                                row_index,
+                                col_index: *col_index,
+                                step: step,
+                            })
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+
+        Insert {
+            table: table,
+            column_names: column_names.clone(),
+            column_values_seq: resolved_cols,
+            returning: returning.clone(),
         }
     }
 }
