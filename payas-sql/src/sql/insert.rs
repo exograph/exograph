@@ -99,7 +99,7 @@ impl<'a> TemplateInsert<'a> {
                             MaybeOwned::Owned(Column::Lazy {
                                 row_index,
                                 col_index: *col_index,
-                                step: step,
+                                step,
                             })
                         }
                     })
@@ -108,7 +108,7 @@ impl<'a> TemplateInsert<'a> {
             .collect();
 
         Insert {
-            table: table,
+            table,
             column_names: column_names.clone(),
             column_values_seq: resolved_cols,
             returning: returning.clone(),

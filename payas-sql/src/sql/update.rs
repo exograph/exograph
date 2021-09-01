@@ -1,6 +1,9 @@
+use maybe_owned::MaybeOwned;
+
 use super::{
-    column::{Column, PhysicalColumn},
+    column::{Column, PhysicalColumn, ProxyColumn},
     predicate::Predicate,
+    transaction::TransactionStep,
     Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
@@ -8,7 +11,7 @@ use super::{
 pub struct Update<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: &'a Predicate<'a>,
-    pub column_values: Vec<(&'a PhysicalColumn, &'a Column<'a>)>,
+    pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)>,
     pub returning: Vec<&'a Column<'a>>,
 }
 
@@ -61,5 +64,54 @@ impl<'a> Expression for Update<'a> {
 
             ParameterBinding { stmt, params }
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct TemplateUpdate<'a> {
+    pub table: &'a PhysicalTable,
+    pub predicate: &'a Predicate<'a>,
+    pub column_values: Vec<(&'a PhysicalColumn, &'a ProxyColumn<'a>)>,
+    pub returning: Vec<&'a Column<'a>>,
+}
+
+impl<'a> TemplateUpdate<'a> {
+    pub fn resolve(&self, prev_step: &'a TransactionStep<'a>) -> Vec<Update<'a>> {
+        let rows = prev_step.resolved_value().borrow().len();
+
+        let TemplateUpdate {
+            table,
+            predicate,
+            column_values,
+            returning,
+        } = self;
+
+        (0..rows)
+            .map(|row_index| {
+                let resolved_column_values = column_values
+                    .clone()
+                    .into_iter()
+                    .map(|(physical_col, col)| {
+                        let resolved_col = match col {
+                            ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(col),
+                            ProxyColumn::Template { col_index, step } => {
+                                MaybeOwned::Owned(Column::Lazy {
+                                    row_index,
+                                    col_index: *col_index,
+                                    step,
+                                })
+                            }
+                        };
+                        (physical_col, resolved_col)
+                    })
+                    .collect();
+                Update {
+                    table,
+                    predicate,
+                    column_values: resolved_column_values,
+                    returning: returning.clone(),
+                }
+            })
+            .collect()
     }
 }

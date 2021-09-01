@@ -85,15 +85,21 @@ impl PhysicalTable {
         }
     }
 
-    pub fn update<'a>(
+    pub fn update<'a, C>(
         &'a self,
-        column_values: Vec<(&'a PhysicalColumn, &'a Column<'a>)>,
+        column_values: Vec<(&'a PhysicalColumn, C)>,
         predicate: &'a Predicate<'a>,
         returning: Vec<&'a Column>,
-    ) -> Update {
+    ) -> Update
+    where
+        C: Into<MaybeOwned<'a, Column<'a>>>,
+    {
         Update {
             table: self,
-            column_values,
+            column_values: column_values
+                .into_iter()
+                .map(|(pc, col)| (pc, col.into()))
+                .collect(),
             predicate,
             returning,
         }

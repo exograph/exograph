@@ -20,7 +20,7 @@ use payas_model::{
         column::PhysicalColumn,
         predicate::Predicate,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-        Cte, SQLOperation, Select, Update,
+        Cte, SQLOperation, Select,
     },
 };
 
@@ -214,12 +214,11 @@ fn compute_nested_update<'a>(
                 });
             let other_type = &system.types[*other_type_id];
             let table = &system.tables[other_type.table_id().unwrap()];
-            SQLOperation::Update(Update {
-                table,
-                predicate: operation_context.create_predicate(predicate),
-                column_values: nested,
-                returning: vec![],
-            })
+            SQLOperation::Update(table.update(
+                nested,
+                operation_context.create_predicate(predicate),
+                vec![],
+            ))
         })
 }
 

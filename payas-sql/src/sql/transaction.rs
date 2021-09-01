@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use postgres::{
     types::{FromSqlOwned, ToSql},
     Client, Row,
@@ -49,8 +49,12 @@ impl<'a> TransactionStep<'a> {
             Self::Concrete(step) => step.execute(client),
             Self::Template(step) => {
                 let concrete = step.resolve();
-                let result = concrete.execute(client);
-                *step.values.borrow_mut() = concrete.values.into_inner();
+
+                let mut result = Ok(());
+                for substep in concrete {
+                    result = substep.execute(client);
+                    step.values.borrow_mut().extend(substep.values.into_inner());
+                }
                 result
             }
         }
@@ -65,7 +69,16 @@ impl<'a> TransactionStep<'a> {
             Self::Concrete(step) => step.execute_and_extract(client, extractor),
             Self::Template(step) => {
                 let concrete = step.resolve();
-                concrete.execute_and_extract(client, extractor)
+
+                match concrete.as_slice() {
+                    [init @ .., last] => {
+                        for substep in init {
+                            substep.execute(client)?;
+                        }
+                        last.execute_and_extract(client, extractor)
+                    }
+                    _ => Err(anyhow!("Expected at least one step")),
+                }
             }
         }
     }
@@ -165,11 +178,15 @@ pub struct TemplateTransactionStep<'a> {
 }
 
 impl<'a> TemplateTransactionStep<'a> {
-    pub fn resolve(&self) -> ConcreteTransactionStep<'a> {
-        ConcreteTransactionStep {
-            operation: self.operation.resolve(&self.step),
-            values: RefCell::new(vec![]),
-        }
+    pub fn resolve(&self) -> Vec<ConcreteTransactionStep<'a>> {
+        self.operation
+            .resolve(self.step)
+            .into_iter()
+            .map(|operation| ConcreteTransactionStep {
+                operation,
+                values: RefCell::new(vec![]),
+            })
+            .collect()
     }
 
     // TODO: Dedup from ConcreteTransactionStep
@@ -189,73 +206,73 @@ impl<'a> TemplateTransactionStep<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::{cell::RefCell, rc::Rc};
+    // use super::*;
+    // use std::{cell::RefCell, rc::Rc};
 
-    use crate::sql::{
-        column::{Column, IntBits, PhysicalColumn, PhysicalColumnType, ProxyColumn},
-        insert::TemplateInsert,
-        predicate::Predicate,
-        transaction::{ConcreteTransactionStep, TransactionStep},
-        PhysicalTable, SQLOperation,
-    };
-    use anyhow::{bail, Context, Result};
-    use postgres::NoTls;
-    use postgres::{Client, Config};
+    // use crate::sql::{
+    //     column::{Column, IntBits, PhysicalColumn, PhysicalColumnType, ProxyColumn},
+    //     insert::TemplateInsert,
+    //     predicate::Predicate,
+    //     transaction::{ConcreteTransactionStep, TransactionStep},
+    //     PhysicalTable, SQLOperation,
+    // };
+    // use anyhow::{bail, Context, Result};
+    // use postgres::NoTls;
+    // use postgres::{Client, Config};
 
-    type ConnectionString = String;
-    type DbUsername = String;
+    // type ConnectionString = String;
+    // type DbUsername = String;
 
-    pub fn get_client(url: &str) -> Result<Client> {
-        // TODO validate dbname
+    // pub fn get_client(url: &str) -> Result<Client> {
+    //     // TODO validate dbname
 
-        // parse connection string
-        let mut config = url
-            .parse::<Config>()
-            .context("Failed to parse PostgreSQL connection string")?;
+    //     // parse connection string
+    //     let mut config = url
+    //         .parse::<Config>()
+    //         .context("Failed to parse PostgreSQL connection string")?;
 
-        // "The postgres database is a default database meant for use by users, utilities and third party applications."
-        config.dbname("payas-test");
+    //     // "The postgres database is a default database meant for use by users, utilities and third party applications."
+    //     config.dbname("payas-test");
 
-        // run creation query
-        let client: Client = config.connect(NoTls)?;
+    //     // run creation query
+    //     let client: Client = config.connect(NoTls)?;
 
-        // return
-        Ok(client)
-    }
+    //     // return
+    //     Ok(client)
+    // }
 
-    /// Connect to the specified PostgreSQL database and attempt to run a query.
-    pub fn run_psql(query: &str, url: &str) -> Result<()> {
-        let mut client = url.parse::<Config>()?.connect(NoTls)?;
-        client
-            .simple_query(query)
-            .context(format!("PostgreSQL query failed: {}", query))
-            .map(|_| ())
-    }
+    // /// Connect to the specified PostgreSQL database and attempt to run a query.
+    // pub fn run_psql(query: &str, url: &str) -> Result<()> {
+    //     let mut client = url.parse::<Config>()?.connect(NoTls)?;
+    //     client
+    //         .simple_query(query)
+    //         .context(format!("PostgreSQL query failed: {}", query))
+    //         .map(|_| ())
+    // }
 
-    /// Drop the specified database at the specified PostgreSQL server and
-    /// return on success.
-    pub fn dropdb_psql(dbname: &str, url: &str) -> Result<()> {
-        let mut config = url.parse::<Config>()?;
+    // /// Drop the specified database at the specified PostgreSQL server and
+    // /// return on success.
+    // pub fn dropdb_psql(dbname: &str, url: &str) -> Result<()> {
+    //     let mut config = url.parse::<Config>()?;
 
-        // "The postgres database is a default database meant for use by users, utilities and third party applications."
-        config.dbname("postgres");
+    //     // "The postgres database is a default database meant for use by users, utilities and third party applications."
+    //     config.dbname("postgres");
 
-        let mut client = config.connect(NoTls)?;
+    //     let mut client = config.connect(NoTls)?;
 
-        let query: String = format!("DROP DATABASE \"{}\"", dbname);
-        client
-            .execute(query.as_str(), &[])
-            .context("PostgreSQL drop database query failed")
-            .map(|_| ())
-    }
+    //     let query: String = format!("DROP DATABASE \"{}\"", dbname);
+    //     client
+    //         .execute(query.as_str(), &[])
+    //         .context("PostgreSQL drop database query failed")
+    //         .map(|_| ())
+    // }
 
-    pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
-        match row.try_get(0) {
-            Ok(col) => Ok(col),
-            Err(err) => bail!("Got row without any columns {}", err),
-        }
-    }
+    // pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
+    //     match row.try_get(0) {
+    //         Ok(col) => Ok(col),
+    //         Err(err) => bail!("Got row without any columns {}", err),
+    //     }
+    // }
 
     //    #[test]
     //    fn basic_transaction_step_test() {

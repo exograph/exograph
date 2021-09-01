@@ -3,7 +3,7 @@ use super::{
     insert::{Insert, TemplateInsert},
     select::Select,
     transaction::TransactionStep,
-    update::Update,
+    update::{TemplateUpdate, Update},
     Delete, Expression, ExpressionContext, OperationExpression, ParameterBinding,
 };
 
@@ -30,17 +30,21 @@ impl<'a> OperationExpression for SQLOperation<'a> {
 
 #[derive(Debug)]
 pub enum TemplateSQLOperation<'a> {
-    // Select(Select<'a>),
     Insert(TemplateInsert<'a>),
-    // Delete(Delete<'a>),
-    // Update(Update<'a>),
-    // Cte(Cte<'a>),
+    Update(TemplateUpdate<'a>),
 }
 
 impl<'a> TemplateSQLOperation<'a> {
-    pub fn resolve(&self, prev_step: &'a TransactionStep<'a>) -> SQLOperation<'a> {
+    pub fn resolve(&self, prev_step: &'a TransactionStep<'a>) -> Vec<SQLOperation<'a>> {
         match self {
-            TemplateSQLOperation::Insert(insert) => SQLOperation::Insert(insert.resolve(prev_step)),
+            TemplateSQLOperation::Insert(insert) => {
+                vec![SQLOperation::Insert(insert.resolve(prev_step))]
+            }
+            TemplateSQLOperation::Update(update) => update
+                .resolve(prev_step)
+                .into_iter()
+                .map(SQLOperation::Update)
+                .collect(),
         }
     }
 }

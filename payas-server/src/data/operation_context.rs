@@ -59,7 +59,6 @@ impl<'a> OperationContext<'a> {
         // can we shift value ownership (maybe something like an `Rc<Value>`) to avoid unnecessary clones in
         // data_param_mapper.rs and predicate_mapper.rs ?
         value: Value,
-
         associated_column: &PhysicalColumn,
     ) -> &'a Column<'a> {
         let column: Column<'a> = match value {
