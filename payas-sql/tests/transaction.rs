@@ -85,6 +85,7 @@ fn basic_transaction_step_test() {
 
     let transaction_script = TransactionScript::Multi(vec![step_a.clone()], step_b);
 
-    let e = transaction_script.execute::<String>(&mut client, extractor);
-    println!("{:?}", e)
+    transaction_script
+        .execute::<String>(&mut client, extractor)
+        .unwrap();
 }
