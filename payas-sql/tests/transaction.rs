@@ -19,8 +19,8 @@ pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
 
 #[test]
 fn basic_transaction_step_test() {
-    let mut ctx = common::setup_client("transaction_step").unwrap();
-    let mut client = &mut ctx.client;
+    let mut ctx = common::create_database("transaction_step").unwrap();
+    let mut client = ctx.get_database().get_client().unwrap();
 
     let src_table = PhysicalTable {
         name: "people".to_string(),

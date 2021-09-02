@@ -6,17 +6,33 @@ use r2d2_postgres::PostgresConnectionManager;
 
 pub struct TestContext {
     db_name: String,
-    pub client: PooledConnection<PostgresConnectionManager<MakeTlsConnector>>,
+    setup_db: Database,
+    pub db: Option<Database>,
 }
 
 impl Drop for TestContext {
     fn drop(&mut self) {
+        // need to drop our test database connection first before dropping the database
+        let mut db = None;
+        std::mem::swap(&mut self.db, &mut db);
+        std::mem::drop(db);
+
         let query = format!("DROP DATABASE \"{}\"", self.db_name);
-        let _ = self.client.execute(query.as_str(), &[]).unwrap();
+        self.setup_db
+            .get_client()
+            .unwrap()
+            .execute(query.as_str(), &[])
+            .unwrap();
     }
 }
 
-pub fn setup_client(test_name: &str) -> Result<TestContext> {
+impl TestContext {
+    pub fn get_database(&mut self) -> &mut Database {
+        self.db.as_mut().unwrap()
+    }
+}
+
+pub fn create_database(test_name: &str) -> Result<TestContext> {
     let test_db_url = std::env::var("CLAY_TEST_DATABASE_URL")?;
     let test_user = std::env::var("CLAY_TEST_DATABASE_USER").ok();
     let test_password = std::env::var("CLAY_TEST_DATABASE_PASSWORD").ok();
@@ -32,8 +48,8 @@ pub fn setup_client(test_name: &str) -> Result<TestContext> {
     let mut setup_client = setup_db.get_client()?;
 
     // create our database
-    let query = format!("CREATE DATABASE \"{}\"", &test_db_name);
-    let _ = setup_client.execute(query.as_str(), &[]).unwrap();
+    let query2 = format!("CREATE DATABASE \"{}\"", &test_db_name);
+    setup_client.execute(query2.as_str(), &[]).unwrap();
 
     let db = Database::from_env_helper(
         1,
@@ -42,10 +58,10 @@ pub fn setup_client(test_name: &str) -> Result<TestContext> {
         test_password.clone(),
         Some(test_db_name.clone()),
     )?;
-    let client = db.get_client()?;
 
     Ok(TestContext {
         db_name: test_db_name,
-        client,
+        setup_db,
+        db: Some(db),
     })
 }
