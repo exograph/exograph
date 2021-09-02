@@ -1,8 +1,5 @@
 use anyhow::Result;
 use payas_sql::sql::database::Database;
-use postgres_openssl::MakeTlsConnector;
-use r2d2::PooledConnection;
-use r2d2_postgres::PostgresConnectionManager;
 
 pub struct TestContext {
     db_name: String,
