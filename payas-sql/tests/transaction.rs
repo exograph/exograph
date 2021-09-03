@@ -84,7 +84,7 @@ fn basic_transaction_step_test() {
     };
 
     let insertion_op = dst_table.insert(
-        vec![&dst_age_phys_col],
+        vec![dst_age_phys_col],
         vec![vec![&lazy_col]],
         vec![&dst_age_col],
     );

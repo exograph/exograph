@@ -56,9 +56,9 @@ pub fn create_context(test_name: &str) -> Result<TestContext> {
 
     let db = Database::from_env_helper(
         5,
-        test_db_url.clone(),
-        test_user.clone(),
-        test_password.clone(),
+        test_db_url,
+        test_user,
+        test_password,
         Some(test_db_name.clone()),
     )?;
 
