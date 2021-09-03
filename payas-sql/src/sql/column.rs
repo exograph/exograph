@@ -1,4 +1,4 @@
-use crate::spec::SQLStatement;
+use crate::spec::{ColumnSpec, SQLStatement};
 
 use super::{
     select::*, transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
@@ -15,6 +15,18 @@ pub struct PhysicalColumn {
     pub typ: PhysicalColumnType,
     pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
+}
+
+impl From<ColumnSpec> for PhysicalColumn {
+    fn from(c: ColumnSpec) -> Self {
+        Self {
+            table_name: c.table_name,
+            column_name: c.column_name,
+            typ: c.db_type,
+            is_pk: c.is_pk,
+            is_autoincrement: c.is_autoincrement,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -415,6 +427,16 @@ pub enum Column<'a> {
         col_index: usize,
         step: &'a TransactionStep<'a>,
     },
+}
+
+impl Column<'_> {
+    pub fn get_value(&self) -> &dyn SQLParam {
+        match self {
+            Column::Literal(boxed) => boxed.as_ref(),
+
+            _ => panic!("Not a Literal"),
+        }
+    }
 }
 
 // Due to https://github.com/rust-lang/rust/issues/39128, we have to manually implement PartialEq.
