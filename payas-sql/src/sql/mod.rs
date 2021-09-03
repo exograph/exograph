@@ -23,14 +23,14 @@ mod update;
 
 pub use cte::Cte;
 pub use delete::Delete;
-pub use insert::Insert;
+pub use insert::{Insert, TemplateInsert};
 pub use limit::Limit;
 pub use offset::Offset;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
 pub use sql_operation::SQLOperation;
-pub use update::Update;
-
+pub use sql_operation::TemplateSQLOperation;
+pub use update::{TemplateUpdate, Update};
 pub trait SQLParam: ToSql + Sync + std::fmt::Display {
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, other: &dyn SQLParam) -> bool;

@@ -3,7 +3,10 @@ mod common;
 use std::{cell::RefCell, rc::Rc};
 
 use anyhow::{bail, Result};
+use payas_sql::sql::column::ProxyColumn;
 use payas_sql::sql::transaction::*;
+use payas_sql::sql::TemplateInsert;
+use payas_sql::sql::TemplateSQLOperation;
 use payas_sql::sql::{column::Column, SQLOperation};
 use postgres::{types::FromSqlOwned, Row};
 
@@ -71,28 +74,29 @@ fn basic_transaction_step_test() {
         vec![&src_age_col],
     );
 
-    let step_a = Rc::new(TransactionStep {
+    let step_a = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep {
         operation: SQLOperation::Insert(insertion_op),
         values: RefCell::new(vec![]),
-    });
+    }));
 
     // insertion from src_table into dst_table
-    let lazy_col = Column::Lazy {
-        row_index: 0,
+    let lazy_col = ProxyColumn::Template {
         col_index: 0,
         step: &step_a,
     };
 
-    let insertion_op = dst_table.insert(
-        vec![dst_age_phys_col],
-        vec![vec![&lazy_col]],
-        vec![&dst_age_col],
-    );
-
-    let step_b = TransactionStep {
-        operation: SQLOperation::Insert(insertion_op),
-        values: RefCell::new(vec![]),
+    let insertion_op = TemplateInsert {
+        table: &dst_table,
+        column_names: vec![dst_age_phys_col],
+        column_values_seq: vec![&lazy_col],
+        returning: vec![&dst_age_col],
     };
+
+    let step_b = TransactionStep::Template(TemplateTransactionStep {
+        operation: TemplateSQLOperation::Insert(insertion_op),
+        step: &step_a,
+        values: RefCell::new(vec![]),
+    });
 
     /////
     // construct and run our TransactionScript
