@@ -1,65 +1,33 @@
-use crate::claytest::dbutils::{createdb_psql, dropdb_psql, run_psql};
-use crate::claytest::loader::ParsedTestfile;
-use crate::claytest::loader::TestfileOperation;
 use anyhow::{anyhow, bail, Context, Result};
-use isahc::HttpClient;
-use isahc::ReadResponseExt;
-use isahc::Request;
+use isahc::{HttpClient, ReadResponseExt, Request};
 use jsonwebtoken::{encode, EncodingKey, Header};
-use rand::distributions::Alphanumeric;
-use rand::Rng;
+use rand::{distributions::Alphanumeric, Rng};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
-use std::env;
-use std::io::Read;
-use std::io::{BufRead, BufReader};
-use std::process::Child;
-use std::process::Command;
-use std::process::Stdio;
-use std::time::SystemTime;
+
+use std::{
+    env,
+    io::{BufRead, BufReader, Read},
+    process::{Command, Stdio},
+    sync::{Arc, Mutex},
+    time::SystemTime,
+};
+
+use crate::claytest::dbutils::{createdb_psql, dropdb_psql, run_psql};
+use crate::claytest::loader::{ParsedTestfile, TestfileOperation};
+use crate::claytest::model::*;
 
 #[derive(Serialize)]
-struct PayasPost {
+struct ClayPost {
     query: String,
     variables: serde_json::Value,
 }
 
-/// Structure to hold open resources associated with a running testfile.
-/// When dropped, we will clean them up.
-#[derive(Default)]
-struct TestfileContext {
-    dbname: Option<String>,
-    dburl: Option<String>,
-    server: Option<Child>,
-}
-
-impl Drop for TestfileContext {
-    fn drop(&mut self) {
-        // kill the started server
-        if let Some(server) = &mut self.server {
-            if let e @ Err(_) = server.kill() {
-                println!("Error killing server instance: {:?}", e)
-            }
-        }
-
-        // drop the database
-        if let Some(dburl) = &self.dburl {
-            if let Some(dbname) = &self.dbname {
-                if let e @ Err(_) = dropdb_psql(dbname, dburl) {
-                    println!("Error dropping {} using {}: {:?}", dbname, dburl, e)
-                }
-            }
-        }
-    }
-}
-
-pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Result<usize> {
-    let mut successful_tests: usize = 0;
-
+pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Result<TestOutput> {
     // iterate through our tests
     let mut ctx = TestfileContext::default();
 
-    let log_prefix = ansi_term::Color::Purple.paint(format!("({})", testfile.name));
+    let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name));
     let dbname = &testfile.unique_dbname;
     ctx.dbname = Some(dbname.clone());
 
@@ -101,7 +69,7 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
             .env("CLAY_JWT_SECRET", &jwtsecret)
             .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::piped())
             .spawn()
             .context("clay-server failed to start")?,
     );
@@ -110,12 +78,11 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
 
     let mut server_stdout = BufReader::new(ctx.server.as_mut().unwrap().stdout.take().unwrap());
+    let mut server_stderr = BufReader::new(ctx.server.as_mut().unwrap().stderr.take().unwrap());
 
     let mut buffer = [0; MAGIC_STRING.len()];
     server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
     let output = String::from(std::str::from_utf8(&buffer)?);
-
-    //println!("{}", output);
 
     if !output.eq(MAGIC_STRING) {
         bail!("Unexpected output from clay-server: {}", output)
@@ -125,6 +92,23 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     server_stdout.read_line(&mut buffer_port)?; // read port clay-server is using
     buffer_port.pop(); // remove newline
     let endpoint = format!("http://127.0.0.1:{}/", buffer_port);
+
+    // spawn threads to continually drain stdout and stderr
+    let output_mutex = Arc::new(Mutex::new(String::new()));
+
+    let stdout_output = output_mutex.clone();
+    let _stdout_drain = std::thread::spawn(move || loop {
+        let mut buf = String::new();
+        let _ = server_stdout.read_line(&mut buf);
+        stdout_output.lock().unwrap().push_str(&buf);
+    });
+
+    let stderr_output = output_mutex.clone();
+    let _stderr_drain = std::thread::spawn(move || loop {
+        let mut buf = String::new();
+        let _ = server_stderr.read_line(&mut buf);
+        stderr_output.lock().unwrap().push_str(&buf);
+    });
 
     // run the init section
     println!("{} Initializing database...", log_prefix);
@@ -142,38 +126,26 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     );
 
     // did the test run okay?
-    match result {
+    let success = match result {
         Ok(test_result) => {
             // check test results
             match test_result {
-                Ok(_) => {
-                    println!("{} {}\n", log_prefix, ansi_term::Color::Green.paint("OK"));
-                    successful_tests += 1;
-                }
+                Ok(_) => TestResult::Success,
 
-                Err(e) => {
-                    println!(
-                        "{} {}\n{:?}",
-                        log_prefix,
-                        ansi_term::Color::Yellow.paint("ASSERTION FAILED"),
-                        e
-                    );
-                }
+                Err(e) => TestResult::AssertionFail(e),
             }
         }
-        Err(e) => {
-            println!(
-                "{} {}\n{:?}",
-                log_prefix,
-                ansi_term::Color::Red.paint("TEST SETUP FAILED"),
-                e
-            );
-        }
-    }
+        Err(e) => TestResult::SetupFail(e),
+    };
 
+    let output: String = output_mutex.lock().unwrap().clone();
+
+    Ok(TestOutput {
+        log_prefix: log_prefix.to_string(),
+        result: success,
+        output,
+    })
     // implicit ctx drop
-
-    Ok(successful_tests)
 }
 
 fn clay_cmd() -> Command {
@@ -187,14 +159,14 @@ fn clay_cmd() -> Command {
     }
 }
 
-type TestResult = Result<()>;
+type OperationResult = Result<()>;
 
 fn run_operation(
     url: &str,
     gql: &TestfileOperation,
     jwtsecret: &str,
     dburl: &str,
-) -> Result<TestResult> {
+) -> Result<OperationResult> {
     match gql {
         TestfileOperation::GqlDocument {
             document,
@@ -228,7 +200,7 @@ fn run_operation(
 
             let req =
                 req.header("Content-Type", "application/json")
-                    .body(serde_json::to_string(&PayasPost {
+                    .body(serde_json::to_string(&ClayPost {
                         query: document.to_string(),
                         variables: variables
                             .as_ref()
