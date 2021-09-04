@@ -1,5 +1,8 @@
+use std::rc::Rc;
+
 use super::{
     cte::Cte,
+    delete::TemplateDelete,
     insert::{Insert, TemplateInsert},
     select::Select,
     transaction::TransactionStep,
@@ -32,10 +35,11 @@ impl<'a> OperationExpression for SQLOperation<'a> {
 pub enum TemplateSQLOperation<'a> {
     Insert(TemplateInsert<'a>),
     Update(TemplateUpdate<'a>),
+    Delete(TemplateDelete<'a>),
 }
 
 impl<'a> TemplateSQLOperation<'a> {
-    pub fn resolve(&self, prev_step: &'a TransactionStep<'a>) -> Vec<SQLOperation<'a>> {
+    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Vec<SQLOperation<'a>> {
         match self {
             TemplateSQLOperation::Insert(insert) => {
                 vec![SQLOperation::Insert(insert.resolve(prev_step))]
@@ -45,6 +49,9 @@ impl<'a> TemplateSQLOperation<'a> {
                 .into_iter()
                 .map(SQLOperation::Update)
                 .collect(),
+            TemplateSQLOperation::Delete(delete) => {
+                vec![SQLOperation::Delete(delete.resolve(prev_step))]
+            }
         }
     }
 }

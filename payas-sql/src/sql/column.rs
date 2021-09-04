@@ -6,7 +6,7 @@ use super::{
 };
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
+use std::{fmt::Write, rc::Rc};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PhysicalColumn {
@@ -513,9 +513,9 @@ impl<'a> Expression for Column<'a> {
 
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
-    Concrete(Column<'a>),
+    Concrete(&'a Column<'a>),
     Template {
         col_index: usize,
-        step: &'a TransactionStep<'a>,
+        step: Rc<TransactionStep<'a>>,
     },
 }

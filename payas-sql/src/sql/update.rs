@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use maybe_owned::MaybeOwned;
 
 use super::{
@@ -71,12 +73,12 @@ impl<'a> Expression for Update<'a> {
 pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: &'a Predicate<'a>,
-    pub column_values: Vec<(&'a PhysicalColumn, &'a ProxyColumn<'a>)>,
+    pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
     pub returning: Vec<&'a Column<'a>>,
 }
 
 impl<'a> TemplateUpdate<'a> {
-    pub fn resolve(&self, prev_step: &'a TransactionStep<'a>) -> Vec<Update<'a>> {
+    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Vec<Update<'a>> {
         let rows = prev_step.resolved_value().borrow().len();
 
         let TemplateUpdate {
@@ -93,7 +95,7 @@ impl<'a> TemplateUpdate<'a> {
                     .into_iter()
                     .map(|(physical_col, col)| {
                         let resolved_col = match col {
-                            ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(col),
+                            ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(*col),
                             ProxyColumn::Template { col_index, step } => {
                                 MaybeOwned::Owned(Column::Lazy {
                                     row_index,
@@ -102,7 +104,7 @@ impl<'a> TemplateUpdate<'a> {
                                 })
                             }
                         };
-                        (physical_col, resolved_col)
+                        (*physical_col, resolved_col)
                     })
                     .collect();
                 Update {

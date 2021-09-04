@@ -33,6 +33,10 @@ impl PhysicalTable {
             .find(|column| column.column_name == name)
     }
 
+    pub fn get_pk_physical_column(&self) -> Option<&PhysicalColumn> {
+        self.columns.iter().find(|column| column.is_pk)
+    }
+
     pub fn select<'a>(
         &'a self,
         columns: Vec<&'a Column>,

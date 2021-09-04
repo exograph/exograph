@@ -203,11 +203,11 @@ fn insertion_info<'a>(
     operation_context: &'a OperationContext<'a>,
 ) -> Result<Option<InsertionInfo<'a>>> {
     let system = &operation_context.query_context.system;
-    let input_type = &system.mutation_types[data_param.type_id];
+    let data_type = &system.mutation_types[data_param.type_id];
 
     let argument_value = super::find_arg(arguments, &data_param.name);
     argument_value
-        .map(|argument_value| input_type.map_to_sql(argument_value, operation_context))
+        .map(|argument_value| data_type.map_to_sql(argument_value, operation_context))
         .transpose()
 }
 

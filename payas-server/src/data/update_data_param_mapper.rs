@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use anyhow::*;
 use async_graphql_value::Value;
@@ -10,17 +10,20 @@ use crate::{
 
 use payas_model::{
     model::{
-        mapped_arena::SerializableSlabIndex,
         operation::{Mutation, UpdateDataParameter},
         relation::GqlRelation,
+        system::ModelSystem,
         types::GqlTypeKind,
         GqlCompositeTypeKind, GqlType,
     },
     sql::{
-        column::PhysicalColumn,
+        column::{PhysicalColumn, PhysicalColumnType, ProxyColumn},
         predicate::Predicate,
-        transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-        Cte, SQLOperation, Select,
+        transaction::{
+            ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
+        },
+        Cte, SQLOperation, Select, TemplateDelete, TemplateInsert, TemplateSQLOperation,
+        TemplateUpdate,
     },
 };
 
@@ -39,20 +42,17 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         operation_context: &'a OperationContext<'a>,
     ) -> Result<TransactionScript<'a>> {
         let system = &operation_context.query_context.system;
-        let mutation_type = &system.mutation_types[self.type_id];
+        let data_type = &system.mutation_types[self.type_id];
 
         let argument = match argument {
             Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
             _ => argument,
         };
 
-        let self_update_columns =
-            compute_update_columns(mutation_type, argument, operation_context);
-
-        let nested_updates = compute_nested(mutation_type, argument, operation_context);
+        let self_update_columns = compute_update_columns(data_type, argument, operation_context);
 
         let (table, _, _) = return_type_info(mutation, operation_context);
-        if nested_updates.is_empty() {
+        if !needs_transaction(data_type) {
             let ops = vec![(
                 table_name(mutation, operation_context),
                 SQLOperation::Update(table.update(
@@ -70,16 +70,21 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 operation_context.create_column(Column::Physical(pk_physical_col))
             };
 
-            let update_op = TransactionStep::Concrete(ConcreteTransactionStep::new(
+            let update_op = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::Update(table.update(self_update_columns, predicate, vec![pk_col])),
-            ));
+            )));
 
-            let mut ops = vec![Rc::new(update_op)];
-            ops.extend(
-                nested_updates
-                    .into_iter()
-                    .map(|op| Rc::new(TransactionStep::Concrete(ConcreteTransactionStep::new(op)))),
+            let container_model_type = mutation.return_type.typ(system);
+            let nested_updates = compute_nested(
+                data_type,
+                argument,
+                update_op.clone(),
+                container_model_type,
+                operation_context,
             );
+
+            let mut ops = vec![update_op.clone()];
+            ops.extend(nested_updates.into_iter().map(|op| Rc::new(op)));
 
             Ok(TransactionScript::Multi(
                 ops,
@@ -92,7 +97,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 }
 
 fn compute_update_columns<'a>(
-    model_type: &'a GqlType,
+    data_type: &'a GqlType,
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> Vec<(&'a PhysicalColumn, &'a Column<'a>)> {
@@ -102,7 +107,7 @@ fn compute_update_columns<'a>(
         _ => argument,
     };
 
-    match &model_type.kind {
+    match &data_type.kind {
         GqlTypeKind::Primitive => panic!(),
         GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
             .iter()
@@ -140,24 +145,38 @@ fn compute_update_columns<'a>(
     }
 }
 
+fn needs_transaction(mutation_type: &GqlType) -> bool {
+    match &mutation_type.kind {
+        GqlTypeKind::Primitive => panic!(),
+        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
+            fields.iter().any(|field| match &field.relation {
+                GqlRelation::OneToMany { .. } => true,
+                _ => false,
+            })
+        }
+    }
+}
+
 // A bit hacky way. Ideally, the nested parameter should have the same shape as the container type. Specifically, it should have
 // the predicate parameter and the data parameter. Then we can simply use the same code that we use for the container type. That has
 // an addtional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
 fn compute_nested<'a>(
-    model_type: &'a GqlType,
+    data_type: &'a GqlType,
     argument: &'a Value,
+    prev_step: Rc<TransactionStep<'a>>,
+    container_model_type: &'a GqlType,
     operation_context: &'a OperationContext<'a>,
-) -> Vec<SQLOperation<'a>> {
+) -> Vec<TransactionStep<'a>> {
     let system = &operation_context.query_context.system;
 
-    match &model_type.kind {
+    match &data_type.kind {
         GqlTypeKind::Primitive => panic!(),
         GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
             fields.iter().flat_map(|field| match &field.relation {
                 GqlRelation::OneToMany { other_type_id, .. } => {
-                    let field_model_type = &system.types[*other_type_id];
+                    let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
                     operation_context
                         .get_argument_field(argument, &field.name)
                         .iter()
@@ -167,7 +186,8 @@ fn compute_nested<'a>(
                                 field_model_type,
                                 argument,
                                 operation_context,
-                                other_type_id,
+                                prev_step.clone(),
+                                container_model_type,
                             ) {
                                 ops.push(op);
                             }
@@ -176,9 +196,17 @@ fn compute_nested<'a>(
                                 field_model_type,
                                 argument,
                                 operation_context,
-                                other_type_id,
+                                prev_step.clone(),
+                                container_model_type,
                             ));
 
+                            ops.extend(compute_nested_delete(
+                                field_model_type,
+                                argument,
+                                operation_context,
+                                prev_step.clone(),
+                                container_model_type,
+                            ));
                             ops
                         })
                         .collect()
@@ -190,35 +218,91 @@ fn compute_nested<'a>(
     .collect()
 }
 
+// Which column in field_model_type coresponds to the primary column in container_model_type?
+fn compute_nested_reference_column<'a>(
+    field_model_type: &'a GqlType,
+    container_model_type: &'a GqlType,
+    system: &'a ModelSystem,
+) -> Option<&'a PhysicalColumn> {
+    let pk_column = match container_model_type.kind {
+        GqlTypeKind::Primitive => panic!(),
+        GqlTypeKind::Composite(GqlCompositeTypeKind { table_id, .. }) => {
+            let container_table = &system.tables[table_id];
+            container_table.get_pk_physical_column()
+        }
+    }
+    .unwrap();
+
+    let nested_table = &system.tables[field_model_type.table_id().unwrap()];
+
+    nested_table
+        .columns
+        .iter()
+        .find(|column| match &column.typ {
+            PhysicalColumnType::ColumnReference {
+                ref_table_name,
+                ref_column_name,
+                ..
+            } => {
+                &pk_column.table_name == ref_table_name && &pk_column.column_name == ref_column_name
+            }
+            _ => false,
+        })
+}
+
 // Looks for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
-    other_type_id: &SerializableSlabIndex<GqlType>,
-) -> Option<SQLOperation<'a>> {
+    prev_step: Rc<TransactionStep<'a>>,
+    container_model_type: &'a GqlType,
+) -> Option<TransactionStep<'a>> {
+    let system = &operation_context.query_context.system;
+
+    let nested_reference_col =
+        compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
+
     operation_context
         .get_argument_field(argument, "update")
         .map(|update_argument| {
-            let system = &operation_context.query_context.system;
-
             let nested =
                 compute_update_columns(field_model_type, update_argument, operation_context);
             let (pk_columns, nested): (Vec<_>, Vec<_>) =
                 nested.iter().partition(|elem| elem.0.is_pk);
+
             let predicate = pk_columns
                 .iter()
                 .fold(Predicate::True, |acc, (pk_col, value)| {
                     let pk_column = operation_context.create_column(Column::Physical(pk_col));
                     Predicate::And(Box::new(acc), Box::new(Predicate::Eq(pk_column, value)))
                 });
-            let other_type = &system.types[*other_type_id];
-            let table = &system.tables[other_type.table_id().unwrap()];
-            SQLOperation::Update(table.update(
-                nested,
-                operation_context.create_predicate(predicate),
-                vec![],
-            ))
+            let table = &system.tables[field_model_type.table_id().unwrap()];
+
+            let mut nested_proxies: Vec<_> = nested
+                .into_iter()
+                .map(|(column, value)| (column, ProxyColumn::Concrete(value)))
+                .collect();
+            nested_proxies.push((
+                nested_reference_col,
+                ProxyColumn::Template {
+                    col_index: 0,
+                    step: prev_step.clone(),
+                },
+            ));
+
+            let op = TemplateSQLOperation::Update(TemplateUpdate {
+                table,
+                predicate: operation_context.create_predicate(predicate),
+                column_values: nested_proxies,
+                returning: vec![],
+            });
+
+            TransactionStep::Template(TemplateTransactionStep {
+                operation: op,
+                step: prev_step,
+                values: RefCell::new(vec![]),
+            })
         })
 }
 
@@ -227,9 +311,12 @@ fn compute_nested_create<'a>(
     field_model_type: &'a GqlType,
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
-    _other_type_id: &SerializableSlabIndex<GqlType>,
-) -> Vec<SQLOperation<'a>> {
-    operation_context
+    prev_step: Rc<TransactionStep<'a>>,
+    container_model_type: &'a GqlType,
+) -> Vec<TransactionStep<'a>> {
+    let system = &operation_context.query_context.system;
+
+    let step = operation_context
         .get_argument_field(argument, "create")
         .map(|create_argument| {
             field_model_type
@@ -237,11 +324,116 @@ fn compute_nested_create<'a>(
                 .unwrap()
         })
         .map(|insertion_info| {
-            insertion_info
-                .operation(operation_context, false)
+            let nested_reference_col =
+                compute_nested_reference_column(field_model_type, container_model_type, system)
+                    .unwrap();
+            let mut column_names = insertion_info.columns.clone();
+            column_names.push(nested_reference_col);
+
+            let column_values_seq: Vec<Vec<ProxyColumn>> = insertion_info
+                .values
                 .into_iter()
-                .map(|(_, op)| op)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default()
+                .map(|subvalues| {
+                    let mut proxied: Vec<_> = subvalues
+                        .into_iter()
+                        .map(|value| ProxyColumn::Concrete(value))
+                        .collect();
+                    proxied.push(ProxyColumn::Template {
+                        col_index: 0,
+                        step: prev_step.clone(),
+                    });
+                    proxied
+                })
+                .collect();
+
+            let op = TemplateSQLOperation::Insert(TemplateInsert {
+                table: insertion_info.table,
+                column_names,
+                column_values_seq,
+                returning: vec![],
+            });
+
+            TransactionStep::Template(TemplateTransactionStep {
+                operation: op,
+                step: prev_step,
+                values: RefCell::new(vec![]),
+            })
+        });
+
+    match step {
+        Some(step) => vec![step],
+        None => vec![],
+    }
+}
+
+fn compute_nested_delete<'a>(
+    field_model_type: &'a GqlType,
+    argument: &'a Value,
+    operation_context: &'a OperationContext<'a>,
+    prev_step: Rc<TransactionStep<'a>>,
+    _container_model_type: &'a GqlType,
+) -> Vec<TransactionStep<'a>> {
+    // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
+    // TODO: Revisit this.
+
+    fn compute_predicate<'a>(
+        elem_value: &Value,
+        field_model_type: &'a GqlType,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Predicate<'a> {
+        let system = &operation_context.query_context.system;
+
+        match elem_value {
+            Value::Object(map) => {
+                let id_value = map.get("id").unwrap().clone();
+                let id_column = match &field_model_type.kind {
+                    GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
+                        .iter()
+                        .find(|field| field.name == "id")
+                        .and_then(|field| {
+                            field
+                                .relation
+                                .self_column()
+                                .map(|col_id| col_id.get_column(system))
+                        }),
+                    _ => None,
+                }
+                .unwrap();
+
+                Predicate::Eq(
+                    operation_context.create_column(Column::Physical(id_column)),
+                    operation_context.literal_column(id_value, id_column),
+                )
+            }
+            Value::List(values) => {
+                let mut predicate = Predicate::True;
+                for value in values {
+                    let elem_predicate =
+                        compute_predicate(value, field_model_type, operation_context);
+                    predicate = Predicate::Or(Box::new(predicate), Box::new(elem_predicate));
+                }
+                predicate
+            }
+            _ => panic!("Expected an object or a list"),
+        }
+    }
+
+    let argument = operation_context.get_argument_field(argument, "delete");
+
+    match argument {
+        Some(argument) => {
+            let predicate = compute_predicate(argument, field_model_type, operation_context);
+            let system = &operation_context.query_context.system;
+            vec![TransactionStep::Template(TemplateTransactionStep {
+                operation: TemplateSQLOperation::Delete(TemplateDelete {
+                    table: &system.tables[field_model_type.table_id().unwrap()],
+                    predicate: Some(operation_context.create_predicate(predicate)),
+                    returning: vec![],
+                }),
+                step: prev_step,
+                values: RefCell::new(vec![]),
+            })]
+        }
+        None => vec![],
+    }
 }

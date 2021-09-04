@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use maybe_owned::MaybeOwned;
 
 use super::{
@@ -73,12 +75,12 @@ impl<'a> Expression for Insert<'a> {
 pub struct TemplateInsert<'a> {
     pub table: &'a PhysicalTable,
     pub column_names: Vec<&'a PhysicalColumn>,
-    pub column_values_seq: Vec<&'a ProxyColumn<'a>>,
+    pub column_values_seq: Vec<Vec<ProxyColumn<'a>>>,
     pub returning: Vec<&'a Column<'a>>,
 }
 
 impl<'a> TemplateInsert<'a> {
-    pub fn resolve(&self, prev_step: &'a TransactionStep<'a>) -> Insert<'a> {
+    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Insert<'a> {
         let rows = prev_step.resolved_value().borrow().len();
 
         let TemplateInsert {
@@ -88,23 +90,33 @@ impl<'a> TemplateInsert<'a> {
             returning,
         } = self;
 
+        fn expand_row<'b>(
+            column_values_seq: &'b Vec<Vec<ProxyColumn<'b>>>,
+            row_index: usize,
+        ) -> Vec<Vec<MaybeOwned<'b, Column<'b>>>> {
+            column_values_seq
+                .clone()
+                .into_iter()
+                .map(|row| {
+                    row.clone()
+                        .into_iter()
+                        .map(|col| match col {
+                            ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(*col),
+                            ProxyColumn::Template { col_index, step } => {
+                                MaybeOwned::Owned(Column::Lazy {
+                                    row_index,
+                                    col_index: *col_index,
+                                    step,
+                                })
+                            }
+                        })
+                        .collect()
+                })
+                .collect()
+        }
+
         let resolved_cols = (0..rows)
-            .map(|row_index| {
-                column_values_seq
-                    .clone()
-                    .into_iter()
-                    .map(|col| match col {
-                        ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(col),
-                        ProxyColumn::Template { col_index, step } => {
-                            MaybeOwned::Owned(Column::Lazy {
-                                row_index,
-                                col_index: *col_index,
-                                step,
-                            })
-                        }
-                    })
-                    .collect()
-            })
+            .flat_map(|row_index| expand_row(&column_values_seq, row_index))
             .collect();
 
         Insert {

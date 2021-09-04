@@ -173,14 +173,14 @@ type TransactionStepResult = Vec<SQLValue>;
 #[derive(Debug)]
 pub struct TemplateTransactionStep<'a> {
     pub operation: TemplateSQLOperation<'a>,
-    pub step: &'a TransactionStep<'a>,
+    pub step: Rc<TransactionStep<'a>>,
     pub values: RefCell<Vec<Vec<SQLValue>>>,
 }
 
 impl<'a> TemplateTransactionStep<'a> {
-    pub fn resolve(&self) -> Vec<ConcreteTransactionStep<'a>> {
+    pub fn resolve(&'a self) -> Vec<ConcreteTransactionStep<'a>> {
         self.operation
-            .resolve(self.step)
+            .resolve(self.step.clone())
             .into_iter()
             .map(|operation| ConcreteTransactionStep {
                 operation,
