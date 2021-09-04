@@ -91,8 +91,7 @@ impl<'a> TemplateUpdate<'a> {
         (0..rows)
             .map(|row_index| {
                 let resolved_column_values = column_values
-                    .clone()
-                    .into_iter()
+                    .iter()
                     .map(|(physical_col, col)| {
                         let resolved_col = match col {
                             ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(*col),

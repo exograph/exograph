@@ -82,23 +82,20 @@ pub struct TemplateInsert<'a> {
 impl<'a> TemplateInsert<'a> {
     fn has_template_columns(&self) -> bool {
         self.column_values_seq.iter().any(|column_values| {
-            column_values.iter().any(|value| match value {
-                ProxyColumn::Template { .. } => true,
-                _ => false,
-            })
+            column_values
+                .iter()
+                .any(|value| matches!(value, ProxyColumn::Template { .. }))
         })
     }
 
     fn expand_row<'b>(
-        column_values_seq: &'b Vec<Vec<ProxyColumn<'b>>>,
+        column_values_seq: &'b [Vec<ProxyColumn<'b>>],
         row_index: usize,
     ) -> Vec<Vec<MaybeOwned<'b, Column<'b>>>> {
         column_values_seq
-            .clone()
-            .into_iter()
+            .iter()
             .map(|row| {
-                row.clone()
-                    .into_iter()
+                row.iter()
                     .map(|col| match col {
                         ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(*col),
                         ProxyColumn::Template { col_index, step } => {
@@ -131,7 +128,7 @@ impl<'a> TemplateInsert<'a> {
             } = self;
 
             let resolved_cols = (0..row_count)
-                .flat_map(|row_index| Self::expand_row(&column_values_seq, row_index))
+                .flat_map(|row_index| Self::expand_row(column_values_seq, row_index))
                 .collect();
 
             Some(Insert {

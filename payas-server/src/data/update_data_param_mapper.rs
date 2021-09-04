@@ -84,7 +84,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
             );
 
             let mut ops = vec![update_op.clone()];
-            ops.extend(nested_updates.into_iter().map(|op| Rc::new(op)));
+            ops.extend(nested_updates.into_iter().map(Rc::new));
 
             Ok(TransactionScript::Multi(
                 ops,
@@ -148,12 +148,9 @@ fn compute_update_columns<'a>(
 fn needs_transaction(mutation_type: &GqlType) -> bool {
     match &mutation_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
-            fields.iter().any(|field| match &field.relation {
-                GqlRelation::OneToMany { .. } => true,
-                _ => false,
-            })
-        }
+        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
+            .iter()
+            .any(|field| matches!(&field.relation, GqlRelation::OneToMany { .. })),
     }
 }
 
