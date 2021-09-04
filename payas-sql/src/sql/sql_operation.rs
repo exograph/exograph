@@ -41,9 +41,11 @@ pub enum TemplateSQLOperation<'a> {
 impl<'a> TemplateSQLOperation<'a> {
     pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Vec<SQLOperation<'a>> {
         match self {
-            TemplateSQLOperation::Insert(insert) => {
-                vec![SQLOperation::Insert(insert.resolve(prev_step))]
-            }
+            TemplateSQLOperation::Insert(insert) => insert
+                .resolve(prev_step)
+                .into_iter()
+                .map(SQLOperation::Insert)
+                .collect(),
             TemplateSQLOperation::Update(update) => update
                 .resolve(prev_step)
                 .into_iter()

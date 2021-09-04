@@ -80,50 +80,66 @@ pub struct TemplateInsert<'a> {
 }
 
 impl<'a> TemplateInsert<'a> {
-    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Insert<'a> {
-        let rows = prev_step.resolved_value().borrow().len();
+    fn has_template_columns(&self) -> bool {
+        self.column_values_seq.iter().any(|column_values| {
+            column_values.iter().any(|value| match value {
+                ProxyColumn::Template { .. } => true,
+                _ => false,
+            })
+        })
+    }
 
-        let TemplateInsert {
-            table,
-            column_names,
-            column_values_seq,
-            returning,
-        } = self;
+    fn expand_row<'b>(
+        column_values_seq: &'b Vec<Vec<ProxyColumn<'b>>>,
+        row_index: usize,
+    ) -> Vec<Vec<MaybeOwned<'b, Column<'b>>>> {
+        column_values_seq
+            .clone()
+            .into_iter()
+            .map(|row| {
+                row.clone()
+                    .into_iter()
+                    .map(|col| match col {
+                        ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(*col),
+                        ProxyColumn::Template { col_index, step } => {
+                            MaybeOwned::Owned(Column::Lazy {
+                                row_index,
+                                col_index: *col_index,
+                                step,
+                            })
+                        }
+                    })
+                    .collect()
+            })
+            .collect()
+    }
 
-        fn expand_row<'b>(
-            column_values_seq: &'b Vec<Vec<ProxyColumn<'b>>>,
-            row_index: usize,
-        ) -> Vec<Vec<MaybeOwned<'b, Column<'b>>>> {
-            column_values_seq
-                .clone()
-                .into_iter()
-                .map(|row| {
-                    row.clone()
-                        .into_iter()
-                        .map(|col| match col {
-                            ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(*col),
-                            ProxyColumn::Template { col_index, step } => {
-                                MaybeOwned::Owned(Column::Lazy {
-                                    row_index,
-                                    col_index: *col_index,
-                                    step,
-                                })
-                            }
-                        })
-                        .collect()
-                })
-                .collect()
-        }
+    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Option<Insert<'a>> {
+        let row_count = prev_step.resolved_value().borrow().len();
 
-        let resolved_cols = (0..rows)
-            .flat_map(|row_index| expand_row(&column_values_seq, row_index))
-            .collect();
+        // If there are template columns, but no way to resolve them, this operation need not be performed
+        // For example, if we are updating concert_artists while updating concerts, and there are no matching concerts
+        // (determined by the where param to updateConcerts), then we don't need to update the concert_artists
+        if self.has_template_columns() && row_count == 0 {
+            None
+        } else {
+            let TemplateInsert {
+                table,
+                column_names,
+                column_values_seq,
+                returning,
+            } = self;
 
-        Insert {
-            table,
-            column_names: column_names.clone(),
-            column_values_seq: resolved_cols,
-            returning: returning.clone(),
+            let resolved_cols = (0..row_count)
+                .flat_map(|row_index| Self::expand_row(&column_values_seq, row_index))
+                .collect();
+
+            Some(Insert {
+                table,
+                column_names: column_names.clone(),
+                column_values_seq: resolved_cols,
+                returning: returning.clone(),
+            })
         }
     }
 }

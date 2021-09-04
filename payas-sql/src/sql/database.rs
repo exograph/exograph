@@ -29,6 +29,16 @@ impl<'a> Database {
         let user = env::var(USER_PARAM).ok();
         let password = env::var(PASSWORD_PARAM).ok();
 
+        Self::from_env_helper(pool_size, url, user, password, None)
+    }
+
+    pub fn from_env_helper(
+        pool_size: u32,
+        url: String,
+        user: Option<String>,
+        password: Option<String>,
+        db_name_override: Option<String>,
+    ) -> Result<Self> {
         use std::str::FromStr;
         let mut config =
             Config::from_str(&url).context("Failed to parse PostgreSQL connection string")?;
@@ -38,6 +48,9 @@ impl<'a> Database {
         }
         if let Some(password) = &password {
             config.password(password);
+        }
+        if let Some(db_name) = &db_name_override {
+            config.dbname(db_name);
         }
 
         if config.get_user() == None {

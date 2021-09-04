@@ -1,3 +1,5 @@
+use crate::spec::TableSpec;
+
 use super::{
     column::{Column, PhysicalColumn},
     limit::Limit,
@@ -106,6 +108,15 @@ impl PhysicalTable {
                 .collect(),
             predicate,
             returning,
+        }
+    }
+}
+
+impl From<TableSpec> for PhysicalTable {
+    fn from(t: TableSpec) -> Self {
+        Self {
+            name: t.name,
+            columns: t.column_specs.into_iter().map(|spec| spec.into()).collect(),
         }
     }
 }
