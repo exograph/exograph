@@ -179,15 +179,14 @@ fn compute_nested<'a>(
                         .iter()
                         .flat_map(|argument| {
                             let mut ops = vec![];
-                            if let Some(op) = compute_nested_update(
+
+                            ops.extend(compute_nested_update(
                                 field_model_type,
                                 argument,
                                 operation_context,
                                 prev_step.clone(),
                                 container_model_type,
-                            ) {
-                                ops.push(op);
-                            }
+                            ));
 
                             ops.extend(compute_nested_create(
                                 field_model_type,
@@ -254,53 +253,90 @@ fn compute_nested_update<'a>(
     operation_context: &'a OperationContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
-) -> Option<TransactionStep<'a>> {
+) -> Vec<TransactionStep<'a>> {
     let system = &operation_context.query_context.system;
 
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-    operation_context
-        .get_argument_field(argument, "update")
-        .map(|update_argument| {
-            let nested =
-                compute_update_columns(field_model_type, update_argument, operation_context);
-            let (pk_columns, nested): (Vec<_>, Vec<_>) =
-                nested.iter().partition(|elem| elem.0.is_pk);
+    let update_arg = operation_context.get_argument_field(argument, "update");
 
-            let predicate = pk_columns
+    match update_arg {
+        Some(update_arg) => match update_arg {
+            arg @ Value::Object(..) => {
+                vec![compute_nested_update_object_arg(
+                    field_model_type,
+                    arg,
+                    operation_context,
+                    prev_step,
+                    nested_reference_col,
+                )]
+            }
+            Value::List(update_arg) => update_arg
                 .iter()
-                .fold(Predicate::True, |acc, (pk_col, value)| {
-                    let pk_column = operation_context.create_column(Column::Physical(pk_col));
-                    Predicate::And(Box::new(acc), Box::new(Predicate::Eq(pk_column, value)))
-                });
-            let table = &system.tables[field_model_type.table_id().unwrap()];
+                .map(|arg| {
+                    compute_nested_update_object_arg(
+                        field_model_type,
+                        arg,
+                        operation_context,
+                        prev_step.clone(),
+                        nested_reference_col,
+                    )
+                })
+                .collect(),
+            _ => panic!("Object or list expected"),
+        },
+        None => vec![],
+    }
+}
 
-            let mut nested_proxies: Vec<_> = nested
-                .into_iter()
-                .map(|(column, value)| (column, ProxyColumn::Concrete(value)))
-                .collect();
-            nested_proxies.push((
-                nested_reference_col,
-                ProxyColumn::Template {
-                    col_index: 0,
-                    step: prev_step.clone(),
-                },
-            ));
+// Compute update step assuming that the argument is a single object (not an array)
+fn compute_nested_update_object_arg<'a>(
+    field_model_type: &'a GqlType,
+    argument: &'a Value,
+    operation_context: &'a OperationContext<'a>,
+    prev_step: Rc<TransactionStep<'a>>,
+    nested_reference_col: &'a PhysicalColumn,
+) -> TransactionStep<'a> {
+    assert!(matches!(argument, Value::Object(..)));
 
-            let op = TemplateSQLOperation::Update(TemplateUpdate {
-                table,
-                predicate: operation_context.create_predicate(predicate),
-                column_values: nested_proxies,
-                returning: vec![],
-            });
+    let system = &operation_context.query_context.system;
 
-            TransactionStep::Template(TemplateTransactionStep {
-                operation: op,
-                step: prev_step,
-                values: RefCell::new(vec![]),
-            })
-        })
+    let nested = compute_update_columns(field_model_type, argument, operation_context);
+    let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.iter().partition(|elem| elem.0.is_pk);
+
+    let predicate = pk_columns
+        .iter()
+        .fold(Predicate::True, |acc, (pk_col, value)| {
+            let pk_column = operation_context.create_column(Column::Physical(pk_col));
+            Predicate::And(Box::new(acc), Box::new(Predicate::Eq(pk_column, value)))
+        });
+    let table = &system.tables[field_model_type.table_id().unwrap()];
+
+    let mut nested_proxies: Vec<_> = nested
+        .into_iter()
+        .map(|(column, value)| (column, ProxyColumn::Concrete(value)))
+        .collect();
+    nested_proxies.push((
+        nested_reference_col,
+        ProxyColumn::Template {
+            col_index: 0,
+            step: prev_step.clone(),
+        },
+    ));
+
+    let op = TemplateSQLOperation::Update(TemplateUpdate {
+        table,
+        predicate: operation_context.create_predicate(predicate),
+        column_values: nested_proxies,
+        returning: vec![],
+    });
+
+    TransactionStep::Template(TemplateTransactionStep {
+        operation: op,
+        step: prev_step,
+        values: RefCell::new(vec![]),
+    })
 }
 
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
@@ -403,7 +439,7 @@ fn compute_nested_delete<'a>(
                 )
             }
             Value::List(values) => {
-                let mut predicate = Predicate::True;
+                let mut predicate = Predicate::False;
                 for value in values {
                     let elem_predicate =
                         compute_predicate(value, field_model_type, operation_context);

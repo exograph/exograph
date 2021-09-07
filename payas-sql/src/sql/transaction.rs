@@ -27,11 +27,14 @@ impl<'a> TransactionScript<'a> {
         match self {
             Self::Single(step) => step.execute_and_extract(client, extractor),
             Self::Multi(init, last) => {
+                println!("Starting transaction");
                 for step in init {
                     step.execute(client)?;
                 }
 
-                last.execute_and_extract(client, extractor)
+                let result = last.execute_and_extract(client, extractor);
+                println!("Committing transaction");
+                result
             }
         }
     }
