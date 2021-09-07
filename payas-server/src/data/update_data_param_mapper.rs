@@ -416,26 +416,19 @@ fn compute_nested_delete<'a>(
     ) -> Predicate<'a> {
         let system = &operation_context.query_context.system;
 
+        let pk_field = field_model_type.pk_field().unwrap();
+
         match elem_value {
             Value::Object(map) => {
-                let id_value = map.get("id").unwrap().clone();
-                let id_column = match &field_model_type.kind {
-                    GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
-                        .iter()
-                        .find(|field| field.name == "id")
-                        .and_then(|field| {
-                            field
-                                .relation
-                                .self_column()
-                                .map(|col_id| col_id.get_column(system))
-                        }),
-                    _ => None,
-                }
-                .unwrap();
+                let pk_value = map.get(pk_field.name.as_str()).unwrap().clone();
+                let pk_column = field_model_type
+                    .pk_column_id()
+                    .map(|pk_column| pk_column.get_column(system))
+                    .unwrap();
 
                 Predicate::Eq(
-                    operation_context.create_column(Column::Physical(id_column)),
-                    operation_context.literal_column(id_value, id_column),
+                    operation_context.create_column(Column::Physical(pk_column)),
+                    operation_context.literal_column(pk_value, pk_column),
                 )
             }
             Value::List(values) => {
