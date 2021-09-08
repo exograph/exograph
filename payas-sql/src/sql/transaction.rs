@@ -94,7 +94,7 @@ impl<'a> TransactionStep<'a> {
         }
     }
 
-    pub fn get_value(&self, row_index: usize, col_index: usize) -> &'a (dyn SQLParam + 'static) {
+    pub fn get_value(&'a self, row_index: usize, col_index: usize) -> &'a (dyn SQLParam + 'static) {
         match self {
             Self::Concrete(step) => step.get_value(row_index, col_index),
             Self::Template(step) => step.get_value(row_index, col_index),
@@ -163,6 +163,9 @@ impl<'a> ConcreteTransactionStep<'a> {
     pub fn get_value(&self, row_index: usize, col_index: usize) -> &'a (dyn SQLParam + 'static) {
         let reference = &self.values.borrow()[row_index][col_index];
 
+        // SAFETY: This is safe because we are casting an SQLValue to a dyn SQLParam and we know that we keep
+        // around a reference to the original SQLValue as long as `self` is alive.
+        // Ideally, we shouldn't need unsafe here (see https://github.com/payalabs/payas/issues/176)
         unsafe {
             let ptr: *const std::ffi::c_void = std::mem::transmute(reference);
             let sql_param: &'a SQLValue = &*(ptr as *const SQLValue);
