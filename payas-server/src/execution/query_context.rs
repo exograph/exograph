@@ -30,7 +30,7 @@ pub struct QueryContext<'a> {
 #[derive(Debug, Clone)]
 pub enum QueryResponse {
     Json(JsonValue),
-    Raw(String),
+    Raw(Option<String>),
 }
 
 impl<'qc> QueryContext<'qc> {

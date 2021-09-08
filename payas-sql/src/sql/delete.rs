@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use super::{
-    column::Column, physical_table::PhysicalTable, predicate::Predicate, Expression,
-    ExpressionContext, ParameterBinding,
+    column::Column, physical_table::PhysicalTable, predicate::Predicate,
+    transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug, Clone)]
@@ -50,6 +52,24 @@ impl<'a> Expression for Delete<'a> {
             params.extend(ret_params.into_iter().flatten());
 
             ParameterBinding { stmt, params }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TemplateDelete<'a> {
+    pub table: &'a PhysicalTable,
+    pub predicate: Option<&'a Predicate<'a>>,
+    pub returning: Vec<&'a Column<'a>>,
+}
+
+// TODO: Tie this properly to the prev_step
+impl<'a> TemplateDelete<'a> {
+    pub fn resolve(&'a self, _prev_step: Rc<TransactionStep<'a>>) -> Delete<'a> {
+        Delete {
+            table: self.table,
+            predicate: self.predicate,
+            returning: self.returning.clone(),
         }
     }
 }

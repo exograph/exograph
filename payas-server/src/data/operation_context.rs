@@ -59,7 +59,6 @@ impl<'a> OperationContext<'a> {
         // can we shift value ownership (maybe something like an `Rc<Value>`) to avoid unnecessary clones in
         // data_param_mapper.rs and predicate_mapper.rs ?
         value: Value,
-
         associated_column: &PhysicalColumn,
     ) -> &'a Column<'a> {
         let column: Column<'a> = match value {
@@ -79,7 +78,7 @@ impl<'a> OperationContext<'a> {
             Value::String(v) => Column::Literal(Self::cast_string(&v, &associated_column.typ)),
             Value::Boolean(v) => Column::Literal(Box::new(v)),
             Value::Null => Column::Null,
-            Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from database to do a correct translation
+            Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from the database to do a correct translation
             Value::List(v) => {
                 let values = v
                     .into_iter()

@@ -4,8 +4,11 @@ use super::{access_solver, operation_context::OperationContext};
 use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::Value;
 use payas_model::{
-    model::{operation::OperationReturnType, GqlCompositeTypeKind, GqlTypeKind},
-    sql::{predicate::Predicate, SQLOperation},
+    model::{
+        operation::{Mutation, OperationReturnType},
+        GqlCompositeTypeKind, GqlTypeKind,
+    },
+    sql::{predicate::Predicate, transaction::TransactionScript, Select},
 };
 
 pub trait SQLMapper<'a, R> {
@@ -16,12 +19,22 @@ pub trait SQLMapper<'a, R> {
     ) -> Result<R>;
 }
 
+pub trait SQLUpdateMapper<'a> {
+    fn update_script(
+        &'a self,
+        mutation: &'a Mutation,
+        predicate: &'a Predicate,
+        select: Select<'a>,
+        argument: &'a Value,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Result<TransactionScript>;
+}
 pub trait OperationResolver<'a> {
     fn map_to_sql(
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<Vec<SQLOperation<'a>>>;
+    ) -> Result<TransactionScript<'a>>;
 }
 
 pub enum OperationKind {

@@ -34,6 +34,7 @@ impl<'a> InsertionInfo<'a> {
     pub fn operation(
         self,
         operation_context: &'a OperationContext<'a>,
+        return_data: bool,
     ) -> Vec<(String, SQLOperation<'a>)> {
         let InsertionInfo {
             table,
@@ -42,13 +43,14 @@ impl<'a> InsertionInfo<'a> {
             nested,
         } = self;
 
+        let returning = if return_data {
+            vec![operation_context.create_column(Column::Star)]
+        } else {
+            vec![]
+        };
         let main_insertion = (
             table.name.clone(),
-            SQLOperation::Insert(table.insert(
-                columns,
-                values,
-                vec![operation_context.create_column(Column::Star)],
-            )),
+            SQLOperation::Insert(table.insert(columns, values, returning)),
         );
 
         let mut ops = Vec::with_capacity(&nested.len() + 1);
@@ -56,7 +58,7 @@ impl<'a> InsertionInfo<'a> {
 
         let nested_insertions = nested
             .into_iter()
-            .flat_map(|item| item.operation(operation_context));
+            .flat_map(|item| item.operation(operation_context, return_data));
 
         ops.extend(nested_insertions);
         ops

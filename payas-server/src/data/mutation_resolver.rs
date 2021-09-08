@@ -10,14 +10,16 @@ use crate::{
 use anyhow::*;
 use payas_model::{
     model::{operation::*, predicate::PredicateParameter, types::*},
-    sql::Select,
+    sql::{
+        transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
+        Select,
+    },
 };
 
 use super::{
     create_data_param_mapper::InsertionInfo,
     operation_context::OperationContext,
-    sql_mapper::{OperationResolver, SQLMapper},
-    update_data_param_mapper::MappedUpdateDataParameter,
+    sql_mapper::{OperationResolver, SQLMapper, SQLUpdateMapper},
 };
 
 use async_graphql_parser::{types::Field, Positioned};
@@ -30,7 +32,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<Vec<SQLOperation<'a>>> {
+    ) -> Result<TransactionScript<'a>> {
         let select = {
             let (_, pk_query, collection_query) = return_type_info(self, operation_context);
             let selection_query = match &self.return_type.type_modifier {
@@ -67,7 +69,7 @@ impl<'a> OperationResolver<'a> for Mutation {
     }
 }
 
-fn table_name(mutation: &Mutation, operation_context: &OperationContext) -> String {
+pub fn table_name(mutation: &Mutation, operation_context: &OperationContext) -> String {
     mutation
         .return_type
         .physical_table(operation_context.query_context.system)
@@ -81,7 +83,7 @@ fn create_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<SQLOperation<'a>>> {
+) -> Result<TransactionScript<'a>> {
     let access_predicate = compute_access_predicate(
         &mutation.return_type,
         &OperationKind::Create,
@@ -96,9 +98,11 @@ fn create_operation<'a>(
     }
 
     let info = insertion_info(data_param, &field.arguments, operation_context)?.unwrap();
-    let ops = info.operation(operation_context);
+    let ops = info.operation(operation_context, true);
 
-    Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
+    Ok(TransactionScript::Single(TransactionStep::Concrete(
+        ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
+    )))
 }
 
 fn delete_operation<'a>(
@@ -107,7 +111,7 @@ fn delete_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<SQLOperation<'a>>> {
+) -> Result<TransactionScript<'a>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
@@ -142,7 +146,9 @@ fn delete_operation<'a>(
         )),
     )];
 
-    Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
+    Ok(TransactionScript::Single(TransactionStep::Concrete(
+        ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
+    )))
 }
 
 fn update_operation<'a>(
@@ -152,9 +158,7 @@ fn update_operation<'a>(
     field: &'a Field,
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<SQLOperation<'a>>> {
-    let (table, _, _) = return_type_info(mutation, operation_context);
-
+) -> Result<TransactionScript<'a>> {
     let access_predicate = compute_access_predicate(
         &mutation.return_type,
         &OperationKind::Update,
@@ -179,31 +183,18 @@ fn update_operation<'a>(
         )
     })?;
 
-    let MappedUpdateDataParameter {
-        self_update_columns,
-        nested_updates,
-    } = update_columns(data_param, &field.arguments, operation_context)?.unwrap();
-
-    if nested_updates.is_empty() {
-        let ops = vec![(
-            table_name(mutation, operation_context),
-            SQLOperation::Update(table.update(
-                self_update_columns,
+    let argument_value = super::find_arg(&field.arguments, &data_param.name);
+    argument_value
+        .map(|argument_value| {
+            data_param.update_script(
+                mutation,
                 predicate,
-                vec![operation_context.create_column(Column::Star)],
-            )),
-        )];
-        Ok(vec![SQLOperation::Cte(Cte { ctes: ops, select })])
-    } else {
-        let mut ops = vec![SQLOperation::Update(table.update(
-            self_update_columns,
-            predicate,
-            vec![],
-        ))];
-        ops.extend(nested_updates);
-        ops.push(SQLOperation::Select(select));
-        Ok(ops)
-    }
+                select,
+                argument_value,
+                operation_context,
+            )
+        })
+        .unwrap()
 }
 
 fn insertion_info<'a>(
@@ -212,26 +203,15 @@ fn insertion_info<'a>(
     operation_context: &'a OperationContext<'a>,
 ) -> Result<Option<InsertionInfo<'a>>> {
     let system = &operation_context.query_context.system;
-    let input_type = &system.mutation_types[data_param.type_id];
+    let data_type = &system.mutation_types[data_param.type_id];
 
     let argument_value = super::find_arg(arguments, &data_param.name);
     argument_value
-        .map(|argument_value| input_type.map_to_sql(argument_value, operation_context))
+        .map(|argument_value| data_type.map_to_sql(argument_value, operation_context))
         .transpose()
 }
 
-fn update_columns<'a>(
-    data_param: &'a UpdateDataParameter,
-    arguments: &'a Arguments,
-    operation_context: &'a OperationContext<'a>,
-) -> Result<Option<MappedUpdateDataParameter<'a>>> {
-    let argument_value = super::find_arg(arguments, &data_param.name);
-    argument_value
-        .map(|argument_value| data_param.map_to_sql(argument_value, operation_context))
-        .transpose()
-}
-
-fn return_type_info<'a>(
+pub fn return_type_info<'a>(
     mutation: &'a Mutation,
     operation_context: &'a OperationContext<'a>,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
