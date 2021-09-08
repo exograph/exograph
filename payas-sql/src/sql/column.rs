@@ -1,9 +1,12 @@
-use crate::spec::SQLStatement;
+use crate::spec::{ColumnSpec, SQLStatement};
 
-use super::{select::*, Expression, ExpressionContext, ParameterBinding, SQLParam};
+use super::{
+    select::*, transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
+    SQLParam,
+};
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
+use std::{fmt::Write, rc::Rc};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PhysicalColumn {
@@ -12,6 +15,18 @@ pub struct PhysicalColumn {
     pub typ: PhysicalColumnType,
     pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
+}
+
+impl From<ColumnSpec> for PhysicalColumn {
+    fn from(c: ColumnSpec) -> Self {
+        Self {
+            table_name: c.table_name,
+            column_name: c.column_name,
+            typ: c.db_type,
+            is_pk: c.is_pk,
+            is_autoincrement: c.is_autoincrement,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -407,6 +422,21 @@ pub enum Column<'a> {
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
+    Lazy {
+        row_index: usize,
+        col_index: usize,
+        step: &'a TransactionStep<'a>,
+    },
+}
+
+impl Column<'_> {
+    pub fn get_value(&self) -> &dyn SQLParam {
+        match self {
+            Column::Literal(boxed) => boxed.as_ref(),
+
+            _ => panic!("Not a Literal"),
+        }
+    }
 }
 
 // Due to https://github.com/rust-lang/rust/issues/39128, we have to manually implement PartialEq.
@@ -422,6 +452,7 @@ impl<'a> PartialEq for Column<'a> {
             (Column::Constant(v1), Column::Constant(v2)) => v1 == v2,
             (Column::Star, Column::Star) => true,
             (Column::Null, Column::Null) => true,
+            (a @ Column::Lazy { .. }, b @ Column::Lazy { .. }) => a == b,
             _ => false,
         }
     }
@@ -489,6 +520,24 @@ impl<'a> Expression for Column<'a> {
             Column::Constant(value) => ParameterBinding::new(format!("'{}'", value), vec![]),
             Column::Star => ParameterBinding::new("*".to_string(), vec![]),
             Column::Null => ParameterBinding::new("NULL".to_string(), vec![]),
+            Column::Lazy {
+                row_index,
+                col_index,
+                step,
+            } => {
+                let sql_val = step.get_value(*row_index, *col_index);
+                let param_index = expression_context.next_param();
+                ParameterBinding::new(format! {"${}", param_index}, vec![sql_val])
+            }
         }
     }
+}
+
+#[derive(Debug)]
+pub enum ProxyColumn<'a> {
+    Concrete(&'a Column<'a>),
+    Template {
+        col_index: usize,
+        step: Rc<TransactionStep<'a>>,
+    },
 }

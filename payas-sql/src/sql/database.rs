@@ -2,12 +2,10 @@ use anyhow::{bail, Context, Result};
 use std::env;
 
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres::{types::ToSql, Client, Config};
+use postgres::Config;
 use postgres_openssl::MakeTlsConnector;
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::PostgresConnectionManager;
-
-use super::ParameterBinding;
 
 fn type_of<T>(_: &T) -> &str {
     std::any::type_name::<T>()
@@ -31,6 +29,16 @@ impl<'a> Database {
         let user = env::var(USER_PARAM).ok();
         let password = env::var(PASSWORD_PARAM).ok();
 
+        Self::from_env_helper(pool_size, url, user, password, None)
+    }
+
+    pub fn from_env_helper(
+        pool_size: u32,
+        url: String,
+        user: Option<String>,
+        password: Option<String>,
+        db_name_override: Option<String>,
+    ) -> Result<Self> {
         use std::str::FromStr;
         let mut config =
             Config::from_str(&url).context("Failed to parse PostgreSQL connection string")?;
@@ -40,6 +48,9 @@ impl<'a> Database {
         }
         if let Some(password) = &password {
             config.password(password);
+        }
+        if let Some(db_name) = &db_name_override {
+            config.dbname(db_name);
         }
 
         if config.get_user() == None {
@@ -59,38 +70,6 @@ impl<'a> Database {
             password,
             pool,
         })
-    }
-
-    pub fn execute(&self, binding: &ParameterBinding) -> Result<String> {
-        let mut client = self.get_client()?;
-
-        let params: Vec<&(dyn ToSql + Sync)> =
-            binding.params.iter().map(|p| (*p).as_pg()).collect();
-
-        println!("Executing: {}", binding.stmt);
-        Self::process(&mut client, &binding.stmt, &params[..])
-    }
-
-    fn process(
-        client: &mut Client,
-        query_string: &str,
-        params: &[&(dyn ToSql + Sync)],
-    ) -> Result<String> {
-        let rows = client
-            .query(query_string, params)
-            .context("PostgreSQL query failed")?;
-
-        let result = if rows.len() == 1 {
-            match rows[0].try_get(0) {
-                Ok(col) => col,
-                Err(err) => bail!("Got row without any columns {}", err),
-            }
-        } else {
-            // TODO: Check if "null" is right
-            "null".to_owned()
-        };
-
-        Ok(result)
     }
 
     pub fn get_client(

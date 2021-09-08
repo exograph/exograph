@@ -1,4 +1,5 @@
-use postgres::types::ToSql;
+use anyhow::anyhow;
+use postgres::types::{FromSql, ToSql, Type};
 use std::any::Any;
 
 #[macro_use]
@@ -17,27 +18,24 @@ mod limit;
 mod offset;
 pub mod order;
 pub mod predicate;
+pub mod transaction;
 mod update;
 
 pub use cte::Cte;
-pub use delete::Delete;
-pub use insert::Insert;
+pub use delete::{Delete, TemplateDelete};
+pub use insert::{Insert, TemplateInsert};
 pub use limit::Limit;
 pub use offset::Offset;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
-pub use sql_operation::SQLOperation;
-pub use update::Update;
+pub use sql_operation::{SQLOperation, TemplateSQLOperation};
+pub use update::{TemplateUpdate, Update};
 
 pub trait SQLParam: ToSql + Sync + std::fmt::Display {
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, other: &dyn SQLParam) -> bool;
 
     fn as_pg(&self) -> &(dyn ToSql + Sync);
-}
-
-pub fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
 }
 
 impl<T: ToSql + Sync + Any + PartialEq + std::fmt::Display> SQLParam for T {
@@ -61,6 +59,64 @@ impl<T: ToSql + Sync + Any + PartialEq + std::fmt::Display> SQLParam for T {
 impl PartialEq for dyn SQLParam {
     fn eq(&self, other: &Self) -> bool {
         SQLParam::eq(self, other)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SQLValue {
+    value: Vec<u8>,
+    type_: Type,
+}
+
+impl SQLValue {
+    fn as_sql_param(&self) -> &dyn SQLParam {
+        self
+    }
+}
+
+impl std::fmt::Display for SQLValue {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(fmt, "<SQLValue containing {}>", self.type_)
+    }
+}
+
+impl ToSql for SQLValue {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut postgres::types::private::BytesMut,
+    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    where
+        Self: Sized,
+    {
+        if *ty == self.type_ {
+            out.extend(self.value.as_slice());
+            Ok(postgres::types::IsNull::No)
+        } else {
+            Err(anyhow!("Type mismatch").into())
+        }
+    }
+
+    fn accepts(_ty: &Type) -> bool
+    where
+        Self: Sized,
+    {
+        true
+    }
+
+    postgres::types::to_sql_checked!();
+}
+
+impl<'a> FromSql<'a> for SQLValue {
+    fn from_sql(ty: &Type, raw: &[u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        Ok(SQLValue {
+            value: raw.to_owned(), // TODO: do we need to do this?
+            type_: ty.clone(),
+        })
+    }
+
+    fn accepts(_ty: &Type) -> bool {
+        true
     }
 }
 
@@ -120,4 +176,8 @@ impl ExpressionContext {
         self.plain = cur_plain;
         ret
     }
+}
+
+pub fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
 }
