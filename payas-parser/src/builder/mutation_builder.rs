@@ -100,7 +100,7 @@ pub trait DataParamBuilder<D> {
     fn compute_data_fields(
         &self,
         gql_fields: &[GqlField],
-        top_level_type: Option<&str>,
+        top_level_type: Option<&GqlType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Vec<GqlField> {
@@ -154,7 +154,7 @@ pub trait DataParamBuilder<D> {
     fn compute_data_field(
         &self,
         field: &GqlField,
-        top_level_type: Option<&str>,
+        top_level_type: Option<&GqlType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<GqlField> {
@@ -193,7 +193,7 @@ pub trait DataParamBuilder<D> {
                 };
 
                 match &top_level_type {
-                    Some(value) if value == &field.typ.type_name() => None,
+                    Some(value) if value.name == field.typ.type_name() => None,
                     _ => Some(GqlField {
                         name: field.name.clone(),
                         typ: field_type,
@@ -238,8 +238,8 @@ pub trait DataParamBuilder<D> {
         &self,
         model_type: &GqlType,
         building: &SystemContextBuilding,
-        top_level_type: Option<&str>,
-        container_type: Option<&str>,
+        top_level_type: Option<&GqlType>,
+        container_type: Option<&GqlType>,
     ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
         if let GqlTypeKind::Composite(GqlCompositeTypeKind {
             ref fields,
@@ -264,7 +264,7 @@ pub trait DataParamBuilder<D> {
                             field_type,
                             building,
                             top_level_type,
-                            Some(&model_type.name),
+                            Some(model_type),
                         )
                     } else {
                         vec![]
@@ -272,7 +272,10 @@ pub trait DataParamBuilder<D> {
                 })
                 .collect();
 
-            let existing_type_name = Self::data_type_name(model_type.name.as_str(), container_type);
+            let existing_type_name = Self::data_type_name(
+                model_type.name.as_str(),
+                container_type.map(|value| value.name.as_str()),
+            );
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
             let input_type_fields = self.compute_data_fields(
@@ -300,16 +303,19 @@ pub trait DataParamBuilder<D> {
 
     fn expand_one_to_many(
         &self,
-        _model_type: &GqlType,
+        model_type: &GqlType,
         _field: &GqlField,
         field_type: &GqlType,
         building: &SystemContextBuilding,
-        top_level_type: Option<&str>,
-        _container_type: Option<&str>,
+        top_level_type: Option<&GqlType>,
+        _container_type: Option<&GqlType>,
     ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
-        let new_container_type = Some(_model_type.name.as_str());
+        let new_container_type = Some(model_type);
 
-        let existing_type_name = Self::data_type_name(&field_type.name, new_container_type);
+        let existing_type_name = Self::data_type_name(
+            &field_type.name,
+            new_container_type.map(|value| value.name.as_str()),
+        );
 
         if let GqlTypeKind::Primitive = building
             .mutation_types

@@ -35,7 +35,7 @@ impl Builder for UpdateMutationBuilder {
         for (_, model_type) in building.types.iter() {
             if let GqlTypeKind::Composite { .. } = &model_type.kind {
                 for (existing_id, expanded_kind) in
-                    self.expanded_data_type(model_type, building, Some(&model_type.name), None)
+                    self.expanded_data_type(model_type, building, Some(model_type), None)
                 {
                     building.mutation_types[existing_id].kind =
                         GqlTypeKind::Composite(expanded_kind);
@@ -134,16 +134,18 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         field: &GqlField,
         field_type: &GqlType,
         building: &SystemContextBuilding,
-        top_level_type: Option<&str>,
-        container_type: Option<&str>,
+        top_level_type: Option<&GqlType>,
+        container_type: Option<&GqlType>,
     ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
-        let existing_type_name = Self::data_type_name(&field_type.name, container_type);
+        let existing_type_name =
+            Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
         let nested_type = {
             let nested_existing_type_id = {
                 let nested_existing_type_name =
-                    Self::data_type_name(&field_type.name, container_type) + "Nested";
+                    Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()))
+                        + "Nested";
                 building
                     .mutation_types
                     .get_id(&nested_existing_type_name)
@@ -189,11 +191,17 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                 let fields_info = vec![
                     (
                         "create",
-                        create_data_type_name(field.typ.type_name(), &container_type),
+                        create_data_type_name(
+                            field.typ.type_name(),
+                            &container_type.map(|t| t.name.as_str()),
+                        ),
                     ),
                     (
                         "update",
-                        update_data_type_name(field.typ.type_name(), &container_type) + "Nested",
+                        update_data_type_name(
+                            field.typ.type_name(),
+                            &container_type.map(|t| t.name.as_str()),
+                        ) + "Nested",
                     ),
                     ("delete", field.typ.type_name().reference_type()),
                 ];
