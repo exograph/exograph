@@ -87,7 +87,7 @@ pub trait DataParamBuilder<D> {
 
     fn data_param(model_type: &GqlType, building: &SystemContextBuilding, array: bool) -> D;
 
-    fn data_type_name(model_type_name: &str, container_type: &Option<&str>) -> String {
+    fn data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
         let base_name = Self::base_data_type_name(model_type_name);
         match container_type {
             Some(container_type) => {
@@ -100,12 +100,15 @@ pub trait DataParamBuilder<D> {
     fn compute_data_fields(
         &self,
         gql_fields: &[GqlField],
+        top_level_type: Option<&str>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Vec<GqlField> {
         gql_fields
             .iter()
-            .flat_map(|field| self.compute_data_field(field, &container_type, building))
+            .flat_map(|field| {
+                self.compute_data_field(field, top_level_type, container_type, building)
+            })
             .collect()
     }
 
@@ -144,14 +147,15 @@ pub trait DataParamBuilder<D> {
     ) -> Vec<String> {
         vec![Self::data_type_name(
             field_type_name,
-            &Some(&resolved_composite_type.name),
+            Some(&resolved_composite_type.name),
         )]
     }
 
     fn compute_data_field(
         &self,
         field: &GqlField,
-        container_type: &Option<&str>,
+        top_level_type: Option<&str>,
+        container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<GqlField> {
         let optional = Self::mark_fields_optional();
@@ -188,7 +192,7 @@ pub trait DataParamBuilder<D> {
                     GqlFieldType::List(_) => GqlFieldType::List(Box::new(field_plain_type)),
                 };
 
-                match &container_type {
+                match &top_level_type {
                     Some(value) if value == &field.typ.type_name() => None,
                     _ => Some(GqlField {
                         name: field.name.clone(),
@@ -203,7 +207,7 @@ pub trait DataParamBuilder<D> {
     fn compute_one_to_many_data_field(
         &self,
         field: &GqlField,
-        container_type: &Option<&str>,
+        container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<GqlField> {
         let optional = Self::mark_fields_optional();
@@ -268,12 +272,15 @@ pub trait DataParamBuilder<D> {
                 })
                 .collect();
 
-            let existing_type_name =
-                Self::data_type_name(model_type.name.as_str(), &container_type);
+            let existing_type_name = Self::data_type_name(model_type.name.as_str(), container_type);
             let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-            let input_type_fields =
-                self.compute_data_fields(model_fields, top_level_type, building);
+            let input_type_fields = self.compute_data_fields(
+                model_fields,
+                top_level_type,
+                Some(model_type.name.as_str()),
+                building,
+            );
             field_types.push((
                 existing_type_id,
                 GqlCompositeTypeKind {
@@ -298,9 +305,11 @@ pub trait DataParamBuilder<D> {
         field_type: &GqlType,
         building: &SystemContextBuilding,
         top_level_type: Option<&str>,
-        container_type: Option<&str>,
+        _container_type: Option<&str>,
     ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
-        let existing_type_name = Self::data_type_name(&field_type.name, &container_type);
+        let new_container_type = Some(_model_type.name.as_str());
+
+        let existing_type_name = Self::data_type_name(&field_type.name, new_container_type);
 
         if let GqlTypeKind::Primitive = building
             .mutation_types
@@ -309,7 +318,7 @@ pub trait DataParamBuilder<D> {
             .kind
         {
             // If not already expanded (i.e. the kind is primitive)
-            self.expanded_data_type(field_type, building, top_level_type, container_type)
+            self.expanded_data_type(field_type, building, top_level_type, new_container_type)
         } else {
             vec![]
         }

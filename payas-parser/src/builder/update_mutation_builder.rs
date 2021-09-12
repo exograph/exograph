@@ -115,7 +115,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
     ) -> Vec<String> {
         // Base: ConcertArtistUpdateInputFromConcert (will have create, insert, and update fields)
         // Nested: ConcertArtistUpdateInputFromConcertNested (will have the model fields to be updated)
-        let base = Self::data_type_name(field_type_name, &Some(&resolved_composite_type.name));
+        let base = Self::data_type_name(field_type_name, Some(&resolved_composite_type.name));
         let nested = format!("{}Nested", &base);
         vec![base, nested]
     }
@@ -137,13 +137,13 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         top_level_type: Option<&str>,
         container_type: Option<&str>,
     ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
-        let existing_type_name = Self::data_type_name(&field_type.name, &container_type);
+        let existing_type_name = Self::data_type_name(&field_type.name, container_type);
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
         let nested_type = {
             let nested_existing_type_id = {
                 let nested_existing_type_name =
-                    Self::data_type_name(&field_type.name, &container_type) + "Nested";
+                    Self::data_type_name(&field_type.name, container_type) + "Nested";
                 building
                     .mutation_types
                     .get_id(&nested_existing_type_name)
