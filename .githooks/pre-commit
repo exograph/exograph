@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# Clippy OK?
+cargo clippy --all-targets --all-features -- -D warnings
+clippy_result=$?
+
+if [ $clippy_result -ne 0 ]; then
+    echo "Please resolve \`cargo clippy\` warnings."
+    exit 1
+fi
+
+rustfiles=$(git diff --cached --name-only --diff-filter=ACM "*.rs" | tr '\n' ' ')
+([ -z "$rustfiles" ]) && exit 0;
+
+if [ -n "$rustfiles" ]; then
+    echo "$rustfiles"
+
+    # Reformat all staged Rust files
+    echo "$rustfiles" | xargs cargo fmt -- 
+fi
+
+# Add back the modified/prettified files to staging
+echo "$rustfiles" | xargs git add
+
+exit 0
+
