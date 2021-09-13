@@ -35,10 +35,7 @@ struct AgesTableInfo<'a> {
     pub age_col: &'a Column<'a>,
 }
 
-fn with_setup(
-    test_name: &str,
-    test_fn: impl FnOnce(&Database, &PeopleTableInfo, &AgesTableInfo) -> (),
-) {
+fn with_setup(test_name: &str, test_fn: impl FnOnce(&Database, &PeopleTableInfo, &AgesTableInfo)) {
     let ctx = common::create_context(test_name).unwrap();
     let db = ctx.test_db.as_ref().unwrap();
 
