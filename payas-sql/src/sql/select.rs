@@ -147,10 +147,10 @@ mod tests {
         println!("{:?}", binding.params);
         assert_binding!(
             &binding,
-            r#"select "people"."age" from "people" where "people"."age" = $1 OFFSET $2 LIMIT $3"#,
+            r#"select "people"."age" from (select * from "people" where "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
             5,
-            10i64,
-            20i64
+            20i64,
+            10i64
         );
     }
 

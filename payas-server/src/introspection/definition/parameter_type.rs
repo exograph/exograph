@@ -5,7 +5,7 @@ use async_graphql_parser::{
 use async_graphql_value::Name;
 
 use crate::introspection::util::*;
-use payas_model::model::{order::*, predicate::*, system::ModelSystem};
+use payas_model::model::{limit_offset::{LimitParameter, OffsetParameter}, order::*, predicate::*, system::ModelSystem};
 
 use super::{parameter::Parameter, provider::*};
 
@@ -116,6 +116,31 @@ impl TypeDefinitionProvider for PredicateParameterType {
                 directives: vec![],
                 kind: TypeKind::Scalar,
             },
+        }
+    }
+}
+
+impl TypeDefinitionProvider for LimitParameter {
+    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind: TypeKind::Scalar
+        }
+    }
+}
+
+
+impl TypeDefinitionProvider for OffsetParameter {
+    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind: TypeKind::Scalar
         }
     }
 }
