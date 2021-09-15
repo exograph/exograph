@@ -16,7 +16,8 @@ For many other use cases such as forgot password, reminders, and concert notific
 ```clay
 @external("email.ts") // or .ts or .js or .so
 service EmailService {
-  fn init(@inject env: Env) // Or should we have the @init annotation to allow arbitrary fn name
+  @construct fn construct(@inject env: Env) // the function name is insignificant; you may have at most one @construct function per service
+                                            // the return type is implied to be the service type
 
   /* no export */ mutation send(emails: Array[String], message: String): Result<bool, String>
 }
@@ -24,21 +25,27 @@ service EmailService {
 
 We define a service and specify its implementation source (a Webassembly, shared object, or ts/js file). This is similar to how Scala.js specifies facades to existing js code. Here we assume that parameters and result types are de/serializable to JSON.
 
-The inclusion of `init` implies that the service needs some initialization. Claytip will call it at the system startup time (we may later introduce @lazy annotation to delay it to just before the first invocation). Question: do we need a destructor spec as well; we won't be able to guarantee to run it except for a well-executed shutdown.
+The inclusion of `construct` implies that the service has a non-default constructor. Claytip will call it at the system startup time (we may later introduce @lazy annotation to delay it to just before the first invocation) and store away that service instance. Question: do we need a destructor spec as well; we won't be able to guarantee to run it except for a well-executed shutdown.
 
 The lack of `export` means this service will not be available as a GraphQL mutation.
 
 The `email.ts` file will look like:
 
 ```ts
-var smtpSender: SmtpSender // how shall we keep this around? One JavaScript context per service?
+class EmailService {
+  smtpSender: SmtpSender
 
-function async init(env: Env) {
-  smtpSender = new SmtpSender(env.get("SMTP_URL", ....));
+  constructor(env: Env) {
+    this.smtpSender = new SmtpSender(env.get("SMTP_URL", ....));
+  }
 }
 
-function async send(emails: string[], message: string): Result<boolean, string> {
-  await smtpSender.send(emails, message)
+async function construct(env: Env): EmailService {
+  new EmailService(env);
+}
+
+async function send(emails: string[], message: string, @inject emailSender: EmailSender): Result<boolean, string> {
+  await emailSender.smtpSender.send(emails, message)
 }
 ```
 
