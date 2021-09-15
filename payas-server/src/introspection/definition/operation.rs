@@ -23,7 +23,7 @@ impl Operation for Query {
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
         let mut params: Vec<&dyn Parameter> = vec![];
-       
+
         macro_rules! populate_params (
             ($param_name:expr) => {
                 match $param_name {

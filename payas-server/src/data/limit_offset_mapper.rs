@@ -29,6 +29,6 @@ impl<'a> SQLMapper<'a, Offset> for OffsetParameter {
         argument: &'a Value,
         _operation_context: &'a OperationContext<'a>,
     ) -> Result<Offset> {
-        cast_to_i64(argument).map(Offset) 
-    } 
+        cast_to_i64(argument).map(Offset)
+    }
 }

@@ -92,11 +92,16 @@ impl FieldDefinitionProvider for GqlField {
                             .as_ref()
                             .map(|p| p.input_value());
 
-                        vec![predicate_parameter_arg, order_by_parameter_arg, limit_arg, offset_arg]
-                            .into_iter()
-                            .flatten()
-                            .map(util::default_positioned)
-                            .collect()
+                        vec![
+                            predicate_parameter_arg,
+                            order_by_parameter_arg,
+                            limit_arg,
+                            offset_arg,
+                        ]
+                        .into_iter()
+                        .flatten()
+                        .map(util::default_positioned)
+                        .collect()
                     }
                 }
             }

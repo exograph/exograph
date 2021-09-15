@@ -119,7 +119,7 @@ impl<'a> QueryOperations<'a> for Query {
                     .map(|argument_value| limit_param.map_to_sql(argument_value, operation_context))
             })
             .transpose()
-            .unwrap() 
+            .unwrap()
     }
 
     fn compute_offset(

@@ -3,7 +3,15 @@ use async_graphql_parser::types::InputValueDefinition;
 
 use crate::introspection::util;
 
-use payas_model::model::{GqlFieldType, limit_offset::{LimitParameter, OffsetParameter}, operation::{CreateDataParameter, UpdateDataParameter}, order::*, predicate::PredicateParameter, types::GqlField, types::GqlTypeModifier};
+use payas_model::model::{
+    limit_offset::{LimitParameter, OffsetParameter},
+    operation::{CreateDataParameter, UpdateDataParameter},
+    order::*,
+    predicate::PredicateParameter,
+    types::GqlField,
+    types::GqlTypeModifier,
+    GqlFieldType,
+};
 
 use super::provider::InputValueProvider;
 
@@ -133,7 +141,7 @@ macro_rules! parameter_input_value_provider {
                 directives: vec![],
             }
         }
-    }
+    };
 }
 
 impl<T: Parameter> InputValueProvider for T {
