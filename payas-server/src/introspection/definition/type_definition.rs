@@ -83,12 +83,25 @@ impl FieldDefinitionProvider for GqlField {
                             .order_by_param
                             .as_ref()
                             .map(|p| p.input_value());
+                        let limit_arg = collection_query
+                            .limit_param
+                            .as_ref()
+                            .map(|p| p.input_value());
+                        let offset_arg = collection_query
+                            .offset_param
+                            .as_ref()
+                            .map(|p| p.input_value());
 
-                        vec![predicate_parameter_arg, order_by_parameter_arg]
-                            .into_iter()
-                            .flatten()
-                            .map(util::default_positioned)
-                            .collect()
+                        vec![
+                            predicate_parameter_arg,
+                            order_by_parameter_arg,
+                            limit_arg,
+                            offset_arg,
+                        ]
+                        .into_iter()
+                        .flatten()
+                        .map(util::default_positioned)
+                        .collect()
                     }
                 }
             }

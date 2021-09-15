@@ -1,0 +1,47 @@
+operation: |
+    query {
+        result_limit: logs(orderBy: { id: ASC }, limit: 2) { 
+            timestamp
+        }
+
+        result_offset: logs(orderBy: { id: ASC }, offset: 2) { 
+            timestamp
+        }
+
+        result_limit_and_offset: logs(orderBy: { id: ASC }, limit: 3, offset: 1) { 
+            timestamp
+        }
+    }
+response: |
+    {
+      "data": {
+        "result_limit": [
+          {
+            "timestamp": 3
+          },
+          {
+            "timestamp": 6
+          }
+        ],
+        "result_offset": [
+          {
+            "timestamp": 9
+          },
+          {
+            "timestamp": 12
+          }
+        ],
+        "result_limit_and_offset": [
+          {
+            "timestamp": 6
+          },
+          {
+            "timestamp": 9
+          },
+          {
+            "timestamp": 12
+          }
+        ]
+      }
+    }
+    

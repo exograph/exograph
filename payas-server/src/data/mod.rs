@@ -1,6 +1,7 @@
 pub mod access_solver;
 mod create_data_param_mapper;
 pub mod data_resolver;
+pub mod limit_offset_mapper;
 pub mod mutation_resolver;
 pub mod operation_context;
 pub mod order_by_mapper;

@@ -23,14 +23,20 @@ impl Operation for Query {
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
         let mut params: Vec<&dyn Parameter> = vec![];
-        match &self.predicate_param {
-            Some(param) => params.push(param),
-            None => {}
-        }
-        match &self.order_by_param {
-            Some(param) => params.push(param),
-            None => {}
-        }
+
+        macro_rules! populate_params (
+            ($param_name:expr) => {
+                match $param_name {
+                    Some(param) => params.push(param),
+                    None => {}
+                }
+            }
+        );
+
+        populate_params!(&self.predicate_param);
+        populate_params!(&self.order_by_param);
+        populate_params!(&self.limit_param);
+        populate_params!(&self.offset_param);
 
         params
     }

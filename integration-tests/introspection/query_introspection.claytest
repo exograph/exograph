@@ -76,6 +76,14 @@ response: |
                   {
                     "name": "orderBy",
                     "__typename": "__InputValue"
+                  },
+                  {
+                    "name": "limit",
+                    "__typename": "__InputValue"
+                  },
+                  {
+                    "name": "offset",
+                    "__typename": "__InputValue"
                   }
                 ]
               }
