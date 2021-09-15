@@ -81,9 +81,9 @@ impl<'a> Expression for Select<'a> {
                 if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
                     let conditions = format!(
                         "{}{}{}",
-                        order_by_part.unwrap_or("".to_owned()),
-                        limit_part.unwrap_or("".to_owned()),
-                        offset_part.unwrap_or("".to_owned())
+                        order_by_part.unwrap_or_default(),
+                        limit_part.unwrap_or_default(),
+                        offset_part.unwrap_or_default()
                     );
 
                     format!(

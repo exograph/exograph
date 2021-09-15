@@ -6,17 +6,20 @@ use payas_model::{
     sql::{Limit, Offset},
 };
 
+fn cast_to_i64(argument: &Value) -> Result<i64> {
+    match argument {
+        Value::Number(n) => Ok(n.as_i64().ok_or(anyhow!("Could not cast {} to i64", n))?),
+        _ => Err(anyhow!("Not a number")),
+    }
+}
+
 impl<'a> SQLMapper<'a, Limit> for LimitParameter {
     fn map_to_sql(
         &self,
         argument: &'a Value,
         _operation_context: &'a OperationContext<'a>,
     ) -> Result<Limit> {
-        match argument {
-            Value::Number(n) => Ok(Limit(n.as_i64().ok_or(anyhow!(""))?)),
-
-            _ => Err(anyhow!("Not a number")),
-        }
+        cast_to_i64(argument).map(Limit)
     }
 }
 
@@ -26,10 +29,6 @@ impl<'a> SQLMapper<'a, Offset> for OffsetParameter {
         argument: &'a Value,
         _operation_context: &'a OperationContext<'a>,
     ) -> Result<Offset> {
-        match argument {
-            Value::Number(n) => Ok(Offset(n.as_i64().ok_or(anyhow!(""))?)),
-
-            _ => Err(anyhow!("Not a number")),
-        }
-    } // FIXME: dedup
+        cast_to_i64(argument).map(Offset) 
+    } 
 }
