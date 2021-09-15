@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::model::{GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
+    limit_offset::{LimitParameter, OffsetParameter},
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
     predicate::PredicateParameter,
@@ -16,6 +17,8 @@ pub struct Query {
     pub name: String,
     pub predicate_param: Option<PredicateParameter>,
     pub order_by_param: Option<OrderByParameter>,
+    pub limit_param: Option<LimitParameter>,
+    pub offset_param: Option<OffsetParameter>,
     pub return_type: OperationReturnType,
 }
 

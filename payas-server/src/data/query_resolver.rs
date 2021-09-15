@@ -5,6 +5,7 @@ use crate::sql::order::OrderBy;
 use anyhow::*;
 use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
+use payas_model::sql::{Limit, Offset};
 
 use super::sql_mapper::{compute_access_predicate, OperationKind};
 use super::{
@@ -39,6 +40,18 @@ pub trait QueryOperations<'a> {
         arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<OrderBy<'a>>;
+
+    fn compute_limit(
+        &'a self,
+        arguments: &'a Arguments,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Option<Limit>;
+
+    fn compute_offset(
+        &'a self,
+        arguments: &'a Arguments,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Option<Offset>;
 
     fn content_select(
         &'a self,
@@ -93,6 +106,39 @@ impl<'a> QueryOperations<'a> for Query {
         Ok(operation_context.create_column(Column::JsonObject(column_specs?)))
     }
 
+    fn compute_limit(
+        &'a self,
+        arguments: &'a Arguments,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Option<Limit> {
+        self.limit_param
+            .as_ref()
+            .and_then(|limit_param| {
+                let argument_value = super::find_arg(arguments, &limit_param.name);
+                argument_value
+                    .map(|argument_value| limit_param.map_to_sql(argument_value, operation_context))
+            })
+            .transpose()
+            .unwrap()
+    }
+
+    fn compute_offset(
+        &'a self,
+        arguments: &'a Arguments,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Option<Offset> {
+        self.offset_param
+            .as_ref()
+            .and_then(|offset_param| {
+                let argument_value = super::find_arg(arguments, &offset_param.name);
+                argument_value.map(|argument_value| {
+                    offset_param.map_to_sql(argument_value, operation_context)
+                })
+            })
+            .transpose()
+            .unwrap()
+    }
+
     fn operation(
         &'a self,
         field: &'a Field,
@@ -130,13 +176,16 @@ impl<'a> QueryOperations<'a> for Query {
             .return_type
             .physical_table(operation_context.query_context.system);
 
+        let limit = self.compute_limit(&field.arguments, operation_context);
+        let offset = self.compute_offset(&field.arguments, operation_context);
+
         Ok(match self.return_type.type_modifier {
             GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
                 vec![content_object],
                 Some(predicate),
                 None,
-                None,
-                None,
+                offset,
+                limit,
                 top_level_selection,
             ),
             GqlTypeModifier::List => {
@@ -146,8 +195,8 @@ impl<'a> QueryOperations<'a> for Query {
                     vec![agg_column],
                     Some(predicate),
                     order_by,
-                    None,
-                    None,
+                    offset,
+                    limit,
                     top_level_selection,
                 )
             }

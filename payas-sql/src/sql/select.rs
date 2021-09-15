@@ -59,44 +59,48 @@ impl<'a> Expression for Select<'a> {
                 let predicate_binding = predicate.binding(expression_context);
                 params.extend(predicate_binding.params);
 
-                match &self.order_by {
-                    None => format!(
+                let order_by_part = self.order_by.as_ref().map(|order_by| {
+                    let order_by_binding = order_by.binding(expression_context);
+                    params.extend(order_by_binding.params);
+
+                    format!(" order by {}", order_by_binding.stmt)
+                });
+
+                let limit_part = self.limit.as_ref().map(|limit| {
+                    let limit_binding = limit.binding(expression_context);
+                    params.extend(limit_binding.params);
+                    format!(" {}", limit_binding.stmt)
+                });
+
+                let offset_part = self.offset.as_ref().map(|offset| {
+                    let offset_binding = offset.binding(expression_context);
+                    params.extend(offset_binding.params);
+                    format!(" {}", offset_binding.stmt)
+                });
+
+                if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
+                    let conditions = format!(
+                        "{}{}{}",
+                        order_by_part.unwrap_or_default(),
+                        limit_part.unwrap_or_default(),
+                        offset_part.unwrap_or_default()
+                    );
+
+                    format!(
+                        "select {} from (select * from {} where {}{}) as {}",
+                        cols_stmts,
+                        table_binding.stmt,
+                        predicate_binding.stmt,
+                        conditions,
+                        table_binding.stmt
+                    )
+                } else {
+                    format!(
                         "select {} from {} where {}",
                         cols_stmts, table_binding.stmt, predicate_binding.stmt
-                    ),
-                    Some(order_by) => {
-                        let order_by_binding = order_by.binding(expression_context);
-                        params.extend(order_by_binding.params);
-
-                        format!(
-                            "select {} from (select * from {} where {} order by {}) as {}",
-                            cols_stmts,
-                            table_binding.stmt,
-                            predicate_binding.stmt,
-                            order_by_binding.stmt,
-                            table_binding.stmt
-                        )
-                    }
+                    )
                 }
             }
-        };
-
-        let stmt = match &self.offset {
-            Some(offset) => {
-                let offset_binding = offset.binding(expression_context);
-                params.extend(offset_binding.params);
-                format!("{} {}", stmt, offset_binding.stmt)
-            }
-            None => stmt,
-        };
-
-        let stmt = match &self.limit {
-            Some(limit) => {
-                let limit_binding = limit.binding(expression_context);
-                params.extend(limit_binding.params);
-                format!("{} {}", stmt, limit_binding.stmt)
-            }
-            None => stmt,
         };
 
         ParameterBinding::new(stmt, params)
@@ -143,10 +147,10 @@ mod tests {
         println!("{:?}", binding.params);
         assert_binding!(
             &binding,
-            r#"select "people"."age" from "people" where "people"."age" = $1 OFFSET $2 LIMIT $3"#,
+            r#"select "people"."age" from (select * from "people" where "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
             5,
-            10i64,
-            20i64
+            20i64,
+            10i64
         );
     }
 
