@@ -148,8 +148,8 @@ fn updateExpiry(clay: Clay, operation: Operation, returnValue: OperationResult) 
 ## Open questions: Priority
 
 ```
-declare precedence: rateLimiting, logging;
-declare precedence: rateLimiting, performance;
+declare precedence: RateLimiter, Logging;
+declare precedence: RateLimiter, PerformanceMonitoring;
 ```
 
-Will lead to `rateLimiting` followed by (in arbitrary order) `logging` and `performance`.
+Will lead to `RateLimiter` followed by (in arbitrary order) `Logging` and `PerformanceMonitoring`.
