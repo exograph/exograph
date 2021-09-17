@@ -40,3 +40,7 @@ maybe-owned = "0.3.4"
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
 payas-model = { path = "../payas-model" }
+
+[[bin]]
+name = "clay-server"
+path = "src/main.rs"

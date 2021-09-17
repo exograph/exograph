@@ -19,7 +19,7 @@ use payas_model::{model::system::ModelSystem, sql::database::Database};
 use payas_parser::builder;
 use serde_json::Value;
 
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 mod authentication;
 mod data;
@@ -36,8 +36,6 @@ use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
 const SERVER_PORT_PARAM: &str = "CLAY_SERVER_PORT";
-const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
-const CHECK_CONNECTION_ON_STARTUP: &str = "CLAY_CHECK_CONNECTION_ON_STARTUP";
 
 const FILE_WATCHER_DELAY: Duration = Duration::from_millis(200);
 
@@ -166,7 +164,18 @@ enum ServerLoopEvent {
     SigInt,
 }
 
-pub fn start_dev_mode(model_file: impl AsRef<Path> + Clone, watch: bool) -> Result<()> {
+pub fn start_prod_mode(
+    model_file: impl AsRef<Path> + Clone,
+    system_start_time: Option<SystemTime>,
+) -> Result<()> {
+    start_dev_mode(model_file, false, system_start_time)
+}
+
+pub fn start_dev_mode(
+    model_file: impl AsRef<Path> + Clone,
+    watch: bool,
+    system_start_time: Option<SystemTime>,
+) -> Result<()> {
     let mut actix_system = System::new("claytip");
 
     let model_file_clone = model_file.clone();
@@ -175,7 +184,7 @@ pub fn start_dev_mode(model_file: impl AsRef<Path> + Clone, watch: bool) -> Resu
         let system = builder::build(ast_system, codemap)?;
         let schema = Schema::new(&system);
 
-        start_server(system, schema)
+        start_server(system, schema, system_start_time)
     };
 
     if watch {
@@ -195,31 +204,15 @@ pub fn start_dev_mode(model_file: impl AsRef<Path> + Clone, watch: bool) -> Resu
 }
 
 fn create_database() -> Result<Database> {
-    let pool_size = env::var(CONNECTION_POOL_SIZE_PARAM)
-        .ok()
-        .map(|pool_str| pool_str.parse::<u32>().unwrap())
-        .unwrap_or(10);
-
-    let db = Database::from_env(pool_size);
-
-    match db {
-        Ok(db) => {
-            let check_connection = env::var(CHECK_CONNECTION_ON_STARTUP)
-                .ok()
-                .map(|pool_str| pool_str.parse::<bool>().unwrap())
-                .unwrap_or(true);
-            if check_connection {
-                db.get_client()?; // Fail on startup if the database is misconfigured
-            }
-            Ok(db)
-        }
-        e @ Err(_) => e,
-    }
+    Database::from_env(None)
 }
 
-fn start_server(system: ModelSystem, schema: Schema) -> Result<Server> {
+fn start_server(
+    system: ModelSystem,
+    schema: Schema,
+    system_start_time: Option<SystemTime>,
+) -> Result<Server> {
     let database = create_database()?; // TODO: error handling here
-
     let system_info = Arc::new((system, schema, database));
     let authenticator = Arc::new(JwtAuthenticator::new_from_env());
 
@@ -245,7 +238,17 @@ fn start_server(system: ModelSystem, schema: Schema) -> Result<Server> {
     if let Ok(server) = result {
         let addr = server.addrs()[0];
 
-        println!("Started server on {}", addr);
+        match system_start_time {
+            Some(system_start_time) => println!(
+                "Server started at {} in {} milliseconds",
+                addr,
+                SystemTime::now()
+                    .duration_since(system_start_time)?
+                    .as_millis(),
+            ),
+            None => println!("Started server on {}", addr),
+        }
+
         Ok(server.run())
     } else {
         bail!("Error starting server on requested URL {}", server_url)

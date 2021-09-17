@@ -1,13 +1,13 @@
 //! Top level subcommands
 
 use anyhow::Result;
-use std::path::PathBuf;
+use std::{path::PathBuf, time::SystemTime};
 
 pub mod model;
 pub mod schema;
 
 pub trait Command {
-    fn run(&self) -> Result<()>;
+    fn run(&self, system_start_time: Option<SystemTime>) -> Result<()>;
 }
 
 /// Build claytip server binary
@@ -16,7 +16,7 @@ pub struct BuildCommand {
 }
 
 impl Command for BuildCommand {
-    fn run(&self) -> Result<()> {
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         todo!("Implmement build command");
     }
 }
@@ -28,7 +28,7 @@ pub struct MigrateCommand {
 }
 
 impl Command for MigrateCommand {
-    fn run(&self) -> Result<()> {
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         todo!("Implmement migrate command");
     }
 }
@@ -40,8 +40,8 @@ pub struct ServeCommand {
 }
 
 impl Command for ServeCommand {
-    fn run(&self) -> Result<()> {
-        payas_server::start_dev_mode(self.model.clone(), self.watch)
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
+        payas_server::start_dev_mode(self.model.clone(), self.watch, None)
     }
 }
 
@@ -51,7 +51,7 @@ pub struct TestCommand {
 }
 
 impl Command for TestCommand {
-    fn run(&self) -> Result<()> {
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         payas_test::run(&self.dir)
     }
 }
@@ -62,7 +62,7 @@ pub struct YoloCommand {
 }
 
 impl Command for YoloCommand {
-    fn run(&self) -> Result<()> {
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         todo!("Implmement yolo command");
     }
 }

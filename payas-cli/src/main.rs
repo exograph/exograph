@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf, process};
+use std::{env, path::PathBuf, process, time::SystemTime};
 
 use clap::{App, AppSettings, Arg, SubCommand};
 
@@ -11,6 +11,8 @@ mod commands;
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
 fn main() {
+    let system_start_time = SystemTime::now();
+
     let matches = App::new("Claytip")
         .version(env!("CARGO_PKG_VERSION"))
         .global_setting(AppSettings::DisableHelpSubcommand)
@@ -166,7 +168,7 @@ fn main() {
         _ => panic!("Unhandled command name"),
     };
 
-    if let Err(e) = command.run() {
+    if let Err(e) = command.run(Some(system_start_time)) {
         eprintln!("error: {}", e);
         process::exit(1);
     }
