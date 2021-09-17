@@ -1,11 +1,10 @@
 use actix_web::dev::Server;
 use async_stream::AsyncStream;
 use std::path::Path;
-use std::thread;
 use std::{env, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::rt::{System, SystemRunner};
+use actix_web::rt::System;
 use actix_web::web::Bytes;
 use actix_web::Error;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
@@ -20,14 +19,13 @@ use payas_model::{model::system::ModelSystem, sql::database::Database};
 use payas_parser::builder;
 use serde_json::Value;
 
-use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
-use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
 mod authentication;
 mod data;
 mod execution;
 mod introspection;
+mod watcher;
 
 pub use payas_parser::ast;
 pub use payas_parser::parser;
@@ -168,29 +166,32 @@ enum ServerLoopEvent {
     SigInt,
 }
 
-pub fn start_dev_mode(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
-    // Watch for claytip model file edits
-    let rx = if watch {
-        Some(setup_watch(&model_file)?)
-    } else {
-        None
-    };
-
+pub fn start_dev_mode(model_file: impl AsRef<Path> + Clone, watch: bool) -> Result<()> {
     let mut actix_system = System::new("claytip");
 
-    loop {
+    let model_file_clone = model_file.clone();
+    let start_server = move || {
         let (ast_system, codemap) = parser::parse_file(&model_file);
         let system = builder::build(ast_system, codemap)?;
         let schema = Schema::new(&system);
 
-        let server = start_server(system, schema)?;
+        start_server(system, schema)
+    };
 
-        if !start_watching(&rx, &mut actix_system, server)? {
-            break;
-        }
+    if watch {
+        start_server().map(|_| ())
+    } else {
+        let stop_server = move |server: &mut Server| {
+            actix_system.block_on(server.stop(true));
+        };
+
+        watcher::with_watch(
+            &model_file_clone,
+            FILE_WATCHER_DELAY,
+            start_server,
+            stop_server,
+        )
     }
-
-    Ok(())
 }
 
 fn create_database() -> Result<Database> {
@@ -248,62 +249,5 @@ fn start_server(system: ModelSystem, schema: Schema) -> Result<Server> {
         Ok(server.run())
     } else {
         bail!("Error starting server on requested URL {}", server_url)
-    }
-}
-
-fn setup_watch(model_file: impl AsRef<Path>) -> Result<Receiver<ServerLoopEvent>> {
-    let (tx, rx) = mpsc::channel();
-
-    let model_file = model_file.as_ref().to_path_buf();
-    let tx2 = tx.clone();
-
-    thread::spawn(move || -> Result<()> {
-        let (watcher_tx, watcher_rx) = mpsc::channel();
-        let mut watcher = notify::watcher(watcher_tx, FILE_WATCHER_DELAY)?;
-        watcher.watch(&model_file, RecursiveMode::NonRecursive)?;
-
-        loop {
-            match watcher_rx.recv() {
-                Ok(e) => {
-                    if matches!(e, DebouncedEvent::Write(_)) {
-                        tx.send(ServerLoopEvent::FileChange)?;
-                    }
-                }
-                Err(e) => bail!(e),
-            }
-        }
-    });
-
-    // Watch for ctrl-c (SIGINT)
-    ctrlc::set_handler(move || {
-        tx2.send(ServerLoopEvent::SigInt).unwrap();
-    })?;
-
-    Ok(rx)
-}
-
-fn start_watching(
-    rx: &Option<Receiver<ServerLoopEvent>>,
-    actix_system: &mut SystemRunner,
-    server: Server,
-) -> Result<bool> {
-    // Stop and restart the server initializtion loop when the model file is edited. Exit
-    // the server loop when SIGINT is received.
-    if let Some(ref rx) = rx {
-        match rx.recv()? {
-            ServerLoopEvent::FileChange => {
-                println!("Restarting...");
-                actix_system.block_on(async move {
-                    server.stop(true).await;
-                });
-                Ok(true)
-            }
-            ServerLoopEvent::SigInt => {
-                println!("Exiting");
-                Ok(false)
-            }
-        }
-    } else {
-        Ok(false)
     }
 }
