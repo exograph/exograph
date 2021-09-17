@@ -41,7 +41,7 @@ pub struct ServeCommand {
 
 impl Command for ServeCommand {
     fn run(&self) -> Result<()> {
-        payas_server::main(self.model.clone(), self.watch)
+        payas_server::start_dev_mode(self.model.clone(), self.watch)
     }
 }
 

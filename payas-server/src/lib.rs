@@ -1,10 +1,11 @@
+use actix_web::dev::Server;
 use async_stream::AsyncStream;
 use std::path::Path;
 use std::thread;
 use std::{env, sync::Arc};
 
 use actix_cors::Cors;
-use actix_web::rt::System;
+use actix_web::rt::{System, SystemRunner};
 use actix_web::web::Bytes;
 use actix_web::Error;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
@@ -20,7 +21,7 @@ use payas_parser::builder;
 use serde_json::Value;
 
 use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
-use std::sync::mpsc;
+use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
 mod authentication;
@@ -38,6 +39,7 @@ static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
 const SERVER_PORT_PARAM: &str = "CLAY_SERVER_PORT";
 const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
+const CHECK_CONNECTION_ON_STARTUP: &str = "CLAY_CHECK_CONNECTION_ON_STARTUP";
 
 const FILE_WATCHER_DELAY: Duration = Duration::from_millis(200);
 
@@ -166,99 +168,142 @@ enum ServerLoopEvent {
     SigInt,
 }
 
-pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
-    let (tx, rx) = mpsc::channel();
-
+pub fn start_dev_mode(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
     // Watch for claytip model file edits
-    if watch {
-        let model_file = model_file.as_ref().to_path_buf();
-        let tx = tx.clone();
-        thread::spawn(move || -> Result<()> {
-            let (watcher_tx, watcher_rx) = mpsc::channel();
-            let mut watcher = notify::watcher(watcher_tx, FILE_WATCHER_DELAY)?;
-            watcher.watch(&model_file, RecursiveMode::NonRecursive)?;
-
-            loop {
-                match watcher_rx.recv() {
-                    Ok(e) => {
-                        if matches!(e, DebouncedEvent::Write(_)) {
-                            tx.send(ServerLoopEvent::FileChange)?;
-                        }
-                    }
-                    Err(e) => bail!(e),
-                }
-            }
-        });
-    }
-
-    // Watch for ctrl-c (SIGINT)
-    ctrlc::set_handler(move || {
-        tx.send(ServerLoopEvent::SigInt).unwrap();
-    })?;
+    let rx = if watch {
+        Some(setup_watch(&model_file)?)
+    } else {
+        None
+    };
 
     let mut actix_system = System::new("claytip");
 
     loop {
-        let model_file = model_file.as_ref().to_path_buf();
-
-        let (ast_system, codemap) = parser::parse_file(model_file);
+        let (ast_system, codemap) = parser::parse_file(&model_file);
         let system = builder::build(ast_system, codemap)?;
         let schema = Schema::new(&system);
 
-        let pool_size = env::var(CONNECTION_POOL_SIZE_PARAM)
-            .ok()
-            .map(|pool_str| pool_str.parse::<u32>().unwrap())
-            .unwrap_or(10);
+        let server = start_server(system, schema)?;
 
-        let database = Database::from_env(pool_size)?; // TODO: error handling here
-        database.get_client()?; // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
-
-        let system_info = Arc::new((system, schema, database));
-        let authenticator = Arc::new(JwtAuthenticator::new_from_env());
-
-        let server = HttpServer::new(move || {
-            let cors = cors_from_env();
-
-            App::new()
-                .wrap(cors)
-                .data(system_info.clone())
-                .data(authenticator.clone())
-                .route("/", web::get().to(playground))
-                .route("/", web::post().to(resolve))
-        });
-
-        let server_port = env::var(SERVER_PORT_PARAM)
-            .ok()
-            .map(|port_str| port_str.parse::<u32>().unwrap())
-            .unwrap_or(9876);
-
-        let server_url = format!("0.0.0.0:{}", server_port);
-        let result = server.bind(&server_url);
-
-        if let Ok(server) = result {
-            let addr = server.addrs()[0];
-
-            println!("Started server on {}", addr);
-            let server = server.run();
-
-            // Stop and restart the server initializtion loop when the model file is edited. Exit
-            // the server loop when SIGINT is received.
-            match rx.recv()? {
-                ServerLoopEvent::FileChange => {
-                    println!("Restarting...");
-                    actix_system.block_on(async move {
-                        server.stop(true).await;
-                    });
-                }
-                ServerLoopEvent::SigInt => {
-                    println!("Exiting");
-                    break;
-                }
-            }
-        } else {
-            bail!("Error starting server on requested URL {}", server_url)
+        if !start_watching(&rx, &mut actix_system, server)? {
+            break;
         }
     }
 
     Ok(())
+}
+
+fn create_database() -> Result<Database> {
+    let pool_size = env::var(CONNECTION_POOL_SIZE_PARAM)
+        .ok()
+        .map(|pool_str| pool_str.parse::<u32>().unwrap())
+        .unwrap_or(10);
+
+    let db = Database::from_env(pool_size);
+
+    match db {
+        Ok(db) => {
+            let check_connection = env::var(CHECK_CONNECTION_ON_STARTUP)
+                .ok()
+                .map(|pool_str| pool_str.parse::<bool>().unwrap())
+                .unwrap_or(true);
+            if check_connection {
+                db.get_client()?; // Fail on startup if the database is misconfigured
+            }
+            Ok(db)
+        }
+        e @ Err(_) => e,
+    }
+}
+
+fn start_server(system: ModelSystem, schema: Schema) -> Result<Server> {
+    let database = create_database()?; // TODO: error handling here
+
+    let system_info = Arc::new((system, schema, database));
+    let authenticator = Arc::new(JwtAuthenticator::new_from_env());
+
+    let server = HttpServer::new(move || {
+        let cors = cors_from_env();
+
+        App::new()
+            .wrap(cors)
+            .data(system_info.clone())
+            .data(authenticator.clone())
+            .route("/", web::get().to(playground))
+            .route("/", web::post().to(resolve))
+    });
+
+    let server_port = env::var(SERVER_PORT_PARAM)
+        .ok()
+        .map(|port_str| port_str.parse::<u32>().unwrap())
+        .unwrap_or(9876);
+
+    let server_url = format!("0.0.0.0:{}", server_port);
+    let result = server.bind(&server_url);
+
+    if let Ok(server) = result {
+        let addr = server.addrs()[0];
+
+        println!("Started server on {}", addr);
+        Ok(server.run())
+    } else {
+        bail!("Error starting server on requested URL {}", server_url)
+    }
+}
+
+fn setup_watch(model_file: impl AsRef<Path>) -> Result<Receiver<ServerLoopEvent>> {
+    let (tx, rx) = mpsc::channel();
+
+    let model_file = model_file.as_ref().to_path_buf();
+    let tx2 = tx.clone();
+
+    thread::spawn(move || -> Result<()> {
+        let (watcher_tx, watcher_rx) = mpsc::channel();
+        let mut watcher = notify::watcher(watcher_tx, FILE_WATCHER_DELAY)?;
+        watcher.watch(&model_file, RecursiveMode::NonRecursive)?;
+
+        loop {
+            match watcher_rx.recv() {
+                Ok(e) => {
+                    if matches!(e, DebouncedEvent::Write(_)) {
+                        tx.send(ServerLoopEvent::FileChange)?;
+                    }
+                }
+                Err(e) => bail!(e),
+            }
+        }
+    });
+
+    // Watch for ctrl-c (SIGINT)
+    ctrlc::set_handler(move || {
+        tx2.send(ServerLoopEvent::SigInt).unwrap();
+    })?;
+
+    Ok(rx)
+}
+
+fn start_watching(
+    rx: &Option<Receiver<ServerLoopEvent>>,
+    actix_system: &mut SystemRunner,
+    server: Server,
+) -> Result<bool> {
+    // Stop and restart the server initializtion loop when the model file is edited. Exit
+    // the server loop when SIGINT is received.
+    if let Some(ref rx) = rx {
+        match rx.recv()? {
+            ServerLoopEvent::FileChange => {
+                println!("Restarting...");
+                actix_system.block_on(async move {
+                    server.stop(true).await;
+                });
+                Ok(true)
+            }
+            ServerLoopEvent::SigInt => {
+                println!("Exiting");
+                Ok(false)
+            }
+        }
+    } else {
+        Ok(false)
+    }
 }
