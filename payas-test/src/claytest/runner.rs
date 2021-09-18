@@ -84,14 +84,16 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
     let output = String::from(std::str::from_utf8(&buffer)?);
 
+    eprintln!("clay-server output: {}", output);
     if !output.eq(MAGIC_STRING) {
         bail!("Unexpected output from clay-server: {}", output)
     }
 
     let mut buffer_port = String::new();
     server_stdout.read_line(&mut buffer_port)?; // read port clay-server is using
-    buffer_port.pop(); // remove newline
-    let endpoint = format!("http://127.0.0.1:{}/", buffer_port);
+                                                // take the digits part which represents the port (and ingore other information such as time to start the server)
+    let port_string: String = buffer_port.chars().take_while(|c| c.is_digit(10)).collect();
+    let endpoint = format!("http://127.0.0.1:{}/", port_string);
 
     // spawn threads to continually drain stdout and stderr
     let output_mutex = Arc::new(Mutex::new(String::new()));

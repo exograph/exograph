@@ -40,8 +40,8 @@ pub struct ServeCommand {
 }
 
 impl Command for ServeCommand {
-    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        payas_server::start_dev_mode(self.model.clone(), self.watch, None)
+    fn run(&self, system_start_time: Option<SystemTime>) -> Result<()> {
+        payas_server::start_dev_mode(self.model.clone(), self.watch, system_start_time)
     }
 }
 

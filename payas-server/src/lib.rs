@@ -240,7 +240,7 @@ fn start_server(
 
         match system_start_time {
             Some(system_start_time) => println!(
-                "Server started at {} in {} milliseconds",
+                "Started server on {} in {} milliseconds",
                 addr,
                 SystemTime::now()
                     .duration_since(system_start_time)?
