@@ -18,6 +18,7 @@ serde_json = { version = "1.0", features = [
   "preserve_order",
   "arbitrary_precision",
 ] }
+bincode = "1.2.1"
 openssl = "0.10.30"
 postgres = { version = "0.19.0", features = [
   "with-chrono-0_4",

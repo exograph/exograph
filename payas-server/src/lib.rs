@@ -1,5 +1,8 @@
 use actix_web::dev::Server;
 use async_stream::AsyncStream;
+use bincode::deserialize_from;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
 use std::{env, sync::Arc};
 
@@ -168,7 +171,27 @@ pub fn start_prod_mode(
     model_file: impl AsRef<Path> + Clone,
     system_start_time: Option<SystemTime>,
 ) -> Result<()> {
-    start_dev_mode(model_file, false, system_start_time)
+    let mut actix_system = System::new("claytip");
+
+    let claypot_file_name = format!("{}pot", &model_file.as_ref().to_str().unwrap());
+
+    match File::open(&claypot_file_name) {
+        Ok(file) => {
+            let claypot_file_buffer = BufReader::new(file);
+            let in_file = BufReader::new(claypot_file_buffer);
+            let system: ModelSystem = deserialize_from(in_file).unwrap();
+
+            let server = start_server(system, system_start_time, false)?;
+            actix_system.block_on(server)?;
+
+            Ok(())
+        }
+        Err(_) => {
+            let message = format!("File {} doesn't exist. You need build it with the 'clay build <model-file-name>' command", claypot_file_name);
+            println!("{}", message);
+            Err(anyhow::anyhow!(message))
+        }
+    }
 }
 
 pub fn start_dev_mode(
@@ -179,16 +202,22 @@ pub fn start_dev_mode(
     let mut actix_system = System::new("claytip");
 
     let model_file_clone = model_file.clone();
-    let start_server = move || {
+    let start_server = move |restart| {
+        let system_start_time = if restart {
+            Some(SystemTime::now())
+        } else {
+            system_start_time
+        };
         let (ast_system, codemap) = parser::parse_file(&model_file);
         let system = builder::build(ast_system, codemap)?;
-        let schema = Schema::new(&system);
 
-        start_server(system, schema, system_start_time)
+        start_server(system, system_start_time, restart)
     };
 
-    if watch {
-        start_server().map(|_| ())
+    if !watch {
+        let server = start_server(false)?;
+        actix_system.block_on(server)?;
+        Ok(())
     } else {
         let stop_server = move |server: &mut Server| {
             actix_system.block_on(server.stop(true));
@@ -203,16 +232,14 @@ pub fn start_dev_mode(
     }
 }
 
-fn create_database() -> Result<Database> {
-    Database::from_env(None)
-}
-
 fn start_server(
     system: ModelSystem,
-    schema: Schema,
     system_start_time: Option<SystemTime>,
+    restart: bool,
 ) -> Result<Server> {
-    let database = create_database()?; // TODO: error handling here
+    let database = Database::from_env(None)?; // TODO: error handling here
+
+    let schema = Schema::new(&system);
     let system_info = Arc::new((system, schema, database));
     let authenticator = Arc::new(JwtAuthenticator::new_from_env());
 
@@ -239,13 +266,17 @@ fn start_server(
         let addr = server.addrs()[0];
 
         match system_start_time {
-            Some(system_start_time) => println!(
-                "Started server on {} in {} milliseconds",
-                addr,
-                SystemTime::now()
-                    .duration_since(system_start_time)?
-                    .as_millis(),
-            ),
+            Some(system_start_time) => {
+                let start_string = if restart { "Restarted" } else { "Started" };
+                println!(
+                    "{} server on {} in {} milliseconds",
+                    start_string,
+                    addr,
+                    SystemTime::now()
+                        .duration_since(system_start_time)?
+                        .as_millis(),
+                )
+            }
             None => println!("Started server on {}", addr),
         }
 

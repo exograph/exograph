@@ -1,7 +1,9 @@
 //! Top level subcommands
 
 use anyhow::Result;
-use std::{path::PathBuf, time::SystemTime};
+use bincode::serialize_into;
+use payas_parser::{builder, parser};
+use std::{fs::File, io::BufWriter, path::PathBuf, time::SystemTime};
 
 pub mod model;
 pub mod schema;
@@ -16,8 +18,35 @@ pub struct BuildCommand {
 }
 
 impl Command for BuildCommand {
-    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        todo!("Implmement build command");
+    fn run(&self, system_start_time: Option<SystemTime>) -> Result<()> {
+        let (ast_system, codemap) = parser::parse_file(&self.model);
+        let system = builder::build(ast_system, codemap)?;
+
+        let claypot_file_name = format!("{}pot", &self.model.to_str().unwrap());
+
+        let mut out_file = BufWriter::new(File::create(&claypot_file_name).unwrap());
+        serialize_into(&mut out_file, &system).unwrap();
+
+        match system_start_time {
+            Some(system_start_time) => {
+                let elapsed = SystemTime::now()
+                    .duration_since(system_start_time)?
+                    .as_millis();
+                println!(
+                    "Claypot file '{}' created in {} milliseconds",
+                    claypot_file_name, elapsed
+                );
+            }
+            None => {
+                println!("Claypot file {} created", claypot_file_name);
+            }
+        }
+
+        println!(
+            "You can start the server with using the 'clay-server {}' command",
+            claypot_file_name
+        );
+        Ok(())
     }
 }
 

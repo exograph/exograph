@@ -16,14 +16,16 @@ pub fn with_watch<T, STARTF, STOPF>(
     mut stop: STOPF,
 ) -> Result<()>
 where
-    STARTF: Fn() -> Result<T>,
+    STARTF: Fn(bool) -> Result<T>,
     STOPF: FnMut(&mut T),
 {
     let rx = setup_watch(&watched_path, watch_delay)?;
 
-    loop {
-        let mut server = start()?;
+    let mut restart = false;
 
+    loop {
+        let mut server = start(restart)?;
+        restart = true;
         if !start_watching(&rx, &mut server, &mut stop)? {
             break;
         }
