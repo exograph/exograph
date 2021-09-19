@@ -23,12 +23,20 @@ struct ClayPost {
     variables: serde_json::Value,
 }
 
-pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Result<TestOutput> {
+pub fn run_testfile(
+    testfile: &ParsedTestfile,
+    bootstrap_dburl: String,
+    dev_mode: bool,
+) -> Result<TestOutput> {
     // iterate through our tests
     let mut ctx = TestfileContext::default();
 
     let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name));
-    let dbname = &testfile.unique_dbname;
+    let dbname = if dev_mode {
+        format!("{}_dev", testfile.unique_dbname)
+    } else {
+        testfile.unique_dbname.clone()
+    };
     ctx.dbname = Some(dbname.clone());
 
     // generate a JWT secret
@@ -39,14 +47,14 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
         .collect();
 
     // create a database
-    dropdb_psql(dbname, &bootstrap_dburl).ok(); // clear any existing databases
-    let (dburl_for_clay, dbusername) = createdb_psql(dbname, &bootstrap_dburl)?;
+    dropdb_psql(&dbname, &bootstrap_dburl).ok(); // clear any existing databases
+    let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &bootstrap_dburl)?;
     ctx.dburl = Some(dburl_for_clay.clone());
 
     // create the schema
     println!("{} Initializing schema in {} ...", log_prefix, dbname);
 
-    let cli_child = clay_cmd()
+    let cli_child = cmd("clay")
         .args(["schema", "create", testfile.model_path.as_ref().unwrap()])
         .output()?;
 
@@ -61,18 +69,42 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     // spawn a clay instance
     println!("{} Initializing clay-server ...", log_prefix);
 
-    ctx.server = Some(
-        clay_cmd()
-            .args(["serve", testfile.model_path.as_ref().unwrap()])
-            .env("CLAY_DATABASE_URL", &dburl_for_clay)
-            .env("CLAY_DATABASE_USER", dbusername)
-            .env("CLAY_JWT_SECRET", &jwtsecret)
-            .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .context("clay-server failed to start")?,
-    );
+    if dev_mode {
+        ctx.server = Some(
+            cmd("clay")
+                .args(["serve", testfile.model_path.as_ref().unwrap()])
+                .env("CLAY_DATABASE_URL", &dburl_for_clay)
+                .env("CLAY_DATABASE_USER", dbusername)
+                .env("CLAY_JWT_SECRET", &jwtsecret)
+                .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .context("clay-server failed to start")?,
+        );
+    } else {
+        let cli_child = cmd("clay")
+            .args(["build", testfile.model_path.as_ref().unwrap()])
+            .output()?;
+
+        if !cli_child.status.success() {
+            eprintln!("{}", std::str::from_utf8(&cli_child.stderr).unwrap());
+            bail!("Could not build the claypot.");
+        }
+
+        ctx.server = Some(
+            cmd("clay-server")
+                .args([testfile.model_path.as_ref().unwrap()])
+                .env("CLAY_DATABASE_URL", &dburl_for_clay)
+                .env("CLAY_DATABASE_USER", dbusername)
+                .env("CLAY_JWT_SECRET", &jwtsecret)
+                .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .context("clay-server failed to start")?,
+        );
+    }
 
     // wait for it to start
     const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
@@ -84,7 +116,7 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
     let output = String::from(std::str::from_utf8(&buffer)?);
 
-    eprintln!("clay-server output: {}", output);
+    eprintln!("clay serve output: {}", output);
     if !output.eq(MAGIC_STRING) {
         bail!("Unexpected output from clay-server: {}", output)
     }
@@ -146,18 +178,19 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
         log_prefix: log_prefix.to_string(),
         result: success,
         output,
+        dev_mode,
     })
     // implicit ctx drop
 }
 
-fn clay_cmd() -> Command {
+fn cmd(binary_name: &str) -> Command {
     match env::var("CLAY_USE_CARGO") {
         Ok(cargo_env) if &cargo_env == "1" => {
             let mut cmd = Command::new("cargo");
-            cmd.args(["run", "--bin", "clay", "--"]);
+            cmd.args(["run", "--bin", binary_name, "--"]);
             cmd
         }
-        _ => Command::new("clay"),
+        _ => Command::new(binary_name),
     }
 }
 

@@ -19,7 +19,7 @@ pub enum TestfileOperation {
     },
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ParsedTestfile {
     pub name: String,
     pub unique_dbname: String,
