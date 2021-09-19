@@ -61,14 +61,16 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     // spawn a clay instance
     println!("{} Initializing clay-server ...", log_prefix);
 
+    let check_on_startup = if rand::random() { "true" } else { "false" };
+
     ctx.server = Some(
         clay_cmd()
             .args(["serve", testfile.model_path.as_ref().unwrap()])
             .env("CLAY_DATABASE_URL", &dburl_for_clay)
             .env("CLAY_DATABASE_USER", dbusername)
             .env("CLAY_JWT_SECRET", &jwtsecret)
-            .env("CLAY_CONNECTION_POOL_SIZE", "1")
-            .env("CLAY_CHECK_CONNECTION_ON_STARTUP", "false")
+            .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
+            .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
             .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
