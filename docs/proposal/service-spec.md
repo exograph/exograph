@@ -127,14 +127,16 @@ concertNotification(id: $id) {
 And after receiving a response, another query to get the next concert.
 
 ```graphql
-concerts(where: {startDate: {gte: <the concerts-end-time; current time if no concert is provided>}}, orderBy: {startTime: ASC}, limit: 1) {
-  id # For generating the URL
-  title
-  mainArtists: concertArtists(where: {role: {eq: "main"}}, orderBy: {rank: ASC}) {
-    ...artistInfo
+query {
+  concerts(where: {startDate: {gte: <the concerts-end-time; current time if no concert is provided>}}, orderBy: {startTime: ASC}, limit: 1) {
+    id # For generating the URL
+    title
+    mainArtists: concertArtists(where: {role: {eq: "main"}}, orderBy: {rank: ASC}) {
+      ...artistInfo
+    }
+    startTime # to show the date
+    # We don't show accompanying arists for the next concert
   }
-  startTime # to show the date
-  # We don't show accompanying arists for the next concert
 }
 ```
 
@@ -154,7 +156,9 @@ service ConcertNotificationService {
 
 Note that `EmailService` is defined in the earlier section.
 
-The `export` keyword implies that the query or mutation should be directly exposed through Claytip's GraphQL API. The @injected annotation specifies dependencies to be injected (and not supplied by the user through the GraphQL API). The `@injected` parameters resolve appropriately based on the type. For example, `Clay` and `EmailService` will resolve to a singleton object, whereas `AuthContext` will resolve to the current user.
+The `export` keyword implies that the query or mutation should be directly exposed through Claytip's GraphQL API. The @injected annotation specifies dependencies to be injected (and not supplied by the user through the GraphQL API).
+
+The system (Claytip) supplies the `@injected` parameters based on the type. For example, the system will pass a singleton object for the parameters of type `Clay` and `EmailService`, whereas it will pass the current `AuthContext` based on the information in the request's header.
 
 Note that a service may forgo the `EmailService` dependency and manage the email sending all by itself.
 

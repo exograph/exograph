@@ -74,7 +74,7 @@ We want to log which user has caused a mutation.
 
 ```clay
 @external("mutation-tracing.wasm")
-interceptor Loggig {
+interceptor Logging {
   @before("mutation *")
   intercept logMutations(authContext: AuthContext, operation: Operation): BeforeInterceptResult
 }
@@ -103,7 +103,7 @@ Note that the interface for `Operation` is such that there is no way to get the 
 ```clay
 @external("mutation-tracing.wasm")
 interceptor LogMutations {
-  @before("mutation Account.*")
+  @before("mutation Account::*")
   intercept logMutations(authContext: AuthContext, operation: Operation)
 }
 ```
@@ -124,11 +124,11 @@ An alternative equivalent way could be:
 
 ```clay
 @external("payment.wasm")
-intercetor PaymentProcessing {
+interceptor PaymentProcessing {
   intercept updateExpiry(clay: Clay, operation: Operation, returnValue: OperationResult)
 }
 
-@on(mutaiton="*", intercept="PaymentProcessing.updateExpiry")
+@on(mutation="*", intercept="PaymentProcessing.updateExpiry")
 model Payment {
   ...
 }
