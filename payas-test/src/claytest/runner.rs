@@ -67,6 +67,8 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
             .env("CLAY_DATABASE_URL", &dburl_for_clay)
             .env("CLAY_DATABASE_USER", dbusername)
             .env("CLAY_JWT_SECRET", &jwtsecret)
+            .env("CLAY_CONNECTION_POOL_SIZE", "1")
+            .env("CLAY_CHECK_CONNECTION_ON_STARTUP", "false")
             .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
