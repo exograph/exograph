@@ -91,7 +91,7 @@ fn expand_type_no_fields(
     let columns = resolved_type
         .fields
         .iter()
-        .flat_map(|field| create_column(field, &table_name, resolved_types))
+        .flat_map(|field| create_column(field, &table_name, resolved_types, false))
         .collect();
 
     let table = PhysicalTable {
@@ -358,6 +358,7 @@ fn create_column(
     field: &ResolvedField,
     table_name: &str,
     env: &MappedArena<ResolvedType>,
+    optional: bool,
 ) -> Option<PhysicalColumn> {
     match &field.typ {
         ResolvedFieldType::Plain(type_name) => {
@@ -379,6 +380,7 @@ fn create_column(
                     } else {
                         false
                     },
+                    not_null: !optional,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -398,13 +400,12 @@ fn create_column(
                         },
                         is_pk: false,
                         is_autoincrement: false,
+                        not_null: true,
                     })
                 }
             }
         }
-        ResolvedFieldType::Optional(_) => {
-            todo!()
-        }
+        ResolvedFieldType::Optional(_) => create_column(field, table_name, env, true),
         ResolvedFieldType::List(typ) => {
             // unwrap list to base type
             let mut underlying_typ = typ;
@@ -441,6 +442,7 @@ fn create_column(
                     typ: determine_column_type(&pt, field),
                     is_pk: false,
                     is_autoincrement: false,
+                    not_null: true,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column
@@ -671,7 +673,7 @@ fn create_relation(
                     }
                 }
             }
-            ResolvedFieldType::Optional(_) => todo!(),
+            ResolvedFieldType::Optional(_) => panic!(),
         }
     }
 }

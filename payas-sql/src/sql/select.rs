@@ -123,6 +123,7 @@ mod tests {
                 typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                 is_pk: false,
                 is_autoincrement: false,
+                not_null: false,
             }],
         };
 
@@ -165,6 +166,7 @@ mod tests {
                     typ: PhysicalColumnType::String { length: None },
                     is_pk: false,
                     is_autoincrement: false,
+                    not_null: false,
                 },
                 PhysicalColumn {
                     table_name: "people".to_string(),
@@ -172,6 +174,7 @@ mod tests {
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_autoincrement: false,
+                    not_null: false,
                 },
             ],
         };

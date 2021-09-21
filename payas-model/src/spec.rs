@@ -109,6 +109,7 @@ impl FromModel<&PhysicalColumn> for ColumnSpec {
             db_type: column.typ.clone(),
             is_pk: column.is_pk,
             is_autoincrement: column.is_autoincrement,
+            not_null: column.not_null,
         }
     }
 }
@@ -133,6 +134,10 @@ impl ToModel for ColumnSpec {
                 "consider adding a field to `{}` of type `[{}]` to create a one-to-many relationship",
                 ref_table_name, to_model_name(&self.table_name),
             )));
+        }
+
+        if !self.not_null {
+            data_type += "?"
         }
 
         WithIssues {

@@ -113,7 +113,9 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
     // run the init section
     println!("{} Initializing database...", log_prefix);
     for operation in testfile.init_operations.iter() {
-        run_operation(&endpoint, operation, &jwtsecret, &dburl_for_clay)??
+        run_operation(&endpoint, operation, &jwtsecret, &dburl_for_clay).with_context(|| {
+            format!("While initializing database for testfile {}", testfile.name)
+        })??
     }
 
     // run test
@@ -220,7 +222,10 @@ fn run_operation(
                 );
             }
 
-            let json = resp.json().context("Error parsing response into JSON")?;
+            let json = resp
+                .json()
+                .with_context(|| format!("{:?}", resp.text()))
+                .context("Error parsing response into JSON")?;
             let body: serde_json::Value = json;
 
             match expected_payload {

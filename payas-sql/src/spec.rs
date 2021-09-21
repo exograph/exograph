@@ -228,6 +228,7 @@ pub struct ColumnSpec {
     pub db_type: PhysicalColumnType,
     pub is_pk: bool,
     pub is_autoincrement: bool,
+    pub not_null: bool,
 }
 
 impl ColumnSpec {
@@ -288,6 +289,20 @@ impl ColumnSpec {
             }
         };
 
+        let db_not_null_query = format!(
+            "
+            SELECT attnotnull
+            FROM pg_attribute
+            WHERE attrelid = '{}'::regclass AND attname = '{}'",
+            table_name, column_name
+        );
+
+        let not_null = db_client
+            .query::<str>(db_not_null_query.as_str(), &[])?
+            .get(0)
+            .map(|row| row.get("attnotnull"))
+            .unwrap();
+
         let serial_columns = db_client
             .query(serial_columns_query, &[])?
             .iter()
@@ -302,6 +317,7 @@ impl ColumnSpec {
                 is_pk,
                 is_autoincrement: serial_columns
                     .contains(&format!("{}_{}_seq", table_name, column_name)),
+                not_null,
             }),
             issues,
         })
@@ -316,9 +332,18 @@ impl ColumnSpec {
             .db_type
             .to_sql(table_name, &self.column_name, self.is_autoincrement);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
+        let not_null_str = if self.not_null && !self.is_pk {
+            // primary keys are implied to be not null
+            " NOT NULL"
+        } else {
+            ""
+        };
 
         SQLStatement {
-            statement: format!("\"{}\" {}{}", self.column_name, statement, pk_str),
+            statement: format!(
+                "\"{}\" {}{}{}",
+                self.column_name, statement, pk_str, not_null_str
+            ),
             foreign_constraints,
         }
     }
