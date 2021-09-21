@@ -400,7 +400,7 @@ fn create_column(
                         },
                         is_pk: false,
                         is_autoincrement: false,
-                        not_null: true,
+                        not_null: false, // TODO: is this correct?
                     })
                 }
             }
@@ -435,14 +435,15 @@ fn create_column(
                 for _ in 0..depth {
                     pt = PrimitiveType::Array(Box::new(pt))
                 }
+                let column_type = determine_column_type(&pt, field);
 
                 Some(PhysicalColumn {
                     table_name: table_name.to_string(),
                     column_name: field.column_name.clone(),
-                    typ: determine_column_type(&pt, field),
+                    typ: column_type,
                     is_pk: false,
                     is_autoincrement: false,
-                    not_null: true,
+                    not_null: !optional,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column

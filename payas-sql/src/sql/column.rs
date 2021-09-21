@@ -15,7 +15,7 @@ pub struct PhysicalColumn {
     pub typ: PhysicalColumnType,
     pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
-    pub not_null: bool,         // not null constraint?
+    pub not_null: bool,         // not null constraint
 }
 
 impl From<ColumnSpec> for PhysicalColumn {

@@ -101,7 +101,12 @@ async fn resolve(
                 Err(err) => {
                     let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         yield to_bytes_static(r#"{"errors": [{"message":""#);
-                        yield to_bytes(format!("{}", err.chain().last().unwrap()));
+                        yield to_bytes(
+                            // TODO: escape PostgreSQL errors properly here
+                            format!("{}", err.chain().last().unwrap())
+                                .replace("\"", "")
+                                .replace("\n", "; ")
+                        );
                         eprintln!("{:?}", err);
                         yield to_bytes_static(r#""}]}"#);
                     };
