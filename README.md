@@ -57,7 +57,13 @@ CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://loca
 **Note**
 If you change the treesitter grammar source file, `cargo watch` doesn't seem pick up the change, so you need to run the non-watch version.
 
-5. Run the integration tests
+5. Run unit and integration tests
+
+```
+CLAY_TEST_DATABASE_URL=postgresql://localhost:5432 CLAY_TEST_DATABASE_USER=$USERNAME cargo test
+```
+
+6. Run blackbox integration tests
 
 ```
 CLAY_USE_CARGO=1 CLAY_TEST_DATABASE_URL=postgresql://$USERNAME@localhost:5432 cargo run --bin clay test integration-tests
