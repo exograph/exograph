@@ -7,8 +7,9 @@ use super::{mapped_arena::MappedArena, operation::*};
 use crate::sql::PhysicalTable;
 
 use super::types::GqlType;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelSystem {
     pub types: SerializableSlab<GqlType>,
     pub contexts: SerializableSlab<ContextType>,
