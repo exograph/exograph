@@ -80,6 +80,7 @@ pub struct TestOutput {
     pub log_prefix: String,
     pub result: TestResult,
     pub output: String,
+    pub dev_mode: bool,
 }
 
 impl TestOutput {
@@ -108,24 +109,23 @@ impl Ord for TestOutput {
 
 impl fmt::Display for TestOutput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let prefix = format!("{} (dev-mode: {})", self.log_prefix, self.dev_mode);
+
         match &self.result {
-            TestResult::Success => writeln!(
-                f,
-                "{} {}",
-                self.log_prefix,
-                ansi_term::Color::Green.paint("OK")
-            ),
+            TestResult::Success => {
+                writeln!(f, "{} {}", prefix, ansi_term::Color::Green.paint("OK"))
+            }
             TestResult::AssertionFail(e) => writeln!(
                 f,
                 "{} {}\n{:?}",
-                self.log_prefix,
+                prefix,
                 ansi_term::Color::Yellow.paint("ASSERTION FAILED"),
                 e
             ),
             TestResult::SetupFail(e) => writeln!(
                 f,
                 "{} {}\n{:?}",
-                self.log_prefix,
+                prefix,
                 ansi_term::Color::Red.paint("TEST SETUP FAILED"),
                 e
             ),

@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use payas_model::spec::FromModel;
-use std::path::PathBuf;
+use std::{path::PathBuf, time::SystemTime};
 
 use payas_parser::{builder, parser};
 use payas_sql::spec::SchemaSpec;
@@ -15,7 +15,7 @@ pub struct CreateCommand {
 }
 
 impl Command for CreateCommand {
-    fn run(&self) -> Result<()> {
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         let (ast_system, codemap) = parser::parse_file(&self.model);
         let system = builder::build(ast_system, codemap)?;
 
@@ -31,7 +31,7 @@ pub struct VerifyCommand {
 }
 
 impl Command for VerifyCommand {
-    fn run(&self) -> Result<()> {
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         todo!("Implmement verify command");
     }
 }
