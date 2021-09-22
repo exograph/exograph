@@ -116,7 +116,6 @@ pub fn run_testfile(
     server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
     let output = String::from(std::str::from_utf8(&buffer)?);
 
-    eprintln!("clay serve output: {}", output);
     if !output.eq(MAGIC_STRING) {
         bail!("Unexpected output from clay-server: {}", output)
     }
