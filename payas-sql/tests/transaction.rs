@@ -146,6 +146,20 @@ fn basic_transaction() {
                 .unwrap();
 
             assert_eq!(result, vec![16i16, 20i16]);
+
+            // Check that the transaction did commit by executing a standalone query after running the transaction script
+            let selected_ages: Vec<_> = db
+                .get_client()
+                .unwrap()
+                .query("SELECT age FROM ages", &[])
+                .unwrap()
+                .iter()
+                .map(|row| {
+                    let age: i16 = row.get("age");
+                    age
+                })
+                .collect();
+            assert_eq!(selected_ages, vec![16i16, 20i16]);
         },
     );
 }
