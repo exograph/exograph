@@ -220,10 +220,7 @@ fn run_operation(
             if let Some(auth) = auth {
                 let mut auth = auth.clone();
                 let auth_ref = auth.as_object_mut().unwrap();
-                let epoch_time = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
+                let epoch_time = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
 
                 // populate token with expiry information
                 auth_ref.insert("iat".to_string(), json!(epoch_time));

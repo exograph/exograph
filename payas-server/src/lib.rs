@@ -272,9 +272,7 @@ fn start_server(
                     "{} server on {} in {} milliseconds",
                     start_string,
                     addr,
-                    SystemTime::now()
-                        .duration_since(system_start_time)?
-                        .as_millis(),
+                    system_start_time.elapsed()?.as_millis(),
                 )
             }
             None => println!("Started server on {}", addr),
