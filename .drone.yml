@@ -46,7 +46,9 @@ steps:
     - name: sccache
       path: /sccache
     commands:
-      - CLAY_USE_CARGO=1 CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 cargo run --bin clay test integration-tests
+      - cargo build --release
+      - export PATH=./target/release:$PATH
+      - CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 clay test integration-tests
 
   - name: slack-end
     image: plugins/slack

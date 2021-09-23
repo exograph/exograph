@@ -69,6 +69,8 @@ pub fn run_testfile(
     // spawn a clay instance
     println!("{} Initializing clay-server ...", log_prefix);
 
+    let check_on_startup = if rand::random() { "true" } else { "false" };
+
     if dev_mode {
         ctx.server = Some(
             cmd("clay")
@@ -76,6 +78,8 @@ pub fn run_testfile(
                 .env("CLAY_DATABASE_URL", &dburl_for_clay)
                 .env("CLAY_DATABASE_USER", dbusername)
                 .env("CLAY_JWT_SECRET", &jwtsecret)
+                .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
+                .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
                 .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
@@ -83,12 +87,12 @@ pub fn run_testfile(
                 .context("clay-server failed to start")?,
         );
     } else {
-        let cli_child = cmd("clay")
+        let build_child = cmd("clay")
             .args(["build", testfile.model_path.as_ref().unwrap()])
             .output()?;
 
-        if !cli_child.status.success() {
-            eprintln!("{}", std::str::from_utf8(&cli_child.stderr).unwrap());
+        if !build_child.status.success() {
+            eprintln!("{}", std::str::from_utf8(&build_child.stderr).unwrap());
             bail!("Could not build the claypot.");
         }
 
@@ -98,13 +102,15 @@ pub fn run_testfile(
                 .env("CLAY_DATABASE_URL", &dburl_for_clay)
                 .env("CLAY_DATABASE_USER", dbusername)
                 .env("CLAY_JWT_SECRET", &jwtsecret)
+                .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
+                .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
                 .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .spawn()
                 .context("clay-server failed to start")?,
         );
-    }
+    };
 
     // wait for it to start
     const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
@@ -116,7 +122,6 @@ pub fn run_testfile(
     server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
     let output = String::from(std::str::from_utf8(&buffer)?);
 
-    eprintln!("clay serve output: {}", output);
     if !output.eq(MAGIC_STRING) {
         bail!("Unexpected output from clay-server: {}", output)
     }
@@ -215,10 +220,7 @@ fn run_operation(
             if let Some(auth) = auth {
                 let mut auth = auth.clone();
                 let auth_ref = auth.as_object_mut().unwrap();
-                let epoch_time = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
+                let epoch_time = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
 
                 // populate token with expiry information
                 auth_ref.insert("iat".to_string(), json!(epoch_time));

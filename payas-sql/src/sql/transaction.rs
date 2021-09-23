@@ -35,6 +35,7 @@ impl<'a> TransactionScript<'a> {
 
                 let result = last.execute_and_extract(&mut tx, extractor);
                 println!("Committing transaction");
+                tx.commit()?;
                 result
             }
         }

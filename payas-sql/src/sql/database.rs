@@ -54,9 +54,8 @@ impl<'a> Database {
     ) -> Result<Self> {
         use std::str::FromStr;
 
-        let mut config = Config::from_str(&url)
-            .context("Failed to parse PostgreSQL connection string")
-            .unwrap();
+        let mut config =
+            Config::from_str(&url).context("Failed to parse PostgreSQL connection string")?;
 
         if let Some(user) = &user {
             config.user(user);

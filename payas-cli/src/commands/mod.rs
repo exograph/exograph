@@ -29,9 +29,7 @@ impl Command for BuildCommand {
 
         match system_start_time {
             Some(system_start_time) => {
-                let elapsed = SystemTime::now()
-                    .duration_since(system_start_time)?
-                    .as_millis();
+                let elapsed = system_start_time.elapsed()?.as_millis();
                 println!(
                     "Claypot file '{}' created in {} milliseconds",
                     claypot_file_name, elapsed

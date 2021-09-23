@@ -272,12 +272,11 @@ fn start_server(
                     "{} server on {} in {}",
                     start_string,
                     addr,
-                    duration_since_string(SystemTime::now().duration_since(system_start_time)?)
+                    duration_since_string(system_start_time.elapsed()?)
                 )
             }
             None => println!("Started server on {}", addr),
         }
-
         Ok(server.run())
     } else {
         bail!("Error starting server on requested URL {}", server_url)
