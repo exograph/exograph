@@ -269,17 +269,22 @@ fn start_server(
             Some(system_start_time) => {
                 let start_string = if restart { "Restarted" } else { "Started" };
                 println!(
-                    "{} server on {} in {} milliseconds",
+                    "{} server on {} in {}",
                     start_string,
                     addr,
-                    system_start_time.elapsed()?.as_millis(),
+                    duration_since_string(system_start_time.elapsed()?)
                 )
             }
             None => println!("Started server on {}", addr),
         }
-
         Ok(server.run())
     } else {
         bail!("Error starting server on requested URL {}", server_url)
     }
+}
+
+fn duration_since_string(duration: Duration) -> String {
+    let micros = duration.as_micros();
+
+    format!("{:.2} milliseconds", (micros as f64 / 1000.0))
 }
