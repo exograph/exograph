@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use once_cell::sync::OnceCell;
 use std::env;
 
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
@@ -17,12 +18,10 @@ const PASSWORD_PARAM: &str = "CLAY_DATABASE_PASSWORD";
 const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
 const CHECK_CONNECTION_ON_STARTUP: &str = "CLAY_CHECK_CONNECTION_ON_STARTUP";
 
-#[derive(Clone)]
 pub struct Database {
-    url: String,
-    user: Option<String>,
-    password: Option<String>,
-    pool: Pool<PostgresConnectionManager<MakeTlsConnector>>,
+    config: Config,
+    pool_size: u32,
+    pool: OnceCell<Pool<PostgresConnectionManager<MakeTlsConnector>>>,
 }
 
 impl<'a> Database {
@@ -54,6 +53,7 @@ impl<'a> Database {
         db_name_override: Option<String>,
     ) -> Result<Self> {
         use std::str::FromStr;
+
         let mut config =
             Config::from_str(&url).context("Failed to parse PostgreSQL connection string")?;
 
@@ -71,29 +71,37 @@ impl<'a> Database {
             bail!("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER")
         }
 
-        let mut builder = SslConnector::builder(SslMethod::tls())?;
-        builder.set_verify(SslVerifyMode::NONE);
-        let connector = MakeTlsConnector::new(builder.build());
+        let pool = OnceCell::new();
 
-        let manager = PostgresConnectionManager::new(config, connector);
-        let pool_builder = Pool::builder().max_size(pool_size);
-        let pool = if check_connection {
-            pool_builder.build(manager)?
-        } else {
-            pool_builder.build_unchecked(manager)
+        let db = Self {
+            config,
+            pool_size,
+            pool,
         };
 
-        Ok(Self {
-            url,
-            user,
-            password,
-            pool,
-        })
+        if check_connection {
+            db.get_pool();
+        }
+
+        Ok(db)
     }
 
     pub fn get_client(
         &self,
     ) -> Result<PooledConnection<PostgresConnectionManager<MakeTlsConnector>>> {
-        Ok(self.pool.get()?)
+        Ok(self.get_pool().get()?)
+    }
+
+    fn get_pool(&self) -> &Pool<PostgresConnectionManager<MakeTlsConnector>> {
+        self.pool.get_or_init(|| {
+            let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+            builder.set_verify(SslVerifyMode::NONE);
+            let connector = MakeTlsConnector::new(builder.build());
+
+            let manager = PostgresConnectionManager::new(self.config.clone(), connector);
+            let pool_builder = Pool::builder().max_size(self.pool_size);
+
+            pool_builder.build(manager).unwrap()
+        })
     }
 }
