@@ -460,6 +460,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1669,9 +1678,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.7.2"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af8b08b04175473088b46763e51ee54da5f9a164bc162f615b91bc179dbf15a3"
+checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "opaque-debug"
@@ -1754,12 +1763,14 @@ name = "payas-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bincode",
  "clap",
  "payas-model",
  "payas-parser",
  "payas-server",
  "payas-sql",
  "payas-test",
+ "serde",
 ]
 
 [[package]]
@@ -1800,6 +1811,7 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "async-stream",
+ "bincode",
  "chrono",
  "ctrlc",
  "futures-util",
@@ -1827,6 +1839,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "maybe-owned",
+ "once_cell",
  "openssl",
  "postgres",
  "postgres-openssl",

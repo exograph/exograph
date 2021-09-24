@@ -23,12 +23,20 @@ struct ClayPost {
     variables: serde_json::Value,
 }
 
-pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Result<TestOutput> {
+pub fn run_testfile(
+    testfile: &ParsedTestfile,
+    bootstrap_dburl: String,
+    dev_mode: bool,
+) -> Result<TestOutput> {
     // iterate through our tests
     let mut ctx = TestfileContext::default();
 
     let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name));
-    let dbname = &testfile.unique_dbname;
+    let dbname = if dev_mode {
+        format!("{}_dev", testfile.unique_dbname)
+    } else {
+        testfile.unique_dbname.clone()
+    };
     ctx.dbname = Some(dbname.clone());
 
     // generate a JWT secret
@@ -39,14 +47,14 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
         .collect();
 
     // create a database
-    dropdb_psql(dbname, &bootstrap_dburl).ok(); // clear any existing databases
-    let (dburl_for_clay, dbusername) = createdb_psql(dbname, &bootstrap_dburl)?;
+    dropdb_psql(&dbname, &bootstrap_dburl).ok(); // clear any existing databases
+    let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &bootstrap_dburl)?;
     ctx.dburl = Some(dburl_for_clay.clone());
 
     // create the schema
     println!("{} Initializing schema in {} ...", log_prefix, dbname);
 
-    let cli_child = clay_cmd()
+    let cli_child = cmd("clay")
         .args(["schema", "create", testfile.model_path.as_ref().unwrap()])
         .output()?;
 
@@ -63,20 +71,46 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
 
     let check_on_startup = if rand::random() { "true" } else { "false" };
 
-    ctx.server = Some(
-        clay_cmd()
-            .args(["serve", testfile.model_path.as_ref().unwrap()])
-            .env("CLAY_DATABASE_URL", &dburl_for_clay)
-            .env("CLAY_DATABASE_USER", dbusername)
-            .env("CLAY_JWT_SECRET", &jwtsecret)
-            .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
-            .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
-            .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .context("clay-server failed to start")?,
-    );
+    if dev_mode {
+        ctx.server = Some(
+            cmd("clay")
+                .args(["serve", testfile.model_path.as_ref().unwrap()])
+                .env("CLAY_DATABASE_URL", &dburl_for_clay)
+                .env("CLAY_DATABASE_USER", dbusername)
+                .env("CLAY_JWT_SECRET", &jwtsecret)
+                .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
+                .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
+                .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .context("clay-server failed to start")?,
+        );
+    } else {
+        let build_child = cmd("clay")
+            .args(["build", testfile.model_path.as_ref().unwrap()])
+            .output()?;
+
+        if !build_child.status.success() {
+            eprintln!("{}", std::str::from_utf8(&build_child.stderr).unwrap());
+            bail!("Could not build the claypot.");
+        }
+
+        ctx.server = Some(
+            cmd("clay-server")
+                .args([testfile.model_path.as_ref().unwrap()])
+                .env("CLAY_DATABASE_URL", &dburl_for_clay)
+                .env("CLAY_DATABASE_USER", dbusername)
+                .env("CLAY_JWT_SECRET", &jwtsecret)
+                .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
+                .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
+                .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .context("clay-server failed to start")?,
+        );
+    };
 
     // wait for it to start
     const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
@@ -94,8 +128,9 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
 
     let mut buffer_port = String::new();
     server_stdout.read_line(&mut buffer_port)?; // read port clay-server is using
-    buffer_port.pop(); // remove newline
-    let endpoint = format!("http://127.0.0.1:{}/", buffer_port);
+                                                // take the digits part which represents the port (and ingore other information such as time to start the server)
+    let port_string: String = buffer_port.chars().take_while(|c| c.is_digit(10)).collect();
+    let endpoint = format!("http://127.0.0.1:{}/", port_string);
 
     // spawn threads to continually drain stdout and stderr
     let output_mutex = Arc::new(Mutex::new(String::new()));
@@ -148,18 +183,19 @@ pub fn run_testfile(testfile: &ParsedTestfile, bootstrap_dburl: String) -> Resul
         log_prefix: log_prefix.to_string(),
         result: success,
         output,
+        dev_mode,
     })
     // implicit ctx drop
 }
 
-fn clay_cmd() -> Command {
+fn cmd(binary_name: &str) -> Command {
     match env::var("CLAY_USE_CARGO") {
         Ok(cargo_env) if &cargo_env == "1" => {
             let mut cmd = Command::new("cargo");
-            cmd.args(["run", "--bin", "clay", "--"]);
+            cmd.args(["run", "--bin", binary_name, "--"]);
             cmd
         }
-        _ => Command::new("clay"),
+        _ => Command::new(binary_name),
     }
 }
 
@@ -184,10 +220,7 @@ fn run_operation(
             if let Some(auth) = auth {
                 let mut auth = auth.clone();
                 let auth_ref = auth.as_object_mut().unwrap();
-                let epoch_time = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
+                let epoch_time = SystemTime::UNIX_EPOCH.elapsed().unwrap().as_secs();
 
                 // populate token with expiry information
                 auth_ref.insert("iat".to_string(), json!(epoch_time));

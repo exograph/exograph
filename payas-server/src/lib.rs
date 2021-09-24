@@ -1,6 +1,9 @@
+use actix_web::dev::Server;
 use async_stream::AsyncStream;
+use bincode::deserialize_from;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::Path;
-use std::thread;
 use std::{env, sync::Arc};
 
 use actix_cors::Cors;
@@ -19,14 +22,13 @@ use payas_model::{model::system::ModelSystem, sql::database::Database};
 use payas_parser::builder;
 use serde_json::Value;
 
-use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
-use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 mod authentication;
 mod data;
 mod execution;
 mod introspection;
+mod watcher;
 
 pub use payas_parser::ast;
 pub use payas_parser::parser;
@@ -37,7 +39,6 @@ use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
 
 const SERVER_PORT_PARAM: &str = "CLAY_SERVER_PORT";
-const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
 
 const FILE_WATCHER_DELAY: Duration = Duration::from_millis(200);
 
@@ -166,99 +167,124 @@ enum ServerLoopEvent {
     SigInt,
 }
 
-pub fn main(model_file: impl AsRef<Path>, watch: bool) -> Result<()> {
-    let (tx, rx) = mpsc::channel();
-
-    // Watch for claytip model file edits
-    if watch {
-        let model_file = model_file.as_ref().to_path_buf();
-        let tx = tx.clone();
-        thread::spawn(move || -> Result<()> {
-            let (watcher_tx, watcher_rx) = mpsc::channel();
-            let mut watcher = notify::watcher(watcher_tx, FILE_WATCHER_DELAY)?;
-            watcher.watch(&model_file, RecursiveMode::NonRecursive)?;
-
-            loop {
-                match watcher_rx.recv() {
-                    Ok(e) => {
-                        if matches!(e, DebouncedEvent::Write(_)) {
-                            tx.send(ServerLoopEvent::FileChange)?;
-                        }
-                    }
-                    Err(e) => bail!(e),
-                }
-            }
-        });
-    }
-
-    // Watch for ctrl-c (SIGINT)
-    ctrlc::set_handler(move || {
-        tx.send(ServerLoopEvent::SigInt).unwrap();
-    })?;
-
+pub fn start_prod_mode(
+    model_file: impl AsRef<Path> + Clone,
+    system_start_time: Option<SystemTime>,
+) -> Result<()> {
     let mut actix_system = System::new("claytip");
 
-    loop {
-        let model_file = model_file.as_ref().to_path_buf();
+    let claypot_file_name = format!("{}pot", &model_file.as_ref().to_str().unwrap());
 
-        let (ast_system, codemap) = parser::parse_file(model_file);
-        let system = builder::build(ast_system, codemap)?;
-        let schema = Schema::new(&system);
+    match File::open(&claypot_file_name) {
+        Ok(file) => {
+            let claypot_file_buffer = BufReader::new(file);
+            let in_file = BufReader::new(claypot_file_buffer);
+            let system: ModelSystem = deserialize_from(in_file).unwrap();
 
-        let pool_size = env::var(CONNECTION_POOL_SIZE_PARAM)
-            .ok()
-            .map(|pool_str| pool_str.parse::<u32>().unwrap())
-            .unwrap_or(10);
+            let server = start_server(system, system_start_time, false)?;
+            actix_system.block_on(server)?;
 
-        let database = Database::from_env(pool_size)?; // TODO: error handling here
-        database.get_client()?; // Fail on startup if the database is misconfigured (TODO: provide an option to not do so)
-
-        let system_info = Arc::new((system, schema, database));
-        let authenticator = Arc::new(JwtAuthenticator::new_from_env());
-
-        let server = HttpServer::new(move || {
-            let cors = cors_from_env();
-
-            App::new()
-                .wrap(cors)
-                .data(system_info.clone())
-                .data(authenticator.clone())
-                .route("/", web::get().to(playground))
-                .route("/", web::post().to(resolve))
-        });
-
-        let server_port = env::var(SERVER_PORT_PARAM)
-            .ok()
-            .map(|port_str| port_str.parse::<u32>().unwrap())
-            .unwrap_or(9876);
-
-        let server_url = format!("0.0.0.0:{}", server_port);
-        let result = server.bind(&server_url);
-
-        if let Ok(server) = result {
-            let addr = server.addrs()[0];
-
-            println!("Started server on {}", addr);
-            let server = server.run();
-
-            // Stop and restart the server initializtion loop when the model file is edited. Exit
-            // the server loop when SIGINT is received.
-            match rx.recv()? {
-                ServerLoopEvent::FileChange => {
-                    println!("Restarting...");
-                    actix_system.block_on(async move {
-                        server.stop(true).await;
-                    });
-                }
-                ServerLoopEvent::SigInt => {
-                    println!("Exiting");
-                    break;
-                }
-            }
-        } else {
-            bail!("Error starting server on requested URL {}", server_url)
+            Ok(())
+        }
+        Err(_) => {
+            let message = format!("File {} doesn't exist. You need build it with the 'clay build <model-file-name>' command", claypot_file_name);
+            println!("{}", message);
+            Err(anyhow::anyhow!(message))
         }
     }
+}
 
-    Ok(())
+pub fn start_dev_mode(
+    model_file: impl AsRef<Path> + Clone,
+    watch: bool,
+    system_start_time: Option<SystemTime>,
+) -> Result<()> {
+    let mut actix_system = System::new("claytip");
+
+    let model_file_clone = model_file.clone();
+    let start_server = move |restart| {
+        let system_start_time = if restart {
+            Some(SystemTime::now())
+        } else {
+            system_start_time
+        };
+        let (ast_system, codemap) = parser::parse_file(&model_file);
+        let system = builder::build(ast_system, codemap)?;
+
+        start_server(system, system_start_time, restart)
+    };
+
+    if !watch {
+        let server = start_server(false)?;
+        actix_system.block_on(server)?;
+        Ok(())
+    } else {
+        let stop_server = move |server: &mut Server| {
+            actix_system.block_on(server.stop(true));
+        };
+
+        watcher::with_watch(
+            &model_file_clone,
+            FILE_WATCHER_DELAY,
+            start_server,
+            stop_server,
+        )
+    }
+}
+
+fn start_server(
+    system: ModelSystem,
+    system_start_time: Option<SystemTime>,
+    restart: bool,
+) -> Result<Server> {
+    let database = Database::from_env(None)?; // TODO: error handling here
+
+    let schema = Schema::new(&system);
+    let system_info = Arc::new((system, schema, database));
+    let authenticator = Arc::new(JwtAuthenticator::new_from_env());
+
+    let server = HttpServer::new(move || {
+        let cors = cors_from_env();
+
+        App::new()
+            .wrap(cors)
+            .data(system_info.clone())
+            .data(authenticator.clone())
+            .route("/", web::get().to(playground))
+            .route("/", web::post().to(resolve))
+    });
+
+    let server_port = env::var(SERVER_PORT_PARAM)
+        .ok()
+        .map(|port_str| port_str.parse::<u32>().unwrap())
+        .unwrap_or(9876);
+
+    let server_url = format!("0.0.0.0:{}", server_port);
+    let result = server.bind(&server_url);
+
+    if let Ok(server) = result {
+        let addr = server.addrs()[0];
+
+        match system_start_time {
+            Some(system_start_time) => {
+                let start_string = if restart { "Restarted" } else { "Started" };
+                println!(
+                    "{} server on {} in {}",
+                    start_string,
+                    addr,
+                    duration_since_string(system_start_time.elapsed()?)
+                )
+            }
+            None => println!("Started server on {}", addr),
+        }
+        Ok(server.run())
+    } else {
+        bail!("Error starting server on requested URL {}", server_url)
+    }
+}
+
+fn duration_since_string(duration: Duration) -> String {
+    let micros = duration.as_micros();
+
+    format!("{:.2} milliseconds", (micros as f64 / 1000.0))
 }
