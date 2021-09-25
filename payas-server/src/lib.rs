@@ -28,7 +28,7 @@ mod authentication;
 mod data;
 mod execution;
 mod introspection;
-mod watcher;
+pub mod watcher;
 
 pub use payas_parser::ast;
 pub use payas_parser::parser;

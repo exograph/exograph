@@ -3,7 +3,8 @@ use std::{env, path::PathBuf, process, time::SystemTime};
 use clap::{App, AppSettings, Arg, SubCommand};
 
 use crate::commands::{
-    model, schema, BuildCommand, Command, MigrateCommand, ServeCommand, TestCommand, YoloCommand,
+    build::BuildCommand, import, schema, Command, MigrateCommand, ServeCommand, TestCommand,
+    YoloCommand,
 };
 
 mod commands;
@@ -25,6 +26,11 @@ fn main() {
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
+                )
+                .arg(
+                    Arg::with_name("watch")
+                        .help("Automatically build when model file changes")
+                        .long("watch"),
                 ),
         )
         .subcommand(
@@ -133,13 +139,14 @@ fn main() {
     let command: Box<dyn Command> = match matches.subcommand() {
         ("build", Some(matches)) => Box::new(BuildCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
+            watch: matches.is_present("watch"),
         }),
         ("migrate", Some(matches)) => Box::new(MigrateCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
             database: matches.value_of("database").unwrap().to_owned(),
         }),
         ("model", Some(matches)) => match matches.subcommand() {
-            ("import", Some(matches)) => Box::new(model::ImportCommand {
+            ("import", Some(matches)) => Box::new(import::ImportCommand {
                 output: PathBuf::from(matches.value_of("output").unwrap()),
             }),
             _ => panic!("Unhandled command name"),
