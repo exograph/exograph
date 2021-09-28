@@ -400,12 +400,12 @@ fn create_column(
                         },
                         is_pk: false,
                         is_autoincrement: false,
-                        not_null: false, // TODO: is this correct?
+                        not_null: !optional,
                     })
                 }
             }
         }
-        ResolvedFieldType::Optional(_) => create_column(field, table_name, env, true),
+        ResolvedFieldType::Optional(_typ) => create_column(field, table_name, env, true),
         ResolvedFieldType::List(typ) => {
             // unwrap list to base type
             let mut underlying_typ = typ;
