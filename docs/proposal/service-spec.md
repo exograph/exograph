@@ -44,7 +44,7 @@ async function construct(env: Env): EmailService {
   new EmailService(env);
 }
 
-async function send(emails: string[], message: string, @inject emailSender: EmailSender): Result<boolean, string> {
+async function send(emails: string[], message: string)(@inject emailSender: EmailSender): Result<boolean, string> {
   await emailSender.smtpSender.send(emails, message)
 }
 ```
@@ -148,15 +148,15 @@ service ConcertNotificationService {
   @auth(AuthContext.role == "ROLE_ADMIN")
   export mutation sendNotification(
     concertNotificationId: Int, # From GraphQL input
-    subscriptionGroupId: Int, # From GraphQL input
-    @injected clay: Clay,
+    subscriptionGroupId: Int) # From GraphQL input
+    (@injected clay: Clay,
     @injected emailService: EmailService): Result<bool, String>
 }
 ```
 
 Note that `EmailService` is defined in the earlier section.
 
-The `export` keyword implies that the query or mutation should be directly exposed through Claytip's GraphQL API. The @injected annotation specifies dependencies to be injected (and not supplied by the user through the GraphQL API).
+The `export` keyword implies that the query or mutation should be directly exposed through Claytip's GraphQL API. The @injected annotation specifies dependencies to be injected (and not supplied by the user through the GraphQL API). To clearly separate user-supplied argument from those injected by the system, we require that each kind be grouped together in a curried parameter style.
 
 The system (Claytip) supplies the `@injected` parameters based on the type. For example, the system will pass a singleton object for the parameters of type `Clay` and `EmailService`, whereas it will pass the current `AuthContext` based on the information in the request's header.
 
