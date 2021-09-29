@@ -37,11 +37,19 @@ pub fn convert_root(
     } else {
         let mut cursor = node.walk();
         AstSystem {
+            // FIXME: dedup
             models: node
                 .children(&mut cursor)
                 .filter(|n| n.kind() == "declaration")
-                .map(|c| convert_declaration(c, source, source_span))
-                .collect(),
+                .map(|c| convert_declaration_to_model(c, source, source_span))
+                .collect::<Option<Vec<_>>>()
+                .unwrap_or_default(),
+            services: node
+                .children(&mut cursor)
+                .filter(|n| n.kind() == "declaration")
+                .map(|c| convert_declaration_to_service(c, source, source_span))
+                .collect::<Option<Vec<_>>>()
+                .unwrap_or_default(),
         }
     }
 }
@@ -106,13 +114,38 @@ fn collect_parsing_errors(
     }
 }
 
-pub fn convert_declaration(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
+// FIXME: dedup
+pub fn convert_declaration_to_model(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> Option<AstModel<Untyped>> {
     assert_eq!(node.kind(), "declaration");
     let first_child = node.child(0).unwrap();
 
-    match first_child.kind() {
-        "model" => convert_model(first_child, source, source_span),
-        o => panic!("unsupported declaration kind: {}", o),
+    if first_child.kind() == "model" {
+        Some(convert_model(first_child, source, source_span))
+    } else {
+        None
+    }
+}
+
+pub fn convert_declaration_to_service(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> Option<AstService<Untyped>> {
+    assert_eq!(node.kind(), "declaration");
+    let first_child = node.child(0).unwrap();
+
+    if first_child.kind() == "service" {
+        //Some(convert_service(first_child, source, source_span))
+
+        let service = convert_service(first_child, source, source_span);
+        println!("{:#?}", service);
+        Some(service)
+    } else {
+        None
     }
 }
 
@@ -146,6 +179,76 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
             source,
             source_span,
         ),
+        annotations: node
+            .children_by_field_name("annotation", &mut cursor)
+            .map(|c| convert_annotation(c, source, source_span))
+            .collect(),
+    }
+}
+
+pub fn convert_service(node: Node, source: &[u8], source_span: Span) -> AstService<Untyped> {
+    let mut model_cursor = node.walk();
+    let mut method_cursor = node.walk();
+    let mut cursor = node.walk();
+
+    // FIXME dedup
+
+    let model_nodes = node
+        .child_by_field_name("body")
+        .unwrap()
+        .children_by_field_name("field", &mut model_cursor)
+        .map(|n| n.child(0).unwrap())
+        .filter(|node| node.kind() == "model");
+
+    let method_nodes = node
+        .child_by_field_name("body")
+        .unwrap()
+        .children_by_field_name("field", &mut method_cursor)
+        .map(|n| n.child(0).unwrap())
+        .filter(|node| node.kind() == "service_method");
+
+    AstService {
+        name: node
+            .child_by_field_name("name")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        models: model_nodes
+            .map(|n| convert_model(n, source, source_span))
+            .collect(),
+        methods: method_nodes
+            .map(|n| convert_service_method(n, source, source_span))
+            .collect(),
+        annotations: node
+            .children_by_field_name("annotation", &mut cursor)
+            .map(|c| convert_annotation(c, source, source_span))
+            .collect(),
+    }
+}
+
+pub fn convert_service_method(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> AstServiceMethod<Untyped> {
+    let mut cursor = node.walk();
+
+    AstServiceMethod {
+        name: node
+            .child_by_field_name("name")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        params: node
+            .children_by_field_name("args", &mut cursor)
+            .map(|c| convert_field(c, source, source_span))
+            .collect(),
+        return_type: node
+            .child_by_field_name("return_type")
+            .map(|c| convert_type(c, source, source_span))
+            .unwrap(),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))

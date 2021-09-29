@@ -41,6 +41,7 @@ impl NodeTypedness for Untyped {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstSystem<T: NodeTypedness> {
     pub models: Vec<AstModel<T>>,
+    pub services: Vec<AstService<T>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -55,6 +56,22 @@ impl<T: NodeTypedness> Display for AstModel<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.name.as_str())
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstService<T: NodeTypedness> {
+    pub name: String,
+    pub models: Vec<AstModel<T>>,
+    pub methods: Vec<AstServiceMethod<T>>,
+    pub annotations: T::Annotations,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstServiceMethod<T: NodeTypedness> {
+    pub name: String,
+    pub params: Vec<AstField<T>>,
+    pub return_type: AstFieldType<T>,
+    pub annotations: T::Annotations,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

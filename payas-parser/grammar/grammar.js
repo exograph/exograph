@@ -13,7 +13,32 @@ module.exports = grammar({
   rules: {
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
-      $.model
+      $.model,
+      $.service
+    ),
+    service: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      "service",
+      field("name", $.term),
+      field("body", $.service_body)
+    ),
+    service_body: $ => seq(
+      "{", 
+      repeat(field("field", $.service_field)), 
+      "}"
+    ),
+    service_field: $ => choice(
+      $.model,
+      $.service_method
+    ),
+    service_method: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      "method",
+      field("name", $.term),
+      "(",
+      commaSep(field("args", $.field)),
+      "):",
+      field("return_type", $.type)
     ),
     model: $ => seq(
       repeat(field("annotation", $.annotation)),
@@ -110,8 +135,9 @@ module.exports = grammar({
       field("left", $.expression), ">=", field("right", $.expression)
     )),
     term: $ => /[a-zA-Z_]+/,
+    str: $ => /[a-zA-Z_\.]+/, // TODO: need to do proper string parsing
     number: $ => /\d+/,
-    literal_str: $ => seq("\"", field("value", $.term), "\""),
+    literal_str: $ => seq("\"", field("value", $.str), "\""),
     literal_boolean: $ => choice("true", "false"),
     literal_number: $ => field("value", $.number),
     comment: $ => token(choice(

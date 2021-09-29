@@ -1,0 +1,8 @@
+@external("arithmetic.model")
+service MathService {
+    model AddResult {
+        sum: Int
+    }
+
+    @export method add(x: Int, y: Int): AddResult
+}
