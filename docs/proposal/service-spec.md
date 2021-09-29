@@ -221,7 +221,7 @@ Currently, we don't support authentication and let apps rely on external authent
 So this is how we can support flexible authentication in Claytip (in place of next-auth; Auth0/Supertoken cases live outside of Claytip and will continue that way).
 
 ```clay
-@external("authentication.wasm") # or ".so" or ".js" or ".ts"
+@external("authentication.wasm") // or ".so" or ".js" or ".ts"
 service Authentication {
   model LoginInput {
     provider: String // "google", "facebook", "username-password"
