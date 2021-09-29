@@ -4,5 +4,12 @@ service MathService {
         sum: Int
     }
 
+    model DivisionResult {
+        quotient: Int
+        remainder: Int
+    }
+
     @export method add(x: Int, y: Int): AddResult
+    @export method divide(x: Int, y: Int): DivisionResult
+    // method log(@inject env: Env, x: Int, y: Int): None // TODO
 }
