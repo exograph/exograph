@@ -3,6 +3,7 @@ use async_graphql_parser::types::FieldDefinition;
 
 use payas_model::model::{
     operation::{Mutation, MutationKind, OperationReturnType, Query},
+    service::ServiceMethod,
     system::ModelSystem,
 };
 use util::*;
@@ -64,6 +65,26 @@ impl Operation for Mutation {
 
     fn return_type(&self) -> &OperationReturnType {
         &self.return_type
+    }
+}
+
+impl Operation for ServiceMethod {
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn parameters(&self) -> Vec<&dyn Parameter> {
+        let mut params: Vec<&dyn Parameter> = vec![];
+
+        for arg in self.arguments.iter() {
+            params.push(arg);
+        }
+
+        params
+    }
+
+    fn return_type(&self) -> &OperationReturnType {
+        todo!()
     }
 }
 

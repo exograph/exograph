@@ -6,6 +6,7 @@ use payas_model::{
         operation::{Mutation, Query},
         order::OrderByParameterType,
         predicate::PredicateParameterType,
+        service::{Service, ServiceMethod},
         system::ModelSystem,
         types::GqlType,
         ContextType,
@@ -58,6 +59,8 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSy
         tables: building.tables.values,
         mutation_types: building.mutation_types.values,
         create_mutations: building.mutations,
+        services: building.services,
+        methods: building.methods.values,
     })
 }
 
@@ -107,6 +110,8 @@ pub struct SystemContextBuilding {
     pub mutation_types: MappedArena<GqlType>,
     pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
+    pub services: MappedArena<Service>,
+    pub methods: MappedArena<ServiceMethod>,
 }
 
 #[cfg(test)]

@@ -8,6 +8,7 @@ use payas_model::model::{
     operation::{CreateDataParameter, UpdateDataParameter},
     order::*,
     predicate::PredicateParameter,
+    service::ServiceMethodArgument,
     types::GqlField,
     types::GqlTypeModifier,
     GqlFieldType,
@@ -124,6 +125,20 @@ impl Parameter for GqlField {
             GqlFieldType::Reference { .. } => &GqlTypeModifier::NonNull,
             GqlFieldType::List(_) => &GqlTypeModifier::List,
         }
+    }
+}
+
+impl Parameter for ServiceMethodArgument {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn type_name(&self) -> &str {
+        &self.type_name
+    }
+
+    fn type_modifier(&self) -> &GqlTypeModifier {
+        &self.type_modifier
     }
 }
 

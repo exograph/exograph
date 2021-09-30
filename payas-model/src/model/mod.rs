@@ -6,6 +6,7 @@ pub mod operation;
 pub mod order;
 pub mod predicate;
 pub mod relation;
+pub mod service;
 pub mod system;
 pub mod types;
 
