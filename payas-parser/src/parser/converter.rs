@@ -249,6 +249,7 @@ pub fn convert_service_method(
             .child_by_field_name("return_type")
             .map(|c| convert_type(c, source, source_span))
             .unwrap(),
+        is_exported: node.child_by_field_name("is_exported").is_some(),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))

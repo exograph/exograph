@@ -71,6 +71,7 @@ pub struct AstServiceMethod<T: NodeTypedness> {
     pub name: String,
     pub params: Vec<AstField<T>>,
     pub return_type: AstFieldType<T>,
+    pub is_exported: bool,
     pub annotations: T::Annotations,
 }
 

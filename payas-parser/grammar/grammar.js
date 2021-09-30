@@ -33,6 +33,7 @@ module.exports = grammar({
     ),
     service_method: $ => seq(
       repeat(field("annotation", $.annotation)),
+      optional(field("is_exported", "export")),
       "method",
       field("name", $.term),
       "(",
