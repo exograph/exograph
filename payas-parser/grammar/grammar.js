@@ -37,7 +37,7 @@ module.exports = grammar({
       "method",
       field("name", $.term),
       "(",
-      commaSep(field("args", $.field)),
+      commaSep(field("args", $.argument)),
       "):",
       field("return_type", $.type)
     ),
@@ -64,6 +64,12 @@ module.exports = grammar({
     ),
     annotation_map_params: $ => commaSep(field("param", $.annotation_map_param)),
     annotation_map_param: $ => seq(field("name", $.term), "=", field("expr", $.expression)),
+    argument: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      field("name", $.term),
+      ":",
+      field("type", $.type),
+    ),
     field: $ => seq(
       field("name", $.term),
       ":",

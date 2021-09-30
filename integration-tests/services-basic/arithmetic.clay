@@ -11,5 +11,5 @@ service MathService {
 
     export method add(x: Int, y: Int): AddResult
     export method divide(x: Int, y: Int): DivisionResult
-    // method log(@inject env: Env, x: Int, y: Int): None // TODO
+    method log(@inject env: Env, x: Int, y: Int): None // TODO
 }

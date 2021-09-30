@@ -243,7 +243,7 @@ pub fn convert_service_method(
             .to_string(),
         params: node
             .children_by_field_name("args", &mut cursor)
-            .map(|c| convert_field(c, source, source_span))
+            .map(|c| convert_field_or_argument(c, source, source_span))
             .collect(),
         return_type: node
             .child_by_field_name("return_type")
@@ -260,12 +260,16 @@ pub fn convert_service_method(
 pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
     let mut cursor = node.walk();
     node.children_by_field_name("field", &mut cursor)
-        .map(|c| convert_field(c, source, source_span))
+        .map(|c| convert_field_or_argument(c, source, source_span))
         .collect()
 }
 
-pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
-    assert_eq!(node.kind(), "field");
+pub fn convert_field_or_argument(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> AstField<Untyped> {
+    assert!(node.kind() == "field" || node.kind() == "argument");
 
     let mut cursor = node.walk();
 
