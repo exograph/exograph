@@ -1,0 +1,3 @@
+identifier=[_$[:alpha:]][_$[:alnum:]]*
+ws=\\s+
+opt_ws=\\s*
