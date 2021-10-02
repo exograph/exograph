@@ -17,7 +17,8 @@ Nice to have:
 From the project root directory,
 
 ```
-ln -s $PWD/vscode-extension $HOME/.vscode/extensions/clay.vscode
+(cd $PWD/vscode-extension; npm run build)
+ln -s $PWD/vscode-extension/out $HOME/.vscode/extensions/clay.vscode
 ```
 
 ## Testing the setup
