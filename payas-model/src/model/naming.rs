@@ -1,4 +1,5 @@
 use heck::MixedCase;
+use heck::SnakeCase;
 
 use crate::model::GqlType;
 
@@ -151,5 +152,34 @@ impl<T: ToPlural> ToGqlTypeNames for T {
 
     fn reference_type(&self) -> String {
         to_reference_type(&self.to_singular())
+    }
+}
+
+pub trait ToTableName {
+    fn table_name(&self, plural_name: Option<String>) -> String;
+}
+
+impl ToTableName for str {
+    fn table_name(&self, plural_name: Option<String>) -> String {
+        match plural_name {
+            Some(plural_name) => plural_name.to_snake_case(),
+            None => self.to_plural().to_snake_case(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn table_names() {
+        assert_eq!("concerts", "Concert".table_name(None));
+        assert_eq!(
+            "cons_foos",
+            "Concert".table_name(Some("consFoos".to_string()))
+        );
+
+        assert_eq!("concert_artists", "ConcertArtist".table_name(None));
     }
 }
