@@ -24,9 +24,16 @@ where
     let mut restart = false;
 
     loop {
-        let mut server = start(restart)?;
+        let server = start(restart);
         restart = true;
-        if !start_watching(&rx, &mut server, &mut stop)? {
+
+        let cont = wait_for_change(&rx)?;
+
+        if cont {
+            if let Ok(mut server) = server {
+                stop(&mut server);
+            }
+        } else {
             break;
         }
     }
@@ -68,20 +75,12 @@ fn setup_watch(
     Ok(rx)
 }
 
-fn start_watching<T, STOPF>(
-    rx: &Receiver<ServerLoopEvent>,
-    server: &mut T,
-    mut stop: STOPF,
-) -> Result<bool>
-where
-    STOPF: FnMut(&mut T),
-{
+fn wait_for_change(rx: &Receiver<ServerLoopEvent>) -> Result<bool> {
     // Stop and restart the server initializtion loop when the model file is edited. Exit
     // the server loop when SIGINT is received.
     match rx.recv()? {
         ServerLoopEvent::FileChange => {
             println!("Restarting...");
-            stop(server);
             Ok(true)
         }
         ServerLoopEvent::SigInt => {

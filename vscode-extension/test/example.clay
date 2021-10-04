@@ -1,0 +1,83 @@
+@table("concerts")
+@access(query=AuthContext.role == "ROLE_ADMIN" || self.published || price <= 10, 
+        mutation=AuthContext.role == "ROLE_ADMIN")
+model Concert {
+  id: Int @pk @autoincrement // comment after annotation
+  title: String // comment after type
+  venue: Venue @column("venueid")
+  published: Boolean
+  price: Decimal @precision(20) @scale(2)
+}
+
+@table("venues")
+model Venue {
+  id: Int @pk @autoincrement
+  name: String
+  concerts: Set<Concert> @column("venueid")
+  published: Boolean
+  latitude: Float @size(4)
+}
+
+@auth(self._starts_with_underscore == "foo" || _AuthContext.role == "ROLE_ADMIN")
+model _ModelStartWithAnUnderscore_AndHas_Underscores {
+  id_with_underscores: Int @pk @autoincrement
+  _starts_with_underscore: String
+}
+
+service _ServiceStartWithAnUnderscore_AndHas_Underscores {
+}
+
+context AuthContext {
+  id: Int @jwt("sub")
+  role: String @jwt("role")
+}
+
+service MyService {
+  export async mutation foo(i: Int, zz: String): number
+
+  query get_this(in: Concert_Info): Concert
+  query get_this_too(in: Concert_Info): Concert_Output
+
+  mutation foo(input: FooInput): xx // To test that methods separated by a single line break hightlight correctly
+  mutation bar(input: FooInput): xx 
+  mutation baz(input: FooInput): xx // xx
+}
+
+@external("concert-notification.ts")
+service ConcertNotificationService {
+  export mutation sendNotification(
+    concertNotificationId: Int, subscriptionGroupId: Int,
+    @injected clay: Clay, @injected emailService: EmailService
+  ): Result<bool, bool>
+}
+
+@external("rate_limiter.ts")
+service RateLimiter {
+  @around("query * || mutation *")
+  intercept checkLimit(ipContext: IPContext, operation: Operation): OperationResult
+}
+
+@external("authentication.wasm") // or ".so" or ".js" or ".ts"
+service Authentication {
+  type LoginInput {
+    provider: String // "google", "facebook", "username-password"
+    code: String?
+    username: String?
+    password: String?
+  }
+
+  type LoginResult {
+    id: String // From Google, Facebook, etc (not from our database)
+    name: String
+    email: String
+    profilePicture: String
+    refreshToken: String
+  }
+
+  type LoginError {
+    kind: String // "network", "invalid-credentials", "unsupported-kind"
+    info: String
+  }
+
+  export async mutation authenticate(loginInfo: LoginInput, @inject claytip: Claytip): Result<String, LoginError>
+}
