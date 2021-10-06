@@ -68,7 +68,7 @@ types:
               is_pk: false
               is_autoincrement: false
               type_hint: ~
-          table_name: Concert
+          table_name: concerts
           access:
             creation:
               BooleanLiteral:
@@ -109,7 +109,7 @@ types:
               is_pk: false
               is_autoincrement: false
               type_hint: ~
-          table_name: Venue
+          table_name: venues
           access:
             creation:
               BooleanLiteral:
