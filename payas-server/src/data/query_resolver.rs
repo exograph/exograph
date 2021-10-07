@@ -259,11 +259,9 @@ fn map_field<'a>(
                 ..
             } => {
                 let other_type = &system.types[*other_type_id];
-                let other_table_pk_query = match other_type.kind {
+                let other_table_pk_query = match &other_type.kind {
                     GqlTypeKind::Primitive => panic!(""),
-                    GqlTypeKind::Composite(GqlCompositeTypeKind { pk_query, .. }) => {
-                        &system.queries[pk_query]
-                    }
+                    GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
                 };
 
                 Column::SelectionTableWrapper(
@@ -285,11 +283,11 @@ fn map_field<'a>(
             } => {
                 let other_type = &system.types[*other_type_id];
                 let other_table_collection_query = {
-                    match other_type.kind {
+                    match &other_type.kind {
                         GqlTypeKind::Primitive => panic!(""),
-                        GqlTypeKind::Composite(GqlCompositeTypeKind {
-                            collection_query, ..
-                        }) => &system.queries[collection_query],
+                        GqlTypeKind::Composite(kind) => {
+                            &system.queries[kind.get_collection_query()]
+                        }
                     }
                 };
 
@@ -306,6 +304,7 @@ fn map_field<'a>(
 
                 Column::SelectionTableWrapper(other_selection_table)
             }
+            GqlRelation::NonPersistent => panic!(),
         }
     };
 

@@ -7,14 +7,21 @@ use super::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Service {
     pub name: String,
-    pub methods: SerializableSlabIndex<ServiceMethod>,
+    pub methods: Vec<ServiceMethod>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceMethod {
     pub name: String,
+    pub operation: ServiceMethodType,
     pub arguments: Vec<ServiceMethodArgument>,
     pub return_type: Option<OperationReturnType>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ServiceMethodType {
+    Query,
+    Mutation,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

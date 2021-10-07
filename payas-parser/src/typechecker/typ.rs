@@ -6,12 +6,13 @@ use std::{
 };
 
 use super::Typed;
-use crate::ast::ast_types::AstModel;
+use crate::ast::ast_types::{AstModel, AstService};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
     Primitive(PrimitiveType),
     Composite(AstModel<Typed>),
+    Service(AstService<Typed>),
     Optional(Box<Type>),
     Set(Box<Type>),
     Array(Box<Type>),

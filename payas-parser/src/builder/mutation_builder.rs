@@ -162,7 +162,7 @@ pub trait DataParamBuilder<D> {
 
         match &field.relation {
             GqlRelation::Pk { .. } => None, // TODO: Make this decistion based on autoincrement/uuid etc of the id
-            GqlRelation::Scalar { .. } => Some(GqlField {
+            GqlRelation::Scalar { .. } | GqlRelation::NonPersistent => Some(GqlField {
                 typ: if optional {
                     field.typ.optional()
                 } else {
@@ -242,12 +242,8 @@ pub trait DataParamBuilder<D> {
         container_type: Option<&GqlType>,
     ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
         if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-            ref fields,
-            table_id,
-            pk_query,
-            collection_query,
-            ..
-        }) = model_type.kind
+            ref fields, kind, ..
+        }) = &model_type.kind
         {
             let model_fields = fields;
 
@@ -288,9 +284,7 @@ pub trait DataParamBuilder<D> {
                 existing_type_id,
                 GqlCompositeTypeKind {
                     fields: input_type_fields,
-                    table_id,
-                    pk_query,
-                    collection_query,
+                    kind: kind.clone(),
                     access: Access::restrictive(),
                 },
             ));

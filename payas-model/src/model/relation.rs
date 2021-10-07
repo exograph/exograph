@@ -7,6 +7,7 @@ use super::types::GqlType;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum GqlRelation {
+    NonPersistent,
     Pk {
         column_id: ColumnId,
     },

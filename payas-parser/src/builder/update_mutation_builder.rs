@@ -4,7 +4,9 @@ use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind};
+use payas_model::model::{
+    GqlCompositeKind, GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind,
+};
 
 use crate::builder::mutation_builder::{create_data_type_name, update_data_type_name};
 use crate::builder::query_builder;
@@ -180,11 +182,9 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         .clone();
 
         if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-            table_id,
-            pk_query,
-            collection_query,
+            kind: kind @ GqlCompositeKind::Persistent { .. },
             ..
-        }) = model_type.kind
+        }) = &model_type.kind
         {
             // If not already expanded (i.e. the kind is primitive)
             if let GqlTypeKind::Primitive = building.mutation_types[existing_type_id].kind {
@@ -224,9 +224,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     existing_type_id,
                     GqlCompositeTypeKind {
                         fields,
-                        table_id, // TODO: Introduce GqlTypeKind::CompositeInput that shouldn't need table_id etc
-                        pk_query,
-                        collection_query,
+                        kind: kind.clone(),
                         access: Access::restrictive(),
                     },
                 )];

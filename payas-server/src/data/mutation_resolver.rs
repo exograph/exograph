@@ -218,17 +218,12 @@ pub fn return_type_info<'a>(
     let system = &operation_context.query_context.system;
     let typ = mutation.return_type.typ(system);
 
-    match typ.kind {
+    match &typ.kind {
         GqlTypeKind::Primitive => panic!(""),
-        GqlTypeKind::Composite(GqlCompositeTypeKind {
-            table_id,
-            pk_query,
-            collection_query,
-            ..
-        }) => (
-            &system.tables[table_id],
-            &system.queries[pk_query],
-            &system.queries[collection_query],
+        GqlTypeKind::Composite(kind) => (
+            &system.tables[kind.get_table_id()],
+            &system.queries[kind.get_pk_query()],
+            &system.queries[kind.get_collection_query()],
         ),
     }
 }

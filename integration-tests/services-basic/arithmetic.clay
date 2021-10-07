@@ -1,15 +1,29 @@
+context AuthContext {
+    id: Int @jwt("sub")
+    role: String @jwt("role")
+}
+
+@table("foo")
+model Foo {
+    id: Int @pk
+    bar: Int
+}
+
 @external("arithmetic.model")
 service MathService {
-    model AddResult {
+    type AddResult {
         sum: Int
     }
 
-    model DivisionResult {
+    type DivisionResult {
         quotient: Int
         remainder: Int
     }
 
-    export method add(x: Int, y: Int): AddResult
-    export method divide(x: Int, y: Int): DivisionResult
-    method log(@inject env: Env, x: Int, y: Int): None // TODO
+    export query add(x: Int, y: Int): AddResult
+
+    @access(query=AuthContext.role == "ROLE_ALLOW_DIVIDE")
+    export query divide(x: Int, y: Int): DivisionResult
+
+    mutation log(@inject env: Env, x: Int, y: Int): None
 }

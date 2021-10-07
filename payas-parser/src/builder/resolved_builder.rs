@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 pub struct ResolvedSystem {
     pub types: MappedArena<ResolvedType>,
     pub contexts: MappedArena<ResolvedContext>,
+    pub services: MappedArena<ResolvedService>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -35,6 +36,28 @@ pub enum ResolvedType {
 pub struct ResolvedContext {
     pub name: String,
     pub fields: Vec<ResolvedContextField>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedService {
+    pub name: String,
+    pub methods: Vec<ResolvedMethod>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedMethod {
+    pub name: String,
+    pub typ: String,
+    pub access: ResolvedAccess,
+    pub arguments: Vec<ResolvedArgument>,
+    pub return_type: ResolvedCompositeType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedArgument {
+    pub name: String,
+    pub typ: ResolvedCompositeType,
+    pub injected: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -61,8 +84,24 @@ pub struct ResolvedCompositeType {
     pub name: String,
     pub plural_name: String,
     pub fields: Vec<ResolvedField>,
-    pub table_name: String,
+    pub kind: ResolvedCompositeTypeKind,
     pub access: ResolvedAccess,
+}
+
+impl ResolvedCompositeType {
+    pub fn get_table_name(&self) -> &str {
+        if let ResolvedCompositeTypeKind::Persistent { table_name } = &self.kind {
+            table_name
+        } else {
+            panic!("Trying to get table name from non-persistent type!")
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedCompositeTypeKind {
+    Persistent { table_name: String },
+    NonPersistent,
 }
 
 impl ToPlural for ResolvedCompositeType {
@@ -79,10 +118,61 @@ impl ToPlural for ResolvedCompositeType {
 pub struct ResolvedField {
     pub name: String,
     pub typ: ResolvedFieldType,
-    pub column_name: String,
-    pub is_pk: bool,
-    pub is_autoincrement: bool,
-    pub type_hint: Option<ResolvedTypeHint>,
+    pub kind: ResolvedFieldKind,
+}
+
+// FIXME: dedup
+impl ResolvedField {
+    pub fn get_column_name(&self) -> &str {
+        match &self.kind {
+            ResolvedFieldKind::Persistent { column_name, .. } => column_name,
+            ResolvedFieldKind::NonPersistent => {
+                panic!("Tried to get persistence-related information from a non-persistent field!")
+            }
+        }
+    }
+
+    pub fn get_is_pk(&self) -> bool {
+        match &self.kind {
+            ResolvedFieldKind::Persistent { is_pk, .. } => *is_pk,
+            ResolvedFieldKind::NonPersistent => {
+                panic!("Tried to get persistence-related information from a non-persistent field!")
+            }
+        }
+    }
+
+    pub fn get_is_autoincrement(&self) -> bool {
+        match &self.kind {
+            ResolvedFieldKind::Persistent {
+                is_autoincrement, ..
+            } => *is_autoincrement,
+            ResolvedFieldKind::NonPersistent => {
+                panic!("Tried to get persistence-related information from a non-persistent field!")
+            }
+        }
+    }
+    pub fn get_type_hint(&self) -> &Option<ResolvedTypeHint> {
+        match &self.kind {
+            ResolvedFieldKind::Persistent { type_hint, .. } => type_hint,
+            ResolvedFieldKind::NonPersistent => {
+                panic!("Tried to get persistence-related information from a non-persistent field!")
+            }
+        }
+    }
+}
+
+// what kind of field is this?
+// some fields do not need to be persisted, and thus should not carry database-related
+// information
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedFieldKind {
+    Persistent {
+        column_name: String,
+        is_pk: bool,
+        is_autoincrement: bool,
+        type_hint: Option<ResolvedTypeHint>,
+    },
+    NonPersistent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -131,7 +221,13 @@ pub enum ResolvedTypeHint {
 
 impl ResolvedCompositeType {
     pub fn pk_field(&self) -> Option<&ResolvedField> {
-        self.fields.iter().find(|f| f.is_pk)
+        self.fields.iter().find(|f| {
+            if let ResolvedFieldKind::Persistent { is_pk, .. } = f.kind {
+                is_pk
+            } else {
+                false
+            }
+        })
     }
 }
 
@@ -182,12 +278,18 @@ impl ResolvedFieldType {
 pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem> {
     let mut resolved_system = build_shallow(&types)?;
     build_expanded(types, &mut resolved_system);
+
+    //for typ in resolved_system.types.iter() {
+    //    println!("{:#?}", typ);
+    //}
+
     Ok(resolved_system)
 }
 
 fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
     let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
+    let resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
     for (_, typ) in types.iter() {
         match typ {
@@ -211,7 +313,24 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                             .map(|p| p.as_single().as_string())
                             .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
                         fields: vec![],
-                        table_name,
+                        kind: ResolvedCompositeTypeKind::Persistent { table_name },
+                        access,
+                    }),
+                );
+            }
+            Type::Composite(ct) if ct.kind == AstModelKind::NonPersistent => {
+                let access = build_access(ct.annotations.get("access"));
+                resolved_types.add(
+                    &ct.name,
+                    ResolvedType::Composite(ResolvedCompositeType {
+                        name: ct.name.clone(),
+                        plural_name: ct
+                            .annotations
+                            .get("plural_name")
+                            .map(|p| p.as_single().as_string())
+                            .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
+                        fields: vec![],
+                        kind: ResolvedCompositeTypeKind::NonPersistent,
                         access,
                     }),
                 );
@@ -225,6 +344,9 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     },
                 );
             }
+            Type::Service(_) => {
+                todo!() // FIXME: impl service resolution
+            }
             o => panic!(
                 "Unable to build shallow type for non-primitve, non-composite type: {:?}",
                 o
@@ -235,6 +357,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
     Ok(ResolvedSystem {
         types: resolved_types,
         contexts: resolved_contexts,
+        services: resolved_services,
     })
 }
 
@@ -285,10 +408,12 @@ fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -
 fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
-            if ct.kind == AstModelKind::Persistent {
+            if ct.kind == AstModelKind::Persistent || ct.kind == AstModelKind::NonPersistent {
                 build_expanded_persistent_type(ct, &types, resolved_system);
-            } else {
+            } else if ct.kind == AstModelKind::Context {
                 build_expanded_context_type(ct, &types, resolved_system);
+            } else {
+                todo!()
             }
         }
     }
@@ -307,7 +432,7 @@ fn build_expanded_persistent_type(
     if let ResolvedType::Composite(ResolvedCompositeType {
         name,
         plural_name,
-        table_name,
+        kind,
         access,
         ..
     }) = existing_type
@@ -318,10 +443,15 @@ fn build_expanded_persistent_type(
             .map(|field| ResolvedField {
                 name: field.name.clone(),
                 typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
-                column_name: compute_column_name(ct, field, types),
-                is_pk: field.annotations.contains("pk"),
-                is_autoincrement: field.annotations.contains("autoincrement"),
-                type_hint: build_type_hint(field, types),
+                kind: match kind {
+                    ResolvedCompositeTypeKind::Persistent { .. } => ResolvedFieldKind::Persistent {
+                        column_name: compute_column_name(ct, field, types),
+                        is_pk: field.annotations.contains("pk"),
+                        is_autoincrement: field.annotations.contains("autoincrement"),
+                        type_hint: build_type_hint(field, types),
+                    },
+                    ResolvedCompositeTypeKind::NonPersistent => ResolvedFieldKind::NonPersistent,
+                },
             })
             .collect();
 
@@ -329,7 +459,7 @@ fn build_expanded_persistent_type(
             name: name.clone(),
             plural_name: plural_name.clone(),
             fields: resolved_fields,
-            table_name: table_name.clone(),
+            kind: kind.clone(),
             access: access.clone(),
         });
         resolved_types[existing_type_id] = expanded;

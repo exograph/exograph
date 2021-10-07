@@ -19,7 +19,7 @@ use crate::ast::ast_types::{AstSystem, Untyped};
 use super::{
     context_builder, mutation_builder, order_by_type_builder, predicate_builder, query_builder,
     resolved_builder::{self, ResolvedSystem},
-    type_builder,
+    service_builder, type_builder,
 };
 
 use crate::typechecker;
@@ -67,6 +67,7 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSy
 fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
     let resolved_types = &resolved_system.types;
     let resolved_contexts = &resolved_system.contexts;
+    let resolved_services = &resolved_system.services;
 
     // First build shallow GQL types for types, context, query parameters (order by and predicate)
     // The order of next four is unimportant, since each of them simply create a shallow type without refering to anything
@@ -75,11 +76,12 @@ fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextB
     order_by_type_builder::build_shallow(resolved_types, building);
     predicate_builder::build_shallow(resolved_types, building);
 
-    // The next two shallow builders need GQL types build above (the order of the next two is unimportant)
-    // Specifically, the OperationReturn type in Query and Mutation looks for the id for the return type, so requires
+    // The next three shallow builders need GQL types build above (the order of the next three is unimportant)
+    // Specifically, the OperationReturn type in Query, Mutation, and ServiceMethod looks for the id for the return type, so requires
     // type_builder::build_shallow to have run
     query_builder::build_shallow(resolved_types, building);
     mutation_builder::build_shallow(resolved_types, building);
+    service_builder::build_shallow(resolved_services, building);
 }
 
 fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {

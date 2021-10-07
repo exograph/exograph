@@ -232,10 +232,10 @@ fn map_foreign<'a>(
     fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
         // TODO: Unhack this. Most likely, we need to separate input types from output types and have input types carry
         //       additional information (such as the associated model type) so that we can get the id column more directly
-        match data_type.kind {
+        match &data_type.kind {
             GqlTypeKind::Primitive => todo!(),
-            GqlTypeKind::Composite(GqlCompositeTypeKind { pk_query, .. }) => {
-                &system.types[system.queries[pk_query].return_type.type_id]
+            GqlTypeKind::Composite(kind) => {
+                &system.types[system.queries[kind.get_pk_query()].return_type.type_id]
             }
         }
     }

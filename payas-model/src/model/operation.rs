@@ -1,7 +1,7 @@
 use payas_sql::sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-use crate::model::{GqlCompositeTypeKind, GqlTypeKind};
+use crate::model::{GqlCompositeKind, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
     limit_offset::{LimitParameter, OffsetParameter},
@@ -73,9 +73,10 @@ impl OperationReturnType {
             GqlTypeKind::Primitive => panic!(),
             GqlTypeKind::Composite(GqlCompositeTypeKind {
                 fields: _,
-                table_id,
+                kind: GqlCompositeKind::Persistent { table_id, .. },
                 ..
             }) => &system.tables[*table_id],
+            _ => panic!(),
         }
     }
 }

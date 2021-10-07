@@ -160,10 +160,15 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
         .utf8_text(source)
         .unwrap()
         .to_string();
+
     let kind = if kind == "model" {
         AstModelKind::Persistent
-    } else {
+    } else if kind == "type" {
+        AstModelKind::NonPersistent
+    } else if kind == "context" {
         AstModelKind::Context
+    } else {
+        todo!()
     };
 
     AstModel {
@@ -227,21 +232,23 @@ pub fn convert_service(node: Node, source: &[u8], source_span: Span) -> AstServi
     }
 }
 
-pub fn convert_service_method(
-    node: Node,
-    source: &[u8],
-    source_span: Span,
-) -> AstServiceMethod<Untyped> {
+pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
     let mut cursor = node.walk();
 
-    AstServiceMethod {
+    AstMethod {
         name: node
             .child_by_field_name("name")
             .unwrap()
             .utf8_text(source)
             .unwrap()
             .to_string(),
-        params: node
+        typ: node
+            .child_by_field_name("type")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        arguments: node
             .children_by_field_name("args", &mut cursor)
             .map(|c| convert_field_or_argument(c, source, source_span))
             .collect(),

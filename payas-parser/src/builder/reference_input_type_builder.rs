@@ -41,12 +41,8 @@ fn expanded_reference_types(
     let existing_type = model_type;
 
     if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-        ref fields,
-        table_id,
-        pk_query,
-        collection_query,
-        ..
-    }) = existing_type.kind
+        ref fields, kind, ..
+    }) = &existing_type.kind
     {
         let reference_type_fields = fields
             .clone()
@@ -64,9 +60,7 @@ fn expanded_reference_types(
             existing_type_id,
             GqlTypeKind::Composite(GqlCompositeTypeKind {
                 fields: reference_type_fields,
-                table_id,
-                pk_query,
-                collection_query,
+                kind: kind.clone(),
                 access: Access::restrictive(),
             }),
         )]

@@ -34,7 +34,7 @@ module.exports = grammar({
     service_method: $ => seq(
       repeat(field("annotation", $.annotation)),
       optional(field("is_exported", "export")),
-      "method",
+      field("type", choice("query", "mutation")),
       field("name", $.term),
       "(",
       commaSep(field("args", $.argument)),
@@ -47,7 +47,7 @@ module.exports = grammar({
       field("name", $.term),
       field("body", $.model_body)
     ),
-    model_kind: $ => choice("model", "context"),
+    model_kind: $ => choice("model", "context", "type"),
     model_body: $ => seq("{", repeat(field("field", $.field)), "}"),
     annotation: $ => seq(
       "@",

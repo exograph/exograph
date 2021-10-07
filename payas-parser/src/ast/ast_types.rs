@@ -62,14 +62,15 @@ impl<T: NodeTypedness> Display for AstModel<T> {
 pub struct AstService<T: NodeTypedness> {
     pub name: String,
     pub models: Vec<AstModel<T>>,
-    pub methods: Vec<AstServiceMethod<T>>,
+    pub methods: Vec<AstMethod<T>>,
     pub annotations: T::Annotations,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct AstServiceMethod<T: NodeTypedness> {
+pub struct AstMethod<T: NodeTypedness> {
     pub name: String,
-    pub params: Vec<AstField<T>>,
+    pub typ: String, // query or mutation?
+    pub arguments: Vec<AstField<T>>,
     pub return_type: AstFieldType<T>,
     pub is_exported: bool,
     pub annotations: T::Annotations,
@@ -77,8 +78,9 @@ pub struct AstServiceMethod<T: NodeTypedness> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstModelKind {
-    Persistent,
-    Context,
+    Persistent,    // a model intended to be persisted inside the database
+    Context,       // defines contextual models for authorization
+    NonPersistent, // solely defines input and output types for service methods
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

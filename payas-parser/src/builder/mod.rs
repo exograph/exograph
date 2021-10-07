@@ -11,6 +11,7 @@ mod predicate_builder;
 mod query_builder;
 mod reference_input_type_builder;
 mod resolved_builder;
+mod service_builder;
 mod type_builder;
 mod update_mutation_builder;
 

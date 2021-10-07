@@ -220,10 +220,10 @@ fn compute_nested_reference_column<'a>(
     container_model_type: &'a GqlType,
     system: &'a ModelSystem,
 ) -> Option<&'a PhysicalColumn> {
-    let pk_column = match container_model_type.kind {
+    let pk_column = match &container_model_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { table_id, .. }) => {
-            let container_table = &system.tables[table_id];
+        GqlTypeKind::Composite(kind) => {
+            let container_table = &system.tables[kind.get_table_id()];
             container_table.get_pk_physical_column()
         }
     }
