@@ -19,6 +19,8 @@ pub use system_builder::build;
 
 use payas_model::model::{mapped_arena::MappedArena, GqlType, GqlTypeKind};
 
+use crate::builder::resolved_builder::ResolvedCompositeTypeKind;
+
 use self::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
@@ -44,16 +46,18 @@ pub trait Builder {
         building: &mut SystemContextBuilding,
     ) {
         if let ResolvedType::Composite(c) = resolved_type {
-            for type_name in self.type_names(c, resolved_types).iter() {
-                building.mutation_types.add(
-                    type_name,
-                    GqlType {
-                        name: type_name.to_string(),
-                        plural_name: "".to_string(), // unused
-                        kind: GqlTypeKind::Primitive,
-                        is_input: true,
-                    },
-                );
+            if let ResolvedCompositeTypeKind::Persistent { .. } = c.kind {
+                for type_name in self.type_names(c, resolved_types).iter() {
+                    building.mutation_types.add(
+                        type_name,
+                        GqlType {
+                            name: type_name.to_string(),
+                            plural_name: "".to_string(), // unused
+                            kind: GqlTypeKind::Primitive,
+                            is_input: true,
+                        },
+                    );
+                }
             }
         }
     }

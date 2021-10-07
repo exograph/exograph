@@ -5,7 +5,7 @@ use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::ToGqlTypeNames;
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeTypeKind, GqlTypeKind};
+use payas_model::model::{GqlCompositeKind, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
@@ -41,7 +41,9 @@ fn expanded_reference_types(
     let existing_type = model_type;
 
     if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-        ref fields, kind, ..
+        ref fields,
+        kind: kind @ GqlCompositeKind::Persistent { .. },
+        ..
     }) = &existing_type.kind
     {
         let reference_type_fields = fields

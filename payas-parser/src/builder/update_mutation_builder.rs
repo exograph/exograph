@@ -35,7 +35,11 @@ impl Builder for UpdateMutationBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite { .. } = &model_type.kind {
+            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
+                kind: GqlCompositeKind::Persistent { .. },
+                ..
+            }) = &model_type.kind
+            {
                 for (existing_id, expanded_kind) in
                     self.expanded_data_type(model_type, building, Some(model_type), None)
                 {
@@ -46,7 +50,11 @@ impl Builder for UpdateMutationBuilder {
         }
 
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite { .. } = &model_type.kind {
+            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
+                kind: GqlCompositeKind::Persistent { .. },
+                ..
+            }) = &model_type.kind
+            {
                 let model_type_id = building.types.get_id(model_type.name.as_str()).unwrap();
 
                 for mutation in self.build_mutations(model_type_id, model_type, building) {

@@ -252,7 +252,13 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
 }
 
 pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedArena<Type>> {
-    let ast_types = &ast_system.models;
+    let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
+
+    for service in ast_system.services.into_iter() {
+        ast_service_models.extend(service.models);
+    }
+
+    let ast_types = [ast_system.models.as_slice(), ast_service_models.as_slice()].concat();
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     let mut annotation_env = HashMap::new();
@@ -261,7 +267,8 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
 
     let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
-    for model in ast_types {
+    for model in ast_types.iter() {
+        println!("{}", model.name.as_str());
         types_arena.add(
             model.name.as_str(),
             Type::Composite(AstModel::shallow(model)),
@@ -276,7 +283,7 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
 
         let mut errors = Vec::new();
 
-        for model in ast_types {
+        for model in ast_types.iter() {
             let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
             if let Type::Composite(c) = &mut typ {
                 let pass_res = c.pass(&types_arena, &annotation_env, &init_scope, &mut errors);

@@ -42,14 +42,14 @@ pub fn convert_root(
                 .children(&mut cursor)
                 .filter(|n| n.kind() == "declaration")
                 .map(|c| convert_declaration_to_model(c, source, source_span))
-                .collect::<Option<Vec<_>>>()
-                .unwrap_or_default(),
+                .flatten()
+                .collect::<Vec<_>>(),
             services: node
                 .children(&mut cursor)
                 .filter(|n| n.kind() == "declaration")
                 .map(|c| convert_declaration_to_service(c, source, source_span))
-                .collect::<Option<Vec<_>>>()
-                .unwrap_or_default(),
+                .flatten()
+                .collect::<Vec<_>>(),
         }
     }
 }
@@ -139,10 +139,7 @@ pub fn convert_declaration_to_service(
     let first_child = node.child(0).unwrap();
 
     if first_child.kind() == "service" {
-        //Some(convert_service(first_child, source, source_span))
-
         let service = convert_service(first_child, source, source_span);
-        println!("{:#?}", service);
         Some(service)
     } else {
         None
@@ -164,6 +161,7 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
     let kind = if kind == "model" {
         AstModelKind::Persistent
     } else if kind == "type" {
+        println!("typ");
         AstModelKind::NonPersistent
     } else if kind == "context" {
         AstModelKind::Context

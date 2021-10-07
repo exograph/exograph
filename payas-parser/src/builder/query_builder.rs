@@ -8,6 +8,7 @@ use payas_model::model::{
     predicate::PredicateParameter,
     GqlType, GqlTypeKind, GqlTypeModifier,
 };
+use payas_model::model::{GqlCompositeKind, GqlCompositeTypeKind};
 
 use super::{
     order_by_type_builder, predicate_builder,
@@ -34,7 +35,11 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
-        if let GqlTypeKind::Composite { .. } = &model_type.kind {
+        if let GqlTypeKind::Composite(GqlCompositeTypeKind {
+            kind: GqlCompositeKind::Persistent { .. },
+            ..
+        }) = &model_type.kind
+        {
             {
                 let operation_name = model_type.pk_query();
                 let query = expanded_pk_query(model_type, building);
