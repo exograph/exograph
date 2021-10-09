@@ -1,6 +1,7 @@
 use actix_web::dev::Server;
 use async_stream::AsyncStream;
 use bincode::deserialize_from;
+use execution::executor::Executor;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -60,20 +61,16 @@ async fn resolve(
     match auth {
         Ok(claims) => {
             let (system, schema, database) = system_info.as_ref().as_ref();
-
+            let executor = Executor {
+                system,
+                schema,
+                database,
+            };
             let operation_name = body["operationName"].as_str();
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            match crate::execution::executor::execute(
-                system,
-                schema,
-                database,
-                operation_name,
-                query_str,
-                variables,
-                claims,
-            ) {
+            match executor.execute(operation_name, query_str, variables, claims) {
                 Ok(parts) => {
                     let response_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         let parts_len = parts.len();

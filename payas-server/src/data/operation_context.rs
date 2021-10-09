@@ -1,6 +1,7 @@
 use async_graphql_value::{Number, Value};
 use chrono::prelude::*;
 use chrono::DateTime;
+use payas_model::model::system::ModelSystem;
 use payas_model::{
     model::column_id::ColumnId,
     sql::column::{FloatBits, IntBits},
@@ -35,13 +36,17 @@ impl<'a> OperationContext<'a> {
         }
     }
 
+    pub fn get_system(&self) -> &ModelSystem {
+        self.query_context.executor.system
+    }
+
     pub fn create_column(&self, column: Column<'a>) -> &Column<'a> {
         self.columns.alloc(column)
     }
 
     pub fn create_column_with_id(&self, column_id: &ColumnId) -> &Column<'a> {
         self.create_column(Column::Physical(
-            column_id.get_column(self.query_context.system),
+            column_id.get_column(self.query_context.executor.system),
         ))
     }
 

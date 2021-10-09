@@ -9,10 +9,9 @@ use async_graphql_parser::{
     Positioned,
 };
 use async_graphql_value::{Name, Value};
-use payas_model::{model::system::ModelSystem, sql::database::Database};
 use serde_json::{Map, Value as JsonValue};
 
-use super::resolver::*;
+use super::{executor::Executor, resolver::*};
 
 use crate::{data::data_resolver::DataResolver, introspection::schema::*};
 
@@ -21,9 +20,7 @@ pub struct QueryContext<'a> {
     pub operation_name: Option<&'a str>,
     pub fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
     pub variables: &'a Option<&'a Map<String, JsonValue>>,
-    pub schema: &'a Schema,
-    pub system: &'a ModelSystem,
-    pub database: &'a Database,
+    pub executor: &'a Executor<'a>,
     pub request_context: &'a serde_json::Value,
 }
 
@@ -107,6 +104,7 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
             )),
             "__schema" => Ok(QueryResponse::Json(
                 query_context
+                    .executor
                     .schema
                     .resolve_value(query_context, &field.node.selection_set)?,
             )),
@@ -118,7 +116,10 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
                 };
                 Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
             }
-            _ => query_context.system.resolve(field, &self.ty, query_context),
+            _ => query_context
+                .executor
+                .system
+                .resolve(field, &self.ty, query_context),
         }
     }
 }
