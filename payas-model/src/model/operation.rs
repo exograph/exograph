@@ -8,6 +8,7 @@ use super::{
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
     predicate::PredicateParameter,
+    service::MethodArgumentParameter,
     system::ModelSystem,
     types::{GqlType, GqlTypeModifier},
 };
@@ -15,11 +16,22 @@ use super::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Query {
     pub name: String,
+    pub kind: QueryKind,
+    pub return_type: OperationReturnType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum QueryKind {
+    Persistent(PersistentQueryParameter), // TODO: Persistent { .. } ?
+    Service(Vec<MethodArgumentParameter>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PersistentQueryParameter {
     pub predicate_param: Option<PredicateParameter>,
     pub order_by_param: Option<OrderByParameter>,
     pub limit_param: Option<LimitParameter>,
     pub offset_param: Option<OffsetParameter>,
-    pub return_type: OperationReturnType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,12 +43,16 @@ pub struct Mutation {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MutationKind {
+    // mutations for persistent queries
     Create(CreateDataParameter),
     Delete(PredicateParameter),
     Update {
         data_param: UpdateDataParameter,
         predicate_param: PredicateParameter,
     },
+
+    // mutation for service
+    Service(Vec<MethodArgumentParameter>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

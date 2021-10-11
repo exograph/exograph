@@ -65,6 +65,10 @@ impl<'a> OperationResolver<'a> for Mutation {
                 select,
                 operation_context,
             ),
+            MutationKind::Service(_args_param) => {
+                // TODO: need to genericize operation resolution over services + SQL
+                todo!()
+            }
         }
     }
 }

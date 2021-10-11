@@ -2,7 +2,9 @@ use crate::introspection::definition::parameter::Parameter;
 use async_graphql_parser::types::FieldDefinition;
 
 use payas_model::model::{
-    operation::{Mutation, MutationKind, OperationReturnType, Query},
+    operation::{
+        Mutation, MutationKind, OperationReturnType, PersistentQueryParameter, Query, QueryKind,
+    },
     service::ServiceMethod,
     system::ModelSystem,
 };
@@ -34,10 +36,24 @@ impl Operation for Query {
             }
         );
 
-        populate_params!(&self.predicate_param);
-        populate_params!(&self.order_by_param);
-        populate_params!(&self.limit_param);
-        populate_params!(&self.offset_param);
+        match &self.kind {
+            QueryKind::Persistent(PersistentQueryParameter {
+                predicate_param,
+                order_by_param,
+                limit_param,
+                offset_param,
+            }) => {
+                populate_params!(&predicate_param);
+                populate_params!(&order_by_param);
+                populate_params!(&limit_param);
+                populate_params!(&offset_param);
+            }
+            QueryKind::Service(args) => {
+                for arg in args.iter() {
+                    params.push(arg)
+                }
+            }
+        }
 
         params
     }
@@ -60,6 +76,13 @@ impl Operation for Mutation {
                 data_param,
                 predicate_param,
             } => vec![predicate_param, data_param],
+            MutationKind::Service(args_param) => args_param
+                .iter()
+                .map(|param| {
+                    let param: &dyn Parameter = param;
+                    param
+                })
+                .collect(),
         }
     }
 

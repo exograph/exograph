@@ -13,8 +13,8 @@ pub struct Service {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceMethod {
     pub name: String,
-    pub operation: ServiceMethodType,
-    pub arguments: Vec<ServiceMethodArgument>,
+    pub operation_kind: ServiceMethodType,
+    pub arguments: Vec<MethodArgumentParameter>,
     pub return_type: Option<OperationReturnType>,
 }
 
@@ -25,9 +25,9 @@ pub enum ServiceMethodType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ServiceMethodArgument {
+pub struct MethodArgumentParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<GqlType>,
     pub type_modifier: GqlTypeModifier,
+    pub type_id: SerializableSlabIndex<GqlType>,
 }

@@ -3,6 +3,7 @@ use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
 };
 use payas_model::model::{
+    operation::{PersistentQueryParameter, QueryKind},
     relation::GqlRelation,
     system::ModelSystem,
     types::{GqlField, GqlType, *},
@@ -77,33 +78,34 @@ impl FieldDefinitionProvider for GqlField {
                     GqlTypeKind::Composite(kind) => {
                         let collection_query = kind.get_collection_query();
                         let collection_query = &system.queries[collection_query];
-                        let predicate_parameter_arg = collection_query
-                            .predicate_param
-                            .as_ref()
-                            .map(|p| p.input_value());
-                        let order_by_parameter_arg = collection_query
-                            .order_by_param
-                            .as_ref()
-                            .map(|p| p.input_value());
-                        let limit_arg = collection_query
-                            .limit_param
-                            .as_ref()
-                            .map(|p| p.input_value());
-                        let offset_arg = collection_query
-                            .offset_param
-                            .as_ref()
-                            .map(|p| p.input_value());
 
-                        vec![
-                            predicate_parameter_arg,
-                            order_by_parameter_arg,
-                            limit_arg,
-                            offset_arg,
-                        ]
-                        .into_iter()
-                        .flatten()
-                        .map(util::default_positioned)
-                        .collect()
+                        match &collection_query.kind {
+                            QueryKind::Persistent(PersistentQueryParameter {
+                                predicate_param,
+                                order_by_param,
+                                limit_param,
+                                offset_param,
+                            }) => {
+                                let predicate_parameter_arg =
+                                    predicate_param.as_ref().map(|p| p.input_value());
+                                let order_by_parameter_arg =
+                                    order_by_param.as_ref().map(|p| p.input_value());
+                                let limit_arg = limit_param.as_ref().map(|p| p.input_value());
+                                let offset_arg = offset_param.as_ref().map(|p| p.input_value());
+
+                                vec![
+                                    predicate_parameter_arg,
+                                    order_by_parameter_arg,
+                                    limit_arg,
+                                    offset_arg,
+                                ]
+                                .into_iter()
+                                .flatten()
+                                .map(util::default_positioned)
+                                .collect()
+                            }
+                            QueryKind::Service(_) => panic!(),
+                        }
                     }
                 }
             }

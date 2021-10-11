@@ -1,6 +1,7 @@
 use payas_model::model::limit_offset::OffsetParameter;
 use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::naming::ToGqlQueryName;
+use payas_model::model::operation::{PersistentQueryParameter, QueryKind};
 use payas_model::model::{
     limit_offset::LimitParameter,
     mapped_arena::MappedArena,
@@ -72,10 +73,12 @@ fn shallow_pk_query(
     let operation_name = typ.pk_query();
     Query {
         name: operation_name,
-        predicate_param: None,
-        order_by_param: None,
-        limit_param: None,
-        offset_param: None,
+        kind: QueryKind::Persistent(PersistentQueryParameter {
+            predicate_param: None,
+            order_by_param: None,
+            limit_param: None,
+            offset_param: None,
+        }),
         return_type: OperationReturnType {
             type_id: model_type_id,
             type_name: typ.name.clone(),
@@ -92,10 +95,12 @@ fn expanded_pk_query(model_type: &GqlType, building: &SystemContextBuilding) -> 
 
     Query {
         name: operation_name,
-        predicate_param: Some(pk_param),
-        order_by_param: None,
-        limit_param: None,
-        offset_param: None,
+        kind: QueryKind::Persistent(PersistentQueryParameter {
+            predicate_param: Some(pk_param),
+            order_by_param: None,
+            limit_param: None,
+            offset_param: None,
+        }),
         return_type: existing_query.return_type.clone(),
     }
 }
@@ -125,10 +130,12 @@ fn shallow_collection_query(
     let operation_name = model.collection_query();
     Query {
         name: operation_name,
-        predicate_param: None,
-        order_by_param: None,
-        limit_param: None,
-        offset_param: None,
+        kind: QueryKind::Persistent(PersistentQueryParameter {
+            predicate_param: None,
+            order_by_param: None,
+            limit_param: None,
+            offset_param: None,
+        }),
         return_type: OperationReturnType {
             type_id: model_type_id,
             type_name: model.name.clone(),
@@ -148,10 +155,12 @@ fn expanded_collection_query(model_type: &GqlType, building: &SystemContextBuild
 
     Query {
         name: operation_name.clone(),
-        predicate_param: Some(predicate_param),
-        order_by_param: Some(order_by_param),
-        limit_param: Some(limit_param),
-        offset_param: Some(offset_param),
+        kind: QueryKind::Persistent(PersistentQueryParameter {
+            predicate_param: Some(predicate_param),
+            order_by_param: Some(order_by_param),
+            limit_param: Some(limit_param),
+            offset_param: Some(offset_param),
+        }),
         return_type: existing_query.return_type.clone(),
     }
 }

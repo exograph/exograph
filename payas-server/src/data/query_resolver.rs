@@ -74,16 +74,21 @@ impl<'a> QueryOperations<'a> for Query {
         arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<OrderBy<'a>> {
-        self.order_by_param
-            .as_ref()
-            .and_then(|order_by_param| {
-                let argument_value = super::find_arg(arguments, &order_by_param.name);
-                argument_value.map(|argument_value| {
-                    order_by_param.map_to_sql(argument_value, operation_context)
-                })
-            })
-            .transpose()
-            .unwrap() // TODO: handle properly
+        match &self.kind {
+            QueryKind::Persistent(PersistentQueryParameter { order_by_param, .. }) => {
+                order_by_param
+                    .as_ref()
+                    .and_then(|order_by_param| {
+                        let argument_value = super::find_arg(arguments, &order_by_param.name);
+                        argument_value.map(|argument_value| {
+                            order_by_param.map_to_sql(argument_value, operation_context)
+                        })
+                    })
+                    .transpose()
+                    .unwrap() // TODO: handle properly
+            }
+            QueryKind::Service(_) => panic!(),
+        }
     }
 
     fn content_select(
@@ -111,15 +116,19 @@ impl<'a> QueryOperations<'a> for Query {
         arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<Limit> {
-        self.limit_param
-            .as_ref()
-            .and_then(|limit_param| {
-                let argument_value = super::find_arg(arguments, &limit_param.name);
-                argument_value
-                    .map(|argument_value| limit_param.map_to_sql(argument_value, operation_context))
-            })
-            .transpose()
-            .unwrap()
+        match &self.kind {
+            QueryKind::Persistent(PersistentQueryParameter { limit_param, .. }) => limit_param
+                .as_ref()
+                .and_then(|limit_param| {
+                    let argument_value = super::find_arg(arguments, &limit_param.name);
+                    argument_value.map(|argument_value| {
+                        limit_param.map_to_sql(argument_value, operation_context)
+                    })
+                })
+                .transpose()
+                .unwrap(),
+            QueryKind::Service(_) => panic!(),
+        }
     }
 
     fn compute_offset(
@@ -127,16 +136,19 @@ impl<'a> QueryOperations<'a> for Query {
         arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<Offset> {
-        self.offset_param
-            .as_ref()
-            .and_then(|offset_param| {
-                let argument_value = super::find_arg(arguments, &offset_param.name);
-                argument_value.map(|argument_value| {
-                    offset_param.map_to_sql(argument_value, operation_context)
+        match &self.kind {
+            QueryKind::Persistent(PersistentQueryParameter { offset_param, .. }) => offset_param
+                .as_ref()
+                .and_then(|offset_param| {
+                    let argument_value = super::find_arg(arguments, &offset_param.name);
+                    argument_value.map(|argument_value| {
+                        offset_param.map_to_sql(argument_value, operation_context)
+                    })
                 })
-            })
-            .transpose()
-            .unwrap()
+                .transpose()
+                .unwrap(),
+            QueryKind::Service(_) => panic!(),
+        }
     }
 
     fn operation(
@@ -157,7 +169,13 @@ impl<'a> QueryOperations<'a> for Query {
         }
 
         let predicate = super::compute_predicate(
-            self.predicate_param.as_ref(),
+            match &self.kind {
+                QueryKind::Persistent(PersistentQueryParameter {
+                    predicate_param, ..
+                }) => predicate_param,
+                QueryKind::Service(_) => panic!(),
+            }
+            .as_ref(),
             &field.arguments,
             additional_predicate,
             operation_context,

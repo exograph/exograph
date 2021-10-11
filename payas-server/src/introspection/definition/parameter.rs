@@ -8,7 +8,7 @@ use payas_model::model::{
     operation::{CreateDataParameter, UpdateDataParameter},
     order::*,
     predicate::PredicateParameter,
-    service::ServiceMethodArgument,
+    service::MethodArgumentParameter,
     types::GqlField,
     types::GqlTypeModifier,
     GqlFieldType,
@@ -128,7 +128,7 @@ impl Parameter for GqlField {
     }
 }
 
-impl Parameter for ServiceMethodArgument {
+impl Parameter for MethodArgumentParameter {
     fn name(&self) -> &str {
         &self.name
     }
