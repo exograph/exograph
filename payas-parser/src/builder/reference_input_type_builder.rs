@@ -25,7 +25,11 @@ impl Builder for ReferenceInputTypeBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite { .. } = &model_type.kind {
+            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
+                kind: _kind @ GqlCompositeKind::Persistent { .. },
+                ..
+            }) = &model_type.kind
+            {
                 for (existing_id, expanded_kind) in expanded_reference_types(model_type, building) {
                     building.mutation_types[existing_id].kind = expanded_kind;
                 }

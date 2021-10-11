@@ -10,6 +10,7 @@ use payas_model::model::{
 };
 use payas_model::model::{GqlCompositeKind, GqlCompositeTypeKind};
 
+use super::resolved_builder::ResolvedCompositeTypeKind;
 use super::{
     order_by_type_builder, predicate_builder,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -18,7 +19,15 @@ use super::{
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {
-        if let ResolvedType::Composite(c) = &model {
+        if let ResolvedType::Composite(
+            c
+            @
+            ResolvedCompositeType {
+                kind: ResolvedCompositeTypeKind::Persistent { .. },
+                ..
+            },
+        ) = &model
+        {
             let model_type_id = building.types.get_id(c.name.as_str()).unwrap();
             let shallow_query = shallow_pk_query(model_type_id, c);
             let collection_query = shallow_collection_query(model_type_id, c);
