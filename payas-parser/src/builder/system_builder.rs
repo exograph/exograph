@@ -6,7 +6,7 @@ use payas_model::{
         operation::{Mutation, Query},
         order::OrderByParameterType,
         predicate::PredicateParameterType,
-        service::{Service, ServiceMethod},
+        service::ServiceMethod,
         system::ModelSystem,
         types::GqlType,
         ContextType,
@@ -59,7 +59,6 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSy
         tables: building.tables.values,
         mutation_types: building.mutation_types.values,
         create_mutations: building.mutations,
-        services: building.services,
         methods: building.methods.values,
     })
 }
@@ -81,7 +80,7 @@ fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextB
     // type_builder::build_shallow to have run
     query_builder::build_shallow(resolved_types, building);
     mutation_builder::build_shallow(resolved_types, building);
-    service_builder::build_shallow(resolved_services, building);
+    service_builder::build_shallow(resolved_types, resolved_services, building);
 }
 
 fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
@@ -97,9 +96,10 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     order_by_type_builder::build_expanded(building);
     predicate_builder::build_expanded(building);
 
-    // Finally expand queries and mutations
+    // Finally expand queries, mutations, and service methods
     query_builder::build_expanded(building);
     mutation_builder::build_expanded(building);
+    service_builder::build_expanded(building);
 }
 
 #[derive(Debug, Default)]
@@ -112,7 +112,6 @@ pub struct SystemContextBuilding {
     pub mutation_types: MappedArena<GqlType>,
     pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
-    pub services: MappedArena<Service>,
     pub methods: MappedArena<ServiceMethod>,
 }
 

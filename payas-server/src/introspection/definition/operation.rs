@@ -5,7 +5,6 @@ use payas_model::model::{
     operation::{
         Mutation, MutationKind, OperationReturnType, PersistentQueryParameter, Query, QueryKind,
     },
-    service::ServiceMethod,
     system::ModelSystem,
 };
 use util::*;
@@ -16,7 +15,7 @@ use crate::introspection::util;
 pub trait Operation {
     fn name(&self) -> &String;
     fn parameters(&self) -> Vec<&dyn Parameter>;
-    fn return_type(&self) -> &OperationReturnType;
+    fn return_type(&self) -> Option<&OperationReturnType>;
 }
 
 impl Operation for Query {
@@ -58,8 +57,8 @@ impl Operation for Query {
         params
     }
 
-    fn return_type(&self) -> &OperationReturnType {
-        &self.return_type
+    fn return_type(&self) -> Option<&OperationReturnType> {
+        Some(&self.return_type)
     }
 }
 
@@ -86,28 +85,8 @@ impl Operation for Mutation {
         }
     }
 
-    fn return_type(&self) -> &OperationReturnType {
-        &self.return_type
-    }
-}
-
-impl Operation for ServiceMethod {
-    fn name(&self) -> &String {
-        &self.name
-    }
-
-    fn parameters(&self) -> Vec<&dyn Parameter> {
-        let mut params: Vec<&dyn Parameter> = vec![];
-
-        for arg in self.arguments.iter() {
-            params.push(arg);
-        }
-
-        params
-    }
-
-    fn return_type(&self) -> &OperationReturnType {
-        todo!()
+    fn return_type(&self) -> Option<&OperationReturnType> {
+        self.return_type.as_ref()
     }
 }
 
@@ -126,10 +105,14 @@ impl<T: Operation> FieldDefinitionProvider for T {
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],
-            ty: default_positioned(util::value_type(
-                &self.return_type().type_name,
-                &self.return_type().type_modifier,
-            )),
+            ty: if let Some(return_type) = self.return_type() {
+                default_positioned(util::value_type(
+                    &return_type.type_name,
+                    &return_type.type_modifier,
+                ))
+            } else {
+                todo!() // FIXME: what do we do here?
+            },
         }
     }
 }

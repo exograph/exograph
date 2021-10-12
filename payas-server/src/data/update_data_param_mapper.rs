@@ -14,7 +14,7 @@ use payas_model::{
         relation::GqlRelation,
         system::ModelSystem,
         types::GqlTypeKind,
-        GqlCompositeTypeKind, GqlType,
+        GqlCompositeType, GqlType,
     },
     sql::{
         column::{PhysicalColumn, PhysicalColumnType, ProxyColumn},
@@ -74,7 +74,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 SQLOperation::Update(table.update(self_update_columns, predicate, vec![pk_col])),
             )));
 
-            let container_model_type = mutation.return_type.typ(system);
+            let container_model_type = mutation.return_type.as_ref().unwrap().typ(system);
             let nested_updates = compute_nested(
                 data_type,
                 argument,
@@ -109,7 +109,7 @@ fn compute_update_columns<'a>(
 
     match &data_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields
             .iter()
             .flat_map(|field| {
                 field.relation.self_column().and_then(|key_column_id| {
@@ -148,7 +148,7 @@ fn compute_update_columns<'a>(
 fn needs_transaction(mutation_type: &GqlType) -> bool {
     match &mutation_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields
             .iter()
             .any(|field| matches!(&field.relation, GqlRelation::OneToMany { .. })),
     }
@@ -170,7 +170,7 @@ fn compute_nested<'a>(
 
     match &data_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
             fields.iter().flat_map(|field| match &field.relation {
                 GqlRelation::OneToMany { other_type_id, .. } => {
                     let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type

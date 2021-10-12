@@ -22,7 +22,7 @@ impl TypeDefinitionProvider for GqlType {
                 directives: vec![],
                 kind: TypeKind::Scalar,
             },
-            GqlTypeKind::Composite(GqlCompositeTypeKind {
+            GqlTypeKind::Composite(GqlCompositeType {
                 fields: model_fields,
                 ..
             }) => {

@@ -70,8 +70,8 @@ pub struct AstService<T: NodeTypedness> {
 pub struct AstMethod<T: NodeTypedness> {
     pub name: String,
     pub typ: String, // query or mutation?
-    pub arguments: Vec<AstField<T>>,
-    pub return_type: AstFieldType<T>,
+    pub arguments: Vec<AstArgument<T>>,
+    pub return_type: Option<AstFieldType<T>>,
     pub is_exported: bool,
     pub annotations: T::Annotations,
 }
@@ -85,6 +85,13 @@ pub enum AstModelKind {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstField<T: NodeTypedness> {
+    pub name: String,
+    pub typ: AstFieldType<T>,
+    pub annotations: T::Annotations,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstArgument<T: NodeTypedness> {
     pub name: String,
     pub typ: AstFieldType<T>,
     pub annotations: T::Annotations,

@@ -8,6 +8,7 @@ mod logical_op;
 mod model;
 mod relational_op;
 mod selection;
+mod service;
 mod typ;
 
 use std::collections::HashMap;
@@ -21,7 +22,7 @@ pub(super) use annotation_map::AnnotationMap;
 
 pub(super) use typ::{PrimitiveType, Type};
 
-use crate::ast::ast_types::{AstModel, NodeTypedness};
+use crate::ast::ast_types::{AstModel, AstService, NodeTypedness};
 use crate::ast::ast_types::{AstSystem, Untyped};
 use payas_model::model::mapped_arena::MappedArena;
 
@@ -91,7 +92,11 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         (
             "access",
             AnnotationSpec {
-                targets: &[AnnotationTarget::Model, AnnotationTarget::Field],
+                targets: &[
+                    AnnotationTarget::Model,
+                    AnnotationTarget::Field,
+                    AnnotationTarget::Method,
+                ],
                 no_params: false,
                 single_params: true,
                 mapped_params: Some(&[
@@ -150,6 +155,24 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             AnnotationSpec {
                 targets: &[AnnotationTarget::Field],
                 no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "external",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Service],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "inject",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Argument],
+                no_params: true,
                 single_params: true,
                 mapped_params: None,
             },
@@ -254,12 +277,6 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
 pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedArena<Type>> {
     let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
 
-    for service in ast_system.services.into_iter() {
-        ast_service_models.extend(service.models);
-    }
-
-    let ast_types = [ast_system.models.as_slice(), ast_service_models.as_slice()].concat();
-
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     let mut annotation_env = HashMap::new();
     populate_type_env(&mut types_arena);
@@ -267,8 +284,15 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
 
     let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
+    for service in ast_system.services.iter() {
+        ast_service_models.extend(service.models.clone());
+        types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
+    }
+
+    let ast_types = [ast_system.models.as_slice(), ast_service_models.as_slice()].concat();
+    let ast_services = ast_system.services;
+
     for model in ast_types.iter() {
-        println!("{}", model.name.as_str());
         types_arena.add(
             model.name.as_str(),
             Type::Composite(AstModel::shallow(model)),
@@ -289,6 +313,23 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
                 let pass_res = c.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
                 if pass_res {
                     *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
+                    did_change = true;
+                }
+            } else {
+                panic!()
+            }
+        }
+
+        // FIXME: dedup
+        for service in ast_services.iter() {
+            let mut typ = types_arena
+                .get_by_key(service.name.as_str())
+                .unwrap()
+                .clone();
+            if let Type::Service(s) = &mut typ {
+                let pass_res = s.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
+                if pass_res {
+                    *types_arena.get_by_key_mut(service.name.as_str()).unwrap() = typ;
                     did_change = true;
                 }
             } else {

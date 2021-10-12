@@ -4,7 +4,7 @@
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeKind, GqlCompositeTypeKind, GqlTypeKind};
+use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use payas_model::model::operation::{CreateDataParameter, MutationKind};
 
@@ -28,8 +28,8 @@ impl Builder for CreateMutationBuilder {
 
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-                kind: GqlCompositeKind::Persistent { .. },
+            if let GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {
@@ -42,8 +42,8 @@ impl Builder for CreateMutationBuilder {
             }
         }
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-                kind: GqlCompositeKind::Persistent { .. },
+            if let GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {

@@ -8,8 +8,9 @@ use anyhow::Result;
 
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::ToPlural;
+use payas_model::model::GqlTypeModifier;
 
-use crate::ast::ast_types::{AstAnnotationParams, AstFieldType};
+use crate::ast::ast_types::{AstAnnotationParams, AstArgument, AstFieldType, AstService};
 use crate::{
     ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
     typechecker::{PrimitiveType, Type, Typed},
@@ -41,22 +42,30 @@ pub struct ResolvedContext {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedService {
     pub name: String,
+    pub module_path: String,
     pub methods: Vec<ResolvedMethod>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedMethod {
     pub name: String,
-    pub typ: String,
+    pub operation_kind: ResolvedMethodType,
+    pub is_exported: bool,
     pub access: ResolvedAccess,
     pub arguments: Vec<ResolvedArgument>,
-    pub return_type: ResolvedCompositeType,
+    pub return_type: Option<ResolvedFieldType>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedMethodType {
+    Query,
+    Mutation,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedArgument {
     pub name: String,
-    pub typ: ResolvedCompositeType,
+    pub typ: ResolvedFieldType,
     pub injected: bool,
 }
 
@@ -195,6 +204,24 @@ pub enum ResolvedFieldType {
     List(Box<ResolvedFieldType>),
 }
 
+impl ResolvedFieldType {
+    pub fn get_underlying_typename(&self) -> &str {
+        match &self {
+            ResolvedFieldType::Plain(s) => s,
+            ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
+            ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
+        }
+    }
+
+    pub fn get_modifier(&self) -> GqlTypeModifier {
+        match &self {
+            ResolvedFieldType::Plain(_) => GqlTypeModifier::NonNull,
+            ResolvedFieldType::Optional(_) => GqlTypeModifier::Optional,
+            ResolvedFieldType::List(_) => GqlTypeModifier::List,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedTypeHint {
     Explicit {
@@ -278,18 +305,13 @@ impl ResolvedFieldType {
 pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem> {
     let mut resolved_system = build_shallow(&types)?;
     build_expanded(types, &mut resolved_system);
-
-    //for typ in resolved_system.types.iter() {
-    //    println!("{:#?}", typ);
-    //}
-
     Ok(resolved_system)
 }
 
 fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
     let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
-    let resolved_services: MappedArena<ResolvedService> = MappedArena::default();
+    let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
     for (_, typ) in types.iter() {
         match typ {
@@ -344,8 +366,39 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     },
                 );
             }
-            Type::Service(_) => {
-                todo!() // FIXME: impl service resolution
+            Type::Service(service) => {
+                let module_path = match service.annotations.get("external").unwrap() {
+                    AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
+                    _ => panic!(),
+                }
+                .clone();
+
+                resolved_services.add(
+                    &service.name,
+                    ResolvedService {
+                        name: service.name.clone(),
+                        module_path,
+                        methods: service
+                            .methods
+                            .iter()
+                            .map(|m| {
+                                let access = build_access(m.annotations.get("access"));
+                                ResolvedMethod {
+                                    name: m.name.clone(),
+                                    operation_kind: match m.typ.as_str() {
+                                        "query" => ResolvedMethodType::Query,
+                                        "mutation" => ResolvedMethodType::Mutation,
+                                        _ => panic!(),
+                                    },
+                                    is_exported: m.is_exported,
+                                    access,
+                                    arguments: vec![],
+                                    return_type: None,
+                                }
+                            })
+                            .collect(),
+                    },
+                );
             }
             o => panic!(
                 "Unable to build shallow type for non-primitve, non-composite type: {:?}",
@@ -415,8 +468,56 @@ fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem
             } else {
                 todo!()
             }
+        } else if let Type::Service(s) = typ {
+            build_expanded_service(s, &types, resolved_system);
         }
     }
+}
+
+fn build_expanded_service(
+    s: &AstService<Typed>,
+    types: &MappedArena<Type>,
+    resolved_system: &mut ResolvedSystem,
+) {
+    // build arguments and return type of service methods
+
+    let resolved_services = &mut resolved_system.services;
+    let resolved_types = &mut resolved_system.types;
+
+    let existing_type_id = resolved_services.get_id(&s.name).unwrap();
+    let existing_service = &resolved_services[existing_type_id];
+
+    let expanded_methods = s
+        .methods
+        .iter()
+        .map(|m| {
+            let existing_method = existing_service
+                .methods
+                .iter()
+                .find(|existing_m| m.name == existing_m.name)
+                .unwrap();
+
+            ResolvedMethod {
+                arguments: m
+                    .arguments
+                    .iter()
+                    .map(|a| resolve_argument(a, types, resolved_types))
+                    .collect(),
+                return_type: m
+                    .return_type
+                    .as_ref()
+                    .map(|t| resolve_field_type(&t.to_typ(types), types, resolved_types)),
+                ..existing_method.clone()
+            }
+        })
+        .collect();
+
+    let expanded_service = ResolvedService {
+        methods: expanded_methods,
+        ..existing_service.clone()
+    };
+
+    resolved_services[existing_type_id] = expanded_service;
 }
 
 fn build_expanded_persistent_type(
@@ -800,6 +901,18 @@ fn resolve_field_type(
             resolve_field_type(underlying.as_ref(), types, resolved_types),
         )),
         _ => todo!("Unsupported field type"),
+    }
+}
+
+fn resolve_argument(
+    arg: &AstArgument<Typed>,
+    types: &MappedArena<Type>,
+    resolved_types: &MappedArena<ResolvedType>,
+) -> ResolvedArgument {
+    ResolvedArgument {
+        name: arg.name.clone(),
+        typ: resolve_field_type(&arg.typ.to_typ(types), types, resolved_types),
+        injected: arg.annotations.get("inject").is_some(),
     }
 }
 

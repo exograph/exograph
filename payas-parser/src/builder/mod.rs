@@ -46,29 +46,33 @@ pub trait Builder {
         building: &mut SystemContextBuilding,
     ) {
         if let ResolvedType::Composite(c) = resolved_type {
-            if let ResolvedCompositeTypeKind::Persistent { .. } = c.kind {
-                for type_name in self.type_names(c, resolved_types).iter() {
-                    building.mutation_types.add(
-                        type_name,
-                        GqlType {
-                            name: type_name.to_string(),
-                            plural_name: "".to_string(), // unused
-                            kind: GqlTypeKind::Primitive,
-                            is_input: true,
-                        },
-                    );
-                }
+            for type_name in self.type_names(c, resolved_types).iter() {
+                building.mutation_types.add(
+                    type_name,
+                    GqlType {
+                        name: type_name.to_string(),
+                        plural_name: "".to_string(), // unused
+                        kind: GqlTypeKind::Primitive,
+                        is_input: true,
+                    },
+                );
             }
         }
     }
 
-    fn build_shallow(
+    fn build_shallow_only_persistent(
         &self,
         resolved_types: &MappedArena<ResolvedType>,
         building: &mut SystemContextBuilding,
     ) {
         for (_, model_type) in resolved_types.iter() {
-            self.create_shallow_type(model_type, resolved_types, building);
+            if let ResolvedType::Composite(ResolvedCompositeType {
+                kind: ResolvedCompositeTypeKind::Persistent { .. },
+                ..
+            }) = &model_type
+            {
+                self.create_shallow_type(model_type, resolved_types, building);
+            }
         }
     }
 

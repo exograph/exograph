@@ -5,7 +5,7 @@ use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
 use payas_model::model::{
-    GqlCompositeKind, GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind,
+    GqlCompositeType, GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind,
 };
 
 use crate::builder::mutation_builder::{create_data_type_name, update_data_type_name};
@@ -35,8 +35,8 @@ impl Builder for UpdateMutationBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-                kind: GqlCompositeKind::Persistent { .. },
+            if let GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {
@@ -50,8 +50,8 @@ impl Builder for UpdateMutationBuilder {
         }
 
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-                kind: GqlCompositeKind::Persistent { .. },
+            if let GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {
@@ -146,7 +146,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         building: &SystemContextBuilding,
         top_level_type: Option<&GqlType>,
         container_type: Option<&GqlType>,
-    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
+    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeType)> {
         let existing_type_name =
             Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
@@ -179,7 +179,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
 
                     fields_with_id.extend(base_type.fields.into_iter());
 
-                    let type_with_id = GqlCompositeTypeKind {
+                    let type_with_id = GqlCompositeType {
                         fields: fields_with_id,
                         ..base_type
                     };
@@ -189,8 +189,8 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         }
         .clone();
 
-        if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-            kind: kind @ GqlCompositeKind::Persistent { .. },
+        if let GqlTypeKind::Composite(GqlCompositeType {
+            kind: kind @ GqlCompositeTypeKind::Persistent { .. },
             ..
         }) = &model_type.kind
         {
@@ -230,7 +230,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     .collect();
                 let mut types = vec![(
                     existing_type_id,
-                    GqlCompositeTypeKind {
+                    GqlCompositeType {
                         fields,
                         kind: kind.clone(),
                         access: Access::restrictive(),

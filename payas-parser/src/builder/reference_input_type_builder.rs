@@ -5,7 +5,7 @@ use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::ToGqlTypeNames;
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeKind, GqlCompositeTypeKind, GqlTypeKind};
+use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
@@ -25,8 +25,8 @@ impl Builder for ReferenceInputTypeBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-                kind: _kind @ GqlCompositeKind::Persistent { .. },
+            if let GqlTypeKind::Composite(GqlCompositeType {
+                kind: _kind @ GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {
@@ -44,9 +44,9 @@ fn expanded_reference_types(
 ) -> Vec<(SerializableSlabIndex<GqlType>, GqlTypeKind)> {
     let existing_type = model_type;
 
-    if let GqlTypeKind::Composite(GqlCompositeTypeKind {
+    if let GqlTypeKind::Composite(GqlCompositeType {
         ref fields,
-        kind: kind @ GqlCompositeKind::Persistent { .. },
+        kind: kind @ GqlCompositeTypeKind::Persistent { .. },
         ..
     }) = &existing_type.kind
     {
@@ -64,7 +64,7 @@ fn expanded_reference_types(
 
         vec![(
             existing_type_id,
-            GqlTypeKind::Composite(GqlCompositeTypeKind {
+            GqlTypeKind::Composite(GqlCompositeType {
                 fields: reference_type_fields,
                 kind: kind.clone(),
                 access: Access::restrictive(),

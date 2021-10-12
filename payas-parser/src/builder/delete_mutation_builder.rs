@@ -4,7 +4,7 @@
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::ToGqlMutationNames;
 use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeKind, GqlCompositeTypeKind, GqlTypeKind};
+use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use crate::builder::query_builder;
 
@@ -32,8 +32,8 @@ impl Builder for DeleteMutationBuilder {
         // Since there are no special input types for deletion, no expansion is needed
 
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-                kind: GqlCompositeKind::Persistent { .. },
+            if let GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {

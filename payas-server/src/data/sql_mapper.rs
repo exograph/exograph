@@ -6,7 +6,7 @@ use async_graphql_value::Value;
 use payas_model::{
     model::{
         operation::{Mutation, OperationReturnType},
-        GqlCompositeTypeKind, GqlTypeKind,
+        GqlCompositeType, GqlTypeKind,
     },
     sql::{predicate::Predicate, transaction::TransactionScript, Select},
 };
@@ -52,7 +52,7 @@ pub fn compute_access_predicate<'a>(
 
     match &return_type.kind {
         GqlTypeKind::Primitive => &Predicate::True,
-        GqlTypeKind::Composite(GqlCompositeTypeKind { access, .. }) => {
+        GqlTypeKind::Composite(GqlCompositeType { access, .. }) => {
             let access_expr = match kind {
                 OperationKind::Create => &access.creation,
                 OperationKind::Retrieve => &access.read,

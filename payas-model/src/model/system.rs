@@ -1,7 +1,6 @@
 use super::mapped_arena::SerializableSlab;
 use super::order::*;
 use super::predicate::*;
-use super::service::Service;
 use super::service::ServiceMethod;
 use super::ContextType;
 use super::{mapped_arena::MappedArena, operation::*};
@@ -21,7 +20,6 @@ pub struct ModelSystem {
     pub mutation_types: SerializableSlab<GqlType>,
     pub create_mutations: MappedArena<Mutation>,
     pub tables: SerializableSlab<PhysicalTable>,
-    pub services: MappedArena<Service>,
     pub methods: SerializableSlab<ServiceMethod>,
 }
 
@@ -36,7 +34,6 @@ impl Default for ModelSystem {
             mutation_types: SerializableSlab::new(),
             create_mutations: MappedArena::default(),
             tables: SerializableSlab::new(),
-            services: MappedArena::default(),
             methods: SerializableSlab::new(),
         }
     }

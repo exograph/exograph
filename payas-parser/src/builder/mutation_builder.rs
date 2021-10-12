@@ -7,7 +7,7 @@ use payas_model::model::naming::ToGqlTypeNames;
 use payas_model::model::operation::{Mutation, MutationKind, OperationReturnType};
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::{
-    GqlCompositeTypeKind, GqlField, GqlFieldType, GqlType, GqlTypeKind, GqlTypeModifier,
+    GqlCompositeType, GqlField, GqlFieldType, GqlType, GqlTypeKind, GqlTypeModifier,
 };
 
 use super::create_mutation_builder::CreateMutationBuilder;
@@ -24,11 +24,11 @@ use super::Builder;
 
 /// Build shallow mutaiton input types
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
-    ReferenceInputTypeBuilder {}.build_shallow(models, building);
+    ReferenceInputTypeBuilder {}.build_shallow_only_persistent(models, building);
 
-    CreateMutationBuilder {}.build_shallow(models, building);
-    UpdateMutationBuilder {}.build_shallow(models, building);
-    DeleteMutationBuilder {}.build_shallow(models, building);
+    CreateMutationBuilder {}.build_shallow_only_persistent(models, building);
+    UpdateMutationBuilder {}.build_shallow_only_persistent(models, building);
+    DeleteMutationBuilder {}.build_shallow_only_persistent(models, building);
 }
 
 /// Expand the mutation input types as well as build the mutation
@@ -57,21 +57,21 @@ pub trait MutationBuilder {
         let single_mutation = Mutation {
             name: Self::single_mutation_name(model_type),
             kind: Self::single_mutation_kind(model_type, building),
-            return_type: OperationReturnType {
+            return_type: Some(OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
                 type_modifier: GqlTypeModifier::Optional,
-            },
+            }),
         };
 
         let multi_mutation = Mutation {
             name: Self::multi_mutation_name(model_type),
             kind: Self::multi_mutation_kind(model_type, building),
-            return_type: OperationReturnType {
+            return_type: Some(OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
                 type_modifier: GqlTypeModifier::List,
-            },
+            }),
         };
 
         vec![single_mutation, multi_mutation]
@@ -240,8 +240,8 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&GqlType>,
         container_type: Option<&GqlType>,
-    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
-        if let GqlTypeKind::Composite(GqlCompositeTypeKind {
+    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeType)> {
+        if let GqlTypeKind::Composite(GqlCompositeType {
             ref fields, kind, ..
         }) = &model_type.kind
         {
@@ -282,7 +282,7 @@ pub trait DataParamBuilder<D> {
             );
             field_types.push((
                 existing_type_id,
-                GqlCompositeTypeKind {
+                GqlCompositeType {
                     fields: input_type_fields,
                     kind: kind.clone(),
                     access: Access::restrictive(),
@@ -303,7 +303,7 @@ pub trait DataParamBuilder<D> {
         building: &SystemContextBuilding,
         top_level_type: Option<&GqlType>,
         _container_type: Option<&GqlType>,
-    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
+    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeType)> {
         let new_container_type = Some(model_type);
 
         let existing_type_name = Self::data_type_name(

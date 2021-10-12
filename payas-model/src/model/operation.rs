@@ -1,7 +1,7 @@
 use payas_sql::sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-use crate::model::{GqlCompositeKind, GqlCompositeTypeKind, GqlTypeKind};
+use crate::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
     limit_offset::{LimitParameter, OffsetParameter},
@@ -38,7 +38,7 @@ pub struct PersistentQueryParameter {
 pub struct Mutation {
     pub name: String,
     pub kind: MutationKind,
-    pub return_type: OperationReturnType,
+    pub return_type: Option<OperationReturnType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -87,9 +87,9 @@ impl OperationReturnType {
         let return_type = self.typ(system);
         match &return_type.kind {
             GqlTypeKind::Primitive => panic!(),
-            GqlTypeKind::Composite(GqlCompositeTypeKind {
+            GqlTypeKind::Composite(GqlCompositeType {
                 fields: _,
-                kind: GqlCompositeKind::Persistent { table_id, .. },
+                kind: GqlCompositeTypeKind::Persistent { table_id, .. },
                 ..
             }) => &system.tables[*table_id],
             _ => panic!(),

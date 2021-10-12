@@ -38,8 +38,8 @@ module.exports = grammar({
       field("name", $.term),
       "(",
       commaSep(field("args", $.argument)),
-      "):",
-      field("return_type", $.type)
+      ")",
+      optional(seq(":", field("return_type", $.type)))
     ),
     model: $ => seq(
       repeat(field("annotation", $.annotation)),

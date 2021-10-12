@@ -8,7 +8,7 @@ use crate::sql::column::Column;
 use payas_model::{
     model::{
         column_id::ColumnId, relation::GqlRelation, system::ModelSystem, types::GqlTypeKind,
-        GqlCompositeTypeKind, GqlField, GqlType,
+        GqlCompositeType, GqlField, GqlType,
     },
     sql::{column::PhysicalColumn, Limit, Offset, PhysicalTable, SQLOperation, Select},
 };
@@ -149,7 +149,7 @@ fn map_single<'a>(
 
     let fields = match &input_data_type.kind {
         GqlTypeKind::Primitive => bail!("Query attempted on a primitive type"),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields,
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields,
     };
 
     let mut self_row = HashMap::new();

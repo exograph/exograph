@@ -7,7 +7,7 @@ use payas_model::{
         mapped_arena::{MappedArena, SerializableSlabIndex},
         naming::ToGqlQueryName,
         relation::GqlRelation,
-        GqlCompositeKind, GqlCompositeTypeKind, GqlFieldType,
+        GqlCompositeType, GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
         column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
@@ -110,9 +110,9 @@ fn expand_type_no_fields(
             .get_id(&resolved_type.collection_query())
             .unwrap();
 
-        GqlTypeKind::Composite(GqlCompositeTypeKind {
+        GqlTypeKind::Composite(GqlCompositeType {
             fields: vec![],
-            kind: GqlCompositeKind::Persistent {
+            kind: GqlCompositeTypeKind::Persistent {
                 table_id,
                 pk_query,
                 collection_query,
@@ -120,9 +120,9 @@ fn expand_type_no_fields(
             access: Access::restrictive(),
         })
     } else {
-        GqlTypeKind::Composite(GqlCompositeTypeKind {
+        GqlTypeKind::Composite(GqlCompositeType {
             fields: vec![],
-            kind: GqlCompositeKind::NonPersistent,
+            kind: GqlCompositeTypeKind::NonPersistent,
             access: Access::restrictive(),
         })
     };
@@ -142,10 +142,10 @@ fn expand_type_fields(
     let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
-    if let GqlTypeKind::Composite(GqlCompositeTypeKind { kind, .. }) = &existing_type.kind {
+    if let GqlTypeKind::Composite(GqlCompositeType { kind, .. }) = &existing_type.kind {
         let table_id = match kind {
-            GqlCompositeKind::Persistent { table_id, .. } => Some(*table_id),
-            GqlCompositeKind::NonPersistent => None,
+            GqlCompositeTypeKind::Persistent { table_id, .. } => Some(*table_id),
+            GqlCompositeTypeKind::NonPersistent => None,
         };
 
         let model_fields: Vec<GqlField> = resolved_type
@@ -154,7 +154,7 @@ fn expand_type_fields(
             .map(|field| create_field(field, table_id, building, resolved_types))
             .collect();
 
-        let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
+        let kind = GqlTypeKind::Composite(GqlCompositeType {
             fields: model_fields,
             kind: kind.clone(),
             access: Access::restrictive(),
@@ -173,7 +173,7 @@ fn expand_type_access(resolved_type: &ResolvedCompositeType, building: &mut Syst
         let expr = compute_access(&resolved_type.access, self_type_info, building);
 
         // TODO: Figure out a way to avoid the clone()s
-        let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
+        let kind = GqlTypeKind::Composite(GqlCompositeType {
             fields: self_type_info.fields.clone(),
             kind: self_type_info.kind.clone(),
             access: expr,
@@ -185,7 +185,7 @@ fn expand_type_access(resolved_type: &ResolvedCompositeType, building: &mut Syst
 
 fn compute_access(
     resolved: &ResolvedAccess,
-    self_type_info: &GqlCompositeTypeKind,
+    self_type_info: &GqlCompositeType,
     building: &SystemContextBuilding,
 ) -> Access {
     Access {
@@ -203,7 +203,7 @@ enum PathSelection<'a> {
 
 fn compute_selection<'a>(
     selection: &FieldSelection<Typed>,
-    self_type_info: &'a GqlCompositeTypeKind,
+    self_type_info: &'a GqlCompositeType,
 ) -> PathSelection<'a> {
     fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
         match selection {
@@ -228,7 +228,7 @@ fn compute_selection<'a>(
 
     fn get_column<'a>(
         path_elements: &[String],
-        self_type_info: &'a GqlCompositeTypeKind,
+        self_type_info: &'a GqlCompositeType,
     ) -> (ColumnId, &'a GqlFieldType) {
         if path_elements.len() == 1 {
             let field = self_type_info
@@ -261,7 +261,7 @@ fn compute_selection<'a>(
 
 fn compute_expression(
     expr: &AstExpr<Typed>,
-    self_type_info: &GqlCompositeTypeKind,
+    self_type_info: &GqlCompositeType,
     building: &SystemContextBuilding,
     coerce_boolean: bool,
 ) -> AccessExpression {

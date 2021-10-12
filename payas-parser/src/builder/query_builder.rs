@@ -9,7 +9,7 @@ use payas_model::model::{
     predicate::PredicateParameter,
     GqlType, GqlTypeKind, GqlTypeModifier,
 };
-use payas_model::model::{GqlCompositeKind, GqlCompositeTypeKind};
+use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind};
 
 use super::resolved_builder::ResolvedCompositeTypeKind;
 use super::{
@@ -45,8 +45,8 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
-        if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-            kind: GqlCompositeKind::Persistent { .. },
+        if let GqlTypeKind::Composite(GqlCompositeType {
+            kind: GqlCompositeTypeKind::Persistent { .. },
             ..
         }) = &model_type.kind
         {

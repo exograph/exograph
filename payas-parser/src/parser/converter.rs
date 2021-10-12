@@ -161,7 +161,6 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
     let kind = if kind == "model" {
         AstModelKind::Persistent
     } else if kind == "type" {
-        println!("typ");
         AstModelKind::NonPersistent
     } else if kind == "context" {
         AstModelKind::Context
@@ -248,12 +247,11 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
             .to_string(),
         arguments: node
             .children_by_field_name("args", &mut cursor)
-            .map(|c| convert_field_or_argument(c, source, source_span))
+            .map(|c| convert_argument(c, source, source_span))
             .collect(),
         return_type: node
             .child_by_field_name("return_type")
-            .map(|c| convert_type(c, source, source_span))
-            .unwrap(),
+            .map(|c| convert_type(c, source, source_span)),
         is_exported: node.child_by_field_name("is_exported").is_some(),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
@@ -265,20 +263,41 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
 pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
     let mut cursor = node.walk();
     node.children_by_field_name("field", &mut cursor)
-        .map(|c| convert_field_or_argument(c, source, source_span))
+        .map(|c| convert_field(c, source, source_span))
         .collect()
 }
 
-pub fn convert_field_or_argument(
-    node: Node,
-    source: &[u8],
-    source_span: Span,
-) -> AstField<Untyped> {
-    assert!(node.kind() == "field" || node.kind() == "argument");
+pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
+    assert!(node.kind() == "field");
 
     let mut cursor = node.walk();
 
     AstField {
+        name: node
+            .child_by_field_name("name")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        typ: convert_type(
+            node.child_by_field_name("type").unwrap(),
+            source,
+            source_span,
+        ),
+        annotations: node
+            .children_by_field_name("annotation", &mut cursor)
+            .map(|c| convert_annotation(c, source, source_span))
+            .collect(),
+    }
+}
+
+// FIXME: dedup
+pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
+    assert!(node.kind() == "argument");
+
+    let mut cursor = node.walk();
+
+    AstArgument {
         name: node
             .child_by_field_name("name")
             .unwrap()
