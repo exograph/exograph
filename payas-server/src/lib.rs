@@ -168,14 +168,12 @@ enum ServerLoopEvent {
 }
 
 pub fn start_prod_mode(
-    model_file: impl AsRef<Path> + Clone,
+    claypot_file: impl AsRef<Path> + Clone,
     system_start_time: Option<SystemTime>,
 ) -> Result<()> {
     let mut actix_system = System::new("claytip");
 
-    let claypot_file_name = format!("{}pot", &model_file.as_ref().to_str().unwrap());
-
-    match File::open(&claypot_file_name) {
+    match File::open(&claypot_file) {
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
             let in_file = BufReader::new(claypot_file_buffer);
@@ -187,7 +185,7 @@ pub fn start_prod_mode(
             Ok(())
         }
         Err(_) => {
-            let message = format!("File {} doesn't exist. You need build it with the 'clay build <model-file-name>' command", claypot_file_name);
+            let message = format!("File {} doesn't exist. You need build it with the 'clay build <model-file-name>' command", claypot_file.as_ref().to_str().unwrap());
             println!("{}", message);
             Err(anyhow::anyhow!(message))
         }
