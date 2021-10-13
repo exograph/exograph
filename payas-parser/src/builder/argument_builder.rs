@@ -32,12 +32,12 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
                     type_modifier: modifier.clone(),
                     type_id: *type_id,
                 }
-            )
+            );
         }
     }
 
 }
 
 pub fn get_parameter_type_name(method_name: &str) -> String {
-    format!("{}MethodInput", method_name)
+    format!("{}ArgumentInput", method_name)
 }
