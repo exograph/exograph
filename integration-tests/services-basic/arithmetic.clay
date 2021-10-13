@@ -9,6 +9,10 @@ model Foo {
     bar: Int
 }
 
+type Env {
+
+}
+
 @external("arithmetic.model")
 service MathService {
     type AddResult {
@@ -23,7 +27,8 @@ service MathService {
     export query add(x: Int, y: Int): AddResult
 
     @access(query=AuthContext.role == "ROLE_ALLOW_DIVIDE")
-    export query divide(x: Int, y: Int): DivisionResult
+    export query divide(x: Int, y: Foo): DivisionResult
+    export mutation abc(result: AddResult): Int // FIXME: mandate return type
 
-    mutation log(@inject env: Env, x: Int, y: Int): None
+    query log(@inject env: Env, x: Int, y: Int): Int
 }

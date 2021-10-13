@@ -22,7 +22,7 @@ pub struct Query {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum QueryKind {
-    Database(DatabaseQueryParameter), // TODO: Persistent { .. } ?
+    Database(DatabaseQueryParameter), 
     Service(Vec<ArgumentParameter>),
 }
 

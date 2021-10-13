@@ -9,6 +9,7 @@ pub struct ArgumentParameter {
     pub type_modifier: GqlTypeModifier,
     pub type_id: SerializableSlabIndex<GqlType>,
 }
+// FIXME: carry injected flag here
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArgumentParameterType {

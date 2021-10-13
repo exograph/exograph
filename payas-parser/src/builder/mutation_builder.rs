@@ -201,6 +201,7 @@ pub trait DataParamBuilder<D> {
                     }),
                 }
             }
+            GqlRelation::NonPersistent => panic!()
         }
     }
 

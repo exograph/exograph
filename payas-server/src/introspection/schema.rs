@@ -87,6 +87,7 @@ impl Schema {
 
         type_definitions.push(query_type_definition);
         type_definitions.push(mutation_type_definition);
+        type_definitions.extend(argument_type_definitions);
         type_definitions.extend(order_by_param_type_definitions);
         type_definitions.extend(predicate_param_type_definitions);
         type_definitions.extend(mutation_param_type_definitions);

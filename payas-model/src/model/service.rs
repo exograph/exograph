@@ -14,7 +14,8 @@ pub struct ServiceMethod {
     pub name: String,
     pub module_path: PathBuf,
     pub operation_kind: ServiceMethodType,
-    pub arguments: Vec<(String, SerializableSlabIndex<GqlType>, GqlTypeModifier)>,
+    // FIXME: exported method flag
+    pub arguments: Vec<(String, SerializableSlabIndex<GqlType>, GqlTypeModifier)>,   // FIXME: mark injected arguments 
     pub return_type: Option<OperationReturnType>,
 }
 

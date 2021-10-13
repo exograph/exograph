@@ -173,3 +173,5 @@ impl TypecheckFrom<AstArgument<Untyped>> for AstArgument<Typed> {
         typ_changed || annot_changed
     }
 }
+
+// FIXME: allow queries without parameters, look at return types
