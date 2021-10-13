@@ -12,20 +12,18 @@ impl FieldResolver<Value> for Schema {
         query_context: &QueryContext<'_>,
         field: &Positioned<Field>,
     ) -> Result<Value> {
+        let schema = query_context.executor.schema;
         match field.node.name.node.as_str() {
             "types" => self
                 .type_definitions
                 .resolve_value(query_context, &field.node.selection_set),
-            "queryType" => query_context
-                .schema
+            "queryType" => schema
                 .get_type_definition(QUERY_ROOT_TYPENAME)
                 .resolve_value(query_context, &field.node.selection_set),
-            "mutationType" => query_context
-                .schema
+            "mutationType" => schema
                 .get_type_definition(MUTATION_ROOT_TYPENAME)
                 .resolve_value(query_context, &field.node.selection_set),
-            "subscriptionType" => query_context
-                .schema
+            "subscriptionType" => schema
                 .get_type_definition(SUBSCRIPTION_ROOT_TYPENAME)
                 .resolve_value(query_context, &field.node.selection_set),
             "directives" => Ok(Value::Null), // TODO

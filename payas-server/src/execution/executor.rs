@@ -11,29 +11,65 @@ use payas_model::{
 use query_context::*;
 use serde_json::{Map, Value};
 
-pub fn create_query_context<'a>(
-    system: &'a ModelSystem,
-    schema: &'a Schema,
-    database: &'a Database,
-    operation_name: Option<&'a str>,
-    query_str: &'a str,
-    variables: &'a Option<&'a Map<String, Value>>,
-    request_context: &'a serde_json::Value,
-) -> (DocumentOperations, QueryContext<'a>) {
-    let document = parse_query(query_str).unwrap();
+pub struct Executor<'a> {
+    pub system: &'a ModelSystem,
+    pub schema: &'a Schema,
+    pub database: &'a Database,
+}
 
-    (
-        document.operations,
-        QueryContext {
-            operation_name,
-            fragment_definitions: document.fragments,
-            variables,
-            schema,
-            system,
-            database,
-            request_context,
-        },
-    )
+impl<'a> Executor<'a> {
+    pub fn execute(
+        &'a self,
+        operation_name: Option<&'a str>,
+        query_str: &'a str,
+        variables: Option<&'a Map<String, Value>>,
+        jwt_claims: Option<Value>,
+    ) -> Result<Vec<(String, QueryResponse)>> {
+        let request_context = create_request_contexts(&self.system.contexts, jwt_claims);
+
+        self.execute_with_request_context(operation_name, query_str, variables, request_context)
+    }
+
+    // A version of execute that is suitable to be exposed through a shim to services
+    pub fn execute_with_request_context(
+        &'a self,
+        operation_name: Option<&'a str>,
+        query_str: &'a str,
+        variables: Option<&'a Map<String, Value>>,
+        request_context: Value,
+    ) -> Result<Vec<(String, QueryResponse)>> {
+        let (operations, query_context) =
+            self.create_query_context(operation_name, query_str, &variables, &request_context);
+
+        operations
+            .iter()
+            .flat_map(|query| match query_context.resolve_operation(query) {
+                Ok(resolved) => resolved.into_iter().map(Ok).collect(),
+                Err(err) => vec![Err(err)],
+            })
+            .collect()
+    }
+
+    fn create_query_context(
+        &'a self,
+        operation_name: Option<&'a str>,
+        query_str: &'a str,
+        variables: &'a Option<&'a Map<String, Value>>,
+        request_context: &'a serde_json::Value,
+    ) -> (DocumentOperations, QueryContext<'a>) {
+        let document = parse_query(query_str).unwrap();
+
+        (
+            document.operations,
+            QueryContext {
+                operation_name,
+                fragment_definitions: document.fragments,
+                variables,
+                executor: self,
+                request_context,
+            },
+        )
+    }
 }
 
 // TODO: Generalize to handle other context types and sources
@@ -66,34 +102,4 @@ fn create_request_context(context: &ContextType, jwt_claims: Option<Value>) -> O
 
         Value::Object(json_fields)
     })
-}
-
-pub fn execute<'a>(
-    system: &'a ModelSystem,
-    schema: &'a Schema,
-    database: &'a Database,
-    operation_name: Option<&'a str>,
-    query_str: &'a str,
-    variables: Option<&'a Map<String, Value>>,
-    jwt_claims: Option<Value>,
-) -> Result<Vec<(String, QueryResponse)>> {
-    let request_context = create_request_contexts(&system.contexts, jwt_claims);
-
-    let (operations, query_context) = create_query_context(
-        system,
-        schema,
-        database,
-        operation_name,
-        query_str,
-        &variables,
-        &request_context,
-    );
-
-    operations
-        .iter()
-        .flat_map(|query| match query_context.resolve_operation(query) {
-            Ok(resolved) => resolved.into_iter().map(Ok).collect(),
-            Err(err) => vec![Err(err)],
-        })
-        .collect()
 }
