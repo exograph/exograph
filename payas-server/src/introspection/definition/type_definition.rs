@@ -3,7 +3,7 @@ use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
 };
 use payas_model::model::{
-    operation::{PersistentQueryParameter, QueryKind},
+    operation::{DatabaseQueryParameter, QueryKind},
     relation::GqlRelation,
     system::ModelSystem,
     types::{GqlField, GqlType, *},
@@ -80,7 +80,7 @@ impl FieldDefinitionProvider for GqlField {
                         let collection_query = &system.queries[collection_query];
 
                         match &collection_query.kind {
-                            QueryKind::Persistent(PersistentQueryParameter {
+                            QueryKind::Database(DatabaseQueryParameter {
                                 predicate_param,
                                 order_by_param,
                                 limit_param,

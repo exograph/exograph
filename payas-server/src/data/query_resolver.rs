@@ -75,7 +75,7 @@ impl<'a> QueryOperations<'a> for Query {
         operation_context: &'a OperationContext<'a>,
     ) -> Option<OrderBy<'a>> {
         match &self.kind {
-            QueryKind::Persistent(PersistentQueryParameter { order_by_param, .. }) => {
+            QueryKind::Database(DatabaseQueryParameter { order_by_param, .. }) => {
                 order_by_param
                     .as_ref()
                     .and_then(|order_by_param| {
@@ -117,7 +117,7 @@ impl<'a> QueryOperations<'a> for Query {
         operation_context: &'a OperationContext<'a>,
     ) -> Option<Limit> {
         match &self.kind {
-            QueryKind::Persistent(PersistentQueryParameter { limit_param, .. }) => limit_param
+            QueryKind::Database(DatabaseQueryParameter { limit_param, .. }) => limit_param
                 .as_ref()
                 .and_then(|limit_param| {
                     let argument_value = super::find_arg(arguments, &limit_param.name);
@@ -137,7 +137,7 @@ impl<'a> QueryOperations<'a> for Query {
         operation_context: &'a OperationContext<'a>,
     ) -> Option<Offset> {
         match &self.kind {
-            QueryKind::Persistent(PersistentQueryParameter { offset_param, .. }) => offset_param
+            QueryKind::Database(DatabaseQueryParameter { offset_param, .. }) => offset_param
                 .as_ref()
                 .and_then(|offset_param| {
                     let argument_value = super::find_arg(arguments, &offset_param.name);
@@ -170,7 +170,7 @@ impl<'a> QueryOperations<'a> for Query {
 
         let predicate = super::compute_predicate(
             match &self.kind {
-                QueryKind::Persistent(PersistentQueryParameter {
+                QueryKind::Database(DatabaseQueryParameter {
                     predicate_param, ..
                 }) => predicate_param,
                 QueryKind::Service(_) => panic!(),

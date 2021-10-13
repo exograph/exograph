@@ -1,3 +1,4 @@
+pub mod argument;
 pub mod column_id;
 pub mod limit_offset;
 pub mod mapped_arena;

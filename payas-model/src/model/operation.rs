@@ -7,8 +7,8 @@ use super::{
     limit_offset::{LimitParameter, OffsetParameter},
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
+    argument::ArgumentParameter,
     predicate::PredicateParameter,
-    service::MethodArgumentParameter,
     system::ModelSystem,
     types::{GqlType, GqlTypeModifier},
 };
@@ -22,12 +22,12 @@ pub struct Query {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum QueryKind {
-    Persistent(PersistentQueryParameter), // TODO: Persistent { .. } ?
-    Service(Vec<MethodArgumentParameter>),
+    Database(DatabaseQueryParameter), // TODO: Persistent { .. } ?
+    Service(Vec<ArgumentParameter>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PersistentQueryParameter {
+pub struct DatabaseQueryParameter {
     pub predicate_param: Option<PredicateParameter>,
     pub order_by_param: Option<OrderByParameter>,
     pub limit_param: Option<LimitParameter>,
@@ -52,7 +52,7 @@ pub enum MutationKind {
     },
 
     // mutation for service
-    Service(Vec<MethodArgumentParameter>),
+    Service(Vec<ArgumentParameter>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

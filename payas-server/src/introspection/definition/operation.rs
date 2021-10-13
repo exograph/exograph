@@ -3,7 +3,7 @@ use async_graphql_parser::types::FieldDefinition;
 
 use payas_model::model::{
     operation::{
-        Mutation, MutationKind, OperationReturnType, PersistentQueryParameter, Query, QueryKind,
+        Mutation, MutationKind, OperationReturnType, DatabaseQueryParameter, Query, QueryKind,
     },
     system::ModelSystem,
 };
@@ -36,7 +36,7 @@ impl Operation for Query {
         );
 
         match &self.kind {
-            QueryKind::Persistent(PersistentQueryParameter {
+            QueryKind::Database(DatabaseQueryParameter {
                 predicate_param,
                 order_by_param,
                 limit_param,

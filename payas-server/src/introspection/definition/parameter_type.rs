@@ -5,12 +5,7 @@ use async_graphql_parser::{
 use async_graphql_value::Name;
 
 use crate::introspection::util::*;
-use payas_model::model::{
-    limit_offset::{LimitParameter, OffsetParameter},
-    order::*,
-    predicate::*,
-    system::ModelSystem,
-};
+use payas_model::model::{argument::{ArgumentParameter, ArgumentParameterType}, limit_offset::{LimitParameter, OffsetParameter}, order::*, predicate::*, system::ModelSystem};
 
 use super::{parameter::Parameter, provider::*};
 
@@ -125,6 +120,24 @@ impl TypeDefinitionProvider for PredicateParameterType {
     }
 }
 
+// TODO: Reduce duplication from the above impl
+impl TypeDefinitionProvider for ArgumentParameterType {
+    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
+        let fields = self.arguments
+            .iter()
+            .map(|parameter| default_positioned(parameter.input_value()))
+            .collect();
+
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind: TypeKind::InputObject(InputObjectType { fields }),
+        }
+    }
+}
+
 impl TypeDefinitionProvider for LimitParameter {
     fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         TypeDefinition {
@@ -138,6 +151,18 @@ impl TypeDefinitionProvider for LimitParameter {
 }
 
 impl TypeDefinitionProvider for OffsetParameter {
+    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind: TypeKind::Scalar,
+        }
+    }
+}
+
+impl TypeDefinitionProvider for ArgumentParameter {
     fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         TypeDefinition {
             extend: false,

@@ -1,26 +1,10 @@
 use anyhow::Result;
 use codemap::CodeMap;
-use payas_model::{
-    model::{
-        mapped_arena::MappedArena,
-        operation::{Mutation, Query},
-        order::OrderByParameterType,
-        predicate::PredicateParameterType,
-        service::ServiceMethod,
-        system::ModelSystem,
-        types::GqlType,
-        ContextType,
-    },
-    sql::PhysicalTable,
-};
+use payas_model::{model::{ContextType, argument::ArgumentParameterType, mapped_arena::MappedArena, operation::{Mutation, Query}, order::OrderByParameterType, predicate::PredicateParameterType, service::ServiceMethod, system::ModelSystem, types::GqlType}, sql::PhysicalTable};
 
 use crate::ast::ast_types::{AstSystem, Untyped};
 
-use super::{
-    context_builder, mutation_builder, order_by_type_builder, predicate_builder, query_builder,
-    resolved_builder::{self, ResolvedSystem},
-    service_builder, type_builder,
-};
+use super::{argument_builder, context_builder, mutation_builder, order_by_type_builder, predicate_builder, query_builder, resolved_builder::{self, ResolvedSystem}, service_builder, type_builder};
 
 use crate::typechecker;
 
@@ -53,6 +37,7 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSy
     Ok(ModelSystem {
         types: building.types.values,
         contexts: building.contexts.values,
+        argument_types: building.argument_types.values,
         order_by_types: building.order_by_types.values,
         predicate_types: building.predicate_types.values,
         queries: building.queries,
@@ -74,6 +59,7 @@ fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextB
     context_builder::build_shallow(resolved_contexts, building);
     order_by_type_builder::build_shallow(resolved_types, building);
     predicate_builder::build_shallow(resolved_types, building);
+    argument_builder::build_shallow(resolved_services, building);
 
     // The next three shallow builders need GQL types build above (the order of the next three is unimportant)
     // Specifically, the OperationReturn type in Query, Mutation, and ServiceMethod looks for the id for the return type, so requires
@@ -95,6 +81,7 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     // after running type_builder::build_expanded (since they depend on expanded GqlTypes (note the next ones do not access resolved_types))
     order_by_type_builder::build_expanded(building);
     predicate_builder::build_expanded(building);
+    argument_builder::build_expanded(building);
 
     // Finally expand queries, mutations, and service methods
     query_builder::build_expanded(building);
@@ -106,6 +93,7 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
 pub struct SystemContextBuilding {
     pub types: MappedArena<GqlType>,
     pub contexts: MappedArena<ContextType>,
+    pub argument_types: MappedArena<ArgumentParameterType>,
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
     pub queries: MappedArena<Query>,

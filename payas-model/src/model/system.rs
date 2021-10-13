@@ -1,3 +1,4 @@
+use super::argument::ArgumentParameterType;
 use super::mapped_arena::SerializableSlab;
 use super::order::*;
 use super::predicate::*;
@@ -14,6 +15,7 @@ use serde::{Deserialize, Serialize};
 pub struct ModelSystem {
     pub types: SerializableSlab<GqlType>,
     pub contexts: SerializableSlab<ContextType>,
+    pub argument_types: SerializableSlab<ArgumentParameterType>,
     pub order_by_types: SerializableSlab<OrderByParameterType>,
     pub predicate_types: SerializableSlab<PredicateParameterType>,
     pub queries: MappedArena<Query>,
@@ -35,6 +37,7 @@ impl Default for ModelSystem {
             create_mutations: MappedArena::default(),
             tables: SerializableSlab::new(),
             methods: SerializableSlab::new(),
+            argument_types: SerializableSlab::new(),
         }
     }
 }

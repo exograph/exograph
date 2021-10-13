@@ -2,6 +2,7 @@
 
 mod system_builder;
 
+mod argument_builder;
 mod context_builder;
 mod create_mutation_builder;
 mod delete_mutation_builder;

@@ -1,7 +1,7 @@
 use payas_model::model::limit_offset::OffsetParameter;
 use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::naming::ToGqlQueryName;
-use payas_model::model::operation::{PersistentQueryParameter, QueryKind};
+use payas_model::model::operation::{DatabaseQueryParameter, QueryKind};
 use payas_model::model::{
     limit_offset::LimitParameter,
     mapped_arena::MappedArena,
@@ -73,7 +73,7 @@ fn shallow_pk_query(
     let operation_name = typ.pk_query();
     Query {
         name: operation_name,
-        kind: QueryKind::Persistent(PersistentQueryParameter {
+        kind: QueryKind::Database(DatabaseQueryParameter {
             predicate_param: None,
             order_by_param: None,
             limit_param: None,
@@ -95,7 +95,7 @@ fn expanded_pk_query(model_type: &GqlType, building: &SystemContextBuilding) -> 
 
     Query {
         name: operation_name,
-        kind: QueryKind::Persistent(PersistentQueryParameter {
+        kind: QueryKind::Database(DatabaseQueryParameter {
             predicate_param: Some(pk_param),
             order_by_param: None,
             limit_param: None,
@@ -130,7 +130,7 @@ fn shallow_collection_query(
     let operation_name = model.collection_query();
     Query {
         name: operation_name,
-        kind: QueryKind::Persistent(PersistentQueryParameter {
+        kind: QueryKind::Database(DatabaseQueryParameter {
             predicate_param: None,
             order_by_param: None,
             limit_param: None,
@@ -155,7 +155,7 @@ fn expanded_collection_query(model_type: &GqlType, building: &SystemContextBuild
 
     Query {
         name: operation_name.clone(),
-        kind: QueryKind::Persistent(PersistentQueryParameter {
+        kind: QueryKind::Database(DatabaseQueryParameter {
             predicate_param: Some(predicate_param),
             order_by_param: Some(order_by_param),
             limit_param: Some(limit_param),

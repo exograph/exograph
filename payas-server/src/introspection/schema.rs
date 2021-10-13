@@ -21,6 +21,12 @@ impl Schema {
             .map(|model_type| model_type.1.type_definition(system))
             .collect();
 
+        let argument_type_definitions: Vec<TypeDefinition> = system
+            .argument_types
+            .iter()
+            .map(|m| m.1.type_definition(system))
+            .collect();
+
         let order_by_param_type_definitions: Vec<TypeDefinition> = system
             .order_by_types
             .iter()
