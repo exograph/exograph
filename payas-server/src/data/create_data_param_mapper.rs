@@ -73,7 +73,7 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
     ) -> Result<InsertionInfo<'a>> {
         let table = self
             .table_id()
-            .map(|table_id| &operation_context.query_context.system.tables[table_id])
+            .map(|table_id| &operation_context.get_system().tables[table_id])
             .unwrap();
 
         match argument {
@@ -195,7 +195,7 @@ fn map_self_column<'a>(
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> (&'a PhysicalColumn, &'a Column<'a>) {
-    let system = &operation_context.query_context.system;
+    let system = operation_context.get_system();
 
     let key_column = key_column_id.get_column(system);
     let argument_value = match &field.relation {
@@ -227,7 +227,7 @@ fn map_foreign<'a>(
     parent_data_type: &'a GqlType,
     operation_context: &'a OperationContext<'a>,
 ) -> Result<InsertionInfo<'a>> {
-    let system = &operation_context.query_context.system;
+    let system = operation_context.get_system();
 
     fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
         // TODO: Unhack this. Most likely, we need to separate input types from output types and have input types carry

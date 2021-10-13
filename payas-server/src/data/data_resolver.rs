@@ -42,7 +42,7 @@ impl DataResolver for ModelSystem {
             }
         }?;
 
-        let mut client = query_context.database.get_client()?;
+        let mut client = query_context.executor.database.get_client()?;
         let mut result = transaction_script.execute(&mut client, extractor)?;
 
         if result.len() == 1 {

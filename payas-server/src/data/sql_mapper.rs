@@ -48,7 +48,7 @@ pub fn compute_access_predicate<'a>(
     kind: &OperationKind,
     operation_context: &'a OperationContext<'a>,
 ) -> &'a Predicate<'a> {
-    let return_type = return_type.typ(operation_context.query_context.system);
+    let return_type = return_type.typ(operation_context.get_system());
 
     match &return_type.kind {
         GqlTypeKind::Primitive => &Predicate::True,

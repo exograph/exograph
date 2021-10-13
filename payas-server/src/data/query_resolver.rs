@@ -192,7 +192,7 @@ impl<'a> QueryOperations<'a> for Query {
 
         let table = self
             .return_type
-            .physical_table(operation_context.query_context.system);
+            .physical_table(operation_context.get_system());
 
         let limit = self.compute_limit(&field.arguments, operation_context);
         let offset = self.compute_offset(&field.arguments, operation_context);
@@ -258,7 +258,7 @@ fn map_field<'a>(
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
 ) -> Result<(String, &'a Column<'a>)> {
-    let system = operation_context.query_context.system;
+    let system = operation_context.get_system();
     let return_type = query.return_type.typ(system);
 
     let column = if field.name.node == "__typename" {

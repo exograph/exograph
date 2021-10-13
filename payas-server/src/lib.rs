@@ -1,6 +1,7 @@
 use actix_web::dev::Server;
 use async_stream::AsyncStream;
 use bincode::deserialize_from;
+use execution::executor::Executor;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -60,20 +61,16 @@ async fn resolve(
     match auth {
         Ok(claims) => {
             let (system, schema, database) = system_info.as_ref().as_ref();
-
+            let executor = Executor {
+                system,
+                schema,
+                database,
+            };
             let operation_name = body["operationName"].as_str();
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            match crate::execution::executor::execute(
-                system,
-                schema,
-                database,
-                operation_name,
-                query_str,
-                variables,
-                claims,
-            ) {
+            match executor.execute(operation_name, query_str, variables, claims) {
                 Ok(parts) => {
                     let response_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         let parts_len = parts.len();
@@ -168,14 +165,12 @@ enum ServerLoopEvent {
 }
 
 pub fn start_prod_mode(
-    model_file: impl AsRef<Path> + Clone,
+    claypot_file: impl AsRef<Path> + Clone,
     system_start_time: Option<SystemTime>,
 ) -> Result<()> {
     let mut actix_system = System::new("claytip");
 
-    let claypot_file_name = format!("{}pot", &model_file.as_ref().to_str().unwrap());
-
-    match File::open(&claypot_file_name) {
+    match File::open(&claypot_file) {
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
             let in_file = BufReader::new(claypot_file_buffer);
@@ -187,7 +182,7 @@ pub fn start_prod_mode(
             Ok(())
         }
         Err(_) => {
-            let message = format!("File {} doesn't exist. You need build it with the 'clay build <model-file-name>' command", claypot_file_name);
+            let message = format!("File {} doesn't exist. You need build it with the 'clay build <model-file-name>' command", claypot_file.as_ref().to_str().unwrap());
             println!("{}", message);
             Err(anyhow::anyhow!(message))
         }

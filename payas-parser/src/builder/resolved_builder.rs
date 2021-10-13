@@ -6,9 +6,9 @@
 
 use anyhow::Result;
 
-use payas_model::model::mapped_arena::MappedArena;
-use payas_model::model::naming::ToPlural;
 use payas_model::model::GqlTypeModifier;
+use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::naming::{ToPlural, ToTableName};
 
 use crate::ast::ast_types::{AstAnnotationParams, AstArgument, AstFieldType, AstService};
 use crate::{
@@ -319,21 +319,22 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                 resolved_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
             Type::Composite(ct) if ct.kind == AstModelKind::Persistent => {
+                let plural_annotation_value = ct
+                    .annotations
+                    .get("plural_name")
+                    .map(|p| p.as_single().as_string());
+
                 let table_name = ct
                     .annotations
                     .get("table")
                     .map(|p| p.as_single().as_string())
-                    .unwrap_or_else(|| ct.name.clone());
+                    .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
                 let access = build_access(ct.annotations.get("access"));
                 resolved_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
-                        plural_name: ct
-                            .annotations
-                            .get("plural_name")
-                            .map(|p| p.as_single().as_string())
-                            .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
+                        plural_name: plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
                         fields: vec![],
                         kind: ResolvedCompositeTypeKind::Persistent { table_name },
                         access,
