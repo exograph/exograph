@@ -13,7 +13,11 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameter {
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
     ) -> Result<OrderBy<'a>> {
-        let parameter_type = &operation_context.query_context.system.order_by_types[self.type_id];
+        let parameter_type = &operation_context
+            .query_context
+            .executor
+            .system
+            .order_by_types[self.type_id];
         parameter_type.map_to_sql(argument, operation_context)
     }
 }

@@ -41,7 +41,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
     ) -> Result<TransactionScript<'a>> {
-        let system = &operation_context.query_context.system;
+        let system = &operation_context.get_system();
         let data_type = &system.mutation_types[self.type_id];
 
         let argument = match argument {
@@ -101,7 +101,7 @@ fn compute_update_columns<'a>(
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> Vec<(&'a PhysicalColumn, &'a Column<'a>)> {
-    let system = &operation_context.query_context.system;
+    let system = &operation_context.get_system();
     let argument = match argument {
         Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
         _ => argument,
@@ -166,7 +166,7 @@ fn compute_nested<'a>(
     container_model_type: &'a GqlType,
     operation_context: &'a OperationContext<'a>,
 ) -> Vec<TransactionStep<'a>> {
-    let system = &operation_context.query_context.system;
+    let system = &operation_context.get_system();
 
     match &data_type.kind {
         GqlTypeKind::Primitive => panic!(),
@@ -254,7 +254,7 @@ fn compute_nested_update<'a>(
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
-    let system = &operation_context.query_context.system;
+    let system = &operation_context.get_system();
 
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
@@ -300,7 +300,7 @@ fn compute_nested_update_object_arg<'a>(
 ) -> TransactionStep<'a> {
     assert!(matches!(argument, Value::Object(..)));
 
-    let system = &operation_context.query_context.system;
+    let system = &operation_context.get_system();
 
     let nested = compute_update_columns(field_model_type, argument, operation_context);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.iter().partition(|elem| elem.0.is_pk);
@@ -347,7 +347,7 @@ fn compute_nested_create<'a>(
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
-    let system = &operation_context.query_context.system;
+    let system = &operation_context.get_system();
 
     let step = operation_context
         .get_argument_field(argument, "create")
@@ -414,7 +414,7 @@ fn compute_nested_delete<'a>(
         field_model_type: &'a GqlType,
         operation_context: &'a OperationContext<'a>,
     ) -> Predicate<'a> {
-        let system = &operation_context.query_context.system;
+        let system = &operation_context.get_system();
 
         let pk_field = field_model_type.pk_field().unwrap();
 
@@ -449,7 +449,7 @@ fn compute_nested_delete<'a>(
     match argument {
         Some(argument) => {
             let predicate = compute_predicate(argument, field_model_type, operation_context);
-            let system = &operation_context.query_context.system;
+            let system = &operation_context.get_system();
             vec![TransactionStep::Template(TemplateTransactionStep {
                 operation: TemplateSQLOperation::Delete(TemplateDelete {
                     table: &system.tables[field_model_type.table_id().unwrap()],

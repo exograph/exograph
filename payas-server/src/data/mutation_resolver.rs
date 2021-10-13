@@ -72,7 +72,7 @@ impl<'a> OperationResolver<'a> for Mutation {
 pub fn table_name(mutation: &Mutation, operation_context: &OperationContext) -> String {
     mutation
         .return_type
-        .physical_table(operation_context.query_context.system)
+        .physical_table(operation_context.get_system())
         .name
         .to_owned()
 }
@@ -202,7 +202,7 @@ fn insertion_info<'a>(
     arguments: &'a Arguments,
     operation_context: &'a OperationContext<'a>,
 ) -> Result<Option<InsertionInfo<'a>>> {
-    let system = &operation_context.query_context.system;
+    let system = &operation_context.get_system();
     let data_type = &system.mutation_types[data_param.type_id];
 
     let argument_value = super::find_arg(arguments, &data_param.name);
@@ -215,7 +215,7 @@ pub fn return_type_info<'a>(
     mutation: &'a Mutation,
     operation_context: &'a OperationContext<'a>,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
-    let system = &operation_context.query_context.system;
+    let system = &operation_context.get_system();
     let typ = mutation.return_type.typ(system);
 
     match typ.kind {
