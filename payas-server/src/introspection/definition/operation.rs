@@ -100,6 +100,8 @@ impl<T: Operation> FieldDefinitionProvider for T {
             .map(|parameter| default_positioned(parameter.input_value()))
             .collect();
 
+        println!("{} {:#?}", &self.name(), fields);
+
         FieldDefinition {
             description: None,
             name: default_positioned_name(self.name()),

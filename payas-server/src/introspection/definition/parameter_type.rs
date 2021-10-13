@@ -128,13 +128,16 @@ impl TypeDefinitionProvider for ArgumentParameterType {
             .map(|parameter| default_positioned(parameter.input_value()))
             .collect();
 
-        TypeDefinition {
+        let td = TypeDefinition {
             extend: false,
             description: None,
             name: default_positioned_name(&self.name),
             directives: vec![],
             kind: TypeKind::InputObject(InputObjectType { fields }),
-        }
+        };
+
+        println!("{:#?}", &td);
+        td
     }
 }
 
