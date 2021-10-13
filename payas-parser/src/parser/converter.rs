@@ -37,7 +37,6 @@ pub fn convert_root(
     } else {
         let mut cursor = node.walk();
         AstSystem {
-            // FIXME: dedup
             models: node
                 .children(&mut cursor)
                 .filter(|n| n.kind() == "declaration")
@@ -114,7 +113,7 @@ fn collect_parsing_errors(
     }
 }
 
-// FIXME: dedup
+// TODO: dedup
 pub fn convert_declaration_to_model(
     node: Node,
     source: &[u8],
@@ -193,8 +192,6 @@ pub fn convert_service(node: Node, source: &[u8], source_span: Span) -> AstServi
     let mut method_cursor = node.walk();
     let mut cursor = node.walk();
 
-    // FIXME dedup
-
     let model_nodes = node
         .child_by_field_name("body")
         .unwrap()
@@ -251,7 +248,8 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
             .collect(),
         return_type: node
             .child_by_field_name("return_type")
-            .map(|c| convert_type(c, source, source_span)),
+            .map(|c| convert_type(c, source, source_span))
+            .unwrap(),
         is_exported: node.child_by_field_name("is_exported").is_some(),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
@@ -291,7 +289,7 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
     }
 }
 
-// FIXME: dedup
+// TODO: dedup
 pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
     assert!(node.kind() == "argument");
 

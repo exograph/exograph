@@ -74,7 +74,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 SQLOperation::Update(table.update(self_update_columns, predicate, vec![pk_col])),
             )));
 
-            let container_model_type = mutation.return_type.as_ref().unwrap().typ(system);
+            let container_model_type = mutation.return_type.typ(system);
             let nested_updates = compute_nested(
                 data_type,
                 argument,

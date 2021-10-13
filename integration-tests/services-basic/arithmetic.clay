@@ -7,10 +7,8 @@ context AuthContext {
 model Foo {
     id: Int @pk
     bar: Int
-}
-
-type Env {
-
+    baz: Int
+    qux: Int
 }
 
 @external("arithmetic.model")
@@ -28,7 +26,11 @@ service MathService {
 
     @access(query=AuthContext.role == "ROLE_ALLOW_DIVIDE")
     export query divide(x: Int, y: Int): DivisionResult
-    export mutation abc(result: AddResult): Int // FIXME: mandate return type
 
-    query log(@inject env: Env, x: Int, y: Int): Int
+    export query verifyDivision(x: Int, y: Int, result: DivisionResult): Boolean 
+
+    export query sideEffectQuery(): Int 
+    export mutation sideEffectMutation(): Int 
+
+    query log(@inject env: Env, message: String): Boolean
 }

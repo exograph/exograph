@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use payas_model::model::{GqlType, argument::{self, ArgumentParameter, ArgumentParameterType}, mapped_arena::MappedArena, operation::{Mutation, MutationKind, OperationReturnType, Query, QueryKind}, service::{ServiceMethod, ServiceMethodType}};
+use payas_model::model::{GqlType, argument::ArgumentParameter, mapped_arena::MappedArena, operation::{Mutation, MutationKind, OperationReturnType, Query, QueryKind}, service::{Argument, ServiceMethod, ServiceMethodType}};
 
 use super::{argument_builder, resolved_builder::{ResolvedMethod, ResolvedMethodType, ResolvedService, ResolvedType}, system_builder::SystemContextBuilding};
 
@@ -39,35 +39,31 @@ pub fn create_shallow_service(
                     ServiceMethodType::Mutation(mutation_id)
                 }
             },
+            is_exported: resolved_method.is_exported,
             arguments: resolved_method.arguments.iter()
                 .map(|arg| 
-                    (arg.name.clone(), building.types.get_id(&arg.typ.get_underlying_typename()).unwrap().clone(), arg.typ.get_modifier().clone()))
-                .collect(),
-            return_type: None, // FIXME
+                    Argument {
+                        name: arg.name.clone(),
+                        type_id: building.types.get_id(&arg.typ.get_underlying_typename()).unwrap().clone(),
+                        modifier: arg.typ.get_modifier().clone(),
+                        is_injected: arg.is_injected
+                    }
+                ).collect(),
+            return_type: OperationReturnType {
+                type_id: building.types.get_id(resolved_method.return_type.get_underlying_typename()).unwrap(),
+                type_name: resolved_method.return_type.get_underlying_typename().to_string(),
+                type_modifier: resolved_method.return_type.get_modifier().clone(),
+            }
         },
     );
 }
 
-pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (_, query ) in building.queries.iter_mut() {
-        if let QueryKind::Service(_) = query.kind { 
-            query.kind = QueryKind::Service(argument_param(&query.name, &building.argument_types))
-        }
-    }
-
-    for (_, mutation ) in building.mutations.iter_mut() {
-        if let MutationKind::Service(_) = mutation.kind { 
-            mutation.kind = MutationKind::Service(argument_param(&mutation.name, &building.argument_types))
-        }
-    }
-}
-
 fn shallow_service_query(method: &ResolvedMethod, types: &MappedArena<GqlType>, building: &SystemContextBuilding) -> Query {
-    let return_type = method.return_type.as_ref().unwrap();
+    let return_type = &method.return_type;
 
     Query {
         name: method.name.clone(),
-        kind: QueryKind::Service(vec![]),
+        kind: QueryKind::Service(argument_param(method, &building)),
         return_type: OperationReturnType {
             type_id: types.get_id(return_type.get_underlying_typename()).unwrap(),
             type_name: return_type.get_underlying_typename().to_string(),
@@ -77,26 +73,52 @@ fn shallow_service_query(method: &ResolvedMethod, types: &MappedArena<GqlType>, 
 }
 
 fn shallow_service_mutation(method: &ResolvedMethod, types: &MappedArena<GqlType>, building: &SystemContextBuilding) -> Mutation {
+    let return_type = &method.return_type;
+
     Mutation {
         name: method.name.clone(),
-        kind: MutationKind::Service(vec![]),
-        return_type: method
-            .return_type
-            .as_ref()
-            .map(|return_type| OperationReturnType {
-                type_id: types.get_id(return_type.get_underlying_typename()).unwrap(),
-                type_name: return_type.get_underlying_typename().to_string(),
-                type_modifier: return_type.get_modifier(),
-            }),
+        kind: MutationKind::Service(argument_param(method, &building)),
+        return_type: OperationReturnType {
+            type_id: types.get_id(return_type.get_underlying_typename()).unwrap(),
+            type_name: return_type.get_underlying_typename().to_string(),
+            type_modifier: return_type.get_modifier(),
+        }
     }
 }
 
+// Generate parameters for the method's query or mutation.
 fn argument_param(
-    method_name: &str,
-    arg_types: &MappedArena<ArgumentParameterType>
+    method: &ResolvedMethod,
+    building: &SystemContextBuilding,
 ) -> Vec<ArgumentParameter> {
-    let type_name = argument_builder::get_parameter_type_name(method_name);
-    let type_id = arg_types.get_id(&type_name).unwrap();
-    let typ = &arg_types[type_id];
-    typ.arguments.clone()
+    let arg_types = &building.argument_types; 
+
+    method.arguments.iter()
+        .filter(|arg| !arg.is_injected) // skip injected params!
+        .map(|arg| {
+            let arg_typename = arg.typ.get_underlying_typename();
+            let type_modifier = arg.typ.get_modifier();
+            let input_name = argument_builder::get_parameter_type_name(arg_typename);
+            let input_type_id = arg_types.get_id(&input_name);
+
+            if let Some(input_type_id) = input_type_id {
+                ArgumentParameter {
+                    name: arg.name.clone(),
+                    type_name: input_name.clone(),
+                    type_id: Some(input_type_id),
+                    type_modifier,
+                }
+            } else {
+                // argument must be a primitive type
+
+                ArgumentParameter {
+                    name: arg.name.clone(),
+                    type_name: arg_typename.to_string(), 
+                    type_id: None, 
+                    type_modifier,
+                }
+            }
+            
+        })
+        .collect()
 }

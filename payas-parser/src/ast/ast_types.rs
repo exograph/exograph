@@ -71,7 +71,7 @@ pub struct AstMethod<T: NodeTypedness> {
     pub name: String,
     pub typ: String, // query or mutation?
     pub arguments: Vec<AstArgument<T>>,
-    pub return_type: Option<AstFieldType<T>>,
+    pub return_type: AstFieldType<T>,
     pub is_exported: bool,
     pub annotations: T::Annotations,
 }

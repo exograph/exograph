@@ -83,10 +83,7 @@ impl TypecheckFrom<AstMethod<Untyped>> for AstMethod<Typed> {
                 .iter()
                 .map(|f| AstArgument::shallow(f))
                 .collect(),
-            return_type: untyped
-                .return_type
-                .as_ref()
-                .map(|t| AstFieldType::shallow(t)),
+            return_type: AstFieldType::shallow(&untyped.return_type),
             is_exported: untyped.is_exported,
             annotations: annotation_map,
         }
@@ -124,11 +121,7 @@ impl TypecheckFrom<AstMethod<Untyped>> for AstMethod<Typed> {
             .count()
             > 0;
 
-        let return_type_change = if let Some(return_type) = &mut self.return_type {
-            return_type.pass(type_env, annotation_env, scope, errors)
-        } else {
-            false
-        };
+        let return_type_change = self.return_type.pass(type_env, annotation_env, scope, errors);
 
         let annot_changed = self.annotations.pass(
             AnnotationTarget::Method,
@@ -173,5 +166,3 @@ impl TypecheckFrom<AstArgument<Untyped>> for AstArgument<Typed> {
         typ_changed || annot_changed
     }
 }
-
-// FIXME: allow queries without parameters, look at return types

@@ -35,7 +35,7 @@ impl<'a> OperationResolver<'a> for Mutation {
     ) -> Result<TransactionScript<'a>> {
         let select = {
             let (_, pk_query, collection_query) = return_type_info(self, operation_context);
-            let selection_query = match &self.return_type.as_ref().unwrap().type_modifier {
+            let selection_query = match &self.return_type.type_modifier {
                 GqlTypeModifier::List => collection_query,
                 GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
             };
@@ -76,8 +76,6 @@ impl<'a> OperationResolver<'a> for Mutation {
 pub fn table_name(mutation: &Mutation, operation_context: &OperationContext) -> String {
     mutation
         .return_type
-        .as_ref()
-        .unwrap()
         .physical_table(operation_context.query_context.system)
         .name
         .to_owned()
@@ -91,7 +89,7 @@ fn create_operation<'a>(
     operation_context: &'a OperationContext<'a>,
 ) -> Result<TransactionScript<'a>> {
     let access_predicate = compute_access_predicate(
-        mutation.return_type.as_ref().unwrap(),
+        &mutation.return_type,
         &OperationKind::Create,
         operation_context,
     );
@@ -121,7 +119,7 @@ fn delete_operation<'a>(
     let (table, _, _) = return_type_info(mutation, operation_context);
 
     let access_predicate = compute_access_predicate(
-        mutation.return_type.as_ref().unwrap(),
+        &mutation.return_type,
         &OperationKind::Delete,
         operation_context,
     );
@@ -166,7 +164,7 @@ fn update_operation<'a>(
     operation_context: &'a OperationContext<'a>,
 ) -> Result<TransactionScript<'a>> {
     let access_predicate = compute_access_predicate(
-        mutation.return_type.as_ref().unwrap(),
+        &mutation.return_type,
         &OperationKind::Update,
         operation_context,
     );
@@ -222,7 +220,7 @@ pub fn return_type_info<'a>(
     operation_context: &'a OperationContext<'a>,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
     let system = &operation_context.query_context.system;
-    let typ = mutation.return_type.as_ref().unwrap().typ(system);
+    let typ = mutation.return_type.typ(system);
 
     match &typ.kind {
         GqlTypeKind::Primitive => panic!(""),

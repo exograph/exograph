@@ -37,9 +37,9 @@ module.exports = grammar({
       field("type", choice("query", "mutation")),
       field("name", $.term),
       "(",
-      commaSep(field("args", $.argument)),
-      ")",
-      optional(seq(":", field("return_type", $.type)))
+      optional(commaSep(field("args", $.argument))),
+      "):",
+      field("return_type", $.type)
     ),
     model: $ => seq(
       repeat(field("annotation", $.annotation)),

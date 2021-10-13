@@ -59,7 +59,7 @@ fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextB
     context_builder::build_shallow(resolved_contexts, building);
     order_by_type_builder::build_shallow(resolved_types, building);
     predicate_builder::build_shallow(resolved_types, building);
-    argument_builder::build_shallow(resolved_services, building);
+    argument_builder::build_shallow(resolved_types, building);
 
     // The next three shallow builders need GQL types build above (the order of the next three is unimportant)
     // Specifically, the OperationReturn type in Query, Mutation, and ServiceMethod looks for the id for the return type, so requires
@@ -86,7 +86,6 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     // Finally expand queries, mutations, and service methods
     query_builder::build_expanded(building);
     mutation_builder::build_expanded(building);
-    service_builder::build_expanded(building);
 }
 
 #[derive(Debug, Default)]

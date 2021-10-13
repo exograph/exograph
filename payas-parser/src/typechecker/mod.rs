@@ -85,6 +85,8 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     env.add("LocalDate", Type::Primitive(PrimitiveType::LocalDate));
     env.add("Instant", Type::Primitive(PrimitiveType::Instant));
     env.add("Json", Type::Primitive(PrimitiveType::Json));
+
+    env.add("Env", Type::Primitive(PrimitiveType::Injected));
 }
 
 fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
@@ -320,7 +322,6 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
             }
         }
 
-        // FIXME: dedup
         for service in ast_services.iter() {
             let mut typ = types_arena
                 .get_by_key(service.name.as_str())

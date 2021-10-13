@@ -38,7 +38,7 @@ pub struct DatabaseQueryParameter {
 pub struct Mutation {
     pub name: String,
     pub kind: MutationKind,
-    pub return_type: Option<OperationReturnType>,
+    pub return_type: OperationReturnType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

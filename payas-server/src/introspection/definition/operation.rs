@@ -15,7 +15,7 @@ use crate::introspection::util;
 pub trait Operation {
     fn name(&self) -> &String;
     fn parameters(&self) -> Vec<&dyn Parameter>;
-    fn return_type(&self) -> Option<&OperationReturnType>;
+    fn return_type(&self) -> &OperationReturnType;
 }
 
 impl Operation for Query {
@@ -57,8 +57,8 @@ impl Operation for Query {
         params
     }
 
-    fn return_type(&self) -> Option<&OperationReturnType> {
-        Some(&self.return_type)
+    fn return_type(&self) -> &OperationReturnType {
+        &self.return_type
     }
 }
 
@@ -85,8 +85,8 @@ impl Operation for Mutation {
         }
     }
 
-    fn return_type(&self) -> Option<&OperationReturnType> {
-        self.return_type.as_ref()
+    fn return_type(&self) -> &OperationReturnType {
+        &self.return_type
     }
 }
 
@@ -100,21 +100,15 @@ impl<T: Operation> FieldDefinitionProvider for T {
             .map(|parameter| default_positioned(parameter.input_value()))
             .collect();
 
-        println!("{} {:#?}", &self.name(), fields);
-
         FieldDefinition {
             description: None,
             name: default_positioned_name(self.name()),
             arguments: fields,
             directives: vec![],
-            ty: if let Some(return_type) = self.return_type() {
-                default_positioned(util::value_type(
-                    &return_type.type_name,
-                    &return_type.type_modifier,
-                ))
-            } else {
-                todo!() // FIXME: what do we do here?
-            },
+            ty: default_positioned(util::value_type(
+                &self.return_type().type_name,
+                &self.return_type().type_modifier,
+            ))
         }
     }
 }

@@ -57,21 +57,21 @@ pub trait MutationBuilder {
         let single_mutation = Mutation {
             name: Self::single_mutation_name(model_type),
             kind: Self::single_mutation_kind(model_type, building),
-            return_type: Some(OperationReturnType {
+            return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
                 type_modifier: GqlTypeModifier::Optional,
-            }),
+            },
         };
 
         let multi_mutation = Mutation {
             name: Self::multi_mutation_name(model_type),
             kind: Self::multi_mutation_kind(model_type, building),
-            return_type: Some(OperationReturnType {
+            return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
                 type_modifier: GqlTypeModifier::List,
-            }),
+            },
         };
 
         vec![single_mutation, multi_mutation]
@@ -201,7 +201,6 @@ pub trait DataParamBuilder<D> {
                     }),
                 }
             }
-            GqlRelation::NonPersistent => panic!()
         }
     }
 

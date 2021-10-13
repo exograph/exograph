@@ -6,7 +6,6 @@ use super::{
     mapped_arena::SerializableSlabIndex,
     operation::{Mutation, OperationReturnType, Query},
     GqlType, GqlTypeModifier,
-    argument::ArgumentParameter
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -14,9 +13,17 @@ pub struct ServiceMethod {
     pub name: String,
     pub module_path: PathBuf,
     pub operation_kind: ServiceMethodType,
-    // FIXME: exported method flag
-    pub arguments: Vec<(String, SerializableSlabIndex<GqlType>, GqlTypeModifier)>,   // FIXME: mark injected arguments 
-    pub return_type: Option<OperationReturnType>,
+    pub is_exported: bool,
+    pub arguments: Vec<Argument>,   
+    pub return_type: OperationReturnType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Argument {
+    pub name: String,
+    pub type_id: SerializableSlabIndex<GqlType>,
+    pub modifier: GqlTypeModifier,
+    pub is_injected: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

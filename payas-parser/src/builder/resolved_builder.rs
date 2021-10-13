@@ -53,7 +53,7 @@ pub struct ResolvedMethod {
     pub is_exported: bool,
     pub access: ResolvedAccess,
     pub arguments: Vec<ResolvedArgument>,
-    pub return_type: Option<ResolvedFieldType>,
+    pub return_type: ResolvedFieldType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -66,7 +66,7 @@ pub enum ResolvedMethodType {
 pub struct ResolvedArgument {
     pub name: String,
     pub typ: ResolvedFieldType,
-    pub injected: bool,
+    pub is_injected: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -130,7 +130,7 @@ pub struct ResolvedField {
     pub kind: ResolvedFieldKind,
 }
 
-// FIXME: dedup
+// TODO: dedup?
 impl ResolvedField {
     pub fn get_column_name(&self) -> &str {
         match &self.kind {
@@ -393,7 +393,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                                     is_exported: m.is_exported,
                                     access,
                                     arguments: vec![],
-                                    return_type: None,
+                                    return_type: ResolvedFieldType::Plain("".to_string()),
                                 }
                             })
                             .collect(),
@@ -503,10 +503,7 @@ fn build_expanded_service(
                     .iter()
                     .map(|a| resolve_argument(a, types, resolved_types))
                     .collect(),
-                return_type: m
-                    .return_type
-                    .as_ref()
-                    .map(|t| resolve_field_type(&t.to_typ(types), types, resolved_types)),
+                return_type: resolve_field_type(&m.return_type.to_typ(types), types, resolved_types),
                 ..existing_method.clone()
             }
         })
@@ -912,7 +909,7 @@ fn resolve_argument(
     ResolvedArgument {
         name: arg.name.clone(),
         typ: resolve_field_type(&arg.typ.to_typ(types), types, resolved_types),
-        injected: arg.annotations.get("inject").is_some(),
+        is_injected: arg.annotations.get("inject").is_some(),
     }
 }
 
