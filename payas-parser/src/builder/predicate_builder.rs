@@ -56,11 +56,14 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
-        if let GqlTypeKind::Composite(GqlCompositeType {
-            kind: GqlCompositeTypeKind::Persistent { .. },
+        // expand filter types for both persistent composite and primitive filter parameters
+        // but NOT non-persistent composite types 
+        if !matches!(&model_type.kind, GqlTypeKind::Composite(GqlCompositeType {
+            kind: GqlCompositeTypeKind::NonPersistent { .. },
             ..
-        }) = &model_type.kind
+        }))
         {
+
             let param_type_name = get_parameter_type_name(&model_type.name);
             let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
@@ -133,6 +136,8 @@ lazy_static! {
             "Json",
             Some(vec!["contains", "containedBy", "matchKey", "matchAllKeys", "matchAnyKey"])
         );
+
+        supported_operators.insert("Injected", Some(vec![]));
 
         supported_operators
     };
