@@ -3,8 +3,6 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
-    println!("cargo:rerun-if-changed=./grammar");
-
     let sitter_out = Command::new("tree-sitter")
         .arg("generate")
         .current_dir(fs::canonicalize("./grammar").unwrap())
