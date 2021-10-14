@@ -940,7 +940,13 @@ mod tests {
           concerts: Set[Concert] @column("custom_venueid")
           capacity: Int @bits(16)
           latitude: Float @size(4)
-        }        
+        }       
+        
+        @external("bar.js")
+        service Foo {
+            export query qux(@inject env: Env, x: Int, String): Int
+            mutation quuz(): String
+        }
         "#;
 
         let resolved = create_resolved_system(src);
@@ -989,6 +995,12 @@ mod tests {
           title: String
           public: Boolean
         }      
+
+        @external("logger.js")
+        service Logger {
+            @access(AuthContext.role == "ROLE_ADMIN")
+            export query log(@inject env: Env): Boolean
+        }
         "#;
 
         let resolved = create_resolved_system(src);

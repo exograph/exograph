@@ -25,6 +25,8 @@ values:
   - - ~
     - Primitive: Json
   - - ~
+    - Primitive: Injected
+  - - ~
     - Composite:
         name: User
         kind: Persistent
@@ -52,7 +54,7 @@ values:
                                               - Single:
                                                   - - self
                                                   - Reference:
-                                                      index: 10
+                                                      index: 11
                                                       generation: ~
                                               - - role
                                               - Reference:
@@ -68,7 +70,7 @@ values:
                                               - Single:
                                                   - - self
                                                   - Reference:
-                                                      index: 10
+                                                      index: 11
                                                       generation: ~
                                               - - role
                                               - Reference:
@@ -84,11 +86,11 @@ values:
                                       - Single:
                                           - - self
                                           - Reference:
-                                              index: 10
+                                              index: 11
                                               generation: ~
                                       - - doc
                                       - Reference:
-                                          index: 11
+                                          index: 12
                                           generation: ~
                                   - - is_public
                                   - Reference:
@@ -129,7 +131,6 @@ values:
   - ~
   - ~
   - ~
-  - ~
 map:
   Boolean:
     index: 0
@@ -138,7 +139,10 @@ map:
     index: 3
     generation: ~
   Doc:
-    index: 11
+    index: 12
+    generation: ~
+  Env:
+    index: 10
     generation: ~
   Float:
     index: 2
@@ -165,6 +169,6 @@ map:
     index: 4
     generation: ~
   User:
-    index: 10
+    index: 11
     generation: ~
 
