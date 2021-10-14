@@ -944,7 +944,7 @@ mod tests {
         
         @external("bar.js")
         service Foo {
-            export query qux(@inject env: Env, x: Int, String): Int
+            export query qux(@inject env: Env, x: Int, y: String): Int
             mutation quuz(): String
         }
         "#;

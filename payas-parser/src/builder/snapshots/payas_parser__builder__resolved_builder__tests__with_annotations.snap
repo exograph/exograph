@@ -240,9 +240,65 @@ contexts:
   map: {}
 services:
   values:
+    - - ~
+      - name: Foo
+        module_path: bar.js
+        methods:
+          - name: qux
+            operation_kind: Query
+            is_exported: true
+            access:
+              creation:
+                BooleanLiteral:
+                  - true
+              read:
+                BooleanLiteral:
+                  - true
+              update:
+                BooleanLiteral:
+                  - true
+              delete:
+                BooleanLiteral:
+                  - true
+            arguments:
+              - name: env
+                typ:
+                  Plain: Injected
+                is_injected: true
+              - name: x
+                typ:
+                  Plain: Int
+                is_injected: false
+              - name: y
+                typ:
+                  Plain: String
+                is_injected: false
+            return_type:
+              Plain: Int
+          - name: quuz
+            operation_kind: Mutation
+            is_exported: false
+            access:
+              creation:
+                BooleanLiteral:
+                  - true
+              read:
+                BooleanLiteral:
+                  - true
+              update:
+                BooleanLiteral:
+                  - true
+              delete:
+                BooleanLiteral:
+                  - true
+            arguments: []
+            return_type:
+              Plain: String
     - ~
     - ~
     - ~
-    - ~
-  map: {}
+  map:
+    Foo:
+      index: 0
+      generation: ~
 
