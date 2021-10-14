@@ -1,0 +1,26 @@
+# Supply a single element even when an array is expected. GraphQL allows auto-coercing a single element to an array
+operation: |
+    mutation($data: [VenueCreationInput]){
+      createVenues(data: $data) {
+        id
+      }
+    }
+variable: |
+    {
+      "data": { 
+        "name": "V1", 
+        "published": true, 
+        "latitude": 1.0
+      }
+    }
+response: |
+    {
+      "data": {
+        "createVenues": [
+          {
+            "id": 3
+          }
+        ]
+      }
+    }
+    
