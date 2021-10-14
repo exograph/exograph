@@ -37,6 +37,19 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
+
+        if !self.annotations.contains("external") {
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Missing @external annotation for service `{}`",
+                    self.name
+                ),
+                code: Some("A000".to_string()),
+                spans: vec![]
+            })
+        }
+
         let models_changed = self
             .models
             .iter_mut()
