@@ -1,0 +1,17 @@
+operation: |
+    mutation {
+      createVenues(data: {name: "V1", published:true, latitude: 1.0}) {
+        id
+      }
+    }
+response: |
+    {
+      "data": {
+        "createVenues": [
+          {
+            "id": 3
+          }
+        ]
+      }
+    }
+    
