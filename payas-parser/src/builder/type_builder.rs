@@ -362,7 +362,7 @@ fn create_field(
             create_relation(field, table_id, building, env)
         } else {
             GqlRelation::NonPersistent // was not provided a table id, type is not persistent in database
-            // TODO: rethink GqlField with non-persistent models in mind
+                                       // TODO: rethink GqlField with non-persistent models in mind
         },
     }
 }

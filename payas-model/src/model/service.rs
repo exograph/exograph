@@ -14,7 +14,7 @@ pub struct ServiceMethod {
     pub module_path: PathBuf,
     pub operation_kind: ServiceMethodType,
     pub is_exported: bool,
-    pub arguments: Vec<Argument>,   
+    pub arguments: Vec<Argument>,
     pub return_type: OperationReturnType,
 }
 
@@ -31,4 +31,3 @@ pub enum ServiceMethodType {
     Query(SerializableSlabIndex<Query>),
     Mutation(SerializableSlabIndex<Mutation>),
 }
-

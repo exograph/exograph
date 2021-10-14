@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use crate::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
+    argument::ArgumentParameter,
     limit_offset::{LimitParameter, OffsetParameter},
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
-    argument::ArgumentParameter,
     predicate::PredicateParameter,
     system::ModelSystem,
     types::{GqlType, GqlTypeModifier},
@@ -22,7 +22,7 @@ pub struct Query {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum QueryKind {
-    Database(DatabaseQueryParameter), 
+    Database(DatabaseQueryParameter),
     Service(Vec<ArgumentParameter>),
 }
 

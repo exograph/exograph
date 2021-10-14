@@ -57,13 +57,14 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
         // expand filter types for both persistent composite and primitive filter parameters
-        // but NOT non-persistent composite types 
-        if !matches!(&model_type.kind, GqlTypeKind::Composite(GqlCompositeType {
-            kind: GqlCompositeTypeKind::NonPersistent { .. },
-            ..
-        }))
-        {
-
+        // but NOT non-persistent composite types
+        if !matches!(
+            &model_type.kind,
+            GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::NonPersistent { .. },
+                ..
+            })
+        ) {
             let param_type_name = get_parameter_type_name(&model_type.name);
             let existing_param_id = building.predicate_types.get_id(&param_type_name);
 

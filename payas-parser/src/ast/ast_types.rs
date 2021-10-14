@@ -81,7 +81,7 @@ pub enum AstModelKind {
     Persistent,    // a model intended to be persisted inside the database
     Context,       // defines contextual models for authorization
     NonPersistent, // solely defines input and output types for service methods
-} 
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstField<T: NodeTypedness> {

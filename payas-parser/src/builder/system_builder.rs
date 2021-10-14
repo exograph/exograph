@@ -1,10 +1,28 @@
 use anyhow::Result;
 use codemap::CodeMap;
-use payas_model::{model::{ContextType, argument::ArgumentParameterType, mapped_arena::MappedArena, operation::{Mutation, Query}, order::OrderByParameterType, predicate::PredicateParameterType, service::ServiceMethod, system::ModelSystem, types::GqlType}, sql::PhysicalTable};
+use payas_model::{
+    model::{
+        argument::ArgumentParameterType,
+        mapped_arena::MappedArena,
+        operation::{Mutation, Query},
+        order::OrderByParameterType,
+        predicate::PredicateParameterType,
+        service::ServiceMethod,
+        system::ModelSystem,
+        types::GqlType,
+        ContextType,
+    },
+    sql::PhysicalTable,
+};
 
 use crate::ast::ast_types::{AstSystem, Untyped};
 
-use super::{argument_builder, context_builder, mutation_builder, order_by_type_builder, predicate_builder, query_builder, resolved_builder::{self, ResolvedSystem}, service_builder, type_builder};
+use super::{
+    argument_builder, context_builder, mutation_builder, order_by_type_builder, predicate_builder,
+    query_builder,
+    resolved_builder::{self, ResolvedSystem},
+    service_builder, type_builder,
+};
 
 use crate::typechecker;
 

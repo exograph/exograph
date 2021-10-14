@@ -6,9 +6,9 @@
 
 use anyhow::Result;
 
-use payas_model::model::GqlTypeModifier;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToPlural, ToTableName};
+use payas_model::model::GqlTypeModifier;
 
 use crate::ast::ast_types::{AstAnnotationParams, AstArgument, AstFieldType, AstService};
 use crate::{
@@ -504,7 +504,11 @@ fn build_expanded_service(
                     .iter()
                     .map(|a| resolve_argument(a, types, resolved_types))
                     .collect(),
-                return_type: resolve_field_type(&m.return_type.to_typ(types), types, resolved_types),
+                return_type: resolve_field_type(
+                    &m.return_type.to_typ(types),
+                    types,
+                    resolved_types,
+                ),
                 ..existing_method.clone()
             }
         })

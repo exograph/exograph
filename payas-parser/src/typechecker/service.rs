@@ -37,16 +37,12 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-
         if !self.annotations.contains("external") {
             errors.push(Diagnostic {
                 level: Level::Error,
-                message: format!(
-                    "Missing @external annotation for service `{}`",
-                    self.name
-                ),
+                message: format!("Missing @external annotation for service `{}`", self.name),
                 code: Some("A000".to_string()),
-                spans: vec![]
+                spans: vec![],
             })
         }
 
@@ -134,7 +130,9 @@ impl TypecheckFrom<AstMethod<Untyped>> for AstMethod<Typed> {
             .count()
             > 0;
 
-        let return_type_change = self.return_type.pass(type_env, annotation_env, scope, errors);
+        let return_type_change = self
+            .return_type
+            .pass(type_env, annotation_env, scope, errors);
 
         let annot_changed = self.annotations.pass(
             AnnotationTarget::Method,

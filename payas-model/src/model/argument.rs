@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use super::{GqlType, GqlTypeModifier, mapped_arena::SerializableSlabIndex};
+use super::{mapped_arena::SerializableSlabIndex, GqlType, GqlTypeModifier};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArgumentParameter {
