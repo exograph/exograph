@@ -76,6 +76,12 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
             .map(|table_id| &operation_context.get_system().tables[table_id])
             .unwrap();
 
+        // Before we can make the decision of mapping a single or multiple elements, we must resolve variable
+        let argument = match argument {
+            Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
+            _ => argument,
+        };
+
         match argument {
             Value::List(elems) => {
                 let unaligned = elems
