@@ -3,7 +3,7 @@ use async_graphql_parser::types::FieldDefinition;
 
 use payas_model::model::{
     operation::{
-        Mutation, MutationKind, OperationReturnType, DatabaseQueryParameter, Query, QueryKind,
+        DatabaseQueryParameter, Mutation, MutationKind, OperationReturnType, Query, QueryKind,
     },
     system::ModelSystem,
 };
@@ -108,7 +108,7 @@ impl<T: Operation> FieldDefinitionProvider for T {
             ty: default_positioned(util::value_type(
                 &self.return_type().type_name,
                 &self.return_type().type_modifier,
-            ))
+            )),
         }
     }
 }
