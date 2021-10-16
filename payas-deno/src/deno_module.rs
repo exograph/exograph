@@ -1,6 +1,5 @@
 use deno_core::error::AnyError;
 use deno_core::serde_json;
-use deno_core::FsModuleLoader;
 use deno_core::JsRuntime;
 
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
@@ -57,7 +56,6 @@ impl DenoModule {
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
             source_code,
-            underlying_module_loader: FsModuleLoader,
             module_specifier: main_module_specifier.clone(),
         });
 
