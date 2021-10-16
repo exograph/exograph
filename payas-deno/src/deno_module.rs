@@ -8,6 +8,7 @@ use deno_runtime::deno_web::BlobStore;
 use deno_runtime::permissions::Permissions;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
+use deno_runtime::BootstrapOptions;
 use serde_json::Value;
 
 use std::collections::HashMap;
@@ -65,11 +66,19 @@ impl DenoModule {
         });
 
         let options = WorkerOptions {
-            apply_source_maps: false,
-            args: vec![],
-            debug_flag: false,
-            unstable: false,
-            enable_testing_features: false,
+            bootstrap: BootstrapOptions {
+                apply_source_maps: false,
+                args: vec![],
+                cpu_count: 1,
+                debug_flag: false,
+                enable_testing_features: false,
+                location: None,
+                no_color: false,
+                runtime_version: "x".to_string(),
+                ts_version: "x".to_string(),
+                unstable: false,
+            },
+            extensions: vec![],
             unsafely_ignore_certificate_errors: None,
             root_cert_store: None,
             user_agent: user_agent_name.to_string(),
@@ -79,27 +88,23 @@ impl DenoModule {
             maybe_inspector_server: None,
             should_break_on_first_statement: false,
             module_loader,
-            runtime_version: "x".to_string(),
-            ts_version: "x".to_string(),
-            no_color: false,
             get_error_class_fn: Some(&get_error_class_name),
-            location: None,
             origin_storage_dir: None,
             blob_store: BlobStore::default(),
             broadcast_channel: InMemoryBroadcastChannel::default(),
             shared_array_buffer_store: None,
-            cpu_count: 1,
+            compiled_wasm_module_store: None,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
         let permissions = Permissions::allow_all();
 
-        let mut worker = MainWorker::from_options(main_module.clone(), permissions, &options);
+        let mut worker =
+            MainWorker::bootstrap_from_options(main_module.clone(), permissions, options);
 
         register_ops(&mut worker.js_runtime);
         worker.js_runtime.sync_ops_cache();
 
-        worker.bootstrap(&options);
         worker.execute_main_module(&main_module).await?;
         worker.run_event_loop(false).await?;
 
