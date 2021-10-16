@@ -25,6 +25,12 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
 }
 
+// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number
+const JS_MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
+const JS_MIN_SAFE_INTEGER: i64 = -JS_MAX_SAFE_INTEGER;
+const JS_MAX_VALUE: f64 = 1.797_693_134_862_315_7e308;
+const JS_MIN_VALUE: f64 = 5e-324;
+
 pub struct DenoModule {
     worker: MainWorker,
     shim_object_names: Vec<String>,
@@ -140,7 +146,39 @@ impl DenoModule {
             let args: Vec<_> = args
                 .into_iter()
                 .map(|v| match v {
-                    Arg::Serde(v) => serde_v8::to_v8(scope, v).unwrap(),
+                    Arg::Serde(v) => match v {
+                        // If we enable the arbitrary_precision feature for serde_json, then serde_v8::to_v8 will serialize numbers as
+                        // { "$serde_json::private::Number": "<number>"}, which the JS side will not understand, so apply custom logic
+                        // to get the underlying value and then use primitive serialization
+                        // TODO: Check for
+                        Value::Number(n) => if n.is_i64() {
+                            let value = n.as_i64().unwrap();
+
+                            if value >= JS_MIN_SAFE_INTEGER || value <= JS_MAX_SAFE_INTEGER {
+                                serde_v8::to_v8(scope, value)
+                            } else {
+                                Err(serde_v8::Error::Message(format!(
+                                    "Integer {} too large to safely convert to JavaScript",
+                                    value
+                                )))
+                            }
+                        } else if n.is_f64() {
+                            let value = n.as_f64().unwrap();
+
+                            if value >= JS_MIN_VALUE || value <= JS_MAX_VALUE {
+                                serde_v8::to_v8(scope, value)
+                            } else {
+                                Err(serde_v8::Error::Message(format!(
+                                    "Float {} too large to safely convert to JavaScript",
+                                    value
+                                )))
+                            }
+                        } else {
+                            Err(serde_v8::Error::Message("Invalid number".into()))
+                        }
+                        .unwrap(),
+                        _ => serde_v8::to_v8(scope, v).unwrap(),
+                    },
                     Arg::Shim(name) => shim_objects
                         .get(&name)
                         .unwrap()

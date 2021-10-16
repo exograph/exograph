@@ -2893,6 +2893,7 @@ dependencies = [
  "deno_core",
  "deno_runtime",
  "serde",
+ "serde_json",
  "serde_v8",
  "tokio 1.12.0",
 ]
