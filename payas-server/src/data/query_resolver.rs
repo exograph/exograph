@@ -74,16 +74,21 @@ impl<'a> QueryOperations<'a> for Query {
         arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<OrderBy<'a>> {
-        self.order_by_param
-            .as_ref()
-            .and_then(|order_by_param| {
-                let argument_value = super::find_arg(arguments, &order_by_param.name);
-                argument_value.map(|argument_value| {
-                    order_by_param.map_to_sql(argument_value, operation_context)
-                })
-            })
-            .transpose()
-            .unwrap() // TODO: handle properly
+        match &self.kind {
+            QueryKind::Database(DatabaseQueryParameter { order_by_param, .. }) => {
+                order_by_param
+                    .as_ref()
+                    .and_then(|order_by_param| {
+                        let argument_value = super::find_arg(arguments, &order_by_param.name);
+                        argument_value.map(|argument_value| {
+                            order_by_param.map_to_sql(argument_value, operation_context)
+                        })
+                    })
+                    .transpose()
+                    .unwrap() // TODO: handle properly
+            }
+            QueryKind::Service(_) => panic!(),
+        }
     }
 
     fn content_select(
@@ -111,15 +116,19 @@ impl<'a> QueryOperations<'a> for Query {
         arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<Limit> {
-        self.limit_param
-            .as_ref()
-            .and_then(|limit_param| {
-                let argument_value = super::find_arg(arguments, &limit_param.name);
-                argument_value
-                    .map(|argument_value| limit_param.map_to_sql(argument_value, operation_context))
-            })
-            .transpose()
-            .unwrap()
+        match &self.kind {
+            QueryKind::Database(DatabaseQueryParameter { limit_param, .. }) => limit_param
+                .as_ref()
+                .and_then(|limit_param| {
+                    let argument_value = super::find_arg(arguments, &limit_param.name);
+                    argument_value.map(|argument_value| {
+                        limit_param.map_to_sql(argument_value, operation_context)
+                    })
+                })
+                .transpose()
+                .unwrap(),
+            QueryKind::Service(_) => panic!(),
+        }
     }
 
     fn compute_offset(
@@ -127,16 +136,19 @@ impl<'a> QueryOperations<'a> for Query {
         arguments: &'a Arguments,
         operation_context: &'a OperationContext<'a>,
     ) -> Option<Offset> {
-        self.offset_param
-            .as_ref()
-            .and_then(|offset_param| {
-                let argument_value = super::find_arg(arguments, &offset_param.name);
-                argument_value.map(|argument_value| {
-                    offset_param.map_to_sql(argument_value, operation_context)
+        match &self.kind {
+            QueryKind::Database(DatabaseQueryParameter { offset_param, .. }) => offset_param
+                .as_ref()
+                .and_then(|offset_param| {
+                    let argument_value = super::find_arg(arguments, &offset_param.name);
+                    argument_value.map(|argument_value| {
+                        offset_param.map_to_sql(argument_value, operation_context)
+                    })
                 })
-            })
-            .transpose()
-            .unwrap()
+                .transpose()
+                .unwrap(),
+            QueryKind::Service(_) => panic!(),
+        }
     }
 
     fn operation(
@@ -157,7 +169,13 @@ impl<'a> QueryOperations<'a> for Query {
         }
 
         let predicate = super::compute_predicate(
-            self.predicate_param.as_ref(),
+            match &self.kind {
+                QueryKind::Database(DatabaseQueryParameter {
+                    predicate_param, ..
+                }) => predicate_param,
+                QueryKind::Service(_) => panic!(),
+            }
+            .as_ref(),
             &field.arguments,
             additional_predicate,
             operation_context,
@@ -259,11 +277,9 @@ fn map_field<'a>(
                 ..
             } => {
                 let other_type = &system.types[*other_type_id];
-                let other_table_pk_query = match other_type.kind {
+                let other_table_pk_query = match &other_type.kind {
                     GqlTypeKind::Primitive => panic!(""),
-                    GqlTypeKind::Composite(GqlCompositeTypeKind { pk_query, .. }) => {
-                        &system.queries[pk_query]
-                    }
+                    GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
                 };
 
                 Column::SelectionTableWrapper(
@@ -285,11 +301,11 @@ fn map_field<'a>(
             } => {
                 let other_type = &system.types[*other_type_id];
                 let other_table_collection_query = {
-                    match other_type.kind {
+                    match &other_type.kind {
                         GqlTypeKind::Primitive => panic!(""),
-                        GqlTypeKind::Composite(GqlCompositeTypeKind {
-                            collection_query, ..
-                        }) => &system.queries[collection_query],
+                        GqlTypeKind::Composite(kind) => {
+                            &system.queries[kind.get_collection_query()]
+                        }
                     }
                 };
 
@@ -306,6 +322,7 @@ fn map_field<'a>(
 
                 Column::SelectionTableWrapper(other_selection_table)
             }
+            GqlRelation::NonPersistent => panic!(),
         }
     };
 

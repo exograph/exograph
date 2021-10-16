@@ -24,6 +24,9 @@ pub struct AnnotationSpec {
 pub enum AnnotationTarget {
     Model,
     Field,
+    Argument,
+    Service,
+    Method,
 }
 
 /// Specification for a mapped parameter of an annotation.

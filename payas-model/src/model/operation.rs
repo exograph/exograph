@@ -1,9 +1,10 @@
 use payas_sql::sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-use crate::model::{GqlCompositeTypeKind, GqlTypeKind};
+use crate::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
+    argument::ArgumentParameter,
     limit_offset::{LimitParameter, OffsetParameter},
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
@@ -15,11 +16,22 @@ use super::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Query {
     pub name: String,
+    pub kind: QueryKind,
+    pub return_type: OperationReturnType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum QueryKind {
+    Database(DatabaseQueryParameter),
+    Service(Vec<ArgumentParameter>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DatabaseQueryParameter {
     pub predicate_param: Option<PredicateParameter>,
     pub order_by_param: Option<OrderByParameter>,
     pub limit_param: Option<LimitParameter>,
     pub offset_param: Option<OffsetParameter>,
-    pub return_type: OperationReturnType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -31,12 +43,16 @@ pub struct Mutation {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MutationKind {
+    // mutations for persistent queries
     Create(CreateDataParameter),
     Delete(PredicateParameter),
     Update {
         data_param: UpdateDataParameter,
         predicate_param: PredicateParameter,
     },
+
+    // mutation for service
+    Service(Vec<ArgumentParameter>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -71,11 +87,12 @@ impl OperationReturnType {
         let return_type = self.typ(system);
         match &return_type.kind {
             GqlTypeKind::Primitive => panic!(),
-            GqlTypeKind::Composite(GqlCompositeTypeKind {
+            GqlTypeKind::Composite(GqlCompositeType {
                 fields: _,
-                table_id,
+                kind: GqlCompositeTypeKind::Persistent { table_id, .. },
                 ..
             }) => &system.tables[*table_id],
+            _ => panic!(),
         }
     }
 }

@@ -151,7 +151,7 @@ fn operands<'a>(
     op_value: &'a Value,
     operation_context: &'a OperationContext<'a>,
 ) -> (&'a Column<'a>, &'a Column<'a>) {
-    let system = &operation_context.get_system();
+    let system = operation_context.get_system();
     let op_physical_column = &param.column_id.as_ref().unwrap().get_column(system);
     let op_key_column = operation_context.create_column(Column::Physical(op_physical_column));
     let op_value_column = operation_context.literal_column(op_value.clone(), op_physical_column);

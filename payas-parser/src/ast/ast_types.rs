@@ -41,6 +41,7 @@ impl NodeTypedness for Untyped {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstSystem<T: NodeTypedness> {
     pub models: Vec<AstModel<T>>,
+    pub services: Vec<AstService<T>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -58,13 +59,40 @@ impl<T: NodeTypedness> Display for AstModel<T> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstService<T: NodeTypedness> {
+    pub name: String,
+    pub models: Vec<AstModel<T>>,
+    pub methods: Vec<AstMethod<T>>,
+    pub annotations: T::Annotations,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstMethod<T: NodeTypedness> {
+    pub name: String,
+    pub typ: String, // query or mutation?
+    pub arguments: Vec<AstArgument<T>>,
+    pub return_type: AstFieldType<T>,
+    pub is_exported: bool,
+    pub annotations: T::Annotations,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstModelKind {
-    Persistent,
-    Context,
+    Persistent,         // a model intended to be persisted inside the database
+    Context,            // defines contextual models for authorization
+    NonPersistent,      // solely defines an output model for service methods
+    NonPersistentInput, // solely defines an input model for service methods
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstField<T: NodeTypedness> {
+    pub name: String,
+    pub typ: AstFieldType<T>,
+    pub annotations: T::Annotations,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstArgument<T: NodeTypedness> {
     pub name: String,
     pub typ: AstFieldType<T>,
     pub annotations: T::Annotations,

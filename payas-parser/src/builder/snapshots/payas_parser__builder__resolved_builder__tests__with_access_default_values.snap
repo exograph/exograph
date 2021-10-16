@@ -26,6 +26,8 @@ types:
     - - ~
       - Primitive: Json
     - - ~
+      - Primitive: Injected
+    - - ~
       - Composite:
           name: Concert
           plural_name: Concerts
@@ -33,25 +35,33 @@ types:
             - name: id
               typ:
                 Plain: Int
-              column_name: id
-              is_pk: true
-              is_autoincrement: true
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint: ~
             - name: title
               typ:
                 Plain: String
-              column_name: title
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: title
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: public
               typ:
                 Plain: Boolean
-              column_name: public
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
-          table_name: concerts
+              kind:
+                Persistent:
+                  column_name: public
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+          kind:
+            Persistent:
+              table_name: concerts
           access:
             creation:
               LogicalOp:
@@ -63,7 +73,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 10
+                                      index: 11
                                       generation: ~
                               - - role
                               - Reference:
@@ -77,7 +87,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 11
+                                index: 12
                                 generation: ~
                         - - public
                         - Reference:
@@ -94,7 +104,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 10
+                                      index: 11
                                       generation: ~
                               - - role
                               - Reference:
@@ -108,7 +118,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 11
+                                index: 12
                                 generation: ~
                         - - public
                         - Reference:
@@ -125,7 +135,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 10
+                                      index: 11
                                       generation: ~
                               - - role
                               - Reference:
@@ -139,7 +149,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 11
+                                index: 12
                                 generation: ~
                         - - public
                         - Reference:
@@ -156,7 +166,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 10
+                                      index: 11
                                       generation: ~
                               - - role
                               - Reference:
@@ -170,7 +180,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 11
+                                index: 12
                                 generation: ~
                         - - public
                         - Reference:
@@ -181,19 +191,21 @@ types:
     - ~
     - ~
     - ~
-    - ~
   map:
     Boolean:
       index: 0
       generation: ~
     Concert:
-      index: 10
+      index: 11
       generation: ~
     Decimal:
       index: 3
       generation: ~
     Float:
       index: 2
+      generation: ~
+    Injected:
+      index: 10
       generation: ~
     Instant:
       index: 8
@@ -234,4 +246,11 @@ contexts:
     AuthContext:
       index: 0
       generation: ~
+services:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
 
