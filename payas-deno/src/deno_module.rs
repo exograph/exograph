@@ -42,8 +42,10 @@ impl DenoModule {
             .to_string();
 
         let shim_source_code = {
-            let shims_source_codes: Vec<_> =
-                shims.iter().map(|(_, source)| source.to_string()).collect();
+            let shims_source_codes: Vec<_> = shims
+                .iter()
+                .map(|(shim_name, source)| format!("globalThis.{} = {};", shim_name, source))
+                .collect();
 
             shims_source_codes.join("\n")
         };
@@ -170,7 +172,6 @@ impl DenoModule {
     }
 }
 
-#[derive(Debug)]
 pub enum Arg {
     Serde(serde_json::Value),
     Shim(String),
