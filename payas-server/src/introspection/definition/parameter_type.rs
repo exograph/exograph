@@ -1,11 +1,15 @@
 use async_graphql_parser::{
-    types::{EnumType, EnumValueDefinition, InputObjectType, TypeDefinition, TypeKind},
+    types::{
+        EnumType, EnumValueDefinition, InputObjectType, InputValueDefinition, TypeDefinition,
+        TypeKind,
+    },
     Pos, Positioned,
 };
 use async_graphql_value::Name;
 
-use crate::introspection::util::*;
+use crate::introspection::{definition::type_introspection::TypeDefinitionIntrospection, util::*};
 use payas_model::model::{
+    argument::{ArgumentParameter, ArgumentParameterType},
     limit_offset::{LimitParameter, OffsetParameter},
     order::*,
     predicate::*,
@@ -125,6 +129,48 @@ impl TypeDefinitionProvider for PredicateParameterType {
     }
 }
 
+// TODO: Reduce duplication from the above impl
+impl TypeDefinitionProvider for ArgumentParameterType {
+    fn type_definition(&self, system: &ModelSystem) -> TypeDefinition {
+        let type_def = system
+            .types
+            .get(self.actual_type_id.unwrap())
+            .unwrap()
+            .type_definition(system);
+
+        let kind = match type_def.fields() {
+            Some(fields) => TypeKind::InputObject(InputObjectType {
+                fields: fields
+                    .iter()
+                    .map(|positioned| {
+                        let field_definition = &positioned.node;
+
+                        Positioned {
+                            pos: positioned.pos,
+                            node: InputValueDefinition {
+                                description: field_definition.description.clone(),
+                                name: field_definition.name.clone(),
+                                ty: field_definition.ty.clone(),
+                                default_value: None,
+                                directives: vec![],
+                            },
+                        }
+                    })
+                    .collect(),
+            }),
+            None => TypeKind::Scalar,
+        };
+
+        TypeDefinition {
+            extend: false,
+            name: default_positioned_name(&self.name),
+            description: None,
+            directives: vec![],
+            kind,
+        }
+    }
+}
+
 impl TypeDefinitionProvider for LimitParameter {
     fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         TypeDefinition {
@@ -138,6 +184,18 @@ impl TypeDefinitionProvider for LimitParameter {
 }
 
 impl TypeDefinitionProvider for OffsetParameter {
+    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind: TypeKind::Scalar,
+        }
+    }
+}
+
+impl TypeDefinitionProvider for ArgumentParameter {
     fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         TypeDefinition {
             extend: false,

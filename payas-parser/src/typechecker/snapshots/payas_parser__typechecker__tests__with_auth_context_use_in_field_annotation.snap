@@ -25,6 +25,8 @@ values:
   - - ~
     - Primitive: Json
   - - ~
+    - Primitive: Injected
+  - - ~
     - Composite:
         name: AuthContext
         kind: Context
@@ -76,7 +78,7 @@ values:
                                         - Single:
                                             - - AuthContext
                                             - Reference:
-                                                index: 10
+                                                index: 11
                                                 generation: ~
                                         - - role
                                         - Reference:
@@ -90,7 +92,7 @@ values:
                                   - Single:
                                       - - self
                                       - Reference:
-                                          index: 11
+                                          index: 12
                                           generation: ~
                                   - - is_public
                                   - Reference:
@@ -102,10 +104,9 @@ values:
   - ~
   - ~
   - ~
-  - ~
 map:
   AuthContext:
-    index: 10
+    index: 11
     generation: ~
   Boolean:
     index: 0
@@ -114,7 +115,10 @@ map:
     index: 3
     generation: ~
   Doc:
-    index: 11
+    index: 12
+    generation: ~
+  Env:
+    index: 10
     generation: ~
   Float:
     index: 2
