@@ -24,6 +24,7 @@ service MathService {
 
     input type LogMessage {
         level: String
+        message: String
     }
 
     export query add(x: Int, y: Int): AddResult
