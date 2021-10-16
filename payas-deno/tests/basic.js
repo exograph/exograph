@@ -1,4 +1,5 @@
 export function addAndDouble(i, j) {
+  console.log("*************** addAndDouble", i, j, (i+j) * 2)
   return (i+j) * 2;
 }
 
