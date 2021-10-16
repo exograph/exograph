@@ -4,8 +4,8 @@ use payas_deno::{Arg, DenoModule};
 use deno_core::serde_json::json;
 
 #[tokio::test]
-async fn test_basic_sync() {
-    let mut deno_module = DenoModule::new("./tests/basic.js", "deno_module", &[], |_| {})
+async fn test_direct_sync() {
+    let mut deno_module = DenoModule::new("./tests/direct.js", "deno_module", &[], |_| {})
         .await
         .unwrap();
 
@@ -37,8 +37,8 @@ async fn test_basic_sync() {
 }
 
 #[tokio::test]
-async fn test_basic_async() {
-    let mut deno_module = DenoModule::new("./tests/basic.js", "deno_module", &[], |_| {})
+async fn test_direct_async() {
+    let mut deno_module = DenoModule::new("./tests/direct.js", "deno_module", &[], |_| {})
         .await
         .unwrap();
 
@@ -64,53 +64,63 @@ async fn test_basic_async() {
 
 #[tokio::test]
 async fn test_shim_sync() {
-    static GET_JSON_SHIM: (&str, &str) = ("__get_json_shim", include_str!("get_json_shim.js"));
+    static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("shim.js"));
 
-    let mut deno_module =
-        DenoModule::new("./tests/shim.js", "deno_module", &[GET_JSON_SHIM], |_| {})
-            .await
-            .unwrap();
+    let mut deno_module = DenoModule::new(
+        "./tests/through_shim.js",
+        "deno_module",
+        &[GET_JSON_SHIM],
+        |_| {},
+    )
+    .await
+    .unwrap();
 
     let sync_ret_value = deno_module
         .execute_function(
-            "syncUsingShim",
+            "addAndDoubleThroughShim",
             vec![
-                Arg::Serde(Value::String("param".into())),
-                Arg::Shim("__get_json_shim".to_string()),
+                Arg::Serde(Value::Number(4.into())),
+                Arg::Serde(Value::Number(5.into())),
+                Arg::Shim("__shim".to_string()),
             ],
         )
         .await
         .unwrap();
-    assert_eq!(sync_ret_value, Value::String("value: param".into()));
+    assert_eq!(sync_ret_value, Value::Number(18.into()));
 
     let sync_ret_value = deno_module
         .execute_function(
-            "syncUsingShim",
+            "addAndDoubleThroughShim",
             vec![
-                Arg::Serde(Value::String("param2".into())),
-                Arg::Shim("__get_json_shim".to_string()),
+                Arg::Serde(Value::Number(42.into())),
+                Arg::Serde(Value::Number(21.into())),
+                Arg::Shim("__shim".to_string()),
             ],
         )
         .await
         .unwrap();
-    assert_eq!(sync_ret_value, Value::String("value: param2".into()));
+    assert_eq!(sync_ret_value, Value::Number(126.into()));
 }
 
 #[tokio::test]
 async fn test_shim_async() {
-    static GET_JSON_SHIM: (&str, &str) = ("__get_json_shim", include_str!("get_json_shim.js"));
+    static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("shim.js"));
 
-    let mut deno_module =
-        DenoModule::new("./tests/shim.js", "deno_module", &[GET_JSON_SHIM], |_| {})
-            .await
-            .unwrap();
+    let mut deno_module = DenoModule::new(
+        "./tests/through_shim.js",
+        "deno_module",
+        &[GET_JSON_SHIM],
+        |_| {},
+    )
+    .await
+    .unwrap();
 
     let async_ret_value = deno_module
         .execute_function(
-            "asyncUsingShim",
+            "getJsonThroughShim",
             vec![
                 Arg::Serde(Value::String("4".into())),
-                Arg::Shim("__get_json_shim".to_string()),
+                Arg::Shim("__shim".to_string()),
             ],
         )
         .await
@@ -119,12 +129,26 @@ async fn test_shim_async() {
         async_ret_value,
         json!({ "userId": 1, "id": 4, "title": "et porro tempora", "completed": true })
     );
+
+    // The JS side doesn't care if the id is a string or a number, so let's use number here
+    let async_ret_value = deno_module
+        .execute_function(
+            "getJsonThroughShim",
+            vec![
+                Arg::Serde(Value::Number(5.into())),
+                Arg::Shim("__shim".to_string()),
+            ],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        async_ret_value,
+        json!({ "userId": 1, "id": 5, "title": "laboriosam mollitia et enim quasi adipisci quia provident illum", "completed": false })
+    );
 }
 
 #[tokio::test]
 async fn test_register_ops() {
-    static GET_JSON_SHIM: (&str, &str) = ("__get_json_shim", include_str!("get_json_shim.js"));
-
     fn register_ops(runtime: &mut JsRuntime) {
         let sync_ops = vec![(
             "rust_impl",
@@ -138,9 +162,9 @@ async fn test_register_ops() {
     }
 
     let mut deno_module = DenoModule::new(
-        "./tests/rust_fn.js",
+        "./tests/through_rust_fn.js",
         "deno_module",
-        &[GET_JSON_SHIM],
+        &[],
         register_ops,
     )
     .await
@@ -149,10 +173,7 @@ async fn test_register_ops() {
     let sync_ret_value = deno_module
         .execute_function(
             "syncUsingRegisteredFunction",
-            vec![
-                Arg::Serde(Value::String("param".into())),
-                Arg::Shim("__get_json_shim".to_string()),
-            ],
+            vec![Arg::Serde(Value::String("param".into()))],
         )
         .await
         .unwrap();

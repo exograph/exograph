@@ -1,7 +1,9 @@
-export async function asyncUsingShim(id, get_json_shim) {
-  return await get_json_shim.async_execute("https://jsonplaceholder.typicode.com/todos/" + id);
-}
-
-export function syncUsingShim(param, get_json_shim) {
-  return get_json_shim.sync_execute(param);
-}
+globalThis.__shim = {
+  getJson: async function(url) {
+    const resp = await fetch(url);
+    return await resp.json();
+  },
+  addAndDouble: function(i, j) {
+    return (i+j) * 2;
+  }
+};

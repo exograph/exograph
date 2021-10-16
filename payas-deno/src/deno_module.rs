@@ -170,6 +170,7 @@ impl DenoModule {
     }
 }
 
+#[derive(Debug)]
 pub enum Arg {
     Serde(serde_json::Value),
     Shim(String),
