@@ -78,9 +78,10 @@ pub struct AstMethod<T: NodeTypedness> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum AstModelKind {
-    Persistent,    // a model intended to be persisted inside the database
-    Context,       // defines contextual models for authorization
-    NonPersistent, // solely defines input and output types for service methods
+    Persistent,         // a model intended to be persisted inside the database
+    Context,            // defines contextual models for authorization
+    NonPersistent,      // solely defines an output model for service methods
+    NonPersistentInput, // solely defines an input model for service methods
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

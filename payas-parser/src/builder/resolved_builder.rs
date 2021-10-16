@@ -110,7 +110,7 @@ impl ResolvedCompositeType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedCompositeTypeKind {
     Persistent { table_name: String },
-    NonPersistent,
+    NonPersistent { is_input: bool },
 }
 
 impl ToPlural for ResolvedCompositeType {
@@ -341,7 +341,10 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     }),
                 );
             }
-            Type::Composite(ct) if ct.kind == AstModelKind::NonPersistent => {
+            Type::Composite(ct)
+                if ct.kind == AstModelKind::NonPersistent
+                    || ct.kind == AstModelKind::NonPersistentInput =>
+            {
                 let access = build_access(ct.annotations.get("access"));
                 resolved_types.add(
                     &ct.name,
@@ -353,7 +356,9 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                             .map(|p| p.as_single().as_string())
                             .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
                         fields: vec![],
-                        kind: ResolvedCompositeTypeKind::NonPersistent,
+                        kind: ResolvedCompositeTypeKind::NonPersistent {
+                            is_input: matches!(ct.kind, AstModelKind::NonPersistentInput),
+                        },
                         access,
                     }),
                 );
@@ -462,7 +467,10 @@ fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -
 fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
-            if ct.kind == AstModelKind::Persistent || ct.kind == AstModelKind::NonPersistent {
+            if ct.kind == AstModelKind::Persistent
+                || ct.kind == AstModelKind::NonPersistent
+                || ct.kind == AstModelKind::NonPersistentInput
+            {
                 build_expanded_persistent_type(ct, &types, resolved_system);
             } else if ct.kind == AstModelKind::Context {
                 build_expanded_context_type(ct, &types, resolved_system);
@@ -553,7 +561,9 @@ fn build_expanded_persistent_type(
                         is_autoincrement: field.annotations.contains("autoincrement"),
                         type_hint: build_type_hint(field, types),
                     },
-                    ResolvedCompositeTypeKind::NonPersistent => ResolvedFieldKind::NonPersistent,
+                    ResolvedCompositeTypeKind::NonPersistent { .. } => {
+                        ResolvedFieldKind::NonPersistent
+                    }
                 },
             })
             .collect();

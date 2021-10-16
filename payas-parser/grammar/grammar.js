@@ -47,7 +47,7 @@ module.exports = grammar({
       field("name", $.term),
       field("body", $.model_body)
     ),
-    model_kind: $ => choice("model", "context", "type"),
+    model_kind: $ => choice("model", "context", "type", "input type"),
     model_body: $ => seq("{", repeat(field("field", $.field)), "}"),
     annotation: $ => seq(
       "@",

@@ -1,21 +1,32 @@
 use payas_model::model::{argument::ArgumentParameterType, mapped_arena::MappedArena};
 
-use super::{resolved_builder::ResolvedType, system_builder::SystemContextBuilding};
+use crate::builder::resolved_builder::ResolvedCompositeTypeKind;
+
+use super::{
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+};
 
 pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     // build an argument type for each composite type
     // (we need an input object for each composite type argument)
     for (_, typ) in types.iter() {
-        if let ResolvedType::Composite(_) = typ {
-            let param_name = get_parameter_type_name(&typ.name());
+        if let ResolvedType::Composite(ResolvedCompositeType {
+            kind: ResolvedCompositeTypeKind::NonPersistent { is_input },
+            ..
+        }) = typ
+        {
+            if *is_input {
+                let param_name = get_parameter_type_name(&typ.name());
 
-            building.argument_types.add(
-                &param_name,
-                ArgumentParameterType {
-                    name: param_name.clone(),
-                    actual_type_id: None,
-                },
-            );
+                building.argument_types.add(
+                    &param_name,
+                    ArgumentParameterType {
+                        name: param_name.clone(),
+                        actual_type_id: None,
+                    },
+                );
+            }
         }
     }
 }

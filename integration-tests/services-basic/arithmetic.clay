@@ -22,15 +22,17 @@ service MathService {
         remainder: Int
     }
 
+    input type LogMessage {
+        level: String
+    }
+
     export query add(x: Int, y: Int): AddResult
 
     @access(query=AuthContext.role == "ROLE_ALLOW_DIVIDE")
     export query divide(x: Int, y: Int): DivisionResult
 
-    export query verifyDivision(x: Int, y: Int, result: DivisionResult): Boolean 
-
     export query sideEffectQuery(): Int 
     export mutation sideEffectMutation(): Int 
 
-    query log(@inject env: Env, message: String): Boolean
+    export query log(@inject env: Env, message: LogMessage): Boolean
 }

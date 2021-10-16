@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use codemap_diagnostic::{Diagnostic, Level};
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::ast::ast_types::{AstArgument, AstFieldType, AstMethod, AstModel, AstService, Untyped};
+use crate::ast::ast_types::{
+    AstArgument, AstFieldType, AstMethod, AstModel, AstModelKind, AstService, Untyped,
+};
 
 use super::{
     annotation::{AnnotationSpec, AnnotationTarget},
@@ -164,6 +166,20 @@ impl TypecheckFrom<AstArgument<Untyped>> for AstArgument<Typed> {
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
+        if let Some(Type::Composite(model)) = type_env.get_by_key(&self.typ.name()) {
+            if !matches!(model.kind, AstModelKind::NonPersistentInput) {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!(
+                        "Cannot have non-input type in method argument `{}`",
+                        self.name
+                    ),
+                    code: Some("A000".to_string()),
+                    spans: vec![],
+                })
+            }
+        }
+
         let typ_changed = self.typ.pass(type_env, annotation_env, scope, errors);
 
         let annot_changed = self.annotations.pass(

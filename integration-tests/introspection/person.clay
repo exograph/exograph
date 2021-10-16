@@ -5,7 +5,7 @@ model Person {
 
 @external("logger.js")
 service Logger {
-  type LogMessage {
+  input type LogMessage {
     level: String
     message: String
   }
