@@ -37,7 +37,7 @@ async fn test_basic_sync() {
 }
 
 #[tokio::test]
-async fn test_basic() {
+async fn test_basic_async() {
     let mut deno_module = DenoModule::new("./tests/basic.js", "deno_module", &[], |_| {})
         .await
         .unwrap();
@@ -97,7 +97,7 @@ async fn test_shim_sync() {
 }
 
 #[tokio::test]
-async fn test_shim() {
+async fn test_shim_async() {
     static GET_JSON_SHIM: (&str, &str) = ("__get_json_shim", include_str!("get_json_shim.js"));
 
     let mut deno_module =
