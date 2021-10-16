@@ -26,6 +26,8 @@ types:
     - - ~
       - Primitive: Json
     - - ~
+      - Primitive: Injected
+    - - ~
       - Composite:
           name: Concert
           plural_name: Concerts
@@ -33,60 +35,74 @@ types:
             - name: id
               typ:
                 Plain: Int
-              column_name: custom_id
-              is_pk: true
-              is_autoincrement: true
-              type_hint:
-                Explicit:
-                  dbtype: BIGINT
+              kind:
+                Persistent:
+                  column_name: custom_id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint:
+                    Explicit:
+                      dbtype: BIGINT
             - name: title
               typ:
                 Plain: String
-              column_name: custom_title
-              is_pk: false
-              is_autoincrement: false
-              type_hint:
-                String:
-                  length: 12
+              kind:
+                Persistent:
+                  column_name: custom_title
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint:
+                    String:
+                      length: 12
             - name: venue
               typ:
                 Plain: Venue
-              column_name: custom_venue_id
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: custom_venue_id
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: reserved
               typ:
                 Plain: Int
-              column_name: reserved
-              is_pk: false
-              is_autoincrement: false
-              type_hint:
-                Int:
-                  bits: ~
-                  range:
-                    - 0
-                    - 300
+              kind:
+                Persistent:
+                  column_name: reserved
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint:
+                    Int:
+                      bits: ~
+                      range:
+                        - 0
+                        - 300
             - name: time
               typ:
                 Plain: Instant
-              column_name: time
-              is_pk: false
-              is_autoincrement: false
-              type_hint:
-                DateTime:
-                  precision: 4
+              kind:
+                Persistent:
+                  column_name: time
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint:
+                    DateTime:
+                      precision: 4
             - name: price
               typ:
                 Plain: Decimal
-              column_name: price
-              is_pk: false
-              is_autoincrement: false
-              type_hint:
-                Decimal:
-                  precision: 10
-                  scale: 2
-          table_name: custom_concerts
+              kind:
+                Persistent:
+                  column_name: price
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint:
+                    Decimal:
+                      precision: 10
+                      scale: 2
+          kind:
+            Persistent:
+              table_name: custom_concerts
           access:
             creation:
               BooleanLiteral:
@@ -108,45 +124,57 @@ types:
             - name: id
               typ:
                 Plain: Int
-              column_name: custom_id
-              is_pk: true
-              is_autoincrement: true
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: custom_id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint: ~
             - name: name
               typ:
                 Plain: String
-              column_name: custom_name
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: custom_name
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: concerts
               typ:
                 List:
                   Plain: Concert
-              column_name: custom_venueid
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: custom_venueid
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: capacity
               typ:
                 Plain: Int
-              column_name: capacity
-              is_pk: false
-              is_autoincrement: false
-              type_hint:
-                Int:
-                  bits: 16
-                  range: ~
+              kind:
+                Persistent:
+                  column_name: capacity
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint:
+                    Int:
+                      bits: 16
+                      range: ~
             - name: latitude
               typ:
                 Plain: Float
-              column_name: latitude
-              is_pk: false
-              is_autoincrement: false
-              type_hint:
-                Float:
-                  bits: 24
-          table_name: venues
+              kind:
+                Persistent:
+                  column_name: latitude
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint:
+                    Float:
+                      bits: 24
+          kind:
+            Persistent:
+              table_name: venues
           access:
             creation:
               BooleanLiteral:
@@ -163,19 +191,21 @@ types:
     - ~
     - ~
     - ~
-    - ~
   map:
     Boolean:
       index: 0
       generation: ~
     Concert:
-      index: 10
+      index: 11
       generation: ~
     Decimal:
       index: 3
       generation: ~
     Float:
       index: 2
+      generation: ~
+    Injected:
+      index: 10
       generation: ~
     Instant:
       index: 8
@@ -199,7 +229,7 @@ types:
       index: 4
       generation: ~
     Venue:
-      index: 11
+      index: 12
       generation: ~
 contexts:
   values:
@@ -208,4 +238,67 @@ contexts:
     - ~
     - ~
   map: {}
+services:
+  values:
+    - - ~
+      - name: Foo
+        module_path: bar.js
+        methods:
+          - name: qux
+            operation_kind: Query
+            is_exported: true
+            access:
+              creation:
+                BooleanLiteral:
+                  - true
+              read:
+                BooleanLiteral:
+                  - true
+              update:
+                BooleanLiteral:
+                  - true
+              delete:
+                BooleanLiteral:
+                  - true
+            arguments:
+              - name: env
+                typ:
+                  Plain: Injected
+                is_injected: true
+              - name: x
+                typ:
+                  Plain: Int
+                is_injected: false
+              - name: y
+                typ:
+                  Plain: String
+                is_injected: false
+            return_type:
+              Plain: Int
+          - name: quuz
+            operation_kind: Mutation
+            is_exported: false
+            access:
+              creation:
+                BooleanLiteral:
+                  - true
+              read:
+                BooleanLiteral:
+                  - true
+              update:
+                BooleanLiteral:
+                  - true
+              delete:
+                BooleanLiteral:
+                  - true
+            arguments: []
+            return_type:
+              Plain: String
+    - ~
+    - ~
+    - ~
+  map:
+    Foo:
+      index: 0
+      generation: ~
 

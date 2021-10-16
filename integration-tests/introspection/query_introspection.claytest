@@ -86,6 +86,16 @@ response: |
                     "__typename": "__InputValue"
                   }
                 ]
+              },
+              {
+                "__typename": "__Field",
+                "name": "logger",
+                "args": [
+                  {
+                    "name": "input",
+                    "__typename": "__InputValue"
+                  }
+                ]
               }
             ]
           },
@@ -107,5 +117,3 @@ response: |
         }
       }
     }
-
-    

@@ -37,7 +37,7 @@ impl GqlType {
     pub fn model_fields(&self) -> Vec<&GqlField> {
         match &self.kind {
             GqlTypeKind::Primitive => vec![],
-            GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields.iter().collect(),
+            GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields.iter().collect(),
         }
     }
 
@@ -64,8 +64,11 @@ impl GqlType {
 
     pub fn table_id(&self) -> Option<SerializableSlabIndex<PhysicalTable>> {
         match &self.kind {
-            GqlTypeKind::Primitive => None,
-            GqlTypeKind::Composite(GqlCompositeTypeKind { table_id, .. }) => Some(*table_id),
+            GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::Persistent { table_id, .. },
+                ..
+            }) => Some(*table_id),
+            _ => None,
         }
     }
 
@@ -78,16 +81,55 @@ impl GqlType {
 #[allow(clippy::large_enum_variant)]
 pub enum GqlTypeKind {
     Primitive,
-    Composite(GqlCompositeTypeKind),
+    Composite(GqlCompositeType),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GqlCompositeTypeKind {
+pub struct GqlCompositeType {
     pub fields: Vec<GqlField>,
-    pub table_id: SerializableSlabIndex<PhysicalTable>,
-    pub pk_query: SerializableSlabIndex<Query>,
-    pub collection_query: SerializableSlabIndex<Query>,
+    pub kind: GqlCompositeTypeKind,
     pub access: Access,
+}
+
+impl GqlCompositeType {
+    pub fn get_table_id(&self) -> SerializableSlabIndex<PhysicalTable> {
+        match &self.kind {
+            GqlCompositeTypeKind::Persistent { table_id, .. } => *table_id,
+            GqlCompositeTypeKind::NonPersistent => {
+                panic!("Tables do not exist for non-persistent types!")
+            }
+        }
+    }
+
+    pub fn get_collection_query(&self) -> SerializableSlabIndex<Query> {
+        match &self.kind {
+            GqlCompositeTypeKind::Persistent {
+                collection_query, ..
+            } => *collection_query,
+            GqlCompositeTypeKind::NonPersistent => {
+                panic!("Collection queries do not exist for non-persistent types!")
+            }
+        }
+    }
+
+    pub fn get_pk_query(&self) -> SerializableSlabIndex<Query> {
+        match &self.kind {
+            GqlCompositeTypeKind::Persistent { pk_query, .. } => *pk_query,
+            GqlCompositeTypeKind::NonPersistent => {
+                panic!("Primary key queries do not exist for non-persistent types!")
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum GqlCompositeTypeKind {
+    Persistent {
+        table_id: SerializableSlabIndex<PhysicalTable>,
+        pk_query: SerializableSlabIndex<Query>,
+        collection_query: SerializableSlabIndex<Query>,
+    },
+    NonPersistent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
