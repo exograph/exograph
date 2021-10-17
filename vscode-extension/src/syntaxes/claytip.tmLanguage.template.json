@@ -74,12 +74,15 @@
       "patterns": [
         {
           "name": "meta.typedef.claytip",
-          "begin": "(type){{ws}}({{identifier}}){{opt_ws}}{?",
+          "begin": "(input)?{{ws}}(type){{ws}}({{identifier}}){{opt_ws}}{?",
           "beginCaptures": {
             "1": {
               "name": "keyword.type.claytip"
             },
             "2": {
+              "name": "keyword.type.claytip"
+            },
+            "3": {
               "name": "entity.name.class.claytip"
             }
           },
