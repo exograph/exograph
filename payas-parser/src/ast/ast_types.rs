@@ -64,6 +64,7 @@ pub struct AstService<T: NodeTypedness> {
     pub name: String,
     pub models: Vec<AstModel<T>>,
     pub methods: Vec<AstMethod<T>>,
+    pub interceptor: Vec<AstInterceptor<T>>,
     pub annotations: T::Annotations,
     pub base_clayfile: PathBuf,
 }
@@ -75,6 +76,13 @@ pub struct AstMethod<T: NodeTypedness> {
     pub arguments: Vec<AstArgument<T>>,
     pub return_type: AstFieldType<T>,
     pub is_exported: bool,
+    pub annotations: T::Annotations,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstInterceptor<T: NodeTypedness> {
+    pub name: String,
+    pub arguments: Vec<AstArgument<T>>,
     pub annotations: T::Annotations,
 }
 

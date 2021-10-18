@@ -29,7 +29,8 @@ module.exports = grammar({
     ),
     service_field: $ => choice(
       $.model,
-      $.service_method
+      $.service_method,
+      $.interceptor
     ),
     service_method: $ => seq(
       repeat(field("annotation", $.annotation)),
@@ -41,14 +42,13 @@ module.exports = grammar({
       "):",
       field("return_type", $.type)
     ),
-    intercept: $ => seq(
+    interceptor: $ => seq(
       repeat(field("annotation", $.annotation)),
-      "intercept",
+      "interceptor",
       field("name", $.term),
       "(",
       optional(commaSep(field("args", $.argument))),
-      "):",
-      field("return_type", $.type)
+      ")",
     ),
     model: $ => seq(
       repeat(field("annotation", $.annotation)),
@@ -151,7 +151,7 @@ module.exports = grammar({
       field("left", $.expression), ">=", field("right", $.expression)
     )),
     term: $ => /[a-zA-Z_]+/,
-    str: $ => /[a-zA-Z_\.]+/, // TODO: need to do proper string parsing
+    str: $ => /(?:[^"\\]|\\.)*/, // string with escaped quotes
     number: $ => /\d+/,
     literal_str: $ => seq("\"", field("value", $.str), "\""),
     literal_boolean: $ => choice("true", "false"),
