@@ -1,0 +1,31 @@
+model Concert {
+  id: Int @pk @autoincrement
+  title: String
+  venue: Venue @column("venueid")
+  published: Boolean
+  price: Decimal @precision(20) @scale(2)
+}
+
+model Venue {
+  id: Int @pk @autoincrement
+  name: String
+  concerts: Set[Concert] @column("venueid")
+  published: Boolean
+  latitude: Float @size(4)
+}
+
+
+@external("log.js")
+service Log {
+  @before("mutation *Concert*")
+  intercept logConcert(operation: Operation): Boolean
+
+  @before("mutation *Venue*")
+  intercept logVenue(operation: Operation): Boolean
+
+  @around("query *")
+  intercept timeQuery(operation: Operation): Operation
+
+  @around("mutation *")
+  intercept timeMutation(operation: Operation): Operation
+}

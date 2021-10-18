@@ -41,6 +41,15 @@ module.exports = grammar({
       "):",
       field("return_type", $.type)
     ),
+    intercept: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      "intercept",
+      field("name", $.term),
+      "(",
+      optional(commaSep(field("args", $.argument))),
+      "):",
+      field("return_type", $.type)
+    ),
     model: $ => seq(
       repeat(field("annotation", $.annotation)),
       field("kind", $.model_kind),
