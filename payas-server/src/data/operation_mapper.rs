@@ -39,7 +39,7 @@ pub trait OperationResolver<'a> {
 
 pub enum OperationResolverResult<'a> {
     SQLOperation(TransactionScript<'a>),
-    DenoOperation(i32) // FIXME
+    DenoOperation(i32), // FIXME
 }
 
 pub enum SQLOperationKind {

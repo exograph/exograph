@@ -1,7 +1,7 @@
 use crate::{
     data::{
-        query_resolver::QuerySQLOperations,
         operation_mapper::{compute_sql_access_predicate, SQLOperationKind},
+        query_resolver::QuerySQLOperations,
     },
     execution::resolver::GraphQLExecutionError,
     sql::{column::Column, predicate::Predicate, Cte, PhysicalTable, SQLOperation},
@@ -16,7 +16,11 @@ use payas_model::{
     },
 };
 
-use super::{create_data_param_mapper::InsertionInfo, operation_context::OperationContext, operation_mapper::{OperationResolver, OperationResolverResult, SQLMapper, SQLUpdateMapper}};
+use super::{
+    create_data_param_mapper::InsertionInfo,
+    operation_context::OperationContext,
+    operation_mapper::{OperationResolver, OperationResolverResult, SQLMapper, SQLUpdateMapper},
+};
 
 use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::{Name, Value};
@@ -31,7 +35,7 @@ impl<'a> OperationResolver<'a> for Mutation {
     ) -> Result<OperationResolverResult<'a>> {
         if let MutationKind::Service(_argument_parameter) = &self.kind {
             todo!()
-        } else {        
+        } else {
             let select = {
                 let (_, pk_query, collection_query) = return_type_info(self, operation_context);
                 let selection_query = match &self.return_type.type_modifier {
@@ -64,7 +68,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                     select,
                     operation_context,
                 )?,
-                MutationKind::Service(_args_param) => panic!()
+                MutationKind::Service(_args_param) => panic!(),
             }))
         }
     }

@@ -7,7 +7,9 @@ use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
 use payas_model::sql::{Limit, Offset};
 
-use super::operation_mapper::{OperationResolverResult, SQLOperationKind, compute_sql_access_predicate};
+use super::operation_mapper::{
+    compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
+};
 use super::{
     operation_context::OperationContext,
     operation_mapper::{OperationResolver, SQLMapper},
@@ -31,11 +33,14 @@ impl<'a> OperationResolver<'a> for Query {
     ) -> Result<OperationResolverResult<'a>> {
         match &self.kind {
             QueryKind::Database(_) => {
-                let select = self.operation(&field.node, Predicate::True, operation_context, true)?;
-                Ok(OperationResolverResult::SQLOperation(TransactionScript::Single(TransactionStep::Concrete(
-                    ConcreteTransactionStep::new(SQLOperation::Select(select)),
-                ))))
-            },
+                let select =
+                    self.operation(&field.node, Predicate::True, operation_context, true)?;
+                Ok(OperationResolverResult::SQLOperation(
+                    TransactionScript::Single(TransactionStep::Concrete(
+                        ConcreteTransactionStep::new(SQLOperation::Select(select)),
+                    )),
+                ))
+            }
 
             QueryKind::Service(_) => todo!(),
         }
@@ -175,11 +180,11 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     &SQLOperationKind::Retrieve,
                     operation_context,
                 );
-            
+
                 if access_predicate == &Predicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
-            
+
                 let predicate = super::compute_predicate(
                     predicate_param.as_ref(),
                     &field.arguments,
@@ -193,16 +198,17 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     ))
                 })
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
-            
-                let content_object = self.content_select(&field.selection_set, operation_context)?;
-            
+
+                let content_object =
+                    self.content_select(&field.selection_set, operation_context)?;
+
                 let table = self
                     .return_type
                     .physical_table(operation_context.get_system());
-            
+
                 let limit = self.compute_limit(&field.arguments, operation_context);
                 let offset = self.compute_offset(&field.arguments, operation_context);
-            
+
                 Ok(match self.return_type.type_modifier {
                     GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
                         vec![content_object],
@@ -214,7 +220,8 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     ),
                     GqlTypeModifier::List => {
                         let order_by = self.compute_order_by(&field.arguments, operation_context);
-                        let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
+                        let agg_column =
+                            operation_context.create_column(Column::JsonAgg(content_object));
                         table.select(
                             vec![agg_column],
                             Some(predicate),
@@ -225,7 +232,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                         )
                     }
                 })
-            },
+            }
 
             QueryKind::Service(_) => {
                 todo!()
