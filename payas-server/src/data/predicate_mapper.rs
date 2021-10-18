@@ -6,7 +6,7 @@ use payas_model::model::predicate::*;
 
 use async_graphql_value::Value;
 
-use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
+use super::{operation_context::OperationContext, operation_mapper::SQLMapper};
 
 impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
     fn map_to_sql(

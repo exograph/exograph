@@ -1,7 +1,7 @@
 use crate::{
     data::{
-        query_resolver::QueryOperations,
-        sql_mapper::{compute_access_predicate, OperationKind},
+        query_resolver::QuerySQLOperations,
+        operation_mapper::{compute_sql_access_predicate, SQLOperationKind},
     },
     execution::resolver::GraphQLExecutionError,
     sql::{column::Column, predicate::Predicate, Cte, PhysicalTable, SQLOperation},
@@ -16,11 +16,7 @@ use payas_model::{
     },
 };
 
-use super::{
-    create_data_param_mapper::InsertionInfo,
-    operation_context::OperationContext,
-    sql_mapper::{OperationResolver, SQLMapper, SQLUpdateMapper},
-};
+use super::{create_data_param_mapper::InsertionInfo, operation_context::OperationContext, operation_mapper::{OperationResolver, OperationResolverResult, SQLMapper, SQLUpdateMapper}};
 
 use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::{Name, Value};
@@ -28,47 +24,48 @@ use async_graphql_value::{Name, Value};
 type Arguments = [(Positioned<Name>, Positioned<Value>)];
 
 impl<'a> OperationResolver<'a> for Mutation {
-    fn map_to_sql(
+    fn resolve_operation(
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<TransactionScript<'a>> {
-        let select = {
-            let (_, pk_query, collection_query) = return_type_info(self, operation_context);
-            let selection_query = match &self.return_type.type_modifier {
-                GqlTypeModifier::List => collection_query,
-                GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
+    ) -> Result<OperationResolverResult<'a>> {
+        if let MutationKind::Service(_argument_parameter) = &self.kind {
+            todo!()
+        } else {        
+            let select = {
+                let (_, pk_query, collection_query) = return_type_info(self, operation_context);
+                let selection_query = match &self.return_type.type_modifier {
+                    GqlTypeModifier::List => collection_query,
+                    GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
+                };
+
+                selection_query.operation(&field.node, Predicate::True, operation_context, true)?
             };
 
-            selection_query.operation(&field.node, Predicate::True, operation_context, true)?
-        };
-
-        match &self.kind {
-            MutationKind::Create(data_param) => {
-                create_operation(self, data_param, &field.node, select, operation_context)
-            }
-            MutationKind::Delete(predicate_param) => delete_operation(
-                self,
-                predicate_param,
-                &field.node,
-                select,
-                operation_context,
-            ),
-            MutationKind::Update {
-                data_param,
-                predicate_param,
-            } => update_operation(
-                self,
-                data_param,
-                predicate_param,
-                &field.node,
-                select,
-                operation_context,
-            ),
-            MutationKind::Service(_args_param) => {
-                // TODO: need to genericize operation resolution over services + SQL
-                todo!()
-            }
+            Ok(OperationResolverResult::SQLOperation(match &self.kind {
+                MutationKind::Create(data_param) => {
+                    create_operation(self, data_param, &field.node, select, operation_context)?
+                }
+                MutationKind::Delete(predicate_param) => delete_operation(
+                    self,
+                    predicate_param,
+                    &field.node,
+                    select,
+                    operation_context,
+                )?,
+                MutationKind::Update {
+                    data_param,
+                    predicate_param,
+                } => update_operation(
+                    self,
+                    data_param,
+                    predicate_param,
+                    &field.node,
+                    select,
+                    operation_context,
+                )?,
+                MutationKind::Service(_args_param) => panic!()
+            }))
         }
     }
 }
@@ -88,9 +85,9 @@ fn create_operation<'a>(
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
 ) -> Result<TransactionScript<'a>> {
-    let access_predicate = compute_access_predicate(
+    let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
-        &OperationKind::Create,
+        &SQLOperationKind::Create,
         operation_context,
     );
 
@@ -118,9 +115,9 @@ fn delete_operation<'a>(
 ) -> Result<TransactionScript<'a>> {
     let (table, _, _) = return_type_info(mutation, operation_context);
 
-    let access_predicate = compute_access_predicate(
+    let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
-        &OperationKind::Delete,
+        &SQLOperationKind::Delete,
         operation_context,
     );
 
@@ -163,9 +160,9 @@ fn update_operation<'a>(
     select: Select<'a>,
     operation_context: &'a OperationContext<'a>,
 ) -> Result<TransactionScript<'a>> {
-    let access_predicate = compute_access_predicate(
+    let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
-        &OperationKind::Update,
+        &SQLOperationKind::Update,
         operation_context,
     );
 

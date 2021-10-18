@@ -7,10 +7,10 @@ use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
 use payas_model::sql::{Limit, Offset};
 
-use super::sql_mapper::{compute_access_predicate, OperationKind};
+use super::operation_mapper::{OperationResolverResult, SQLOperationKind, compute_sql_access_predicate};
 use super::{
     operation_context::OperationContext,
-    sql_mapper::{OperationResolver, SQLMapper},
+    operation_mapper::{OperationResolver, SQLMapper},
     Arguments,
 };
 
@@ -21,20 +21,28 @@ use async_graphql_parser::{
 
 use crate::execution::resolver::{GraphQLExecutionError, OutputName};
 
+// TODO: deal with panics at the type level
+
 impl<'a> OperationResolver<'a> for Query {
-    fn map_to_sql(
+    fn resolve_operation(
         &'a self,
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<TransactionScript<'a>> {
-        let select = self.operation(&field.node, Predicate::True, operation_context, true)?;
-        Ok(TransactionScript::Single(TransactionStep::Concrete(
-            ConcreteTransactionStep::new(SQLOperation::Select(select)),
-        )))
+    ) -> Result<OperationResolverResult<'a>> {
+        match &self.kind {
+            QueryKind::Database(_) => {
+                let select = self.operation(&field.node, Predicate::True, operation_context, true)?;
+                Ok(OperationResolverResult::SQLOperation(TransactionScript::Single(TransactionStep::Concrete(
+                    ConcreteTransactionStep::new(SQLOperation::Select(select)),
+                ))))
+            },
+
+            QueryKind::Service(_) => todo!(),
+        }
     }
 }
 
-pub trait QueryOperations<'a> {
+pub trait QuerySQLOperations<'a> {
     fn compute_order_by(
         &'a self,
         arguments: &'a Arguments,
@@ -68,7 +76,7 @@ pub trait QueryOperations<'a> {
     ) -> Result<Select<'a>>;
 }
 
-impl<'a> QueryOperations<'a> for Query {
+impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_order_by(
         &'a self,
         arguments: &'a Arguments,
@@ -158,67 +166,71 @@ impl<'a> QueryOperations<'a> for Query {
         operation_context: &'a OperationContext<'a>,
         top_level_selection: bool,
     ) -> Result<Select<'a>> {
-        let access_predicate = compute_access_predicate(
-            &self.return_type,
-            &OperationKind::Retrieve,
-            operation_context,
-        );
-
-        if access_predicate == &Predicate::False {
-            bail!(anyhow!(GraphQLExecutionError::Authorization))
-        }
-
-        let predicate = super::compute_predicate(
-            match &self.kind {
-                QueryKind::Database(DatabaseQueryParameter {
-                    predicate_param, ..
-                }) => predicate_param,
-                QueryKind::Service(_) => panic!(),
-            }
-            .as_ref(),
-            &field.arguments,
-            additional_predicate,
-            operation_context,
-        )
-        .map(|predicate| {
-            operation_context.create_predicate(Predicate::And(
-                Box::new(predicate.clone()),
-                Box::new(access_predicate.clone()),
-            ))
-        })
-        .with_context(|| format!("While computing predicate for field {}", field.name))?;
-
-        let content_object = self.content_select(&field.selection_set, operation_context)?;
-
-        let table = self
-            .return_type
-            .physical_table(operation_context.get_system());
-
-        let limit = self.compute_limit(&field.arguments, operation_context);
-        let offset = self.compute_offset(&field.arguments, operation_context);
-
-        Ok(match self.return_type.type_modifier {
-            GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
-                vec![content_object],
-                Some(predicate),
-                None,
-                offset,
-                limit,
-                top_level_selection,
-            ),
-            GqlTypeModifier::List => {
-                let order_by = self.compute_order_by(&field.arguments, operation_context);
-                let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
-                table.select(
-                    vec![agg_column],
-                    Some(predicate),
-                    order_by,
-                    offset,
-                    limit,
-                    top_level_selection,
+        match &self.kind {
+            QueryKind::Database(DatabaseQueryParameter {
+                predicate_param, ..
+            }) => {
+                let access_predicate = compute_sql_access_predicate(
+                    &self.return_type,
+                    &SQLOperationKind::Retrieve,
+                    operation_context,
+                );
+            
+                if access_predicate == &Predicate::False {
+                    bail!(anyhow!(GraphQLExecutionError::Authorization))
+                }
+            
+                let predicate = super::compute_predicate(
+                    predicate_param.as_ref(),
+                    &field.arguments,
+                    additional_predicate,
+                    operation_context,
                 )
+                .map(|predicate| {
+                    operation_context.create_predicate(Predicate::And(
+                        Box::new(predicate.clone()),
+                        Box::new(access_predicate.clone()),
+                    ))
+                })
+                .with_context(|| format!("While computing predicate for field {}", field.name))?;
+            
+                let content_object = self.content_select(&field.selection_set, operation_context)?;
+            
+                let table = self
+                    .return_type
+                    .physical_table(operation_context.get_system());
+            
+                let limit = self.compute_limit(&field.arguments, operation_context);
+                let offset = self.compute_offset(&field.arguments, operation_context);
+            
+                Ok(match self.return_type.type_modifier {
+                    GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
+                        vec![content_object],
+                        Some(predicate),
+                        None,
+                        offset,
+                        limit,
+                        top_level_selection,
+                    ),
+                    GqlTypeModifier::List => {
+                        let order_by = self.compute_order_by(&field.arguments, operation_context);
+                        let agg_column = operation_context.create_column(Column::JsonAgg(content_object));
+                        table.select(
+                            vec![agg_column],
+                            Some(predicate),
+                            order_by,
+                            offset,
+                            limit,
+                            top_level_selection,
+                        )
+                    }
+                })
+            },
+
+            QueryKind::Service(_) => {
+                todo!()
             }
-        })
+        }
     }
 }
 

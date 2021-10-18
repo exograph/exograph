@@ -5,7 +5,7 @@ use anyhow::*;
 use async_graphql_value::Value;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
 
-use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
+use super::{operation_context::OperationContext, operation_mapper::SQLMapper};
 
 impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameter {
     fn map_to_sql(
