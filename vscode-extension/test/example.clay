@@ -59,7 +59,7 @@ service RateLimiter {
 
 @external("authentication.wasm") // or ".so" or ".js" or ".ts"
 service Authentication {
-  type LoginInput {
+  input type LoginInput {
     provider: String // "google", "facebook", "username-password"
     code: String?
     username: String?
