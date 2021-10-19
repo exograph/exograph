@@ -237,7 +237,7 @@ pub fn convert_service(
         methods: method_nodes
             .map(|n| convert_service_method(n, source, source_span))
             .collect(),
-        interceptor: intercetor_nodes
+        interceptors: intercetor_nodes
             .map(|n| convert_intercetor(n, source, source_span))
             .collect(),
         annotations: node

@@ -139,6 +139,7 @@ lazy_static! {
         );
 
         supported_operators.insert("Injected", Some(vec![]));
+        supported_operators.insert("Interception", Some(vec![])); // TODO: Re-examine if this is the best way (for both injected and interception)
 
         supported_operators
     };

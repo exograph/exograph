@@ -64,7 +64,7 @@ pub struct AstService<T: NodeTypedness> {
     pub name: String,
     pub models: Vec<AstModel<T>>,
     pub methods: Vec<AstMethod<T>>,
-    pub interceptor: Vec<AstInterceptor<T>>,
+    pub interceptors: Vec<AstInterceptor<T>>,
     pub annotations: T::Annotations,
     pub base_clayfile: PathBuf,
 }

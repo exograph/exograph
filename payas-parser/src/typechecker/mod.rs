@@ -87,6 +87,8 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     env.add("Json", Type::Primitive(PrimitiveType::Json));
 
     env.add("Env", Type::Primitive(PrimitiveType::Injected));
+
+    env.add("Operation", Type::Primitive(PrimitiveType::Interception));
 }
 
 fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {

@@ -113,6 +113,7 @@ pub enum PrimitiveType {
     Json,
     Array(Box<PrimitiveType>),
     Injected,
+    Interception, // Types such as "Operation" that an interceptor is passed to
 }
 
 impl PrimitiveType {
@@ -133,6 +134,7 @@ impl PrimitiveType {
             PrimitiveType::Instant => "Instant",
             PrimitiveType::Json => "Json",
             PrimitiveType::Injected => "Injected",
+            PrimitiveType::Interception => "Interception", // TODO: Is this right?
             PrimitiveType::Array(_) => panic!(),
         }
         .to_owned()

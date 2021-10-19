@@ -29,8 +29,8 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
                 .iter()
                 .map(|m| AstMethod::shallow(m))
                 .collect(),
-            interceptor: untyped
-                .interceptor
+            interceptors: untyped
+                .interceptors
                 .iter()
                 .map(|m| AstInterceptor::shallow(m))
                 .collect(),
@@ -77,6 +77,14 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             .count()
             > 0;
 
+        let intercetor_changed = self
+            .interceptors
+            .iter_mut()
+            .map(|m| m.pass(type_env, annotation_env, scope, errors))
+            .filter(|v| *v)
+            .count()
+            > 0;
+
         let annot_changed = self.annotations.pass(
             AnnotationTarget::Service,
             type_env,
@@ -85,7 +93,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             errors,
         );
 
-        models_changed || methods_changed || annot_changed
+        models_changed || methods_changed || intercetor_changed || annot_changed
     }
 }
 
@@ -177,15 +185,21 @@ impl TypecheckFrom<AstInterceptor<Untyped>> for AstInterceptor<Typed> {
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        println!("{:?}", self.annotations);
-        // if !self.annotations.contains("before") {
-        //     errors.push(Diagnostic {
-        //         level: Level::Error,
-        //         message: format!("Missing @external annotation for service `{}`", self.name),
-        //         code: Some("A000".to_string()),
-        //         spans: vec![],
-        //     })
-        // }
+        let has_a_valid_annotation = ["before", "after", "around"]
+            .iter()
+            .any(|valid_annotaiton| self.annotations.contains(valid_annotaiton));
+
+        if !has_a_valid_annotation {
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Missing @before/@after/@around annotation for interceptor `{}`",
+                    self.name
+                ),
+                code: Some("A000".to_string()),
+                spans: vec![],
+            })
+        }
 
         let arguments_changes = self
             .arguments
