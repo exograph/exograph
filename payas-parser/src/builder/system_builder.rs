@@ -4,7 +4,7 @@ use payas_model::{
     model::{
         argument::ArgumentParameterType,
         mapped_arena::MappedArena,
-        operation::{Mutation, Query},
+        operation::{Interceptors, Mutation, Query},
         order::OrderByParameterType,
         predicate::PredicateParameterType,
         service::ServiceMethod,
@@ -113,6 +113,13 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     query_builder::build_expanded(building);
     mutation_builder::build_expanded(building);
     service_builder::build_expanded(building);
+}
+
+fn apply_interceptors(_resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
+    let queries = &mut building.queries;
+    queries
+        .iter_mut()
+        .for_each(|(_, query)| query.intercetors = Interceptors::default());
 }
 
 #[derive(Debug, Default)]
