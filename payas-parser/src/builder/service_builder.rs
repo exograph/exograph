@@ -1,6 +1,5 @@
-use std::path::PathBuf;
-
 use payas_model::model::{
+    access::Access,
     argument::ArgumentParameter,
     mapped_arena::MappedArena,
     operation::{Mutation, MutationKind, OperationReturnType, Query, QueryKind},
@@ -27,6 +26,30 @@ pub fn build_shallow(
     }
 }
 
+pub fn build_expanded(building: &mut SystemContextBuilding) {
+    for (id, method) in building.methods.iter() {
+        match method.operation_kind {
+            ServiceMethodType::Mutation(mutation_id) => {
+                let mutation = &mut building.mutations[mutation_id];
+                if let MutationKind::Service { method_id, .. } = &mut mutation.kind {
+                    *method_id = Some(id)
+                } else {
+                    panic!()
+                }
+            }
+
+            ServiceMethodType::Query(query_id) => {
+                let query = &mut building.queries[query_id];
+                if let QueryKind::Service { method_id, .. } = &mut query.kind {
+                    *method_id = Some(id)
+                } else {
+                    panic!()
+                }
+            }
+        }
+    }
+}
+
 pub fn create_shallow_service(
     resolved_service: &ResolvedService,
     resolved_method: &ResolvedMethod,
@@ -36,7 +59,8 @@ pub fn create_shallow_service(
         &resolved_method.name,
         ServiceMethod {
             name: resolved_method.name.clone(),
-            module_path: PathBuf::from(resolved_service.module_path.clone()),
+            module_path: resolved_service.module_path.clone(),
+            access: Access::restrictive(),
             operation_kind: match resolved_method.operation_kind {
                 ResolvedMethodType::Query => {
                     let query = shallow_service_query(resolved_method, &building.types, building);
@@ -88,7 +112,10 @@ fn shallow_service_query(
 
     Query {
         name: method.name.clone(),
-        kind: QueryKind::Service(argument_param(method, building)),
+        kind: QueryKind::Service {
+            method_id: None,
+            argument_param: argument_param(method, building),
+        },
         return_type: OperationReturnType {
             type_id: types.get_id(return_type.get_underlying_typename()).unwrap(),
             type_name: return_type.get_underlying_typename().to_string(),
@@ -106,7 +133,10 @@ fn shallow_service_mutation(
 
     Mutation {
         name: method.name.clone(),
-        kind: MutationKind::Service(argument_param(method, building)),
+        kind: MutationKind::Service {
+            method_id: None,
+            argument_param: argument_param(method, building),
+        },
         return_type: OperationReturnType {
             type_id: types.get_id(return_type.get_underlying_typename()).unwrap(),
             type_name: return_type.get_underlying_typename().to_string(),

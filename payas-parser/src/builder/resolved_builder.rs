@@ -4,6 +4,8 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
+use std::path::PathBuf;
+
 use anyhow::Result;
 
 use payas_model::model::mapped_arena::MappedArena;
@@ -42,7 +44,7 @@ pub struct ResolvedContext {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedService {
     pub name: String,
-    pub module_path: String,
+    pub module_path: PathBuf,
     pub methods: Vec<ResolvedMethod>,
 }
 
@@ -379,11 +381,15 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                 }
                 .clone();
 
+                let mut full_module_path = service.base_clayfile.clone();
+                full_module_path.pop();
+                full_module_path.push(module_path);
+
                 resolved_services.add(
                     &service.name,
                     ResolvedService {
                         name: service.name.clone(),
-                        module_path,
+                        module_path: full_module_path,
                         methods: service
                             .methods
                             .iter()

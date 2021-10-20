@@ -42,7 +42,9 @@ impl<'a> OperationResolver<'a> for Query {
                 ))
             }
 
-            QueryKind::Service(_) => todo!(),
+            QueryKind::Service { method_id, .. } => {
+                Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
+            }
         }
     }
 }
@@ -100,7 +102,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     .transpose()
                     .unwrap() // TODO: handle properly
             }
-            QueryKind::Service(_) => panic!(),
+            QueryKind::Service { .. } => panic!(),
         }
     }
 
@@ -140,7 +142,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 })
                 .transpose()
                 .unwrap(),
-            QueryKind::Service(_) => panic!(),
+            QueryKind::Service { .. } => panic!(),
         }
     }
 
@@ -160,7 +162,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 })
                 .transpose()
                 .unwrap(),
-            QueryKind::Service(_) => panic!(),
+            QueryKind::Service { .. } => panic!(),
         }
     }
 
@@ -234,7 +236,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 })
             }
 
-            QueryKind::Service(_) => {
+            QueryKind::Service { .. } => {
                 todo!()
             }
         }

@@ -47,8 +47,8 @@ impl Operation for Query {
                 populate_params!(&limit_param);
                 populate_params!(&offset_param);
             }
-            QueryKind::Service(args) => {
-                for arg in args.iter() {
+            QueryKind::Service { argument_param, .. } => {
+                for arg in argument_param.iter() {
                     params.push(arg)
                 }
             }
@@ -75,7 +75,7 @@ impl Operation for Mutation {
                 data_param,
                 predicate_param,
             } => vec![predicate_param, data_param],
-            MutationKind::Service(args_param) => args_param
+            MutationKind::Service { argument_param, .. } => argument_param
                 .iter()
                 .map(|param| {
                     let param: &dyn Parameter = param;

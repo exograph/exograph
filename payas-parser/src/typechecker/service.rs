@@ -29,6 +29,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
                 .map(|m| AstMethod::shallow(m))
                 .collect(),
             annotations: annotation_map,
+            base_clayfile: untyped.base_clayfile.clone(),
         }
     }
 

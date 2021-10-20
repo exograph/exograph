@@ -1,9 +1,12 @@
+use std::sync::Mutex;
+
 use super::query_context;
 use crate::introspection::schema::Schema;
 use async_graphql_parser::{parse_query, types::DocumentOperations};
 
 use anyhow::Result;
 
+use payas_deno::DenoModulesMap;
 use payas_model::{
     model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
     sql::database::Database,
@@ -15,6 +18,7 @@ pub struct Executor<'a> {
     pub system: &'a ModelSystem,
     pub schema: &'a Schema,
     pub database: &'a Database,
+    pub deno_modules_map: &'a Mutex<DenoModulesMap>,
 }
 
 impl<'a> Executor<'a> {
@@ -96,6 +100,7 @@ fn create_request_context(context: &ContextType, jwt_claims: Option<Value>) -> O
             .map(|field| match &field.source {
                 ContextSource::Jwt { claim } => {
                     (field.name.clone(), jwt_claims.get(claim).unwrap().clone())
+                    // TODO: handle missing claims
                 }
             })
             .collect();

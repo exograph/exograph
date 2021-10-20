@@ -33,8 +33,8 @@ impl<'a> OperationResolver<'a> for Mutation {
         field: &'a Positioned<Field>,
         operation_context: &'a OperationContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
-        if let MutationKind::Service(_argument_parameter) = &self.kind {
-            todo!()
+        if let MutationKind::Service { method_id, .. } = &self.kind {
+            Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
         } else {
             let select = {
                 let (_, pk_query, collection_query) = return_type_info(self, operation_context);
@@ -68,7 +68,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                     select,
                     operation_context,
                 )?,
-                MutationKind::Service(_args_param) => panic!(),
+                MutationKind::Service { .. } => panic!(),
             }))
         }
     }

@@ -104,7 +104,7 @@ impl FieldDefinitionProvider for GqlField {
                                 .map(util::default_positioned)
                                 .collect()
                             }
-                            QueryKind::Service(_) => panic!(),
+                            QueryKind::Service { .. } => panic!(),
                         }
                     }
                 }

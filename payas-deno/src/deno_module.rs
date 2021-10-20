@@ -1,7 +1,10 @@
 use deno_core::error::AnyError;
 use deno_core::serde_json;
 use deno_core::JsRuntime;
+use std::sync::Mutex;
 
+use deno_core::v8::Global;
+use deno_core::v8::Script;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::permissions::Permissions;
@@ -12,10 +15,13 @@ use serde_json::Value;
 
 use std::collections::HashMap;
 use std::fs;
+use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use std::convert::TryFrom;
+
+use anyhow::{anyhow, Result};
 
 use deno_core::v8;
 
@@ -32,13 +38,18 @@ const JS_MAX_VALUE: f64 = 1.797_693_134_862_315_7e308;
 const JS_MIN_VALUE: f64 = 5e-324;
 
 pub struct DenoModule {
-    worker: MainWorker,
+    worker: Arc<Mutex<MainWorker>>,
     shim_object_names: Vec<String>,
+    script_map: HashMap<String, DenoScript>,
+}
+
+pub struct DenoScript {
+    pub script: Global<Script>,
 }
 
 impl DenoModule {
     pub async fn new(
-        user_module_path: &str,
+        user_module_path: &Path,
         user_agent_name: &str,
         shims: &[(&str, &str)],
         register_ops: fn(&mut JsRuntime) -> (),
@@ -117,28 +128,39 @@ impl DenoModule {
         let shim_object_names = shims.iter().map(|(name, _)| name.to_string()).collect();
 
         Ok(Self {
-            worker,
+            worker: Arc::new(Mutex::new(worker)),
             shim_object_names,
+            script_map: HashMap::new(),
         })
     }
 
-    pub async fn execute_function(
-        &mut self,
-        function_name: &str,
-        args: Vec<Arg>,
-    ) -> Result<Value, AnyError> {
+    pub fn preload_function(&mut self, function_names: Vec<&str>) {
         let worker = &mut self.worker;
+        let runtime = &mut worker.lock().unwrap().js_runtime;
 
-        let runtime = &mut worker.js_runtime;
+        for fname in function_names.iter() {
+            let script = preload_script(runtime, fname, &format!("mod.{}", fname));
+            self.script_map.insert(fname.to_string(), script);
+        }
+    }
 
-        let func_value = runtime
-            .execute_script("", &format!("mod.{}", function_name))
-            .unwrap();
+    pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
+        let worker = &mut self.worker;
+        let runtime = &mut worker.lock().unwrap().js_runtime;
+
+        // TODO: does this yield any significant optimization?
+        let func_value = run_script(runtime, &self.script_map[function_name]).unwrap();
+
+        let shim_objects_vals: Vec<_> = self
+            .shim_object_names
+            .iter()
+            .map(|name| runtime.execute_script("", name))
+            .collect::<Result<_, _>>()?;
 
         let shim_objects: HashMap<_, _> = self
             .shim_object_names
             .iter()
-            .map(|name| (name, runtime.execute_script("", name).unwrap()))
+            .zip(shim_objects_vals.into_iter())
             .collect();
 
         let global = {
@@ -146,48 +168,53 @@ impl DenoModule {
             let args: Vec<_> = args
                 .into_iter()
                 .map(|v| match v {
-                    Arg::Serde(v) => match v {
+                    Arg::Serde(v) => Ok(match v {
                         // If we enable the arbitrary_precision feature for serde_json, then serde_v8::to_v8 will serialize numbers as
                         // { "$serde_json::private::Number": "<number>"}, which the JS side will not understand, so apply custom logic
                         // to get the underlying value and then use primitive serialization
                         // TODO: Check for
-                        Value::Number(n) => if n.is_i64() {
-                            let value = n.as_i64().unwrap();
+                        Value::Number(n) => {
+                            if n.is_i64() {
+                                let value = n
+                                    .as_i64()
+                                    .ok_or_else(|| anyhow!("Couldn't parse number into i64"))?;
 
-                            if value >= JS_MIN_SAFE_INTEGER || value <= JS_MAX_SAFE_INTEGER {
-                                serde_v8::to_v8(scope, value)
-                            } else {
-                                Err(serde_v8::Error::Message(format!(
-                                    "Integer {} too large to safely convert to JavaScript",
-                                    value
-                                )))
-                            }
-                        } else if n.is_f64() {
-                            let value = n.as_f64().unwrap();
+                                if value >= JS_MIN_SAFE_INTEGER || value <= JS_MAX_SAFE_INTEGER {
+                                    serde_v8::to_v8(scope, value)
+                                } else {
+                                    Err(serde_v8::Error::Message(format!(
+                                        "Integer {} too large to safely convert to JavaScript",
+                                        value
+                                    )))
+                                }
+                            } else if n.is_f64() {
+                                let value = n
+                                    .as_f64()
+                                    .ok_or_else(|| anyhow!("Couldn't parse number into f64"))?;
 
-                            if value >= JS_MIN_VALUE || value <= JS_MAX_VALUE {
-                                serde_v8::to_v8(scope, value)
+                                if value >= JS_MIN_VALUE || value <= JS_MAX_VALUE {
+                                    serde_v8::to_v8(scope, value)
+                                } else {
+                                    Err(serde_v8::Error::Message(format!(
+                                        "Float {} too large to safely convert to JavaScript",
+                                        value
+                                    )))
+                                }
                             } else {
-                                Err(serde_v8::Error::Message(format!(
-                                    "Float {} too large to safely convert to JavaScript",
-                                    value
-                                )))
+                                Err(serde_v8::Error::Message("Invalid number".into()))
                             }
-                        } else {
-                            Err(serde_v8::Error::Message("Invalid number".into()))
                         }
-                        .unwrap(),
-                        _ => serde_v8::to_v8(scope, v).unwrap(),
-                    },
-                    Arg::Shim(name) => shim_objects
+                        _ => serde_v8::to_v8(scope, v),
+                    }?),
+                    Arg::Shim(name) => Ok(shim_objects
                         .get(&name)
-                        .unwrap()
+                        .ok_or_else(|| anyhow!("Missing shim {}", &name))?
                         .get(scope)
                         .to_object(scope)
                         .unwrap()
-                        .into(),
+                        .into()),
                 })
-                .collect();
+                .collect::<Result<Vec<_>, AnyError>>()?;
 
             let func_obj = func_value.get(scope).to_object(scope).unwrap();
             let func = v8::Local::<v8::Function>::try_from(func_obj)?;
@@ -206,6 +233,52 @@ impl DenoModule {
 
             let res: Value = serde_v8::from_v8(scope, res)?;
             Ok(res)
+        }
+    }
+}
+
+fn preload_script(runtime: &mut JsRuntime, name: &str, source_code: &str) -> DenoScript {
+    let mut scope = runtime.handle_scope();
+
+    let source = v8::String::new(&mut scope, source_code).unwrap();
+    let name = v8::String::new(&mut scope, name).unwrap();
+
+    let source_map_url = v8::String::new(&mut scope, "").unwrap();
+    let origin = v8::ScriptOrigin::new(
+        &mut scope,
+        name.into(),
+        0,
+        0,
+        false,
+        123,
+        source_map_url.into(),
+        true,
+        false,
+        false,
+    );
+
+    let mut tc_scope = v8::TryCatch::new(&mut scope);
+
+    match v8::Script::compile(&mut tc_scope, source, Some(&origin)) {
+        Some(local_script) => {
+            let script = v8::Global::new(&mut tc_scope, local_script);
+            DenoScript { script }
+        }
+        None => panic!(),
+    }
+}
+
+fn run_script(runtime: &mut JsRuntime, ds: &DenoScript) -> Result<Global<v8::Value>> {
+    let mut scope = runtime.handle_scope();
+    let mut tc_scope = v8::TryCatch::new(&mut scope);
+
+    match ds.script.get(&mut tc_scope).run(&mut tc_scope) {
+        Some(value) => {
+            let value_handle = v8::Global::new(&mut tc_scope, value);
+            Ok(value_handle)
+        }
+        None => {
+            panic!("Exception");
         }
     }
 }

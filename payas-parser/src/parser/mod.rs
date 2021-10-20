@@ -25,6 +25,7 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> (AstSystem<Untyped>, CodeMap) {
             file_content.as_bytes(),
             &codemap,
             file_span,
+            path.as_ref(),
         ),
         codemap,
     )
@@ -37,7 +38,13 @@ pub fn parse_str(str: &str) -> (AstSystem<Untyped>, CodeMap) {
         .span;
     let parsed = parse(str).unwrap();
     (
-        convert_root(parsed.root_node(), str.as_bytes(), &codemap, file_span),
+        convert_root(
+            parsed.root_node(),
+            str.as_bytes(),
+            &codemap,
+            file_span,
+            Path::new("input.payas"),
+        ),
         codemap,
     )
 }
