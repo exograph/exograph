@@ -13,7 +13,7 @@ use payas_model::{
     sql::{column::PhysicalColumn, Limit, Offset, PhysicalTable, SQLOperation, Select},
 };
 
-use super::{operation_context::OperationContext, sql_mapper::SQLMapper};
+use super::{operation_context::OperationContext, operation_mapper::SQLMapper};
 
 #[derive(Debug)]
 struct SingleInsertion<'a> {

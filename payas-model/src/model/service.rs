@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use super::{
+    access::Access,
     mapped_arena::SerializableSlabIndex,
     operation::{Mutation, OperationReturnType, Query},
     GqlType, GqlTypeModifier,
@@ -15,6 +16,7 @@ pub struct ServiceMethod {
     pub operation_kind: ServiceMethodType,
     pub is_exported: bool,
     pub arguments: Vec<Argument>,
+    pub access: Access,
     pub return_type: OperationReturnType,
 }
 

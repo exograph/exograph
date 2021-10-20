@@ -1,0 +1,10 @@
+operation: |
+    mutation Bar {
+      sideEffectMutation
+    }
+response: |
+    {
+      "data": {
+        "sideEffectMutation": 3.14
+      }
+    } 

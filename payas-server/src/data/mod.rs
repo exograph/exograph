@@ -4,10 +4,10 @@ pub mod data_resolver;
 pub mod limit_offset_mapper;
 pub mod mutation_resolver;
 pub mod operation_context;
+pub mod operation_mapper;
 pub mod order_by_mapper;
 pub mod predicate_mapper;
 pub mod query_resolver;
-pub mod sql_mapper;
 mod update_data_param_mapper;
 
 use anyhow::*;
@@ -18,7 +18,7 @@ use crate::sql::predicate::Predicate;
 
 use payas_model::model::predicate::PredicateParameter;
 
-use self::{operation_context::OperationContext, sql_mapper::SQLMapper};
+use self::{operation_context::OperationContext, operation_mapper::SQLMapper};
 
 type Arguments = [(Positioned<Name>, Positioned<Value>)];
 

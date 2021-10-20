@@ -1,0 +1,17 @@
+context AuthContext {
+    id: Int @jwt("sub")
+    role: String @jwt("role")
+}
+
+@external("logger.js")
+service PrivilegedLogger {
+    input type LogEntry {
+        level: String
+        message: String
+    }
+
+    mutation logNormal(entry: LogEntry): Boolean
+
+    @access(AuthContext.role == "ROLE_PRIVILEGED")
+    mutation logPrivileged(entry: LogEntry): Boolean
+}
