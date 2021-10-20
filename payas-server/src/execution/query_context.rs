@@ -15,7 +15,6 @@ use super::{executor::Executor, resolver::*};
 
 use crate::{data::data_resolver::DataResolver, introspection::schema::*};
 
-#[derive(Clone)]
 pub struct QueryContext<'a> {
     pub operation_name: Option<&'a str>,
     pub fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,

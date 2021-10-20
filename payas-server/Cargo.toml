@@ -12,6 +12,7 @@ async-stream = "0.3.2"
 actix-web = "3"
 actix-cors = "0.5.4"
 actix-web-httpauth = "0.5.1"
+futures = "0.3"
 futures-util = "0.3"
 jsonwebtoken = "7.2.0"
 serde_json = { version = "1.0", features = [
@@ -41,6 +42,7 @@ maybe-owned = "0.3.4"
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
 payas-model = { path = "../payas-model" }
+payas-deno = { path = "../payas-deno" }
 
 [[bin]]
 name = "clay-server"

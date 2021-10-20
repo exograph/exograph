@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{Display, Formatter},
+    path::PathBuf,
 };
 
 use codemap::{CodeMap, Span};
@@ -64,6 +65,7 @@ pub struct AstService<T: NodeTypedness> {
     pub models: Vec<AstModel<T>>,
     pub methods: Vec<AstMethod<T>>,
     pub annotations: T::Annotations,
+    pub base_clayfile: PathBuf,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

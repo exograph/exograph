@@ -1,0 +1,22 @@
+operation: |
+    query Foo {
+      add(x: 1, y: 2)
+    
+      divide(x: 13, y: 2) {
+        quotient
+        remainder
+      }
+    
+      sideEffectQuery
+    }
+response: |
+    {
+      "data": {
+        "add": 3,
+        "divide": {
+          "quotient": 6,
+          "remainder": 1
+        },
+        "sideEffectQuery": 42
+      }
+    } 

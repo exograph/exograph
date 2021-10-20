@@ -2890,8 +2890,10 @@ dependencies = [
 name = "payas-deno"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "deno_core",
  "deno_runtime",
+ "futures",
  "serde",
  "serde_json",
  "serde_v8",
@@ -2939,11 +2941,13 @@ dependencies = [
  "bincode",
  "chrono",
  "ctrlc",
+ "futures",
  "futures-util",
  "jsonwebtoken",
  "maybe-owned",
  "notify 4.0.17",
  "openssl",
+ "payas-deno",
  "payas-model",
  "payas-parser",
  "payas-sql",

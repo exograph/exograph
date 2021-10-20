@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use std::convert::TryInto;
+use std::{collections::HashMap, path::Path};
 
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
@@ -26,6 +26,7 @@ pub fn convert_root(
     source: &[u8],
     codemap: &CodeMap,
     source_span: Span,
+    filepath: &Path,
 ) -> AstSystem<Untyped> {
     assert_eq!(node.kind(), "source_file");
     if node.has_error() {
@@ -46,7 +47,7 @@ pub fn convert_root(
             services: node
                 .children(&mut cursor)
                 .filter(|n| n.kind() == "declaration")
-                .map(|c| convert_declaration_to_service(c, source, source_span))
+                .map(|c| convert_declaration_to_service(c, source, source_span, filepath))
                 .flatten()
                 .collect::<Vec<_>>(),
         }
@@ -133,12 +134,13 @@ pub fn convert_declaration_to_service(
     node: Node,
     source: &[u8],
     source_span: Span,
+    filepath: &Path,
 ) -> Option<AstService<Untyped>> {
     assert_eq!(node.kind(), "declaration");
     let first_child = node.child(0).unwrap();
 
     if first_child.kind() == "service" {
-        let service = convert_service(first_child, source, source_span);
+        let service = convert_service(first_child, source, source_span, filepath);
         Some(service)
     } else {
         None
@@ -189,7 +191,12 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
     }
 }
 
-pub fn convert_service(node: Node, source: &[u8], source_span: Span) -> AstService<Untyped> {
+pub fn convert_service(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+    filepath: &Path,
+) -> AstService<Untyped> {
     let mut model_cursor = node.walk();
     let mut method_cursor = node.walk();
     let mut cursor = node.walk();
@@ -225,6 +232,7 @@ pub fn convert_service(node: Node, source: &[u8], source_span: Span) -> AstServi
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        base_clayfile: filepath.into(),
     }
 }
 
@@ -645,7 +653,8 @@ mod tests {
             parsed.root_node(),
             src.as_bytes(),
             &codemap,
-            file_span
+            file_span,
+            Path::new("input.payas")
         ));
     }
 

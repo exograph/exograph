@@ -29,7 +29,7 @@ use payas_model::{
 
 use super::{
     operation_context::OperationContext,
-    sql_mapper::{SQLMapper, SQLUpdateMapper},
+    operation_mapper::{SQLMapper, SQLUpdateMapper},
 };
 
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {

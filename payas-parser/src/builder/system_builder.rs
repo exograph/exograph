@@ -89,10 +89,18 @@ fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextB
 
 fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
     let resolved_types = &resolved_system.types;
+
+    let resolved_methods = &resolved_system
+        .services
+        .iter()
+        .map(|(_, s)| s.methods.iter().collect::<Vec<_>>())
+        .collect::<Vec<_>>()
+        .concat();
+
     let resolved_contexts = &resolved_system.contexts;
 
     // First fully build the model types.
-    type_builder::build_expanded(resolved_types, building);
+    type_builder::build_expanded(resolved_types, resolved_methods, building);
     context_builder::build_expanded(resolved_contexts, building);
 
     // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
@@ -104,6 +112,7 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     // Finally expand queries, mutations, and service methods
     query_builder::build_expanded(building);
     mutation_builder::build_expanded(building);
+    service_builder::build_expanded(building);
 }
 
 #[derive(Debug, Default)]

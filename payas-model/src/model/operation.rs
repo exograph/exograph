@@ -9,6 +9,7 @@ use super::{
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
     predicate::PredicateParameter,
+    service::ServiceMethod,
     system::ModelSystem,
     types::{GqlType, GqlTypeModifier},
 };
@@ -23,7 +24,10 @@ pub struct Query {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum QueryKind {
     Database(DatabaseQueryParameter),
-    Service(Vec<ArgumentParameter>),
+    Service {
+        method_id: Option<SerializableSlabIndex<ServiceMethod>>,
+        argument_param: Vec<ArgumentParameter>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -52,7 +56,10 @@ pub enum MutationKind {
     },
 
     // mutation for service
-    Service(Vec<ArgumentParameter>),
+    Service {
+        method_id: Option<SerializableSlabIndex<ServiceMethod>>,
+        argument_param: Vec<ArgumentParameter>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
