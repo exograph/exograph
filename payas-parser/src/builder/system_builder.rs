@@ -61,7 +61,7 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSy
         queries: building.queries,
         tables: building.tables.values,
         mutation_types: building.mutation_types.values,
-        create_mutations: building.mutations,
+        mutations: building.mutations,
         methods: building.methods.values,
     })
 }

@@ -70,7 +70,7 @@ impl DataResolver for ModelSystem {
                     .resolve_operation(field, &operation_context)
             }
             OperationType::Mutation => {
-                let operation = self.create_mutations.get_by_key(&field.node.name.node);
+                let operation = self.mutations.get_by_key(&field.node.name.node);
                 operation
                     .unwrap()
                     .resolve_operation(field, &operation_context)

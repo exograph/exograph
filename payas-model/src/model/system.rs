@@ -20,7 +20,7 @@ pub struct ModelSystem {
     pub predicate_types: SerializableSlab<PredicateParameterType>,
     pub queries: MappedArena<Query>,
     pub mutation_types: SerializableSlab<GqlType>,
-    pub create_mutations: MappedArena<Mutation>,
+    pub mutations: MappedArena<Mutation>,
     pub tables: SerializableSlab<PhysicalTable>,
     pub methods: SerializableSlab<ServiceMethod>,
 }
@@ -34,7 +34,7 @@ impl Default for ModelSystem {
             predicate_types: SerializableSlab::new(),
             queries: MappedArena::default(),
             mutation_types: SerializableSlab::new(),
-            create_mutations: MappedArena::default(),
+            mutations: MappedArena::default(),
             tables: SerializableSlab::new(),
             methods: SerializableSlab::new(),
             argument_types: SerializableSlab::new(),
