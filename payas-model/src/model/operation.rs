@@ -5,6 +5,7 @@ use crate::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
     argument::ArgumentParameter,
+    interceptor::Interceptor,
     limit_offset::{LimitParameter, OffsetParameter},
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
@@ -65,7 +66,7 @@ pub enum MutationKind {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Interceptors {
-    pub interceptors: Vec<String>,
+    pub interceptors: Vec<Interceptor>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

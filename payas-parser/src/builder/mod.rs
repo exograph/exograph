@@ -7,6 +7,7 @@ mod argument_builder;
 mod context_builder;
 mod create_mutation_builder;
 mod delete_mutation_builder;
+mod interceptor_weaver;
 mod mutation_builder;
 mod order_by_type_builder;
 mod predicate_builder;

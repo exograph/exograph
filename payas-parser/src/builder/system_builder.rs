@@ -3,8 +3,9 @@ use codemap::CodeMap;
 use payas_model::{
     model::{
         argument::ArgumentParameterType,
+        interceptor::Interceptor,
         mapped_arena::MappedArena,
-        operation::{Interceptors, Mutation, Query},
+        operation::{Mutation, Query},
         order::OrderByParameterType,
         predicate::PredicateParameterType,
         service::ServiceMethod,
@@ -18,8 +19,8 @@ use payas_model::{
 use crate::ast::ast_types::{AstSystem, Untyped};
 
 use super::{
-    argument_builder, context_builder, mutation_builder, order_by_type_builder, predicate_builder,
-    query_builder,
+    argument_builder, context_builder, interceptor_weaver, mutation_builder, order_by_type_builder,
+    predicate_builder, query_builder,
     resolved_builder::{self, ResolvedSystem},
     service_builder, type_builder,
 };
@@ -113,13 +114,8 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     query_builder::build_expanded(building);
     mutation_builder::build_expanded(building);
     service_builder::build_expanded(building);
-}
 
-fn apply_interceptors(_resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
-    let queries = &mut building.queries;
-    queries
-        .iter_mut()
-        .for_each(|(_, query)| query.intercetors = Interceptors::default());
+    interceptor_weaver::weave_interceptors(resolved_system, building);
 }
 
 #[derive(Debug, Default)]
@@ -134,6 +130,7 @@ pub struct SystemContextBuilding {
     pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
     pub methods: MappedArena<ServiceMethod>,
+    pub interceptors: MappedArena<Interceptor>,
 }
 
 #[cfg(test)]
