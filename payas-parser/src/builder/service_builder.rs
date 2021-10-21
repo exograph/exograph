@@ -149,6 +149,7 @@ fn shallow_service_mutation(
             type_name: return_type.get_underlying_typename().to_string(),
             type_modifier: return_type.get_modifier(),
         },
+        intercetors: Interceptors::default(),
     }
 }
 

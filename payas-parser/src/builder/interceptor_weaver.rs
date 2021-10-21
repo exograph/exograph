@@ -15,36 +15,45 @@ enum OperationKind {
 }
 
 pub fn weave_interceptors(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
+    let interceptors = &building.interceptors;
     let interceptors: Vec<(&AstExpr<Typed>, &Interceptor)> = resolved_system
         .services
         .iter()
         .flat_map(|(_, s)| {
             s.interceptors.iter().map(|i| {
-                let model_interceptor = building.interceptors.get_by_key(&i.name).unwrap();
+                let model_interceptor = interceptors.get_by_key(&i.name).unwrap();
                 (i.interceptor_kind.expr(), model_interceptor)
             })
         })
         .collect();
 
-    let query_weaving_info: Vec<_> = compute_weaving_info(
-        &building.queries,
+    weave(
+        &mut building.queries,
         &interceptors,
         |o| &o.name,
         &OperationKind::Query,
+        |operation, interceptors| operation.intercetors = interceptors,
     );
 
     weave(
-        &mut building.queries,
-        query_weaving_info,
+        &mut building.mutations,
+        &interceptors,
+        |o| &o.name,
+        &OperationKind::Mutation,
         |operation, interceptors| operation.intercetors = interceptors,
     );
 }
 
 fn weave<T: DeserializeOwned + Serialize>(
     operations: &mut MappedArena<T>,
-    weaving_info: Vec<(Index<T, usize, IgnoreGeneration>, Interceptors)>,
+    interceptors: &[(&AstExpr<Typed>, &Interceptor)],
+    get_operation_name: fn(&T) -> &str,
+    operation_kind: &OperationKind,
     set_interceptors: impl Fn(&mut T, Interceptors),
 ) {
+    let weaving_info: Vec<_> =
+        compute_weaving_info(operations, interceptors, get_operation_name, operation_kind);
+
     for (operation_id, matching_interceptors) in weaving_info.iter() {
         let operation = &mut operations[*operation_id];
         set_interceptors(operation, matching_interceptors.clone());

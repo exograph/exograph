@@ -45,6 +45,7 @@ pub struct Mutation {
     pub name: String,
     pub kind: MutationKind,
     pub return_type: OperationReturnType,
+    pub intercetors: Interceptors,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
