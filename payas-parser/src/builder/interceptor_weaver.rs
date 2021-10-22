@@ -32,7 +32,7 @@ pub fn weave_interceptors(resolved_system: &ResolvedSystem, building: &mut Syste
         &interceptors,
         |o| &o.name,
         &OperationKind::Query,
-        |operation, interceptors| operation.intercetors = interceptors,
+        |operation, interceptors| operation.interceptors = interceptors,
     );
 
     weave(
@@ -40,7 +40,7 @@ pub fn weave_interceptors(resolved_system: &ResolvedSystem, building: &mut Syste
         &interceptors,
         |o| &o.name,
         &OperationKind::Mutation,
-        |operation, interceptors| operation.intercetors = interceptors,
+        |operation, interceptors| operation.interceptors = interceptors,
     );
 }
 

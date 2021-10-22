@@ -18,14 +18,20 @@ model Venue {
 @external("log.js")
 service Log {
   @before("mutation *Concert*")
-  interceptor logConcertMutations(operation: Operation)
+  interceptor enterConcertMutations(operation: Operation)
 
   @before("mutation *Venue*")
-  interceptor logVenueMutations(operation: Operation)
+  interceptor enterVenueMutations(operation: Operation)
 
-  @around("query *")
-  interceptor timeQuery(operation: Operation)
+  @after("mutation *Concert*")
+  interceptor exitConcertMutations(operation: Operation)
 
-  @around("mutation *")
-  interceptor timeMutation(operation: Operation)
+  @after("mutation *Venue*")
+  interceptor exitVenueMutations(operation: Operation)
+
+  // @around("query *")
+  // interceptor timeQuery(operation: Operation)
+
+  // @around("mutation *")
+  // interceptor timeMutation(operation: Operation)
 }

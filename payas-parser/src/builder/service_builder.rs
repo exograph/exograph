@@ -127,7 +127,7 @@ fn shallow_service_query(
             type_name: return_type.get_underlying_typename().to_string(),
             type_modifier: return_type.get_modifier(),
         },
-        intercetors: Interceptors::default(),
+        interceptors: Interceptors::default(),
     }
 }
 
@@ -149,7 +149,7 @@ fn shallow_service_mutation(
             type_name: return_type.get_underlying_typename().to_string(),
             type_modifier: return_type.get_modifier(),
         },
-        intercetors: Interceptors::default(),
+        interceptors: Interceptors::default(),
     }
 }
 
@@ -201,7 +201,7 @@ pub fn create_shallow_intercetor(
         Interceptor {
             name: resolved_interceptor.name.clone(),
             module_path: resolved_service.module_path.clone(),
-            operation_kind: match resolved_interceptor.interceptor_kind {
+            interceptor_kind: match resolved_interceptor.interceptor_kind {
                 super::resolved_builder::ResolvedInterceptorKind::Before(_) => {
                     InterceptorKind::Before
                 }

@@ -88,7 +88,10 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
 
     env.add("Env", Type::Primitive(PrimitiveType::Injected));
 
-    env.add("Operation", Type::Primitive(PrimitiveType::Interception));
+    env.add(
+        "Operation",
+        Type::Primitive(PrimitiveType::Interception("Operation".to_string())),
+    );
 }
 
 fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {

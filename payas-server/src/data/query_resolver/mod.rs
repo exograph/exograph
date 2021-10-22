@@ -47,6 +47,14 @@ impl<'a> OperationResolver<'a> for Query {
             }
         }
     }
+
+    fn interceptors(&self) -> &Interceptors {
+        &self.interceptors
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 pub trait QuerySQLOperations<'a> {

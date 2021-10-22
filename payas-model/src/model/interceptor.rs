@@ -8,7 +8,7 @@ use super::{mapped_arena::SerializableSlabIndex, GqlType, GqlTypeModifier};
 pub struct Interceptor {
     pub name: String,
     pub module_path: PathBuf,
-    pub operation_kind: InterceptorKind,
+    pub interceptor_kind: InterceptorKind,
     pub arguments: Vec<InterceptorArgument>,
     // pub return_type: OperationReturnType,
 }
@@ -21,7 +21,7 @@ pub struct InterceptorArgument {
     pub modifier: GqlTypeModifier,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum InterceptorKind {
     Before,
     After,

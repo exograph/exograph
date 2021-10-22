@@ -84,7 +84,7 @@ fn shallow_pk_query(
             type_name: typ.name.clone(),
             type_modifier: GqlTypeModifier::NonNull,
         },
-        intercetors: Interceptors::default(),
+        interceptors: Interceptors::default(),
     }
 }
 
@@ -103,7 +103,7 @@ fn expanded_pk_query(model_type: &GqlType, building: &SystemContextBuilding) -> 
             offset_param: None,
         }),
         return_type: existing_query.return_type.clone(),
-        intercetors: existing_query.intercetors.clone(),
+        interceptors: existing_query.interceptors.clone(),
     }
 }
 
@@ -143,7 +143,7 @@ fn shallow_collection_query(
             type_name: model.name.clone(),
             type_modifier: GqlTypeModifier::List,
         },
-        intercetors: Interceptors::default(),
+        interceptors: Interceptors::default(),
     }
 }
 
@@ -165,7 +165,7 @@ fn expanded_collection_query(model_type: &GqlType, building: &SystemContextBuild
             offset_param: Some(offset_param),
         }),
         return_type: existing_query.return_type.clone(),
-        intercetors: Interceptors::default(),
+        interceptors: Interceptors::default(),
     }
 }
 

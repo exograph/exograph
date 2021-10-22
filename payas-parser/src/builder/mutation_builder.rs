@@ -62,7 +62,7 @@ pub trait MutationBuilder {
                 type_name: model_type.name.clone(),
                 type_modifier: GqlTypeModifier::Optional,
             },
-            intercetors: Interceptors::default(),
+            interceptors: Interceptors::default(),
         };
 
         let multi_mutation = Mutation {
@@ -73,7 +73,7 @@ pub trait MutationBuilder {
                 type_name: model_type.name.clone(),
                 type_modifier: GqlTypeModifier::List,
             },
-            intercetors: Interceptors::default(),
+            interceptors: Interceptors::default(),
         };
 
         vec![single_mutation, multi_mutation]

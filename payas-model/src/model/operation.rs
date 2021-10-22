@@ -20,7 +20,7 @@ pub struct Query {
     pub name: String,
     pub kind: QueryKind,
     pub return_type: OperationReturnType,
-    pub intercetors: Interceptors,
+    pub interceptors: Interceptors,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -45,7 +45,7 @@ pub struct Mutation {
     pub name: String,
     pub kind: MutationKind,
     pub return_type: OperationReturnType,
-    pub intercetors: Interceptors,
+    pub interceptors: Interceptors,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
