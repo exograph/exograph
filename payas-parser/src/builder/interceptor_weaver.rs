@@ -5,7 +5,10 @@ use serde::{de::DeserializeOwned, Serialize};
 use typed_generational_arena::{IgnoreGeneration, Index};
 use wildmatch::WildMatch;
 
-use crate::{ast::ast_types::AstExpr, typechecker::Typed};
+use crate::{
+    ast::ast_types::{AstExpr, LogicalOp},
+    typechecker::Typed,
+};
 
 use super::{resolved_builder::ResolvedSystem, system_builder::SystemContextBuilding};
 
@@ -89,7 +92,7 @@ fn matching_interceptors(
     interceptors
         .iter()
         .filter_map(|(expr, interceptor)| {
-            if matches_operation(expr, operation_name, operation_kind) {
+            if matches(expr, operation_name, operation_kind) {
                 Some(*interceptor)
             } else {
                 None
@@ -99,21 +102,23 @@ fn matching_interceptors(
         .collect()
 }
 
-fn matches_operation(
-    expr: &AstExpr<Typed>,
-    operation_name: &str,
-    operatrion_kind: &OperationKind,
-) -> bool {
-    matches(expr, operation_name, operatrion_kind)
-}
-
 fn matches(expr: &AstExpr<Typed>, operation_name: &str, operatrion_kind: &OperationKind) -> bool {
     match expr {
         AstExpr::FieldSelection(_) => {
             panic!("FieldSelection not supported in interceptor expression")
         }
-        AstExpr::LogicalOp(_) => todo!(),
-        AstExpr::RelationalOp(_) => todo!(),
+        AstExpr::LogicalOp(logical_op) => match dbg!(logical_op) {
+            LogicalOp::Not(expr, _, _) => !matches(expr, operation_name, operatrion_kind),
+            LogicalOp::And(first, second, _, _) => {
+                matches(first, operation_name, operatrion_kind)
+                    && matches(second, operation_name, operatrion_kind)
+            }
+            LogicalOp::Or(first, second, _, _) => {
+                matches(first, operation_name, operatrion_kind)
+                    || matches(second, operation_name, operatrion_kind)
+            }
+        },
+        AstExpr::RelationalOp(_) => panic!("RelationalOp not supported in interceptor expression"),
         AstExpr::StringLiteral(value, _) => matches_str(value, operation_name, operatrion_kind),
         AstExpr::BooleanLiteral(value, _) => *value,
         AstExpr::NumberLiteral(_, _) => {

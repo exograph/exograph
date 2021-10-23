@@ -202,6 +202,11 @@ impl<T: NodeTypedness> AstExpr<T> {
         match &self {
             AstExpr::FieldSelection(s) => s.span(),
             AstExpr::StringLiteral(_, s) => s,
+            AstExpr::LogicalOp(l) => match l {
+                LogicalOp::Not(e, _, _) => e.span(),
+                LogicalOp::And(_, _, s, _) => s,
+                LogicalOp::Or(_, _, s, _) => s,
+            },
             _ => panic!(),
         }
     }
@@ -240,8 +245,24 @@ pub enum LogicalOp<T: NodeTypedness> {
         Span,
         T::LogicalOp,
     ),
-    And(Box<AstExpr<T>>, Box<AstExpr<T>>, T::LogicalOp),
-    Or(Box<AstExpr<T>>, Box<AstExpr<T>>, T::LogicalOp),
+    And(
+        Box<AstExpr<T>>,
+        Box<AstExpr<T>>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+        T::LogicalOp,
+    ),
+    Or(
+        Box<AstExpr<T>>,
+        Box<AstExpr<T>>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+        T::LogicalOp,
+    ),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -22,6 +22,11 @@ export function enterQuery(operation, claytip) {
     return true
 }
 
+export function enterMutation(operation, claytip) {
+    logEntry(`enterMutation: ${operation.name}`, claytip)
+    return true
+}
+
 function logEntry(message, claytip) {
     let variable = {
         "message": message

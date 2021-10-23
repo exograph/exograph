@@ -35,4 +35,8 @@ service Logging {
 
   @before("query *")
   interceptor enterQuery(operation: Operation, claytip: Claytip)
+
+  // TODO: Make this work (and drop the requirement that the interceptor expression is a string)
+  // @before("mutation *" && !"mutation *Log")
+  // interceptor enterMutation(operation: Operation, claytip: Claytip)
 }

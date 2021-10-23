@@ -519,6 +519,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source,
                 source_span,
             )),
+            source_span,
             (),
         ),
         "logical_and" => LogicalOp::And(
@@ -532,6 +533,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source,
                 source_span,
             )),
+            source_span,
             (),
         ),
         "logical_not" => LogicalOp::Not(
