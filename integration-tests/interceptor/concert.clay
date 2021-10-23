@@ -14,24 +14,25 @@ model Venue {
   latitude: Float @size(4)
 }
 
+model Log {
+  id: Int @pk @autoincrement
+  message: String
+}
 
 @external("log.js")
-service Log {
+service Logging {
   @before("mutation *Concert*")
-  interceptor enterConcertMutations(operation: Operation)
+  interceptor enterConcertMutation(operation: Operation, claytip: Claytip)
 
   @before("mutation *Venue*")
-  interceptor enterVenueMutations(operation: Operation)
+  interceptor enterVenueMutation(operation: Operation, claytip: Claytip)
 
   @after("mutation *Concert*")
-  interceptor exitConcertMutations(operation: Operation)
+  interceptor exitConcertMutation(operation: Operation, claytip: Claytip)
 
   @after("mutation *Venue*")
-  interceptor exitVenueMutations(operation: Operation)
+  interceptor exitVenueMutation(operation: Operation, claytip: Claytip)
 
-  // @around("query *")
-  // interceptor timeQuery(operation: Operation)
-
-  // @around("mutation *")
-  // interceptor timeMutation(operation: Operation)
+  @before("query *")
+  interceptor enterQuery(operation: Operation, claytip: Claytip)
 }

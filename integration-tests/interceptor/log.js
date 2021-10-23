@@ -1,29 +1,40 @@
-export function enterConcertMutations(operation) {
-    console.log("enterConcertMutations ", operation)
+export function enterConcertMutation(operation, claytip) {
+    logEntry(`enterConcertMutation: ${operation.name}`, claytip)
     return true
 }
 
-export function enterVenueMutations(operation) {
-    console.log("enterVenueMutations ", operation)
+export function enterVenueMutation(operation, claytip) {
+    logEntry(`enterVenueMutation: ${operation.name}`, claytip)
     return true
 }
 
-export function exitConcertMutations(operation) {
-    console.log("exitConcertMutations ", operation)
+export function exitConcertMutation(operation, claytip) {
+    logEntry(`exitConcertMutation ${operation.name}`, claytip);
+}
+
+export function exitVenueMutation(operation, claytip) {
+    logEntry(`exitVenueMutation: ${operation.name}`, claytip)
     return true
 }
 
-export function exitVenueMutations(operation) {
-    console.log("exitVenueMutations ", operation)
+export function enterQuery(operation, claytip) {
+    logEntry(`enterQuery: ${operation.name}`, claytip)
     return true
 }
 
-export function timeQuery(operation) {
-    console.log("timeQuery ", operation)
-    return true
-}
+function logEntry(message, claytip) {
+    let variable = {
+        "message": message
+    };
 
-export function timeMutation(operation) {
-    console.log("timeMutation ", operation)
+    claytip.executeQuery(
+        `mutation($message: String!) {
+            createLog(data: {message: $message}) {
+            id
+          }
+        }`,
+        variable
+    );
+
     return true
 }

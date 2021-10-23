@@ -97,6 +97,9 @@ pub trait OperationResolver<'a> {
 
                 if arg_type.name == "Operation" {
                     Ok(Arg::Serde(json!({ "name": self.name() })))
+                } else if arg_type.name == "ClaytipInjected" {
+                    // TODO: Change this to supply a shim if the arg_type is one of the shimmable types
+                    Ok(Arg::Shim(arg_type.name.clone()))
                 } else {
                     bail!("Invalid argument type {}", arg_type.name)
                 }
