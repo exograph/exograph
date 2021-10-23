@@ -26,7 +26,7 @@ types:
     - - ~
       - Primitive: Json
     - - ~
-      - Primitive: Injected
+      - Primitive: ClaytipInjected
     - - ~
       - Composite:
           name: Concert
@@ -195,6 +195,9 @@ types:
     Boolean:
       index: 0
       generation: ~
+    ClaytipInjected:
+      index: 10
+      generation: ~
     Concert:
       index: 11
       generation: ~
@@ -203,9 +206,6 @@ types:
       generation: ~
     Float:
       index: 2
-      generation: ~
-    Injected:
-      index: 10
       generation: ~
     Instant:
       index: 8

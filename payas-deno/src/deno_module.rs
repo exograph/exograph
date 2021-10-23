@@ -1,4 +1,5 @@
 use deno_core::error::AnyError;
+use deno_core::error::JsError;
 use deno_core::serde_json;
 use deno_core::JsRuntime;
 use std::sync::Mutex;
@@ -52,7 +53,7 @@ impl DenoModule {
         user_module_path: &Path,
         user_agent_name: &str,
         shims: &[(&str, &str)],
-        register_ops: fn(&mut JsRuntime) -> (),
+        register_ops: &dyn Fn(&mut JsRuntime),
     ) -> Result<Self, AnyError> {
         let user_module_path = fs::canonicalize(user_module_path)?
             .to_string_lossy()
@@ -165,64 +166,43 @@ impl DenoModule {
 
         let global = {
             let scope = &mut runtime.handle_scope();
+
+            let mut tc_scope = v8::TryCatch::new(scope);
+            let tc_scope_ref = &mut tc_scope;
+
             let args: Vec<_> = args
                 .into_iter()
                 .map(|v| match v {
-                    Arg::Serde(v) => Ok(match v {
-                        // If we enable the arbitrary_precision feature for serde_json, then serde_v8::to_v8 will serialize numbers as
-                        // { "$serde_json::private::Number": "<number>"}, which the JS side will not understand, so apply custom logic
-                        // to get the underlying value and then use primitive serialization
-                        // TODO: Check for
-                        Value::Number(n) => {
-                            if n.is_i64() {
-                                let value = n
-                                    .as_i64()
-                                    .ok_or_else(|| anyhow!("Couldn't parse number into i64"))?;
-
-                                if value >= JS_MIN_SAFE_INTEGER || value <= JS_MAX_SAFE_INTEGER {
-                                    serde_v8::to_v8(scope, value)
-                                } else {
-                                    Err(serde_v8::Error::Message(format!(
-                                        "Integer {} too large to safely convert to JavaScript",
-                                        value
-                                    )))
-                                }
-                            } else if n.is_f64() {
-                                let value = n
-                                    .as_f64()
-                                    .ok_or_else(|| anyhow!("Couldn't parse number into f64"))?;
-
-                                if value >= JS_MIN_VALUE || value <= JS_MAX_VALUE {
-                                    serde_v8::to_v8(scope, value)
-                                } else {
-                                    Err(serde_v8::Error::Message(format!(
-                                        "Float {} too large to safely convert to JavaScript",
-                                        value
-                                    )))
-                                }
-                            } else {
-                                Err(serde_v8::Error::Message("Invalid number".into()))
-                            }
-                        }
-                        _ => serde_v8::to_v8(scope, v),
-                    }?),
+                    Arg::Serde(v) => Ok(serde_v8::to_v8(tc_scope_ref, v)?),
                     Arg::Shim(name) => Ok(shim_objects
                         .get(&name)
                         .ok_or_else(|| anyhow!("Missing shim {}", &name))?
-                        .get(scope)
-                        .to_object(scope)
+                        .get(tc_scope_ref)
+                        .to_object(tc_scope_ref)
                         .unwrap()
                         .into()),
                 })
                 .collect::<Result<Vec<_>, AnyError>>()?;
 
-            let func_obj = func_value.get(scope).to_object(scope).unwrap();
+            let func_obj = func_value
+                .get(tc_scope_ref)
+                .to_object(tc_scope_ref)
+                .unwrap();
             let func = v8::Local::<v8::Function>::try_from(func_obj)?;
 
-            let undefined = v8::undefined(scope);
-            let local = func.call(scope, undefined.into(), &args).unwrap();
+            let undefined = v8::undefined(tc_scope_ref);
+            let local = func.call(tc_scope_ref, undefined.into(), &args);
 
-            v8::Global::new(scope, local)
+            let local = match local {
+                Some(value) => value,
+                None => {
+                    let exception = tc_scope_ref.exception().unwrap();
+                    let js_error = JsError::from_v8_exception(tc_scope_ref, exception);
+                    return Err(anyhow!(js_error));
+                }
+            };
+
+            v8::Global::new(tc_scope_ref, local)
         };
 
         {

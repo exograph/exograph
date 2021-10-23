@@ -183,25 +183,6 @@ impl<'a> OperationContext<'a> {
                 let json_object = val.clone().into_json().unwrap();
                 Box::new(json_object)
             }
-            PhysicalColumnType::Numeric { .. } => match val {
-                // For long numbers such as those in the verylong.claytest integration test,
-                // the "2.10" version of async_graphql_parser parses it as an object for the following form:
-                // {
-                //     "$serde_json::private::Number": "<number string>",
-                // }
-                // So we extract the <number string> part and cast it
-                Value::Object(value) => {
-                    let number = value.get("$serde_json::private::Number").unwrap();
-                    match number {
-                        Value::String(number) => {
-                            let number = Number::from_str(number).unwrap();
-                            Self::cast_number(&number, destination_type)
-                        }
-                        _ => panic!("Unexpected value {} for numeric value", number),
-                    }
-                }
-                _ => panic!("Unexpected value {} for numeric destination type", val),
-            },
             _ => panic!(),
         }
     }

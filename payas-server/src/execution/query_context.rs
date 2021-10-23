@@ -29,6 +29,21 @@ pub enum QueryResponse {
     Raw(Option<String>),
 }
 
+impl QueryResponse {
+    pub fn to_json(&self) -> Result<JsonValue> {
+        match &self {
+            QueryResponse::Json(val) => Ok(val.clone()),
+            QueryResponse::Raw(raw) => {
+                if let Some(raw) = raw {
+                    Ok(serde_json::from_str(raw)?)
+                } else {
+                    Ok(JsonValue::Null)
+                }
+            }
+        }
+    }
+}
+
 impl<'qc> QueryContext<'qc> {
     pub fn resolve_operation<'b>(
         &self,

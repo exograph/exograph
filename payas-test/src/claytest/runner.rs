@@ -257,7 +257,9 @@ fn run_operation(
                 );
             }
 
-            let json = resp.json().context("Error parsing response into JSON")?;
+            let json = resp.json().with_context(|| {
+                format!("Error parsing response into JSON: {}", resp.text().unwrap())
+            })?;
             let body: serde_json::Value = json;
 
             match expected_payload {

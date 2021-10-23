@@ -10,6 +10,6 @@ service Logger {
     message: String
   }
 
-  export query logger(@inject env: Env, input: LogMessage): Boolean
-  mutation debug(@inject env: Env, input: LogMessage): Boolean
+  export query logger(@inject claytip: Claytip, input: LogMessage): Boolean
+  mutation debug(@inject claytip: Claytip, input: LogMessage): Boolean
 }

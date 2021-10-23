@@ -964,7 +964,7 @@ mod tests {
         
         @external("bar.js")
         service Foo {
-            export query qux(@inject env: Env, x: Int, y: String): Int
+            export query qux(@inject claytip: Claytip, x: Int, y: String): Int
             mutation quuz(): String
         }
         "#;
@@ -1019,7 +1019,7 @@ mod tests {
         @external("logger.js")
         service Logger {
             @access(AuthContext.role == "ROLE_ADMIN")
-            export query log(@inject env: Env): Boolean
+            export query log(@inject claytip: Claytip): Boolean
         }
         "#;
 

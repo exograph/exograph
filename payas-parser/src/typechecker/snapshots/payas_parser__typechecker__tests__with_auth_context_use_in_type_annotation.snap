@@ -25,7 +25,7 @@ values:
   - - ~
     - Primitive: Json
   - - ~
-    - Primitive: Injected
+    - Primitive: ClaytipInjected
   - - ~
     - Composite:
         name: AuthContext
@@ -111,14 +111,14 @@ map:
   Boolean:
     index: 0
     generation: ~
+  Claytip:
+    index: 10
+    generation: ~
   Decimal:
     index: 3
     generation: ~
   Doc:
     index: 12
-    generation: ~
-  Env:
-    index: 10
     generation: ~
   Float:
     index: 2

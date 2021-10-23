@@ -1,10 +1,10 @@
 operation: |
     mutation Bar {
-      sideEffectMutation
+      testMutation
     }
 response: |
     {
       "data": {
-        "sideEffectMutation": 3.14
+        "testMutation": 3.14
       }
     } 

@@ -138,7 +138,7 @@ lazy_static! {
             Some(vec!["contains", "containedBy", "matchKey", "matchAllKeys", "matchAnyKey"])
         );
 
-        supported_operators.insert("Injected", Some(vec![]));
+        supported_operators.insert("ClaytipInjected", None);
 
         supported_operators
     };
