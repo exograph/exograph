@@ -16,7 +16,7 @@ use async_graphql_parser::{
 use payas_deno::Arg;
 use payas_model::{model::system::ModelSystem, sql::predicate::Predicate};
 use postgres::{types::FromSqlOwned, Row};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use super::{
     operation_context::OperationContext,
@@ -142,7 +142,26 @@ impl DataResolver for ModelSystem {
                         .collect::<Result<Vec<_>>>()?;
 
                     deno_modules_map.load_module(path)?;
-                    deno_modules_map.execute_function(path, &method.name, arg_sequence)
+                    deno_modules_map.execute_function(
+                        path,
+                        &method.name,
+                        arg_sequence,
+                        &|query_string, variables| {
+                            let result = query_context
+                                .executor
+                                .execute_with_request_context(
+                                    None,
+                                    &query_string,
+                                    variables,
+                                    query_context.request_context.clone(),
+                                )?
+                                .into_iter()
+                                .map(|(name, response)| (name, response.to_json().unwrap()))
+                                .collect::<Map<_, _>>();
+
+                            Ok(Value::Object(result))
+                        },
+                    )
                 })?;
 
                 let result = if let Value::Object(_) = function_result {

@@ -12,11 +12,29 @@ export function divide(x, y) {
     }
 }
 
-export function sideEffectQuery() {
-    return 42   
+export function shimQuery(claytip) {
+    // c 
+
+    let result = claytip.executeQuery(
+        `query {
+            foos(
+                where: { baz: {eq: 4} }
+            ) {
+                id
+            }
+        }`
+    );
+
+    var str = "The `foos` with `baz` = 4 have IDs of ";
+
+    for (let foo of result.foos) {
+        str += foo.id += ", ";
+    }
+
+    return str;
 }
 
-export function sideEffectMutation() {
+export function testMutation(claytip) {
     return 3.14
 }
 

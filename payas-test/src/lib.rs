@@ -48,7 +48,7 @@ pub fn run(directory: &Path) -> Result<()> {
         } else if a.is_err() && b.is_ok() {
             std::cmp::Ordering::Less
         } else {
-            a.as_ref().unwrap().cmp(b.as_ref().unwrap())
+            std::cmp::Ordering::Equal
         }
     });
     test_results.reverse();

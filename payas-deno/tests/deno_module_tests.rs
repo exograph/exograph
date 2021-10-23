@@ -3,15 +3,20 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use anyhow::Result;
 use deno_core::{serde_json::Value, JsRuntime};
 use payas_deno::{Arg, DenoModule, DenoModulesMap};
 
 use deno_core::serde_json::json;
 
+fn no_op(_: String, _: Option<&serde_json::Map<String, Value>>) -> Result<serde_json::Value> {
+    panic!()
+}
+
 #[tokio::test]
 async fn test_direct_sync() {
     let mut deno_module =
-        DenoModule::new(Path::new("./tests/direct.js"), "deno_module", &[], |_| {})
+        DenoModule::new(Path::new("./tests/direct.js"), "deno_module", &[], &|_| {})
             .await
             .unwrap();
 
@@ -59,6 +64,7 @@ async fn test_module_map_threaded() {
                         Arg::Serde(Value::Number(4.into())),
                         Arg::Serde(Value::Number(2.into())),
                     ],
+                    &no_op,
                 )
                 .unwrap();
 
@@ -76,7 +82,7 @@ async fn test_module_map_threaded() {
 #[tokio::test]
 async fn test_direct_async() {
     let mut deno_module =
-        DenoModule::new(Path::new("./tests/direct.js"), "deno_module", &[], |_| {})
+        DenoModule::new(Path::new("./tests/direct.js"), "deno_module", &[], &|_| {})
             .await
             .unwrap();
 
@@ -110,7 +116,7 @@ async fn test_shim_sync() {
         Path::new("./tests/through_shim.js"),
         "deno_module",
         &[GET_JSON_SHIM],
-        |_| {},
+        &|_| {},
     )
     .await
     .unwrap();
@@ -152,7 +158,7 @@ async fn test_shim_async() {
         Path::new("./tests/through_shim.js"),
         "deno_module",
         &[GET_JSON_SHIM],
-        |_| {},
+        &|_| {},
     )
     .await
     .unwrap();
@@ -209,7 +215,7 @@ async fn test_register_ops() {
         Path::new("./tests/through_rust_fn.js"),
         "deno_module",
         &[],
-        register_ops,
+        &register_ops,
     )
     .await
     .unwrap();

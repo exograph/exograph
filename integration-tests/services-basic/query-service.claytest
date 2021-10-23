@@ -7,7 +7,7 @@ operation: |
         remainder
       }
     
-      sideEffectQuery
+      shimQuery
     }
 response: |
     {
@@ -17,6 +17,6 @@ response: |
           "quotient": 6,
           "remainder": 1
         },
-        "sideEffectQuery": 42
+        "shimQuery": "The `foos` with `baz` = 4 have IDs of 1, 2, "
       }
     } 
