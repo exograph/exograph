@@ -139,6 +139,7 @@ lazy_static! {
         );
 
         supported_operators.insert("ClaytipInjected", None);
+        supported_operators.insert("Operation", None); // TODO: Re-examine if this is the best way (for both injected and interception)
 
         supported_operators
     };

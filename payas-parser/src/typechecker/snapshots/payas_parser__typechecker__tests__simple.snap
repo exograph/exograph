@@ -27,6 +27,9 @@ values:
   - - ~
     - Primitive: ClaytipInjected
   - - ~
+    - Primitive:
+        Interception: Operation
+  - - ~
     - Composite:
         name: User
         kind: Persistent
@@ -54,7 +57,7 @@ values:
                                               - Single:
                                                   - - self
                                                   - Reference:
-                                                      index: 11
+                                                      index: 12
                                                       generation: ~
                                               - - role
                                               - Reference:
@@ -70,7 +73,7 @@ values:
                                               - Single:
                                                   - - self
                                                   - Reference:
-                                                      index: 11
+                                                      index: 12
                                                       generation: ~
                                               - - role
                                               - Reference:
@@ -86,11 +89,11 @@ values:
                                       - Single:
                                           - - self
                                           - Reference:
-                                              index: 11
+                                              index: 12
                                               generation: ~
                                       - - doc
                                       - Reference:
-                                          index: 12
+                                          index: 13
                                           generation: ~
                                   - - is_public
                                   - Reference:
@@ -130,7 +133,6 @@ values:
           annotations: {}
   - ~
   - ~
-  - ~
 map:
   Boolean:
     index: 0
@@ -142,7 +144,7 @@ map:
     index: 3
     generation: ~
   Doc:
-    index: 12
+    index: 13
     generation: ~
   Float:
     index: 2
@@ -165,10 +167,13 @@ map:
   LocalTime:
     index: 5
     generation: ~
+  Operation:
+    index: 11
+    generation: ~
   String:
     index: 4
     generation: ~
   User:
-    index: 11
+    index: 12
     generation: ~
 

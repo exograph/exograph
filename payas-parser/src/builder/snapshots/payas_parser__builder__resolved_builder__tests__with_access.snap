@@ -28,6 +28,9 @@ types:
     - - ~
       - Primitive: ClaytipInjected
     - - ~
+      - Primitive:
+          Interception: Operation
+    - - ~
       - Composite:
           name: Concert
           plural_name: Concerts
@@ -73,7 +76,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 12
+                                      index: 13
                                       generation: ~
                               - - role
                               - Reference:
@@ -87,7 +90,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 13
+                                index: 14
                                 generation: ~
                         - - public
                         - Reference:
@@ -104,7 +107,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 12
+                                      index: 13
                                       generation: ~
                               - - role
                               - Reference:
@@ -118,7 +121,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 13
+                                index: 14
                                 generation: ~
                         - - public
                         - Reference:
@@ -135,7 +138,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 12
+                                      index: 13
                                       generation: ~
                               - - role
                               - Reference:
@@ -149,7 +152,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 13
+                                index: 14
                                 generation: ~
                         - - public
                         - Reference:
@@ -166,7 +169,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 12
+                                      index: 13
                                       generation: ~
                               - - role
                               - Reference:
@@ -180,14 +183,13 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 13
+                                index: 14
                                 generation: ~
                         - - public
                         - Reference:
                             index: 0
                             generation: ~
                   - Primitive: Boolean
-    - ~
     - ~
     - ~
     - ~
@@ -199,7 +201,7 @@ types:
       index: 10
       generation: ~
     Concert:
-      index: 11
+      index: 12
       generation: ~
     Decimal:
       index: 3
@@ -224,6 +226,9 @@ types:
       generation: ~
     LocalTime:
       index: 5
+      generation: ~
+    Operation:
+      index: 11
       generation: ~
     String:
       index: 4
@@ -264,7 +269,7 @@ services:
                           - Single:
                               - - AuthContext
                               - Reference:
-                                  index: 12
+                                  index: 13
                                   generation: ~
                           - - role
                           - Reference:
@@ -281,7 +286,7 @@ services:
                           - Single:
                               - - AuthContext
                               - Reference:
-                                  index: 12
+                                  index: 13
                                   generation: ~
                           - - role
                           - Reference:
@@ -298,7 +303,7 @@ services:
                           - Single:
                               - - AuthContext
                               - Reference:
-                                  index: 12
+                                  index: 13
                                   generation: ~
                           - - role
                           - Reference:
@@ -315,7 +320,7 @@ services:
                           - Single:
                               - - AuthContext
                               - Reference:
-                                  index: 12
+                                  index: 13
                                   generation: ~
                           - - role
                           - Reference:
@@ -331,6 +336,7 @@ services:
                 is_injected: true
             return_type:
               Plain: Boolean
+        interceptors: []
     - ~
     - ~
     - ~

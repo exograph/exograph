@@ -4,7 +4,7 @@
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::ToGqlTypeNames;
-use payas_model::model::operation::{Mutation, MutationKind, OperationReturnType};
+use payas_model::model::operation::{Interceptors, Mutation, MutationKind, OperationReturnType};
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::{
     GqlCompositeType, GqlField, GqlFieldType, GqlType, GqlTypeKind, GqlTypeModifier,
@@ -62,6 +62,7 @@ pub trait MutationBuilder {
                 type_name: model_type.name.clone(),
                 type_modifier: GqlTypeModifier::Optional,
             },
+            interceptors: Interceptors::default(),
         };
 
         let multi_mutation = Mutation {
@@ -72,6 +73,7 @@ pub trait MutationBuilder {
                 type_name: model_type.name.clone(),
                 type_modifier: GqlTypeModifier::List,
             },
+            interceptors: Interceptors::default(),
         };
 
         vec![single_mutation, multi_mutation]

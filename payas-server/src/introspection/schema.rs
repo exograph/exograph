@@ -67,7 +67,7 @@ impl Schema {
 
         let mutation_type_definition = {
             let fields = system
-                .create_mutations
+                .mutations
                 .values
                 .iter()
                 .map(|mutation| default_positioned(mutation.1.field_definition(system)))

@@ -1,15 +1,18 @@
 use payas_model::model::{
     access::Access,
     argument::ArgumentParameter,
+    interceptor::{Interceptor, InterceptorArgument, InterceptorKind},
     mapped_arena::MappedArena,
-    operation::{Mutation, MutationKind, OperationReturnType, Query, QueryKind},
+    operation::{Interceptors, Mutation, MutationKind, OperationReturnType, Query, QueryKind},
     service::{Argument, ServiceMethod, ServiceMethodType},
     GqlType,
 };
 
 use super::{
     argument_builder,
-    resolved_builder::{ResolvedMethod, ResolvedMethodType, ResolvedService, ResolvedType},
+    resolved_builder::{
+        ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService, ResolvedType,
+    },
     system_builder::SystemContextBuilding,
 };
 
@@ -22,6 +25,9 @@ pub fn build_shallow(
     for (_, service) in services.iter() {
         for method in service.methods.iter() {
             create_shallow_service(service, method, building);
+        }
+        for interceptor in service.interceptors.iter() {
+            create_shallow_intercetor(service, interceptor, building);
         }
     }
 }
@@ -121,6 +127,7 @@ fn shallow_service_query(
             type_name: return_type.get_underlying_typename().to_string(),
             type_modifier: return_type.get_modifier(),
         },
+        interceptors: Interceptors::default(),
     }
 }
 
@@ -142,6 +149,7 @@ fn shallow_service_mutation(
             type_name: return_type.get_underlying_typename().to_string(),
             type_modifier: return_type.get_modifier(),
         },
+        interceptors: Interceptors::default(),
     }
 }
 
@@ -181,4 +189,41 @@ fn argument_param(
             }
         })
         .collect()
+}
+
+pub fn create_shallow_intercetor(
+    resolved_service: &ResolvedService,
+    resolved_interceptor: &ResolvedInterceptor,
+    building: &mut SystemContextBuilding,
+) {
+    building.interceptors.add(
+        &resolved_interceptor.name,
+        Interceptor {
+            name: resolved_interceptor.name.clone(),
+            module_path: resolved_service.module_path.clone(),
+            interceptor_kind: match resolved_interceptor.interceptor_kind {
+                super::resolved_builder::ResolvedInterceptorKind::Before(_) => {
+                    InterceptorKind::Before
+                }
+                super::resolved_builder::ResolvedInterceptorKind::After(_) => {
+                    InterceptorKind::After
+                }
+                super::resolved_builder::ResolvedInterceptorKind::Around(_) => {
+                    InterceptorKind::Around
+                }
+            },
+            arguments: resolved_interceptor
+                .arguments
+                .iter()
+                .map(|arg| InterceptorArgument {
+                    name: arg.name.clone(),
+                    type_id: building
+                        .types
+                        .get_id(arg.typ.get_underlying_typename())
+                        .unwrap(),
+                    modifier: arg.typ.get_modifier(),
+                })
+                .collect(),
+        },
+    );
 }

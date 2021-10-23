@@ -122,7 +122,6 @@ impl DenoModulesMap {
         module_path: &Path,
         method_name: &str,
         args: Vec<Arg>,
-
         // TODO: this should become a context struct?
         execute_query: &dyn Fn(String, Option<&serde_json::Map<String, Value>>) -> Result<Value>,
     ) -> Result<serde_json::Value> {
