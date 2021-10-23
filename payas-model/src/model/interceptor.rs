@@ -10,7 +10,6 @@ pub struct Interceptor {
     pub module_path: PathBuf,
     pub interceptor_kind: InterceptorKind,
     pub arguments: Vec<InterceptorArgument>,
-    // pub return_type: OperationReturnType,
 }
 
 // TODO: Could this be an enum, since we accept only a fixed set of arguments (such as `Operation`)
