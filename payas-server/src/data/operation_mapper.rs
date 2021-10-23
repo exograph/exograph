@@ -4,6 +4,7 @@ use anyhow::{anyhow, bail, Result};
 use payas_deno::Arg;
 use postgres::{types::FromSqlOwned, Row};
 use serde_json::json;
+use serde_json::Map;
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 
@@ -104,7 +105,27 @@ pub trait OperationResolver<'a> {
 
         deno_modules_map.load_module(path)?;
         deno_modules_map
-            .execute_function(path, &interceptor.name, arg_sequence)
+            .execute_function(
+                path,
+                &interceptor.name,
+                arg_sequence,
+                // TODO: This block is duplicate of that from resolve_deno()
+                &|query_string, variables| {
+                    let result = query_context
+                        .executor
+                        .execute_with_request_context(
+                            None,
+                            &query_string,
+                            variables,
+                            query_context.request_context.clone(),
+                        )?
+                        .into_iter()
+                        .map(|(name, response)| (name, response.to_json().unwrap()))
+                        .collect::<Map<_, _>>();
+
+                    Ok(serde_json::Value::Object(result))
+                },
+            )
             .map(|_| ())
     }
 }
@@ -274,7 +295,26 @@ fn resolve_deno(
             .collect::<Result<Vec<_>>>()?;
 
         deno_modules_map.load_module(path)?;
-        deno_modules_map.execute_function(path, &method.name, arg_sequence)
+        deno_modules_map.execute_function(
+            path,
+            &method.name,
+            arg_sequence,
+            &|query_string, variables| {
+                let result = query_context
+                    .executor
+                    .execute_with_request_context(
+                        None,
+                        &query_string,
+                        variables,
+                        query_context.request_context.clone(),
+                    )?
+                    .into_iter()
+                    .map(|(name, response)| (name, response.to_json().unwrap()))
+                    .collect::<Map<_, _>>();
+
+                Ok(serde_json::Value::Object(result))
+            },
+        )
     })?;
 
     let result = if let serde_json::Value::Object(_) = function_result {
@@ -294,3 +334,27 @@ fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
         Err(err) => bail!("Got row without any columns {}", err),
     }
 }
+
+// TODO: Define this so that we can use it from multiple ways to invoke (service method and interceptors)
+// fn execute_query_fn<'a>(
+//     query_context: &'a QueryContext<'a>,
+// ) -> &'a dyn Fn(
+//     String,
+//     Option<&serde_json::Map<String, serde_json::Value>>,
+// ) -> Result<serde_json::Value> {
+//     &|query_string: String, variables| {
+//         let result = query_context
+//             .executor
+//             .execute_with_request_context(
+//                 None,
+//                 &query_string,
+//                 variables,
+//                 query_context.request_context.clone(),
+//             )?
+//             .into_iter()
+//             .map(|(name, response)| (name, response.to_json().unwrap()))
+//             .collect::<Map<_, _>>();
+
+//         Ok(serde_json::Value::Object(result))
+//     }
+// }

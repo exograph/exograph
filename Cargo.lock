@@ -2891,9 +2891,11 @@ name = "payas-deno"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
  "deno_core",
  "deno_runtime",
  "futures",
+ "payas-model",
  "serde",
  "serde_json",
  "serde_v8",
@@ -3580,7 +3582,6 @@ dependencies = [
  "num-traits",
  "postgres",
  "serde",
- "serde_json",
 ]
 
 [[package]]

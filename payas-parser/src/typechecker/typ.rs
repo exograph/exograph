@@ -112,7 +112,7 @@ pub enum PrimitiveType {
     Instant,
     Json,
     Array(Box<PrimitiveType>),
-    Injected,
+    ClaytipInjected,
     Interception(String), // Types such as "Operation" that an interceptor is passed to
 }
 
@@ -133,8 +133,8 @@ impl PrimitiveType {
             PrimitiveType::LocalDateTime => "LocalDateTime",
             PrimitiveType::Instant => "Instant",
             PrimitiveType::Json => "Json",
-            PrimitiveType::Injected => "Injected",
-            PrimitiveType::Interception(name) => name, // TODO: Is this right?
+            PrimitiveType::ClaytipInjected => "ClaytipInjected",
+            PrimitiveType::Interception(name) => name,
             PrimitiveType::Array(_) => panic!(),
         }
         .to_owned()

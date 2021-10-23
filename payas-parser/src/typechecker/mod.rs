@@ -86,7 +86,7 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     env.add("Instant", Type::Primitive(PrimitiveType::Instant));
     env.add("Json", Type::Primitive(PrimitiveType::Json));
 
-    env.add("Env", Type::Primitive(PrimitiveType::Injected));
+    env.add("Claytip", Type::Primitive(PrimitiveType::ClaytipInjected));
 
     env.add(
         "Operation",

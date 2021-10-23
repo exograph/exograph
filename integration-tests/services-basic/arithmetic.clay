@@ -5,7 +5,7 @@ context AuthContext {
 
 @table("foo")
 model Foo {
-    id: Int @pk
+    id: Int @pk @autoincrement
     bar: Int
     baz: Int
     qux: Int
@@ -26,9 +26,6 @@ service MathService {
     export query add(x: Int, y: Int): Int
     export query divide(x: Int, y: Int): DivisionResult
 
-    export query sideEffectQuery(): Int 
-    export mutation sideEffectMutation(): Float 
-
-    // TODO
-    // export query log(@inject env: Env, message: LogMessage): Boolean
+    export query shimQuery(@inject claytip: Claytip): Int 
+    export mutation testMutation(@inject claytip: Claytip): Float 
 }

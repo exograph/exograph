@@ -26,7 +26,10 @@ types:
     - - ~
       - Primitive: Json
     - - ~
-      - Primitive: Injected
+      - Primitive: ClaytipInjected
+    - - ~
+      - Primitive:
+          Interception: Operation
     - - ~
       - Composite:
           name: Concert
@@ -147,22 +150,21 @@ types:
                 - true
     - ~
     - ~
-    - ~
   map:
     Boolean:
       index: 0
       generation: ~
+    ClaytipInjected:
+      index: 10
+      generation: ~
     Concert:
-      index: 11
+      index: 12
       generation: ~
     Decimal:
       index: 3
       generation: ~
     Float:
       index: 2
-      generation: ~
-    Injected:
-      index: 10
       generation: ~
     Instant:
       index: 8
@@ -182,11 +184,14 @@ types:
     LocalTime:
       index: 5
       generation: ~
+    Operation:
+      index: 11
+      generation: ~
     String:
       index: 4
       generation: ~
     Venue:
-      index: 12
+      index: 13
       generation: ~
 contexts:
   values:
