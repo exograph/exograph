@@ -507,7 +507,7 @@ fn determine_column_type<'a>(
                 timezone: true,
             },
             PrimitiveType::Json => PhysicalColumnType::Json,
-            PrimitiveType::Array(_) | PrimitiveType::Injected => panic!(),
+            PrimitiveType::Array(_) | PrimitiveType::ClaytipInjected => panic!(),
         }
     }
 }

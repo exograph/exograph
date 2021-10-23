@@ -112,7 +112,7 @@ pub enum PrimitiveType {
     Instant,
     Json,
     Array(Box<PrimitiveType>),
-    Injected,
+    ClaytipInjected,
 }
 
 impl PrimitiveType {
@@ -132,7 +132,7 @@ impl PrimitiveType {
             PrimitiveType::LocalDateTime => "LocalDateTime",
             PrimitiveType::Instant => "Instant",
             PrimitiveType::Json => "Json",
-            PrimitiveType::Injected => "Injected",
+            PrimitiveType::ClaytipInjected => "ClaytipInjected",
             PrimitiveType::Array(_) => panic!(),
         }
         .to_owned()

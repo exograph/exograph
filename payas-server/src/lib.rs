@@ -29,7 +29,7 @@ use std::time::{Duration, SystemTime};
 
 mod authentication;
 mod data;
-mod execution;
+pub mod execution;
 mod introspection;
 pub mod watcher;
 

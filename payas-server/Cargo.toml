@@ -17,7 +17,6 @@ futures-util = "0.3"
 jsonwebtoken = "7.2.0"
 serde_json = { version = "1.0", features = [
   "preserve_order",
-  "arbitrary_precision",
 ] }
 bincode = "1.2.1"
 openssl = "0.10.30"
@@ -30,7 +29,6 @@ r2d2 = "0.8"
 r2d2_postgres = "0.18"
 rust_decimal = { version = "1.15", features = [
   "db-postgres",
-  "serde-arbitrary-precision",
 ] }
 chrono = "0.4.19"
 typed-arena = "2.0.1"
