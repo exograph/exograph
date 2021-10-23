@@ -13,6 +13,7 @@ use payas_model::model::naming::{ToPlural, ToTableName};
 use payas_model::model::GqlTypeModifier;
 
 use crate::ast::ast_types::{AstAnnotationParams, AstArgument, AstFieldType, AstService};
+use crate::typechecker::AnnotationMap;
 use crate::{
     ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
     typechecker::{PrimitiveType, Type, Typed},
@@ -46,6 +47,7 @@ pub struct ResolvedService {
     pub name: String,
     pub module_path: PathBuf,
     pub methods: Vec<ResolvedMethod>,
+    pub interceptors: Vec<ResolvedInterceptor>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -69,6 +71,30 @@ pub struct ResolvedArgument {
     pub name: String,
     pub typ: ResolvedFieldType,
     pub is_injected: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedInterceptor {
+    pub name: String,
+    pub arguments: Vec<ResolvedArgument>,
+    pub interceptor_kind: ResolvedInterceptorKind,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedInterceptorKind {
+    Before(AstExpr<Typed>),
+    After(AstExpr<Typed>),
+    Around(AstExpr<Typed>),
+}
+
+impl ResolvedInterceptorKind {
+    pub fn expr(&self) -> &AstExpr<Typed> {
+        match self {
+            ResolvedInterceptorKind::Before(expr) => expr,
+            ResolvedInterceptorKind::After(expr) => expr,
+            ResolvedInterceptorKind::Around(expr) => expr,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -385,6 +411,13 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                 full_module_path.pop();
                 full_module_path.push(module_path);
 
+                fn extract_intercept_annot<'a>(
+                    annotations: &'a AnnotationMap,
+                    key: &str,
+                ) -> Option<&'a AstExpr<Typed>> {
+                    annotations.get(key).map(|a| a.as_single())
+                }
+
                 resolved_services.add(
                     &service.name,
                     ResolvedService {
@@ -406,6 +439,38 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                                     access,
                                     arguments: vec![],
                                     return_type: ResolvedFieldType::Plain("".to_string()),
+                                }
+                            })
+                            .collect(),
+                        interceptors: service
+                            .interceptors
+                            .iter()
+                            .map(|i| {
+                                let before_annot = extract_intercept_annot(&i.annotations, "before")
+                                    .map(|s| ResolvedInterceptorKind::Before(s.clone()));
+                                let after_annot = extract_intercept_annot(&i.annotations, "after")
+                                    .map(|s| ResolvedInterceptorKind::After(s.clone()));
+                                let around_annot = extract_intercept_annot(&i.annotations, "around")
+                                    .map(|s| ResolvedInterceptorKind::Around(s.clone()));
+
+                                let kind_annots = vec![before_annot, after_annot, around_annot];
+                                let kind_annots: Vec<_> =
+                                    kind_annots.into_iter().flatten().collect();
+
+                                let kind_annot = match kind_annots.as_slice() {
+                                    [] => {
+                                        panic!("Interceptor must have at least one of the before/after/around annotation")
+                                    }
+                                    [single] => single,
+                                    _ => panic!(
+                                        "Interceptor cannot have more than of the before/after/around annotations"
+                                    ),
+                                };
+
+                                ResolvedInterceptor {
+                                    name: i.name.clone(),
+                                    arguments: vec![],
+                                    interceptor_kind: kind_annot.clone(),
                                 }
                             })
                             .collect(),
@@ -528,8 +593,30 @@ fn build_expanded_service(
         })
         .collect();
 
+    let expanded_interceptors = s
+        .interceptors
+        .iter()
+        .map(|i| {
+            let existing_interceptor = existing_service
+                .interceptors
+                .iter()
+                .find(|existing_i| i.name == existing_i.name)
+                .unwrap();
+
+            ResolvedInterceptor {
+                arguments: i
+                    .arguments
+                    .iter()
+                    .map(|a| resolve_argument(a, types, resolved_types))
+                    .collect(),
+                ..existing_interceptor.clone()
+            }
+        })
+        .collect();
+
     let expanded_service = ResolvedService {
         methods: expanded_methods,
+        interceptors: expanded_interceptors,
         ..existing_service.clone()
     };
 

@@ -28,6 +28,9 @@ types:
     - - ~
       - Primitive: ClaytipInjected
     - - ~
+      - Primitive:
+          Interception: Operation
+    - - ~
       - Composite:
           name: Concert
           plural_name: Concerts
@@ -190,7 +193,6 @@ types:
                 - true
     - ~
     - ~
-    - ~
   map:
     Boolean:
       index: 0
@@ -199,7 +201,7 @@ types:
       index: 10
       generation: ~
     Concert:
-      index: 11
+      index: 12
       generation: ~
     Decimal:
       index: 3
@@ -225,11 +227,14 @@ types:
     LocalTime:
       index: 5
       generation: ~
+    Operation:
+      index: 11
+      generation: ~
     String:
       index: 4
       generation: ~
     Venue:
-      index: 12
+      index: 13
       generation: ~
 contexts:
   values:
@@ -294,6 +299,7 @@ services:
             arguments: []
             return_type:
               Plain: String
+        interceptors: []
     - ~
     - ~
     - ~

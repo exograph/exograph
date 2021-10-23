@@ -64,6 +64,7 @@ pub struct AstService<T: NodeTypedness> {
     pub name: String,
     pub models: Vec<AstModel<T>>,
     pub methods: Vec<AstMethod<T>>,
+    pub interceptors: Vec<AstInterceptor<T>>,
     pub annotations: T::Annotations,
     pub base_clayfile: PathBuf,
 }
@@ -75,6 +76,13 @@ pub struct AstMethod<T: NodeTypedness> {
     pub arguments: Vec<AstArgument<T>>,
     pub return_type: AstFieldType<T>,
     pub is_exported: bool,
+    pub annotations: T::Annotations,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstInterceptor<T: NodeTypedness> {
+    pub name: String,
+    pub arguments: Vec<AstArgument<T>>,
     pub annotations: T::Annotations,
 }
 
@@ -194,6 +202,11 @@ impl<T: NodeTypedness> AstExpr<T> {
         match &self {
             AstExpr::FieldSelection(s) => s.span(),
             AstExpr::StringLiteral(_, s) => s,
+            AstExpr::LogicalOp(l) => match l {
+                LogicalOp::Not(e, _, _) => e.span(),
+                LogicalOp::And(_, _, s, _) => s,
+                LogicalOp::Or(_, _, s, _) => s,
+            },
             _ => panic!(),
         }
     }
@@ -232,8 +245,24 @@ pub enum LogicalOp<T: NodeTypedness> {
         Span,
         T::LogicalOp,
     ),
-    And(Box<AstExpr<T>>, Box<AstExpr<T>>, T::LogicalOp),
-    Or(Box<AstExpr<T>>, Box<AstExpr<T>>, T::LogicalOp),
+    And(
+        Box<AstExpr<T>>,
+        Box<AstExpr<T>>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+        T::LogicalOp,
+    ),
+    Or(
+        Box<AstExpr<T>>,
+        Box<AstExpr<T>>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        #[serde(default = "default_span")]
+        Span,
+        T::LogicalOp,
+    ),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

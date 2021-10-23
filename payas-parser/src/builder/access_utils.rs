@@ -106,11 +106,11 @@ pub fn compute_expression(
             }
         }
         AstExpr::LogicalOp(op) => match op {
-            LogicalOp::And(left, right, _) => AccessExpression::LogicalOp(AccessLogicalOp::And(
+            LogicalOp::And(left, right, _, _) => AccessExpression::LogicalOp(AccessLogicalOp::And(
                 Box::new(compute_expression(left, self_type_info, building, true)),
                 Box::new(compute_expression(right, self_type_info, building, true)),
             )),
-            LogicalOp::Or(left, right, _) => AccessExpression::LogicalOp(AccessLogicalOp::Or(
+            LogicalOp::Or(left, right, _, _) => AccessExpression::LogicalOp(AccessLogicalOp::Or(
                 Box::new(compute_expression(left, self_type_info, building, true)),
                 Box::new(compute_expression(right, self_type_info, building, true)),
             )),

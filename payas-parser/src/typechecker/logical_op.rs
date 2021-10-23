@@ -12,8 +12,8 @@ impl LogicalOp<Typed> {
     pub fn typ(&self) -> &Type {
         match &self {
             LogicalOp::Not(_, _, typ) => typ,
-            LogicalOp::And(_, _, typ) => typ,
-            LogicalOp::Or(_, _, typ) => typ,
+            LogicalOp::And(_, _, _, typ) => typ,
+            LogicalOp::Or(_, _, _, typ) => typ,
         }
     }
 }
@@ -23,14 +23,16 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
             LogicalOp::Not(v, s, _) => {
                 LogicalOp::Not(Box::new(AstExpr::shallow(v)), *s, Type::Defer)
             }
-            LogicalOp::And(left, right, _) => LogicalOp::And(
+            LogicalOp::And(left, right, s, _) => LogicalOp::And(
                 Box::new(AstExpr::shallow(left)),
                 Box::new(AstExpr::shallow(right)),
+                *s,
                 Type::Defer,
             ),
-            LogicalOp::Or(left, right, _) => LogicalOp::Or(
+            LogicalOp::Or(left, right, s, _) => LogicalOp::Or(
                 Box::new(AstExpr::shallow(left)),
                 Box::new(AstExpr::shallow(right)),
+                *s,
                 Type::Defer,
             ),
         }
@@ -76,7 +78,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                 };
                 in_updated || out_updated
             }
-            LogicalOp::And(left, right, o_typ) => {
+            LogicalOp::And(left, right, _, o_typ) => {
                 let in_updated = left.pass(type_env, annotation_env, scope, errors)
                     || right.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if o_typ.is_incomplete() {
@@ -127,7 +129,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                 };
                 in_updated || out_updated
             }
-            LogicalOp::Or(left, right, o_typ) => {
+            LogicalOp::Or(left, right, _, o_typ) => {
                 let in_updated = left.pass(type_env, annotation_env, scope, errors)
                     || right.pass(type_env, annotation_env, scope, errors);
                 let out_updated = if o_typ.is_incomplete() {

@@ -199,6 +199,8 @@ pub fn convert_service(
 ) -> AstService<Untyped> {
     let mut model_cursor = node.walk();
     let mut method_cursor = node.walk();
+    let mut iterceptor_cursor = node.walk();
+
     let mut cursor = node.walk();
 
     let model_nodes = node
@@ -215,6 +217,13 @@ pub fn convert_service(
         .map(|n| n.child(0).unwrap())
         .filter(|node| node.kind() == "service_method");
 
+    let intercetor_nodes = node
+        .child_by_field_name("body")
+        .unwrap()
+        .children_by_field_name("field", &mut iterceptor_cursor)
+        .map(|n| n.child(0).unwrap())
+        .filter(|node| node.kind() == "interceptor");
+
     AstService {
         name: node
             .child_by_field_name("name")
@@ -227,6 +236,9 @@ pub fn convert_service(
             .collect(),
         methods: method_nodes
             .map(|n| convert_service_method(n, source, source_span))
+            .collect(),
+        interceptors: intercetor_nodes
+            .map(|n| convert_intercetor(n, source, source_span))
             .collect(),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
@@ -261,6 +273,28 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
             .map(|c| convert_type(c, source, source_span))
             .unwrap(),
         is_exported: node.child_by_field_name("is_exported").is_some(),
+        annotations: node
+            .children_by_field_name("annotation", &mut cursor)
+            .map(|c| convert_annotation(c, source, source_span))
+            .collect(),
+    }
+}
+
+pub fn convert_intercetor(node: Node, source: &[u8], source_span: Span) -> AstInterceptor<Untyped> {
+    let mut cursor = node.walk();
+
+    AstInterceptor {
+        name: node
+            .child_by_field_name("name")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        arguments: node
+            .children_by_field_name("args", &mut cursor)
+            .map(|c| convert_argument(c, source, source_span))
+            .collect(),
+
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
@@ -485,6 +519,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source,
                 source_span,
             )),
+            source_span,
             (),
         ),
         "logical_and" => LogicalOp::And(
@@ -498,6 +533,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source,
                 source_span,
             )),
+            source_span,
             (),
         ),
         "logical_not" => LogicalOp::Not(

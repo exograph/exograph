@@ -5,6 +5,7 @@ use crate::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
     argument::ArgumentParameter,
+    interceptor::Interceptor,
     limit_offset::{LimitParameter, OffsetParameter},
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
@@ -19,6 +20,7 @@ pub struct Query {
     pub name: String,
     pub kind: QueryKind,
     pub return_type: OperationReturnType,
+    pub interceptors: Interceptors,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -43,6 +45,7 @@ pub struct Mutation {
     pub name: String,
     pub kind: MutationKind,
     pub return_type: OperationReturnType,
+    pub interceptors: Interceptors,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -60,6 +63,11 @@ pub enum MutationKind {
         method_id: Option<SerializableSlabIndex<ServiceMethod>>,
         argument_param: Vec<ArgumentParameter>,
     },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct Interceptors {
+    pub interceptors: Vec<Interceptor>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

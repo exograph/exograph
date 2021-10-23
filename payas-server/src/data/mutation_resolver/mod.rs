@@ -72,6 +72,14 @@ impl<'a> OperationResolver<'a> for Mutation {
             }))
         }
     }
+
+    fn interceptors(&self) -> &Interceptors {
+        &self.interceptors
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 pub fn table_name(mutation: &Mutation, operation_context: &OperationContext) -> String {

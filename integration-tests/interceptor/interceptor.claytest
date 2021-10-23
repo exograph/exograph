@@ -1,0 +1,40 @@
+operation: |
+  query {
+    logs(orderBy: {id: ASC}) {
+      message
+    }
+  }
+response: |
+  {
+    "data": {
+      "logs": [
+        {
+          "message": "enterVenueMutation: createVenue"
+        },
+        {
+          "message": "exitVenueMutation: createVenue"
+        },
+        {
+          "message": "enterVenueMutation: createVenue"
+        },
+        {
+          "message": "exitVenueMutation: createVenue"
+        },
+        {
+          "message": "enterConcertMutation: createConcert"
+        },
+        {
+          "message": "exitConcertMutation createConcert"
+        },
+        {
+          "message": "enterConcertMutation: createConcert"
+        },
+        {
+          "message": "exitConcertMutation createConcert"
+        },
+        {
+          "message": "enterQuery: logs"
+        }
+      ]
+    }
+  }

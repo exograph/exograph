@@ -87,6 +87,11 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     env.add("Json", Type::Primitive(PrimitiveType::Json));
 
     env.add("Claytip", Type::Primitive(PrimitiveType::ClaytipInjected));
+
+    env.add(
+        "Operation",
+        Type::Primitive(PrimitiveType::Interception("Operation".to_string())),
+    );
 }
 
 fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
@@ -165,6 +170,33 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             "external",
             AnnotationSpec {
                 targets: &[AnnotationTarget::Service],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "before",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Interceptor],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "after",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Interceptor],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "around",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Interceptor],
                 no_params: false,
                 single_params: true,
                 mapped_params: None,
