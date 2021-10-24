@@ -33,8 +33,14 @@ service Logging {
   @after("mutation *Venue*")
   interceptor exitVenueMutation(operation: Operation, claytip: Claytip)
 
+  // Put an `after` interceptor ahead of the `before` interceptor to test that the `before` interceptor
+  // still applies before the `after` interceptor.
+  @after("query *")
+  interceptor exitQuery(operation: Operation, claytip: Claytip)
+
   @before("query *")
   interceptor enterQuery(operation: Operation, claytip: Claytip)
+
 
   // TODO: Make this work (and drop the requirement that the interceptor expression is a string)
   // @before("mutation *" && !"mutation *Log")

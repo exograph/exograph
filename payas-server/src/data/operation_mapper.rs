@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
 use payas_deno::Arg;
+use payas_model::model::interceptor::InterceptorKind;
 use postgres::{types::FromSqlOwned, Row};
 use serde_json::json;
 use serde_json::Map;
@@ -14,7 +15,7 @@ use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::Value;
 use payas_model::{
     model::{
-        interceptor::{Interceptor, InterceptorKind},
+        interceptor::Interceptor,
         mapped_arena::SerializableSlabIndex,
         operation::{Interceptors, Mutation, OperationReturnType},
         service::{ServiceMethod, ServiceMethodType},
@@ -54,30 +55,41 @@ pub trait OperationResolver<'a> {
         operation_context: &'a OperationContext<'a>,
     ) -> Result<QueryResponse> {
         let resolver_result = self.resolve_operation(field, operation_context)?;
-        self.execute_interceptors(operation_context.query_context, InterceptorKind::Before);
-        let res = resolver_result.execute(field, operation_context);
-        self.execute_interceptors(operation_context.query_context, InterceptorKind::After);
-        res
+
+        let interceptors = self.interceptors().ordered();
+        self.with_interceptors(resolver_result, interceptors, field, operation_context)
     }
 
     fn name(&self) -> &str;
 
     fn interceptors(&self) -> &Interceptors;
 
-    fn execute_interceptors(
+    fn with_interceptors(
         &self,
-        query_context: &QueryContext<'_>,
-        interceptor_kind: InterceptorKind,
-    ) {
-        self.interceptors()
-            .interceptors
-            .iter()
-            .for_each(|interceptor| {
-                if interceptor.interceptor_kind == interceptor_kind {
-                    self.execute_interceptor(interceptor, query_context)
-                        .unwrap();
+        resolver_result: OperationResolverResult<'a>,
+        interceptors: Vec<&Interceptor>,
+        field: &'a Positioned<Field>,
+        operation_context: &'a OperationContext<'a>,
+    ) -> Result<QueryResponse> {
+        match interceptors.split_first() {
+            Some((head, tail)) => {
+                if head.interceptor_kind == InterceptorKind::Before {
+                    self.execute_interceptor(head, operation_context.query_context)?;
+                    self.with_interceptors(resolver_result, tail.to_vec(), field, operation_context)
+                } else {
+                    let res = self.with_interceptors(
+                        resolver_result,
+                        tail.to_vec(),
+                        field,
+                        operation_context,
+                    );
+                    self.execute_interceptor(head, operation_context.query_context)?;
+
+                    res
                 }
-            });
+            }
+            None => resolver_result.execute(field, operation_context),
+        }
     }
 
     fn execute_interceptor(

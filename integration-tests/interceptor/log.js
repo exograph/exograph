@@ -22,8 +22,22 @@ export function enterQuery(operation, claytip) {
     return true
 }
 
+export function exitQuery(operation, claytip) {
+    logEntry(`exitQuery: ${operation.name}`, claytip)
+    return true
+}
+
 export function enterMutation(operation, claytip) {
     logEntry(`enterMutation: ${operation.name}`, claytip)
+    return true
+}
+
+export function timeQuery(operation, claytip) {
+    const startTime = performance.now();
+    console.log(`startTime ${startTime}`);
+    operation.proceed()
+    const endTime = performance.now();
+    console.log(`The query ${operation.name} took ${endTime-startTime} milliseconds`)
     return true
 }
 
