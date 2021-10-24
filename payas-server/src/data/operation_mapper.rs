@@ -2,20 +2,18 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
 use payas_deno::Arg;
-use payas_model::model::interceptor::InterceptorKind;
 use postgres::{types::FromSqlOwned, Row};
-use serde_json::json;
 use serde_json::Map;
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 
+use super::interception::InterceptionOperation;
 use super::{access_solver, operation_context::OperationContext};
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
 use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::Value;
 use payas_model::{
     model::{
-        interceptor::Interceptor,
         mapped_arena::SerializableSlabIndex,
         operation::{Interceptors, Mutation, OperationReturnType},
         service::{ServiceMethod, ServiceMethodType},
@@ -55,94 +53,17 @@ pub trait OperationResolver<'a> {
         operation_context: &'a OperationContext<'a>,
     ) -> Result<QueryResponse> {
         let resolver_result = self.resolve_operation(field, operation_context)?;
-
         let interceptors = self.interceptors().ordered();
-        self.with_interceptors(resolver_result, interceptors, field, operation_context)
+
+        let op_name = &self.name();
+        let interception_operation =
+            InterceptionOperation::new(op_name, resolver_result, interceptors);
+        interception_operation.execute(field, operation_context)
     }
 
     fn name(&self) -> &str;
 
     fn interceptors(&self) -> &Interceptors;
-
-    fn with_interceptors(
-        &self,
-        resolver_result: OperationResolverResult<'a>,
-        interceptors: Vec<&Interceptor>,
-        field: &'a Positioned<Field>,
-        operation_context: &'a OperationContext<'a>,
-    ) -> Result<QueryResponse> {
-        match interceptors.split_first() {
-            Some((head, tail)) => {
-                if head.interceptor_kind == InterceptorKind::Before {
-                    self.execute_interceptor(head, operation_context.query_context)?;
-                    self.with_interceptors(resolver_result, tail.to_vec(), field, operation_context)
-                } else {
-                    let res = self.with_interceptors(
-                        resolver_result,
-                        tail.to_vec(),
-                        field,
-                        operation_context,
-                    );
-                    self.execute_interceptor(head, operation_context.query_context)?;
-
-                    res
-                }
-            }
-            None => resolver_result.execute(field, operation_context),
-        }
-    }
-
-    fn execute_interceptor(
-        &self,
-        interceptor: &Interceptor,
-        query_context: &QueryContext<'_>,
-    ) -> Result<()> {
-        let path = &interceptor.module_path;
-
-        let mut deno_modules_map = query_context.executor.deno_modules_map.lock().unwrap();
-
-        let arg_sequence = interceptor
-            .arguments
-            .iter()
-            .map(|arg| {
-                let arg_type = &query_context.executor.system.types[arg.type_id];
-
-                if arg_type.name == "Operation" {
-                    Ok(Arg::Serde(json!({ "name": self.name() })))
-                } else if arg_type.name == "ClaytipInjected" {
-                    // TODO: Change this to supply a shim if the arg_type is one of the shimmable types
-                    Ok(Arg::Shim(arg_type.name.clone()))
-                } else {
-                    bail!("Invalid argument type {}", arg_type.name)
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        deno_modules_map.load_module(path)?;
-        deno_modules_map
-            .execute_function(
-                path,
-                &interceptor.name,
-                arg_sequence,
-                // TODO: This block is duplicate of that from resolve_deno()
-                &|query_string, variables| {
-                    let result = query_context
-                        .executor
-                        .execute_with_request_context(
-                            None,
-                            &query_string,
-                            variables,
-                            query_context.request_context.clone(),
-                        )?
-                        .into_iter()
-                        .map(|(name, response)| (name, response.to_json().unwrap()))
-                        .collect::<Map<_, _>>();
-
-                    Ok(serde_json::Value::Object(result))
-                },
-            )
-            .map(|_| ())
-    }
 }
 
 pub enum OperationResolverResult<'a> {
