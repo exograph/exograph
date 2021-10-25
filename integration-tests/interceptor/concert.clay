@@ -41,6 +41,12 @@ service Logging {
   @before("query *")
   interceptor enterQuery(operation: Operation, claytip: Claytip)
 
+  // TODO: Investigate why this doesn't work (when we have this along with the other around, we seem to block forever)
+  // @around("query *")
+  // interceptor rateLimitingQuery(operation: Operation, claytip: Claytip)
+
+  @around("query *")
+  interceptor timingQuery(operation: Operation, claytip: Claytip)
 
   // TODO: Make this work (and drop the requirement that the interceptor expression is a string)
   // @before("mutation *" && !"mutation *Log")

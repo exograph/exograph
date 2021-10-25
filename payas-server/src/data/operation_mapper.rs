@@ -7,7 +7,7 @@ use serde_json::Map;
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 
-use super::interception::InterceptionOperation;
+use super::interception::InterceptedOperation;
 use super::{access_solver, operation_context::OperationContext};
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
 use async_graphql_parser::{types::Field, Positioned};
@@ -56,9 +56,10 @@ pub trait OperationResolver<'a> {
         let interceptors = self.interceptors().ordered();
 
         let op_name = &self.name();
-        let interception_operation =
-            InterceptionOperation::new(op_name, resolver_result, interceptors);
-        interception_operation.execute(field, operation_context)
+
+        let intercepted_operation =
+            InterceptedOperation::new(op_name, resolver_result, interceptors);
+        intercepted_operation.execute(field, operation_context)
     }
 
     fn name(&self) -> &str;
@@ -250,6 +251,8 @@ fn resolve_deno(
 
                 Ok(serde_json::Value::Object(result))
             },
+            None,
+            None,
         )
     })?;
 
