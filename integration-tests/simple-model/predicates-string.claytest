@@ -11,12 +11,17 @@ operation: |
         like: logs(where: { text: { like: $like } }) {
             text
         }
+
+        ilike: logs(where: { text: { ilike: $ilike } }) {
+            text
+        }
     }
 variable: |
     {
         "prefix": "[NORMAL]",
         "suffix": "50%",
-        "like": "[ERROR] service stopped"
+        "like": "[ERROR] service stopped",
+        "ilike": "[error] service stopped"
     }
 response: |
     {
@@ -38,6 +43,11 @@ response: |
     			{
     				"text": "[ERROR] service stopped"
     			}
-    		]
+    		],
+    		"ilike": [
+    			{
+    				"text": "[ERROR] service stopped"
+    			}
+    		]            
     	}
     }
