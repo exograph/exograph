@@ -2,6 +2,6 @@
 model ChessPiece {
   id: Int @pk @autoincrement
   name: String
-  position_history: Array[String]
-  neighbor_info: Array[Array[String]]
+  position_history: Array<String>
+  neighbor_info: Array<Array<String>>
 }

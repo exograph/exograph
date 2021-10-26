@@ -1044,7 +1044,7 @@ mod tests {
         model Venue {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")
-          concerts: Set[Concert] @column("custom_venueid")
+          concerts: Set<Concert> @column("custom_venueid")
           capacity: Int @bits(16)
           latitude: Float @size(4)
         }       
@@ -1071,14 +1071,14 @@ mod tests {
           id: Int @pk @autoincrement 
           title: String 
           venue: Venue 
-          attending: Array[String]
-          seating: Array[Array[Boolean]]
+          attending: Array<String>
+          seating: Array<Array<Boolean>>
         }
 
         model Venue             {
           id: Int  @autoincrement @pk 
           name:String 
-          concerts: Set[Concert] 
+          concerts: Set<Concert> 
         }        
         "#;
 

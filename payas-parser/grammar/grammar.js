@@ -87,9 +87,9 @@ module.exports = grammar({
     ),
     type: $ => choice(
       $.optional_type,
-      seq($.term, optional(seq("[", commaSep(field("type_param", $.type)), "]")))
+      seq($.term, optional(seq("<", commaSep(field("type_param", $.type)), ">")))
     ),
-    array_type: $ => seq("[", field("inner", $.type), "]"),
+    array_type: $ => seq("<", field("inner", $.type), ">"),
     optional_type: $ => seq(field("inner", $.type), "?"),
     expression: $ => choice(
       $.parenthetical,
