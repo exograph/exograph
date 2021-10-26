@@ -1,5 +1,6 @@
-use std::{env, path::PathBuf, process, time::SystemTime};
+use std::{env, path::PathBuf, time::SystemTime};
 
+use anyhow::Result;
 use clap::{App, AppSettings, Arg, SubCommand};
 
 use crate::commands::{
@@ -11,7 +12,7 @@ mod commands;
 
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
-fn main() {
+fn main() -> Result<()> {
     let system_start_time = SystemTime::now();
 
     let matches = App::new("Claytip")
@@ -175,8 +176,5 @@ fn main() {
         _ => panic!("Unhandled command name"),
     };
 
-    if let Err(e) = command.run(Some(system_start_time)) {
-        eprintln!("error: {}", e);
-        process::exit(1);
-    }
+    command.run(Some(system_start_time))
 }

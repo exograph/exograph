@@ -16,7 +16,7 @@ pub struct CreateCommand {
 
 impl Command for CreateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        let (ast_system, codemap) = parser::parse_file(&self.model);
+        let (ast_system, codemap) = parser::parse_file(&self.model)?;
         let system = builder::build(ast_system, codemap)?;
 
         println!("{}", SchemaSpec::from_model(system.tables).to_sql());

@@ -1,15 +1,16 @@
 use std::{env, process::exit, time::SystemTime};
 
+use anyhow::Result;
 use payas_server::start_prod_mode;
 
-fn main() {
+fn main() -> Result<()> {
     let system_start_time = SystemTime::now();
 
     let mut args = env::args().skip(1);
 
     if args.len() == 0 {
         // $ clay-server
-        start_prod_mode("index.claypot", Some(system_start_time)).unwrap();
+        start_prod_mode("index.claypot", Some(system_start_time))?;
     } else if args.len() == 1 {
         let file_name = args.next().unwrap();
 
@@ -24,10 +25,12 @@ fn main() {
             exit(1);
         };
 
-        start_prod_mode(&claypot_file, Some(system_start_time)).unwrap()
+        start_prod_mode(&claypot_file, Some(system_start_time))?
     } else {
         // $ clay-server <model-file-name> extra-arguments...
         println!("Usage: clay-server <claypot-file>");
         exit(1);
     }
+
+    Ok(())
 }
