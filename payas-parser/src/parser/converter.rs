@@ -728,7 +728,7 @@ mod tests {
         model Venue {
           id: Int @pk @autoincrement
           name: String
-          concerts: Set[Concert /* here too! */] @column("venueid")
+          concerts: Set<Concert /* here too! */> @column("venueid")
         }
         "#,
         );
@@ -740,7 +740,7 @@ mod tests {
             r#"
         context AuthUser {
             id: Int @jwt("sub") 
-            roles: Array[String] @jwt
+            roles: Array<String> @jwt
          }
         "#,
         );

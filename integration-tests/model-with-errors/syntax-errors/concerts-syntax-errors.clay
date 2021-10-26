@@ -9,5 +9,5 @@ model Concert {
 model Venue {
   id: Int @pk @autoincrement @access(Foo)
   name: String
-  concerts: Concert] @column("venueid")
+  concerts: Concert> @column("venueid")
 }
