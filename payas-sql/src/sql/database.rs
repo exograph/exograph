@@ -8,10 +8,6 @@ use postgres_openssl::MakeTlsConnector;
 use r2d2::{Pool, PooledConnection};
 use r2d2_postgres::PostgresConnectionManager;
 
-fn type_of<T>(_: &T) -> &str {
-    std::any::type_name::<T>()
-}
-
 const URL_PARAM: &str = "CLAY_DATABASE_URL";
 const USER_PARAM: &str = "CLAY_DATABASE_USER";
 const PASSWORD_PARAM: &str = "CLAY_DATABASE_PASSWORD";
@@ -80,7 +76,7 @@ impl<'a> Database {
         };
 
         if check_connection {
-            db.get_pool();
+            db.get_pool()?;
         }
 
         Ok(db)
@@ -89,19 +85,19 @@ impl<'a> Database {
     pub fn get_client(
         &self,
     ) -> Result<PooledConnection<PostgresConnectionManager<MakeTlsConnector>>> {
-        Ok(self.get_pool().get()?)
+        Ok(self.get_pool()?.get()?)
     }
 
-    fn get_pool(&self) -> &Pool<PostgresConnectionManager<MakeTlsConnector>> {
-        self.pool.get_or_init(|| {
-            let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
+    fn get_pool(&self) -> Result<&Pool<PostgresConnectionManager<MakeTlsConnector>>> {
+        self.pool.get_or_try_init::<_, anyhow::Error>(|| {
+            let mut builder = SslConnector::builder(SslMethod::tls())?;
             builder.set_verify(SslVerifyMode::NONE);
             let connector = MakeTlsConnector::new(builder.build());
 
             let manager = PostgresConnectionManager::new(self.config.clone(), connector);
             let pool_builder = Pool::builder().max_size(self.pool_size);
 
-            pool_builder.build(manager).unwrap()
+            Ok(pool_builder.build(manager)?)
         })
     }
 }
