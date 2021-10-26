@@ -1,5 +1,6 @@
 use std::{fs, path::Path};
 
+use anyhow::Result;
 use codemap::CodeMap;
 
 use crate::ast::ast_types::*;
@@ -9,8 +10,11 @@ mod sitter_ffi;
 
 use self::converter::*;
 
-pub fn parse_file<P: AsRef<Path>>(path: P) -> (AstSystem<Untyped>, CodeMap) {
-    let file_content = fs::read_to_string(path.as_ref()).unwrap();
+pub fn parse_file<P: AsRef<Path>>(path: P) -> Result<(AstSystem<Untyped>, CodeMap)> {
+    if !Path::new(path.as_ref()).exists() {
+        anyhow::bail!("File '{}' not found", path.as_ref().display());
+    }
+    let file_content = fs::read_to_string(path.as_ref())?;
     let mut codemap = CodeMap::new();
     let file_span = codemap
         .add_file(
@@ -19,7 +23,7 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> (AstSystem<Untyped>, CodeMap) {
         )
         .span;
     let parsed = parse(file_content.as_str()).unwrap();
-    (
+    Ok((
         convert_root(
             parsed.root_node(),
             file_content.as_bytes(),
@@ -28,7 +32,7 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> (AstSystem<Untyped>, CodeMap) {
             path.as_ref(),
         ),
         codemap,
-    )
+    ))
 }
 
 pub fn parse_str(str: &str) -> (AstSystem<Untyped>, CodeMap) {

@@ -173,6 +173,10 @@ pub fn start_prod_mode(
     claypot_file: impl AsRef<Path> + Clone,
     system_start_time: Option<SystemTime>,
 ) -> Result<()> {
+    if !Path::new(claypot_file.as_ref()).exists() {
+        anyhow::bail!("File '{}' not found", claypot_file.as_ref().display());
+    }
+
     let mut actix_system = System::new("claytip");
 
     match File::open(&claypot_file) {
@@ -208,7 +212,7 @@ pub fn start_dev_mode(
         } else {
             system_start_time
         };
-        let (ast_system, codemap) = parser::parse_file(&model_file);
+        let (ast_system, codemap) = parser::parse_file(&model_file)?;
         let system = builder::build(ast_system, codemap)?;
 
         start_server(system, system_start_time, restart)

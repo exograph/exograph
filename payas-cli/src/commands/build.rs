@@ -40,7 +40,7 @@ impl Command for BuildCommand {
 }
 
 fn build(model: &Path, system_start_time: Option<SystemTime>, _restart: bool) -> Result<()> {
-    let (ast_system, codemap) = parser::parse_file(&model);
+    let (ast_system, codemap) = parser::parse_file(&model)?;
     let system = builder::build(ast_system, codemap)?;
 
     let claypot_file_name = format!("{}pot", &model.to_str().unwrap());
