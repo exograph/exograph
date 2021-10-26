@@ -1,6 +1,12 @@
 use super::{column::Column, Expression, ExpressionContext, ParameterBinding};
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum CaseSensitivity {
+    Sensitive,
+    Insensitive,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Predicate<'a> {
     True,
     False,
@@ -15,7 +21,7 @@ pub enum Predicate<'a> {
     Not(Box<Predicate<'a>>),
 
     // string predicates
-    StringLike(&'a Column<'a>, &'a Column<'a>),
+    StringLike(&'a Column<'a>, &'a Column<'a>, CaseSensitivity),
     StringStartsWith(&'a Column<'a>, &'a Column<'a>),
     StringEndsWith(&'a Column<'a>, &'a Column<'a>),
 
@@ -36,7 +42,8 @@ impl<'a> Predicate<'a> {
             "lte" => Predicate::Lte(lhs, rhs),
             "gt" => Predicate::Gt(lhs, rhs),
             "gte" => Predicate::Gte(lhs, rhs),
-            "like" => Predicate::StringLike(lhs, rhs),
+            "like" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Sensitive),
+            "ilike" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Insensitive),
             "startsWith" => Predicate::StringStartsWith(lhs, rhs),
             "endsWith" => Predicate::StringEndsWith(lhs, rhs),
             "contains" => Predicate::JsonContains(lhs, rhs),
@@ -116,9 +123,13 @@ impl<'a> Expression for Predicate<'a> {
                 let expr = predicate.binding(expression_context);
                 ParameterBinding::new(format!("NOT ({})", expr.stmt), expr.params)
             }
-            Predicate::StringLike(column1, column2) => {
+            Predicate::StringLike(column1, column2, case_sensitivity) => {
                 combine(*column1, *column2, expression_context, |stmt1, stmt2| {
-                    format!("{} LIKE {}", stmt1, stmt2)
+                    if *case_sensitivity == CaseSensitivity::Insensitive {
+                        format!("{} ILIKE {}", stmt1, stmt2)
+                    } else {
+                        format!("{} LIKE {}", stmt1, stmt2)
+                    }
                 })
             }
             // we use the postgres concat operator (||) in order to handle both literals
@@ -166,7 +177,7 @@ fn combine<'a, E1: Expression, E2: Expression>(
     predicate1: &'a E1,
     predicate2: &'a E2,
     expression_context: &mut ExpressionContext,
-    joiner: fn(String, String) -> String,
+    joiner: impl Fn(String, String) -> String,
 ) -> ParameterBinding<'a> {
     let expr1 = predicate1.binding(expression_context);
     let expr2 = predicate2.binding(expression_context);
@@ -268,10 +279,21 @@ mod tests {
 
         // like
         let mut expression_context = ExpressionContext::default();
-        let like_predicate = Predicate::StringLike(&title_col, &title_value_col);
+        let like_predicate =
+            Predicate::StringLike(&title_col, &title_value_col, CaseSensitivity::Sensitive);
         assert_binding!(
             &like_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE $1"#,
+            "utawaku"
+        );
+
+        // ilike
+        let mut expression_context = ExpressionContext::default();
+        let ilike_predicate =
+            Predicate::StringLike(&title_col, &title_value_col, CaseSensitivity::Insensitive);
+        assert_binding!(
+            &ilike_predicate.binding(&mut expression_context),
+            r#""videos"."title" ILIKE $1"#,
             "utawaku"
         );
 
