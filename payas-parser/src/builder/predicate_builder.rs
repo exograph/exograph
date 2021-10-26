@@ -114,7 +114,7 @@ lazy_static! {
             Some(vec![
                 "eq", "neq",
                 "lt", "lte", "gt", "gte",
-                "like", "startsWith", "endsWith"
+                "like", "ilike", "startsWith", "endsWith"
             ])
         );
 
