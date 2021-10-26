@@ -183,8 +183,13 @@ impl<'a> InterceptedOperation<'a> {
                     operation_context.query_context,
                     Some(&|| {
                         core.execute(field, operation_context)
-                            .map(|response| response.to_json())
-                            .unwrap()
+                            .map(|response| match response {
+                                QueryResponse::Json(json) => json,
+                                QueryResponse::Raw(string) => match string {
+                                    Some(string) => serde_json::Value::String(string),
+                                    None => serde_json::Value::Null,
+                                },
+                            })
                     }),
                 )?;
                 match res {

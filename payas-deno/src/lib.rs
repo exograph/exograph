@@ -212,7 +212,6 @@ impl DenoModulesMap {
                 }
                 FromDenoMessage::RequestInteceptedOperationProceed => {
                     let res = proceed_intercepted_operation.unwrap()();
-
                     rpc_sender
                         .send(ToDenoMessage::ResponseInteceptedOperationProceed(res))
                         .unwrap()
