@@ -411,6 +411,18 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                 full_module_path.pop();
                 full_module_path.push(module_path);
 
+                // compile TypeScript files using tsc
+                if let Some(ext) = full_module_path.extension() {
+                    if ext == "ts" {
+                        std::process::Command::new("tsc")
+                            .args(["--strict", full_module_path.to_str().unwrap()])
+                            .output()
+                            .expect("failed to execute process");
+
+                        full_module_path.set_extension("js");
+                    }
+                }
+
                 fn extract_intercept_annot<'a>(
                     annotations: &'a AnnotationMap,
                     key: &str,
