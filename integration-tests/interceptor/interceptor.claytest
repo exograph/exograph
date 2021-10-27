@@ -1,5 +1,8 @@
 operation: |
   query {
+    venue(id: 1) {
+      id
+    }
     logs(orderBy: {id: ASC}) {
       message
     }
@@ -7,6 +10,9 @@ operation: |
 response: |
   {
     "data": {
+      "venue": {
+        "id": 1
+      },
       "logs": [
         {
           "message": "enterVenueMutation: createVenue"
@@ -33,7 +39,22 @@ response: |
           "message": "exitConcertMutation createConcert"
         },
         {
+          "message": "enterQuery: venue"
+        },
+        {
+          "message": "start timingQuery: venue"
+        },
+        {
+          "message": "end timingQuery: venue"
+        },
+        {
+          "message": "exitQuery: venue"
+        },
+        {
           "message": "enterQuery: logs"
+        },
+        {
+          "message": "start timingQuery: logs"
         }
       ]
     }

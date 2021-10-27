@@ -27,6 +27,9 @@ pub enum ToDenoMessage {
     RequestMethodCall(String, Vec<Arg>),
 
     ResponseClaytipExecute(Result<Value>),
+
+    ResponseInteceptedOperationName(String),
+    ResponseInteceptedOperationProceed(Result<Value>), // This should be Result<QueryResponse>, but we don't have that in the scope
 }
 
 pub enum FromDenoMessage {
@@ -36,6 +39,9 @@ pub enum FromDenoMessage {
         query_string: String,
         variables: Option<serde_json::Map<String, Value>>,
     },
+
+    RequestInteceptedOperationName,
+    RequestInteceptedOperationProceed,
 }
 
 impl DenoModulesMap {
@@ -50,7 +56,10 @@ impl DenoModulesMap {
             let path = module_path.to_path_buf();
 
             std::thread::spawn(move || {
-                let shims = vec![("ClaytipInjected", include_str!("claytip_shim.js"))];
+                let shims = vec![
+                    ("ClaytipInjected", include_str!("claytip_shim.js")),
+                    ("Operation", include_str!("operation_shim.js")),
+                ];
 
                 let to_claytip = value_sender.clone();
                 let from_claytip = rpc_receiver.clone();
@@ -59,32 +68,72 @@ impl DenoModulesMap {
 
                 let mut module = runtime
                     .block_on(DenoModule::new(&path, "Claytip", &shims, &move |runtime| {
-                        let claytip_sender = to_claytip.clone();
-                        let claytip_receiver = from_claytip.clone();
+                        let claytip_sender1 = to_claytip.clone();
+                        let claytip_sender2 = to_claytip.clone();
+                        let claytip_sender3 = to_claytip.clone();
 
-                        let sync_ops = vec![(
-                            "op_claytip_execute_query",
-                            deno_core::op_sync(move |_state, args: Vec<String>, _: ()| {
-                                let query_string = &args[0];
-                                let variables: Option<serde_json::Map<String, Value>> =
-                                    args.get(1).map(|vars| serde_json::from_str(vars).unwrap());
+                        let claytip_receiver1 = from_claytip.clone();
+                        let claytip_receiver2 = from_claytip.clone();
+                        let claytip_receiver3 = from_claytip.clone();
 
-                                claytip_sender
-                                    .send(FromDenoMessage::RequestClaytipExecute {
-                                        query_string: query_string.to_owned(),
-                                        variables,
-                                    })
-                                    .unwrap();
+                        let sync_ops = vec![
+                            (
+                                "op_claytip_execute_query",
+                                deno_core::op_sync(move |_state, args: Vec<String>, _: ()| {
+                                    let query_string = &args[0];
+                                    let variables: Option<serde_json::Map<String, Value>> =
+                                        args.get(1).map(|vars| serde_json::from_str(vars).unwrap());
 
-                                if let ToDenoMessage::ResponseClaytipExecute(result) =
-                                    claytip_receiver.recv().unwrap()
-                                {
-                                    result
-                                } else {
-                                    panic!()
-                                }
-                            }),
-                        )];
+                                    claytip_sender1
+                                        .send(FromDenoMessage::RequestClaytipExecute {
+                                            query_string: query_string.to_owned(),
+                                            variables,
+                                        })
+                                        .unwrap();
+
+                                    if let ToDenoMessage::ResponseClaytipExecute(result) =
+                                        claytip_receiver1.recv().unwrap()
+                                    {
+                                        result
+                                    } else {
+                                        panic!()
+                                    }
+                                }),
+                            ),
+                            (
+                                "op_intercepted_operation_name",
+                                deno_core::op_sync(move |_state, _: (), _: ()| {
+                                    claytip_sender2
+                                        .send(FromDenoMessage::RequestInteceptedOperationName)
+                                        .unwrap();
+
+                                    if let ToDenoMessage::ResponseInteceptedOperationName(result) =
+                                        claytip_receiver2.recv().unwrap()
+                                    {
+                                        Ok(result)
+                                    } else {
+                                        panic!()
+                                    }
+                                }),
+                            ),
+                            (
+                                "op_intercepted_proceed",
+                                deno_core::op_sync(move |_state, _: (), _: ()| {
+                                    claytip_sender3
+                                        .send(FromDenoMessage::RequestInteceptedOperationProceed)
+                                        .unwrap();
+
+                                    if let ToDenoMessage::ResponseInteceptedOperationProceed(
+                                        result,
+                                    ) = claytip_receiver3.recv().unwrap()
+                                    {
+                                        result
+                                    } else {
+                                        panic!()
+                                    }
+                                }),
+                            ),
+                        ];
                         for (name, op) in sync_ops {
                             runtime.register_op(name, op);
                         }
@@ -120,7 +169,10 @@ impl DenoModulesMap {
         method_name: &str,
         args: Vec<Arg>,
         // TODO: this should become a context struct?
+        // TODO: could thes arguments be removed (and moved as constructor args)?
         execute_query: &dyn Fn(String, Option<&serde_json::Map<String, Value>>) -> Result<Value>,
+        get_intercepted_operation_name: Option<&dyn Fn() -> String>,
+        proceed_intercepted_operation: Option<&dyn Fn() -> Result<Value>>,
     ) -> Result<serde_json::Value> {
         let mutex = &self.module_map[module_path];
         let ptr = mutex
@@ -145,6 +197,20 @@ impl DenoModulesMap {
                     let result = execute_query(query_string, variables.as_ref());
                     rpc_sender
                         .send(ToDenoMessage::ResponseClaytipExecute(result))
+                        .unwrap()
+                }
+                FromDenoMessage::RequestInteceptedOperationName => {
+                    let operation_name = get_intercepted_operation_name.unwrap()();
+                    rpc_sender
+                        .send(ToDenoMessage::ResponseInteceptedOperationName(
+                            operation_name,
+                        ))
+                        .unwrap()
+                }
+                FromDenoMessage::RequestInteceptedOperationProceed => {
+                    let res = proceed_intercepted_operation.unwrap()();
+                    rpc_sender
+                        .send(ToDenoMessage::ResponseInteceptedOperationProceed(res))
                         .unwrap()
                 }
             }
