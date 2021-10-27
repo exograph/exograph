@@ -22,7 +22,7 @@ use serde_json::Map;
 /// Example: A service is set up with multiple interceptors in the following order (and identical
 /// interceptor expressions):
 ///
-/// ```
+/// ```ignore
 /// @before 1
 /// @before 2
 /// @after  3   (has higher precedence than around 1, so must execute prior to finishing around 1)
@@ -41,7 +41,7 @@ use serde_json::Map;
 /// We want to execute the interceptors in the followiong order.
 
 ///
-/// ```
+/// ```ignore
 /// <before 1/>
 /// <before 2/>
 /// <around 1>
@@ -59,7 +59,7 @@ use serde_json::Map;
 ///
 /// Will translate to:
 ///
-/// ```
+/// ```ingore
 /// InterceptedOperation::Intercepted (
 ///     before: [
 ///         Interception::NonProceedingInterception(before 1)

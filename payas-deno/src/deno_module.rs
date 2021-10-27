@@ -94,7 +94,7 @@ impl DenoModule {
                 no_color: false,
                 runtime_version: "x".to_string(),
                 ts_version: "x".to_string(),
-                unstable: false,
+                unstable: true,
             },
             extensions: vec![],
             unsafely_ignore_certificate_errors: None,
