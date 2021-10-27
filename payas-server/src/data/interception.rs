@@ -212,7 +212,7 @@ fn execute_interceptor<'a>(
 ) -> Result<serde_json::Value> {
     let path = &interceptor.module_path;
 
-    let mut deno_modules_map = query_context.executor.deno_modules_map.lock().unwrap();
+    let mut deno_modules_map = query_context.executor.deno_modules_map.try_lock().unwrap();
 
     let arg_sequence = interceptor
         .arguments
