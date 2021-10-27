@@ -411,27 +411,23 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                 full_module_path.pop();
                 full_module_path.push(module_path);
 
-                // compile TypeScript files using Deno
-                if let Some(ext) = full_module_path.extension() {
-                    if ext == "ts" {
-                        let mut out_path = full_module_path.clone();
-                        out_path.set_extension("bundle.js");
+                // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
+                let mut out_path = full_module_path.clone();
+                out_path.set_extension("bundle.js");
 
-                        let mut child = std::process::Command::new("deno")
-                            .args([
-                                "bundle",
-                                "--no-check",
-                                full_module_path.to_str().unwrap(),
-                                out_path.to_str().unwrap(),
-                            ])
-                            .spawn()?;
+                let mut child = std::process::Command::new("deno")
+                    .args([
+                        "bundle",
+                        "--no-check",
+                        full_module_path.to_str().unwrap(),
+                        out_path.to_str().unwrap(),
+                    ])
+                    .spawn()?;
 
-                        child.wait()?;
+                child.wait()?;
 
-                        // replace import with new path
-                        full_module_path = out_path;
-                    }
-                }
+                // replace import with new path
+                full_module_path = out_path;
 
                 fn extract_intercept_annot<'a>(
                     annotations: &'a AnnotationMap,
