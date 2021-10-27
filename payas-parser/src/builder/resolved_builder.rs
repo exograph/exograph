@@ -411,15 +411,25 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                 full_module_path.pop();
                 full_module_path.push(module_path);
 
-                // compile TypeScript files using tsc
+                // compile TypeScript files using Deno
                 if let Some(ext) = full_module_path.extension() {
                     if ext == "ts" {
-                        std::process::Command::new("tsc")
-                            .args(["--strict", full_module_path.to_str().unwrap()])
-                            .output()
-                            .expect("failed to execute process");
+                        let mut out_path = full_module_path.clone();
+                        out_path.set_extension("bundle.js");
 
-                        full_module_path.set_extension("js");
+                        let mut child = std::process::Command::new("deno")
+                            .args([
+                                "bundle",
+                                "--no-check",
+                                full_module_path.to_str().unwrap(),
+                                out_path.to_str().unwrap(),
+                            ])
+                            .spawn()?;
+
+                        child.wait()?;
+
+                        // replace import with new path
+                        full_module_path = out_path;
                     }
                 }
 

@@ -1,0 +1,32 @@
+model User {
+    id: Int @pk @autoincrement
+
+    email: String     // login e-mail
+    role: String      // user role
+    name: String      // user's name (e.g. John Doe)
+
+    password: String  // bcrypted password (if provided)
+}
+
+@external("login-google.ts")
+service LoginGoogle {
+    // Takes a code from client-side authentication and issues a JWT token on success
+    export mutation loginGoogle(code: String, @inject claytip: Claytip): String
+}
+
+@external("login-email-password.ts")
+service LoginNormal {
+    // Takes a login and a password from the client authentication and issues a JWT token on success
+    export mutation login(email: String, password: String, @inject claytip: Claytip): String
+}
+
+@external("signup.ts")
+service Signup {
+    // Given an e-mail and a password, create a user in the database
+    export mutation signup(
+        email: String, 
+        password: String,
+        name: String,
+        @inject claytip: Claytip
+    ): Int
+}
