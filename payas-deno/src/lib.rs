@@ -10,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
+use tokio::runtime::Runtime;
 
 pub use deno_module::{Arg, DenoModule};
 
@@ -54,11 +55,10 @@ impl DenoModulesMap {
                 let to_claytip = value_sender.clone();
                 let from_claytip = rpc_receiver.clone();
 
-                let mut module = futures::executor::block_on(DenoModule::new(
-                    &path,
-                    "Claytip",
-                    &shims,
-                    &move |runtime| {
+                let runtime = Runtime::new().unwrap();
+
+                let mut module = runtime
+                    .block_on(DenoModule::new(&path, "Claytip", &shims, &move |runtime| {
                         let claytip_sender = to_claytip.clone();
                         let claytip_receiver = from_claytip.clone();
 
@@ -88,18 +88,15 @@ impl DenoModulesMap {
                         for (name, op) in sync_ops {
                             runtime.register_op(name, op);
                         }
-                    },
-                ))
-                .unwrap();
+                    }))
+                    .unwrap();
 
                 loop {
                     if let ToDenoMessage::RequestMethodCall(method_name, args) =
                         rpc_receiver.recv().unwrap()
                     {
                         module.preload_function(vec![&method_name]);
-                        let val = futures::executor::block_on(
-                            module.execute_function(&method_name, args),
-                        );
+                        let val = runtime.block_on(module.execute_function(&method_name, args));
 
                         value_sender
                             .send(FromDenoMessage::ResponseMethodCall(val))
