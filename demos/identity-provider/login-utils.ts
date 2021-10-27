@@ -24,7 +24,7 @@ export async function createJwt(payload: JWTPayload, secret: string): Promise<st
 }
 
 export async function queryUserInfo(email: string, claytip: any): Promise<JWTPayload> {
-    const res = claytip.executeQuery(`
+  const res = claytip.executeQuery(`
         query ($email: String!) {
             users(where: { email: { eq: $email }}) {
                 id
@@ -34,19 +34,21 @@ export async function queryUserInfo(email: string, claytip: any): Promise<JWTPay
             }
         } 
     `, {
-        email: email,
-    });
+    email: email,
+  });
 
-    console.log(res);
+  if (res.users.length === 0) {
+    throw new Error("User not found");
+  }
 
-    let user = res.users[0];
+  let user = res.users[0];
 
-    const payload = {
-      sub: user.id,
-      role: user.role,
-      name: user.name,
-      email: email,
-    };
-  
-    return payload;
+  const payload = {
+    sub: user.id,
+    role: user.role,
+    name: user.name,
+    email: email,
+  };
+
+  return payload;
 }
