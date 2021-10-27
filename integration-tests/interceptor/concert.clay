@@ -33,8 +33,20 @@ service Logging {
   @after("mutation *Venue*")
   interceptor exitVenueMutation(operation: Operation, claytip: Claytip)
 
+  // Put an `after` interceptor ahead of the `before` interceptor to test that the `before` interceptor
+  // still applies before the `after` interceptor.
+  @after("query *")
+  interceptor exitQuery(operation: Operation, claytip: Claytip)
+
   @before("query *")
   interceptor enterQuery(operation: Operation, claytip: Claytip)
+
+  // TODO: Investigate why this doesn't work (when we have this along with the other around, we seem to block forever)
+  // @around("query *")
+  // interceptor rateLimitingQuery(operation: Operation, claytip: Claytip)
+
+  @around("query *")
+  interceptor timingQuery(operation: Operation, claytip: Claytip)
 
   // TODO: Make this work (and drop the requirement that the interceptor expression is a string)
   // @before("mutation *" && !"mutation *Log")

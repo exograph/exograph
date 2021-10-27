@@ -65,6 +65,8 @@ async fn test_module_map_threaded() {
                         Arg::Serde(Value::Number(2.into())),
                     ],
                     &no_op,
+                    None,
+                    None,
                 )
                 .unwrap();
 
