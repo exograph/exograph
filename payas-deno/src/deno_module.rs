@@ -1,7 +1,13 @@
 use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
+use deno_core::FsModuleLoader;
 use deno_core::JsRuntime;
+use deno_runtime::ops::worker_host::CreateWebWorkerArgs;
+use deno_runtime::web_worker::SendableWebWorkerHandle;
+use deno_runtime::web_worker::WebWorker;
+use deno_runtime::web_worker::WebWorkerOptions;
+use deno_runtime::web_worker::WebWorkerType;
 use std::sync::Mutex;
 
 use deno_core::v8::Global;
@@ -48,6 +54,51 @@ pub struct DenoScript {
     pub script: Global<Script>,
 }
 
+lazy_static::lazy_static! {
+    static ref BOOTSTRAP: BootstrapOptions = BootstrapOptions {
+        apply_source_maps: false,
+        args: vec![],
+        cpu_count: 1,
+        debug_flag: false,
+        enable_testing_features: false,
+        location: None,
+        no_color: false,
+        runtime_version: "x".to_string(),
+        ts_version: "x".to_string(),
+        unstable: true,
+    };
+}
+
+fn create_web_worker(args: CreateWebWorkerArgs) -> (WebWorker, SendableWebWorkerHandle) {
+    let module_loader = Rc::new(FsModuleLoader);
+
+    WebWorker::bootstrap_from_options(
+        args.name,
+        Permissions::allow_all(),
+        args.main_module,
+        args.worker_id,
+        WebWorkerOptions {
+            bootstrap: BOOTSTRAP.clone(),
+            extensions: vec![],
+            unsafely_ignore_certificate_errors: None,
+            root_cert_store: None,
+            user_agent: "Claytip".into(),
+            seed: None,
+            module_loader,
+            create_web_worker_cb: Arc::new(Box::new(create_web_worker)),
+            js_error_create_fn: None,
+            use_deno_namespace: false,
+            worker_type: WebWorkerType::Module,
+            maybe_inspector_server: None,
+            get_error_class_fn: None,
+            blob_store: BlobStore::default(),
+            broadcast_channel: InMemoryBroadcastChannel::default(),
+            shared_array_buffer_store: None,
+            compiled_wasm_module_store: None,
+        },
+    )
+}
+
 impl DenoModule {
     pub async fn new(
         user_module_path: &Path,
@@ -79,23 +130,12 @@ impl DenoModule {
             module_specifier: main_module_specifier.clone(),
         });
 
-        let create_web_worker_cb = Arc::new(|_| {
-            todo!("Web workers are not supported in the example");
-        });
+        let create_web_worker_cb = Arc::new(Box::new(|args: CreateWebWorkerArgs| {
+            create_web_worker(args)
+        }));
 
         let options = WorkerOptions {
-            bootstrap: BootstrapOptions {
-                apply_source_maps: false,
-                args: vec![],
-                cpu_count: 1,
-                debug_flag: false,
-                enable_testing_features: false,
-                location: None,
-                no_color: false,
-                runtime_version: "x".to_string(),
-                ts_version: "x".to_string(),
-                unstable: true,
-            },
+            bootstrap: BOOTSTRAP.clone(),
             extensions: vec![],
             unsafely_ignore_certificate_errors: None,
             root_cert_store: None,
