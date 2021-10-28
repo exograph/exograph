@@ -1,6 +1,6 @@
 import { RSA, encode } from "https://deno.land/x/god_crypto@v1.4.8/mod.ts";
 import { decode } from "https://deno.land/x/djwt@v2.4/mod.ts";
-import { LoginResult } from "./auth-social";
+import { LoginResult } from "./auth-social.ts";
 
 interface GoogleJwtPayload {
   email: string;
