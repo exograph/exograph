@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
+use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
 use postgres::{types::FromSqlOwned, Row};
 use serde_json::Map;
@@ -34,7 +35,7 @@ pub trait SQLUpdateMapper<'a> {
     fn update_script(
         &'a self,
         mutation: &'a Mutation,
-        predicate: &'a Predicate,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
         select: Select<'a>,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,

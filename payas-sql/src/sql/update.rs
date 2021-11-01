@@ -12,7 +12,7 @@ use super::{
 #[derive(Debug)]
 pub struct Update<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: &'a Predicate<'a>,
+    pub predicate: MaybeOwned<'a, Predicate<'a>>,
     pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)>,
     pub returning: Vec<&'a Column<'a>>,
 }
@@ -108,7 +108,7 @@ impl<'a> TemplateUpdate<'a> {
                     .collect();
                 Update {
                     table,
-                    predicate,
+                    predicate: (*predicate).into(),
                     column_values: resolved_column_values,
                     returning: returning.clone(),
                 }

@@ -14,6 +14,7 @@ mod update_data_param_mapper;
 use anyhow::*;
 use async_graphql_parser::Positioned;
 use async_graphql_value::{Name, Value};
+use maybe_owned::MaybeOwned;
 
 use crate::sql::predicate::Predicate;
 
@@ -37,9 +38,9 @@ fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Value> {
 fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
-    additional_predicate: Predicate<'a>,
+    additional_predicate: MaybeOwned<'a, Predicate<'a>>,
     operation_context: &'a OperationContext<'a>,
-) -> Result<&'a Predicate<'a>> {
+) -> Result<MaybeOwned<'a, Predicate<'a>>> {
     let predicate = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
@@ -52,9 +53,11 @@ fn compute_predicate<'a>(
         .context("While mapping predicate parameters to SQL")?;
 
     let predicate = match predicate {
-        Some(predicate) => Predicate::And(Box::new(predicate), Box::new(additional_predicate)),
+        Some(predicate) => {
+            Predicate::And(Box::new(predicate.into()), Box::new(additional_predicate)).into()
+        }
         None => additional_predicate,
     };
 
-    Ok(operation_context.create_predicate(predicate))
+    Ok(predicate)
 }

@@ -172,7 +172,7 @@ fn transaction_zero_matches() {
             let name_literal = Column::Literal(Box::new("abc"));
             let update_op = people_table_info.table.update(
                 vec![(people_table_info.name_phys_col, &name_literal)],
-                &Predicate::True,
+                Predicate::True.into(),
                 vec![people_table_info.age_col],
             );
 

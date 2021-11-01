@@ -128,7 +128,7 @@ impl<'a> TemplateInsert<'a> {
             } = self;
 
             let resolved_cols = (0..row_count)
-                .flat_map(|row_index| Self::expand_row(column_values_seq, row_index))
+                .flat_map(move |row_index| Self::expand_row(column_values_seq, row_index))
                 .collect();
 
             Some(Insert {

@@ -1,14 +1,16 @@
 use std::rc::Rc;
 
+use maybe_owned::MaybeOwned;
+
 use super::{
     column::Column, physical_table::PhysicalTable, predicate::Predicate,
     transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Delete<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: Option<&'a Predicate<'a>>,
+    pub predicate: Option<MaybeOwned<'a, Predicate<'a>>>,
     pub returning: Vec<&'a Column<'a>>,
 }
 
@@ -18,6 +20,7 @@ impl<'a> Expression for Delete<'a> {
 
         let predicate_binding = self
             .predicate
+            .as_ref()
             .map(|predicate| predicate.binding(expression_context));
 
         let (stmt, mut params) = match predicate_binding {
@@ -68,7 +71,7 @@ impl<'a> TemplateDelete<'a> {
     pub fn resolve(&'a self, _prev_step: Rc<TransactionStep<'a>>) -> Delete<'a> {
         Delete {
             table: self.table,
-            predicate: self.predicate,
+            predicate: self.predicate.map(|p| p.into()),
             returning: self.returning.clone(),
         }
     }

@@ -94,7 +94,7 @@ fn reduce_relational_op<'a>(
                                 &Predicate::False
                             }
                             (Some(left_col), Some(right_col)) => operation_context
-                                .create_predicate(Predicate::Eq(left_col, right_col)),
+                                .create_predicate(Predicate::Eq(left_col.into(), right_col.into())),
                             _ => &Predicate::False, // One of the side is None
                         }
                     }
@@ -111,7 +111,8 @@ fn reduce_relational_op<'a>(
                     match (column, value) {
                         (Some(column), Some(value)) => {
                             let value = literal_column(value, operation_context).unwrap();
-                            operation_context.create_predicate(Predicate::Eq(column, value))
+                            operation_context
+                                .create_predicate(Predicate::Eq(column.into(), value.into()))
                         }
                         _ => &Predicate::False,
                     }
@@ -159,8 +160,8 @@ fn reduce_logical_op<'a>(
                 (Predicate::True, right_predicate) => right_predicate,
                 (left_predicate, Predicate::True) => left_predicate,
                 _ => operation_context.create_predicate(Predicate::And(
-                    Box::new(left_predicate.clone()),
-                    Box::new(right_predicate.clone()),
+                    Box::new(left_predicate.into()),
+                    Box::new(right_predicate.into()),
                 )),
             }
         }
@@ -183,8 +184,8 @@ fn reduce_logical_op<'a>(
                 (Predicate::False, right_predicate) => right_predicate,
                 (left_predicate, Predicate::False) => left_predicate,
                 _ => operation_context.create_predicate(Predicate::And(
-                    Box::new(left_predicate.clone()),
-                    Box::new(right_predicate.clone()),
+                    Box::new(left_predicate.into()),
+                    Box::new(right_predicate.into()),
                 )),
             }
         }

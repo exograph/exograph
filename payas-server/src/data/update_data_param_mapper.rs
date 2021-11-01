@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use anyhow::*;
 use async_graphql_value::Value;
+use maybe_owned::MaybeOwned;
 
 use crate::{
     data::mutation_resolver::{return_type_info, table_name},
@@ -36,7 +37,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
     fn update_script(
         &'a self,
         mutation: &'a Mutation,
-        predicate: &'a Predicate,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
         select: Select<'a>,
         argument: &'a Value,
         operation_context: &'a OperationContext<'a>,
@@ -309,7 +310,10 @@ fn compute_nested_update_object_arg<'a>(
         .iter()
         .fold(Predicate::True, |acc, (pk_col, value)| {
             let pk_column = operation_context.create_column(Column::Physical(pk_col));
-            Predicate::And(Box::new(acc), Box::new(Predicate::Eq(pk_column, value)))
+            Predicate::And(
+                Box::new(acc.into()),
+                Box::new(Predicate::Eq(pk_column.into(), (*value).into()).into()),
+            )
         });
     let table = &system.tables[field_model_type.table_id().unwrap()];
 
@@ -427,8 +431,10 @@ fn compute_nested_delete<'a>(
                     .unwrap();
 
                 Predicate::Eq(
-                    operation_context.create_column(Column::Physical(pk_column)),
-                    operation_context.literal_column(pk_value, pk_column),
+                    operation_context
+                        .create_column(Column::Physical(pk_column))
+                        .into(),
+                    operation_context.literal_column(pk_value, pk_column).into(),
                 )
             }
             Value::List(values) => {
@@ -436,7 +442,8 @@ fn compute_nested_delete<'a>(
                 for value in values {
                     let elem_predicate =
                         compute_predicate(value, field_model_type, operation_context);
-                    predicate = Predicate::Or(Box::new(predicate), Box::new(elem_predicate));
+                    predicate =
+                        Predicate::Or(Box::new(predicate.into()), Box::new(elem_predicate.into()));
                 }
                 predicate
             }

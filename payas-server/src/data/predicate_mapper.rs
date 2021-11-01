@@ -26,7 +26,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_column, op_value_column) =
                     operands(self, argument_value, operation_context);
-                Ok(Predicate::Eq(op_key_column, op_value_column))
+                Ok(Predicate::Eq(op_key_column.into(), op_value_column.into()))
             }
             PredicateParameterTypeKind::Opeartor(parameters) => {
                 Ok(parameters.iter().fold(Predicate::True, |acc, parameter| {
@@ -40,7 +40,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                         None => Predicate::True,
                     };
 
-                    Predicate::And(Box::new(acc), Box::new(new_predicate))
+                    Predicate::And(Box::new(acc.into()), Box::new(new_predicate.into()))
                 }))
             }
             PredicateParameterTypeKind::Composite(parameters, boolean_params) => {
@@ -103,7 +103,10 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                                     for argument in arguments.iter() {
                                         let mapped =
                                             self.map_to_sql(argument, operation_context)?;
-                                        new_predicate = predicate_connector(new_predicate, mapped);
+                                        new_predicate = predicate_connector(
+                                            new_predicate.into(),
+                                            mapped.into(),
+                                        );
                                     }
 
                                     Ok(new_predicate)
@@ -113,7 +116,8 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                             }
 
                             "not" => Ok(Predicate::Not(Box::new(
-                                self.map_to_sql(boolean_argument_value, operation_context)?,
+                                self.map_to_sql(boolean_argument_value, operation_context)?
+                                    .into(),
                             ))),
 
                             _ => todo!(),
@@ -134,8 +138,10 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                                 None => Predicate::True,
                             };
 
-                            new_predicate =
-                                Predicate::And(Box::new(new_predicate), Box::new(mapped))
+                            new_predicate = Predicate::And(
+                                Box::new(new_predicate.into()),
+                                Box::new(mapped.into()),
+                            )
                         }
 
                         Ok(new_predicate)

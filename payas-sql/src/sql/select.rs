@@ -129,8 +129,9 @@ mod tests {
         let age_col = table.get_column("age").unwrap();
         let age_value_col = Column::Literal(Box::new(5));
 
-        let predicate = Predicate::Eq(&age_col, &age_value_col);
+        let predicate = Predicate::Eq(age_col.into(), age_value_col.into());
 
+        let age_col = table.get_column("age").unwrap();
         let selected_cols = vec![&age_col];
 
         let predicated_table = table.select(

@@ -198,13 +198,13 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 let predicate = super::compute_predicate(
                     predicate_param.as_ref(),
                     &field.arguments,
-                    additional_predicate,
+                    additional_predicate.into(),
                     operation_context,
                 )
                 .map(|predicate| {
                     operation_context.create_predicate(Predicate::And(
-                        Box::new(predicate.clone()),
-                        Box::new(access_predicate.clone()),
+                        Box::new(predicate),
+                        Box::new(access_predicate.into()),
                     ))
                 })
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
@@ -315,9 +315,10 @@ fn map_field<'a>(
                     other_table_pk_query.operation(
                         field,
                         Predicate::Eq(
-                            operation_context.create_column_with_id(column_id),
+                            operation_context.create_column_with_id(column_id).into(),
                             operation_context
-                                .create_column_with_id(&other_type.pk_column_id().unwrap()),
+                                .create_column_with_id(&other_type.pk_column_id().unwrap())
+                                .into(),
                         ),
                         operation_context,
                         false,
@@ -341,9 +342,12 @@ fn map_field<'a>(
                 let other_selection_table = other_table_collection_query.operation(
                     field,
                     Predicate::Eq(
-                        operation_context.create_column_with_id(other_type_column_id),
                         operation_context
-                            .create_column_with_id(&return_type.pk_column_id().unwrap()),
+                            .create_column_with_id(other_type_column_id)
+                            .into(),
+                        operation_context
+                            .create_column_with_id(&return_type.pk_column_id().unwrap())
+                            .into(),
                     ),
                     operation_context,
                     false,

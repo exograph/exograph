@@ -141,7 +141,7 @@ fn delete_operation<'a>(
     let predicate = super::compute_predicate(
         Some(predicate_param),
         &field.arguments,
-        access_predicate.clone(),
+        access_predicate.into(),
         operation_context,
     )
     .with_context(|| {
@@ -186,7 +186,7 @@ fn update_operation<'a>(
     let predicate = super::compute_predicate(
         Some(predicate_param),
         &field.arguments,
-        Predicate::True,
+        Predicate::True.into(),
         operation_context,
     )
     .with_context(|| {

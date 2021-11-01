@@ -82,6 +82,7 @@ use serde_json::Map;
 /// ```
 use super::{operation_context::OperationContext, operation_mapper::OperationResolverResult};
 
+#[allow(clippy::large_enum_variant)]
 pub enum InterceptedOperation<'a> {
     // around
     Intercepted {
