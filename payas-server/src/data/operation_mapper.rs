@@ -5,7 +5,7 @@ use payas_deno::Arg;
 use postgres::{types::FromSqlOwned, Row};
 use serde_json::Map;
 
-use crate::execution::query_context::{QueryContext, QueryResponse};
+use crate::execution::query_context::QueryResponse;
 
 use super::interception::InterceptedOperation;
 use super::{access_solver, operation_context::OperationContext};
@@ -188,7 +188,7 @@ impl<'a> OperationResolverResult<'a> {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
-                resolve_deno(method, field, query_context).map(QueryResponse::Json)
+                resolve_deno(method, field, operation_context).map(QueryResponse::Json)
             }
         }
     }
@@ -197,10 +197,11 @@ impl<'a> OperationResolverResult<'a> {
 fn resolve_deno(
     method: &ServiceMethod,
     field: &Positioned<Field>,
-    query_context: &QueryContext<'_>,
+    operation_context: &OperationContext<'_>,
 ) -> Result<serde_json::Value> {
     let path = &method.module_path;
 
+    let query_context = operation_context.query_context;
     let mut deno_modules_map = query_context.executor.deno_modules_map.lock().unwrap();
     let function_result = futures::executor::block_on(async {
         let mapped_args = field
@@ -208,9 +209,14 @@ fn resolve_deno(
             .arguments
             .iter()
             .map(|(gql_name, gql_value)| {
+                let argument_value = match &gql_value.node {
+                    Value::Variable(name) => operation_context.resolve_variable(name.as_str()),
+                    _ => Some(&gql_value.node),
+                }
+                .unwrap();
                 (
                     gql_name.node.as_str().to_owned(),
-                    gql_value.node.clone().into_json().unwrap(),
+                    argument_value.clone().into_json().unwrap(),
                 )
             })
             .collect::<HashMap<_, _>>();
