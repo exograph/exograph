@@ -110,7 +110,7 @@ impl<'qc> QueryContext<'qc> {
                     .map(|value| async_graphql_value::Value::from_json(value.clone()).unwrap())
                     .unwrap();
 
-                Self::literal_column(self, &value, associated_column)
+                self.literal_column(&value, associated_column)
             }
             Value::Number(number) => Column::Literal(cast_number(number, &associated_column.typ)),
             Value::String(v) => Column::Literal(cast_string(v, &associated_column.typ)),
@@ -120,7 +120,7 @@ impl<'qc> QueryContext<'qc> {
             Value::List(v) => {
                 let values = v
                     .iter()
-                    .map(|elem| Self::literal_column(self, elem, associated_column).into())
+                    .map(|elem| self.literal_column(elem, associated_column).into())
                     .collect();
 
                 Column::Array(values)
