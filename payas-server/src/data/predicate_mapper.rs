@@ -1,4 +1,7 @@
-use crate::sql::{column::Column, predicate::Predicate};
+use crate::{
+    execution::query_context::QueryContext,
+    sql::{column::Column, predicate::Predicate},
+};
 use anyhow::*;
 use async_graphql_value::Value::List;
 
@@ -7,35 +10,35 @@ use payas_model::model::predicate::*;
 
 use async_graphql_value::Value;
 
-use super::{operation_context::OperationContext, operation_mapper::SQLMapper};
+use super::operation_mapper::SQLMapper;
 
 impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
     fn map_to_sql(
         &'a self,
         argument_value: &'a Value,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<Predicate<'a>> {
-        let system = operation_context.get_system();
+        let system = query_context.get_system();
         let parameter_type = &system.predicate_types[self.type_id];
 
         let argument_value = match argument_value {
-            Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
+            Value::Variable(name) => query_context.resolve_variable(name.as_str()).unwrap(),
             _ => argument_value,
         };
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_column, op_value_column) =
-                    operands(self, argument_value, operation_context);
+                    operands(self, argument_value, query_context);
                 Ok(Predicate::Eq(op_key_column, op_value_column.into()))
             }
             PredicateParameterTypeKind::Opeartor(parameters) => {
                 Ok(parameters.iter().fold(Predicate::True, |acc, parameter| {
-                    let arg = operation_context.get_argument_field(argument_value, &parameter.name);
+                    let arg = query_context.get_argument_field(argument_value, &parameter.name);
                     let new_predicate = match arg {
                         Some(op_value) => {
                             let (op_key_column, op_value_column) =
-                                operands(self, op_value, operation_context);
+                                operands(self, op_value, query_context);
                             Predicate::from_name(
                                 &parameter.name,
                                 op_key_column,
@@ -55,7 +58,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                     .map(|parameter| {
                         (
                             parameter.name.as_str(),
-                            operation_context.get_argument_field(argument_value, &parameter.name),
+                            query_context.get_argument_field(argument_value, &parameter.name),
                         )
                     })
                     .fold(Ok(("", None)), |acc, (name, result)| {
@@ -106,8 +109,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                                     let mut new_predicate = identity_predicate;
 
                                     for argument in arguments.iter() {
-                                        let mapped =
-                                            self.map_to_sql(argument, operation_context)?;
+                                        let mapped = self.map_to_sql(argument, query_context)?;
                                         new_predicate = predicate_connector(
                                             new_predicate.into(),
                                             mapped.into(),
@@ -121,7 +123,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                             }
 
                             "not" => Ok(Predicate::Not(Box::new(
-                                self.map_to_sql(boolean_argument_value, operation_context)?
+                                self.map_to_sql(boolean_argument_value, query_context)?
                                     .into(),
                             ))),
 
@@ -135,11 +137,12 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                         let mut new_predicate = Predicate::True;
 
                         for parameter in parameters.iter() {
-                            let arg = operation_context
-                                .get_argument_field(argument_value, &parameter.name);
+                            let arg =
+                                query_context.get_argument_field(argument_value, &parameter.name);
                             let mapped = match arg {
-                                Some(argument_value_component) => parameter
-                                    .map_to_sql(argument_value_component, operation_context)?,
+                                Some(argument_value_component) => {
+                                    parameter.map_to_sql(argument_value_component, query_context)?
+                                }
                                 None => Predicate::True,
                             };
 
@@ -160,11 +163,11 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> (MaybeOwned<'a, Column<'a>>, Column<'a>) {
-    let system = operation_context.get_system();
+    let system = query_context.get_system();
     let op_physical_column = &param.column_id.as_ref().unwrap().get_column(system);
     let op_key_column = Column::Physical(op_physical_column).into();
-    let op_value_column = operation_context.literal_column(op_value.clone(), op_physical_column);
+    let op_value_column = query_context.literal_column(op_value.clone(), op_physical_column);
     (op_key_column, op_value_column)
 }

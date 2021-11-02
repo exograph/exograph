@@ -11,7 +11,7 @@ use async_graphql_parser::{
 use payas_model::model::system::ModelSystem;
 use serde_json::Value;
 
-use super::{operation_context::OperationContext, operation_mapper::OperationResolver};
+use super::operation_mapper::OperationResolver;
 
 pub trait DataResolver {
     fn resolve(
@@ -50,16 +50,14 @@ impl DataResolver for ModelSystem {
         operation_type: &OperationType,
         query_context: &QueryContext<'_>,
     ) -> Result<QueryResponse> {
-        let operation_context = OperationContext::new(query_context);
-
         match operation_type {
             OperationType::Query => {
                 let operation = self.queries.get_by_key(&field.node.name.node).unwrap();
-                operation.execute(field, &operation_context)
+                operation.execute(field, query_context)
             }
             OperationType::Mutation => {
                 let operation = self.mutations.get_by_key(&field.node.name.node).unwrap();
-                operation.execute(field, &operation_context)
+                operation.execute(field, query_context)
             }
             OperationType::Subscription => {
                 todo!()

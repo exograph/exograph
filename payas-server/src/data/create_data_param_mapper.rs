@@ -4,7 +4,7 @@ use anyhow::*;
 use async_graphql_value::Value;
 use maybe_owned::MaybeOwned;
 
-use crate::sql::column::Column;
+use crate::{execution::query_context::QueryContext, sql::column::Column};
 
 use payas_model::{
     model::{
@@ -14,7 +14,7 @@ use payas_model::{
     sql::{column::PhysicalColumn, Limit, Offset, PhysicalTable, SQLOperation, Select},
 };
 
-use super::{operation_context::OperationContext, operation_mapper::SQLMapper};
+use super::operation_mapper::SQLMapper;
 
 #[derive(Debug)]
 struct SingleInsertion<'a> {
@@ -34,7 +34,7 @@ impl<'a> InsertionInfo<'a> {
     /// Compute a combined set of operations considering nested insertions
     pub fn operation(
         self,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
         return_data: bool,
     ) -> Vec<(String, SQLOperation<'a>)> {
         let InsertionInfo {
@@ -59,7 +59,7 @@ impl<'a> InsertionInfo<'a> {
 
         let nested_insertions = nested
             .into_iter()
-            .flat_map(|item| item.operation(operation_context, return_data));
+            .flat_map(|item| item.operation(query_context, return_data));
 
         ops.extend(nested_insertions);
         ops
@@ -70,16 +70,16 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
     fn map_to_sql(
         &'a self,
         argument: &'a Value,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<InsertionInfo<'a>> {
         let table = self
             .table_id()
-            .map(|table_id| &operation_context.get_system().tables[table_id])
+            .map(|table_id| &query_context.get_system().tables[table_id])
             .unwrap();
 
         // Before we can make the decision of mapping a single or multiple elements, we must resolve variable
         let argument = match argument {
-            Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
+            Value::Variable(name) => query_context.resolve_variable(name.as_str()).unwrap(),
             _ => argument,
         };
 
@@ -88,13 +88,13 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
                 let unaligned = elems
                     .iter()
                     .enumerate()
-                    .map(|(index, elem)| map_single(self, elem, Some(index), operation_context))
+                    .map(|(index, elem)| map_single(self, elem, Some(index), query_context))
                     .collect::<Result<Vec<_>>>()?;
 
                 Ok(align(unaligned, table))
             }
             _ => {
-                let raw = map_single(self, argument, None, operation_context)?;
+                let raw = map_single(self, argument, None, query_context)?;
                 let (columns, values) =
                     raw.self_row.into_iter().map(|(c, v)| (c, v.into())).unzip();
                 Ok(InsertionInfo {
@@ -152,10 +152,10 @@ fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a Value,
     index: Option<usize>, // Index if the multiple entries are being inserted (such as createVenues (note the plural form))
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> Result<SingleInsertion<'a>> {
     let argument = match argument {
-        Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
+        Value::Variable(name) => query_context.resolve_variable(name.as_str()).unwrap(),
         _ => argument,
     };
 
@@ -170,13 +170,13 @@ fn map_single<'a>(
     fields.iter().for_each(|field| {
         // Process fields that map to a column in the current table
         let field_self_column = field.relation.self_column();
-        let field_arg = operation_context.get_argument_field(argument, &field.name);
+        let field_arg = query_context.get_argument_field(argument, &field.name);
 
         if let Some(field_arg) = field_arg {
             match field_self_column {
                 Some(field_self_column) => {
                     let (col, value) =
-                        map_self_column(field_self_column, field, field_arg, operation_context);
+                        map_self_column(field_self_column, field, field_arg, query_context);
                     self_row.insert(col, value);
                 }
                 None => nested_rows_results.push(map_foreign(
@@ -184,7 +184,7 @@ fn map_single<'a>(
                     field_arg,
                     index,
                     input_data_type,
-                    operation_context,
+                    query_context,
                 )),
             } // TODO: Report an error if the field is non-optional and the if-let doesn't match
         }
@@ -205,9 +205,9 @@ fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a GqlField,
     argument: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> (&'a PhysicalColumn, Column<'a>) {
-    let system = operation_context.get_system();
+    let system = query_context.get_system();
 
     let key_column = key_column_id.get_column(system);
     let argument_value = match &field.relation {
@@ -218,14 +218,14 @@ fn map_self_column<'a>(
                 .pk_column_id()
                 .map(|column_id| &column_id.get_column(system).column_name)
                 .unwrap();
-            match operation_context.get_argument_field(argument, other_type_pk_field_name) {
+            match query_context.get_argument_field(argument, other_type_pk_field_name) {
                 Some(other_type_pk_arg) => other_type_pk_arg,
                 None => todo!(),
             }
         }
         _ => argument,
     };
-    let value_column = operation_context.literal_column(argument_value.clone(), key_column);
+    let value_column = query_context.literal_column(argument_value.clone(), key_column);
     (key_column, value_column)
 }
 
@@ -237,9 +237,9 @@ fn map_foreign<'a>(
     argument: &'a Value,
     parent_index: Option<usize>,
     parent_data_type: &'a GqlType,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> Result<InsertionInfo<'a>> {
-    let system = operation_context.get_system();
+    let system = query_context.get_system();
 
     fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
         // TODO: Unhack this. Most likely, we need to separate input types from output types and have input types carry
@@ -313,7 +313,7 @@ fn map_foreign<'a>(
         mut columns,
         mut values,
         nested,
-    } = field_type.map_to_sql(argument, operation_context)?;
+    } = field_type.map_to_sql(argument, query_context)?;
 
     // Then, push the information to have the nested entity refer to the parent entity
     columns.push(self_reference_column);

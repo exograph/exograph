@@ -5,8 +5,9 @@ use payas_model::{
 };
 use serde_json::Value;
 
-use super::operation_context::OperationContext;
 use std::ops::Not;
+
+use crate::execution::query_context::QueryContext;
 
 #[derive(Debug)]
 enum ReducedExpression<'a> {
@@ -18,15 +19,15 @@ enum ReducedExpression<'a> {
 fn reduce_expression<'a>(
     expr: &AccessExpression,
     request_context: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> ReducedExpression<'a> {
     match expr {
         AccessExpression::ContextSelection(selection) => ReducedExpression::Column(literal_column(
             reduce_context_selection(selection, request_context).unwrap_or(&Value::Null),
         )),
-        AccessExpression::Column(column_id) => ReducedExpression::Column(Some(
-            operation_context.create_column_with_id(column_id).into(),
-        )),
+        AccessExpression::Column(column_id) => {
+            ReducedExpression::Column(Some(query_context.create_column_with_id(column_id).into()))
+        }
         AccessExpression::StringLiteral(value) => {
             ReducedExpression::Column(Some(Column::Literal(Box::new(value.clone())).into()))
         }
@@ -37,13 +38,11 @@ fn reduce_expression<'a>(
             ReducedExpression::Column(Some(Column::Literal(Box::new(*value)).into()))
         }
         AccessExpression::LogicalOp(op) => {
-            ReducedExpression::Predicate(reduce_logical_op(op, request_context, operation_context))
+            ReducedExpression::Predicate(reduce_logical_op(op, request_context, query_context))
         }
-        AccessExpression::RelationalOp(op) => ReducedExpression::Predicate(reduce_relational_op(
-            op,
-            request_context,
-            operation_context,
-        )),
+        AccessExpression::RelationalOp(op) => {
+            ReducedExpression::Predicate(reduce_relational_op(op, request_context, query_context))
+        }
     }
 }
 
@@ -75,12 +74,12 @@ fn literal_column(value: &Value) -> Option<MaybeOwned<Column>> {
 fn reduce_relational_op<'a>(
     op: &AccessRelationalOp,
     request_context: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> Predicate<'a> {
     match op {
         AccessRelationalOp::Eq(left, right) => {
-            let left = reduce_expression(left, request_context, operation_context);
-            let right = reduce_expression(right, request_context, operation_context);
+            let left = reduce_expression(left, request_context, query_context);
+            let right = reduce_expression(right, request_context, query_context);
 
             match (left, right) {
                 (ReducedExpression::Column(left_col), ReducedExpression::Column(right_col)) => {
@@ -128,11 +127,11 @@ fn reduce_relational_op<'a>(
 fn reduce_logical_op<'a>(
     op: &AccessLogicalOp,
     request_context: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> Predicate<'a> {
     match op {
         AccessLogicalOp::Not(underlying) => {
-            let underlying = reduce_expression(underlying, request_context, operation_context);
+            let underlying = reduce_expression(underlying, request_context, query_context);
             match underlying {
                 ReducedExpression::Value(_) => todo!(),
                 ReducedExpression::Column(_) => todo!(),
@@ -140,13 +139,12 @@ fn reduce_logical_op<'a>(
             }
         }
         AccessLogicalOp::And(left, right) => {
-            let left_predicate = match reduce_expression(left, request_context, operation_context) {
+            let left_predicate = match reduce_expression(left, request_context, query_context) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
 
-            let right_predicate = match reduce_expression(right, request_context, operation_context)
-            {
+            let right_predicate = match reduce_expression(right, request_context, query_context) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
@@ -164,12 +162,11 @@ fn reduce_logical_op<'a>(
             }
         }
         AccessLogicalOp::Or(left, right) => {
-            let left_predicate = match reduce_expression(left, request_context, operation_context) {
+            let left_predicate = match reduce_expression(left, request_context, query_context) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
-            let right_predicate = match reduce_expression(right, request_context, operation_context)
-            {
+            let right_predicate = match reduce_expression(right, request_context, query_context) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
@@ -193,16 +190,14 @@ fn reduce_logical_op<'a>(
 pub fn reduce_access<'a>(
     access_expression: &'a AccessExpression,
     request_context: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> Predicate<'a> {
     match access_expression {
         AccessExpression::ContextSelection(_) => todo!(),
         AccessExpression::Column(_) => todo!(),
-        AccessExpression::LogicalOp(op) => {
-            reduce_logical_op(op, request_context, operation_context)
-        }
+        AccessExpression::LogicalOp(op) => reduce_logical_op(op, request_context, query_context),
         AccessExpression::RelationalOp(op) => {
-            reduce_relational_op(op, request_context, operation_context)
+            reduce_relational_op(op, request_context, query_context)
         }
         AccessExpression::StringLiteral(_) => todo!(),
         AccessExpression::BooleanLiteral(value) => {
@@ -232,10 +227,10 @@ mod tests {
 
         // SAFETY: Temporory code until we improve the design of OperationContext
         // For now, we don't acces query_context, so safe to use a null pointer
-        let operation_context = unsafe {
+        let query_context = unsafe {
             let null_query_context: *const QueryContext = ptr::null();
             let query_context: &QueryContext = &*null_query_context;
-            OperationContext::new(query_context)
+            query_context
         };
 
         let test_ae = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
@@ -249,11 +244,11 @@ mod tests {
         ));
 
         let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-        let reduced = reduce_access(&test_ae, &context, &operation_context);
+        let reduced = reduce_access(&test_ae, &context, query_context);
         assert_eq!(reduced, Predicate::True);
 
         let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-        let reduced = reduce_access(&test_ae, &context, &operation_context);
+        let reduced = reduce_access(&test_ae, &context, query_context);
         assert_eq!(reduced, Predicate::False)
     }
 
@@ -265,7 +260,7 @@ mod tests {
 
     //     // SAFETY: Temporory code until we improve the design of OperationContext
     //     // For now, we don't acces query_context, so safe to use a null pointer
-    //     let operation_context = unsafe {
+    //     let query_context = unsafe {
     //         let null_query_context: *const QueryContext = ptr::null();
     //         let query_context: &QueryContext = &*null_query_context;
     //         OperationContext::new(&query_context)
@@ -292,10 +287,10 @@ mod tests {
 
     //     let user_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
     //         Box::new(AccessExpression::Column(
-    //             operation_context.create_column(Column::Physical(&published_column)),
+    //             query_context.create_column(Column::Physical(&published_column)),
     //         )),
     //         Box::new(AccessExpression::Column(
-    //             operation_context.create_column(Column::Literal(Box::new(true))),
+    //             query_context.create_column(Column::Literal(Box::new(true))),
     //         )),
     //     ));
 
@@ -305,11 +300,11 @@ mod tests {
     //     ));
 
     //     let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-    //     let reduced = reduce_access(&test_ae, &context, &operation_context);
+    //     let reduced = reduce_access(&test_ae, &context, &query_context);
     //     assert_eq!(reduced, &Predicate::True);
 
     //     let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-    //     let reduced = reduce_access(&test_ae, &context, &operation_context);
+    //     let reduced = reduce_access(&test_ae, &context, &query_context);
     //     assert_eq!(
     //         reduced,
     //         &Predicate::Eq(
@@ -325,7 +320,7 @@ mod tests {
 
     //     // SAFETY: Temporory code until we improve the design of OperationContext
     //     // For now, we don't acces query_context, so safe to use a null pointer
-    //     let operation_context = unsafe {
+    //     let query_context = unsafe {
     //         let null_query_context: *const QueryContext = ptr::null();
     //         let query_context: &QueryContext = &*null_query_context;
     //         OperationContext::new(&query_context)
@@ -348,12 +343,12 @@ mod tests {
     //             ),
     //         )),
     //         Box::new(AccessExpression::Column(
-    //             operation_context.create_column(Column::Physical(&owner_id_column)),
+    //             query_context.create_column(Column::Physical(&owner_id_column)),
     //         )),
     //     ));
 
     //     let context = json!({ "AccessContext": {"user_id": "1"} });
-    //     let reduced = reduce_access(&test_ae, &context, &operation_context);
+    //     let reduced = reduce_access(&test_ae, &context, &query_context);
     //     assert_eq!(
     //         reduced,
     //         &Predicate::Eq(
@@ -363,7 +358,7 @@ mod tests {
     //     );
 
     //     let context = json!({ "AccessContext": {"user_id": "2"} });
-    //     let reduced = reduce_access(&test_ae, &context, &operation_context);
+    //     let reduced = reduce_access(&test_ae, &context, &query_context);
 
     //     assert_eq!(
     //         reduced,
@@ -380,7 +375,7 @@ mod tests {
 
     //     // SAFETY: Temporory code until we improve the design of OperationContext
     //     // For now, we don't acces query_context, so safe to use a null pointer
-    //     let operation_context = unsafe {
+    //     let query_context = unsafe {
     //         let null_query_context: *const QueryContext = ptr::null();
     //         let query_context: &QueryContext = &*null_query_context;
     //         OperationContext::new(&query_context)
@@ -418,10 +413,10 @@ mod tests {
 
     //         let data_rule = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
     //             Box::new(AccessExpression::Column(
-    //                 operation_context.create_column(Column::Physical(&published_column)),
+    //                 query_context.create_column(Column::Physical(&published_column)),
     //             )),
     //             Box::new(AccessExpression::Column(
-    //                 operation_context.create_column(Column::Literal(Box::new(true))),
+    //                 query_context.create_column(Column::Literal(Box::new(true))),
     //             )),
     //         ));
 
@@ -438,12 +433,12 @@ mod tests {
 
     //     // For admins, allow access without any further restrictions
     //     let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-    //     let reduced = reduce_access(&test_ae, &context, &operation_context);
+    //     let reduced = reduce_access(&test_ae, &context, &query_context);
     //     assert_eq!(reduced, &Predicate::True);
 
     //     // For users, allow only if the article is published
     //     let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-    //     let reduced = reduce_access(&test_ae, &context, &operation_context);
+    //     let reduced = reduce_access(&test_ae, &context, &query_context);
     //     assert_eq!(
     //         reduced,
     //         &Predicate::Eq(
@@ -454,7 +449,7 @@ mod tests {
 
     //     // For others, do not allow
     //     let context = json!({ "AccessContext": {"role": "ROLE_GUEST"} });
-    //     let reduced = reduce_access(&test_ae, &context, &operation_context);
+    //     let reduced = reduce_access(&test_ae, &context, &query_context);
     //     assert_eq!(reduced, &Predicate::False);
     // }
 }

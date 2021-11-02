@@ -80,7 +80,7 @@ use serde_json::Map;
 ///     ]
 /// )
 /// ```
-use super::{operation_context::OperationContext, operation_mapper::OperationResolverResult};
+use super::operation_mapper::OperationResolverResult;
 
 #[allow(clippy::large_enum_variant)]
 pub enum InterceptedOperation<'a> {
@@ -145,7 +145,7 @@ impl<'a> InterceptedOperation<'a> {
     pub fn execute(
         &self,
         field: &'a Positioned<Field>,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
             InterceptedOperation::Intercepted {
@@ -155,21 +155,11 @@ impl<'a> InterceptedOperation<'a> {
                 after,
             } => {
                 for before_interceptor in before {
-                    execute_interceptor(
-                        operation_name,
-                        before_interceptor,
-                        operation_context.query_context,
-                        None,
-                    )?;
+                    execute_interceptor(operation_name, before_interceptor, query_context, None)?;
                 }
-                let res = core.execute(field, operation_context)?;
+                let res = core.execute(field, query_context)?;
                 for after_interceptor in after {
-                    execute_interceptor(
-                        operation_name,
-                        after_interceptor,
-                        operation_context.query_context,
-                        None,
-                    )?;
+                    execute_interceptor(operation_name, after_interceptor, query_context, None)?;
                 }
                 Ok(res)
             }
@@ -181,9 +171,9 @@ impl<'a> InterceptedOperation<'a> {
                 let res = execute_interceptor(
                     operation_name,
                     interceptor,
-                    operation_context.query_context,
+                    query_context,
                     Some(&|| {
-                        core.execute(field, operation_context)
+                        core.execute(field, query_context)
                             .map(|response| match response {
                                 QueryResponse::Json(json) => json,
                                 QueryResponse::Raw(string) => match string {
@@ -199,7 +189,7 @@ impl<'a> InterceptedOperation<'a> {
                 }
             }
             InterceptedOperation::Plain { resolver_result } => {
-                resolver_result.execute(field, operation_context)
+                resolver_result.execute(field, query_context)
             }
         }
     }
