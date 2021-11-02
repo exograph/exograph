@@ -135,7 +135,7 @@ fn compute_update_columns<'a>(
                             };
 
                             let value_column =
-                                query_context.literal_column(argument_value.clone(), key_column);
+                                query_context.literal_column(argument_value, key_column);
                             (key_column, value_column)
                         })
                 })
@@ -419,7 +419,7 @@ fn compute_nested_delete<'a>(
 
         match elem_value {
             Value::Object(map) => {
-                let pk_value = map.get(pk_field.name.as_str()).unwrap().clone();
+                let pk_value = map.get(pk_field.name.as_str()).unwrap();
                 let pk_column = field_model_type
                     .pk_column_id()
                     .map(|pk_column| pk_column.get_column(system))

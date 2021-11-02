@@ -225,7 +225,7 @@ fn map_self_column<'a>(
         }
         _ => argument,
     };
-    let value_column = query_context.literal_column(argument_value.clone(), key_column);
+    let value_column = query_context.literal_column(argument_value, key_column);
     (key_column, value_column)
 }
 

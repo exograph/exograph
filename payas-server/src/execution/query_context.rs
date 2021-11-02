@@ -99,14 +99,7 @@ impl<'qc> QueryContext<'qc> {
 
     pub fn literal_column(
         &'qc self,
-
-        // TODO: we probably don't need to pass around `Value`
-        // this was originally `&Value` because we weren't creating any new `Value` objects in this function
-        // however, this is now a `Value` since we use `Value::from_json` to parse out a `Value` from JSON variables
-        // (this results in a new `Value`!)
-        // can we shift value ownership (maybe something like an `Rc<Value>`) to avoid unnecessary clones in
-        // data_param_mapper.rs and predicate_mapper.rs ?
-        value: Value,
+        value: &Value,
         associated_column: &PhysicalColumn,
     ) -> Column<'qc> {
         match value {
@@ -117,22 +110,22 @@ impl<'qc> QueryContext<'qc> {
                     .map(|value| async_graphql_value::Value::from_json(value.clone()).unwrap())
                     .unwrap();
 
-                Self::literal_column(self, value, associated_column)
+                Self::literal_column(self, &value, associated_column)
             }
-            Value::Number(number) => Column::Literal(cast_number(&number, &associated_column.typ)),
-            Value::String(v) => Column::Literal(cast_string(&v, &associated_column.typ)),
-            Value::Boolean(v) => Column::Literal(Box::new(v)),
+            Value::Number(number) => Column::Literal(cast_number(number, &associated_column.typ)),
+            Value::String(v) => Column::Literal(cast_string(v, &associated_column.typ)),
+            Value::Boolean(v) => Column::Literal(Box::new(*v)),
             Value::Null => Column::Null,
             Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from the database to do a correct translation
             Value::List(v) => {
                 let values = v
-                    .into_iter()
+                    .iter()
                     .map(|elem| Self::literal_column(self, elem, associated_column).into())
                     .collect();
 
                 Column::Array(values)
             }
-            Value::Object(_) => Column::Literal(cast_value(&value, &associated_column.typ)),
+            Value::Object(_) => Column::Literal(cast_value(value, &associated_column.typ)),
             Value::Binary(_) => panic!("Binary values are not supported"),
         }
     }
