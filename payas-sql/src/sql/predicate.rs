@@ -70,12 +70,16 @@ impl<'a> Predicate<'a> {
             _ => todo!(),
         }
     }
+}
 
-    pub fn not(&'a self) -> Predicate<'a> {
+impl<'a> std::ops::Not for Predicate<'a> {
+    type Output = Predicate<'a>;
+
+    fn not(self) -> Self::Output {
         match self {
             Predicate::True => Predicate::False,
             Predicate::False => Predicate::True,
-            predicate => Predicate::Not(Box::new(MaybeOwned::Borrowed(predicate))),
+            predicate => Predicate::Not(Box::new(MaybeOwned::Owned(predicate))),
         }
     }
 }

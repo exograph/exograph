@@ -6,12 +6,13 @@ use payas_model::{
 use serde_json::Value;
 
 use super::operation_context::OperationContext;
+use std::ops::Not;
 
 #[derive(Debug)]
 enum ReducedExpression<'a> {
     Value(Option<&'a Value>),
     Column(Option<MaybeOwned<'a, Column<'a>>>),
-    Predicate(&'a Predicate<'a>),
+    Predicate(Predicate<'a>),
 }
 
 fn reduce_expression<'a>(
@@ -75,7 +76,7 @@ fn reduce_relational_op<'a>(
     op: &AccessRelationalOp,
     request_context: &'a Value,
     operation_context: &'a OperationContext<'a>,
-) -> &'a Predicate<'a> {
+) -> Predicate<'a> {
     match op {
         AccessRelationalOp::Eq(left, right) => {
             let left = reduce_expression(left, request_context, operation_context);
@@ -84,27 +85,26 @@ fn reduce_relational_op<'a>(
             match (left, right) {
                 (ReducedExpression::Column(left_col), ReducedExpression::Column(right_col)) => {
                     if left_col == right_col {
-                        &Predicate::True
+                        Predicate::True
                     } else {
                         match (left_col, right_col) {
                             (Some(left_col), Some(right_col)) => {
                                 match (left_col.as_ref(), right_col.as_ref()) {
                                     (Column::Literal(v1), Column::Literal(v2)) if v1 != v2 => {
-                                        &Predicate::False
+                                        Predicate::False
                                     }
-                                    _ => operation_context
-                                        .create_predicate(Predicate::Eq(left_col, right_col)),
+                                    _ => Predicate::Eq(left_col, right_col),
                                 }
                             }
-                            _ => &Predicate::False, // One of the side is None
+                            _ => Predicate::False, // One of the side is None
                         }
                     }
                 }
                 (ReducedExpression::Value(left_value), ReducedExpression::Value(right_value)) => {
                     if left_value == right_value {
-                        &Predicate::True
+                        Predicate::True
                     } else {
-                        &Predicate::False
+                        Predicate::False
                     }
                 }
                 (ReducedExpression::Value(value), ReducedExpression::Column(column))
@@ -112,9 +112,9 @@ fn reduce_relational_op<'a>(
                     match (column, value) {
                         (Some(column), Some(value)) => {
                             let value = literal_column(value).unwrap();
-                            operation_context.create_predicate(Predicate::Eq(column, value))
+                            Predicate::Eq(column, value)
                         }
-                        _ => &Predicate::False,
+                        _ => Predicate::False,
                     }
                 }
 
@@ -129,16 +129,14 @@ fn reduce_logical_op<'a>(
     op: &AccessLogicalOp,
     request_context: &'a Value,
     operation_context: &'a OperationContext<'a>,
-) -> &'a Predicate<'a> {
+) -> Predicate<'a> {
     match op {
         AccessLogicalOp::Not(underlying) => {
             let underlying = reduce_expression(underlying, request_context, operation_context);
             match underlying {
                 ReducedExpression::Value(_) => todo!(),
                 ReducedExpression::Column(_) => todo!(),
-                ReducedExpression::Predicate(predicate) => {
-                    operation_context.create_predicate(predicate.not())
-                }
+                ReducedExpression::Predicate(predicate) => predicate.not(),
             }
         }
         AccessLogicalOp::And(left, right) => {
@@ -154,15 +152,15 @@ fn reduce_logical_op<'a>(
             };
 
             match (left_predicate, right_predicate) {
-                (Predicate::False, _) => &Predicate::False,
-                (_, Predicate::False) => &Predicate::False,
-                (Predicate::True, Predicate::True) => &Predicate::True,
+                (Predicate::False, _) => Predicate::False,
+                (_, Predicate::False) => Predicate::False,
+                (Predicate::True, Predicate::True) => Predicate::True,
                 (Predicate::True, right_predicate) => right_predicate,
                 (left_predicate, Predicate::True) => left_predicate,
-                _ => operation_context.create_predicate(Predicate::And(
+                (left_predicate, right_predicate) => Predicate::And(
                     Box::new(left_predicate.into()),
                     Box::new(right_predicate.into()),
-                )),
+                ),
             }
         }
         AccessLogicalOp::Or(left, right) => {
@@ -173,20 +171,20 @@ fn reduce_logical_op<'a>(
             let right_predicate = match reduce_expression(right, request_context, operation_context)
             {
                 ReducedExpression::Predicate(predicate) => predicate,
-                x => panic!("Operand of 'And' isn't a predicate {:?}", x),
+                _ => panic!("Operand of 'And' isn't a predicate"),
             };
 
             match (left_predicate, right_predicate) {
-                (Predicate::True, _) => &Predicate::True,
-                (_, Predicate::True) => &Predicate::True,
-                (Predicate::False, Predicate::False) => &Predicate::False,
+                (Predicate::True, _) => Predicate::True,
+                (_, Predicate::True) => Predicate::True,
+                (Predicate::False, Predicate::False) => Predicate::False,
 
                 (Predicate::False, right_predicate) => right_predicate,
                 (left_predicate, Predicate::False) => left_predicate,
-                _ => operation_context.create_predicate(Predicate::And(
+                (left_predicate, right_predicate) => Predicate::And(
                     Box::new(left_predicate.into()),
                     Box::new(right_predicate.into()),
-                )),
+                ),
             }
         }
     }
@@ -196,7 +194,7 @@ pub fn reduce_access<'a>(
     access_expression: &'a AccessExpression,
     request_context: &'a Value,
     operation_context: &'a OperationContext<'a>,
-) -> &'a Predicate<'a> {
+) -> Predicate<'a> {
     match access_expression {
         AccessExpression::ContextSelection(_) => todo!(),
         AccessExpression::Column(_) => todo!(),
@@ -209,9 +207,9 @@ pub fn reduce_access<'a>(
         AccessExpression::StringLiteral(_) => todo!(),
         AccessExpression::BooleanLiteral(value) => {
             if *value {
-                &Predicate::True
+                Predicate::True
             } else {
-                &Predicate::False
+                Predicate::False
             }
         }
         AccessExpression::NumberLiteral(_) => todo!(),
@@ -252,11 +250,11 @@ mod tests {
 
         let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
         let reduced = reduce_access(&test_ae, &context, &operation_context);
-        assert_eq!(reduced, &Predicate::True);
+        assert_eq!(reduced, Predicate::True);
 
         let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
         let reduced = reduce_access(&test_ae, &context, &operation_context);
-        assert_eq!(reduced, &Predicate::False)
+        assert_eq!(reduced, Predicate::False)
     }
 
     // TODO: Re-enable tests

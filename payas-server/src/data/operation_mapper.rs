@@ -84,11 +84,11 @@ pub fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
     operation_context: &'a OperationContext<'a>,
-) -> &'a Predicate<'a> {
+) -> Predicate<'a> {
     let return_type = return_type.typ(operation_context.get_system());
 
     match &return_type.kind {
-        GqlTypeKind::Primitive => &Predicate::True,
+        GqlTypeKind::Primitive => Predicate::True,
         GqlTypeKind::Composite(GqlCompositeType { access, .. }) => {
             let access_expr = match kind {
                 SQLOperationKind::Create => &access.creation,
@@ -113,7 +113,7 @@ pub fn compute_service_access_predicate<'a>(
     let return_type = return_type.typ(operation_context.get_system());
 
     let type_level_access = match &return_type.kind {
-        GqlTypeKind::Primitive => &Predicate::True,
+        GqlTypeKind::Primitive => Predicate::True,
         GqlTypeKind::Composite(GqlCompositeType {
             access,
             kind: GqlCompositeTypeKind::NonPersistent,
@@ -143,8 +143,8 @@ pub fn compute_service_access_predicate<'a>(
         operation_context,
     );
 
-    if matches!(type_level_access, &Predicate::False)
-        || matches!(method_level_access, &Predicate::False)
+    if matches!(type_level_access, Predicate::False)
+        || matches!(method_level_access, Predicate::False)
     {
         &Predicate::False // deny if either access check fails
     } else {

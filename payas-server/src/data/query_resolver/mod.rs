@@ -192,7 +192,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     operation_context,
                 );
 
-                if access_predicate == &Predicate::False {
+                if access_predicate == Predicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 

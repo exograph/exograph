@@ -105,7 +105,7 @@ fn create_operation<'a>(
 
     // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
     // See issue #69
-    if access_predicate == &Predicate::False {
+    if access_predicate == Predicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
@@ -133,7 +133,7 @@ fn delete_operation<'a>(
         operation_context,
     );
 
-    if access_predicate == &Predicate::False {
+    if access_predicate == Predicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
@@ -175,7 +175,7 @@ fn update_operation<'a>(
         operation_context,
     );
 
-    if access_predicate == &Predicate::False {
+    if access_predicate == Predicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
