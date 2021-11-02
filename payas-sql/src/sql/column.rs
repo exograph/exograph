@@ -419,7 +419,7 @@ pub enum Column<'a> {
     Literal(Box<dyn SQLParam>),
     JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
     JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
-    SelectionTableWrapper(Select<'a>),
+    SelectionTableWrapper(Box<Select<'a>>),
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,

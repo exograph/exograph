@@ -203,10 +203,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     operation_context,
                 )
                 .map(|predicate| {
-                    operation_context.create_predicate(Predicate::And(
-                        Box::new(predicate),
-                        Box::new(access_predicate.into()),
-                    ))
+                    Predicate::And(Box::new(predicate), Box::new(access_predicate.into()))
                 })
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
@@ -311,7 +308,7 @@ fn map_field<'a>(
                     GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
                 };
 
-                Column::SelectionTableWrapper(
+                Column::SelectionTableWrapper(Box::new(
                     other_table_pk_query.operation(
                         field,
                         Predicate::Eq(
@@ -323,7 +320,7 @@ fn map_field<'a>(
                         operation_context,
                         false,
                     )?,
-                )
+                ))
             }
             GqlRelation::OneToMany {
                 other_type_column_id,
@@ -353,7 +350,7 @@ fn map_field<'a>(
                     false,
                 )?;
 
-                Column::SelectionTableWrapper(other_selection_table)
+                Column::SelectionTableWrapper(Box::new(other_selection_table))
             }
             GqlRelation::NonPersistent => panic!(),
         }

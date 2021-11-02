@@ -42,7 +42,7 @@ impl PhysicalTable {
     pub fn select<'a>(
         &'a self,
         columns: Vec<MaybeOwned<'a, Column<'a>>>,
-        predicate: Option<&'a Predicate<'a>>,
+        predicate: Option<Predicate<'a>>,
         order_by: Option<OrderBy<'a>>,
         offset: Option<Offset>,
         limit: Option<Limit>,

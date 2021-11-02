@@ -9,7 +9,7 @@ use super::{
 pub struct Select<'a> {
     pub underlying: &'a PhysicalTable,
     pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
-    pub predicate: Option<&'a Predicate<'a>>,
+    pub predicate: Option<Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
     pub limit: Option<Limit>,
@@ -43,7 +43,7 @@ impl<'a> Expression for Select<'a> {
         let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
         params.extend(table_binding.params);
 
-        let stmt = match self.predicate {
+        let stmt = match &self.predicate {
             // Avoid correct, but inelegant "where true" clause
             Some(Predicate::True) | None => match &self.order_by {
                 None => format!("select {} from {}", cols_stmts, table_binding.stmt),
@@ -138,7 +138,7 @@ mod tests {
 
         let predicated_table = table.select(
             selected_cols,
-            Some(&predicate),
+            Some(predicate),
             None,
             Some(Offset(10)),
             Some(Limit(20)),

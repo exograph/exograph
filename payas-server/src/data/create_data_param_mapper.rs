@@ -270,7 +270,7 @@ fn map_foreign<'a>(
         parent_pk_physical_column: &'a PhysicalColumn,
         parent_index: Option<usize>,
     ) -> Column<'a> {
-        Column::SelectionTableWrapper(Select {
+        Column::SelectionTableWrapper(Box::new(Select {
             underlying: parent_table,
             columns: vec![Column::Physical(parent_pk_physical_column).into()],
             predicate: None,
@@ -278,7 +278,7 @@ fn map_foreign<'a>(
             offset: parent_index.map(|index| Offset(index as i64)),
             limit: parent_index.map(|_| Limit(1)),
             top_level_selection: false,
-        })
+        }))
     }
 
     // Find the column that the current entity refers to in the parent entity

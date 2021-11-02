@@ -12,7 +12,6 @@ use crate::{
     execution::query_context::QueryContext,
     sql::{
         column::{Column, PhysicalColumn, PhysicalColumnType},
-        predicate::Predicate,
         SQLParam,
     },
 };
@@ -21,7 +20,6 @@ use rust_decimal::prelude::*;
 
 pub struct OperationContext<'a> {
     pub query_context: &'a QueryContext<'a>,
-    predicates: Arena<Predicate<'a>>,
     resolved_variables: Arena<Value>,
 }
 
@@ -29,7 +27,6 @@ impl<'a> OperationContext<'a> {
     pub fn new(query_context: &'a QueryContext<'a>) -> Self {
         Self {
             query_context,
-            predicates: Arena::new(),
             resolved_variables: Arena::new(),
         }
     }
@@ -40,10 +37,6 @@ impl<'a> OperationContext<'a> {
 
     pub fn create_column_with_id(&self, column_id: &ColumnId) -> Column<'a> {
         Column::Physical(column_id.get_column(self.query_context.executor.system))
-    }
-
-    pub fn create_predicate(&self, predicate: Predicate<'a>) -> &Predicate<'a> {
-        self.predicates.alloc(predicate)
     }
 
     pub fn literal_column(
