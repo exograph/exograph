@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::*;
 use async_graphql_value::Value;
+use maybe_owned::MaybeOwned;
 
 use crate::sql::column::Column;
 
@@ -17,7 +18,7 @@ use super::{operation_context::OperationContext, operation_mapper::SQLMapper};
 
 #[derive(Debug)]
 struct SingleInsertion<'a> {
-    pub self_row: HashMap<&'a PhysicalColumn, &'a Column<'a>>,
+    pub self_row: HashMap<&'a PhysicalColumn, Column<'a>>,
     pub nested_rows: Vec<InsertionInfo<'a>>,
 }
 
@@ -25,7 +26,7 @@ struct SingleInsertion<'a> {
 pub struct InsertionInfo<'a> {
     pub table: &'a PhysicalTable,
     pub columns: Vec<&'a PhysicalColumn>,
-    pub values: Vec<Vec<&'a Column<'a>>>,
+    pub values: Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
     pub nested: Vec<InsertionInfo<'a>>,
 }
 
@@ -44,7 +45,7 @@ impl<'a> InsertionInfo<'a> {
         } = self;
 
         let returning = if return_data {
-            vec![operation_context.create_column(Column::Star)]
+            vec![Column::Star.into()]
         } else {
             vec![]
         };
@@ -94,7 +95,8 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
             }
             _ => {
                 let raw = map_single(self, argument, None, operation_context)?;
-                let (columns, values) = raw.self_row.into_iter().unzip();
+                let (columns, values) =
+                    raw.self_row.into_iter().map(|(c, v)| (c, v.into())).unzip();
                 Ok(InsertionInfo {
                     table,
                     columns,
@@ -121,10 +123,14 @@ fn align<'a>(unaligned: Vec<SingleInsertion<'a>>, table: &'a PhysicalTable) -> I
     let mut values = Vec::with_capacity(unaligned.len());
     let mut nested = vec![];
 
-    for item in unaligned.into_iter() {
+    for mut item in unaligned.into_iter() {
         let mut row = Vec::with_capacity(keys_count);
         for key in &all_keys {
-            let value = item.self_row.get(key).copied().unwrap_or(&Column::Null);
+            let value = item
+                .self_row
+                .remove(key)
+                .map(|v| v.into())
+                .unwrap_or_else(|| Column::Null.into());
             row.push(value);
         }
 
@@ -200,7 +206,7 @@ fn map_self_column<'a>(
     field: &'a GqlField,
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
-) -> (&'a PhysicalColumn, &'a Column<'a>) {
+) -> (&'a PhysicalColumn, Column<'a>) {
     let system = operation_context.get_system();
 
     let key_column = key_column_id.get_column(system);
@@ -254,26 +260,26 @@ fn map_foreign<'a>(
     // For example, if the mutation is (assume `Venue -> [Concert]` relation)
     // `createVenue(data: {name: "V1", published: true, concerts: [{title: "C1V1", published: true}, {title: "C1V2", published: false}]})`
     // we need to create a column that evaluates to `select "venues"."id" from "venues"`
-    let (parent_pk_physical_column, parent_id_selection) = {
-        let parent_type = underlying_type(parent_data_type, system);
-        let parent_table = &system.tables[parent_type.table_id().unwrap()];
-        let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(system);
-        let parent_pk_column =
-            operation_context.create_column(Column::Physical(parent_pk_physical_column));
 
-        (
-            parent_pk_physical_column,
-            operation_context.create_column(Column::SelectionTableWrapper(Select {
-                underlying: parent_table,
-                columns: vec![parent_pk_column],
-                predicate: None,
-                order_by: None,
-                offset: parent_index.map(|index| Offset(index as i64)),
-                limit: parent_index.map(|_| Limit(1)),
-                top_level_selection: false,
-            })),
-        )
-    };
+    let parent_type = underlying_type(parent_data_type, system);
+    let parent_table = &system.tables[parent_type.table_id().unwrap()];
+    let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(system);
+
+    fn create_select<'a>(
+        parent_table: &'a PhysicalTable,
+        parent_pk_physical_column: &'a PhysicalColumn,
+        parent_index: Option<usize>,
+    ) -> Column<'a> {
+        Column::SelectionTableWrapper(Select {
+            underlying: parent_table,
+            columns: vec![Column::Physical(parent_pk_physical_column).into()],
+            predicate: None,
+            order_by: None,
+            offset: parent_index.map(|index| Offset(index as i64)),
+            limit: parent_index.map(|_| Limit(1)),
+            top_level_selection: false,
+        })
+    }
 
     // Find the column that the current entity refers to in the parent entity
     // In the above example, this would be "venue_id"
@@ -311,9 +317,10 @@ fn map_foreign<'a>(
 
     // Then, push the information to have the nested entity refer to the parent entity
     columns.push(self_reference_column);
-    values
-        .iter_mut()
-        .for_each(|value| value.push(parent_id_selection));
+
+    values.iter_mut().for_each(|value| {
+        value.push(create_select(parent_table, parent_pk_physical_column, parent_index).into())
+    });
 
     Ok(InsertionInfo {
         table,

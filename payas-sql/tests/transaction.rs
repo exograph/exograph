@@ -112,7 +112,7 @@ fn basic_transaction() {
                     people_table_info.age_phys_col,
                 ],
                 vec![vec![&teen_name, &teen_age], vec![&adult_name, &adult_age]],
-                vec![people_table_info.age_col],
+                vec![people_table_info.age_col.into()],
             );
 
             let step_a = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep {
@@ -130,7 +130,7 @@ fn basic_transaction() {
                 table: ages_table_info.table,
                 column_names: vec![ages_table_info.age_phys_col],
                 column_values_seq: vec![vec![lazy_col]],
-                returning: vec![ages_table_info.age_col],
+                returning: vec![ages_table_info.age_col.into()],
             };
 
             let step_b = TransactionStep::Template(TemplateTransactionStep {
@@ -173,7 +173,7 @@ fn transaction_zero_matches() {
             let update_op = people_table_info.table.update(
                 vec![(people_table_info.name_phys_col, &name_literal)],
                 Predicate::True.into(),
-                vec![people_table_info.age_col],
+                vec![people_table_info.age_col.into()],
             );
 
             let step_a = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep {
@@ -190,7 +190,7 @@ fn transaction_zero_matches() {
                 table: ages_table_info.table,
                 column_names: vec![ages_table_info.age_phys_col],
                 column_values_seq: vec![vec![age_proxy_column]],
-                returning: vec![ages_table_info.age_col],
+                returning: vec![ages_table_info.age_col.into()],
             });
             let step_b = TransactionStep::Template(TemplateTransactionStep {
                 operation: insert_op_template,

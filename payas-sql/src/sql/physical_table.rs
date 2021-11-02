@@ -41,7 +41,7 @@ impl PhysicalTable {
 
     pub fn select<'a>(
         &'a self,
-        columns: Vec<&'a Column>,
+        columns: Vec<MaybeOwned<'a, Column<'a>>>,
         predicate: Option<&'a Predicate<'a>>,
         order_by: Option<OrderBy<'a>>,
         offset: Option<Offset>,
@@ -63,7 +63,7 @@ impl PhysicalTable {
         &'a self,
         column_names: Vec<&'a PhysicalColumn>,
         column_values_seq: Vec<Vec<C>>,
-        returning: Vec<&'a Column>,
+        returning: Vec<MaybeOwned<'a, Column<'a>>>,
     ) -> Insert
     where
         C: Into<MaybeOwned<'a, Column<'a>>>,
@@ -82,7 +82,7 @@ impl PhysicalTable {
     pub fn delete<'a>(
         &'a self,
         predicate: Option<MaybeOwned<'a, Predicate<'a>>>,
-        returning: Vec<&'a Column>,
+        returning: Vec<MaybeOwned<'a, Column<'a>>>,
     ) -> Delete {
         Delete {
             table: self,
@@ -95,7 +95,7 @@ impl PhysicalTable {
         &'a self,
         column_values: Vec<(&'a PhysicalColumn, C)>,
         predicate: MaybeOwned<'a, Predicate<'a>>,
-        returning: Vec<&'a Column>,
+        returning: Vec<MaybeOwned<'a, Column<'a>>>,
     ) -> Update
     where
         C: Into<MaybeOwned<'a, Column<'a>>>,

@@ -13,7 +13,7 @@ pub struct Insert<'a> {
     pub table: &'a PhysicalTable,
     pub column_names: Vec<&'a PhysicalColumn>,
     pub column_values_seq: Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
-    pub returning: Vec<&'a Column<'a>>,
+    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> Expression for Insert<'a> {
@@ -76,7 +76,7 @@ pub struct TemplateInsert<'a> {
     pub table: &'a PhysicalTable,
     pub column_names: Vec<&'a PhysicalColumn>,
     pub column_values_seq: Vec<Vec<ProxyColumn<'a>>>,
-    pub returning: Vec<&'a Column<'a>>,
+    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> TemplateInsert<'a> {
@@ -97,7 +97,7 @@ impl<'a> TemplateInsert<'a> {
             .map(|row| {
                 row.iter()
                     .map(|col| match col {
-                        ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(*col),
+                        ProxyColumn::Concrete(col) => col.as_ref().into(),
                         ProxyColumn::Template { col_index, step } => {
                             MaybeOwned::Owned(Column::Lazy {
                                 row_index,
@@ -135,7 +135,7 @@ impl<'a> TemplateInsert<'a> {
                 table,
                 column_names: column_names.clone(),
                 column_values_seq: resolved_cols,
-                returning: returning.clone(),
+                returning: returning.iter().map(|ret| ret.as_ref().into()).collect(),
             })
         }
     }

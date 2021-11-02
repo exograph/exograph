@@ -1,9 +1,8 @@
-use crate::sql::column::Column;
-
 use crate::sql::order::{OrderBy, Ordering};
 use anyhow::*;
 use async_graphql_value::Value;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
+use payas_model::sql::column::PhysicalColumn;
 
 use super::{operation_context::OperationContext, operation_mapper::SQLMapper};
 
@@ -31,14 +30,14 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
         match argument {
             Value::Object(elems) => {
                 // TODO: Reject elements with multiple elements (see the comment in query.rs)
-                let mapped: Vec<(&'a Column<'a>, Ordering)> = elems
+                let mapped: Vec<_> = elems
                     .iter()
                     .map(|elem| order_by_pair(self, elem.0, elem.1, operation_context))
                     .collect::<Result<Vec<_>>>()?;
                 Ok(OrderBy(mapped))
             }
             Value::List(elems) => {
-                let mapped: Vec<(&'a Column<'a>, Ordering)> = elems
+                let mapped: Vec<_> = elems
                     .iter()
                     .map(|elem| self.map_to_sql(elem, operation_context))
                     .collect::<Result<Vec<_>>>()
@@ -67,7 +66,7 @@ fn order_by_pair<'a>(
     parameter_name: &str,
     parameter_value: &Value,
     operation_context: &'a OperationContext<'a>,
-) -> Result<(&'a Column<'a>, Ordering)> {
+) -> Result<(&'a PhysicalColumn, Ordering)> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
             parameters.iter().find(|p| p.name == parameter_name)
@@ -77,7 +76,9 @@ fn order_by_pair<'a>(
 
     let column_id = parameter.as_ref().and_then(|p| p.column_id.as_ref());
 
-    let column = operation_context.create_column_with_id(column_id.unwrap());
+    let column = column_id
+        .unwrap()
+        .get_column(operation_context.query_context.executor.system);
 
     ordering(parameter_value).map(|ordering| (column, ordering))
 }

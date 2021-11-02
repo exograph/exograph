@@ -21,7 +21,6 @@ use rust_decimal::prelude::*;
 
 pub struct OperationContext<'a> {
     pub query_context: &'a QueryContext<'a>,
-    columns: Arena<Column<'a>>,
     predicates: Arena<Predicate<'a>>,
     resolved_variables: Arena<Value>,
 }
@@ -30,7 +29,6 @@ impl<'a> OperationContext<'a> {
     pub fn new(query_context: &'a QueryContext<'a>) -> Self {
         Self {
             query_context,
-            columns: Arena::new(),
             predicates: Arena::new(),
             resolved_variables: Arena::new(),
         }
@@ -40,14 +38,8 @@ impl<'a> OperationContext<'a> {
         self.query_context.executor.system
     }
 
-    pub fn create_column(&self, column: Column<'a>) -> &Column<'a> {
-        self.columns.alloc(column)
-    }
-
-    pub fn create_column_with_id(&self, column_id: &ColumnId) -> &Column<'a> {
-        self.create_column(Column::Physical(
-            column_id.get_column(self.query_context.executor.system),
-        ))
+    pub fn create_column_with_id(&self, column_id: &ColumnId) -> Column<'a> {
+        Column::Physical(column_id.get_column(self.query_context.executor.system))
     }
 
     pub fn create_predicate(&self, predicate: Predicate<'a>) -> &Predicate<'a> {
@@ -65,8 +57,8 @@ impl<'a> OperationContext<'a> {
         // data_param_mapper.rs and predicate_mapper.rs ?
         value: Value,
         associated_column: &PhysicalColumn,
-    ) -> &'a Column<'a> {
-        let column: Column<'a> = match value {
+    ) -> Column<'a> {
+        match value {
             Value::Variable(name) => {
                 let value = self
                     .query_context
@@ -75,7 +67,7 @@ impl<'a> OperationContext<'a> {
                     .map(|value| async_graphql_value::Value::from_json(value.clone()).unwrap())
                     .unwrap();
 
-                return Self::literal_column(self, value, associated_column);
+                Self::literal_column(self, value, associated_column)
             }
             Value::Number(number) => {
                 Column::Literal(Self::cast_number(&number, &associated_column.typ))
@@ -87,16 +79,14 @@ impl<'a> OperationContext<'a> {
             Value::List(v) => {
                 let values = v
                     .into_iter()
-                    .map(|elem| Self::literal_column(self, elem, associated_column))
+                    .map(|elem| Self::literal_column(self, elem, associated_column).into())
                     .collect();
 
                 Column::Array(values)
             }
             Value::Object(_) => Column::Literal(Self::cast_value(&value, &associated_column.typ)),
             Value::Binary(_) => panic!("Binary values are not supported"),
-        };
-
-        self.create_column(column)
+        }
     }
 
     pub fn resolve_variable(&self, name: &str) -> Option<&Value> {

@@ -14,7 +14,7 @@ pub struct Update<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: MaybeOwned<'a, Predicate<'a>>,
     pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)>,
-    pub returning: Vec<&'a Column<'a>>,
+    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> Expression for Update<'a> {
@@ -74,7 +74,7 @@ pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: &'a Predicate<'a>,
     pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
-    pub returning: Vec<&'a Column<'a>>,
+    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> TemplateUpdate<'a> {
@@ -94,7 +94,7 @@ impl<'a> TemplateUpdate<'a> {
                     .iter()
                     .map(|(physical_col, col)| {
                         let resolved_col = match col {
-                            ProxyColumn::Concrete(col) => MaybeOwned::Borrowed(*col),
+                            ProxyColumn::Concrete(col) => col.as_ref().into(),
                             ProxyColumn::Template { col_index, step } => {
                                 MaybeOwned::Owned(Column::Lazy {
                                     row_index,
@@ -110,7 +110,7 @@ impl<'a> TemplateUpdate<'a> {
                     table,
                     predicate: (*predicate).into(),
                     column_values: resolved_column_values,
-                    returning: returning.clone(),
+                    returning: returning.iter().map(|col| col.as_ref().into()).collect(),
                 }
             })
             .collect()

@@ -59,7 +59,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 SQLOperation::Update(table.update(
                     self_update_columns,
                     predicate,
-                    vec![operation_context.create_column(Column::Star)],
+                    vec![Column::Star.into()],
                 )),
             )];
             Ok(TransactionScript::Single(TransactionStep::Concrete(
@@ -68,7 +68,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         } else {
             let pk_col = {
                 let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
-                operation_context.create_column(Column::Physical(pk_physical_col))
+                Column::Physical(pk_physical_col).into()
             };
 
             let update_op = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep::new(
@@ -101,7 +101,7 @@ fn compute_update_columns<'a>(
     data_type: &'a GqlType,
     argument: &'a Value,
     operation_context: &'a OperationContext<'a>,
-) -> Vec<(&'a PhysicalColumn, &'a Column<'a>)> {
+) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
     let system = &operation_context.get_system();
     let argument = match argument {
         Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
@@ -304,22 +304,21 @@ fn compute_nested_update_object_arg<'a>(
     let system = &operation_context.get_system();
 
     let nested = compute_update_columns(field_model_type, argument, operation_context);
-    let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.iter().partition(|elem| elem.0.is_pk);
+    let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
 
     let predicate = pk_columns
-        .iter()
+        .into_iter()
         .fold(Predicate::True, |acc, (pk_col, value)| {
-            let pk_column = operation_context.create_column(Column::Physical(pk_col));
             Predicate::And(
                 Box::new(acc.into()),
-                Box::new(Predicate::Eq(pk_column.into(), (*value).into()).into()),
+                Box::new(Predicate::Eq(Column::Physical(pk_col).into(), value.into()).into()),
             )
         });
     let table = &system.tables[field_model_type.table_id().unwrap()];
 
     let mut nested_proxies: Vec<_> = nested
         .into_iter()
-        .map(|(column, value)| (column, ProxyColumn::Concrete(value)))
+        .map(|(column, value)| (column, ProxyColumn::Concrete(value.into())))
         .collect();
     nested_proxies.push((
         nested_reference_col,
@@ -371,10 +370,8 @@ fn compute_nested_create<'a>(
                 .values
                 .into_iter()
                 .map(|subvalues| {
-                    let mut proxied: Vec<_> = subvalues
-                        .into_iter()
-                        .map(|value| ProxyColumn::Concrete(value))
-                        .collect();
+                    let mut proxied: Vec<_> =
+                        subvalues.into_iter().map(ProxyColumn::Concrete).collect();
                     proxied.push(ProxyColumn::Template {
                         col_index: 0,
                         step: prev_step.clone(),
@@ -431,9 +428,7 @@ fn compute_nested_delete<'a>(
                     .unwrap();
 
                 Predicate::Eq(
-                    operation_context
-                        .create_column(Column::Physical(pk_column))
-                        .into(),
+                    Column::Physical(pk_column).into(),
                     operation_context.literal_column(pk_value, pk_column).into(),
                 )
             }

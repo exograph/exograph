@@ -153,10 +153,7 @@ fn delete_operation<'a>(
 
     let ops = vec![(
         table_name(mutation, operation_context),
-        SQLOperation::Delete(table.delete(
-            Some(predicate),
-            vec![operation_context.create_column(Column::Star)],
-        )),
+        SQLOperation::Delete(table.delete(Some(predicate), vec![Column::Star.into()])),
     )];
 
     Ok(TransactionScript::Single(TransactionStep::Concrete(

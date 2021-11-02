@@ -3,6 +3,7 @@ use crate::sql::{column::Column, predicate::Predicate, SQLOperation, Select};
 use crate::sql::order::OrderBy;
 
 use anyhow::*;
+use maybe_owned::MaybeOwned;
 use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
 use payas_model::sql::{Limit, Offset};
@@ -80,7 +81,7 @@ pub trait QuerySQLOperations<'a> {
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<&'a Column<'a>>;
+    ) -> Result<Column<'a>>;
 
     fn operation(
         &'a self,
@@ -118,7 +119,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
         operation_context: &'a OperationContext<'a>,
-    ) -> Result<&'a Column<'a>> {
+    ) -> Result<Column<'a>> {
         let column_specs: Result<Vec<_>> = selection_set
             .node
             .items
@@ -131,7 +132,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
             )
             .collect();
 
-        Ok(operation_context.create_column(Column::JsonObject(column_specs?)))
+        Ok(Column::JsonObject(column_specs?))
     }
 
     fn compute_limit(
@@ -221,7 +222,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 Ok(match self.return_type.type_modifier {
                     GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
-                        vec![content_object],
+                        vec![content_object.into()],
                         Some(predicate),
                         None,
                         offset,
@@ -230,10 +231,9 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     ),
                     GqlTypeModifier::List => {
                         let order_by = self.compute_order_by(&field.arguments, operation_context);
-                        let agg_column =
-                            operation_context.create_column(Column::JsonAgg(content_object));
+                        let agg_column = Column::JsonAgg(Box::new(content_object.into()));
                         table.select(
-                            vec![agg_column],
+                            vec![agg_column.into()],
                             Some(predicate),
                             order_by,
                             offset,
@@ -255,7 +255,7 @@ fn map_selection<'a>(
     query: &'a Query,
     selection: &'a Selection,
     operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<(String, &'a Column<'a>)>> {
+) -> Result<Vec<(String, MaybeOwned<'a, Column<'a>>)>> {
     match selection {
         Selection::Field(field) => Ok(vec![map_field(query, &field.node, operation_context)?]),
         Selection::FragmentSpread(fragment_spread) => {
@@ -286,7 +286,7 @@ fn map_field<'a>(
     query: &'a Query,
     field: &'a Field,
     operation_context: &'a OperationContext<'a>,
-) -> Result<(String, &'a Column<'a>)> {
+) -> Result<(String, MaybeOwned<'a, Column<'a>>)> {
     let system = operation_context.get_system();
     let return_type = query.return_type.typ(system);
 
@@ -359,5 +359,5 @@ fn map_field<'a>(
         }
     };
 
-    Ok((field.output_name(), operation_context.create_column(column)))
+    Ok((field.output_name(), column.into()))
 }

@@ -11,7 +11,7 @@ use super::{
 pub struct Delete<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: Option<MaybeOwned<'a, Predicate<'a>>>,
-    pub returning: Vec<&'a Column<'a>>,
+    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> Expression for Delete<'a> {
@@ -63,7 +63,7 @@ impl<'a> Expression for Delete<'a> {
 pub struct TemplateDelete<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: Option<&'a Predicate<'a>>,
-    pub returning: Vec<&'a Column<'a>>,
+    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 // TODO: Tie this properly to the prev_step
@@ -72,7 +72,11 @@ impl<'a> TemplateDelete<'a> {
         Delete {
             table: self.table,
             predicate: self.predicate.map(|p| p.into()),
-            returning: self.returning.clone(),
+            returning: self
+                .returning
+                .iter()
+                .map(|c| MaybeOwned::Borrowed(c.as_ref()))
+                .collect(),
         }
     }
 }

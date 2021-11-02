@@ -46,23 +46,27 @@ pub enum Predicate<'a> {
 }
 
 impl<'a> Predicate<'a> {
-    pub fn from_name(op_name: &str, lhs: &'a Column<'a>, rhs: &'a Column<'a>) -> Predicate<'a> {
+    pub fn from_name(
+        op_name: &str,
+        lhs: MaybeOwned<'a, Column<'a>>,
+        rhs: MaybeOwned<'a, Column<'a>>,
+    ) -> Predicate<'a> {
         match op_name {
-            "eq" => Predicate::Eq(lhs.into(), rhs.into()),
-            "neq" => Predicate::Neq(lhs.into(), rhs.into()),
-            "lt" => Predicate::Lt(lhs.into(), rhs.into()),
-            "lte" => Predicate::Lte(lhs.into(), rhs.into()),
-            "gt" => Predicate::Gt(lhs.into(), rhs.into()),
-            "gte" => Predicate::Gte(lhs.into(), rhs.into()),
-            "like" => Predicate::StringLike(lhs.into(), rhs.into(), CaseSensitivity::Sensitive),
-            "ilike" => Predicate::StringLike(lhs.into(), rhs.into(), CaseSensitivity::Insensitive),
-            "startsWith" => Predicate::StringStartsWith(lhs.into(), rhs.into()),
-            "endsWith" => Predicate::StringEndsWith(lhs.into(), rhs.into()),
-            "contains" => Predicate::JsonContains(lhs.into(), rhs.into()),
-            "containedBy" => Predicate::JsonContainedBy(lhs.into(), rhs.into()),
-            "matchKey" => Predicate::JsonMatchKey(lhs.into(), rhs.into()),
-            "matchAnyKey" => Predicate::JsonMatchAnyKey(lhs.into(), rhs.into()),
-            "matchAllKeys" => Predicate::JsonMatchAllKeys(lhs.into(), rhs.into()),
+            "eq" => Predicate::Eq(lhs, rhs),
+            "neq" => Predicate::Neq(lhs, rhs),
+            "lt" => Predicate::Lt(lhs, rhs),
+            "lte" => Predicate::Lte(lhs, rhs),
+            "gt" => Predicate::Gt(lhs, rhs),
+            "gte" => Predicate::Gte(lhs, rhs),
+            "like" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Sensitive),
+            "ilike" => Predicate::StringLike(lhs, rhs, CaseSensitivity::Insensitive),
+            "startsWith" => Predicate::StringStartsWith(lhs, rhs),
+            "endsWith" => Predicate::StringEndsWith(lhs, rhs),
+            "contains" => Predicate::JsonContains(lhs, rhs),
+            "containedBy" => Predicate::JsonContainedBy(lhs, rhs),
+            "matchKey" => Predicate::JsonMatchKey(lhs, rhs),
+            "matchAnyKey" => Predicate::JsonMatchAnyKey(lhs, rhs),
+            "matchAllKeys" => Predicate::JsonMatchAllKeys(lhs, rhs),
             _ => todo!(),
         }
     }

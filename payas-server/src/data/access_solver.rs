@@ -1,3 +1,4 @@
+use maybe_owned::MaybeOwned;
 use payas_model::{
     model::access::{AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp},
     sql::{column::Column, predicate::Predicate},
@@ -9,7 +10,7 @@ use super::operation_context::OperationContext;
 #[derive(Debug)]
 enum ReducedExpression<'a> {
     Value(Option<&'a Value>),
-    Column(Option<&'a Column<'a>>),
+    Column(Option<MaybeOwned<'a, Column<'a>>>),
     Predicate(&'a Predicate<'a>),
 }
 
@@ -21,20 +22,19 @@ fn reduce_expression<'a>(
     match expr {
         AccessExpression::ContextSelection(selection) => ReducedExpression::Column(literal_column(
             reduce_context_selection(selection, request_context).unwrap_or(&Value::Null),
-            operation_context,
         )),
-        AccessExpression::Column(column_id) => {
-            ReducedExpression::Column(Some(operation_context.create_column_with_id(column_id)))
+        AccessExpression::Column(column_id) => ReducedExpression::Column(Some(
+            operation_context.create_column_with_id(column_id).into(),
+        )),
+        AccessExpression::StringLiteral(value) => {
+            ReducedExpression::Column(Some(Column::Literal(Box::new(value.clone())).into()))
         }
-        AccessExpression::StringLiteral(value) => ReducedExpression::Column(Some(
-            operation_context.create_column(Column::Literal(Box::new(value.clone()))),
-        )),
-        AccessExpression::BooleanLiteral(value) => ReducedExpression::Column(Some(
-            operation_context.create_column(Column::Literal(Box::new(*value))),
-        )),
-        AccessExpression::NumberLiteral(value) => ReducedExpression::Column(Some(
-            operation_context.create_column(Column::Literal(Box::new(*value))),
-        )),
+        AccessExpression::BooleanLiteral(value) => {
+            ReducedExpression::Column(Some(Column::Literal(Box::new(*value)).into()))
+        }
+        AccessExpression::NumberLiteral(value) => {
+            ReducedExpression::Column(Some(Column::Literal(Box::new(*value)).into()))
+        }
         AccessExpression::LogicalOp(op) => {
             ReducedExpression::Predicate(reduce_logical_op(op, request_context, operation_context))
         }
@@ -58,10 +58,7 @@ fn reduce_context_selection<'a>(
     }
 }
 
-fn literal_column<'a>(
-    value: &'a Value,
-    operation_context: &'a OperationContext<'a>,
-) -> Option<&'a Column<'a>> {
+fn literal_column(value: &Value) -> Option<MaybeOwned<Column>> {
     let col = match value {
         Value::Null => None,
         Value::Bool(v) => Some(Column::Literal(Box::new(*v))),
@@ -71,7 +68,7 @@ fn literal_column<'a>(
         Value::Object(_) => todo!(),
     };
 
-    col.map(|col| operation_context.create_column(col))
+    col.map(|col| col.into())
 }
 
 fn reduce_relational_op<'a>(
@@ -90,11 +87,15 @@ fn reduce_relational_op<'a>(
                         &Predicate::True
                     } else {
                         match (left_col, right_col) {
-                            (Some(Column::Literal(v1)), Some(Column::Literal(v2))) if v1 != v2 => {
-                                &Predicate::False
+                            (Some(left_col), Some(right_col)) => {
+                                match (left_col.as_ref(), right_col.as_ref()) {
+                                    (Column::Literal(v1), Column::Literal(v2)) if v1 != v2 => {
+                                        &Predicate::False
+                                    }
+                                    _ => operation_context
+                                        .create_predicate(Predicate::Eq(left_col, right_col)),
+                                }
                             }
-                            (Some(left_col), Some(right_col)) => operation_context
-                                .create_predicate(Predicate::Eq(left_col.into(), right_col.into())),
                             _ => &Predicate::False, // One of the side is None
                         }
                     }
@@ -110,9 +111,8 @@ fn reduce_relational_op<'a>(
                 | (ReducedExpression::Column(column), ReducedExpression::Value(value)) => {
                     match (column, value) {
                         (Some(column), Some(value)) => {
-                            let value = literal_column(value, operation_context).unwrap();
-                            operation_context
-                                .create_predicate(Predicate::Eq(column.into(), value.into()))
+                            let value = literal_column(value).unwrap();
+                            operation_context.create_predicate(Predicate::Eq(column, value))
                         }
                         _ => &Predicate::False,
                     }

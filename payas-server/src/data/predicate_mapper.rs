@@ -2,6 +2,7 @@ use crate::sql::{column::Column, predicate::Predicate};
 use anyhow::*;
 use async_graphql_value::Value::List;
 
+use maybe_owned::MaybeOwned;
 use payas_model::model::predicate::*;
 
 use async_graphql_value::Value;
@@ -26,7 +27,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_column, op_value_column) =
                     operands(self, argument_value, operation_context);
-                Ok(Predicate::Eq(op_key_column.into(), op_value_column.into()))
+                Ok(Predicate::Eq(op_key_column, op_value_column.into()))
             }
             PredicateParameterTypeKind::Opeartor(parameters) => {
                 Ok(parameters.iter().fold(Predicate::True, |acc, parameter| {
@@ -35,7 +36,11 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                         Some(op_value) => {
                             let (op_key_column, op_value_column) =
                                 operands(self, op_value, operation_context);
-                            Predicate::from_name(&parameter.name, op_key_column, op_value_column)
+                            Predicate::from_name(
+                                &parameter.name,
+                                op_key_column,
+                                op_value_column.into(),
+                            )
                         }
                         None => Predicate::True,
                     };
@@ -156,10 +161,10 @@ fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a Value,
     operation_context: &'a OperationContext<'a>,
-) -> (&'a Column<'a>, &'a Column<'a>) {
+) -> (MaybeOwned<'a, Column<'a>>, Column<'a>) {
     let system = operation_context.get_system();
     let op_physical_column = &param.column_id.as_ref().unwrap().get_column(system);
-    let op_key_column = operation_context.create_column(Column::Physical(op_physical_column));
+    let op_key_column = Column::Physical(op_physical_column).into();
     let op_value_column = operation_context.literal_column(op_value.clone(), op_physical_column);
     (op_key_column, op_value_column)
 }
