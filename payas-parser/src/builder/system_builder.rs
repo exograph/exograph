@@ -276,7 +276,7 @@ mod tests {
     }
 
     fn create_system(src: &str) -> ModelSystem {
-        let (parsed, codemap) = parser::parse_str(src);
+        let (parsed, codemap) = parser::parse_str(src).unwrap();
         build(parsed, codemap).unwrap()
     }
 }
