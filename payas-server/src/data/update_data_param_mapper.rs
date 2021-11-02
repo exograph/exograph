@@ -330,7 +330,7 @@ fn compute_nested_update_object_arg<'a>(
 
     let op = TemplateSQLOperation::Update(TemplateUpdate {
         table,
-        predicate: operation_context.create_predicate(predicate),
+        predicate,
         column_values: nested_proxies,
         returning: vec![],
     });
@@ -455,7 +455,7 @@ fn compute_nested_delete<'a>(
             vec![TransactionStep::Template(TemplateTransactionStep {
                 operation: TemplateSQLOperation::Delete(TemplateDelete {
                     table: &system.tables[field_model_type.table_id().unwrap()],
-                    predicate: Some(operation_context.create_predicate(predicate)),
+                    predicate,
                     returning: vec![],
                 }),
                 step: prev_step,

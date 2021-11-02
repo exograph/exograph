@@ -81,7 +81,7 @@ impl PhysicalTable {
 
     pub fn delete<'a>(
         &'a self,
-        predicate: Option<MaybeOwned<'a, Predicate<'a>>>,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
         returning: Vec<MaybeOwned<'a, Column<'a>>>,
     ) -> Delete {
         Delete {

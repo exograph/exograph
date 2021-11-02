@@ -72,7 +72,7 @@ impl<'a> Expression for Update<'a> {
 #[derive(Debug)]
 pub struct TemplateUpdate<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: &'a Predicate<'a>,
+    pub predicate: Predicate<'a>,
     pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
@@ -108,7 +108,7 @@ impl<'a> TemplateUpdate<'a> {
                     .collect();
                 Update {
                     table,
-                    predicate: (*predicate).into(),
+                    predicate: predicate.into(),
                     column_values: resolved_column_values,
                     returning: returning.iter().map(|col| col.as_ref().into()).collect(),
                 }
