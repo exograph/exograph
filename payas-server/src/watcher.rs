@@ -1,7 +1,6 @@
+use anyhow::{bail, Result};
 use std::path::Path;
 use std::thread;
-
-use anyhow::{bail, Result};
 
 use crate::ServerLoopEvent;
 
@@ -10,7 +9,7 @@ use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
 pub fn with_watch<T, STARTF, STOPF>(
-    watched_path: impl AsRef<Path>,
+    watched_paths: Vec<impl AsRef<Path> + Send + 'static>,
     watch_delay: Duration,
     start: STARTF,
     mut stop: STOPF,
@@ -19,7 +18,7 @@ where
     STARTF: Fn(bool) -> Result<T>,
     STOPF: FnMut(&mut T),
 {
-    let rx = setup_watch(&watched_path, watch_delay)?;
+    let rx = setup_watch(watched_paths, watch_delay)?;
 
     let mut restart = false;
 
@@ -42,23 +41,36 @@ where
 }
 
 fn setup_watch(
-    watched_path: impl AsRef<Path>,
+    watched_paths: Vec<impl AsRef<Path> + Send + 'static>,
     watch_delay: Duration,
 ) -> Result<Receiver<ServerLoopEvent>> {
     let (tx, rx) = mpsc::channel();
 
-    let watched_path = watched_path.as_ref().to_path_buf();
+    //let watched_path = watched_path.as_ref().to_path_buf();
     let tx2 = tx.clone();
 
     thread::spawn(move || -> Result<()> {
         let (watcher_tx, watcher_rx) = mpsc::channel();
         let mut watcher = notify::watcher(watcher_tx, watch_delay)?;
-        watcher.watch(&watched_path, RecursiveMode::NonRecursive)?;
+
+        // for entry in globwalk::GlobWalkerBuilder::from_patterns(
+        //     watched_path.parent().unwrap(),
+        //     &["*", "!*.bundle.*"],
+        // )
+        // .build()?
+        // {
+        //     watcher.watch(entry?.path(), RecursiveMode::NonRecursive)?;
+        // }
+        for watched_path in watched_paths.iter() {
+            watcher.watch(watched_path, RecursiveMode::NonRecursive)?;
+        }
 
         loop {
             match watcher_rx.recv() {
                 Ok(e) => {
-                    if matches!(e, DebouncedEvent::Write(_)) {
+                    if matches!(e, DebouncedEvent::Write(_))
+                        || matches!(e, DebouncedEvent::Remove(_))
+                    {
                         tx.send(ServerLoopEvent::FileChange)?;
                     }
                 }

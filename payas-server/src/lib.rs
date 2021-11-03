@@ -5,7 +5,7 @@ use execution::executor::Executor;
 use payas_deno::DenoModulesMap;
 use std::fs::File;
 use std::io::BufReader;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::{env, sync::Arc};
 
@@ -31,7 +31,8 @@ mod authentication;
 mod data;
 pub mod execution;
 mod introspection;
-pub mod watcher;
+pub mod model_watcher;
+mod watcher;
 
 pub use payas_parser::ast;
 pub use payas_parser::parser;
@@ -199,7 +200,7 @@ pub fn start_prod_mode(
 }
 
 pub fn start_dev_mode(
-    model_file: impl AsRef<Path> + Clone,
+    model_file: PathBuf,
     watch: bool,
     system_start_time: Option<SystemTime>,
 ) -> Result<()> {
@@ -227,7 +228,7 @@ pub fn start_dev_mode(
             actix_system.block_on(server.stop(true));
         };
 
-        watcher::with_watch(
+        model_watcher::with_watch(
             &model_file_clone,
             FILE_WATCHER_DELAY,
             start_server,

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use payas_server::watcher;
+use payas_server::model_watcher;
 
 use std::path::Path;
 use std::time::Duration;
@@ -34,7 +34,7 @@ impl Command for BuildCommand {
         if !self.watch {
             build_fn(false)
         } else {
-            watcher::with_watch(&self.model, FILE_WATCHER_DELAY, build_fn, |_: &mut ()| ())
+            model_watcher::with_watch(&self.model, FILE_WATCHER_DELAY, build_fn, |_: &mut ()| ())
         }
     }
 }
