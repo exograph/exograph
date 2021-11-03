@@ -1,12 +1,12 @@
-use super::{column::Column, Expression, ParameterBinding};
+use super::{column::PhysicalColumn, Expression, ParameterBinding};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ordering {
     Asc,
     Desc,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct OrderBy<'a>(pub Vec<(&'a Column<'a>, Ordering)>);
+#[derive(Debug, PartialEq)]
+pub struct OrderBy<'a>(pub Vec<(&'a PhysicalColumn, Ordering)>);
 
 impl<'a> Expression for OrderBy<'a> {
     fn binding(&self, expression_context: &mut super::ExpressionContext) -> ParameterBinding {
@@ -45,7 +45,6 @@ mod test {
             is_pk: false,
             is_autoincrement: false,
         };
-        let age_col = Column::Physical(&age_col);
 
         let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
 
@@ -64,7 +63,6 @@ mod test {
             is_pk: false,
             is_autoincrement: false,
         };
-        let name_col = Column::Physical(&name_col);
 
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
@@ -73,7 +71,6 @@ mod test {
             is_pk: false,
             is_autoincrement: false,
         };
-        let age_col = Column::Physical(&age_col);
 
         {
             let order_by = OrderBy(vec![(&name_col, Ordering::Asc), (&age_col, Ordering::Desc)]);

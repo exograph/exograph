@@ -1,13 +1,15 @@
+use maybe_owned::MaybeOwned;
+
 use super::{
     column::Column, limit::Limit, offset::Offset, order::OrderBy, physical_table::PhysicalTable,
     predicate::Predicate, Expression, ExpressionContext, ParameterBinding,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Select<'a> {
     pub underlying: &'a PhysicalTable,
-    pub columns: Vec<&'a Column<'a>>,
-    pub predicate: Option<&'a Predicate<'a>>,
+    pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub predicate: Option<Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
     pub limit: Option<Limit>,
@@ -23,7 +25,7 @@ impl<'a> Expression for Select<'a> {
             .iter()
             .map(|c| {
                 let col_binding = c.binding(expression_context);
-                let text_cast = match c {
+                let text_cast = match c.as_ref() {
                     Column::JsonObject(_) | Column::JsonAgg(_) if self.top_level_selection => {
                         "::text"
                     }
@@ -41,7 +43,7 @@ impl<'a> Expression for Select<'a> {
         let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
         params.extend(table_binding.params);
 
-        let stmt = match self.predicate {
+        let stmt = match &self.predicate {
             // Avoid correct, but inelegant "where true" clause
             Some(Predicate::True) | None => match &self.order_by {
                 None => format!("select {} from {}", cols_stmts, table_binding.stmt),
@@ -129,13 +131,14 @@ mod tests {
         let age_col = table.get_column("age").unwrap();
         let age_value_col = Column::Literal(Box::new(5));
 
-        let predicate = Predicate::Eq(&age_col, &age_value_col);
+        let predicate = Predicate::Eq(age_col.into(), age_value_col.into());
 
-        let selected_cols = vec![&age_col];
+        let age_col = table.get_column("age").unwrap();
+        let selected_cols = vec![age_col.into()];
 
         let predicated_table = table.select(
             selected_cols,
-            Some(&predicate),
+            Some(predicate),
             None,
             Some(Offset(10)),
             Some(Limit(20)),
@@ -179,10 +182,17 @@ mod tests {
         let age_col = table.get_column("age").unwrap();
         let name_col = table.get_column("name").unwrap();
         let json_col = Column::JsonObject(vec![
-            ("namex".to_string(), &name_col),
-            ("agex".to_string(), &age_col),
+            ("namex".to_string(), name_col.into()),
+            ("agex".to_string(), age_col.into()),
         ]);
-        let selected_table = table.select(vec![&age_col, &json_col], None, None, None, None, true);
+        let selected_table = table.select(
+            vec![table.get_column("age").unwrap().into(), json_col.into()],
+            None,
+            None,
+            None,
+            None,
+            true,
+        );
 
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
