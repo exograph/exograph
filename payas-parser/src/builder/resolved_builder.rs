@@ -1158,7 +1158,7 @@ mod tests {
     }
 
     fn create_resolved_system(src: &str) -> ResolvedSystem {
-        let (parsed, codemap) = parser::parse_str(src);
+        let (parsed, codemap) = parser::parse_str(src).unwrap();
         let types = typechecker::build(parsed, codemap).unwrap();
 
         build(types).unwrap()
