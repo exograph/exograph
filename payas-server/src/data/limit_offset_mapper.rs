@@ -1,4 +1,6 @@
-use super::{operation_context::OperationContext, operation_mapper::SQLMapper};
+use crate::execution::query_context::QueryContext;
+
+use super::operation_mapper::SQLMapper;
 use anyhow::*;
 use async_graphql_value::Value;
 use payas_model::{
@@ -19,7 +21,7 @@ impl<'a> SQLMapper<'a, Limit> for LimitParameter {
     fn map_to_sql(
         &self,
         argument: &'a Value,
-        _operation_context: &'a OperationContext<'a>,
+        _query_context: &'a QueryContext<'a>,
     ) -> Result<Limit> {
         cast_to_i64(argument).map(Limit)
     }
@@ -29,7 +31,7 @@ impl<'a> SQLMapper<'a, Offset> for OffsetParameter {
     fn map_to_sql(
         &self,
         argument: &'a Value,
-        _operation_context: &'a OperationContext<'a>,
+        _query_context: &'a QueryContext<'a>,
     ) -> Result<Offset> {
         cast_to_i64(argument).map(Offset)
     }

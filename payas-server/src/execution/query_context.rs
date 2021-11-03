@@ -8,8 +8,17 @@ use async_graphql_parser::{
     },
     Positioned,
 };
-use async_graphql_value::{Name, Value};
+use async_graphql_value::{Name, Number, Value};
+use chrono::prelude::*;
+use chrono::DateTime;
+use payas_model::{
+    model::{column_id::ColumnId, system::ModelSystem},
+    sql::{column::*, SQLParam},
+};
+use rust_decimal::prelude::*;
+use rust_decimal::Decimal;
 use serde_json::{Map, Value as JsonValue};
+use typed_arena::Arena;
 
 use super::{executor::Executor, resolver::*};
 
@@ -21,6 +30,7 @@ pub struct QueryContext<'a> {
     pub variables: &'a Option<&'a Map<String, JsonValue>>,
     pub executor: &'a Executor<'a>,
     pub request_context: &'a serde_json::Value,
+    pub resolved_variables: Arena<Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -81,6 +91,133 @@ impl<'qc> QueryContext<'qc> {
         } else {
             Ok(JsonValue::Null)
         }
+    }
+
+    pub fn create_column_with_id(&self, column_id: &ColumnId) -> Column<'qc> {
+        Column::Physical(column_id.get_column(self.executor.system))
+    }
+
+    pub fn literal_column(
+        &'qc self,
+        value: &Value,
+        associated_column: &PhysicalColumn,
+    ) -> Column<'qc> {
+        match value {
+            Value::Variable(name) => {
+                let value = self
+                    .variables
+                    .and_then(|variable| variable.get(name.as_str()))
+                    .map(|value| async_graphql_value::Value::from_json(value.clone()).unwrap())
+                    .unwrap();
+
+                self.literal_column(&value, associated_column)
+            }
+            Value::Number(number) => Column::Literal(cast_number(number, &associated_column.typ)),
+            Value::String(v) => Column::Literal(cast_string(v, &associated_column.typ)),
+            Value::Boolean(v) => Column::Literal(Box::new(*v)),
+            Value::Null => Column::Null,
+            Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from the database to do a correct translation
+            Value::List(v) => {
+                let values = v
+                    .iter()
+                    .map(|elem| self.literal_column(elem, associated_column).into())
+                    .collect();
+
+                Column::Array(values)
+            }
+            Value::Object(_) => Column::Literal(cast_value(value, &associated_column.typ)),
+            Value::Binary(_) => panic!("Binary values are not supported"),
+        }
+    }
+
+    pub fn resolve_variable(&self, name: &str) -> Option<&Value> {
+        let resolved: Option<&serde_json::Value> =
+            self.variables.and_then(|variables| variables.get(name));
+
+        resolved.map(|json_value| {
+            let value = Value::from_json(json_value.to_owned()).unwrap();
+            self.resolved_variables.alloc(value) as &Value
+        })
+    }
+
+    pub fn get_argument_field(
+        &'qc self,
+        argument_value: &'qc Value,
+        field_name: &str,
+    ) -> Option<&'qc Value> {
+        match argument_value {
+            Value::Object(value) => value.get(field_name),
+            Value::Variable(name) => self.resolve_variable(name.as_str()),
+            _ => None,
+        }
+    }
+
+    pub fn get_system(&self) -> &ModelSystem {
+        self.executor.system
+    }
+}
+
+fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+    match destination_type {
+        PhysicalColumnType::Int { bits } => match bits {
+            IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
+            IntBits::_32 => Box::new(number.as_i64().unwrap() as i32),
+            IntBits::_64 => Box::new(number.as_i64().unwrap() as i64),
+        },
+        PhysicalColumnType::Float { bits } => match bits {
+            FloatBits::_24 => Box::new(number.as_f64().unwrap() as f32),
+            FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
+        },
+        PhysicalColumnType::Numeric { .. } => {
+            let decimal = Decimal::from_str(&number.to_string());
+            Box::new(decimal.unwrap())
+        }
+        PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
+            // TODO assumes that `id` columns are always integers
+            cast_number(number, ref_pk_type)
+        }
+        // TODO: Expand for other number types such as float
+        _ => panic!("Unexpected destination_type for number value"),
+    }
+}
+
+fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+    match destination_type {
+        PhysicalColumnType::Numeric { .. } => Box::new(Decimal::from_str(string).unwrap()),
+
+        PhysicalColumnType::Timestamp { timezone, .. } => {
+            if *timezone {
+                let dt = DateTime::parse_from_rfc3339(string).unwrap();
+                Box::new(dt)
+            } else {
+                let dt = NaiveDateTime::parse_from_str(string, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
+                Box::new(dt)
+            }
+        }
+
+        PhysicalColumnType::Time { .. } => {
+            let t = NaiveTime::parse_from_str(string, "%H:%M:%S%.f").unwrap();
+            Box::new(t)
+        }
+
+        PhysicalColumnType::Date => {
+            let d = NaiveDate::parse_from_str(string, "%Y-%m-%d").unwrap();
+            Box::new(d)
+        }
+
+        PhysicalColumnType::Array { typ } => cast_string(string, typ),
+
+        _ => Box::new(string.to_owned()),
+    }
+}
+
+fn cast_value(val: &Value, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+    match destination_type {
+        PhysicalColumnType::Json => {
+            let json_object = val.clone().into_json().unwrap();
+            Box::new(json_object)
+        }
+        _ => panic!(),
     }
 }
 

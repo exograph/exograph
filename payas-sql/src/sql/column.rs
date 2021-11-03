@@ -5,6 +5,7 @@ use super::{
     SQLParam,
 };
 use anyhow::{bail, Result};
+use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Write, rc::Rc};
 
@@ -414,11 +415,11 @@ impl PhysicalColumnType {
 #[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
-    Array(Vec<&'a Column<'a>>),
+    Array(Vec<MaybeOwned<'a, Column<'a>>>),
     Literal(Box<dyn SQLParam>),
-    JsonObject(Vec<(String, &'a Column<'a>)>),
-    JsonAgg(&'a Column<'a>),
-    SelectionTableWrapper(Select<'a>),
+    JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
+    JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
+    SelectionTableWrapper(Box<Select<'a>>),
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
@@ -535,7 +536,7 @@ impl<'a> Expression for Column<'a> {
 
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
-    Concrete(&'a Column<'a>),
+    Concrete(MaybeOwned<'a, Column<'a>>),
     Template {
         col_index: usize,
         step: Rc<TransactionStep<'a>>,

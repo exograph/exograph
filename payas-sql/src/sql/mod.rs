@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use maybe_owned::MaybeOwned;
 use postgres::types::{FromSql, ToSql, Type};
 use std::any::Any;
 
@@ -145,6 +146,15 @@ pub trait Expression {
 }
 
 impl<T> Expression for Box<T>
+where
+    T: Expression,
+{
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+        self.as_ref().binding(expression_context)
+    }
+}
+
+impl<'a, T> Expression for MaybeOwned<'a, T>
 where
     T: Expression,
 {

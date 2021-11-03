@@ -13,6 +13,7 @@ use payas_model::{
 };
 use query_context::*;
 use serde_json::{Map, Value};
+use typed_arena::Arena;
 
 pub struct Executor<'a> {
     pub system: &'a ModelSystem,
@@ -71,6 +72,7 @@ impl<'a> Executor<'a> {
                 variables,
                 executor: self,
                 request_context,
+                resolved_variables: Arena::new(),
             },
         )
     }
