@@ -72,7 +72,7 @@ impl<'a> Executor<'a> {
                 variables,
                 executor: self,
                 request_context,
-                resolved_variables: Arena::new(),
+                field_arguments: Arena::new(),
             },
         )
     }

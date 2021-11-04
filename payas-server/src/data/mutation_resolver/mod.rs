@@ -19,12 +19,10 @@ use payas_model::{
 use super::{
     create_data_param_mapper::InsertionInfo,
     operation_mapper::{OperationResolver, OperationResolverResult, SQLMapper, SQLUpdateMapper},
+    Arguments,
 };
 
 use async_graphql_parser::{types::Field, Positioned};
-use async_graphql_value::{Name, Value};
-
-type Arguments = [(Positioned<Name>, Positioned<Value>)];
 
 impl<'a> OperationResolver<'a> for Mutation {
     fn resolve_operation(
@@ -105,7 +103,8 @@ fn create_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let info = insertion_info(data_param, &field.arguments, query_context)?.unwrap();
+    let field_arguments = query_context.field_arguments(field);
+    let info = insertion_info(data_param, field_arguments, query_context)?.unwrap();
     let ops = info.operation(query_context, true);
 
     Ok(TransactionScript::Single(TransactionStep::Concrete(
@@ -135,7 +134,7 @@ fn delete_operation<'a>(
 
     let predicate = super::compute_predicate(
         Some(predicate_param),
-        &field.arguments,
+        query_context.field_arguments(field),
         access_predicate.into(),
         query_context,
     )
@@ -175,9 +174,10 @@ fn update_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
+    let field_arguments = query_context.field_arguments(field);
     let predicate = super::compute_predicate(
         Some(predicate_param),
-        &field.arguments,
+        field_arguments,
         Predicate::True.into(),
         query_context,
     )
@@ -188,7 +188,7 @@ fn update_operation<'a>(
         )
     })?;
 
-    let argument_value = super::find_arg(&field.arguments, &data_param.name);
+    let argument_value = super::find_arg(field_arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
             data_param.update_script(mutation, predicate, select, argument_value, query_context)

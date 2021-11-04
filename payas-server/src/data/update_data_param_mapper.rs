@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use anyhow::*;
-use async_graphql_value::Value;
+use async_graphql_value::ConstValue;
 use maybe_owned::MaybeOwned;
 
 use crate::{
@@ -37,16 +37,11 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         mutation: &'a Mutation,
         predicate: MaybeOwned<'a, Predicate<'a>>,
         select: Select<'a>,
-        argument: &'a Value,
+        argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript<'a>> {
         let system = &query_context.get_system();
         let data_type = &system.mutation_types[self.type_id];
-
-        let argument = match argument {
-            Value::Variable(name) => query_context.resolve_variable(name.as_str()).unwrap(),
-            _ => argument,
-        };
 
         let self_update_columns = compute_update_columns(data_type, argument, query_context);
 
@@ -97,14 +92,10 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 
 fn compute_update_columns<'a>(
     data_type: &'a GqlType,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
     let system = &query_context.get_system();
-    let argument = match argument {
-        Value::Variable(name) => query_context.resolve_variable(name.as_str()).unwrap(),
-        _ => argument,
-    };
 
     match &data_type.kind {
         GqlTypeKind::Primitive => panic!(),
@@ -160,7 +151,7 @@ fn needs_transaction(mutation_type: &GqlType) -> bool {
 // TODO: Do this once we rethink how we set up the parameters.
 fn compute_nested<'a>(
     data_type: &'a GqlType,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
     query_context: &'a QueryContext<'a>,
@@ -248,7 +239,7 @@ fn compute_nested_reference_column<'a>(
 // Looks for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
@@ -262,7 +253,7 @@ fn compute_nested_update<'a>(
 
     match update_arg {
         Some(update_arg) => match update_arg {
-            arg @ Value::Object(..) => {
+            arg @ ConstValue::Object(..) => {
                 vec![compute_nested_update_object_arg(
                     field_model_type,
                     arg,
@@ -271,7 +262,7 @@ fn compute_nested_update<'a>(
                     nested_reference_col,
                 )]
             }
-            Value::List(update_arg) => update_arg
+            ConstValue::List(update_arg) => update_arg
                 .iter()
                 .map(|arg| {
                     compute_nested_update_object_arg(
@@ -292,12 +283,12 @@ fn compute_nested_update<'a>(
 // Compute update step assuming that the argument is a single object (not an array)
 fn compute_nested_update_object_arg<'a>(
     field_model_type: &'a GqlType,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     nested_reference_col: &'a PhysicalColumn,
 ) -> TransactionStep<'a> {
-    assert!(matches!(argument, Value::Object(..)));
+    assert!(matches!(argument, ConstValue::Object(..)));
 
     let system = &query_context.get_system();
 
@@ -343,7 +334,7 @@ fn compute_nested_update_object_arg<'a>(
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
 fn compute_nested_create<'a>(
     field_model_type: &'a GqlType,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
@@ -400,7 +391,7 @@ fn compute_nested_create<'a>(
 
 fn compute_nested_delete<'a>(
     field_model_type: &'a GqlType,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     _container_model_type: &'a GqlType,
@@ -409,7 +400,7 @@ fn compute_nested_delete<'a>(
     // TODO: Revisit this.
 
     fn compute_predicate<'a>(
-        elem_value: &Value,
+        elem_value: &ConstValue,
         field_model_type: &'a GqlType,
         query_context: &'a QueryContext<'a>,
     ) -> Predicate<'a> {
@@ -418,7 +409,7 @@ fn compute_nested_delete<'a>(
         let pk_field = field_model_type.pk_field().unwrap();
 
         match elem_value {
-            Value::Object(map) => {
+            ConstValue::Object(map) => {
                 let pk_value = map.get(pk_field.name.as_str()).unwrap();
                 let pk_column = field_model_type
                     .pk_column_id()
@@ -430,7 +421,7 @@ fn compute_nested_delete<'a>(
                     query_context.literal_column(pk_value, pk_column).into(),
                 )
             }
-            Value::List(values) => {
+            ConstValue::List(values) => {
                 let mut predicate = Predicate::False;
                 for value in values {
                     let elem_predicate = compute_predicate(value, field_model_type, query_context);

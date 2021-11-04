@@ -3,28 +3,21 @@ use crate::{
     sql::{column::Column, predicate::Predicate},
 };
 use anyhow::*;
-use async_graphql_value::Value::List;
+use async_graphql_value::ConstValue;
 
 use maybe_owned::MaybeOwned;
 use payas_model::model::predicate::*;
-
-use async_graphql_value::Value;
 
 use super::operation_mapper::SQLMapper;
 
 impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
     fn map_to_sql(
         &'a self,
-        argument_value: &'a Value,
+        argument_value: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
     ) -> Result<Predicate<'a>> {
         let system = query_context.get_system();
         let parameter_type = &system.predicate_types[self.type_id];
-
-        let argument_value = match argument_value {
-            Value::Variable(name) => query_context.resolve_variable(name.as_str()).unwrap(),
-            _ => argument_value,
-        };
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
@@ -53,7 +46,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
             }
             PredicateParameterTypeKind::Composite(parameters, boolean_params) => {
                 // first, match any boolean predicates the argument_value might contain
-                let boolean_argument_value: (&str, Option<&Value>) = boolean_params
+                let boolean_argument_value: (&str, Option<&ConstValue>) = boolean_params
                     .iter()
                     .map(|parameter| {
                         (
@@ -87,7 +80,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
 
                         match boolean_predicate_name {
                             "and" | "or" => {
-                                if let List(arguments) = boolean_argument_value {
+                                if let ConstValue::List(arguments) = boolean_argument_value {
                                     // first make sure we have arguments
                                     if arguments.is_empty() {
                                         bail!("Boolean predicate does not have any arguments")
@@ -162,7 +155,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
 
 fn operands<'a>(
     param: &'a PredicateParameter,
-    op_value: &'a Value,
+    op_value: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
 ) -> (MaybeOwned<'a, Column<'a>>, Column<'a>) {
     let system = query_context.get_system();
