@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::*;
-use async_graphql_value::Value;
+use async_graphql_value::ConstValue;
 use maybe_owned::MaybeOwned;
 
 use crate::{execution::query_context::QueryContext, sql::column::Column};
@@ -69,7 +69,7 @@ impl<'a> InsertionInfo<'a> {
 impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
     fn map_to_sql(
         &'a self,
-        argument: &'a Value,
+        argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
     ) -> Result<InsertionInfo<'a>> {
         let table = self
@@ -77,14 +77,8 @@ impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
             .map(|table_id| &query_context.get_system().tables[table_id])
             .unwrap();
 
-        // Before we can make the decision of mapping a single or multiple elements, we must resolve variable
-        let argument = match argument {
-            Value::Variable(name) => query_context.resolve_variable(name.as_str()).unwrap(),
-            _ => argument,
-        };
-
         match argument {
-            Value::List(elems) => {
+            ConstValue::List(elems) => {
                 let unaligned = elems
                     .iter()
                     .enumerate()
@@ -150,15 +144,10 @@ fn align<'a>(unaligned: Vec<SingleInsertion<'a>>, table: &'a PhysicalTable) -> I
 /// Specifically, either the whole of a single insert one of the element of multiple inserts
 fn map_single<'a>(
     input_data_type: &'a GqlType,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     index: Option<usize>, // Index if the multiple entries are being inserted (such as createVenues (note the plural form))
     query_context: &'a QueryContext<'a>,
 ) -> Result<SingleInsertion<'a>> {
-    let argument = match argument {
-        Value::Variable(name) => query_context.resolve_variable(name.as_str()).unwrap(),
-        _ => argument,
-    };
-
     let fields = match &input_data_type.kind {
         GqlTypeKind::Primitive => bail!("Query attempted on a primitive type"),
         GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields,
@@ -204,7 +193,7 @@ fn map_single<'a>(
 fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a GqlField,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
 ) -> (&'a PhysicalColumn, Column<'a>) {
     let system = query_context.get_system();
@@ -234,7 +223,7 @@ fn map_self_column<'a>(
 /// this needs to be called for the `concerts` part (which is mapped to a separate table)
 fn map_foreign<'a>(
     field: &'a GqlField,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     parent_index: Option<usize>,
     parent_data_type: &'a GqlType,
     query_context: &'a QueryContext<'a>,

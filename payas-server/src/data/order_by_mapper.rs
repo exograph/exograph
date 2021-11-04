@@ -1,7 +1,7 @@
 use crate::execution::query_context::QueryContext;
 use crate::sql::order::{OrderBy, Ordering};
 use anyhow::*;
-use async_graphql_value::Value;
+use async_graphql_value::ConstValue;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
 use payas_model::sql::column::PhysicalColumn;
 
@@ -10,7 +10,7 @@ use super::operation_mapper::SQLMapper;
 impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameter {
     fn map_to_sql(
         &self,
-        argument: &'a Value,
+        argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
     ) -> Result<OrderBy<'a>> {
         let parameter_type = &query_context.get_system().order_by_types[self.type_id];
@@ -21,11 +21,11 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameter {
 impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
     fn map_to_sql(
         &'a self,
-        argument: &'a Value,
+        argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
     ) -> Result<OrderBy<'a>> {
         match argument {
-            Value::Object(elems) => {
+            ConstValue::Object(elems) => {
                 // TODO: Reject elements with multiple elements (see the comment in query.rs)
                 let mapped: Vec<_> = elems
                     .iter()
@@ -33,7 +33,7 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
                     .collect::<Result<Vec<_>>>()?;
                 Ok(OrderBy(mapped))
             }
-            Value::List(elems) => {
+            ConstValue::List(elems) => {
                 let mapped: Vec<_> = elems
                     .iter()
                     .map(|elem| self.map_to_sql(elem, query_context))
@@ -49,10 +49,7 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
                     .collect();
                 Ok(OrderBy(mapped))
             }
-            Value::Variable(name) => {
-                let resolved = query_context.resolve_variable(name.as_str());
-                self.map_to_sql(resolved.unwrap(), query_context)
-            }
+
             _ => todo!(), // Invalid
         }
     }
@@ -61,7 +58,7 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
 fn order_by_pair<'a>(
     typ: &'a OrderByParameterType,
     parameter_name: &str,
-    parameter_value: &Value,
+    parameter_value: &ConstValue,
     query_context: &'a QueryContext<'a>,
 ) -> Result<(&'a PhysicalColumn, Ordering)> {
     let parameter = match &typ.kind {
@@ -78,7 +75,7 @@ fn order_by_pair<'a>(
     ordering(parameter_value).map(|ordering| (column, ordering))
 }
 
-fn ordering(argument: &Value) -> Result<Ordering> {
+fn ordering(argument: &ConstValue) -> Result<Ordering> {
     fn str_ordering(value: &str) -> Result<Ordering> {
         if value == "ASC" {
             Ok(Ordering::Asc)
@@ -90,8 +87,8 @@ fn ordering(argument: &Value) -> Result<Ordering> {
     }
 
     match argument {
-        Value::Enum(value) => str_ordering(value.as_str()),
-        Value::String(value) => str_ordering(value.as_str()), // Needed when processing values from variables (that don't get mapped to the Enum type)
+        ConstValue::Enum(value) => str_ordering(value.as_str()),
+        ConstValue::String(value) => str_ordering(value.as_str()), // Needed when processing values from variables (that don't get mapped to the Enum type)
         arg => bail!("Unable to process ordering argument {}", arg), // return an error
     }
 }

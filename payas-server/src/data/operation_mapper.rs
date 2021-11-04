@@ -12,7 +12,7 @@ use super::access_solver;
 use super::interception::InterceptedOperation;
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
 use async_graphql_parser::{types::Field, Positioned};
-use async_graphql_value::Value;
+use async_graphql_value::ConstValue;
 use payas_model::{
     model::{
         mapped_arena::SerializableSlabIndex,
@@ -24,7 +24,11 @@ use payas_model::{
 };
 
 pub trait SQLMapper<'a, R> {
-    fn map_to_sql(&'a self, argument: &'a Value, query_context: &'a QueryContext<'a>) -> Result<R>;
+    fn map_to_sql(
+        &'a self,
+        argument: &'a ConstValue,
+        query_context: &'a QueryContext<'a>,
+    ) -> Result<R>;
 }
 
 pub trait SQLUpdateMapper<'a> {
@@ -33,7 +37,7 @@ pub trait SQLUpdateMapper<'a> {
         mutation: &'a Mutation,
         predicate: MaybeOwned<'a, Predicate<'a>>,
         select: Select<'a>,
-        argument: &'a Value,
+        argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript>;
 }
@@ -188,9 +192,8 @@ fn resolve_deno(
 
     let mut deno_modules_map = query_context.executor.deno_modules_map.lock().unwrap();
     let function_result = futures::executor::block_on(async {
-        let mapped_args = field
-            .node
-            .arguments
+        let mapped_args = query_context
+            .field_arguments(&field.node)
             .iter()
             .map(|(gql_name, gql_value)| {
                 (

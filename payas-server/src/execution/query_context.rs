@@ -8,7 +8,7 @@ use async_graphql_parser::{
     },
     Positioned,
 };
-use async_graphql_value::{Name, Number, Value};
+use async_graphql_value::{ConstValue, Name, Number, Value};
 use chrono::prelude::*;
 use chrono::DateTime;
 use payas_model::{
@@ -30,7 +30,7 @@ pub struct QueryContext<'a> {
     pub variables: &'a Option<&'a Map<String, JsonValue>>,
     pub executor: &'a Executor<'a>,
     pub request_context: &'a serde_json::Value,
-    pub resolved_variables: Arena<Value>,
+    pub field_arguments: Arena<Vec<(Positioned<Name>, Positioned<ConstValue>)>>,
 }
 
 #[derive(Debug, Clone)]
@@ -99,25 +99,18 @@ impl<'qc> QueryContext<'qc> {
 
     pub fn literal_column(
         &'qc self,
-        value: &Value,
+        value: &ConstValue,
         associated_column: &PhysicalColumn,
     ) -> Column<'qc> {
         match value {
-            Value::Variable(name) => {
-                let value = self
-                    .variables
-                    .and_then(|variable| variable.get(name.as_str()))
-                    .map(|value| async_graphql_value::Value::from_json(value.clone()).unwrap())
-                    .unwrap();
-
-                self.literal_column(&value, associated_column)
+            ConstValue::Number(number) => {
+                Column::Literal(cast_number(number, &associated_column.typ))
             }
-            Value::Number(number) => Column::Literal(cast_number(number, &associated_column.typ)),
-            Value::String(v) => Column::Literal(cast_string(v, &associated_column.typ)),
-            Value::Boolean(v) => Column::Literal(Box::new(*v)),
-            Value::Null => Column::Null,
-            Value::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from the database to do a correct translation
-            Value::List(v) => {
+            ConstValue::String(v) => Column::Literal(cast_string(v, &associated_column.typ)),
+            ConstValue::Boolean(v) => Column::Literal(Box::new(*v)),
+            ConstValue::Null => Column::Null,
+            ConstValue::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from the database to do a correct translation
+            ConstValue::List(v) => {
                 let values = v
                     .iter()
                     .map(|elem| self.literal_column(elem, associated_column).into())
@@ -125,29 +118,47 @@ impl<'qc> QueryContext<'qc> {
 
                 Column::Array(values)
             }
-            Value::Object(_) => Column::Literal(cast_value(value, &associated_column.typ)),
-            Value::Binary(_) => panic!("Binary values are not supported"),
+            ConstValue::Object(_) => Column::Literal(cast_value(value, &associated_column.typ)),
+            ConstValue::Binary(_) => panic!("Binary values are not supported"),
         }
     }
 
-    pub fn resolve_variable(&self, name: &str) -> Option<&Value> {
+    pub fn field_arguments(
+        &'qc self,
+        field: &Field,
+    ) -> &'qc Vec<(Positioned<Name>, Positioned<ConstValue>)> {
+        let args = field
+            .arguments
+            .iter()
+            .flat_map(|(name, value)| {
+                value
+                    .node
+                    .clone()
+                    .into_const_with(|name| self.var_value(&name))
+                    .ok()
+                    .map(|v| (name.clone(), Positioned::new(v, value.pos)))
+            })
+            .collect();
+
+        self.field_arguments.alloc(args)
+    }
+
+    fn var_value(&self, name: &str) -> Result<ConstValue> {
         let resolved: Option<&serde_json::Value> =
             self.variables.and_then(|variables| variables.get(name));
 
-        resolved.map(|json_value| {
-            let value = Value::from_json(json_value.to_owned()).unwrap();
-            self.resolved_variables.alloc(value) as &Value
-        })
+        Ok(resolved
+            .map(|json_value| ConstValue::from_json(json_value.to_owned()).unwrap())
+            .unwrap())
     }
 
     pub fn get_argument_field(
         &'qc self,
-        argument_value: &'qc Value,
+        argument_value: &'qc ConstValue,
         field_name: &str,
-    ) -> Option<&'qc Value> {
+    ) -> Option<&'qc ConstValue> {
         match argument_value {
-            Value::Object(value) => value.get(field_name),
-            Value::Variable(name) => self.resolve_variable(name.as_str()),
+            ConstValue::Object(value) => value.get(field_name),
             _ => None,
         }
     }
@@ -211,7 +222,7 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Box<dyn S
     }
 }
 
-fn cast_value(val: &Value, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+fn cast_value(val: &ConstValue, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
     match destination_type {
         PhysicalColumnType::Json => {
             let json_object = val.clone().into_json().unwrap();

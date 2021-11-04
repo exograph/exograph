@@ -194,9 +194,11 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
+                let field_arguments = query_context.field_arguments(field);
+
                 let predicate = super::compute_predicate(
                     predicate_param.as_ref(),
-                    &field.arguments,
+                    field_arguments,
                     additional_predicate.into(),
                     query_context,
                 )
@@ -209,8 +211,9 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 let table = self.return_type.physical_table(query_context.get_system());
 
-                let limit = self.compute_limit(&field.arguments, query_context);
-                let offset = self.compute_offset(&field.arguments, query_context);
+                let field_arguments = query_context.field_arguments(field);
+                let limit = self.compute_limit(field_arguments, query_context);
+                let offset = self.compute_offset(field_arguments, query_context);
 
                 Ok(match self.return_type.type_modifier {
                     GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
@@ -222,7 +225,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                         top_level_selection,
                     ),
                     GqlTypeModifier::List => {
-                        let order_by = self.compute_order_by(&field.arguments, query_context);
+                        let order_by = self.compute_order_by(field_arguments, query_context);
                         let agg_column = Column::JsonAgg(Box::new(content_object.into()));
                         table.select(
                             vec![agg_column.into()],
