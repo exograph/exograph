@@ -12,7 +12,7 @@ mod update_data_param_mapper;
 
 use anyhow::*;
 use async_graphql_parser::Positioned;
-use async_graphql_value::{Name, Value};
+use async_graphql_value::{ConstValue, Name};
 use maybe_owned::MaybeOwned;
 
 use crate::{execution::query_context::QueryContext, sql::predicate::Predicate};
@@ -21,9 +21,9 @@ use payas_model::model::predicate::PredicateParameter;
 
 use self::operation_mapper::SQLMapper;
 
-type Arguments = [(Positioned<Name>, Positioned<Value>)];
+pub type Arguments = [(Positioned<Name>, Positioned<ConstValue>)];
 
-fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a Value> {
+fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a ConstValue> {
     arguments.iter().find_map(|argument| {
         let (argument_name, argument_value) = argument;
         if arg_name == argument_name.node {
