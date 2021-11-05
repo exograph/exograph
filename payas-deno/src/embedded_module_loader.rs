@@ -51,6 +51,31 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 })
             }
             .boxed_local()
+        //        } else if module_specifier.scheme() == "https" || module_specifier.scheme() == "http" {
+        //            let module_specifier = module_specifier.clone();
+        //            let code = format!(r#"
+        //                const url = "{}";
+        //
+        //                console.log(url);
+        //
+        //                const {{ files, diagnostics }} = await Deno.emit(url, {{
+        //                    bundle: "module",
+        //                }});
+        //
+        //                const script = files["deno:///bundle.js"];
+        //                eval(script);
+        //            "#, module_specifier.as_str());
+        //
+        //            async move {
+        //                let specifier = module_specifier.to_string();
+        //
+        //                Ok(ModuleSource {
+        //                    code,
+        //                    module_url_specified: specifier.clone(),
+        //                    module_url_found: specifier,
+        //                })
+        //            }
+        //            .boxed_local()
         } else {
             FsModuleLoader.load(module_specifier, maybe_referrer, is_dynamic)
         }

@@ -1,13 +1,12 @@
 use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
-use deno_core::FsModuleLoader;
 use deno_core::JsRuntime;
 use deno_runtime::ops::worker_host::CreateWebWorkerArgs;
 use deno_runtime::web_worker::SendableWebWorkerHandle;
 use deno_runtime::web_worker::WebWorker;
 use deno_runtime::web_worker::WebWorkerOptions;
-use deno_runtime::web_worker::WebWorkerType;
+use std::process::Stdio;
 use std::sync::Mutex;
 
 use deno_core::v8::Global;
@@ -70,15 +69,32 @@ lazy_static::lazy_static! {
 }
 
 fn create_web_worker(args: CreateWebWorkerArgs) -> (WebWorker, SendableWebWorkerHandle) {
-    let module_loader = Rc::new(FsModuleLoader);
+    // TODO: not a great solution.
+    let stdout = std::process::Command::new("deno")
+        .args(["bundle", "--no-check", args.main_module.as_str()])
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::piped())
+        .output()
+        .unwrap()
+        .stdout;
+
+    let code = unsafe { std::str::from_utf8_unchecked(stdout.as_slice()) };
+
+    let module_loader = Rc::new(EmbeddedModuleLoader {
+        source_code: code.to_string(),
+        module_specifier: args.main_module.to_string(),
+    });
 
     WebWorker::bootstrap_from_options(
         args.name,
-        Permissions::allow_all(),
-        args.main_module,
+        args.permissions,
+        args.main_module.clone(),
         args.worker_id,
         WebWorkerOptions {
-            bootstrap: BOOTSTRAP.clone(),
+            bootstrap: BootstrapOptions {
+                location: Some(args.main_module.clone()),
+                ..BOOTSTRAP.clone()
+            },
             extensions: vec![],
             unsafely_ignore_certificate_errors: None,
             root_cert_store: None,
@@ -87,8 +103,8 @@ fn create_web_worker(args: CreateWebWorkerArgs) -> (WebWorker, SendableWebWorker
             module_loader,
             create_web_worker_cb: Arc::new(Box::new(create_web_worker)),
             js_error_create_fn: None,
-            use_deno_namespace: false,
-            worker_type: WebWorkerType::Module,
+            use_deno_namespace: args.use_deno_namespace,
+            worker_type: args.worker_type,
             maybe_inspector_server: None,
             get_error_class_fn: None,
             blob_store: BlobStore::default(),
