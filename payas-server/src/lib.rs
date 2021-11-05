@@ -2,11 +2,10 @@ use actix_web::dev::Server;
 use async_stream::AsyncStream;
 use bincode::deserialize_from;
 use execution::executor::Executor;
-use payas_deno::DenoModulesMap;
+use payas_deno::DenoExecutionManager;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
 use std::{env, sync::Arc};
 
 use actix_cors::Cors;
@@ -50,7 +49,7 @@ async fn playground() -> impl Responder {
     HttpResponse::Ok().body(PLAYGROUND_HTML)
 }
 
-pub type SystemInfo = Arc<(ModelSystem, Schema, Database, Mutex<DenoModulesMap>)>;
+pub type SystemInfo = Arc<(ModelSystem, Schema, Database, DenoExecutionManager)>;
 
 async fn resolve(
     req: HttpRequest,
@@ -65,12 +64,12 @@ async fn resolve(
 
     match auth {
         Ok(claims) => {
-            let (system, schema, database, deno_modules_map) = system_info.as_ref().as_ref();
+            let (system, schema, database, deno_execution) = system_info.as_ref().as_ref();
             let executor = Executor {
                 system,
                 schema,
                 database,
-                deno_modules_map,
+                deno_execution,
             };
             let operation_name = body["operationName"].as_str();
             let query_str = body["query"].as_str().unwrap();
@@ -243,10 +242,10 @@ fn start_server(
     restart: bool,
 ) -> Result<Server> {
     let database = Database::from_env(None)?; // TODO: error handling here
-    let deno_modules_map = DenoModulesMap::new();
+    let deno_modules_map = DenoExecutionManager::new();
 
     let schema = Schema::new(&system);
-    let system_info = Arc::new((system, schema, database, Mutex::new(deno_modules_map)));
+    let system_info = Arc::new((system, schema, database, deno_modules_map));
     let authenticator = Arc::new(JwtAuthenticator::new_from_env());
 
     let server = HttpServer::new(move || {

@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Result;
 use deno_core::{serde_json::Value, JsRuntime};
-use payas_deno::{Arg, DenoModule, DenoModulesMap};
+use payas_deno::{Arg, DenoExecutionManager, DenoModule, DenoModuleSharedState};
 
 use deno_core::serde_json::json;
 
@@ -15,10 +15,15 @@ fn no_op(_: String, _: Option<&serde_json::Map<String, Value>>) -> Result<serde_
 
 #[tokio::test]
 async fn test_direct_sync() {
-    let mut deno_module =
-        DenoModule::new(Path::new("./tests/direct.js"), "deno_module", &[], &|_| {})
-            .await
-            .unwrap();
+    let mut deno_module = DenoModule::new(
+        Path::new("./tests/direct.js"),
+        "deno_module",
+        &[],
+        &|_| {},
+        DenoModuleSharedState::default(),
+    )
+    .await
+    .unwrap();
 
     deno_module.preload_function(vec!["addAndDouble"]);
 
@@ -38,23 +43,14 @@ async fn test_direct_sync() {
 
 #[tokio::test]
 async fn test_module_map_threaded() {
-    let deno_modules_map = Arc::new(Mutex::new(DenoModulesMap::new()));
-
-    {
-        deno_modules_map
-            .lock()
-            .unwrap()
-            .load_module(Path::new("./tests/direct.js"))
-            .unwrap();
-    }
-
+    let deno_execution_manager = Arc::new(Mutex::new(DenoExecutionManager::new()));
     let mut handles = vec![];
 
     for _ in 1..=10 {
-        let deno_modules_map = deno_modules_map.clone();
+        let deno_execution_manager = deno_execution_manager.clone();
 
         let handle = std::thread::spawn(move || {
-            let ret_value = deno_modules_map
+            let ret_value = deno_execution_manager
                 .lock()
                 .unwrap()
                 .execute_function(
@@ -83,10 +79,15 @@ async fn test_module_map_threaded() {
 
 #[tokio::test]
 async fn test_direct_async() {
-    let mut deno_module =
-        DenoModule::new(Path::new("./tests/direct.js"), "deno_module", &[], &|_| {})
-            .await
-            .unwrap();
+    let mut deno_module = DenoModule::new(
+        Path::new("./tests/direct.js"),
+        "deno_module",
+        &[],
+        &|_| {},
+        DenoModuleSharedState::default(),
+    )
+    .await
+    .unwrap();
 
     deno_module.preload_function(vec!["getJson"]);
 
@@ -119,6 +120,7 @@ async fn test_shim_sync() {
         "deno_module",
         &[GET_JSON_SHIM],
         &|_| {},
+        DenoModuleSharedState::default(),
     )
     .await
     .unwrap();
@@ -161,6 +163,7 @@ async fn test_shim_async() {
         "deno_module",
         &[GET_JSON_SHIM],
         &|_| {},
+        DenoModuleSharedState::default(),
     )
     .await
     .unwrap();
@@ -218,6 +221,7 @@ async fn test_register_ops() {
         "deno_module",
         &[],
         &register_ops,
+        DenoModuleSharedState::default(),
     )
     .await
     .unwrap();

@@ -44,6 +44,15 @@ pub struct DenoModule {
     script_map: HashMap<String, DenoScript>,
 }
 
+#[derive(Clone, Default)]
+pub struct DenoModuleSharedState {
+    pub blob_store: BlobStore,
+    pub broadcast_channel: InMemoryBroadcastChannel,
+    // TODO
+    //  shared_array_buffer_store
+    //  compiled_wasm_module_store
+}
+
 pub struct DenoScript {
     pub script: Global<Script>,
 }
@@ -54,6 +63,7 @@ impl DenoModule {
         user_agent_name: &str,
         shims: &[(&str, &str)],
         register_ops: &dyn Fn(&mut JsRuntime),
+        shared_state: DenoModuleSharedState,
     ) -> Result<Self, AnyError> {
         let user_module_path = fs::canonicalize(user_module_path)?
             .to_string_lossy()
@@ -108,8 +118,8 @@ impl DenoModule {
             module_loader,
             get_error_class_fn: Some(&get_error_class_name),
             origin_storage_dir: None,
-            blob_store: BlobStore::default(),
-            broadcast_channel: InMemoryBroadcastChannel::default(),
+            blob_store: shared_state.blob_store,
+            broadcast_channel: shared_state.broadcast_channel,
             shared_array_buffer_store: None,
             compiled_wasm_module_store: None,
         };
