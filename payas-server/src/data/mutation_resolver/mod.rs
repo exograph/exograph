@@ -135,7 +135,7 @@ fn delete_operation<'a>(
     let predicate = super::compute_predicate(
         Some(predicate_param),
         query_context.field_arguments(field),
-        access_predicate.into(),
+        access_predicate,
         query_context,
     )
     .with_context(|| {
@@ -147,7 +147,7 @@ fn delete_operation<'a>(
 
     let ops = vec![(
         table_name(mutation, query_context),
-        SQLOperation::Delete(table.delete(predicate, vec![Column::Star.into()])),
+        SQLOperation::Delete(table.delete(predicate.into(), vec![Column::Star.into()])),
     )];
 
     Ok(TransactionScript::Single(TransactionStep::Concrete(
@@ -178,7 +178,7 @@ fn update_operation<'a>(
     let predicate = super::compute_predicate(
         Some(predicate_param),
         field_arguments,
-        Predicate::True.into(),
+        Predicate::True,
         query_context,
     )
     .with_context(|| {
@@ -191,7 +191,13 @@ fn update_operation<'a>(
     let argument_value = super::find_arg(field_arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
-            data_param.update_script(mutation, predicate, select, argument_value, query_context)
+            data_param.update_script(
+                mutation,
+                predicate.into(),
+                select,
+                argument_value,
+                query_context,
+            )
         })
         .unwrap()
 }

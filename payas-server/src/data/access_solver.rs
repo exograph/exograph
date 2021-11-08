@@ -155,10 +155,9 @@ fn reduce_logical_op<'a>(
                 (Predicate::True, Predicate::True) => Predicate::True,
                 (Predicate::True, right_predicate) => right_predicate,
                 (left_predicate, Predicate::True) => left_predicate,
-                (left_predicate, right_predicate) => Predicate::And(
-                    Box::new(left_predicate.into()),
-                    Box::new(right_predicate.into()),
-                ),
+                (left_predicate, right_predicate) => {
+                    Predicate::and(left_predicate, right_predicate)
+                }
             }
         }
         AccessLogicalOp::Or(left, right) => {
@@ -178,10 +177,9 @@ fn reduce_logical_op<'a>(
 
                 (Predicate::False, right_predicate) => right_predicate,
                 (left_predicate, Predicate::False) => left_predicate,
-                (left_predicate, right_predicate) => Predicate::And(
-                    Box::new(left_predicate.into()),
-                    Box::new(right_predicate.into()),
-                ),
+                (left_predicate, right_predicate) => {
+                    Predicate::and(left_predicate, right_predicate)
+                }
             }
         }
     }

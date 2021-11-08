@@ -39,19 +39,22 @@ impl PhysicalTable {
         self.columns.iter().find(|column| column.is_pk)
     }
 
-    pub fn select<'a>(
+    pub fn select<'a, P>(
         &'a self,
         columns: Vec<MaybeOwned<'a, Column<'a>>>,
-        predicate: Option<Predicate<'a>>,
+        predicate: P,
         order_by: Option<OrderBy<'a>>,
         offset: Option<Offset>,
         limit: Option<Limit>,
         top_level_selection: bool,
-    ) -> Select {
+    ) -> Select
+    where
+        P: Into<MaybeOwned<'a, Predicate<'a>>>,
+    {
         Select {
             underlying: self,
             columns,
-            predicate,
+            predicate: predicate.into(),
             order_by,
             offset,
             limit,

@@ -298,9 +298,9 @@ fn compute_nested_update_object_arg<'a>(
     let predicate = pk_columns
         .into_iter()
         .fold(Predicate::True, |acc, (pk_col, value)| {
-            Predicate::And(
-                Box::new(acc.into()),
-                Box::new(Predicate::Eq(Column::Physical(pk_col).into(), value.into()).into()),
+            Predicate::and(
+                acc,
+                Predicate::Eq(Column::Physical(pk_col).into(), value.into()),
             )
         });
     let table = &system.tables[field_model_type.table_id().unwrap()];
@@ -425,8 +425,7 @@ fn compute_nested_delete<'a>(
                 let mut predicate = Predicate::False;
                 for value in values {
                     let elem_predicate = compute_predicate(value, field_model_type, query_context);
-                    predicate =
-                        Predicate::Or(Box::new(predicate.into()), Box::new(elem_predicate.into()));
+                    predicate = Predicate::or(predicate, elem_predicate);
                 }
                 predicate
             }

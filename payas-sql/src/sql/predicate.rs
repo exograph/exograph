@@ -18,10 +18,12 @@ pub enum Predicate<'a> {
     Lte(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
     Gt(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
     Gte(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
+    // Prefer Predicate::and(), which simplifies the clause, to construct an And expression
     And(
         Box<MaybeOwned<'a, Predicate<'a>>>,
         Box<MaybeOwned<'a, Predicate<'a>>>,
     ),
+    // Prefer Predicate::or(), which simplifies the clause, to construct an Or expression
     Or(
         Box<MaybeOwned<'a, Predicate<'a>>>,
         Box<MaybeOwned<'a, Predicate<'a>>>,
@@ -70,6 +72,26 @@ impl<'a> Predicate<'a> {
             _ => todo!(),
         }
     }
+
+    pub fn and(lhs: Predicate<'a>, rhs: Predicate<'a>) -> Predicate<'a> {
+        match (lhs, rhs) {
+            (Predicate::True, rhs) => rhs,
+            (lhs, Predicate::True) => lhs,
+            (Predicate::False, _) => Predicate::False,
+            (_, Predicate::False) => Predicate::False,
+            (lhs, rhs) => Predicate::And(Box::new(lhs.into()), Box::new(rhs.into())),
+        }
+    }
+
+    pub fn or(lhs: Predicate<'a>, rhs: Predicate<'a>) -> Predicate<'a> {
+        match (lhs, rhs) {
+            (Predicate::True, _) => Predicate::True,
+            (_, Predicate::True) => Predicate::True,
+            (Predicate::False, rhs) => rhs,
+            (lhs, Predicate::False) => lhs,
+            (lhs, rhs) => Predicate::Or(Box::new(lhs.into()), Box::new(rhs.into())),
+        }
+    }
 }
 
 impl<'a> std::ops::Not for Predicate<'a> {
@@ -79,7 +101,7 @@ impl<'a> std::ops::Not for Predicate<'a> {
         match self {
             Predicate::True => Predicate::False,
             Predicate::False => Predicate::True,
-            predicate => Predicate::Not(Box::new(MaybeOwned::Owned(predicate))),
+            predicate => Predicate::Not(Box::new(predicate.into())),
         }
     }
 }
@@ -194,13 +216,13 @@ impl<'a> Expression for Predicate<'a> {
 }
 
 fn combine<'a, E1: Expression, E2: Expression>(
-    predicate1: &'a E1,
-    predicate2: &'a E2,
+    e1: &'a E1,
+    e2: &'a E2,
     expression_context: &mut ExpressionContext,
     joiner: impl Fn(String, String) -> String,
 ) -> ParameterBinding<'a> {
-    let expr1 = predicate1.binding(expression_context);
-    let expr2 = predicate2.binding(expression_context);
+    let expr1 = e1.binding(expression_context);
+    let expr2 = e2.binding(expression_context);
     let mut params = expr1.params;
     params.extend(expr2.params);
     ParameterBinding::new(joiner(expr1.stmt, expr2.stmt), params)
