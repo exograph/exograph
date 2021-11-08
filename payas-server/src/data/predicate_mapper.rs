@@ -41,7 +41,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                         None => Predicate::True,
                     };
 
-                    Predicate::And(Box::new(acc.into()), Box::new(new_predicate.into()))
+                    Predicate::and(acc, new_predicate)
                 }))
             }
             PredicateParameterTypeKind::Composite(parameters, boolean_params) => {
@@ -94,8 +94,8 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                                     };
 
                                     let predicate_connector = match boolean_predicate_name {
-                                        "and" => |a, b| Predicate::And(Box::new(a), Box::new(b)),
-                                        "or" => |a, b| Predicate::Or(Box::new(a), Box::new(b)),
+                                        "and" => |a, b| Predicate::and(a, b),
+                                        "or" => |a, b| Predicate::or(a, b),
                                         _ => todo!(),
                                     };
 
@@ -103,10 +103,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
 
                                     for argument in arguments.iter() {
                                         let mapped = self.map_to_sql(argument, query_context)?;
-                                        new_predicate = predicate_connector(
-                                            new_predicate.into(),
-                                            mapped.into(),
-                                        );
+                                        new_predicate = predicate_connector(new_predicate, mapped);
                                     }
 
                                     Ok(new_predicate)
@@ -139,10 +136,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                                 None => Predicate::True,
                             };
 
-                            new_predicate = Predicate::And(
-                                Box::new(new_predicate.into()),
-                                Box::new(mapped.into()),
-                            )
+                            new_predicate = Predicate::and(new_predicate, mapped)
                         }
 
                         Ok(new_predicate)

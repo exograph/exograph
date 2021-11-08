@@ -20,7 +20,7 @@ impl<'a> Expression for OrderBy<'a> {
                     Ordering::Desc => "DESC",
                 };
                 (
-                    format!("{} {}", column_binding.stmt, order_stmt),
+                    format!("ORDER BY {} {}", column_binding.stmt, order_stmt),
                     column_binding.params,
                 )
             })
