@@ -9,7 +9,7 @@ use super::{
 pub struct Select<'a> {
     pub underlying: &'a PhysicalTable,
     pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
-    pub predicate: Option<Predicate<'a>>,
+    pub predicate: MaybeOwned<'a, Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
     pub limit: Option<Limit>,
@@ -43,66 +43,53 @@ impl<'a> Expression for Select<'a> {
         let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
         params.extend(table_binding.params);
 
-        let stmt = match &self.predicate {
+        let predicate_part = match self.predicate.as_ref() {
             // Avoid correct, but inelegant "where true" clause
-            Some(Predicate::True) | None => match &self.order_by {
-                None => format!("select {} from {}", cols_stmts, table_binding.stmt),
-                Some(order_by) => {
-                    let order_by_binding = order_by.binding(expression_context);
-                    params.extend(order_by_binding.params);
-
-                    format!(
-                        "select {} from (select * from {} order by {}) as {}",
-                        cols_stmts, table_binding.stmt, order_by_binding.stmt, table_binding.stmt
-                    )
-                }
-            },
-            Some(predicate) => {
-                let predicate_binding = predicate.binding(expression_context);
-                params.extend(predicate_binding.params);
-
-                let order_by_part = self.order_by.as_ref().map(|order_by| {
-                    let order_by_binding = order_by.binding(expression_context);
-                    params.extend(order_by_binding.params);
-
-                    format!(" order by {}", order_by_binding.stmt)
-                });
-
-                let limit_part = self.limit.as_ref().map(|limit| {
-                    let limit_binding = limit.binding(expression_context);
-                    params.extend(limit_binding.params);
-                    format!(" {}", limit_binding.stmt)
-                });
-
-                let offset_part = self.offset.as_ref().map(|offset| {
-                    let offset_binding = offset.binding(expression_context);
-                    params.extend(offset_binding.params);
-                    format!(" {}", offset_binding.stmt)
-                });
-
-                if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
-                    let conditions = format!(
-                        "{}{}{}",
-                        order_by_part.unwrap_or_default(),
-                        limit_part.unwrap_or_default(),
-                        offset_part.unwrap_or_default()
-                    );
-
-                    format!(
-                        "select {} from (select * from {} where {}{}) as {}",
-                        cols_stmts,
-                        table_binding.stmt,
-                        predicate_binding.stmt,
-                        conditions,
-                        table_binding.stmt
-                    )
-                } else {
-                    format!(
-                        "select {} from {} where {}",
-                        cols_stmts, table_binding.stmt, predicate_binding.stmt
-                    )
-                }
+            Predicate::True => " ".to_string(),
+            predicate => {
+                let binding = predicate.binding(expression_context);
+                params.extend(binding.params);
+                format!(" WHERE {}", binding.stmt)
             }
+        };
+
+        let order_by_part = self.order_by.as_ref().map(|order_by| {
+            let binding = order_by.binding(expression_context);
+            params.extend(binding.params);
+
+            format!(" {}", binding.stmt)
+        });
+
+        let limit_part = self.limit.as_ref().map(|limit| {
+            let binding = limit.binding(expression_context);
+            params.extend(binding.params);
+            format!(" {}", binding.stmt)
+        });
+
+        let offset_part = self.offset.as_ref().map(|offset| {
+            let binding = offset.binding(expression_context);
+            params.extend(binding.params);
+            format!(" {}", binding.stmt)
+        });
+
+        let stmt = if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
+            let conditions = format!(
+                "{}{}{}{}",
+                predicate_part,
+                order_by_part.unwrap_or_default(),
+                limit_part.unwrap_or_default(),
+                offset_part.unwrap_or_default()
+            );
+
+            format!(
+                "select {} from (select * from {}{}) as {}",
+                cols_stmts, table_binding.stmt, conditions, table_binding.stmt
+            )
+        } else {
+            format!(
+                "select {} from {}{}",
+                cols_stmts, table_binding.stmt, predicate_part
+            )
         };
 
         ParameterBinding::new(stmt, params)
@@ -138,7 +125,7 @@ mod tests {
 
         let predicated_table = table.select(
             selected_cols,
-            Some(predicate),
+            predicate,
             None,
             Some(Offset(10)),
             Some(Limit(20)),
@@ -187,7 +174,7 @@ mod tests {
         ]);
         let selected_table = table.select(
             vec![table.get_column("age").unwrap().into(), json_col.into()],
-            None,
+            Predicate::True,
             None,
             None,
             None,

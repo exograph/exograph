@@ -199,12 +199,10 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 let predicate = super::compute_predicate(
                     predicate_param.as_ref(),
                     field_arguments,
-                    additional_predicate.into(),
+                    additional_predicate,
                     query_context,
                 )
-                .map(|predicate| {
-                    Predicate::And(Box::new(predicate), Box::new(access_predicate.into()))
-                })
+                .map(|predicate| Predicate::and(predicate, access_predicate))
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
@@ -218,7 +216,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 Ok(match self.return_type.type_modifier {
                     GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
                         vec![content_object.into()],
-                        Some(predicate),
+                        predicate,
                         None,
                         offset,
                         limit,
@@ -229,7 +227,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                         let agg_column = Column::JsonAgg(Box::new(content_object.into()));
                         table.select(
                             vec![agg_column.into()],
-                            Some(predicate),
+                            predicate,
                             order_by,
                             offset,
                             limit,
