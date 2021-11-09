@@ -44,6 +44,9 @@ pub struct DenoModule {
     script_map: HashMap<String, DenoScript>,
 }
 
+/// Set of shared resources between DenoModules.
+/// Cloning one DenoModuleSharedState and providing it to a set of DenoModules will
+/// give them all access to the state through Arc<>s!
 #[derive(Clone, Default)]
 pub struct DenoModuleSharedState {
     pub blob_store: BlobStore,

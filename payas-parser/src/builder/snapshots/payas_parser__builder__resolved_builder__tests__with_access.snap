@@ -255,7 +255,7 @@ services:
   values:
     - - ~
       - name: Logger
-        module_path: logger.js
+        module_path: logger.bundle.js
         methods:
           - name: log
             operation_kind: Query
