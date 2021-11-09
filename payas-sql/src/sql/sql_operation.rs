@@ -32,6 +32,7 @@ impl<'a> OperationExpression for SQLOperation<'a> {
 }
 
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum TemplateSQLOperation<'a> {
     Insert(TemplateInsert<'a>),
     Update(TemplateUpdate<'a>),

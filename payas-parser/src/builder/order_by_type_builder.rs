@@ -6,7 +6,10 @@ use payas_model::model::{
 
 use payas_model::model::{order::*, relation::GqlRelation, types::*};
 
-use super::{resolved_builder::ResolvedType, system_builder::SystemContextBuilding};
+use super::{
+    resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
+    system_builder::SystemContextBuilding,
+};
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     let type_name = "Ordering".to_string();
@@ -18,9 +21,15 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
     building.order_by_types.add(&type_name, primitive_type);
 
     for (_, model) in models.iter() {
-        let shallow_type = create_shallow_type(model);
-        let param_type_name = shallow_type.name.clone();
-        building.order_by_types.add(&param_type_name, shallow_type);
+        if let ResolvedType::Composite(ResolvedCompositeType {
+            kind: ResolvedCompositeTypeKind::Persistent { .. },
+            ..
+        }) = model
+        {
+            let shallow_type = create_shallow_type(model);
+            let param_type_name = shallow_type.name.clone();
+            building.order_by_types.add(&param_type_name, shallow_type);
+        }
     }
 }
 
@@ -29,8 +38,10 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
         let param_type_name = get_parameter_type_name(&model_type.name, model_type.is_primitive());
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
-        let new_kind = expand_type(model_type, building);
-        building.order_by_types[existing_param_id.unwrap()].kind = new_kind;
+        if let Some(existing_param_id) = existing_param_id {
+            let new_kind = expand_type(model_type, building);
+            building.order_by_types[existing_param_id].kind = new_kind;
+        }
     }
 }
 
@@ -55,7 +66,7 @@ fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
 fn expand_type(model_type: &GqlType, building: &SystemContextBuilding) -> OrderByParameterTypeKind {
     match &model_type.kind {
         GqlTypeKind::Primitive => OrderByParameterTypeKind::Primitive,
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
             let parameters = fields
                 .iter()
                 .map(|field| new_field_param(field, building))

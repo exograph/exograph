@@ -3,6 +3,7 @@ use async_graphql_parser::types::{
     FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
 };
 use payas_model::model::{
+    operation::{DatabaseQueryParameter, QueryKind},
     relation::GqlRelation,
     system::ModelSystem,
     types::{GqlField, GqlType, *},
@@ -21,7 +22,7 @@ impl TypeDefinitionProvider for GqlType {
                 directives: vec![],
                 kind: TypeKind::Scalar,
             },
-            GqlTypeKind::Composite(GqlCompositeTypeKind {
+            GqlTypeKind::Composite(GqlCompositeType {
                 fields: model_fields,
                 ..
             }) => {
@@ -64,31 +65,47 @@ impl FieldDefinitionProvider for GqlField {
             util::default_positioned(util::value_type(self.typ.type_name(), &type_modifier));
 
         let arguments = match self.relation {
-            GqlRelation::Pk { .. } | GqlRelation::Scalar { .. } | GqlRelation::ManyToOne { .. } => {
+            GqlRelation::Pk { .. }
+            | GqlRelation::Scalar { .. }
+            | GqlRelation::ManyToOne { .. }
+            | GqlRelation::NonPersistent => {
                 vec![]
             }
             GqlRelation::OneToMany { other_type_id, .. } => {
                 let other_type = &system.types[other_type_id];
-                match other_type.kind {
+                match &other_type.kind {
                     GqlTypeKind::Primitive => panic!(),
-                    GqlTypeKind::Composite(GqlCompositeTypeKind {
-                        collection_query, ..
-                    }) => {
+                    GqlTypeKind::Composite(kind) => {
+                        let collection_query = kind.get_collection_query();
                         let collection_query = &system.queries[collection_query];
-                        let predicate_parameter_arg = collection_query
-                            .predicate_param
-                            .as_ref()
-                            .map(|p| p.input_value());
-                        let order_by_parameter_arg = collection_query
-                            .order_by_param
-                            .as_ref()
-                            .map(|p| p.input_value());
 
-                        vec![predicate_parameter_arg, order_by_parameter_arg]
-                            .into_iter()
-                            .flatten()
-                            .map(util::default_positioned)
-                            .collect()
+                        match &collection_query.kind {
+                            QueryKind::Database(DatabaseQueryParameter {
+                                predicate_param,
+                                order_by_param,
+                                limit_param,
+                                offset_param,
+                            }) => {
+                                let predicate_parameter_arg =
+                                    predicate_param.as_ref().map(|p| p.input_value());
+                                let order_by_parameter_arg =
+                                    order_by_param.as_ref().map(|p| p.input_value());
+                                let limit_arg = limit_param.as_ref().map(|p| p.input_value());
+                                let offset_arg = offset_param.as_ref().map(|p| p.input_value());
+
+                                vec![
+                                    predicate_parameter_arg,
+                                    order_by_parameter_arg,
+                                    limit_arg,
+                                    offset_arg,
+                                ]
+                                .into_iter()
+                                .flatten()
+                                .map(util::default_positioned)
+                                .collect()
+                            }
+                            QueryKind::Service { .. } => panic!(),
+                        }
                     }
                 }
             }

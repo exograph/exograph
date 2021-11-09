@@ -4,12 +4,16 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
+use std::path::PathBuf;
+
 use anyhow::Result;
 
 use payas_model::model::mapped_arena::MappedArena;
-use payas_model::model::naming::ToPlural;
+use payas_model::model::naming::{ToPlural, ToTableName};
+use payas_model::model::GqlTypeModifier;
 
-use crate::ast::ast_types::{AstAnnotationParams, AstFieldType};
+use crate::ast::ast_types::{AstAnnotationParams, AstArgument, AstFieldType, AstService};
+use crate::typechecker::AnnotationMap;
 use crate::{
     ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
     typechecker::{PrimitiveType, Type, Typed},
@@ -22,6 +26,7 @@ use serde::{Deserialize, Serialize};
 pub struct ResolvedSystem {
     pub types: MappedArena<ResolvedType>,
     pub contexts: MappedArena<ResolvedContext>,
+    pub services: MappedArena<ResolvedService>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -35,6 +40,61 @@ pub enum ResolvedType {
 pub struct ResolvedContext {
     pub name: String,
     pub fields: Vec<ResolvedContextField>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedService {
+    pub name: String,
+    pub module_path: PathBuf,
+    pub methods: Vec<ResolvedMethod>,
+    pub interceptors: Vec<ResolvedInterceptor>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedMethod {
+    pub name: String,
+    pub operation_kind: ResolvedMethodType,
+    pub is_exported: bool,
+    pub access: ResolvedAccess,
+    pub arguments: Vec<ResolvedArgument>,
+    pub return_type: ResolvedFieldType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedMethodType {
+    Query,
+    Mutation,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedArgument {
+    pub name: String,
+    pub typ: ResolvedFieldType,
+    pub is_injected: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedInterceptor {
+    pub name: String,
+    pub arguments: Vec<ResolvedArgument>,
+    pub interceptor_kind: ResolvedInterceptorKind,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedInterceptorKind {
+    Before(AstExpr<Typed>),
+    After(AstExpr<Typed>),
+    Around(AstExpr<Typed>),
+}
+
+impl ResolvedInterceptorKind {
+    pub fn expr(&self) -> &AstExpr<Typed> {
+        match self {
+            ResolvedInterceptorKind::Before(expr) => expr,
+            ResolvedInterceptorKind::After(expr) => expr,
+            ResolvedInterceptorKind::Around(expr) => expr,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -61,8 +121,24 @@ pub struct ResolvedCompositeType {
     pub name: String,
     pub plural_name: String,
     pub fields: Vec<ResolvedField>,
-    pub table_name: String,
+    pub kind: ResolvedCompositeTypeKind,
     pub access: ResolvedAccess,
+}
+
+impl ResolvedCompositeType {
+    pub fn get_table_name(&self) -> &str {
+        if let ResolvedCompositeTypeKind::Persistent { table_name } = &self.kind {
+            table_name
+        } else {
+            panic!("Trying to get table name from non-persistent type!")
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedCompositeTypeKind {
+    Persistent { table_name: String },
+    NonPersistent { is_input: bool },
 }
 
 impl ToPlural for ResolvedCompositeType {
@@ -79,10 +155,61 @@ impl ToPlural for ResolvedCompositeType {
 pub struct ResolvedField {
     pub name: String,
     pub typ: ResolvedFieldType,
-    pub column_name: String,
-    pub is_pk: bool,
-    pub is_autoincrement: bool,
-    pub type_hint: Option<ResolvedTypeHint>,
+    pub kind: ResolvedFieldKind,
+}
+
+// TODO: dedup?
+impl ResolvedField {
+    pub fn get_column_name(&self) -> &str {
+        match &self.kind {
+            ResolvedFieldKind::Persistent { column_name, .. } => column_name,
+            ResolvedFieldKind::NonPersistent => {
+                panic!("Tried to get persistence-related information from a non-persistent field!")
+            }
+        }
+    }
+
+    pub fn get_is_pk(&self) -> bool {
+        match &self.kind {
+            ResolvedFieldKind::Persistent { is_pk, .. } => *is_pk,
+            ResolvedFieldKind::NonPersistent => {
+                panic!("Tried to get persistence-related information from a non-persistent field!")
+            }
+        }
+    }
+
+    pub fn get_is_autoincrement(&self) -> bool {
+        match &self.kind {
+            ResolvedFieldKind::Persistent {
+                is_autoincrement, ..
+            } => *is_autoincrement,
+            ResolvedFieldKind::NonPersistent => {
+                panic!("Tried to get persistence-related information from a non-persistent field!")
+            }
+        }
+    }
+    pub fn get_type_hint(&self) -> &Option<ResolvedTypeHint> {
+        match &self.kind {
+            ResolvedFieldKind::Persistent { type_hint, .. } => type_hint,
+            ResolvedFieldKind::NonPersistent => {
+                panic!("Tried to get persistence-related information from a non-persistent field!")
+            }
+        }
+    }
+}
+
+// what kind of field is this?
+// some fields do not need to be persisted, and thus should not carry database-related
+// information
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedFieldKind {
+    Persistent {
+        column_name: String,
+        is_pk: bool,
+        is_autoincrement: bool,
+        type_hint: Option<ResolvedTypeHint>,
+    },
+    NonPersistent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -103,6 +230,24 @@ pub enum ResolvedFieldType {
     Plain(String), // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
     Optional(Box<ResolvedFieldType>),
     List(Box<ResolvedFieldType>),
+}
+
+impl ResolvedFieldType {
+    pub fn get_underlying_typename(&self) -> &str {
+        match &self {
+            ResolvedFieldType::Plain(s) => s,
+            ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
+            ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
+        }
+    }
+
+    pub fn get_modifier(&self) -> GqlTypeModifier {
+        match &self {
+            ResolvedFieldType::Plain(_) => GqlTypeModifier::NonNull,
+            ResolvedFieldType::Optional(_) => GqlTypeModifier::Optional,
+            ResolvedFieldType::List(_) => GqlTypeModifier::List,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -131,7 +276,13 @@ pub enum ResolvedTypeHint {
 
 impl ResolvedCompositeType {
     pub fn pk_field(&self) -> Option<&ResolvedField> {
-        self.fields.iter().find(|f| f.is_pk)
+        self.fields.iter().find(|f| {
+            if let ResolvedFieldKind::Persistent { is_pk, .. } = f.kind {
+                is_pk
+            } else {
+                false
+            }
+        })
     }
 }
 
@@ -188,6 +339,7 @@ pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem> {
 fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
     let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
+    let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
     for (_, typ) in types.iter() {
         match typ {
@@ -195,11 +347,32 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                 resolved_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
             Type::Composite(ct) if ct.kind == AstModelKind::Persistent => {
+                let plural_annotation_value = ct
+                    .annotations
+                    .get("plural_name")
+                    .map(|p| p.as_single().as_string());
+
                 let table_name = ct
                     .annotations
                     .get("table")
                     .map(|p| p.as_single().as_string())
-                    .unwrap_or_else(|| ct.name.clone());
+                    .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
+                let access = build_access(ct.annotations.get("access"));
+                resolved_types.add(
+                    &ct.name,
+                    ResolvedType::Composite(ResolvedCompositeType {
+                        name: ct.name.clone(),
+                        plural_name: plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
+                        fields: vec![],
+                        kind: ResolvedCompositeTypeKind::Persistent { table_name },
+                        access,
+                    }),
+                );
+            }
+            Type::Composite(ct)
+                if ct.kind == AstModelKind::NonPersistent
+                    || ct.kind == AstModelKind::NonPersistentInput =>
+            {
                 let access = build_access(ct.annotations.get("access"));
                 resolved_types.add(
                     &ct.name,
@@ -211,7 +384,9 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                             .map(|p| p.as_single().as_string())
                             .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
                         fields: vec![],
-                        table_name,
+                        kind: ResolvedCompositeTypeKind::NonPersistent {
+                            is_input: matches!(ct.kind, AstModelKind::NonPersistentInput),
+                        },
                         access,
                     }),
                 );
@@ -225,6 +400,101 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
                     },
                 );
             }
+            Type::Service(service) => {
+                let module_path = match service.annotations.get("external").unwrap() {
+                    AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
+                    _ => panic!(),
+                }
+                .clone();
+
+                let mut full_module_path = service.base_clayfile.clone();
+                full_module_path.pop();
+                full_module_path.push(module_path);
+
+                // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
+                let mut out_path = full_module_path.clone();
+                out_path.set_extension("bundle.js");
+
+                let mut child = std::process::Command::new("deno")
+                    .args([
+                        "bundle",
+                        "--no-check",
+                        full_module_path.to_str().unwrap(),
+                        out_path.to_str().unwrap(),
+                    ])
+                    .spawn()?;
+
+                child.wait()?;
+
+                // replace import with new path
+                full_module_path = out_path;
+
+                fn extract_intercept_annot<'a>(
+                    annotations: &'a AnnotationMap,
+                    key: &str,
+                ) -> Option<&'a AstExpr<Typed>> {
+                    annotations.get(key).map(|a| a.as_single())
+                }
+
+                resolved_services.add(
+                    &service.name,
+                    ResolvedService {
+                        name: service.name.clone(),
+                        module_path: full_module_path,
+                        methods: service
+                            .methods
+                            .iter()
+                            .map(|m| {
+                                let access = build_access(m.annotations.get("access"));
+                                ResolvedMethod {
+                                    name: m.name.clone(),
+                                    operation_kind: match m.typ.as_str() {
+                                        "query" => ResolvedMethodType::Query,
+                                        "mutation" => ResolvedMethodType::Mutation,
+                                        _ => panic!(),
+                                    },
+                                    is_exported: m.is_exported,
+                                    access,
+                                    arguments: vec![],
+                                    return_type: ResolvedFieldType::Plain("".to_string()),
+                                }
+                            })
+                            .collect(),
+                        interceptors: service
+                            .interceptors
+                            .iter()
+                            .map(|i| {
+                                let before_annot = extract_intercept_annot(&i.annotations, "before")
+                                    .map(|s| ResolvedInterceptorKind::Before(s.clone()));
+                                let after_annot = extract_intercept_annot(&i.annotations, "after")
+                                    .map(|s| ResolvedInterceptorKind::After(s.clone()));
+                                let around_annot = extract_intercept_annot(&i.annotations, "around")
+                                    .map(|s| ResolvedInterceptorKind::Around(s.clone()));
+
+                                let kind_annots = vec![before_annot, after_annot, around_annot];
+                                let kind_annots: Vec<_> =
+                                    kind_annots.into_iter().flatten().collect();
+
+                                let kind_annot = match kind_annots.as_slice() {
+                                    [] => {
+                                        panic!("Interceptor must have at least one of the before/after/around annotation")
+                                    }
+                                    [single] => single,
+                                    _ => panic!(
+                                        "Interceptor cannot have more than of the before/after/around annotations"
+                                    ),
+                                };
+
+                                ResolvedInterceptor {
+                                    name: i.name.clone(),
+                                    arguments: vec![],
+                                    interceptor_kind: kind_annot.clone(),
+                                }
+                            })
+                            .collect(),
+                    },
+                );
+            }
             o => panic!(
                 "Unable to build shallow type for non-primitve, non-composite type: {:?}",
                 o
@@ -235,6 +505,7 @@ fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
     Ok(ResolvedSystem {
         types: resolved_types,
         contexts: resolved_contexts,
+        services: resolved_services,
     })
 }
 
@@ -285,13 +556,89 @@ fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -
 fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
-            if ct.kind == AstModelKind::Persistent {
+            if ct.kind == AstModelKind::Persistent
+                || ct.kind == AstModelKind::NonPersistent
+                || ct.kind == AstModelKind::NonPersistentInput
+            {
                 build_expanded_persistent_type(ct, &types, resolved_system);
-            } else {
+            } else if ct.kind == AstModelKind::Context {
                 build_expanded_context_type(ct, &types, resolved_system);
+            } else {
+                todo!()
             }
+        } else if let Type::Service(s) = typ {
+            build_expanded_service(s, &types, resolved_system);
         }
     }
+}
+
+fn build_expanded_service(
+    s: &AstService<Typed>,
+    types: &MappedArena<Type>,
+    resolved_system: &mut ResolvedSystem,
+) {
+    // build arguments and return type of service methods
+
+    let resolved_services = &mut resolved_system.services;
+    let resolved_types = &mut resolved_system.types;
+
+    let existing_type_id = resolved_services.get_id(&s.name).unwrap();
+    let existing_service = &resolved_services[existing_type_id];
+
+    let expanded_methods = s
+        .methods
+        .iter()
+        .map(|m| {
+            let existing_method = existing_service
+                .methods
+                .iter()
+                .find(|existing_m| m.name == existing_m.name)
+                .unwrap();
+
+            ResolvedMethod {
+                arguments: m
+                    .arguments
+                    .iter()
+                    .map(|a| resolve_argument(a, types, resolved_types))
+                    .collect(),
+                return_type: resolve_field_type(
+                    &m.return_type.to_typ(types),
+                    types,
+                    resolved_types,
+                ),
+                ..existing_method.clone()
+            }
+        })
+        .collect();
+
+    let expanded_interceptors = s
+        .interceptors
+        .iter()
+        .map(|i| {
+            let existing_interceptor = existing_service
+                .interceptors
+                .iter()
+                .find(|existing_i| i.name == existing_i.name)
+                .unwrap();
+
+            ResolvedInterceptor {
+                arguments: i
+                    .arguments
+                    .iter()
+                    .map(|a| resolve_argument(a, types, resolved_types))
+                    .collect(),
+                ..existing_interceptor.clone()
+            }
+        })
+        .collect();
+
+    let expanded_service = ResolvedService {
+        methods: expanded_methods,
+        interceptors: expanded_interceptors,
+        ..existing_service.clone()
+    };
+
+    resolved_services[existing_type_id] = expanded_service;
 }
 
 fn build_expanded_persistent_type(
@@ -307,7 +654,7 @@ fn build_expanded_persistent_type(
     if let ResolvedType::Composite(ResolvedCompositeType {
         name,
         plural_name,
-        table_name,
+        kind,
         access,
         ..
     }) = existing_type
@@ -318,10 +665,17 @@ fn build_expanded_persistent_type(
             .map(|field| ResolvedField {
                 name: field.name.clone(),
                 typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
-                column_name: compute_column_name(ct, field, types),
-                is_pk: field.annotations.contains("pk"),
-                is_autoincrement: field.annotations.contains("autoincrement"),
-                type_hint: build_type_hint(field, types),
+                kind: match kind {
+                    ResolvedCompositeTypeKind::Persistent { .. } => ResolvedFieldKind::Persistent {
+                        column_name: compute_column_name(ct, field, types),
+                        is_pk: field.annotations.contains("pk"),
+                        is_autoincrement: field.annotations.contains("autoincrement"),
+                        type_hint: build_type_hint(field, types),
+                    },
+                    ResolvedCompositeTypeKind::NonPersistent { .. } => {
+                        ResolvedFieldKind::NonPersistent
+                    }
+                },
             })
             .collect();
 
@@ -329,7 +683,7 @@ fn build_expanded_persistent_type(
             name: name.clone(),
             plural_name: plural_name.clone(),
             fields: resolved_fields,
-            table_name: table_name.clone(),
+            kind: kind.clone(),
             access: access.clone(),
         });
         resolved_types[existing_type_id] = expanded;
@@ -673,6 +1027,18 @@ fn resolve_field_type(
     }
 }
 
+fn resolve_argument(
+    arg: &AstArgument<Typed>,
+    types: &MappedArena<Type>,
+    resolved_types: &MappedArena<ResolvedType>,
+) -> ResolvedArgument {
+    ResolvedArgument {
+        name: arg.name.clone(),
+        typ: resolve_field_type(&arg.typ.to_typ(types), types, resolved_types),
+        is_injected: arg.annotations.get("inject").is_some(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -696,10 +1062,16 @@ mod tests {
         model Venue {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")
-          concerts: Set[Concert] @column("custom_venueid")
+          concerts: Set<Concert> @column("custom_venueid")
           capacity: Int @bits(16)
           latitude: Float @size(4)
-        }        
+        }       
+        
+        @external("bar.js")
+        service Foo {
+            export query qux(@inject claytip: Claytip, x: Int, y: String): Int
+            mutation quuz(): String
+        }
         "#;
 
         let resolved = create_resolved_system(src);
@@ -717,14 +1089,14 @@ mod tests {
           id: Int @pk @autoincrement 
           title: String 
           venue: Venue 
-          attending: Array[String]
-          seating: Array[Array[Boolean]]
+          attending: Array<String>
+          seating: Array<Array<Boolean>>
         }
 
         model Venue             {
           id: Int  @autoincrement @pk 
           name:String 
-          concerts: Set[Concert] 
+          concerts: Set<Concert> 
         }        
         "#;
 
@@ -748,6 +1120,12 @@ mod tests {
           title: String
           public: Boolean
         }      
+
+        @external("logger.js")
+        service Logger {
+            @access(AuthContext.role == "ROLE_ADMIN")
+            export query log(@inject claytip: Claytip): Boolean
+        }
         "#;
 
         let resolved = create_resolved_system(src);
@@ -780,7 +1158,7 @@ mod tests {
     }
 
     fn create_resolved_system(src: &str) -> ResolvedSystem {
-        let (parsed, codemap) = parser::parse_str(src);
+        let (parsed, codemap) = parser::parse_str(src).unwrap();
         let types = typechecker::build(parsed, codemap).unwrap();
 
         build(types).unwrap()

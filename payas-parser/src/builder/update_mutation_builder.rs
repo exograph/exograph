@@ -4,7 +4,9 @@ use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind};
+use payas_model::model::{
+    GqlCompositeType, GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind,
+};
 
 use crate::builder::mutation_builder::{create_data_type_name, update_data_type_name};
 use crate::builder::query_builder;
@@ -33,7 +35,11 @@ impl Builder for UpdateMutationBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite { .. } = &model_type.kind {
+            if let GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::Persistent { .. },
+                ..
+            }) = &model_type.kind
+            {
                 for (existing_id, expanded_kind) in
                     self.expanded_data_type(model_type, building, Some(model_type), None)
                 {
@@ -44,7 +50,11 @@ impl Builder for UpdateMutationBuilder {
         }
 
         for (_, model_type) in building.types.iter() {
-            if let GqlTypeKind::Composite { .. } = &model_type.kind {
+            if let GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::Persistent { .. },
+                ..
+            }) = &model_type.kind
+            {
                 let model_type_id = building.types.get_id(model_type.name.as_str()).unwrap();
 
                 for mutation in self.build_mutations(model_type_id, model_type, building) {
@@ -136,7 +146,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         building: &SystemContextBuilding,
         top_level_type: Option<&GqlType>,
         container_type: Option<&GqlType>,
-    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeTypeKind)> {
+    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeType)> {
         let existing_type_name =
             Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
@@ -169,7 +179,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
 
                     fields_with_id.extend(base_type.fields.into_iter());
 
-                    let type_with_id = GqlCompositeTypeKind {
+                    let type_with_id = GqlCompositeType {
                         fields: fields_with_id,
                         ..base_type
                     };
@@ -179,12 +189,10 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         }
         .clone();
 
-        if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-            table_id,
-            pk_query,
-            collection_query,
+        if let GqlTypeKind::Composite(GqlCompositeType {
+            kind: kind @ GqlCompositeTypeKind::Persistent { .. },
             ..
-        }) = model_type.kind
+        }) = &model_type.kind
         {
             // If not already expanded (i.e. the kind is primitive)
             if let GqlTypeKind::Primitive = building.mutation_types[existing_type_id].kind {
@@ -222,11 +230,9 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     .collect();
                 let mut types = vec![(
                     existing_type_id,
-                    GqlCompositeTypeKind {
+                    GqlCompositeType {
                         fields,
-                        table_id, // TODO: Introduce GqlTypeKind::CompositeInput that shouldn't need table_id etc
-                        pk_query,
-                        collection_query,
+                        kind: kind.clone(),
                         access: Access::restrictive(),
                     },
                 )];

@@ -26,6 +26,11 @@ types:
     - - ~
       - Primitive: Json
     - - ~
+      - Primitive: ClaytipInjected
+    - - ~
+      - Primitive:
+          Interception: Operation
+    - - ~
       - Composite:
           name: Concert
           plural_name: Concerts
@@ -33,25 +38,33 @@ types:
             - name: id
               typ:
                 Plain: Int
-              column_name: id
-              is_pk: true
-              is_autoincrement: true
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint: ~
             - name: title
               typ:
                 Plain: String
-              column_name: title
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: title
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: public
               typ:
                 Plain: Boolean
-              column_name: public
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
-          table_name: Concert
+              kind:
+                Persistent:
+                  column_name: public
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+          kind:
+            Persistent:
+              table_name: concerts
           access:
             creation:
               LogicalOp:
@@ -63,7 +76,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 10
+                                      index: 13
                                       generation: ~
                               - - role
                               - Reference:
@@ -77,7 +90,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 11
+                                index: 14
                                 generation: ~
                         - - public
                         - Reference:
@@ -94,7 +107,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 10
+                                      index: 13
                                       generation: ~
                               - - role
                               - Reference:
@@ -108,7 +121,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 11
+                                index: 14
                                 generation: ~
                         - - public
                         - Reference:
@@ -125,7 +138,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 10
+                                      index: 13
                                       generation: ~
                               - - role
                               - Reference:
@@ -139,7 +152,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 11
+                                index: 14
                                 generation: ~
                         - - public
                         - Reference:
@@ -156,7 +169,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 10
+                                      index: 13
                                       generation: ~
                               - - role
                               - Reference:
@@ -170,7 +183,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 11
+                                index: 14
                                 generation: ~
                         - - public
                         - Reference:
@@ -180,14 +193,15 @@ types:
     - ~
     - ~
     - ~
-    - ~
-    - ~
   map:
     Boolean:
       index: 0
       generation: ~
-    Concert:
+    ClaytipInjected:
       index: 10
+      generation: ~
+    Concert:
+      index: 12
       generation: ~
     Decimal:
       index: 3
@@ -213,6 +227,9 @@ types:
     LocalTime:
       index: 5
       generation: ~
+    Operation:
+      index: 11
+      generation: ~
     String:
       index: 4
       generation: ~
@@ -232,6 +249,99 @@ contexts:
     - ~
   map:
     AuthContext:
+      index: 0
+      generation: ~
+services:
+  values:
+    - - ~
+      - name: Logger
+        module_path: logger.js
+        methods:
+          - name: log
+            operation_kind: Query
+            is_exported: true
+            access:
+              creation:
+                RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference:
+                                  index: 13
+                                  generation: ~
+                          - - role
+                          - Reference:
+                              index: 4
+                              generation: ~
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                    - Primitive: Boolean
+              read:
+                RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference:
+                                  index: 13
+                                  generation: ~
+                          - - role
+                          - Reference:
+                              index: 4
+                              generation: ~
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                    - Primitive: Boolean
+              update:
+                RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference:
+                                  index: 13
+                                  generation: ~
+                          - - role
+                          - Reference:
+                              index: 4
+                              generation: ~
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                    - Primitive: Boolean
+              delete:
+                RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference:
+                                  index: 13
+                                  generation: ~
+                          - - role
+                          - Reference:
+                              index: 4
+                              generation: ~
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                    - Primitive: Boolean
+            arguments:
+              - name: claytip
+                typ:
+                  Plain: ClaytipInjected
+                is_injected: true
+            return_type:
+              Plain: Boolean
+        interceptors: []
+    - ~
+    - ~
+    - ~
+  map:
+    Logger:
       index: 0
       generation: ~
 

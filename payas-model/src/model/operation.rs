@@ -1,12 +1,16 @@
 use payas_sql::sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-use crate::model::{GqlCompositeTypeKind, GqlTypeKind};
+use crate::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use super::{
+    argument::ArgumentParameter,
+    interceptor::{Interceptor, InterceptorKind},
+    limit_offset::{LimitParameter, OffsetParameter},
     mapped_arena::SerializableSlabIndex,
     order::OrderByParameter,
     predicate::PredicateParameter,
+    service::ServiceMethod,
     system::ModelSystem,
     types::{GqlType, GqlTypeModifier},
 };
@@ -14,9 +18,26 @@ use super::{
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Query {
     pub name: String,
+    pub kind: QueryKind,
+    pub return_type: OperationReturnType,
+    pub interceptors: Interceptors,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum QueryKind {
+    Database(DatabaseQueryParameter),
+    Service {
+        method_id: Option<SerializableSlabIndex<ServiceMethod>>,
+        argument_param: Vec<ArgumentParameter>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DatabaseQueryParameter {
     pub predicate_param: Option<PredicateParameter>,
     pub order_by_param: Option<OrderByParameter>,
-    pub return_type: OperationReturnType,
+    pub limit_param: Option<LimitParameter>,
+    pub offset_param: Option<OffsetParameter>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -24,16 +45,46 @@ pub struct Mutation {
     pub name: String,
     pub kind: MutationKind,
     pub return_type: OperationReturnType,
+    pub interceptors: Interceptors,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MutationKind {
+    // mutations for persistent queries
     Create(CreateDataParameter),
     Delete(PredicateParameter),
     Update {
         data_param: UpdateDataParameter,
         predicate_param: PredicateParameter,
     },
+
+    // mutation for service
+    Service {
+        method_id: Option<SerializableSlabIndex<ServiceMethod>>,
+        argument_param: Vec<ArgumentParameter>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct Interceptors {
+    pub interceptors: Vec<Interceptor>,
+}
+
+impl Interceptors {
+    pub fn ordered(&self) -> Vec<&Interceptor> {
+        let mut processed = Vec::new();
+        let mut deferred = Vec::new();
+
+        for interceptor in &self.interceptors {
+            if interceptor.interceptor_kind == InterceptorKind::Before {
+                processed.push(interceptor);
+            } else {
+                deferred.push(interceptor);
+            }
+        }
+        processed.extend(deferred.into_iter());
+        processed
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -68,11 +119,12 @@ impl OperationReturnType {
         let return_type = self.typ(system);
         match &return_type.kind {
             GqlTypeKind::Primitive => panic!(),
-            GqlTypeKind::Composite(GqlCompositeTypeKind {
+            GqlTypeKind::Composite(GqlCompositeType {
                 fields: _,
-                table_id,
+                kind: GqlCompositeTypeKind::Persistent { table_id, .. },
                 ..
             }) => &system.tables[*table_id],
+            _ => panic!(),
         }
     }
 }

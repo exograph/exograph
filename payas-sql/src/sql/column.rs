@@ -5,6 +5,7 @@ use super::{
     SQLParam,
 };
 use anyhow::{bail, Result};
+use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Write, rc::Rc};
 
@@ -398,10 +399,10 @@ impl PhysicalColumnType {
                 let mut sql_statement =
                     ref_pk_type.to_sql(table_name, column_name, is_autoincrement);
                 let foreign_constraint = format!(
-                    r#"ALTER TABLE "{table}" ADD CONSTRAINT "{ref_table}_fk" FOREIGN KEY ("{column}") REFERENCES "{ref_table}";"#,
-                    table = table_name,
-                    column = column_name,
-                    ref_table = ref_table_name,
+                    r#"ALTER TABLE "{table_name}" ADD CONSTRAINT "{table_name}_{column_name}_fk" FOREIGN KEY ("{column_name}") REFERENCES "{ref_table_name}";"#,
+                    table_name = table_name,
+                    column_name = column_name,
+                    ref_table_name = ref_table_name,
                 );
 
                 sql_statement.foreign_constraints.push(foreign_constraint);
@@ -414,11 +415,11 @@ impl PhysicalColumnType {
 #[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
-    Array(Vec<&'a Column<'a>>),
+    Array(Vec<MaybeOwned<'a, Column<'a>>>),
     Literal(Box<dyn SQLParam>),
-    JsonObject(Vec<(String, &'a Column<'a>)>),
-    JsonAgg(&'a Column<'a>),
-    SelectionTableWrapper(Select<'a>),
+    JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
+    JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
+    SelectionTableWrapper(Box<Select<'a>>),
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
@@ -535,7 +536,7 @@ impl<'a> Expression for Column<'a> {
 
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
-    Concrete(&'a Column<'a>),
+    Concrete(MaybeOwned<'a, Column<'a>>),
     Template {
         col_index: usize,
         step: Rc<TransactionStep<'a>>,

@@ -43,6 +43,7 @@ pub fn create_context(test_name: &str) -> Result<TestContext> {
 
     let setup_db = Database::from_env_helper(
         1,
+        true,
         test_db_url.clone(),
         test_user.clone(),
         test_password.clone(),
@@ -56,6 +57,7 @@ pub fn create_context(test_name: &str) -> Result<TestContext> {
 
     let db = Database::from_env_helper(
         5,
+        true,
         test_db_url,
         test_user,
         test_password,

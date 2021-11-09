@@ -1,13 +1,15 @@
+use maybe_owned::MaybeOwned;
+
 use super::{
     column::Column, limit::Limit, offset::Offset, order::OrderBy, physical_table::PhysicalTable,
     predicate::Predicate, Expression, ExpressionContext, ParameterBinding,
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Select<'a> {
     pub underlying: &'a PhysicalTable,
-    pub columns: Vec<&'a Column<'a>>,
-    pub predicate: Option<&'a Predicate<'a>>,
+    pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub predicate: MaybeOwned<'a, Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
     pub offset: Option<Offset>,
     pub limit: Option<Limit>,
@@ -23,7 +25,7 @@ impl<'a> Expression for Select<'a> {
             .iter()
             .map(|c| {
                 let col_binding = c.binding(expression_context);
-                let text_cast = match c {
+                let text_cast = match c.as_ref() {
                     Column::JsonObject(_) | Column::JsonAgg(_) if self.top_level_selection => {
                         "::text"
                     }
@@ -41,62 +43,53 @@ impl<'a> Expression for Select<'a> {
         let mut params: Vec<_> = col_paramss.into_iter().flatten().collect();
         params.extend(table_binding.params);
 
-        let stmt = match self.predicate {
+        let predicate_part = match self.predicate.as_ref() {
             // Avoid correct, but inelegant "where true" clause
-            Some(Predicate::True) | None => match &self.order_by {
-                None => format!("select {} from {}", cols_stmts, table_binding.stmt),
-                Some(order_by) => {
-                    let order_by_binding = order_by.binding(expression_context);
-                    params.extend(order_by_binding.params);
-
-                    format!(
-                        "select {} from (select * from {} order by {}) as {}",
-                        cols_stmts, table_binding.stmt, order_by_binding.stmt, table_binding.stmt
-                    )
-                }
-            },
-            Some(predicate) => {
-                let predicate_binding = predicate.binding(expression_context);
-                params.extend(predicate_binding.params);
-
-                match &self.order_by {
-                    None => format!(
-                        "select {} from {} where {}",
-                        cols_stmts, table_binding.stmt, predicate_binding.stmt
-                    ),
-                    Some(order_by) => {
-                        let order_by_binding = order_by.binding(expression_context);
-                        params.extend(order_by_binding.params);
-
-                        format!(
-                            "select {} from (select * from {} where {} order by {}) as {}",
-                            cols_stmts,
-                            table_binding.stmt,
-                            predicate_binding.stmt,
-                            order_by_binding.stmt,
-                            table_binding.stmt
-                        )
-                    }
-                }
+            Predicate::True => " ".to_string(),
+            predicate => {
+                let binding = predicate.binding(expression_context);
+                params.extend(binding.params);
+                format!(" WHERE {}", binding.stmt)
             }
         };
 
-        let stmt = match &self.offset {
-            Some(offset) => {
-                let offset_binding = offset.binding(expression_context);
-                params.extend(offset_binding.params);
-                format!("{} {}", stmt, offset_binding.stmt)
-            }
-            None => stmt,
-        };
+        let order_by_part = self.order_by.as_ref().map(|order_by| {
+            let binding = order_by.binding(expression_context);
+            params.extend(binding.params);
 
-        let stmt = match &self.limit {
-            Some(limit) => {
-                let limit_binding = limit.binding(expression_context);
-                params.extend(limit_binding.params);
-                format!("{} {}", stmt, limit_binding.stmt)
-            }
-            None => stmt,
+            format!(" {}", binding.stmt)
+        });
+
+        let limit_part = self.limit.as_ref().map(|limit| {
+            let binding = limit.binding(expression_context);
+            params.extend(binding.params);
+            format!(" {}", binding.stmt)
+        });
+
+        let offset_part = self.offset.as_ref().map(|offset| {
+            let binding = offset.binding(expression_context);
+            params.extend(binding.params);
+            format!(" {}", binding.stmt)
+        });
+
+        let stmt = if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
+            let conditions = format!(
+                "{}{}{}{}",
+                predicate_part,
+                order_by_part.unwrap_or_default(),
+                limit_part.unwrap_or_default(),
+                offset_part.unwrap_or_default()
+            );
+
+            format!(
+                "select {} from (select * from {}{}) as {}",
+                cols_stmts, table_binding.stmt, conditions, table_binding.stmt
+            )
+        } else {
+            format!(
+                "select {} from {}{}",
+                cols_stmts, table_binding.stmt, predicate_part
+            )
         };
 
         ParameterBinding::new(stmt, params)
@@ -125,13 +118,14 @@ mod tests {
         let age_col = table.get_column("age").unwrap();
         let age_value_col = Column::Literal(Box::new(5));
 
-        let predicate = Predicate::Eq(&age_col, &age_value_col);
+        let predicate = Predicate::Eq(age_col.into(), age_value_col.into());
 
-        let selected_cols = vec![&age_col];
+        let age_col = table.get_column("age").unwrap();
+        let selected_cols = vec![age_col.into()];
 
         let predicated_table = table.select(
             selected_cols,
-            Some(&predicate),
+            predicate,
             None,
             Some(Offset(10)),
             Some(Limit(20)),
@@ -143,10 +137,10 @@ mod tests {
         println!("{:?}", binding.params);
         assert_binding!(
             &binding,
-            r#"select "people"."age" from "people" where "people"."age" = $1 OFFSET $2 LIMIT $3"#,
+            r#"select "people"."age" from (select * from "people" where "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
             5,
-            10i64,
-            20i64
+            20i64,
+            10i64
         );
     }
 
@@ -175,10 +169,17 @@ mod tests {
         let age_col = table.get_column("age").unwrap();
         let name_col = table.get_column("name").unwrap();
         let json_col = Column::JsonObject(vec![
-            ("namex".to_string(), &name_col),
-            ("agex".to_string(), &age_col),
+            ("namex".to_string(), name_col.into()),
+            ("agex".to_string(), age_col.into()),
         ]);
-        let selected_table = table.select(vec![&age_col, &json_col], None, None, None, None, true);
+        let selected_table = table.select(
+            vec![table.get_column("age").unwrap().into(), json_col.into()],
+            Predicate::True,
+            None,
+            None,
+            None,
+            true,
+        );
 
         let mut expression_context = ExpressionContext::default();
         assert_binding!(

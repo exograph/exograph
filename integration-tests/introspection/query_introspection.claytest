@@ -76,6 +76,24 @@ response: |
                   {
                     "name": "orderBy",
                     "__typename": "__InputValue"
+                  },
+                  {
+                    "name": "limit",
+                    "__typename": "__InputValue"
+                  },
+                  {
+                    "name": "offset",
+                    "__typename": "__InputValue"
+                  }
+                ]
+              },
+              {
+                "__typename": "__Field",
+                "name": "logger",
+                "args": [
+                  {
+                    "name": "input",
+                    "__typename": "__InputValue"
                   }
                 ]
               }
@@ -99,5 +117,3 @@ response: |
         }
       }
     }
-
-    

@@ -1,0 +1,61 @@
+operation: |
+  query {
+    venue(id: 1) {
+      id
+    }
+    logs(orderBy: {id: ASC}) {
+      message
+    }
+  }
+response: |
+  {
+    "data": {
+      "venue": {
+        "id": 1
+      },
+      "logs": [
+        {
+          "message": "enterVenueMutation: createVenue"
+        },
+        {
+          "message": "exitVenueMutation: createVenue"
+        },
+        {
+          "message": "enterVenueMutation: createVenue"
+        },
+        {
+          "message": "exitVenueMutation: createVenue"
+        },
+        {
+          "message": "enterConcertMutation: createConcert"
+        },
+        {
+          "message": "exitConcertMutation createConcert"
+        },
+        {
+          "message": "enterConcertMutation: createConcert"
+        },
+        {
+          "message": "exitConcertMutation createConcert"
+        },
+        {
+          "message": "enterQuery: venue"
+        },
+        {
+          "message": "start timingQuery: venue"
+        },
+        {
+          "message": "end timingQuery: venue"
+        },
+        {
+          "message": "exitQuery: venue"
+        },
+        {
+          "message": "enterQuery: logs"
+        },
+        {
+          "message": "start timingQuery: logs"
+        }
+      ]
+    }
+  }

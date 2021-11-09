@@ -25,6 +25,11 @@ values:
   - - ~
     - Primitive: Json
   - - ~
+    - Primitive: ClaytipInjected
+  - - ~
+    - Primitive:
+        Interception: Operation
+  - - ~
     - Composite:
         name: AuthContext
         kind: Context
@@ -78,7 +83,7 @@ values:
                                     - Single:
                                         - - AuthContext
                                         - Reference:
-                                            index: 10
+                                            index: 12
                                             generation: ~
                                     - - role
                                     - Reference:
@@ -92,7 +97,7 @@ values:
                               - Single:
                                   - - self
                                   - Reference:
-                                      index: 11
+                                      index: 13
                                       generation: ~
                               - - is_public
                               - Reference:
@@ -101,20 +106,21 @@ values:
                         - Primitive: Boolean
   - ~
   - ~
-  - ~
-  - ~
 map:
   AuthContext:
-    index: 10
+    index: 12
     generation: ~
   Boolean:
     index: 0
+    generation: ~
+  Claytip:
+    index: 10
     generation: ~
   Decimal:
     index: 3
     generation: ~
   Doc:
-    index: 11
+    index: 13
     generation: ~
   Float:
     index: 2
@@ -136,6 +142,9 @@ map:
     generation: ~
   LocalTime:
     index: 5
+    generation: ~
+  Operation:
+    index: 11
     generation: ~
   String:
     index: 4

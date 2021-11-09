@@ -26,6 +26,11 @@ types:
     - - ~
       - Primitive: Json
     - - ~
+      - Primitive: ClaytipInjected
+    - - ~
+      - Primitive:
+          Interception: Operation
+    - - ~
       - Composite:
           name: Concert
           plural_name: Concerts
@@ -33,42 +38,54 @@ types:
             - name: id
               typ:
                 Plain: Int
-              column_name: id
-              is_pk: true
-              is_autoincrement: true
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint: ~
             - name: title
               typ:
                 Plain: String
-              column_name: title
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: title
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: venue
               typ:
                 Plain: Venue
-              column_name: venue_id
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: venue_id
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: attending
               typ:
                 List:
                   Plain: String
-              column_name: attending
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: attending
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: seating
               typ:
                 List:
                   List:
                     Plain: Boolean
-              column_name: seating
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
-          table_name: Concert
+              kind:
+                Persistent:
+                  column_name: seating
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+          kind:
+            Persistent:
+              table_name: concerts
           access:
             creation:
               BooleanLiteral:
@@ -90,26 +107,34 @@ types:
             - name: id
               typ:
                 Plain: Int
-              column_name: id
-              is_pk: true
-              is_autoincrement: true
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint: ~
             - name: name
               typ:
                 Plain: String
-              column_name: name
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
+              kind:
+                Persistent:
+                  column_name: name
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
             - name: concerts
               typ:
                 List:
                   Plain: Concert
-              column_name: venue_id
-              is_pk: false
-              is_autoincrement: false
-              type_hint: ~
-          table_name: Venue
+              kind:
+                Persistent:
+                  column_name: venue_id
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+          kind:
+            Persistent:
+              table_name: venues
           access:
             creation:
               BooleanLiteral:
@@ -125,14 +150,15 @@ types:
                 - true
     - ~
     - ~
-    - ~
-    - ~
   map:
     Boolean:
       index: 0
       generation: ~
-    Concert:
+    ClaytipInjected:
       index: 10
+      generation: ~
+    Concert:
+      index: 12
       generation: ~
     Decimal:
       index: 3
@@ -158,13 +184,23 @@ types:
     LocalTime:
       index: 5
       generation: ~
+    Operation:
+      index: 11
+      generation: ~
     String:
       index: 4
       generation: ~
     Venue:
-      index: 11
+      index: 13
       generation: ~
 contexts:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+services:
   values:
     - ~
     - ~

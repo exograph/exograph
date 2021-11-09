@@ -1,6 +1,7 @@
-use std::collections::HashMap;
 use std::convert::TryInto;
+use std::{collections::HashMap, path::Path};
 
+use anyhow::{anyhow, Result};
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
 use tree_sitter::{Node, Tree};
@@ -26,23 +27,31 @@ pub fn convert_root(
     source: &[u8],
     codemap: &CodeMap,
     source_span: Span,
-) -> AstSystem<Untyped> {
+    filepath: &Path,
+) -> Result<AstSystem<Untyped>> {
     assert_eq!(node.kind(), "source_file");
     if node.has_error() {
         let mut errors = vec![];
         collect_parsing_errors(node, source, codemap, source_span, &mut errors);
         let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
         emitter.emit(&errors);
-        panic!();
+        Err(anyhow!("Parsing failed"))
     } else {
         let mut cursor = node.walk();
-        AstSystem {
+        Ok(AstSystem {
             models: node
                 .children(&mut cursor)
                 .filter(|n| n.kind() == "declaration")
-                .map(|c| convert_declaration(c, source, source_span))
-                .collect(),
-        }
+                .map(|c| convert_declaration_to_model(c, source, source_span))
+                .flatten()
+                .collect::<Vec<_>>(),
+            services: node
+                .children(&mut cursor)
+                .filter(|n| n.kind() == "declaration")
+                .map(|c| convert_declaration_to_service(c, source, source_span, filepath))
+                .flatten()
+                .collect::<Vec<_>>(),
+        })
     }
 }
 
@@ -106,13 +115,36 @@ fn collect_parsing_errors(
     }
 }
 
-pub fn convert_declaration(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
+// TODO: dedup
+pub fn convert_declaration_to_model(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> Option<AstModel<Untyped>> {
     assert_eq!(node.kind(), "declaration");
     let first_child = node.child(0).unwrap();
 
-    match first_child.kind() {
-        "model" => convert_model(first_child, source, source_span),
-        o => panic!("unsupported declaration kind: {}", o),
+    if first_child.kind() == "model" {
+        Some(convert_model(first_child, source, source_span))
+    } else {
+        None
+    }
+}
+
+pub fn convert_declaration_to_service(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+    filepath: &Path,
+) -> Option<AstService<Untyped>> {
+    assert_eq!(node.kind(), "declaration");
+    let first_child = node.child(0).unwrap();
+
+    if first_child.kind() == "service" {
+        let service = convert_service(first_child, source, source_span, filepath);
+        Some(service)
+    } else {
+        None
     }
 }
 
@@ -127,10 +159,17 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
         .utf8_text(source)
         .unwrap()
         .to_string();
+
     let kind = if kind == "model" {
         AstModelKind::Persistent
-    } else {
+    } else if kind == "type" {
+        AstModelKind::NonPersistent
+    } else if kind == "input type" {
+        AstModelKind::NonPersistentInput
+    } else if kind == "context" {
         AstModelKind::Context
+    } else {
+        todo!()
     };
 
     AstModel {
@@ -153,6 +192,117 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
     }
 }
 
+pub fn convert_service(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+    filepath: &Path,
+) -> AstService<Untyped> {
+    let mut model_cursor = node.walk();
+    let mut method_cursor = node.walk();
+    let mut iterceptor_cursor = node.walk();
+
+    let mut cursor = node.walk();
+
+    let model_nodes = node
+        .child_by_field_name("body")
+        .unwrap()
+        .children_by_field_name("field", &mut model_cursor)
+        .map(|n| n.child(0).unwrap())
+        .filter(|node| node.kind() == "model");
+
+    let method_nodes = node
+        .child_by_field_name("body")
+        .unwrap()
+        .children_by_field_name("field", &mut method_cursor)
+        .map(|n| n.child(0).unwrap())
+        .filter(|node| node.kind() == "service_method");
+
+    let intercetor_nodes = node
+        .child_by_field_name("body")
+        .unwrap()
+        .children_by_field_name("field", &mut iterceptor_cursor)
+        .map(|n| n.child(0).unwrap())
+        .filter(|node| node.kind() == "interceptor");
+
+    AstService {
+        name: node
+            .child_by_field_name("name")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        models: model_nodes
+            .map(|n| convert_model(n, source, source_span))
+            .collect(),
+        methods: method_nodes
+            .map(|n| convert_service_method(n, source, source_span))
+            .collect(),
+        interceptors: intercetor_nodes
+            .map(|n| convert_intercetor(n, source, source_span))
+            .collect(),
+        annotations: node
+            .children_by_field_name("annotation", &mut cursor)
+            .map(|c| convert_annotation(c, source, source_span))
+            .collect(),
+        base_clayfile: filepath.into(),
+    }
+}
+
+pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
+    let mut cursor = node.walk();
+
+    AstMethod {
+        name: node
+            .child_by_field_name("name")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        typ: node
+            .child_by_field_name("type")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        arguments: node
+            .children_by_field_name("args", &mut cursor)
+            .map(|c| convert_argument(c, source, source_span))
+            .collect(),
+        return_type: node
+            .child_by_field_name("return_type")
+            .map(|c| convert_type(c, source, source_span))
+            .unwrap(),
+        is_exported: node.child_by_field_name("is_exported").is_some(),
+        annotations: node
+            .children_by_field_name("annotation", &mut cursor)
+            .map(|c| convert_annotation(c, source, source_span))
+            .collect(),
+    }
+}
+
+pub fn convert_intercetor(node: Node, source: &[u8], source_span: Span) -> AstInterceptor<Untyped> {
+    let mut cursor = node.walk();
+
+    AstInterceptor {
+        name: node
+            .child_by_field_name("name")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        arguments: node
+            .children_by_field_name("args", &mut cursor)
+            .map(|c| convert_argument(c, source, source_span))
+            .collect(),
+
+        annotations: node
+            .children_by_field_name("annotation", &mut cursor)
+            .map(|c| convert_annotation(c, source, source_span))
+            .collect(),
+    }
+}
+
 pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
     let mut cursor = node.walk();
     node.children_by_field_name("field", &mut cursor)
@@ -161,11 +311,36 @@ pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstFi
 }
 
 pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
-    assert_eq!(node.kind(), "field");
+    assert!(node.kind() == "field");
 
     let mut cursor = node.walk();
 
     AstField {
+        name: node
+            .child_by_field_name("name")
+            .unwrap()
+            .utf8_text(source)
+            .unwrap()
+            .to_string(),
+        typ: convert_type(
+            node.child_by_field_name("type").unwrap(),
+            source,
+            source_span,
+        ),
+        annotations: node
+            .children_by_field_name("annotation", &mut cursor)
+            .map(|c| convert_annotation(c, source, source_span))
+            .collect(),
+    }
+}
+
+// TODO: dedup
+pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
+    assert!(node.kind() == "argument");
+
+    let mut cursor = node.walk();
+
+    AstArgument {
         name: node
             .child_by_field_name("name")
             .unwrap()
@@ -345,6 +520,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source,
                 source_span,
             )),
+            source_span,
             (),
         ),
         "logical_and" => LogicalOp::And(
@@ -358,6 +534,7 @@ fn convert_logical_op(node: Node, source: &[u8], source_span: Span) -> LogicalOp
                 source,
                 source_span,
             )),
+            source_span,
             (),
         ),
         "logical_not" => LogicalOp::Not(
@@ -513,8 +690,10 @@ mod tests {
             parsed.root_node(),
             src.as_bytes(),
             &codemap,
-            file_span
-        ));
+            file_span,
+            Path::new("input.payas")
+        )
+        .unwrap());
     }
 
     #[test]
@@ -551,7 +730,7 @@ mod tests {
         model Venue {
           id: Int @pk @autoincrement
           name: String
-          concerts: Set[Concert /* here too! */] @column("venueid")
+          concerts: Set<Concert /* here too! */> @column("venueid")
         }
         "#,
         );
@@ -563,7 +742,7 @@ mod tests {
             r#"
         context AuthUser {
             id: Int @jwt("sub") 
-            roles: Array[String] @jwt
+            roles: Array<String> @jwt
          }
         "#,
         );

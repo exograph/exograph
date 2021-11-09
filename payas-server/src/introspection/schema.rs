@@ -21,6 +21,12 @@ impl Schema {
             .map(|model_type| model_type.1.type_definition(system))
             .collect();
 
+        let argument_type_definitions: Vec<TypeDefinition> = system
+            .argument_types
+            .iter()
+            .map(|m| m.1.type_definition(system))
+            .collect();
+
         let order_by_param_type_definitions: Vec<TypeDefinition> = system
             .order_by_types
             .iter()
@@ -61,7 +67,7 @@ impl Schema {
 
         let mutation_type_definition = {
             let fields = system
-                .create_mutations
+                .mutations
                 .values
                 .iter()
                 .map(|mutation| default_positioned(mutation.1.field_definition(system)))
@@ -81,6 +87,7 @@ impl Schema {
 
         type_definitions.push(query_type_definition);
         type_definitions.push(mutation_type_definition);
+        type_definitions.extend(argument_type_definitions);
         type_definitions.extend(order_by_param_type_definitions);
         type_definitions.extend(predicate_param_type_definitions);
         type_definitions.extend(mutation_param_type_definitions);

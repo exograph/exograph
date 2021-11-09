@@ -17,15 +17,25 @@ pub fn run(directory: &Path) -> Result<()> {
 
     // Load testfiles
     let testfiles = load_testfiles_from_dir(Path::new(&directory)).unwrap();
-    let number_of_tests = testfiles.len();
+    let number_of_tests = testfiles.len() * 2; // *2 because we run each testfile twice: dev mode and qproduction mode
 
     // Run testfiles in parallel
     let mut test_results: Vec<_> = testfiles
         .into_iter()
-        .map(|t| {
-            std::thread::spawn(move || {
-                run_testfile(&t, std::env::var("CLAY_TEST_DATABASE_URL").unwrap())
-            })
+        .flat_map(|t| {
+            let t_dev = t.clone();
+            vec![
+                std::thread::spawn(move || {
+                    run_testfile(
+                        &t_dev,
+                        std::env::var("CLAY_TEST_DATABASE_URL").unwrap(),
+                        true, // dev_mode
+                    )
+                }),
+                std::thread::spawn(move || {
+                    run_testfile(&t, std::env::var("CLAY_TEST_DATABASE_URL").unwrap(), false)
+                }),
+            ]
         })
         .collect::<Vec<_>>()
         .into_iter()
@@ -38,7 +48,7 @@ pub fn run(directory: &Path) -> Result<()> {
         } else if a.is_err() && b.is_ok() {
             std::cmp::Ordering::Less
         } else {
-            a.as_ref().unwrap().cmp(b.as_ref().unwrap())
+            std::cmp::Ordering::Equal
         }
     });
     test_results.reverse();

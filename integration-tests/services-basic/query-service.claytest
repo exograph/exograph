@@ -1,0 +1,30 @@
+operation: |
+    query Foo {
+      addDirect: add(x: 1, y: 2)
+
+      addVariables: add(x: $x, y: $y)
+    
+      divide(x: 13, y: 2) {
+        quotient
+        remainder
+      }
+    
+      shimQuery
+    }
+variable: |
+    {
+        "x": 5,
+        "y": 6
+    }
+response: |
+    {
+      "data": {
+        "addDirect": 3,
+        "addVariables": 11,
+        "divide": {
+          "quotient": 6,
+          "remainder": 1
+        },
+        "shimQuery": "The `foos` with `baz` = 4 have IDs of 1, 2, "
+      }
+    } 

@@ -3,3 +3,13 @@ model Person {
   name: String
 }
 
+@external("logger.js")
+service Logger {
+  input type LogMessage {
+    level: String
+    message: String
+  }
+
+  export query logger(@inject claytip: Claytip, input: LogMessage): Boolean
+  mutation debug(@inject claytip: Claytip, input: LogMessage): Boolean
+}

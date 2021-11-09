@@ -1,16 +1,20 @@
-use std::{env, path::PathBuf, process};
+use std::{env, path::PathBuf, time::SystemTime};
 
+use anyhow::Result;
 use clap::{App, AppSettings, Arg, SubCommand};
 
 use crate::commands::{
-    model, schema, BuildCommand, Command, MigrateCommand, ServeCommand, TestCommand, YoloCommand,
+    build::BuildCommand, import, schema, Command, MigrateCommand, ServeCommand, TestCommand,
+    YoloCommand,
 };
 
 mod commands;
 
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
-fn main() {
+fn main() -> Result<()> {
+    let system_start_time = SystemTime::now();
+
     let matches = App::new("Claytip")
         .version(env!("CARGO_PKG_VERSION"))
         .global_setting(AppSettings::DisableHelpSubcommand)
@@ -23,6 +27,11 @@ fn main() {
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
+                )
+                .arg(
+                    Arg::with_name("watch")
+                        .help("Automatically build when model file changes")
+                        .long("watch"),
                 ),
         )
         .subcommand(
@@ -131,13 +140,14 @@ fn main() {
     let command: Box<dyn Command> = match matches.subcommand() {
         ("build", Some(matches)) => Box::new(BuildCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
+            watch: matches.is_present("watch"),
         }),
         ("migrate", Some(matches)) => Box::new(MigrateCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
             database: matches.value_of("database").unwrap().to_owned(),
         }),
         ("model", Some(matches)) => match matches.subcommand() {
-            ("import", Some(matches)) => Box::new(model::ImportCommand {
+            ("import", Some(matches)) => Box::new(import::ImportCommand {
                 output: PathBuf::from(matches.value_of("output").unwrap()),
             }),
             _ => panic!("Unhandled command name"),
@@ -166,8 +176,5 @@ fn main() {
         _ => panic!("Unhandled command name"),
     };
 
-    if let Err(e) = command.run() {
-        eprintln!("error: {}", e);
-        process::exit(1);
-    }
+    command.run(Some(system_start_time))
 }

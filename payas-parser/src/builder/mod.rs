@@ -2,21 +2,27 @@
 
 mod system_builder;
 
+mod access_utils;
+mod argument_builder;
 mod context_builder;
 mod create_mutation_builder;
 mod delete_mutation_builder;
+mod interceptor_weaver;
 mod mutation_builder;
 mod order_by_type_builder;
 mod predicate_builder;
 mod query_builder;
 mod reference_input_type_builder;
 mod resolved_builder;
+mod service_builder;
 mod type_builder;
 mod update_mutation_builder;
 
 pub use system_builder::build;
 
 use payas_model::model::{mapped_arena::MappedArena, GqlType, GqlTypeKind};
+
+use crate::builder::resolved_builder::ResolvedCompositeTypeKind;
 
 use self::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -57,13 +63,19 @@ pub trait Builder {
         }
     }
 
-    fn build_shallow(
+    fn build_shallow_only_persistent(
         &self,
         resolved_types: &MappedArena<ResolvedType>,
         building: &mut SystemContextBuilding,
     ) {
         for (_, model_type) in resolved_types.iter() {
-            self.create_shallow_type(model_type, resolved_types, building);
+            if let ResolvedType::Composite(ResolvedCompositeType {
+                kind: ResolvedCompositeTypeKind::Persistent { .. },
+                ..
+            }) = &model_type
+            {
+                self.create_shallow_type(model_type, resolved_types, building);
+            }
         }
     }
 
