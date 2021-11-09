@@ -7,6 +7,7 @@ Must have:
 - Rust (see the version specified in [rust-toolchain.toml](rust-toolchain.toml))
 - Postgres 12
 - Treesitter (`cargo install --rev v0.19.5 --git https://github.com/tree-sitter/tree-sitter.git tree-sitter-cli`)
+- [Deno](https://deno.land/)
 
 Nice to have:
 
@@ -56,7 +57,7 @@ CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://loca
 ```
 
 **Note**
-If you change the treesitter grammar source file, `cargo watch` doesn't seem pick up the change, so you need to run the non-watch version.
+If you change the treesitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
 
 5. Run unit and integration tests
 
