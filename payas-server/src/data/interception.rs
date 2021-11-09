@@ -202,9 +202,6 @@ fn execute_interceptor<'a>(
     proceed_operation: Option<&dyn Fn() -> Result<serde_json::Value>>,
 ) -> Result<serde_json::Value> {
     let path = &interceptor.module_path;
-
-    let mut deno_modules_map = query_context.executor.deno_modules_map.try_lock().unwrap();
-
     let arg_sequence = interceptor
         .arguments
         .iter()
@@ -220,8 +217,7 @@ fn execute_interceptor<'a>(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    deno_modules_map.load_module(path)?;
-    deno_modules_map.execute_function(
+    query_context.executor.deno_execution.execute_function(
         path,
         &interceptor.name,
         arg_sequence,

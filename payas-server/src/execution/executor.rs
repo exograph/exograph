@@ -1,12 +1,10 @@
-use std::sync::Mutex;
-
 use super::query_context;
 use crate::introspection::schema::Schema;
 use async_graphql_parser::{parse_query, types::DocumentOperations};
 
 use anyhow::Result;
 
-use payas_deno::DenoModulesMap;
+use payas_deno::DenoExecutionManager;
 use payas_model::{
     model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
     sql::database::Database,
@@ -19,7 +17,7 @@ pub struct Executor<'a> {
     pub system: &'a ModelSystem,
     pub schema: &'a Schema,
     pub database: &'a Database,
-    pub deno_modules_map: &'a Mutex<DenoModulesMap>,
+    pub deno_execution: &'a DenoExecutionManager,
 }
 
 impl<'a> Executor<'a> {

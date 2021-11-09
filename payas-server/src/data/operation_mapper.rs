@@ -190,7 +190,6 @@ fn resolve_deno(
 ) -> Result<serde_json::Value> {
     let path = &method.module_path;
 
-    let mut deno_modules_map = query_context.executor.deno_modules_map.lock().unwrap();
     let function_result = futures::executor::block_on(async {
         let mapped_args = query_context
             .field_arguments(&field.node)
@@ -219,8 +218,7 @@ fn resolve_deno(
             })
             .collect::<Result<Vec<_>>>()?;
 
-        deno_modules_map.load_module(path)?;
-        deno_modules_map.execute_function(
+        query_context.executor.deno_execution.execute_function(
             path,
             &method.name,
             arg_sequence,
