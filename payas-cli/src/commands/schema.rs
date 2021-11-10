@@ -4,7 +4,6 @@ use anyhow::Result;
 use payas_model::spec::FromModel;
 use std::{path::PathBuf, time::SystemTime};
 
-use payas_parser::{builder, parser};
 use payas_sql::spec::SchemaSpec;
 
 use super::Command;
@@ -16,8 +15,7 @@ pub struct CreateCommand {
 
 impl Command for CreateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        let (ast_system, codemap) = parser::parse_file(&self.model)?;
-        let system = builder::build(ast_system, codemap)?;
+        let system = payas_parser::build_system(&self.model)?;
 
         println!("{}", SchemaSpec::from_model(system.tables).to_sql());
         Ok(())
