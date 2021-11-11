@@ -2,11 +2,7 @@ use crate::spec::TableSpec;
 
 use super::{
     column::{Column, PhysicalColumn},
-    limit::Limit,
-    offset::Offset,
-    order::OrderBy,
     predicate::Predicate,
-    select::Select,
     Delete, Expression, ExpressionContext, Insert, ParameterBinding, Update,
 };
 
@@ -37,29 +33,6 @@ impl PhysicalTable {
 
     pub fn get_pk_physical_column(&self) -> Option<&PhysicalColumn> {
         self.columns.iter().find(|column| column.is_pk)
-    }
-
-    pub fn select<'a, P>(
-        &'a self,
-        columns: Vec<MaybeOwned<'a, Column<'a>>>,
-        predicate: P,
-        order_by: Option<OrderBy<'a>>,
-        offset: Option<Offset>,
-        limit: Option<Limit>,
-        top_level_selection: bool,
-    ) -> Select
-    where
-        P: Into<MaybeOwned<'a, Predicate<'a>>>,
-    {
-        Select {
-            underlying: self,
-            columns,
-            predicate: predicate.into(),
-            order_by,
-            offset,
-            limit,
-            top_level_selection,
-        }
     }
 
     pub fn insert<'a, C>(

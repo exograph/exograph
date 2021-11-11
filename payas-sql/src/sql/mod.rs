@@ -19,6 +19,7 @@ mod limit;
 mod offset;
 pub mod order;
 pub mod predicate;
+mod table;
 pub mod transaction;
 mod update;
 
@@ -30,6 +31,7 @@ pub use offset::Offset;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
 pub use sql_operation::{SQLOperation, TemplateSQLOperation};
+pub use table::Table;
 pub use update::{TemplateUpdate, Update};
 
 pub trait SQLParam: ToSql + Sync + std::fmt::Display {

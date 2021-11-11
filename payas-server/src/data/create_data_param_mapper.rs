@@ -13,6 +13,7 @@ use payas_model::{
     },
     sql::{
         column::PhysicalColumn, predicate::Predicate, Limit, Offset, PhysicalTable, SQLOperation,
+        Table,
     },
 };
 
@@ -253,11 +254,11 @@ fn map_foreign<'a>(
     // we need to create a column that evaluates to `select "venues"."id" from "venues"`
 
     let parent_type = underlying_type(parent_data_type, system);
-    let parent_table = &system.tables[parent_type.table_id().unwrap()];
+    let parent_physical_table = &system.tables[parent_type.table_id().unwrap()];
     let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(system);
 
     fn create_select<'a>(
-        parent_table: &'a PhysicalTable,
+        parent_table: Table<'a>,
         parent_pk_physical_column: &'a PhysicalColumn,
         parent_index: Option<usize>,
     ) -> Column<'a> {
@@ -309,6 +310,7 @@ fn map_foreign<'a>(
     columns.push(self_reference_column);
 
     values.iter_mut().for_each(|value| {
+        let parent_table = Table::Physical(parent_physical_table);
         value.push(create_select(parent_table, parent_pk_physical_column, parent_index).into())
     });
 

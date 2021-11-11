@@ -7,7 +7,7 @@ use anyhow::*;
 use maybe_owned::MaybeOwned;
 use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
-use payas_model::sql::{Limit, Offset};
+use payas_model::sql::{Limit, Offset, Table};
 
 use super::operation_mapper::{
     compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
@@ -207,7 +207,8 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
 
-                let table = self.return_type.physical_table(query_context.get_system());
+                let table =
+                    Table::Physical(self.return_type.physical_table(query_context.get_system()));
 
                 let field_arguments = query_context.field_arguments(field);
                 let limit = self.compute_limit(field_arguments, query_context);
