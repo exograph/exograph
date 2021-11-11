@@ -34,6 +34,16 @@
         "language": "claytip",
         "scopeName": "source.clay",
         "path": "./syntaxes/claytip.tmLanguage.json"
+      },
+      {
+        "injectTo": [
+          "text.html.markdown"
+        ],
+        "scopeName": "markdown.clay.codeblock",
+        "path": "./syntaxes/clay.markdown.codeblock.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.clay": "clay"
+        }
       }
     ]
   }
