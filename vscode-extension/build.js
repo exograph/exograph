@@ -31,7 +31,7 @@ function processTemplate() {
   let keys = Object.keys(replacements);
 
   for (const key of keys) {
-    content = content.replaceAll(`{{${key}}}`, replacements[key]);
+    content = content.replace(/{{${key}}}/g, replacements[key]);
   }
 
   fs.writeFileSync(`${out}/syntaxes/claytip.tmLanguage.json`, content);
