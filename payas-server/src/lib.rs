@@ -21,7 +21,6 @@ use async_stream::try_stream;
 
 use introspection::schema::Schema;
 use payas_model::{model::system::ModelSystem, sql::database::Database};
-use payas_parser::builder;
 use serde_json::Value;
 
 use std::time::{Duration, SystemTime};
@@ -33,8 +32,6 @@ mod introspection;
 pub mod model_watcher;
 mod watcher;
 
-pub use payas_parser::ast;
-pub use payas_parser::parser;
 pub use payas_sql::sql;
 
 use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
@@ -212,8 +209,7 @@ pub fn start_dev_mode(
         } else {
             system_start_time
         };
-        let (ast_system, codemap) = parser::parse_file(&model_file)?;
-        let system = builder::build(ast_system, codemap)?;
+        let system = payas_parser::build_system(&model_file)?;
 
         start_server(system, system_start_time, restart)
     };
