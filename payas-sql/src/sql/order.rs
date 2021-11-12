@@ -20,13 +20,16 @@ impl<'a> Expression for OrderBy<'a> {
                     Ordering::Desc => "DESC",
                 };
                 (
-                    format!("ORDER BY {} {}", column_binding.stmt, order_stmt),
+                    format!("{} {}", column_binding.stmt, order_stmt),
                     column_binding.params,
                 )
             })
             .unzip();
 
-        ParameterBinding::new(stmts.join(", "), params.into_iter().flatten().collect())
+        ParameterBinding::new(
+            format!("ORDER BY {}", stmts.join(", ")),
+            params.into_iter().flatten().collect(),
+        )
     }
 }
 
@@ -51,7 +54,7 @@ mod test {
         let mut expression_context = ExpressionContext::default();
         let binding = order_by.binding(&mut expression_context);
 
-        assert_binding!(binding, r#""people"."age" DESC"#);
+        assert_binding!(binding, r#"ORDER BY "people"."age" DESC"#);
     }
 
     #[test]
@@ -78,7 +81,10 @@ mod test {
             let mut expression_context = ExpressionContext::default();
             let binding = order_by.binding(&mut expression_context);
 
-            assert_binding!(binding, r#""people"."name" ASC, "people"."age" DESC"#);
+            assert_binding!(
+                binding,
+                r#"ORDER BY "people"."name" ASC, "people"."age" DESC"#
+            );
         }
 
         // Reverse the order and it should be refleted in the statement
@@ -88,7 +94,10 @@ mod test {
             let mut expression_context = ExpressionContext::default();
             let binding = order_by.binding(&mut expression_context);
 
-            assert_binding!(binding, r#""people"."age" DESC, "people"."name" ASC"#);
+            assert_binding!(
+                binding,
+                r#"ORDER BY "people"."age" DESC, "people"."name" ASC"#
+            );
         }
     }
 }
