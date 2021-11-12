@@ -45,7 +45,7 @@ impl<'a> Expression for Select<'a> {
 
         let predicate_part = match self.predicate.as_ref() {
             // Avoid correct, but inelegant "where true" clause
-            Predicate::True => " ".to_string(),
+            Predicate::True => "".to_string(),
             predicate => {
                 let binding = predicate.binding(expression_context);
                 params.extend(binding.params);
@@ -137,7 +137,7 @@ mod tests {
         println!("{:?}", binding.params);
         assert_binding!(
             &binding,
-            r#"select "people"."age" from (select * from "people" where "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
+            r#"select "people"."age" from (select * from "people" WHERE "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
             5,
             20i64,
             10i64
