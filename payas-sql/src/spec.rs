@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Display, Formatter};
+use std::ops::DerefMut;
 
-use crate::sql::{column::PhysicalColumnType, database::Database};
+use crate::sql::column::PhysicalColumnType;
 use anyhow::{anyhow, Result};
+use postgres::Client;
 use regex::Regex;
 
 /// An SQL statement along with any foreign constraint statements that should follow after all the
@@ -54,7 +56,7 @@ pub struct SchemaSpec {
 
 impl SchemaSpec {
     /// Creates a new schema specification from an SQL database.
-    pub fn from_db(database: &Database) -> Result<WithIssues<SchemaSpec>> {
+    pub fn from_db(client: &mut impl DerefMut<Target = Client>) -> Result<WithIssues<SchemaSpec>> {
         // Query to get a list of all the tables in the database
         const QUERY: &str =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
@@ -62,13 +64,9 @@ impl SchemaSpec {
         let mut issues = Vec::new();
         let mut table_specs = Vec::new();
 
-        for row in database
-            .get_client()?
-            .query(QUERY, &[])
-            .map_err(|e| anyhow!(e))?
-        {
+        for row in client.query(QUERY, &[]).map_err(|e| anyhow!(e))? {
             let name: String = row.get("table_name");
-            let mut table = TableSpec::from_db(database, &name)?;
+            let mut table = TableSpec::from_db(client, &name)?;
             issues.append(&mut table.issues);
             table_specs.push(table.value);
         }
@@ -107,7 +105,10 @@ pub struct TableSpec {
 
 impl TableSpec {
     /// Creates a new table specification from an SQL table.
-    pub fn from_db(database: &Database, table_name: &str) -> Result<WithIssues<TableSpec>> {
+    pub fn from_db(
+        client: &mut impl DerefMut<Target = Client>,
+        table_name: &str,
+    ) -> Result<WithIssues<TableSpec>> {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
@@ -128,11 +129,10 @@ impl TableSpec {
         let foreign_key_re =
             Regex::new(r"FOREIGN KEY \(([^)]+)\) REFERENCES ([^\(]+)\(([^)]+)\)").unwrap();
 
-        let mut db_client = database.get_client()?;
         let mut issues = Vec::new();
 
         // Get all the constraints in the table
-        let constraints = db_client
+        let constraints = client
             .query(constraints_query.as_str(), &[])?
             .iter()
             .map(|row| {
@@ -159,7 +159,7 @@ impl TableSpec {
             let ref_column_name = matches[3].to_owned(); // name of the column in the referenced table
 
             let mut column =
-                ColumnSpec::from_db(database, &ref_table_name, &ref_column_name, true, None)?;
+                ColumnSpec::from_db(client, &ref_table_name, &ref_column_name, true, None)?;
             issues.append(&mut column.issues);
 
             if let Some(spec) = column.value {
@@ -175,10 +175,10 @@ impl TableSpec {
         }
 
         let mut column_specs = Vec::new();
-        for row in db_client.query(columns_query.as_str(), &[])? {
+        for row in client.query(columns_query.as_str(), &[])? {
             let name: String = row.get("column_name");
             let mut column = ColumnSpec::from_db(
-                database,
+                client,
                 table_name,
                 &name,
                 primary_keys.contains(&name),
@@ -236,7 +236,7 @@ impl ColumnSpec {
     /// If the column references another table's column, the column's type can be specified with
     /// `explicit_type`.
     pub fn from_db(
-        database: &Database,
+        client: &mut impl DerefMut<Target = Client>,
         table_name: &str,
         column_name: &str,
         is_pk: bool,
@@ -247,7 +247,6 @@ impl ColumnSpec {
         // `users_id_seq`
         let serial_columns_query = "SELECT relname FROM pg_class WHERE relkind = 'S'";
 
-        let mut db_client = database.get_client()?;
         let mut issues = Vec::new();
 
         let db_type = match explicit_type {
@@ -262,7 +261,7 @@ impl ColumnSpec {
                     table_name, column_name
                 );
 
-                let rows = db_client.query(db_type_query.as_str(), &[])?;
+                let rows = client.query(db_type_query.as_str(), &[])?;
                 let row = rows.get(0).unwrap();
 
                 let mut sql_type: String = row.get("format_type");
@@ -288,7 +287,7 @@ impl ColumnSpec {
             }
         };
 
-        let serial_columns = db_client
+        let serial_columns = client
             .query(serial_columns_query, &[])?
             .iter()
             .map(|row| -> String { row.get("relname") })
