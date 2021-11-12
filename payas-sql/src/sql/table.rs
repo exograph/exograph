@@ -7,7 +7,7 @@ use maybe_owned::MaybeOwned;
 #[derive(Debug, PartialEq)]
 pub enum Table<'a> {
     Physical(&'a PhysicalTable),
-    Join(&'a Join<'a>),
+    Join(Join<'a>),
 }
 
 impl<'a> Table<'a> {
@@ -32,6 +32,10 @@ impl<'a> Table<'a> {
             limit,
             top_level_selection,
         }
+    }
+
+    pub fn join(self, other_table: Table<'a>, predicate: &'a Predicate<'a>) -> Table<'a> {
+        Table::Join(Join::new(self, other_table, predicate))
     }
 }
 

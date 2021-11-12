@@ -2,9 +2,19 @@ use super::{predicate::Predicate, Expression, ParameterBinding, Table};
 
 #[derive(Debug, PartialEq)]
 pub struct Join<'a> {
-    left: &'a Table<'a>,
-    right: &'a Table<'a>,
+    left: Box<Table<'a>>,
+    right: Box<Table<'a>>,
     predicate: &'a Predicate<'a>,
+}
+
+impl<'a> Join<'a> {
+    pub fn new(left: Table<'a>, right: Table<'a>, predicate: &'a Predicate<'a>) -> Self {
+        Join {
+            left: Box::new(left),
+            right: Box::new(right),
+            predicate,
+        }
+    }
 }
 
 impl Expression for Join<'_> {
@@ -80,18 +90,14 @@ mod tests {
 
         let concert_table = Table::Physical(&concert_physical_table);
         let venue_table = Table::Physical(&venue_physical_table);
-
-        let join = Join {
-            left: &concert_table,
-            right: &venue_table,
-            predicate: &Predicate::Eq(
-                concert_physical_table
-                    .get_column("venue_id")
-                    .unwrap()
-                    .into(),
-                venue_physical_table.get_column("id").unwrap().into(),
-            ),
-        };
+        let join_predicate = Predicate::Eq(
+            concert_physical_table
+                .get_column("venue_id")
+                .unwrap()
+                .into(),
+            venue_physical_table.get_column("id").unwrap().into(),
+        );
+        let join = Join::new(concert_table, venue_table, &join_predicate);
 
         let mut expression_context = ExpressionContext::default();
         let binding = join.binding(&mut expression_context);
@@ -100,7 +106,5 @@ mod tests {
             &binding,
             r#""concerts" INNER JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
         );
-        eprintln!("{}", binding.stmt);
-        eprintln!("{:?}", binding.params);
     }
 }
