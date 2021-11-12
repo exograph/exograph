@@ -31,7 +31,7 @@ function processTemplate() {
   let keys = Object.keys(replacements);
 
   for (const key of keys) {
-    content = content.replaceAll(`{{${key}}}`, replacements[key]);
+    content = content.replace(/{{${key}}}/g, replacements[key]);
   }
 
   fs.writeFileSync(`${out}/syntaxes/claytip.tmLanguage.json`, content);
@@ -47,5 +47,6 @@ if (!fs.existsSync(`${out}/syntaxes`)) {
 
 fs.copyFileSync(`${src}/package.json`, `${out}/package.json`);
 fs.copyFileSync(`${src}/language-configuration.json`, `${out}/language-configuration.json`);
+fs.copyFileSync(`${src}/syntaxes/clay.markdown.codeblock.json`, `${out}/syntaxes/clay.markdown.codeblock.json`);
 
 processTemplate()
