@@ -1,12 +1,13 @@
 use super::{
-    column::Column, order::OrderBy, predicate::Predicate, Expression, ExpressionContext, Limit,
-    Offset, ParameterBinding, PhysicalTable, Select,
+    column::Column, join::Join, order::OrderBy, predicate::Predicate, Expression,
+    ExpressionContext, Limit, Offset, ParameterBinding, PhysicalTable, Select,
 };
 use maybe_owned::MaybeOwned;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Table<'t> {
-    Physical(&'t PhysicalTable),
+#[derive(Debug, PartialEq)]
+pub enum Table<'a> {
+    Physical(&'a PhysicalTable),
+    Join(&'a Join<'a>),
 }
 
 impl<'a> Table<'a> {
@@ -38,6 +39,7 @@ impl<'a> Expression for Table<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
             Table::Physical(physical_table) => physical_table.binding(expression_context),
+            Table::Join(join) => join.binding(expression_context),
         }
     }
 }

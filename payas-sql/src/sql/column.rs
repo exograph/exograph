@@ -9,7 +9,7 @@ use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Write, rc::Rc};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,

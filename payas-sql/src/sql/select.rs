@@ -139,7 +139,7 @@ mod tests {
 
         let mut expression_context = ExpressionContext::default();
         let binding = predicated_table.binding(&mut expression_context);
-        println!("{:?}", binding.params);
+
         assert_binding!(
             &binding,
             r#"select "people"."age" from (select * from "people" WHERE "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,

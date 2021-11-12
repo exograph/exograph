@@ -15,6 +15,7 @@ mod physical_table;
 mod select;
 mod sql_operation;
 
+mod join;
 mod limit;
 mod offset;
 pub mod order;
