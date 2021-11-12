@@ -81,7 +81,7 @@ pub fn create_physical_table(db: &Database, table_name: &str, query: &str) -> Ph
     client.query(query, &[]).unwrap();
 
     // get definition back from database
-    let table_spec = TableSpec::from_db(db, table_name).unwrap();
+    let table_spec = TableSpec::from_db(&mut client, table_name).unwrap();
 
     if !table_spec.issues.is_empty() {
         for issue in table_spec.issues.iter() {
