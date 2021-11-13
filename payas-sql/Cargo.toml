@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
+bytes = "1"
 openssl = "0.10.30"
 postgres = { version = "0.19.0", features = ["with-chrono-0_4"] }
 postgres-openssl = "0.5.0"

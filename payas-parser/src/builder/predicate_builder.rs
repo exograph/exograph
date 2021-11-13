@@ -138,6 +138,11 @@ lazy_static! {
             Some(vec!["contains", "containedBy", "matchKey", "matchAllKeys", "matchAnyKey"])
         );
 
+        supported_operators.insert(
+            "Blob",
+            None
+        );
+
         supported_operators.insert("ClaytipInjected", None);
         supported_operators.insert("Operation", None); // TODO: Re-examine if this is the best way (for both injected and interception)
 

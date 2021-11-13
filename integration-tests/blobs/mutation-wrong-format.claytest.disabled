@@ -1,0 +1,21 @@
+# TODO: handle errors from QueryContext::literal_column
+
+operation: |
+    mutation {
+        result: createImage(data: {
+            name: "test",
+            data: "not base64",
+        }) {
+            id
+            name
+            data
+        }
+    }
+response: |
+    {
+        "errors": [
+            {
+                "message": ""
+            }
+        ]
+    }

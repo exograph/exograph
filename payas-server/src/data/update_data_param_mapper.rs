@@ -127,7 +127,7 @@ fn compute_update_columns<'a>(
 
                             let value_column =
                                 query_context.literal_column(argument_value, key_column);
-                            (key_column, value_column)
+                            (key_column, value_column.unwrap())
                         })
                 })
             })
@@ -418,7 +418,10 @@ fn compute_nested_delete<'a>(
 
                 Predicate::Eq(
                     Column::Physical(pk_column).into(),
-                    query_context.literal_column(pk_value, pk_column).into(),
+                    query_context
+                        .literal_column(pk_value, pk_column)
+                        .unwrap()
+                        .into(),
                 )
             }
             ConstValue::List(values) => {
