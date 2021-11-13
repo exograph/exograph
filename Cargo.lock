@@ -2959,6 +2959,7 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "async-stream",
+ "base64 0.13.0",
  "bincode",
  "chrono",
  "ctrlc",
@@ -2988,6 +2989,7 @@ name = "payas-sql"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytes 1.1.0",
  "chrono",
  "maybe-owned",
  "once_cell",

@@ -48,6 +48,7 @@ pub enum PhysicalColumnType {
         precision: Option<usize>,
     },
     Json,
+    Blob,
     Array {
         typ: Box<PhysicalColumnType>,
     },
@@ -241,6 +242,7 @@ impl PhysicalColumnType {
             PhysicalColumnType::Date => ("LocalDate".to_string(), "".to_string()),
 
             PhysicalColumnType::Json => ("Json".to_string(), "".to_string()),
+            PhysicalColumnType::Blob => ("Blob".to_string(), "".to_string()),
 
             PhysicalColumnType::Array { typ } => {
                 let (data_type, annotations) = typ.to_model();
@@ -363,6 +365,11 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::Json => SQLStatement {
                 statement: "JSONB".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
+
+            PhysicalColumnType::Blob => SQLStatement {
+                statement: "BYTEA".to_owned(),
                 foreign_constraints: Vec::new(),
             },
 
@@ -497,10 +504,22 @@ impl<'a> Expression for Column<'a> {
                     .iter()
                     .map(|elem| {
                         let elem_binding = elem.1.binding(expression_context);
-                        (
-                            format!("'{}', {}", elem.0, elem_binding.stmt),
-                            elem_binding.params,
-                        )
+                        let mut stmt = elem_binding.stmt;
+
+                        // encode blob fields in JSON objects as base64
+
+                        // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
+                        // need to filter out using translate(...) function
+
+                        if let Column::Physical(PhysicalColumn {
+                            typ: PhysicalColumnType::Blob,
+                            ..
+                        }) = &elem.1.as_ref()
+                        {
+                            stmt = format!("translate(encode({}, \'base64\'), E'\\n', '')", stmt)
+                        };
+
+                        (format!("'{}', {}", elem.0, stmt), elem_binding.params)
                     })
                     .unzip();
 

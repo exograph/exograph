@@ -13,7 +13,7 @@ use chrono::prelude::*;
 use chrono::DateTime;
 use payas_model::{
     model::{column_id::ColumnId, system::ModelSystem},
-    sql::{column::*, SQLParam},
+    sql::{column::*, SQLBytes, SQLParam},
 };
 use rust_decimal::prelude::*;
 use rust_decimal::Decimal;
@@ -97,30 +97,36 @@ impl<'qc> QueryContext<'qc> {
         Column::Physical(column_id.get_column(self.executor.system))
     }
 
+    // TODO: currently just unwrapping the result when we call this method from somewhere
+    // take a look at how to properly handle errors from this...
     pub fn literal_column(
         &'qc self,
         value: &ConstValue,
         associated_column: &PhysicalColumn,
-    ) -> Column<'qc> {
-        match value {
+    ) -> Result<Column<'qc>> {
+        let value = match value {
             ConstValue::Number(number) => {
                 Column::Literal(cast_number(number, &associated_column.typ))
             }
-            ConstValue::String(v) => Column::Literal(cast_string(v, &associated_column.typ)),
+            ConstValue::String(v) => Column::Literal(cast_string(v, &associated_column.typ)?),
             ConstValue::Boolean(v) => Column::Literal(Box::new(*v)),
             ConstValue::Null => Column::Null,
             ConstValue::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from the database to do a correct translation
             ConstValue::List(v) => {
                 let values = v
                     .iter()
-                    .map(|elem| self.literal_column(elem, associated_column).into())
-                    .collect();
+                    .map(|elem| self.literal_column(elem, associated_column))
+                    .collect::<Result<Vec<_>>>()?;
 
-                Column::Array(values)
+                let deref = values.into_iter().map(Into::into).collect();
+
+                Column::Array(deref)
             }
             ConstValue::Object(_) => Column::Literal(cast_value(value, &associated_column.typ)),
-            ConstValue::Binary(_) => panic!("Binary values are not supported"),
-        }
+            ConstValue::Binary(bytes) => Column::Literal(Box::new(SQLBytes(bytes.clone()))),
+        };
+
+        Ok(value)
     }
 
     pub fn field_arguments(
@@ -192,34 +198,41 @@ fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Box<dy
     }
 }
 
-fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
-    match destination_type {
-        PhysicalColumnType::Numeric { .. } => Box::new(Decimal::from_str(string).unwrap()),
+fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Box<dyn SQLParam>> {
+    let value: Box<dyn SQLParam> = match destination_type {
+        PhysicalColumnType::Numeric { .. } => Box::new(Decimal::from_str(string)?),
 
         PhysicalColumnType::Timestamp { timezone, .. } => {
             if *timezone {
-                let dt = DateTime::parse_from_rfc3339(string).unwrap();
+                let dt = DateTime::parse_from_rfc3339(string)?;
                 Box::new(dt)
             } else {
-                let dt = NaiveDateTime::parse_from_str(string, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
+                let dt = NaiveDateTime::parse_from_str(string, "%Y-%m-%dT%H:%M:%S%.f")?;
                 Box::new(dt)
             }
         }
 
         PhysicalColumnType::Time { .. } => {
-            let t = NaiveTime::parse_from_str(string, "%H:%M:%S%.f").unwrap();
+            let t = NaiveTime::parse_from_str(string, "%H:%M:%S%.f")?;
             Box::new(t)
         }
 
         PhysicalColumnType::Date => {
-            let d = NaiveDate::parse_from_str(string, "%Y-%m-%d").unwrap();
+            let d = NaiveDate::parse_from_str(string, "%Y-%m-%d")?;
             Box::new(d)
         }
 
-        PhysicalColumnType::Array { typ } => cast_string(string, typ),
+        PhysicalColumnType::Blob => {
+            let bytes = base64::decode(string)?;
+            Box::new(SQLBytes::new(bytes))
+        }
+
+        PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
 
         _ => Box::new(string.to_owned()),
-    }
+    };
+
+    Ok(value)
 }
 
 fn cast_value(val: &ConstValue, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
