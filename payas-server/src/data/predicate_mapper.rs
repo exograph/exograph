@@ -156,5 +156,5 @@ fn operands<'a>(
     let op_physical_column = &param.column_id.as_ref().unwrap().get_column(system);
     let op_key_column = Column::Physical(op_physical_column).into();
     let op_value_column = query_context.literal_column(op_value, op_physical_column);
-    (op_key_column, op_value_column)
+    (op_key_column, op_value_column.unwrap())
 }
