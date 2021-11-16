@@ -14,7 +14,7 @@ export async function loginNormal(email: string, password: string, claytip: any)
 
     const user = res.users[0];
 
-    if (await bcrypt.compare(password, user.password)) {
+    if (bcrypt.compareSync(password, user.password)) {
     //if (password == user.password) {
         const userInfo = await queryUserInfo(email, claytip);
         return await createJwt(userInfo, secret);
@@ -29,7 +29,7 @@ export async function signupNormal(
     name: string,
     claytip: any
 ): Promise<string> {
-    const hashed = await bcrypt.hash(password);
+    const hashed = bcrypt.hashSync(password);
     //let hashed = password;
 
     let res = claytip.executeQuery(
