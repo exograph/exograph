@@ -16,11 +16,12 @@ pub struct ImportCommand {
 impl Command for ImportCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         let database = Database::from_env(Some(1))?; // TODO: error handling here
-        database.get_client()?;
+        let mut client = database.get_client()?;
 
         let mut issues = Vec::new();
 
-        let mut schema = SchemaSpec::from_db(&database)?;
+        let mut schema = SchemaSpec::from_db(&mut client)?;
+
         let mut model = schema.value.to_model();
 
         issues.append(&mut schema.issues);

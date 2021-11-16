@@ -1,11 +1,11 @@
 use anyhow::{bail, Context, Result};
 use once_cell::sync::OnceCell;
-use std::env;
+use std::{env, ops::DerefMut};
 
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use postgres::Config;
+use postgres::{Client, Config};
 use postgres_openssl::MakeTlsConnector;
-use r2d2::{Pool, PooledConnection};
+use r2d2::Pool;
 use r2d2_postgres::PostgresConnectionManager;
 
 const URL_PARAM: &str = "CLAY_DATABASE_URL";
@@ -82,9 +82,7 @@ impl<'a> Database {
         Ok(db)
     }
 
-    pub fn get_client(
-        &self,
-    ) -> Result<PooledConnection<PostgresConnectionManager<MakeTlsConnector>>> {
+    pub fn get_client(&self) -> Result<impl DerefMut<Target = Client>> {
         Ok(self.get_pool()?.get()?)
     }
 

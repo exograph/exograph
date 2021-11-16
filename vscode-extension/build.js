@@ -47,5 +47,6 @@ if (!fs.existsSync(`${out}/syntaxes`)) {
 
 fs.copyFileSync(`${src}/package.json`, `${out}/package.json`);
 fs.copyFileSync(`${src}/language-configuration.json`, `${out}/language-configuration.json`);
+fs.copyFileSync(`${src}/syntaxes/clay.markdown.codeblock.json`, `${out}/syntaxes/clay.markdown.codeblock.json`);
 
 processTemplate()

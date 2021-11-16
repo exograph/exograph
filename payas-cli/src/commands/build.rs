@@ -1,5 +1,5 @@
 use anyhow::Result;
-use payas_server::watcher;
+use payas_server::model_watcher;
 
 use std::path::Path;
 use std::time::Duration;
@@ -7,7 +7,6 @@ use std::{fs::File, io::BufWriter};
 use std::{path::PathBuf, time::SystemTime};
 
 use bincode::serialize_into;
-use payas_parser::{builder, parser};
 
 use super::Command;
 
@@ -34,14 +33,13 @@ impl Command for BuildCommand {
         if !self.watch {
             build_fn(false)
         } else {
-            watcher::with_watch(&self.model, FILE_WATCHER_DELAY, build_fn, |_: &mut ()| ())
+            model_watcher::with_watch(&self.model, FILE_WATCHER_DELAY, build_fn, |_: &mut ()| ())
         }
     }
 }
 
 fn build(model: &Path, system_start_time: Option<SystemTime>, _restart: bool) -> Result<()> {
-    let (ast_system, codemap) = parser::parse_file(&model)?;
-    let system = builder::build(ast_system, codemap)?;
+    let system = payas_parser::build_system(&model)?;
 
     let claypot_file_name = format!("{}pot", &model.to_str().unwrap());
 

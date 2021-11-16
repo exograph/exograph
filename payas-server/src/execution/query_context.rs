@@ -8,8 +8,17 @@ use async_graphql_parser::{
     },
     Positioned,
 };
-use async_graphql_value::{Name, Value};
+use async_graphql_value::{ConstValue, Name, Number, Value};
+use chrono::prelude::*;
+use chrono::DateTime;
+use payas_model::{
+    model::{column_id::ColumnId, system::ModelSystem},
+    sql::{column::*, SQLBytes, SQLParam},
+};
+use rust_decimal::prelude::*;
+use rust_decimal::Decimal;
 use serde_json::{Map, Value as JsonValue};
+use typed_arena::Arena;
 
 use super::{executor::Executor, resolver::*};
 
@@ -21,6 +30,7 @@ pub struct QueryContext<'a> {
     pub variables: &'a Option<&'a Map<String, JsonValue>>,
     pub executor: &'a Executor<'a>,
     pub request_context: &'a serde_json::Value,
+    pub field_arguments: Arena<Vec<(Positioned<Name>, Positioned<ConstValue>)>>,
 }
 
 #[derive(Debug, Clone)]
@@ -81,6 +91,157 @@ impl<'qc> QueryContext<'qc> {
         } else {
             Ok(JsonValue::Null)
         }
+    }
+
+    pub fn create_column_with_id(&self, column_id: &ColumnId) -> Column<'qc> {
+        Column::Physical(column_id.get_column(self.executor.system))
+    }
+
+    // TODO: currently just unwrapping the result when we call this method from somewhere
+    // take a look at how to properly handle errors from this...
+    pub fn literal_column(
+        &'qc self,
+        value: &ConstValue,
+        associated_column: &PhysicalColumn,
+    ) -> Result<Column<'qc>> {
+        let value = match value {
+            ConstValue::Number(number) => {
+                Column::Literal(cast_number(number, &associated_column.typ))
+            }
+            ConstValue::String(v) => Column::Literal(cast_string(v, &associated_column.typ)?),
+            ConstValue::Boolean(v) => Column::Literal(Box::new(*v)),
+            ConstValue::Null => Column::Null,
+            ConstValue::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from the database to do a correct translation
+            ConstValue::List(v) => {
+                let values = v
+                    .iter()
+                    .map(|elem| self.literal_column(elem, associated_column))
+                    .collect::<Result<Vec<_>>>()?;
+
+                let deref = values.into_iter().map(Into::into).collect();
+
+                Column::Array(deref)
+            }
+            ConstValue::Object(_) => Column::Literal(cast_value(value, &associated_column.typ)),
+            ConstValue::Binary(bytes) => Column::Literal(Box::new(SQLBytes(bytes.clone()))),
+        };
+
+        Ok(value)
+    }
+
+    pub fn field_arguments(
+        &'qc self,
+        field: &Field,
+    ) -> &'qc Vec<(Positioned<Name>, Positioned<ConstValue>)> {
+        let args = field
+            .arguments
+            .iter()
+            .flat_map(|(name, value)| {
+                value
+                    .node
+                    .clone()
+                    .into_const_with(|name| self.var_value(&name))
+                    .ok()
+                    .map(|v| (name.clone(), Positioned::new(v, value.pos)))
+            })
+            .collect();
+
+        self.field_arguments.alloc(args)
+    }
+
+    fn var_value(&self, name: &str) -> Result<ConstValue> {
+        let resolved: Option<&serde_json::Value> =
+            self.variables.and_then(|variables| variables.get(name));
+
+        Ok(resolved
+            .map(|json_value| ConstValue::from_json(json_value.to_owned()).unwrap())
+            .unwrap())
+    }
+
+    pub fn get_argument_field(
+        &'qc self,
+        argument_value: &'qc ConstValue,
+        field_name: &str,
+    ) -> Option<&'qc ConstValue> {
+        match argument_value {
+            ConstValue::Object(value) => value.get(field_name),
+            _ => None,
+        }
+    }
+
+    pub fn get_system(&self) -> &ModelSystem {
+        self.executor.system
+    }
+}
+
+fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+    match destination_type {
+        PhysicalColumnType::Int { bits } => match bits {
+            IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
+            IntBits::_32 => Box::new(number.as_i64().unwrap() as i32),
+            IntBits::_64 => Box::new(number.as_i64().unwrap() as i64),
+        },
+        PhysicalColumnType::Float { bits } => match bits {
+            FloatBits::_24 => Box::new(number.as_f64().unwrap() as f32),
+            FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
+        },
+        PhysicalColumnType::Numeric { .. } => {
+            let decimal = Decimal::from_str(&number.to_string());
+            Box::new(decimal.unwrap())
+        }
+        PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
+            // TODO assumes that `id` columns are always integers
+            cast_number(number, ref_pk_type)
+        }
+        // TODO: Expand for other number types such as float
+        _ => panic!("Unexpected destination_type for number value"),
+    }
+}
+
+fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Box<dyn SQLParam>> {
+    let value: Box<dyn SQLParam> = match destination_type {
+        PhysicalColumnType::Numeric { .. } => Box::new(Decimal::from_str(string)?),
+
+        PhysicalColumnType::Timestamp { timezone, .. } => {
+            if *timezone {
+                let dt = DateTime::parse_from_rfc3339(string)?;
+                Box::new(dt)
+            } else {
+                let dt = NaiveDateTime::parse_from_str(string, "%Y-%m-%dT%H:%M:%S%.f")?;
+                Box::new(dt)
+            }
+        }
+
+        PhysicalColumnType::Time { .. } => {
+            let t = NaiveTime::parse_from_str(string, "%H:%M:%S%.f")?;
+            Box::new(t)
+        }
+
+        PhysicalColumnType::Date => {
+            let d = NaiveDate::parse_from_str(string, "%Y-%m-%d")?;
+            Box::new(d)
+        }
+
+        PhysicalColumnType::Blob => {
+            let bytes = base64::decode(string)?;
+            Box::new(SQLBytes::new(bytes))
+        }
+
+        PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
+
+        _ => Box::new(string.to_owned()),
+    };
+
+    Ok(value)
+}
+
+fn cast_value(val: &ConstValue, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+    match destination_type {
+        PhysicalColumnType::Json => {
+            let json_object = val.clone().into_json().unwrap();
+            Box::new(json_object)
+        }
+        _ => panic!(),
     }
 }
 

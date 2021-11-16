@@ -26,6 +26,8 @@ types:
     - - ~
       - Primitive: Json
     - - ~
+      - Primitive: Blob
+    - - ~
       - Primitive: ClaytipInjected
     - - ~
       - Primitive:
@@ -76,7 +78,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 13
+                                      index: 14
                                       generation: ~
                               - - role
                               - Reference:
@@ -90,7 +92,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 14
+                                index: 15
                                 generation: ~
                         - - public
                         - Reference:
@@ -107,7 +109,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 13
+                                      index: 14
                                       generation: ~
                               - - role
                               - Reference:
@@ -121,7 +123,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 14
+                                index: 15
                                 generation: ~
                         - - public
                         - Reference:
@@ -138,7 +140,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 13
+                                      index: 14
                                       generation: ~
                               - - role
                               - Reference:
@@ -152,7 +154,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 14
+                                index: 15
                                 generation: ~
                         - - public
                         - Reference:
@@ -169,7 +171,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 13
+                                      index: 14
                                       generation: ~
                               - - role
                               - Reference:
@@ -183,7 +185,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 14
+                                index: 15
                                 generation: ~
                         - - public
                         - Reference:
@@ -192,16 +194,18 @@ types:
                   - Primitive: Boolean
     - ~
     - ~
-    - ~
   map:
+    Blob:
+      index: 10
+      generation: ~
     Boolean:
       index: 0
       generation: ~
     ClaytipInjected:
-      index: 10
+      index: 11
       generation: ~
     Concert:
-      index: 12
+      index: 13
       generation: ~
     Decimal:
       index: 3
@@ -228,7 +232,7 @@ types:
       index: 5
       generation: ~
     Operation:
-      index: 11
+      index: 12
       generation: ~
     String:
       index: 4
@@ -255,7 +259,7 @@ services:
   values:
     - - ~
       - name: Logger
-        module_path: logger.js
+        module_path: logger.bundle.js
         methods:
           - name: log
             operation_kind: Query
@@ -269,7 +273,7 @@ services:
                           - Single:
                               - - AuthContext
                               - Reference:
-                                  index: 13
+                                  index: 14
                                   generation: ~
                           - - role
                           - Reference:
@@ -286,7 +290,7 @@ services:
                           - Single:
                               - - AuthContext
                               - Reference:
-                                  index: 13
+                                  index: 14
                                   generation: ~
                           - - role
                           - Reference:
@@ -303,7 +307,7 @@ services:
                           - Single:
                               - - AuthContext
                               - Reference:
-                                  index: 13
+                                  index: 14
                                   generation: ~
                           - - role
                           - Reference:
@@ -320,7 +324,7 @@ services:
                           - Single:
                               - - AuthContext
                               - Reference:
-                                  index: 13
+                                  index: 14
                                   generation: ~
                           - - role
                           - Reference:

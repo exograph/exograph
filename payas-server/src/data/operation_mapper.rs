@@ -1,17 +1,18 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
+use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
 use postgres::{types::FromSqlOwned, Row};
 use serde_json::Map;
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 
+use super::access_solver;
 use super::interception::InterceptedOperation;
-use super::{access_solver, operation_context::OperationContext};
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
 use async_graphql_parser::{types::Field, Positioned};
-use async_graphql_value::Value;
+use async_graphql_value::ConstValue;
 use payas_model::{
     model::{
         mapped_arena::SerializableSlabIndex,
@@ -25,8 +26,8 @@ use payas_model::{
 pub trait SQLMapper<'a, R> {
     fn map_to_sql(
         &'a self,
-        argument: &'a Value,
-        operation_context: &'a OperationContext<'a>,
+        argument: &'a ConstValue,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<R>;
 }
 
@@ -34,32 +35,32 @@ pub trait SQLUpdateMapper<'a> {
     fn update_script(
         &'a self,
         mutation: &'a Mutation,
-        predicate: &'a Predicate,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
         select: Select<'a>,
-        argument: &'a Value,
-        operation_context: &'a OperationContext<'a>,
+        argument: &'a ConstValue,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript>;
 }
 pub trait OperationResolver<'a> {
     fn resolve_operation(
         &'a self,
         field: &'a Positioned<Field>,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>>;
 
     fn execute(
         &'a self,
         field: &'a Positioned<Field>,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
-        let resolver_result = self.resolve_operation(field, operation_context)?;
+        let resolver_result = self.resolve_operation(field, query_context)?;
         let interceptors = self.interceptors().ordered();
 
         let op_name = &self.name();
 
         let intercepted_operation =
             InterceptedOperation::new(op_name, resolver_result, interceptors);
-        intercepted_operation.execute(field, operation_context)
+        intercepted_operation.execute(field, query_context)
     }
 
     fn name(&self) -> &str;
@@ -82,12 +83,12 @@ pub enum SQLOperationKind {
 pub fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
-    operation_context: &'a OperationContext<'a>,
-) -> &'a Predicate<'a> {
-    let return_type = return_type.typ(operation_context.get_system());
+    query_context: &'a QueryContext<'a>,
+) -> Predicate<'a> {
+    let return_type = return_type.typ(query_context.get_system());
 
     match &return_type.kind {
-        GqlTypeKind::Primitive => &Predicate::True,
+        GqlTypeKind::Primitive => Predicate::True,
         GqlTypeKind::Composite(GqlCompositeType { access, .. }) => {
             let access_expr = match kind {
                 SQLOperationKind::Create => &access.creation,
@@ -95,11 +96,7 @@ pub fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver::reduce_access(
-                access_expr,
-                operation_context.query_context.request_context,
-                operation_context,
-            )
+            access_solver::reduce_access(access_expr, query_context.request_context, query_context)
         }
     }
 }
@@ -107,12 +104,12 @@ pub fn compute_sql_access_predicate<'a>(
 pub fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> &'a Predicate<'a> {
-    let return_type = return_type.typ(operation_context.get_system());
+    let return_type = return_type.typ(query_context.get_system());
 
     let type_level_access = match &return_type.kind {
-        GqlTypeKind::Primitive => &Predicate::True,
+        GqlTypeKind::Primitive => Predicate::True,
         GqlTypeKind::Composite(GqlCompositeType {
             access,
             kind: GqlCompositeTypeKind::NonPersistent,
@@ -122,11 +119,7 @@ pub fn compute_service_access_predicate<'a>(
                 ServiceMethodType::Query(_) => &access.read, // query
                 ServiceMethodType::Mutation(_) => &access.creation, // mutation
             };
-            access_solver::reduce_access(
-                access_expr,
-                operation_context.query_context.request_context,
-                operation_context,
-            )
+            access_solver::reduce_access(access_expr, query_context.request_context, query_context)
         }
         _ => panic!(),
     };
@@ -138,12 +131,12 @@ pub fn compute_service_access_predicate<'a>(
 
     let method_level_access = access_solver::reduce_access(
         method_access_expr,
-        operation_context.query_context.request_context,
-        operation_context,
+        query_context.request_context,
+        query_context,
     );
 
-    if matches!(type_level_access, &Predicate::False)
-        || matches!(method_level_access, &Predicate::False)
+    if matches!(type_level_access, Predicate::False)
+        || matches!(method_level_access, Predicate::False)
     {
         &Predicate::False // deny if either access check fails
     } else {
@@ -155,9 +148,8 @@ impl<'a> OperationResolverResult<'a> {
     pub fn execute(
         &self,
         field: &Positioned<Field>,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
-        let query_context = operation_context.query_context;
         match self {
             OperationResolverResult::SQLOperation(transaction_script) => {
                 let mut client = query_context.executor.database.get_client()?;
@@ -178,11 +170,8 @@ impl<'a> OperationResolverResult<'a> {
             OperationResolverResult::DenoOperation(method_id) => {
                 let method = &query_context.executor.system.methods[*method_id];
 
-                let access_predicate = compute_service_access_predicate(
-                    &method.return_type,
-                    method,
-                    operation_context,
-                );
+                let access_predicate =
+                    compute_service_access_predicate(&method.return_type, method, query_context);
 
                 if access_predicate == &Predicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
@@ -201,11 +190,9 @@ fn resolve_deno(
 ) -> Result<serde_json::Value> {
     let path = &method.module_path;
 
-    let mut deno_modules_map = query_context.executor.deno_modules_map.lock().unwrap();
     let function_result = futures::executor::block_on(async {
-        let mapped_args = field
-            .node
-            .arguments
+        let mapped_args = query_context
+            .field_arguments(&field.node)
             .iter()
             .map(|(gql_name, gql_value)| {
                 (
@@ -231,8 +218,7 @@ fn resolve_deno(
             })
             .collect::<Result<Vec<_>>>()?;
 
-        deno_modules_map.load_module(path)?;
-        deno_modules_map.execute_function(
+        query_context.executor.deno_execution.execute_function(
             path,
             &method.name,
             arg_sequence,

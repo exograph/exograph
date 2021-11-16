@@ -30,25 +30,25 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> Result<(AstSystem<Untyped>, CodeMa
             &codemap,
             file_span,
             path.as_ref(),
-        ),
+        )?,
         codemap,
     ))
 }
 
-pub fn parse_str(str: &str) -> (AstSystem<Untyped>, CodeMap) {
+pub fn parse_str(str: &str) -> Result<(AstSystem<Untyped>, CodeMap)> {
     let mut codemap = CodeMap::new();
     let file_span = codemap
         .add_file("input.payas".to_string(), str.to_string())
         .span;
     let parsed = parse(str).unwrap();
-    (
+    Ok((
         convert_root(
             parsed.root_node(),
             str.as_bytes(),
             &codemap,
             file_span,
             Path::new("input.payas"),
-        ),
+        )?,
         codemap,
-    )
+    ))
 }

@@ -1,6 +1,7 @@
 use std::convert::TryInto;
 use std::{collections::HashMap, path::Path};
 
+use anyhow::{anyhow, Result};
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
 use tree_sitter::{Node, Tree};
@@ -27,17 +28,17 @@ pub fn convert_root(
     codemap: &CodeMap,
     source_span: Span,
     filepath: &Path,
-) -> AstSystem<Untyped> {
+) -> Result<AstSystem<Untyped>> {
     assert_eq!(node.kind(), "source_file");
     if node.has_error() {
         let mut errors = vec![];
         collect_parsing_errors(node, source, codemap, source_span, &mut errors);
         let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
         emitter.emit(&errors);
-        panic!();
+        Err(anyhow!("Parsing failed"))
     } else {
         let mut cursor = node.walk();
-        AstSystem {
+        Ok(AstSystem {
             models: node
                 .children(&mut cursor)
                 .filter(|n| n.kind() == "declaration")
@@ -50,7 +51,7 @@ pub fn convert_root(
                 .map(|c| convert_declaration_to_service(c, source, source_span, filepath))
                 .flatten()
                 .collect::<Vec<_>>(),
-        }
+        })
     }
 }
 
@@ -691,7 +692,8 @@ mod tests {
             &codemap,
             file_span,
             Path::new("input.payas")
-        ));
+        )
+        .unwrap());
     }
 
     #[test]

@@ -1,8 +1,10 @@
+use crate::execution::query_context::QueryContext;
 use crate::sql::{column::Column, predicate::Predicate, SQLOperation, Select};
 
 use crate::sql::order::OrderBy;
 
 use anyhow::*;
+use maybe_owned::MaybeOwned;
 use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
 use payas_model::sql::{Limit, Offset};
@@ -11,7 +13,6 @@ use super::operation_mapper::{
     compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
 };
 use super::{
-    operation_context::OperationContext,
     operation_mapper::{OperationResolver, SQLMapper},
     Arguments,
 };
@@ -29,12 +30,11 @@ impl<'a> OperationResolver<'a> for Query {
     fn resolve_operation(
         &'a self,
         field: &'a Positioned<Field>,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         match &self.kind {
             QueryKind::Database(_) => {
-                let select =
-                    self.operation(&field.node, Predicate::True, operation_context, true)?;
+                let select = self.operation(&field.node, Predicate::True, query_context, true)?;
                 Ok(OperationResolverResult::SQLOperation(
                     TransactionScript::Single(TransactionStep::Concrete(
                         ConcreteTransactionStep::new(SQLOperation::Select(select)),
@@ -61,32 +61,32 @@ pub trait QuerySQLOperations<'a> {
     fn compute_order_by(
         &'a self,
         arguments: &'a Arguments,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Option<OrderBy<'a>>;
 
     fn compute_limit(
         &'a self,
         arguments: &'a Arguments,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Option<Limit>;
 
     fn compute_offset(
         &'a self,
         arguments: &'a Arguments,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Option<Offset>;
 
     fn content_select(
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
-        operation_context: &'a OperationContext<'a>,
-    ) -> Result<&'a Column<'a>>;
+        query_context: &'a QueryContext<'a>,
+    ) -> Result<Column<'a>>;
 
     fn operation(
         &'a self,
         field: &'a Field,
         additional_predicate: Predicate<'a>,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
         top_level_selection: bool,
     ) -> Result<Select<'a>>;
 }
@@ -95,7 +95,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_order_by(
         &'a self,
         arguments: &'a Arguments,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Option<OrderBy<'a>> {
         match &self.kind {
             QueryKind::Database(DatabaseQueryParameter { order_by_param, .. }) => {
@@ -104,7 +104,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     .and_then(|order_by_param| {
                         let argument_value = super::find_arg(arguments, &order_by_param.name);
                         argument_value.map(|argument_value| {
-                            order_by_param.map_to_sql(argument_value, operation_context)
+                            order_by_param.map_to_sql(argument_value, query_context)
                         })
                     })
                     .transpose()
@@ -117,36 +117,35 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn content_select(
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
-        operation_context: &'a OperationContext<'a>,
-    ) -> Result<&'a Column<'a>> {
+        query_context: &'a QueryContext<'a>,
+    ) -> Result<Column<'a>> {
         let column_specs: Result<Vec<_>> = selection_set
             .node
             .items
             .iter()
             .flat_map(
-                |selection| match map_selection(self, &selection.node, operation_context) {
+                |selection| match map_selection(self, &selection.node, query_context) {
                     Ok(s) => s.into_iter().map(Ok).collect(),
                     Err(err) => vec![Err(err)],
                 },
             )
             .collect();
 
-        Ok(operation_context.create_column(Column::JsonObject(column_specs?)))
+        Ok(Column::JsonObject(column_specs?))
     }
 
     fn compute_limit(
         &'a self,
         arguments: &'a Arguments,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Option<Limit> {
         match &self.kind {
             QueryKind::Database(DatabaseQueryParameter { limit_param, .. }) => limit_param
                 .as_ref()
                 .and_then(|limit_param| {
                     let argument_value = super::find_arg(arguments, &limit_param.name);
-                    argument_value.map(|argument_value| {
-                        limit_param.map_to_sql(argument_value, operation_context)
-                    })
+                    argument_value
+                        .map(|argument_value| limit_param.map_to_sql(argument_value, query_context))
                 })
                 .transpose()
                 .unwrap(),
@@ -157,7 +156,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_offset(
         &'a self,
         arguments: &'a Arguments,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Option<Offset> {
         match &self.kind {
             QueryKind::Database(DatabaseQueryParameter { offset_param, .. }) => offset_param
@@ -165,7 +164,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 .and_then(|offset_param| {
                     let argument_value = super::find_arg(arguments, &offset_param.name);
                     argument_value.map(|argument_value| {
-                        offset_param.map_to_sql(argument_value, operation_context)
+                        offset_param.map_to_sql(argument_value, query_context)
                     })
                 })
                 .transpose()
@@ -178,7 +177,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         &'a self,
         field: &'a Field,
         additional_predicate: Predicate<'a>,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
         top_level_selection: bool,
     ) -> Result<Select<'a>> {
         match &self.kind {
@@ -188,53 +187,47 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 let access_predicate = compute_sql_access_predicate(
                     &self.return_type,
                     &SQLOperationKind::Retrieve,
-                    operation_context,
+                    query_context,
                 );
 
-                if access_predicate == &Predicate::False {
+                if access_predicate == Predicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
+                let field_arguments = query_context.field_arguments(field);
+
                 let predicate = super::compute_predicate(
                     predicate_param.as_ref(),
-                    &field.arguments,
+                    field_arguments,
                     additional_predicate,
-                    operation_context,
+                    query_context,
                 )
-                .map(|predicate| {
-                    operation_context.create_predicate(Predicate::And(
-                        Box::new(predicate.clone()),
-                        Box::new(access_predicate.clone()),
-                    ))
-                })
+                .map(|predicate| Predicate::and(predicate, access_predicate))
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
-                let content_object =
-                    self.content_select(&field.selection_set, operation_context)?;
+                let content_object = self.content_select(&field.selection_set, query_context)?;
 
-                let table = self
-                    .return_type
-                    .physical_table(operation_context.get_system());
+                let table = self.return_type.physical_table(query_context.get_system());
 
-                let limit = self.compute_limit(&field.arguments, operation_context);
-                let offset = self.compute_offset(&field.arguments, operation_context);
+                let field_arguments = query_context.field_arguments(field);
+                let limit = self.compute_limit(field_arguments, query_context);
+                let offset = self.compute_offset(field_arguments, query_context);
 
                 Ok(match self.return_type.type_modifier {
                     GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
-                        vec![content_object],
-                        Some(predicate),
+                        vec![content_object.into()],
+                        predicate,
                         None,
                         offset,
                         limit,
                         top_level_selection,
                     ),
                     GqlTypeModifier::List => {
-                        let order_by = self.compute_order_by(&field.arguments, operation_context);
-                        let agg_column =
-                            operation_context.create_column(Column::JsonAgg(content_object));
+                        let order_by = self.compute_order_by(field_arguments, query_context);
+                        let agg_column = Column::JsonAgg(Box::new(content_object.into()));
                         table.select(
-                            vec![agg_column],
-                            Some(predicate),
+                            vec![agg_column.into()],
+                            predicate,
                             order_by,
                             offset,
                             limit,
@@ -254,26 +247,23 @@ impl<'a> QuerySQLOperations<'a> for Query {
 fn map_selection<'a>(
     query: &'a Query,
     selection: &'a Selection,
-    operation_context: &'a OperationContext<'a>,
-) -> Result<Vec<(String, &'a Column<'a>)>> {
+    query_context: &'a QueryContext<'a>,
+) -> Result<Vec<(String, MaybeOwned<'a, Column<'a>>)>> {
     match selection {
-        Selection::Field(field) => Ok(vec![map_field(query, &field.node, operation_context)?]),
+        Selection::Field(field) => Ok(vec![map_field(query, &field.node, query_context)?]),
         Selection::FragmentSpread(fragment_spread) => {
-            let fragment_definition = operation_context
-                .query_context
-                .fragment_definition(fragment_spread)
-                .unwrap();
+            let fragment_definition = query_context.fragment_definition(fragment_spread).unwrap();
             fragment_definition
                 .selection_set
                 .node
                 .items
                 .iter()
-                .flat_map(|selection| {
-                    match map_selection(query, &selection.node, operation_context) {
+                .flat_map(
+                    |selection| match map_selection(query, &selection.node, query_context) {
                         Ok(s) => s.into_iter().map(Ok).collect(),
                         Err(err) => vec![Err(err)],
-                    }
-                })
+                    },
+                )
                 .collect()
         }
         Selection::InlineFragment(_inline_fragment) => {
@@ -285,9 +275,9 @@ fn map_selection<'a>(
 fn map_field<'a>(
     query: &'a Query,
     field: &'a Field,
-    operation_context: &'a OperationContext<'a>,
-) -> Result<(String, &'a Column<'a>)> {
-    let system = operation_context.get_system();
+    query_context: &'a QueryContext<'a>,
+) -> Result<(String, MaybeOwned<'a, Column<'a>>)> {
+    let system = query_context.get_system();
     let return_type = query.return_type.typ(system);
 
     let column = if field.name.node == "__typename" {
@@ -311,18 +301,19 @@ fn map_field<'a>(
                     GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
                 };
 
-                Column::SelectionTableWrapper(
+                Column::SelectionTableWrapper(Box::new(
                     other_table_pk_query.operation(
                         field,
                         Predicate::Eq(
-                            operation_context.create_column_with_id(column_id),
-                            operation_context
-                                .create_column_with_id(&other_type.pk_column_id().unwrap()),
+                            query_context.create_column_with_id(column_id).into(),
+                            query_context
+                                .create_column_with_id(&other_type.pk_column_id().unwrap())
+                                .into(),
                         ),
-                        operation_context,
+                        query_context,
                         false,
                     )?,
-                )
+                ))
             }
             GqlRelation::OneToMany {
                 other_type_column_id,
@@ -341,19 +332,22 @@ fn map_field<'a>(
                 let other_selection_table = other_table_collection_query.operation(
                     field,
                     Predicate::Eq(
-                        operation_context.create_column_with_id(other_type_column_id),
-                        operation_context
-                            .create_column_with_id(&return_type.pk_column_id().unwrap()),
+                        query_context
+                            .create_column_with_id(other_type_column_id)
+                            .into(),
+                        query_context
+                            .create_column_with_id(&return_type.pk_column_id().unwrap())
+                            .into(),
                     ),
-                    operation_context,
+                    query_context,
                     false,
                 )?;
 
-                Column::SelectionTableWrapper(other_selection_table)
+                Column::SelectionTableWrapper(Box::new(other_selection_table))
             }
             GqlRelation::NonPersistent => panic!(),
         }
     };
 
-    Ok((field.output_name(), operation_context.create_column(column)))
+    Ok((field.output_name(), column.into()))
 }

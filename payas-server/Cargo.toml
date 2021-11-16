@@ -12,12 +12,11 @@ async-stream = "0.3.2"
 actix-web = "3"
 actix-cors = "0.5.4"
 actix-web-httpauth = "0.5.1"
+base64 = "0.13"
 futures = "0.3"
 futures-util = "0.3"
 jsonwebtoken = "7.2.0"
-serde_json = { version = "1.0", features = [
-  "preserve_order",
-] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
 bincode = "1.2.1"
 openssl = "0.10.30"
 postgres = { version = "0.19.0", features = [
@@ -27,15 +26,14 @@ postgres = { version = "0.19.0", features = [
 postgres-openssl = "0.5.0"
 r2d2 = "0.8"
 r2d2_postgres = "0.18"
-rust_decimal = { version = "1.15", features = [
-  "db-postgres",
-] }
+rust_decimal = { version = "1.15", features = ["db-postgres"] }
 chrono = "0.4.19"
 typed-arena = "2.0.1"
 notify = "4.0.17"
 ctrlc = "3.1.9"
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 maybe-owned = "0.3.4"
+globwalk = "0.8.1"
 
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
