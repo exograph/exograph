@@ -29,7 +29,7 @@ impl Expression for Join<'_> {
 
         ParameterBinding {
             stmt: format!(
-                "{} INNER JOIN {} ON {}",
+                "{} LEFT JOIN {} ON {}",
                 left_binding.stmt, right_binding.stmt, predicate_binding.stmt
             ),
             params,
@@ -104,7 +104,7 @@ mod tests {
 
         assert_binding!(
             &binding,
-            r#""concerts" INNER JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
+            r#""concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
         );
     }
 }

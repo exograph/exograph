@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::execution::query_context::QueryContext;
 use crate::sql::{column::Column, predicate::Predicate, SQLOperation, Select};
 
@@ -5,9 +7,10 @@ use crate::sql::order::OrderBy;
 
 use anyhow::*;
 use maybe_owned::MaybeOwned;
+use payas_model::model::system::ModelSystem;
 use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
-use payas_model::sql::{Limit, Offset, Table};
+use payas_model::sql::{Limit, Offset, PhysicalTable, Table};
 
 use super::operation_mapper::{
     compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
@@ -207,8 +210,22 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
 
-                let table =
-                    Table::Physical(self.return_type.physical_table(query_context.get_system()));
+                let tables_referred = tables_referred(&predicate, query_context.get_system());
+                let TableDependency {
+                    table,
+                    dependencies: _,
+                } = table_dependency(
+                    self.return_type.typ(query_context.get_system()),
+                    &tables_referred,
+                    query_context,
+                );
+
+                // let table = if !dependencies.is_empty() {
+                //     // let x = dependencies.remove(0);
+                //     table //.join(x, &Predicate::True)
+                // } else {
+                //     table
+                // };
 
                 let field_arguments = query_context.field_arguments(field);
                 let limit = self.compute_limit(field_arguments, query_context);
@@ -242,6 +259,61 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 todo!()
             }
         }
+    }
+}
+
+fn table_dependency<'a>(
+    root_type: &'a GqlType,
+    tables_referred: &[&'a PhysicalTable],
+    query_context: &'a QueryContext<'a>,
+) -> TableDependency<'a> {
+    let system = query_context.get_system();
+    println!("root_type: {:?}", root_type.name);
+
+    if let GqlTypeKind::Composite(composite_root_type) = &root_type.kind {
+        let root_physical_table = &system.tables[composite_root_type.get_table_id()];
+        let root = Table::Physical(root_physical_table);
+
+        let tables_referred: Vec<&PhysicalTable> = tables_referred
+            .iter()
+            .filter(|table| table.name != root_physical_table.name)
+            .copied()
+            .collect();
+
+        let dependencies: Vec<_> = composite_root_type
+            .fields
+            .iter()
+            .filter_map(|field| match &field.relation {
+                GqlRelation::ManyToOne { .. } | GqlRelation::OneToMany { .. } => {
+                    let other_type = field.typ.base_type(&system.types);
+
+                    if let GqlTypeKind::Composite(composite_root_type) = &other_type.kind {
+                        let other_physical_table =
+                            &system.tables[composite_root_type.get_table_id()];
+
+                        if tables_referred.contains(&other_physical_table) {
+                            Some(table_dependency(
+                                other_type,
+                                &tables_referred,
+                                query_context,
+                            ))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect();
+
+        TableDependency {
+            table: root,
+            dependencies,
+        }
+    } else {
+        panic!("Not a composite root type");
     }
 }
 
@@ -351,4 +423,60 @@ fn map_field<'a>(
     };
 
     Ok((field.output_name(), column.into()))
+}
+
+#[derive(Debug)]
+struct TableDependency<'a> {
+    table: Table<'a>,
+    dependencies: Vec<TableDependency<'a>>,
+}
+
+fn tables_referred<'a>(predicate: &Predicate, system: &'a ModelSystem) -> Vec<&'a PhysicalTable> {
+    let mut table_names = HashSet::new();
+
+    match predicate {
+        Predicate::Eq(left, right) => {
+            table_name(left.as_ref()).map(|table_name| table_names.insert(table_name));
+            table_name(right.as_ref()).map(|table_name| table_names.insert(table_name));
+        }
+        _ => unimplemented!(),
+    }
+
+    let tables = &system.tables;
+
+    table_names
+        .into_iter()
+        .map(|table_name| {
+            tables
+                .iter()
+                .find(|t| tables[t.0].name == table_name)
+                .unwrap()
+                .1
+        })
+        .collect()
+}
+
+fn table_name(column: &Column) -> Option<String> {
+    match column {
+        Column::Physical(column) => {
+            let table_name = &column.table_name;
+            Some(table_name.to_string())
+        }
+        _ => None,
+    }
+}
+
+fn table_for_column<'a>(column: &Column, system: &'a ModelSystem) -> Option<&'a PhysicalTable> {
+    match column {
+        Column::Physical(column) => {
+            let tables = &system.tables;
+            let table = tables
+                .iter()
+                .find(|t| tables[t.0].name == column.table_name)
+                .unwrap()
+                .1;
+            Some(table)
+        }
+        _ => None,
+    }
 }
