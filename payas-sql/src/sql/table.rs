@@ -34,7 +34,11 @@ impl<'a> Table<'a> {
         }
     }
 
-    pub fn join(self, other_table: Table<'a>, predicate: &'a Predicate<'a>) -> Table<'a> {
+    pub fn join(
+        self,
+        other_table: Table<'a>,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
+    ) -> Table<'a> {
         Table::Join(Join::new(self, other_table, predicate))
     }
 }

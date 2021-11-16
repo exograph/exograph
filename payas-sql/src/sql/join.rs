@@ -1,14 +1,20 @@
+use maybe_owned::MaybeOwned;
+
 use super::{predicate::Predicate, Expression, ParameterBinding, Table};
 
 #[derive(Debug, PartialEq)]
 pub struct Join<'a> {
     left: Box<Table<'a>>,
     right: Box<Table<'a>>,
-    predicate: &'a Predicate<'a>,
+    predicate: MaybeOwned<'a, Predicate<'a>>,
 }
 
 impl<'a> Join<'a> {
-    pub fn new(left: Table<'a>, right: Table<'a>, predicate: &'a Predicate<'a>) -> Self {
+    pub fn new(
+        left: Table<'a>,
+        right: Table<'a>,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
+    ) -> Self {
         Join {
             left: Box::new(left),
             right: Box::new(right),
@@ -96,8 +102,9 @@ mod tests {
                 .unwrap()
                 .into(),
             venue_physical_table.get_column("id").unwrap().into(),
-        );
-        let join = Join::new(concert_table, venue_table, &join_predicate);
+        )
+        .into();
+        let join = Join::new(concert_table, venue_table, join_predicate);
 
         let mut expression_context = ExpressionContext::default();
         let binding = join.binding(&mut expression_context);
