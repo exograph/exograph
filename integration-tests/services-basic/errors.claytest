@@ -1,0 +1,12 @@
+operation: |
+    mutation Foo {
+      result: illegalFunction
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Internal server error"
+        }
+      ]
+    } 

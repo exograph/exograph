@@ -6,6 +6,10 @@ export function divide(x, y) {
     let quotient = Math.floor(x / y);
     let remainder = x % y;
 
+    if (y == 0) {
+        throw new Error("Division by zero is not allowed")
+    }
+
     return {
         "quotient": quotient,
         "remainder": remainder
@@ -36,6 +40,11 @@ export function shimQuery(claytip) {
 
 export function testMutation(claytip) {
     return 3.14
+}
+
+export function illegalFunction() {
+    const x = undefined;
+    return x[0]
 }
 
 export function log(env, message) {
