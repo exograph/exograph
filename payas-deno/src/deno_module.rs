@@ -32,6 +32,8 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
 }
 
+const JSERROR_PREFIX: &str = "Uncaught Error: ";
+
 // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number
 const JS_MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
 const JS_MIN_SAFE_INTEGER: i64 = -JS_MAX_SAFE_INTEGER;
@@ -211,7 +213,17 @@ impl DenoModule {
                 None => {
                     let exception = tc_scope_ref.exception().unwrap();
                     let js_error = JsError::from_v8_exception(tc_scope_ref, exception);
-                    return Err(anyhow!(js_error));
+
+                    eprintln!("{}", js_error);
+
+                    if js_error.message.starts_with(JSERROR_PREFIX) {
+                        // code threw an explicit Error(...), expose to user
+                        let message = js_error.message.strip_prefix(JSERROR_PREFIX).unwrap();
+                        return Err(anyhow!(message.to_owned()));
+                    } else {
+                        // generic error message
+                        return Err(anyhow!("Internal server error"));
+                    }
                 }
             };
 
@@ -219,11 +231,14 @@ impl DenoModule {
         };
 
         {
-            let value = runtime.resolve_value(global).await?;
+            let value = runtime.resolve_value(global).await.map_err(|err| {
+                // got some AnyError from Deno internals...
+                eprintln!("{}", err);
+                anyhow!("Internal server error")
+            })?;
+
             let scope = &mut runtime.handle_scope();
-
             let res = v8::Local::new(scope, value);
-
             let res: Value = serde_v8::from_v8(scope, res)?;
             Ok(res)
         }

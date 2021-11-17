@@ -28,4 +28,5 @@ service MathService {
 
     export query shimQuery(@inject claytip: Claytip): Int 
     export mutation testMutation(@inject claytip: Claytip): Float 
+    export mutation illegalFunction(): String
 }
