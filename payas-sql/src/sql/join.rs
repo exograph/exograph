@@ -2,6 +2,7 @@ use maybe_owned::MaybeOwned;
 
 use super::{predicate::Predicate, Expression, ParameterBinding, Table};
 
+/// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq)]
 pub struct Join<'a> {
     left: Box<Table<'a>>,

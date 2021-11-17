@@ -211,6 +211,12 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
 
+                // We may have a predicate that uses one of the referred object. For example, we may have
+                // concerts(where: {venue: {name: {eq: "v1"}}}). In such cases, we can't just have `where venue.name = "v1"`
+                // since the `from` clause would refer to the `concerts` table, not the `venues` table. So we join the
+                // `concerts` table to the `venues` table.
+                // To do so, we first find out all the tabled referred by the predicate and then traverse the return type
+                // to find out the tables that are referred by the predicate. Along the way, we also pick the join predicate.
                 let tables_referred = tables_referred(&predicate, query_context.get_system());
                 let TableDependency {
                     table,
@@ -378,12 +384,16 @@ fn map_field<'a>(
     Ok((field.output_name(), column.into()))
 }
 
+/// Table dependencies tree suitable for computing a join.
 #[derive(Debug)]
 struct TableDependency<'a> {
     table: Table<'a>,
     dependencies: Vec<(MaybeOwned<'a, Predicate<'a>>, TableDependency<'a>)>,
 }
 
+/// Compute the dependencies tree for a given root type limiting to the tables referred.
+/// Navigate the structure of the root type and pick up any tables referred as long as they are
+/// in the `tables_referred` list.
 fn table_dependency<'a>(
     root_type: &'a GqlType,
     tables_referred: &[&'a PhysicalTable],
@@ -395,6 +405,7 @@ fn table_dependency<'a>(
         let root_physical_table = &system.tables[composite_root_type.get_table_id()];
         let root = Table::Physical(root_physical_table);
 
+        // Drop the current table before descending into its dependencies
         let tables_referred: Vec<&PhysicalTable> = tables_referred
             .iter()
             .filter(|table| table.name != root_physical_table.name)
