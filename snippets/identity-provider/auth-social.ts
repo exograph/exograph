@@ -13,18 +13,18 @@ export interface LoginResult {
 // the user is created immediately (thus we can issue the JWT token on signup immediately).
 // So the real difference between login and signup is that the latter adds the new user to the database.
 export async function loginSocial(code: string, provider: string, claytip: any): Promise<string> {
-  return helper(code, provider, claytip, undefined);
+  return await helper(code, provider, claytip, undefined);
 }
 
 export async function signupSocial(code: string, provider: string, claytip: any): Promise<string> {
-  return helper(code, provider, claytip, signup);
+  return await helper(code, provider, claytip, signup);
 }
 
 type OnSignupFunction = (email: string, name: string, claytip: any) => Promise<string> | undefined;
 
 async function helper(code: string, provider: string, claytip: any, onSignup: OnSignupFunction): Promise<string> {
   if (provider === 'google') {
-    const googleUser: LoginResult = await verifyGoogle(code, claytip);
+    const googleUser: LoginResult = await verifyGoogle(code);
 
     if (onSignup) {
       await onSignup(googleUser.email, `${googleUser.givenName} ${googleUser.familyName}`, claytip);

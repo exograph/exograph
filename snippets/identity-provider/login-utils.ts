@@ -1,6 +1,6 @@
 import { create, getNumericDate } from "https://deno.land/x/djwt@v2.4/mod.ts";
 
-export const secret = "abcd"; // TODO: Get it from config 
+export const secret = Deno.env.get("CLAY_JWT_SECRET");
 
 export interface JWTPayload {
   sub: string;

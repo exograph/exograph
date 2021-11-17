@@ -15,7 +15,6 @@ export async function loginNormal(email: string, password: string, claytip: any)
     const user = res.users[0];
 
     if (bcrypt.compareSync(password, user.password)) {
-    //if (password == user.password) {
         const userInfo = await queryUserInfo(email, claytip);
         return await createJwt(userInfo, secret);
     } else {
@@ -30,7 +29,6 @@ export async function signupNormal(
     claytip: any
 ): Promise<string> {
     const hashed = bcrypt.hashSync(password);
-    //let hashed = password;
 
     let res = claytip.executeQuery(
         `mutation(
@@ -56,6 +54,6 @@ export async function signupNormal(
         }
     );
 
-    // TODO: Send a verification email and implement a veryfyNormal function to respond to it
+    // TODO: Send a verification email and implement a verifyNormal function to respond to it
     return "Ok";
 }
