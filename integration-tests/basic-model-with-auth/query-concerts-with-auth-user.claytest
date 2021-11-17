@@ -3,6 +3,7 @@ operation: |
         concerts {
             id
             title
+            published
             venue {
                 id
                 name
@@ -23,6 +24,7 @@ response: |
           {
             "id": 1,
             "title": "Concert1",
+            "published": true,
             "venue": {
               "id": 1,
               "name": "Venue1",
@@ -30,11 +32,11 @@ response: |
             }
           },
           {
-            "id": 2,
-            "title": "Concert2",
+            "id": 4,
+            "title": "Concert4",
+            "published": true,
             "venue": null
           }
         ]
       }
     }
-    
