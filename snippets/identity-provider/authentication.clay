@@ -1,0 +1,37 @@
+model User {
+    id: Int @pk @autoincrement
+
+    email: String     // login e-mail
+    role: String      // user role
+    name: String      // user's name (e.g. John Doe)
+
+    password: String  // bcrypted password (if provided; will not be provided for social logins)
+    verified: Boolean // whether the user has verified their e-mail address (social logins will always be verified)
+}
+
+@external("auth-social.ts")
+service LoginSocial {
+    // Takes a code from client-side authentication and issues a JWT token on success
+    export query loginSocial(code: String, provider: String, @inject claytip: Claytip): String
+
+    // Given a code from client-side authentication, create a user in the database
+    export mutation signupSocial(
+        code: String, 
+        provider: String,
+        @inject claytip: Claytip
+    ): Int
+}
+
+@external("auth-normal.ts")
+service LoginNormal {
+    // Takes a login and a password from the client authentication and issues a JWT token on success
+    export query loginNormal(email: String, password: String, @inject claytip: Claytip): String
+
+    // Given an e-mail and a password, create a user in the database
+    export mutation signupNormal(
+        email: String, 
+        password: String,
+        name: String,
+        @inject claytip: Claytip
+    ): Int
+}
