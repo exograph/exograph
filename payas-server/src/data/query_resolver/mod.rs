@@ -405,14 +405,24 @@ fn table_dependency<'a>(
             .fields
             .iter()
             .filter_map(|field| match &field.relation {
-                GqlRelation::ManyToOne { column_id, .. }
+                GqlRelation::ManyToOne {
+                    column_id,
+                    other_type_id,
+                    ..
+                }
                 | GqlRelation::OneToMany {
                     other_type_column_id: column_id,
-                    ..
+                    other_type_id,
                 } => {
-                    let other_type = field.typ.base_type(&system.types);
+                    let field_type = field.typ.base_type(&system.types);
+                    // TODO: Move the relationship predicate to relation itself (and then use that here and in map_field)
+                    let other_type = if matches!(&field.relation, GqlRelation::ManyToOne { .. }) {
+                        &system.types[*other_type_id]
+                    } else {
+                        root_type
+                    };
 
-                    if let GqlTypeKind::Composite(composite_root_type) = &other_type.kind {
+                    if let GqlTypeKind::Composite(composite_root_type) = &field_type.kind {
                         let other_physical_table =
                             &system.tables[composite_root_type.get_table_id()];
                         let join_predicate = Predicate::Eq(
@@ -425,7 +435,7 @@ fn table_dependency<'a>(
                         if tables_referred.contains(&other_physical_table) {
                             Some((
                                 join_predicate,
-                                table_dependency(other_type, &tables_referred, query_context),
+                                table_dependency(field_type, &tables_referred, query_context),
                             ))
                         } else {
                             None
