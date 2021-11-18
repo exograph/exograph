@@ -198,7 +198,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
-                let field_arguments = query_context.field_arguments(field);
+                let field_arguments = query_context.field_arguments(field)?;
 
                 let predicate = super::compute_predicate(
                     predicate_param.as_ref(),
@@ -241,7 +241,6 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     table
                 };
 
-                let field_arguments = query_context.field_arguments(field);
                 let limit = self.compute_limit(field_arguments, query_context);
                 let offset = self.compute_offset(field_arguments, query_context);
 
@@ -284,7 +283,7 @@ fn map_selection<'a>(
     match selection {
         Selection::Field(field) => Ok(vec![map_field(query, &field.node, query_context)?]),
         Selection::FragmentSpread(fragment_spread) => {
-            let fragment_definition = query_context.fragment_definition(fragment_spread).unwrap();
+            let fragment_definition = query_context.fragment_definition(fragment_spread)?;
             fragment_definition
                 .selection_set
                 .node

@@ -67,8 +67,7 @@ where
                 self.resolve_field(query_context, field)?,
             )]),
             Selection::FragmentSpread(fragment_spread) => {
-                let fragment_definition =
-                    query_context.fragment_definition(fragment_spread).unwrap();
+                let fragment_definition = query_context.fragment_definition(fragment_spread)?;
                 self.resolve_selection_set(query_context, &fragment_definition.selection_set)
             }
             Selection::InlineFragment(_inline_fragment) => {
