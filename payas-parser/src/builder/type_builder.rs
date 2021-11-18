@@ -601,7 +601,6 @@ fn create_relation(
                         GqlRelation::ManyToOne {
                             column_id: column_id.unwrap(),
                             other_type_id,
-                            optional: matches!(field.typ, ResolvedFieldType::Optional(_)), // matches on field.typ, not typ!
                         }
                     }
                 }

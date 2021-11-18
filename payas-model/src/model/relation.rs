@@ -17,7 +17,6 @@ pub enum GqlRelation {
     ManyToOne {
         column_id: ColumnId,
         other_type_id: SerializableSlabIndex<GqlType>,
-        optional: bool,
     },
     OneToMany {
         other_type_column_id: ColumnId,
