@@ -32,7 +32,7 @@ pub use offset::Offset;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
 pub use sql_operation::{SQLOperation, TemplateSQLOperation};
-pub use table::Table;
+pub use table::TableQuery;
 pub use update::{TemplateUpdate, Update};
 
 pub trait SQLParam: ToSql + Sync + std::fmt::Display {

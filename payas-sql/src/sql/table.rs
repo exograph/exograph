@@ -5,12 +5,12 @@ use super::{
 use maybe_owned::MaybeOwned;
 
 #[derive(Debug, PartialEq)]
-pub enum Table<'a> {
+pub enum TableQuery<'a> {
     Physical(&'a PhysicalTable),
     Join(Join<'a>),
 }
 
-impl<'a> Table<'a> {
+impl<'a> TableQuery<'a> {
     pub fn select<P>(
         self,
         columns: Vec<MaybeOwned<'a, Column<'a>>>,
@@ -36,18 +36,18 @@ impl<'a> Table<'a> {
 
     pub fn join(
         self,
-        other_table: Table<'a>,
+        other_table: TableQuery<'a>,
         predicate: MaybeOwned<'a, Predicate<'a>>,
-    ) -> Table<'a> {
-        Table::Join(Join::new(self, other_table, predicate))
+    ) -> TableQuery<'a> {
+        TableQuery::Join(Join::new(self, other_table, predicate))
     }
 }
 
-impl<'a> Expression for Table<'a> {
+impl<'a> Expression for TableQuery<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
-            Table::Physical(physical_table) => physical_table.binding(expression_context),
-            Table::Join(join) => join.binding(expression_context),
+            TableQuery::Physical(physical_table) => physical_table.binding(expression_context),
+            TableQuery::Join(join) => join.binding(expression_context),
         }
     }
 }

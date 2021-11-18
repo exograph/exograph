@@ -11,7 +11,7 @@ use payas_model::model::system::ModelSystem;
 use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::column::PhysicalColumn;
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
-use payas_model::sql::{Limit, Offset, PhysicalTable, Table};
+use payas_model::sql::{Limit, Offset, PhysicalTable, TableQuery};
 
 use super::operation_mapper::{
     compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
@@ -387,7 +387,7 @@ fn map_field<'a>(
 /// Table dependencies tree suitable for computing a join.
 #[derive(Debug)]
 struct TableDependency<'a> {
-    table: Table<'a>,
+    table: TableQuery<'a>,
     dependencies: Vec<(MaybeOwned<'a, Predicate<'a>>, TableDependency<'a>)>,
 }
 
@@ -403,7 +403,7 @@ fn table_dependency<'a>(
 
     if let GqlTypeKind::Composite(composite_root_type) = &root_type.kind {
         let root_physical_table = &system.tables[composite_root_type.get_table_id()];
-        let root = Table::Physical(root_physical_table);
+        let root = TableQuery::Physical(root_physical_table);
 
         // Drop the current table before descending into its dependencies
         let tables_referred: Vec<&PhysicalTable> = tables_referred

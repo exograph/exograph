@@ -1,19 +1,19 @@
 use maybe_owned::MaybeOwned;
 
-use super::{predicate::Predicate, Expression, ParameterBinding, Table};
+use super::{predicate::Predicate, Expression, ParameterBinding, TableQuery};
 
 /// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq)]
 pub struct Join<'a> {
-    left: Box<Table<'a>>,
-    right: Box<Table<'a>>,
+    left: Box<TableQuery<'a>>,
+    right: Box<TableQuery<'a>>,
     predicate: MaybeOwned<'a, Predicate<'a>>,
 }
 
 impl<'a> Join<'a> {
     pub fn new(
-        left: Table<'a>,
-        right: Table<'a>,
+        left: TableQuery<'a>,
+        right: TableQuery<'a>,
         predicate: MaybeOwned<'a, Predicate<'a>>,
     ) -> Self {
         Join {
@@ -95,8 +95,8 @@ mod tests {
             ],
         };
 
-        let concert_table = Table::Physical(&concert_physical_table);
-        let venue_table = Table::Physical(&venue_physical_table);
+        let concert_table = TableQuery::Physical(&concert_physical_table);
+        let venue_table = TableQuery::Physical(&venue_physical_table);
         let join_predicate = Predicate::Eq(
             concert_physical_table
                 .get_column("venue_id")

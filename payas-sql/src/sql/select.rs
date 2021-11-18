@@ -2,12 +2,12 @@ use maybe_owned::MaybeOwned;
 
 use super::{
     column::Column, limit::Limit, offset::Offset, order::OrderBy, predicate::Predicate,
-    table::Table, Expression, ExpressionContext, ParameterBinding,
+    table::TableQuery, Expression, ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug, PartialEq)]
 pub struct Select<'a> {
-    pub underlying: Table<'a>,
+    pub underlying: TableQuery<'a>,
     pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
     pub predicate: MaybeOwned<'a, Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
@@ -126,7 +126,7 @@ mod tests {
         let age_col = physical_table.get_column("age").unwrap();
         let selected_cols = vec![age_col.into()];
 
-        let table = Table::Physical(&physical_table);
+        let table = TableQuery::Physical(&physical_table);
 
         let predicated_table = table.select(
             selected_cols,
@@ -179,7 +179,7 @@ mod tests {
             ("namex".to_string(), name_col.into()),
             ("agex".to_string(), age_col.into()),
         ]);
-        let table = Table::Physical(&physical_table);
+        let table = TableQuery::Physical(&physical_table);
         let selected_table = table.select(
             vec![age_col2.into(), json_col.into()],
             Predicate::True,
