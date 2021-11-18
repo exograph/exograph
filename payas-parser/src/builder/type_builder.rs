@@ -572,11 +572,6 @@ fn create_relation(
 
                 let column_name = field.get_column_name().to_string();
 
-                //println!("{:#?}", table);
-                //println!("Our field: {}", field.name);
-                //println!("Looking for their: {}", column_name);
-                //println!("{:#?}", other_table);
-
                 let other_type_column_id = other_table
                     .column_index(&column_name)
                     .map(|index| ColumnId::new(other_table_id, index))

@@ -128,6 +128,9 @@ pub trait DataParamBuilder<D> {
             .flat_map(|field| {
                 // Create a nested input data type only if it refers to a many side
                 // So for Venue <-> [Concert] case, create only ConcertCreationInputFromVenue
+
+                // we can treat Optional fields as their inner type for the purposes of
+                // computing their type names
                 let typ = match &field.typ {
                     ResolvedFieldType::Optional(inner_type) => inner_type.as_ref(),
                     _ => &field.typ,

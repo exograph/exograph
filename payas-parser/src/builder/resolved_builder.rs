@@ -963,6 +963,8 @@ fn compute_column_name(
         field: &AstField<Typed>,
         types: &MappedArena<Type>,
     ) -> String {
+        // we can treat Optional fields as their inner type for the purposes
+        // of computing their default column name
         let field_typ = match &field.typ {
             AstFieldType::Optional(inner_typ) => inner_typ.as_ref(),
             _ => &field.typ,
