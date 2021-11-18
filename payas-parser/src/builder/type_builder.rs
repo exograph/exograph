@@ -550,7 +550,13 @@ fn create_relation(
             column_id: column_id.unwrap(),
         }
     } else {
-        match &field.typ {
+        // we can treat Optional fields as their inner type for the purposes of computing relations
+        let typ = match &field.typ {
+            ResolvedFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+            _ => &field.typ,
+        };
+
+        match typ {
             ResolvedFieldType::List(underlying) => {
                 // TODO: should grab separate syntaxes for primitive arrays and relations
                 let field_type = if let ResolvedType::Primitive(_) = underlying.deref(env) {
@@ -595,12 +601,12 @@ fn create_relation(
                         GqlRelation::ManyToOne {
                             column_id: column_id.unwrap(),
                             other_type_id,
-                            optional: matches!(field.typ, ResolvedFieldType::Optional(_)),
+                            optional: matches!(field.typ, ResolvedFieldType::Optional(_)), // matches on field.typ, not typ!
                         }
                     }
                 }
             }
-            ResolvedFieldType::Optional(_) => panic!(),
+            ResolvedFieldType::Optional(_) => panic!("Optional in an Optional?"),
         }
     }
 }
