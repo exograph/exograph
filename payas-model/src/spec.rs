@@ -109,7 +109,7 @@ impl FromModel<&PhysicalColumn> for ColumnSpec {
             db_type: column.typ.clone(),
             is_pk: column.is_pk,
             is_autoincrement: column.is_autoincrement,
-            not_null: column.not_null,
+            is_nullable: column.is_nullable,
         }
     }
 }
@@ -136,7 +136,7 @@ impl ToModel for ColumnSpec {
             )));
         }
 
-        if !self.not_null {
+        if self.is_nullable {
             data_type += "?"
         }
 

@@ -203,7 +203,7 @@ mod tests {
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             is_pk: false,
             is_autoincrement: false,
-            not_null: false,
+            is_nullable: true,
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -226,7 +226,7 @@ mod tests {
             typ: PhysicalColumnType::String { length: None },
             is_pk: false,
             is_autoincrement: false,
-            not_null: false,
+            is_nullable: true,
         };
         let name_col = Column::Physical(&name_col);
         let name_value_col = Column::Literal(Box::new("foo"));
@@ -237,7 +237,7 @@ mod tests {
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             is_pk: false,
             is_autoincrement: false,
-            not_null: false,
+            is_nullable: true,
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -265,7 +265,7 @@ mod tests {
             typ: PhysicalColumnType::String { length: None },
             is_pk: false,
             is_autoincrement: false,
-            not_null: false,
+            is_nullable: true,
         };
         let title_col = Column::Physical(&title_col);
         let title_value_col = Column::Literal(Box::new("utawaku"));
@@ -308,7 +308,7 @@ mod tests {
             typ: PhysicalColumnType::Json,
             is_pk: false,
             is_autoincrement: false,
-            not_null: false,
+            is_nullable: true,
         };
         let json_col = Column::Physical(&json_col);
 

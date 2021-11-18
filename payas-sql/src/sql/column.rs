@@ -15,7 +15,7 @@ pub struct PhysicalColumn {
     pub typ: PhysicalColumnType,
     pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
-    pub not_null: bool,         // not null constraint
+    pub is_nullable: bool,      // should this type have a NOT NULL constraint or not?
 }
 
 impl From<ColumnSpec> for PhysicalColumn {
@@ -26,7 +26,7 @@ impl From<ColumnSpec> for PhysicalColumn {
             typ: c.db_type,
             is_pk: c.is_pk,
             is_autoincrement: c.is_autoincrement,
-            not_null: c.not_null,
+            is_nullable: c.is_nullable,
         }
     }
 }

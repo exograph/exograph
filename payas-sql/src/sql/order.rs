@@ -44,7 +44,7 @@ mod test {
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             is_pk: false,
             is_autoincrement: false,
-            not_null: false,
+            is_nullable: true,
         };
         let age_col = Column::Physical(&age_col);
 
@@ -64,7 +64,7 @@ mod test {
             typ: PhysicalColumnType::String { length: None },
             is_pk: false,
             is_autoincrement: false,
-            not_null: false,
+            is_nullable: true,
         };
         let name_col = Column::Physical(&name_col);
 
@@ -74,7 +74,7 @@ mod test {
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
             is_pk: false,
             is_autoincrement: false,
-            not_null: false,
+            is_nullable: true,
         };
         let age_col = Column::Physical(&age_col);
 

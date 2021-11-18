@@ -228,7 +228,7 @@ pub struct ColumnSpec {
     pub db_type: PhysicalColumnType,
     pub is_pk: bool,
     pub is_autoincrement: bool,
-    pub not_null: bool,
+    pub is_nullable: bool,
 }
 
 impl ColumnSpec {
@@ -297,7 +297,7 @@ impl ColumnSpec {
             table_name, column_name
         );
 
-        let not_null = db_client
+        let not_null: bool = db_client
             .query::<str>(db_not_null_query.as_str(), &[])?
             .get(0)
             .map(|row| row.get("attnotnull"))
@@ -317,7 +317,7 @@ impl ColumnSpec {
                 is_pk,
                 is_autoincrement: serial_columns
                     .contains(&format!("{}_{}_seq", table_name, column_name)),
-                not_null,
+                is_nullable: !not_null,
             }),
             issues,
         })
@@ -332,7 +332,7 @@ impl ColumnSpec {
             .db_type
             .to_sql(table_name, &self.column_name, self.is_autoincrement);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
-        let not_null_str = if self.not_null && !self.is_pk {
+        let not_null_str = if !self.is_nullable && !self.is_pk {
             // primary keys are implied to be not null
             " NOT NULL"
         } else {

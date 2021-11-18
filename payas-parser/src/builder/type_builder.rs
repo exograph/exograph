@@ -91,7 +91,7 @@ fn expand_type_no_fields(
     let columns = resolved_type
         .fields
         .iter()
-        .flat_map(|field| create_column(field, &table_name, resolved_types, false))
+        .flat_map(|field| create_column(field, &table_name, resolved_types))
         .collect();
 
     let table = PhysicalTable {
@@ -358,9 +358,14 @@ fn create_column(
     field: &ResolvedField,
     table_name: &str,
     env: &MappedArena<ResolvedType>,
-    optional: bool,
 ) -> Option<PhysicalColumn> {
-    match &field.typ {
+    // split Optional types into a bool and its inner type
+    let (typ, optional) = match &field.typ {
+        ResolvedFieldType::Optional(inner_typ) => (inner_typ.as_ref(), true),
+        _ => (&field.typ, false),
+    };
+
+    match typ {
         ResolvedFieldType::Plain(type_name) => {
             // Either a scalar (primitive) or a many-to-one relatioship with another table
 
@@ -380,7 +385,7 @@ fn create_column(
                     } else {
                         false
                     },
-                    not_null: !optional,
+                    is_nullable: optional,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -400,12 +405,11 @@ fn create_column(
                         },
                         is_pk: false,
                         is_autoincrement: false,
-                        not_null: !optional,
+                        is_nullable: optional,
                     })
                 }
             }
         }
-        ResolvedFieldType::Optional(_typ) => create_column(field, table_name, env, true),
         ResolvedFieldType::List(typ) => {
             // unwrap list to base type
             let mut underlying_typ = typ;
@@ -443,13 +447,14 @@ fn create_column(
                     typ: column_type,
                     is_pk: false,
                     is_autoincrement: false,
-                    not_null: !optional,
+                    is_nullable: optional,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column
                 None
             }
         }
+        ResolvedFieldType::Optional(_) => panic!("Optional in an Optional?"),
     }
 }
 
