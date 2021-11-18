@@ -1,13 +1,13 @@
 use maybe_owned::MaybeOwned;
 
 use super::{
-    column::Column, limit::Limit, offset::Offset, order::OrderBy, physical_table::PhysicalTable,
-    predicate::Predicate, Expression, ExpressionContext, ParameterBinding,
+    column::Column, limit::Limit, offset::Offset, order::OrderBy, predicate::Predicate,
+    table::TableQuery, Expression, ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug, PartialEq)]
 pub struct Select<'a> {
-    pub underlying: &'a PhysicalTable,
+    pub underlying: TableQuery<'a>,
     pub columns: Vec<MaybeOwned<'a, Column<'a>>>,
     pub predicate: MaybeOwned<'a, Predicate<'a>>,
     pub order_by: Option<OrderBy<'a>>,
@@ -98,13 +98,16 @@ impl<'a> Expression for Select<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::sql::column::{IntBits, PhysicalColumn, PhysicalColumnType};
+    use crate::sql::{
+        column::{IntBits, PhysicalColumn, PhysicalColumnType},
+        PhysicalTable,
+    };
 
     use super::*;
 
     #[test]
     fn predicated_table() {
-        let table = PhysicalTable {
+        let physical_table = PhysicalTable {
             name: "people".to_string(),
             columns: vec![PhysicalColumn {
                 table_name: "people".to_string(),
@@ -115,13 +118,15 @@ mod tests {
             }],
         };
 
-        let age_col = table.get_column("age").unwrap();
+        let age_col = physical_table.get_column("age").unwrap();
         let age_value_col = Column::Literal(Box::new(5));
 
         let predicate = Predicate::Eq(age_col.into(), age_value_col.into());
 
-        let age_col = table.get_column("age").unwrap();
+        let age_col = physical_table.get_column("age").unwrap();
         let selected_cols = vec![age_col.into()];
+
+        let table = TableQuery::Physical(&physical_table);
 
         let predicated_table = table.select(
             selected_cols,
@@ -134,7 +139,7 @@ mod tests {
 
         let mut expression_context = ExpressionContext::default();
         let binding = predicated_table.binding(&mut expression_context);
-        println!("{:?}", binding.params);
+
         assert_binding!(
             &binding,
             r#"select "people"."age" from (select * from "people" WHERE "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
@@ -146,7 +151,7 @@ mod tests {
 
     #[test]
     fn json_object() {
-        let table = PhysicalTable {
+        let physical_table = PhysicalTable {
             name: "people".to_string(),
             columns: vec![
                 PhysicalColumn {
@@ -166,14 +171,17 @@ mod tests {
             ],
         };
 
-        let age_col = table.get_column("age").unwrap();
-        let name_col = table.get_column("name").unwrap();
+        let age_col = physical_table.get_column("age").unwrap();
+        let age_col2 = physical_table.get_column("age").unwrap();
+
+        let name_col = physical_table.get_column("name").unwrap();
         let json_col = Column::JsonObject(vec![
             ("namex".to_string(), name_col.into()),
             ("agex".to_string(), age_col.into()),
         ]);
+        let table = TableQuery::Physical(&physical_table);
         let selected_table = table.select(
-            vec![table.get_column("age").unwrap().into(), json_col.into()],
+            vec![age_col2.into(), json_col.into()],
             Predicate::True,
             None,
             None,

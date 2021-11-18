@@ -1,0 +1,104 @@
+operation: |
+    query {
+      concert1_by_title_Venues: venues(where: {concerts: {title: {eq: "Concert1"}}}) {
+        id
+        name
+        concerts {
+          id
+          title
+        }
+      }
+      concert2_by_title_Venues: venues(where: {concerts: {title: {eq: "Concert2"}}}) {
+        id
+        name
+        concerts {
+          id
+          title
+        }
+      }
+      concert1_by_id_Venues: venues(where: {concerts: {id: {eq: 1}}}) {
+        id
+        name
+        concerts {
+          id
+          title
+        }
+      }
+      concert2_by_id_Venues: venues(where: {concerts: {id: {eq: 2}}}) {
+        id
+        name
+        concerts {
+          id
+          title
+        }
+      }                 
+    }
+response: |
+    {
+      "data": {
+        "concert1_by_title_Venues": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "concerts": [
+              {
+                "id": 1,
+                "title": "Concert1"
+              },
+              {
+                "id": 3,
+                "title": "Concert3"
+              }
+            ]
+          }
+        ],
+        "concert2_by_title_Venues": [
+          {
+            "id": 2,
+            "name": "Venue2",
+            "concerts": [
+              {
+                "id": 2,
+                "title": "Concert2"
+              },
+              {
+                "id": 4,
+                "title": "Concert4"
+              }
+            ]
+          }
+        ],
+        "concert1_by_id_Venues": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "concerts": [
+              {
+                "id": 1,
+                "title": "Concert1"
+              },
+              {
+                "id": 3,
+                "title": "Concert3"
+              }
+            ]
+          }
+        ],
+        "concert2_by_id_Venues": [
+          {
+            "id": 2,
+            "name": "Venue2",
+            "concerts": [
+              {
+                "id": 2,
+                "title": "Concert2"
+              },
+              {
+                "id": 4,
+                "title": "Concert4"
+              }
+            ]
+          }
+        ]
+      }
+    }

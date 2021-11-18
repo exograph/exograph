@@ -1,6 +1,6 @@
 operation: |
     query($id:Int!) {
-        venue(id:2) { # Use alias. Needed anyway, but also tests for how we process aliases
+        venue(id:2) {
             id
             name
             published
