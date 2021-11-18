@@ -1,0 +1,75 @@
+operation: |
+    query {
+      venue1_by_name_Concerts: concerts(where: {venue: {name: {eq: "Venue1"}}}) {
+        ...concertInfo
+      }
+      venue2_by_name_Concerts: concerts(where: {venue: {name: {eq: "Venue2"}}}) {
+        ...concertInfo
+      }
+      venue1_by_id_Concerts: concerts(where: {venue: {id: {eq: 1}}}) {
+        ...concertInfo
+      }
+      venue2_by_id_Concerts: concerts(where: {venue: {id: {eq: 2}}}) {
+        ...concertInfo
+      }                  
+    }
+    fragment concertInfo on Concert {
+      id
+      title
+      published
+      venue {
+        id
+        name
+        published
+      }
+    }
+auth: |
+    {
+        "sub": 2,
+        "role": "ROLE_USER"
+    }    
+response: |
+    {
+      "data": {
+        "venue1_by_name_Concerts": [
+          {
+            "id": 1,
+            "title": "Concert1",
+            "published": true,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "published": true
+            }
+          }
+        ],
+        "venue2_by_name_Concerts": [
+          {
+            "id": 4,
+            "title": "Concert4",
+            "published": true,
+            "venue": null
+          }
+        ],
+        "venue1_by_id_Concerts": [
+          {
+            "id": 1,
+            "title": "Concert1",
+            "published": true,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "published": true
+            }
+          }
+        ],
+        "venue2_by_id_Concerts": [
+          {
+            "id": 4,
+            "title": "Concert4",
+            "published": true,
+            "venue": null
+          }
+        ]
+      }
+    }

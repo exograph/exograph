@@ -1,0 +1,102 @@
+operation: |
+    query {
+      venue1_by_name_Concerts: concerts(where: {venue: {name: {eq: "Venue1"}}}) {
+        id
+        venue {
+          id
+          name
+        }
+      }
+      venue2_by_name_Concerts: concerts(where: {venue: {name: {eq: "Venue2"}}}) {
+        id
+        venue {
+          id
+          name
+        }
+      }
+      venue1_by_id_Concerts: concerts(where: {venue: {id: {eq: 1}}}) {
+        id
+        venue {
+          id
+          name
+        }
+      }
+      venue2_by_id_Concerts: concerts(where: {venue: {id: {eq: 2}}}) {
+        id
+        venue {
+          id
+          name
+        }
+      }                  
+    }
+response: |
+    {
+      "data": {
+        "venue1_by_name_Concerts": [
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          }
+        ],
+        "venue2_by_name_Concerts": [
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2"
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2"
+            }
+          }
+        ],
+        "venue1_by_id_Concerts": [
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1"
+            }
+          }
+        ],
+        "venue2_by_id_Concerts": [
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2"
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2"
+            }
+          }
+        ]
+      }
+    }
+
+    
