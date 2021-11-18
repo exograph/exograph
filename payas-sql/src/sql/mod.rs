@@ -1,6 +1,11 @@
 use anyhow::anyhow;
+use bytes::Bytes;
+use maybe_owned::MaybeOwned;
 use postgres::types::{FromSql, ToSql, Type};
-use std::any::Any;
+use std::{
+    any::Any,
+    fmt::{Debug, Display},
+};
 
 #[macro_use]
 #[cfg(test)]
@@ -31,14 +36,14 @@ pub use select::Select;
 pub use sql_operation::{SQLOperation, TemplateSQLOperation};
 pub use update::{TemplateUpdate, Update};
 
-pub trait SQLParam: ToSql + Sync + std::fmt::Display {
+pub trait SQLParam: ToSql + Sync + Display {
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, other: &dyn SQLParam) -> bool;
 
     fn as_pg(&self) -> &(dyn ToSql + Sync);
 }
 
-impl<T: ToSql + Sync + Any + PartialEq + std::fmt::Display> SQLParam for T {
+impl<T: ToSql + Sync + Any + PartialEq + Display> SQLParam for T {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -74,7 +79,7 @@ impl SQLValue {
     }
 }
 
-impl std::fmt::Display for SQLValue {
+impl Display for SQLValue {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(fmt, "<SQLValue containing {}>", self.type_)
     }
@@ -120,6 +125,45 @@ impl<'a> FromSql<'a> for SQLValue {
     }
 }
 
+// Wrapper type for bytes::Bytes for use with BYTEA
+// Bytes does not implement ToSql.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SQLBytes(pub Bytes);
+
+impl SQLBytes {
+    pub fn new(vec: Vec<u8>) -> Self {
+        Self(Bytes::from(vec))
+    }
+}
+
+impl ToSql for SQLBytes {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut bytes::BytesMut,
+    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    where
+        Self: Sized,
+    {
+        (&self.0[..]).to_sql(ty, out)
+    }
+
+    fn accepts(ty: &Type) -> bool
+    where
+        Self: Sized,
+    {
+        matches!(*ty, Type::BYTEA)
+    }
+
+    postgres::types::to_sql_checked!();
+}
+
+impl Display for SQLBytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ParameterBinding<'a> {
     pub stmt: String,
@@ -145,6 +189,15 @@ pub trait Expression {
 }
 
 impl<T> Expression for Box<T>
+where
+    T: Expression,
+{
+    fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
+        self.as_ref().binding(expression_context)
+    }
+}
+
+impl<'a, T> Expression for MaybeOwned<'a, T>
 where
     T: Expression,
 {

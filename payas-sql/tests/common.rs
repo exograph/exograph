@@ -43,6 +43,7 @@ pub fn create_context(test_name: &str) -> Result<TestContext> {
 
     let setup_db = Database::from_env_helper(
         1,
+        true,
         test_db_url.clone(),
         test_user.clone(),
         test_password.clone(),
@@ -56,6 +57,7 @@ pub fn create_context(test_name: &str) -> Result<TestContext> {
 
     let db = Database::from_env_helper(
         5,
+        true,
         test_db_url,
         test_user,
         test_password,
@@ -79,7 +81,7 @@ pub fn create_physical_table(db: &Database, table_name: &str, query: &str) -> Ph
     client.query(query, &[]).unwrap();
 
     // get definition back from database
-    let table_spec = TableSpec::from_db(db, table_name).unwrap();
+    let table_spec = TableSpec::from_db(&mut client, table_name).unwrap();
 
     if !table_spec.issues.is_empty() {
         for issue in table_spec.issues.iter() {

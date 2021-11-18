@@ -5,6 +5,7 @@ use super::{
     SQLParam,
 };
 use anyhow::{bail, Result};
+use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
 use std::{fmt::Write, rc::Rc};
 
@@ -49,6 +50,7 @@ pub enum PhysicalColumnType {
         precision: Option<usize>,
     },
     Json,
+    Blob,
     Array {
         typ: Box<PhysicalColumnType>,
     },
@@ -242,6 +244,7 @@ impl PhysicalColumnType {
             PhysicalColumnType::Date => ("LocalDate".to_string(), "".to_string()),
 
             PhysicalColumnType::Json => ("Json".to_string(), "".to_string()),
+            PhysicalColumnType::Blob => ("Blob".to_string(), "".to_string()),
 
             PhysicalColumnType::Array { typ } => {
                 let (data_type, annotations) = typ.to_model();
@@ -367,6 +370,11 @@ impl PhysicalColumnType {
                 foreign_constraints: Vec::new(),
             },
 
+            PhysicalColumnType::Blob => SQLStatement {
+                statement: "BYTEA".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
+
             PhysicalColumnType::Array { typ } => {
                 // 'unwrap' nested arrays all the way to the underlying primitive type
 
@@ -400,10 +408,10 @@ impl PhysicalColumnType {
                 let mut sql_statement =
                     ref_pk_type.to_sql(table_name, column_name, is_autoincrement);
                 let foreign_constraint = format!(
-                    r#"ALTER TABLE "{table}" ADD CONSTRAINT "{ref_table}_fk" FOREIGN KEY ("{column}") REFERENCES "{ref_table}";"#,
-                    table = table_name,
-                    column = column_name,
-                    ref_table = ref_table_name,
+                    r#"ALTER TABLE "{table_name}" ADD CONSTRAINT "{table_name}_{column_name}_fk" FOREIGN KEY ("{column_name}") REFERENCES "{ref_table_name}";"#,
+                    table_name = table_name,
+                    column_name = column_name,
+                    ref_table_name = ref_table_name,
                 );
 
                 sql_statement.foreign_constraints.push(foreign_constraint);
@@ -416,11 +424,11 @@ impl PhysicalColumnType {
 #[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
-    Array(Vec<&'a Column<'a>>),
+    Array(Vec<MaybeOwned<'a, Column<'a>>>),
     Literal(Box<dyn SQLParam>),
-    JsonObject(Vec<(String, &'a Column<'a>)>),
-    JsonAgg(&'a Column<'a>),
-    SelectionTableWrapper(Select<'a>),
+    JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
+    JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
+    SelectionTableWrapper(Box<Select<'a>>),
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
@@ -498,10 +506,22 @@ impl<'a> Expression for Column<'a> {
                     .iter()
                     .map(|elem| {
                         let elem_binding = elem.1.binding(expression_context);
-                        (
-                            format!("'{}', {}", elem.0, elem_binding.stmt),
-                            elem_binding.params,
-                        )
+                        let mut stmt = elem_binding.stmt;
+
+                        // encode blob fields in JSON objects as base64
+
+                        // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
+                        // need to filter out using translate(...) function
+
+                        if let Column::Physical(PhysicalColumn {
+                            typ: PhysicalColumnType::Blob,
+                            ..
+                        }) = &elem.1.as_ref()
+                        {
+                            stmt = format!("translate(encode({}, \'base64\'), E'\\n', '')", stmt)
+                        };
+
+                        (format!("'{}', {}", elem.0, stmt), elem_binding.params)
                     })
                     .unzip();
 
@@ -537,7 +557,7 @@ impl<'a> Expression for Column<'a> {
 
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
-    Concrete(&'a Column<'a>),
+    Concrete(MaybeOwned<'a, Column<'a>>),
     Template {
         col_index: usize,
         step: Rc<TransactionStep<'a>>,

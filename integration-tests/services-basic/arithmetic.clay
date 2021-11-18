@@ -1,0 +1,32 @@
+context AuthContext {
+    id: Int @jwt("sub")
+    role: String @jwt("role")
+}
+
+@table("foo")
+model Foo {
+    id: Int @pk @autoincrement
+    bar: Int
+    baz: Int
+    qux: Int
+}
+
+@external("arithmetic.js")
+service MathService {
+    type DivisionResult {
+        quotient: Int
+        remainder: Int
+    }
+
+    input type LogMessage {
+        level: String
+        message: String
+    }
+
+    export query add(x: Int, y: Int): Int
+    export query divide(x: Int, y: Int): DivisionResult
+
+    export query shimQuery(@inject claytip: Claytip): Int 
+    export mutation testMutation(@inject claytip: Claytip): Float 
+    export mutation illegalFunction(): String
+}

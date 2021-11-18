@@ -16,6 +16,6 @@ model Concert {
 model Venue {
   id: Int @pk @autoincrement
   name: String
-  concerts: Set[Concert] @column("venueid")
+  concerts: Set<Concert> @column("venueid")
   published: Boolean
 }

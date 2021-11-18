@@ -1,13 +1,11 @@
 use payas_model::{
     model::{
-        access::{
-            Access, AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp,
-        },
+        access::Access,
         column_id::ColumnId,
         mapped_arena::{MappedArena, SerializableSlabIndex},
         naming::ToGqlQueryName,
         relation::GqlRelation,
-        GqlCompositeTypeKind, GqlFieldType,
+        GqlCompositeType, GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
         column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
@@ -15,15 +13,16 @@ use payas_model::{
     },
 };
 
-use super::resolved_builder::{
-    ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedType, ResolvedTypeHint,
+use super::{
+    access_utils,
+    resolved_builder::{
+        ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedMethod, ResolvedType,
+        ResolvedTypeHint,
+    },
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
-use crate::{
-    ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
-    typechecker::{PrimitiveType, Typed},
-};
+use crate::{builder::resolved_builder::ResolvedCompositeTypeKind, typechecker::PrimitiveType};
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
@@ -35,6 +34,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 
 pub fn build_expanded(
     resolved_types: &MappedArena<ResolvedType>,
+    resolved_methods: &[&ResolvedMethod],
     building: &mut SystemContextBuilding,
 ) {
     for (_, model_type) in resolved_types.iter() {
@@ -42,6 +42,7 @@ pub fn build_expanded(
             expand_type_no_fields(c, building, resolved_types);
         }
     }
+
     for (_, model_type) in resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
             expand_type_fields(c, building, resolved_types);
@@ -52,6 +53,10 @@ pub fn build_expanded(
         if let ResolvedType::Composite(c) = &model_type {
             expand_type_access(c, building);
         }
+    }
+
+    for method in resolved_methods.iter() {
+        expand_method_access(method, building)
     }
 }
 
@@ -74,8 +79,8 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
 /// Expand a type except for creating its fields.
 ///
 /// Specifically:
-/// 1. Create and set the table
-/// 2. Create and set *_query members
+/// 1. Create and set the table (if applicable)
+/// 2. Create and set *_query members (if applicable)
 /// 3. Leave fields as an empty vector
 ///
 /// This allows types to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
@@ -86,35 +91,46 @@ fn expand_type_no_fields(
     building: &mut SystemContextBuilding,
     resolved_types: &MappedArena<ResolvedType>,
 ) {
-    let table_name = resolved_type.table_name.clone();
+    let kind = if let ResolvedCompositeTypeKind::Persistent { table_name } = &resolved_type.kind {
+        let table_name = table_name.clone();
 
-    let columns = resolved_type
-        .fields
-        .iter()
-        .flat_map(|field| create_column(field, &table_name, resolved_types))
-        .collect();
+        let columns = resolved_type
+            .fields
+            .iter()
+            .flat_map(|field| create_column(field, &table_name, resolved_types))
+            .collect();
 
-    let table = PhysicalTable {
-        name: resolved_type.table_name.clone(),
-        columns,
+        let table = PhysicalTable {
+            name: table_name.clone(),
+            columns,
+        };
+
+        let table_id = building.tables.add(&table_name, table);
+
+        let pk_query = building.queries.get_id(&resolved_type.pk_query()).unwrap();
+
+        let collection_query = building
+            .queries
+            .get_id(&resolved_type.collection_query())
+            .unwrap();
+
+        GqlTypeKind::Composite(GqlCompositeType {
+            fields: vec![],
+            kind: GqlCompositeTypeKind::Persistent {
+                table_id,
+                pk_query,
+                collection_query,
+            },
+            access: Access::restrictive(),
+        })
+    } else {
+        GqlTypeKind::Composite(GqlCompositeType {
+            fields: vec![],
+            kind: GqlCompositeTypeKind::NonPersistent,
+            access: Access::restrictive(),
+        })
     };
 
-    let table_id = building.tables.add(&table_name, table);
-
-    let pk_query = building.queries.get_id(&resolved_type.pk_query()).unwrap();
-
-    let collection_query = building
-        .queries
-        .get_id(&resolved_type.collection_query())
-        .unwrap();
-
-    let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
-        fields: vec![],
-        table_id,
-        pk_query,
-        collection_query,
-        access: Access::restrictive(),
-    });
     let existing_type_id = building.types.get_id(&resolved_type.name);
 
     building.types.values[existing_type_id.unwrap()].kind = kind;
@@ -130,24 +146,21 @@ fn expand_type_fields(
     let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
-    if let GqlTypeKind::Composite(GqlCompositeTypeKind {
-        table_id,
-        pk_query,
-        collection_query,
-        ..
-    }) = existing_type.kind
-    {
+    if let GqlTypeKind::Composite(GqlCompositeType { kind, .. }) = &existing_type.kind {
+        let table_id = match kind {
+            GqlCompositeTypeKind::Persistent { table_id, .. } => Some(*table_id),
+            GqlCompositeTypeKind::NonPersistent => None,
+        };
+
         let model_fields: Vec<GqlField> = resolved_type
             .fields
             .iter()
             .map(|field| create_field(field, table_id, building, resolved_types))
             .collect();
 
-        let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
+        let kind = GqlTypeKind::Composite(GqlCompositeType {
             fields: model_fields,
-            table_id,
-            pk_query,
-            collection_query,
+            kind: kind.clone(),
             access: Access::restrictive(),
         });
 
@@ -161,14 +174,12 @@ fn expand_type_access(resolved_type: &ResolvedCompositeType, building: &mut Syst
     let existing_type = &building.types[existing_type_id];
 
     if let GqlTypeKind::Composite(self_type_info) = &existing_type.kind {
-        let expr = compute_access(&resolved_type.access, self_type_info, building);
+        let expr = compute_access_composite_types(&resolved_type.access, self_type_info, building);
 
         // TODO: Figure out a way to avoid the clone()s
-        let kind = GqlTypeKind::Composite(GqlCompositeTypeKind {
+        let kind = GqlTypeKind::Composite(GqlCompositeType {
             fields: self_type_info.fields.clone(),
-            table_id: self_type_info.table_id,
-            pk_query: self_type_info.pk_query,
-            collection_query: self_type_info.collection_query,
+            kind: self_type_info.kind.clone(),
             access: expr,
         });
 
@@ -176,156 +187,57 @@ fn expand_type_access(resolved_type: &ResolvedCompositeType, building: &mut Syst
     }
 }
 
-fn compute_access(
+fn expand_method_access(resolved_method: &ResolvedMethod, building: &mut SystemContextBuilding) {
+    let existing_method_id = building.methods.get_id(&resolved_method.name).unwrap();
+    let expr = compute_access_method(&resolved_method.access, building);
+    building.methods.values[existing_method_id].access = expr;
+}
+
+fn compute_access_composite_types(
     resolved: &ResolvedAccess,
-    self_type_info: &GqlCompositeTypeKind,
+    self_type_info: &GqlCompositeType,
     building: &SystemContextBuilding,
 ) -> Access {
     Access {
-        creation: compute_expression(&resolved.creation, self_type_info, building, true),
-        read: compute_expression(&resolved.read, self_type_info, building, true),
-        update: compute_expression(&resolved.update, self_type_info, building, true),
-        delete: compute_expression(&resolved.delete, self_type_info, building, true),
+        creation: access_utils::compute_expression(
+            &resolved.creation,
+            Some(self_type_info),
+            building,
+            true,
+        ),
+        read: access_utils::compute_expression(
+            &resolved.read,
+            Some(self_type_info),
+            building,
+            true,
+        ),
+        update: access_utils::compute_expression(
+            &resolved.update,
+            Some(self_type_info),
+            building,
+            true,
+        ),
+        delete: access_utils::compute_expression(
+            &resolved.delete,
+            Some(self_type_info),
+            building,
+            true,
+        ),
     }
 }
 
-enum PathSelection<'a> {
-    Column(ColumnId, &'a GqlFieldType),
-    Context(AccessConextSelection),
-}
-
-fn compute_selection<'a>(
-    selection: &FieldSelection<Typed>,
-    self_type_info: &'a GqlCompositeTypeKind,
-) -> PathSelection<'a> {
-    fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
-        match selection {
-            FieldSelection::Single(identifier, _) => acc.push(identifier.0.clone()),
-            FieldSelection::Select(path, identifier, _, _) => {
-                flatten(path, acc);
-                acc.push(identifier.0.clone());
-            }
-        }
-    }
-
-    fn unflatten(elements: &[String]) -> AccessConextSelection {
-        if elements.len() == 1 {
-            AccessConextSelection::Single(elements[0].clone())
-        } else {
-            AccessConextSelection::Select(
-                Box::new(unflatten(&elements[..elements.len() - 1])),
-                elements.last().unwrap().clone(),
-            )
-        }
-    }
-
-    fn get_column<'a>(
-        path_elements: &[String],
-        self_type_info: &'a GqlCompositeTypeKind,
-    ) -> (ColumnId, &'a GqlFieldType) {
-        if path_elements.len() == 1 {
-            let field = self_type_info
-                .fields
-                .iter()
-                .find(|field| field.name == path_elements[0])
-                .unwrap();
-            match &field.relation {
-                GqlRelation::Pk { column_id }
-                | GqlRelation::Scalar { column_id }
-                | GqlRelation::ManyToOne { column_id, .. } => (column_id.clone(), &field.typ),
-                GqlRelation::OneToMany { .. } => todo!(),
-            }
-        } else {
-            todo!() // Nested selection such as self.venue.published
-        }
-    }
-
-    let mut path_elements = vec![];
-    flatten(selection, &mut path_elements);
-
-    if path_elements[0] == "self" {
-        let (column_id, column_type) = get_column(&path_elements[1..], self_type_info);
-        PathSelection::Column(column_id, column_type)
-    } else {
-        PathSelection::Context(unflatten(&path_elements))
-    }
-}
-
-fn compute_expression(
-    expr: &AstExpr<Typed>,
-    self_type_info: &GqlCompositeTypeKind,
-    building: &SystemContextBuilding,
-    coerce_boolean: bool,
-) -> AccessExpression {
-    match expr {
-        AstExpr::FieldSelection(selection) => {
-            match compute_selection(selection, self_type_info) {
-                PathSelection::Column(column_id, column_type) => {
-                    let column = AccessExpression::Column(column_id);
-
-                    // Coerces the result into an equivalent RelationalOp if `coerce_boolean` is true
-                    // For example, exapnds `self.published` to `self.published == true`, if `published` is a boolean column
-                    // This allows specifying access rule such as `AuthContext.role == "ROLE_ADMIN" || self.published` instead of
-                    // AuthContext.role == "ROLE_ADMIN" || self.published == true`
-                    if coerce_boolean
-                        && column_type.base_type(&building.types.values).name == "Boolean"
-                    {
-                        AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-                            Box::new(column),
-                            Box::new(AccessExpression::BooleanLiteral(true)),
-                        ))
-                    } else {
-                        column
-                    }
-                }
-                PathSelection::Context(c) => AccessExpression::ContextSelection(c),
-            }
-        }
-        AstExpr::LogicalOp(op) => match op {
-            LogicalOp::And(left, right, _) => AccessExpression::LogicalOp(AccessLogicalOp::And(
-                Box::new(compute_expression(left, self_type_info, building, true)),
-                Box::new(compute_expression(right, self_type_info, building, true)),
-            )),
-            LogicalOp::Or(left, right, _) => AccessExpression::LogicalOp(AccessLogicalOp::Or(
-                Box::new(compute_expression(left, self_type_info, building, true)),
-                Box::new(compute_expression(right, self_type_info, building, true)),
-            )),
-            LogicalOp::Not(value, _, _) => AccessExpression::LogicalOp(AccessLogicalOp::Not(
-                Box::new(compute_expression(value, self_type_info, building, true)),
-            )),
-        },
-        AstExpr::RelationalOp(op) => match op {
-            RelationalOp::Eq(left, right, _) => {
-                AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-                    Box::new(compute_expression(left, self_type_info, building, false)),
-                    Box::new(compute_expression(right, self_type_info, building, false)),
-                ))
-            }
-            RelationalOp::Neq(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::Lt(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::Lte(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::Gt(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::Gte(_left, _right, _) => {
-                todo!()
-            }
-        },
-        AstExpr::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
-        AstExpr::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),
-        AstExpr::NumberLiteral(value, _) => AccessExpression::NumberLiteral(*value),
+fn compute_access_method(resolved: &ResolvedAccess, building: &SystemContextBuilding) -> Access {
+    Access {
+        creation: access_utils::compute_expression(&resolved.creation, None, building, true),
+        read: access_utils::compute_expression(&resolved.read, None, building, true),
+        update: access_utils::compute_expression(&resolved.update, None, building, true),
+        delete: access_utils::compute_expression(&resolved.delete, None, building, true),
     }
 }
 
 fn create_field(
     field: &ResolvedField,
-    table_id: SerializableSlabIndex<PhysicalTable>,
+    table_id: Option<SerializableSlabIndex<PhysicalTable>>,
     building: &SystemContextBuilding,
     env: &MappedArena<ResolvedType>,
 ) -> GqlField {
@@ -350,7 +262,12 @@ fn create_field(
     GqlField {
         name: field.name.to_owned(),
         typ: create_field_type(&field.typ, building),
-        relation: create_relation(field, table_id, building, env),
+        relation: if let Some(table_id) = table_id {
+            create_relation(field, table_id, building, env)
+        } else {
+            GqlRelation::NonPersistent // was not provided a table id, type is not persistent in database
+                                       // TODO: rethink GqlField with non-persistent models in mind
+        },
     }
 }
 
@@ -374,10 +291,10 @@ fn create_column(
             match field_type {
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
                     table_name: table_name.to_string(),
-                    column_name: field.column_name.clone(),
+                    column_name: field.get_column_name().to_string(),
                     typ: determine_column_type(pt, field),
-                    is_pk: field.is_pk,
-                    is_autoincrement: if field.is_autoincrement {
+                    is_pk: field.get_is_pk(),
+                    is_autoincrement: if field.get_is_autoincrement() {
                         assert!(
                             field.typ.deref(env) == &ResolvedType::Primitive(PrimitiveType::Int)
                         );
@@ -394,10 +311,10 @@ fn create_column(
                     let other_pk_field = ct.pk_field().unwrap();
                     Some(PhysicalColumn {
                         table_name: table_name.to_string(),
-                        column_name: field.column_name.clone(),
+                        column_name: field.get_column_name().to_string(),
                         typ: PhysicalColumnType::ColumnReference {
-                            ref_table_name: ct.table_name.clone(),
-                            ref_column_name: other_pk_field.column_name.clone(),
+                            ref_table_name: ct.get_table_name().to_string(),
+                            ref_column_name: other_pk_field.get_column_name().to_string(),
                             ref_pk_type: Box::new(determine_column_type(
                                 &other_pk_field.typ.deref(env).as_primitive(),
                                 field,
@@ -439,12 +356,11 @@ fn create_column(
                 for _ in 0..depth {
                     pt = PrimitiveType::Array(Box::new(pt))
                 }
-                let column_type = determine_column_type(&pt, field);
 
                 Some(PhysicalColumn {
                     table_name: table_name.to_string(),
-                    column_name: field.column_name.clone(),
-                    typ: column_type,
+                    column_name: field.get_column_name().to_string(),
+                    typ: determine_column_type(&pt, field),
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: optional,
@@ -468,7 +384,7 @@ fn determine_column_type<'a>(
         };
     }
 
-    if let Some(hint) = &field.type_hint {
+    if let Some(hint) = &field.get_type_hint() {
         match hint {
             ResolvedTypeHint::Explicit { dbtype } => {
                 PhysicalColumnType::from_string(dbtype).unwrap()
@@ -598,7 +514,12 @@ fn determine_column_type<'a>(
                 timezone: true,
             },
             PrimitiveType::Json => PhysicalColumnType::Json,
-            PrimitiveType::Array(_) => panic!(),
+            PrimitiveType::Blob => PhysicalColumnType::Blob,
+            PrimitiveType::Array(_)
+            | PrimitiveType::ClaytipInjected
+            | PrimitiveType::Interception(_) => {
+                panic!()
+            }
         }
     }
 }
@@ -614,7 +535,7 @@ fn create_relation(
         table_id: SerializableSlabIndex<PhysicalTable>,
         field: &ResolvedField,
     ) -> Option<ColumnId> {
-        let column_name = field.column_name.clone();
+        let column_name = field.get_column_name().to_string();
 
         table
             .column_index(&column_name)
@@ -623,7 +544,7 @@ fn create_relation(
 
     let table = &building.tables[table_id];
 
-    if field.is_pk {
+    if field.get_is_pk() {
         let column_id = compute_column_id(table, table_id, field);
         GqlRelation::Pk {
             column_id: column_id.unwrap(),
@@ -645,7 +566,7 @@ fn create_relation(
                 let other_table_id = other_type.table_id().unwrap();
                 let other_table = &building.tables[other_table_id];
 
-                let column_name = field.column_name.clone();
+                let column_name = field.get_column_name().to_string();
                 let other_type_column_id = other_table
                     .column_index(&column_name)
                     .map(|index| ColumnId::new(other_table_id, index))

@@ -4,7 +4,7 @@ use anyhow::Result;
 use payas_model::spec::ToModel;
 use payas_model::sql::database::Database;
 use payas_sql::spec::SchemaSpec;
-use std::{fs::File, io::Write, path::PathBuf};
+use std::{fs::File, io::Write, path::PathBuf, time::SystemTime};
 
 use super::Command;
 
@@ -14,13 +14,14 @@ pub struct ImportCommand {
 }
 
 impl Command for ImportCommand {
-    fn run(&self) -> Result<()> {
-        let database = Database::from_env(1)?; // TODO: error handling here
-        database.get_client()?;
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
+        let database = Database::from_env(Some(1))?; // TODO: error handling here
+        let mut client = database.get_client()?;
 
         let mut issues = Vec::new();
 
-        let mut schema = SchemaSpec::from_db(&database)?;
+        let mut schema = SchemaSpec::from_db(&mut client)?;
+
         let mut model = schema.value.to_model();
 
         issues.append(&mut schema.issues);

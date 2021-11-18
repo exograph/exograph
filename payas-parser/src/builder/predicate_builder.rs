@@ -1,12 +1,12 @@
 use payas_model::model::{
     mapped_arena::MappedArena,
     types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
-    GqlCompositeTypeKind,
+    GqlCompositeType, GqlCompositeTypeKind,
 };
 use std::collections::HashMap;
 
 use super::{
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
     system_builder::SystemContextBuilding,
 };
 use payas_model::model::predicate::*;
@@ -37,22 +37,40 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
                     },
                 );
             }
-            ResolvedType::Composite(c) => {
+            ResolvedType::Composite(
+                c
+                @
+                ResolvedCompositeType {
+                    kind: ResolvedCompositeTypeKind::Persistent { .. },
+                    ..
+                },
+            ) => {
                 let shallow_type = create_shallow_type(c);
                 let param_type_name = shallow_type.name.clone();
                 building.predicate_types.add(&param_type_name, shallow_type);
             }
+            _ => {}
         }
     }
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.types.iter() {
-        let param_type_name = get_parameter_type_name(&model_type.name);
-        let existing_param_id = building.predicate_types.get_id(&param_type_name);
+        // expand filter types for both persistent composite and primitive filter parameters
+        // but NOT non-persistent composite types
+        if !matches!(
+            &model_type.kind,
+            GqlTypeKind::Composite(GqlCompositeType {
+                kind: GqlCompositeTypeKind::NonPersistent { .. },
+                ..
+            })
+        ) {
+            let param_type_name = get_parameter_type_name(&model_type.name);
+            let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        let new_kind = expand_type(model_type, building);
-        building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
+            let new_kind = expand_type(model_type, building);
+            building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
+        }
     }
 }
 
@@ -70,7 +88,7 @@ fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType 
 fn expand_type(gql_type: &GqlType, building: &SystemContextBuilding) -> PredicateParameterTypeKind {
     match &gql_type.kind {
         GqlTypeKind::Primitive => create_operator_filter_type_kind(gql_type, building),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
             create_composite_filter_type_kind(gql_type, fields, building)
         }
     }
@@ -96,7 +114,7 @@ lazy_static! {
             Some(vec![
                 "eq", "neq",
                 "lt", "lte", "gt", "gte",
-                "like", "startsWith", "endsWith"
+                "like", "ilike", "startsWith", "endsWith"
             ])
         );
 
@@ -119,6 +137,14 @@ lazy_static! {
             "Json",
             Some(vec!["contains", "containedBy", "matchKey", "matchAllKeys", "matchAnyKey"])
         );
+
+        supported_operators.insert(
+            "Blob",
+            None
+        );
+
+        supported_operators.insert("ClaytipInjected", None);
+        supported_operators.insert("Operation", None); // TODO: Re-examine if this is the best way (for both injected and interception)
 
         supported_operators
     };

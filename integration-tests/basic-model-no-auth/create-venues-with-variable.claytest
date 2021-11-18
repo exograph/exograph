@@ -1,0 +1,35 @@
+operation: |
+    mutation($data: [VenueCreationInput]){
+      createVenues(data: $data) {
+        id
+      }
+    }
+variable: |
+    {
+      "data": [
+        { 
+          "name": "V1", 
+          "published": true, 
+          "latitude": 1.0
+        }, 
+        { 
+          "published": false, 
+          "name": "V2", 
+          "latitude": 2.0
+        }
+      ]
+    }
+response: |
+    {
+      "data": {
+        "createVenues": [
+          {
+            "id": 3
+          },
+          {
+            "id": 4
+          }
+        ]
+      }
+    }
+    

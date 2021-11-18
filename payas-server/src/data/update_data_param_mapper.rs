@@ -1,10 +1,12 @@
 use std::{cell::RefCell, rc::Rc};
 
 use anyhow::*;
-use async_graphql_value::Value;
+use async_graphql_value::ConstValue;
+use maybe_owned::MaybeOwned;
 
 use crate::{
     data::mutation_resolver::{return_type_info, table_name},
+    execution::query_context::QueryContext,
     sql::column::Column,
 };
 
@@ -14,7 +16,7 @@ use payas_model::{
         relation::GqlRelation,
         system::ModelSystem,
         types::GqlTypeKind,
-        GqlCompositeTypeKind, GqlType,
+        GqlCompositeType, GqlType,
     },
     sql::{
         column::{PhysicalColumn, PhysicalColumnType, ProxyColumn},
@@ -27,38 +29,30 @@ use payas_model::{
     },
 };
 
-use super::{
-    operation_context::OperationContext,
-    sql_mapper::{SQLMapper, SQLUpdateMapper},
-};
+use super::operation_mapper::{SQLMapper, SQLUpdateMapper};
 
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
     fn update_script(
         &'a self,
         mutation: &'a Mutation,
-        predicate: &'a Predicate,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
         select: Select<'a>,
-        argument: &'a Value,
-        operation_context: &'a OperationContext<'a>,
+        argument: &'a ConstValue,
+        query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript<'a>> {
-        let system = &operation_context.query_context.system;
+        let system = &query_context.get_system();
         let data_type = &system.mutation_types[self.type_id];
 
-        let argument = match argument {
-            Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
-            _ => argument,
-        };
+        let self_update_columns = compute_update_columns(data_type, argument, query_context);
 
-        let self_update_columns = compute_update_columns(data_type, argument, operation_context);
-
-        let (table, _, _) = return_type_info(mutation, operation_context);
+        let (table, _, _) = return_type_info(mutation, query_context);
         if !needs_transaction(data_type) {
             let ops = vec![(
-                table_name(mutation, operation_context),
+                table_name(mutation, query_context),
                 SQLOperation::Update(table.update(
                     self_update_columns,
                     predicate,
-                    vec![operation_context.create_column(Column::Star)],
+                    vec![Column::Star.into()],
                 )),
             )];
             Ok(TransactionScript::Single(TransactionStep::Concrete(
@@ -67,7 +61,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         } else {
             let pk_col = {
                 let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
-                operation_context.create_column(Column::Physical(pk_physical_col))
+                Column::Physical(pk_physical_col).into()
             };
 
             let update_op = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep::new(
@@ -80,7 +74,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 argument,
                 update_op.clone(),
                 container_model_type,
-                operation_context,
+                query_context,
             );
 
             let mut ops = vec![update_op.clone()];
@@ -98,22 +92,18 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 
 fn compute_update_columns<'a>(
     data_type: &'a GqlType,
-    argument: &'a Value,
-    operation_context: &'a OperationContext<'a>,
-) -> Vec<(&'a PhysicalColumn, &'a Column<'a>)> {
-    let system = &operation_context.query_context.system;
-    let argument = match argument {
-        Value::Variable(name) => operation_context.resolve_variable(name.as_str()).unwrap(),
-        _ => argument,
-    };
+    argument: &'a ConstValue,
+    query_context: &'a QueryContext<'a>,
+) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
+    let system = &query_context.get_system();
 
     match &data_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields
             .iter()
             .flat_map(|field| {
                 field.relation.self_column().and_then(|key_column_id| {
-                    operation_context
+                    query_context
                         .get_argument_field(argument, &field.name)
                         .map(|argument_value| {
                             let key_column = key_column_id.get_column(system);
@@ -124,7 +114,7 @@ fn compute_update_columns<'a>(
                                         .pk_column_id()
                                         .map(|column_id| &column_id.get_column(system).column_name)
                                         .unwrap();
-                                    match operation_context.get_argument_field(
+                                    match query_context.get_argument_field(
                                         argument_value,
                                         other_type_pk_field_name,
                                     ) {
@@ -135,9 +125,9 @@ fn compute_update_columns<'a>(
                                 _ => argument_value,
                             };
 
-                            let value_column = operation_context
-                                .literal_column(argument_value.clone(), key_column);
-                            (key_column, value_column)
+                            let value_column =
+                                query_context.literal_column(argument_value, key_column);
+                            (key_column, value_column.unwrap())
                         })
                 })
             })
@@ -148,7 +138,7 @@ fn compute_update_columns<'a>(
 fn needs_transaction(mutation_type: &GqlType) -> bool {
     match &mutation_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => fields
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields
             .iter()
             .any(|field| matches!(&field.relation, GqlRelation::OneToMany { .. })),
     }
@@ -161,20 +151,20 @@ fn needs_transaction(mutation_type: &GqlType) -> bool {
 // TODO: Do this once we rethink how we set up the parameters.
 fn compute_nested<'a>(
     data_type: &'a GqlType,
-    argument: &'a Value,
+    argument: &'a ConstValue,
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
-    operation_context: &'a OperationContext<'a>,
+    query_context: &'a QueryContext<'a>,
 ) -> Vec<TransactionStep<'a>> {
-    let system = &operation_context.query_context.system;
+    let system = &query_context.get_system();
 
     match &data_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { fields, .. }) => {
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
             fields.iter().flat_map(|field| match &field.relation {
                 GqlRelation::OneToMany { other_type_id, .. } => {
                     let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
-                    operation_context
+                    query_context
                         .get_argument_field(argument, &field.name)
                         .iter()
                         .flat_map(|argument| {
@@ -183,7 +173,7 @@ fn compute_nested<'a>(
                             ops.extend(compute_nested_update(
                                 field_model_type,
                                 argument,
-                                operation_context,
+                                query_context,
                                 prev_step.clone(),
                                 container_model_type,
                             ));
@@ -191,7 +181,7 @@ fn compute_nested<'a>(
                             ops.extend(compute_nested_create(
                                 field_model_type,
                                 argument,
-                                operation_context,
+                                query_context,
                                 prev_step.clone(),
                                 container_model_type,
                             ));
@@ -199,7 +189,7 @@ fn compute_nested<'a>(
                             ops.extend(compute_nested_delete(
                                 field_model_type,
                                 argument,
-                                operation_context,
+                                query_context,
                                 prev_step.clone(),
                                 container_model_type,
                             ));
@@ -220,10 +210,10 @@ fn compute_nested_reference_column<'a>(
     container_model_type: &'a GqlType,
     system: &'a ModelSystem,
 ) -> Option<&'a PhysicalColumn> {
-    let pk_column = match container_model_type.kind {
+    let pk_column = match &container_model_type.kind {
         GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeTypeKind { table_id, .. }) => {
-            let container_table = &system.tables[table_id];
+        GqlTypeKind::Composite(kind) => {
+            let container_table = &system.tables[kind.get_table_id()];
             container_table.get_pk_physical_column()
         }
     }
@@ -249,36 +239,36 @@ fn compute_nested_reference_column<'a>(
 // Looks for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
-    argument: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    argument: &'a ConstValue,
+    query_context: &'a QueryContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
-    let system = &operation_context.query_context.system;
+    let system = &query_context.get_system();
 
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-    let update_arg = operation_context.get_argument_field(argument, "update");
+    let update_arg = query_context.get_argument_field(argument, "update");
 
     match update_arg {
         Some(update_arg) => match update_arg {
-            arg @ Value::Object(..) => {
+            arg @ ConstValue::Object(..) => {
                 vec![compute_nested_update_object_arg(
                     field_model_type,
                     arg,
-                    operation_context,
+                    query_context,
                     prev_step,
                     nested_reference_col,
                 )]
             }
-            Value::List(update_arg) => update_arg
+            ConstValue::List(update_arg) => update_arg
                 .iter()
                 .map(|arg| {
                     compute_nested_update_object_arg(
                         field_model_type,
                         arg,
-                        operation_context,
+                        query_context,
                         prev_step.clone(),
                         nested_reference_col,
                     )
@@ -293,29 +283,31 @@ fn compute_nested_update<'a>(
 // Compute update step assuming that the argument is a single object (not an array)
 fn compute_nested_update_object_arg<'a>(
     field_model_type: &'a GqlType,
-    argument: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    argument: &'a ConstValue,
+    query_context: &'a QueryContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     nested_reference_col: &'a PhysicalColumn,
 ) -> TransactionStep<'a> {
-    assert!(matches!(argument, Value::Object(..)));
+    assert!(matches!(argument, ConstValue::Object(..)));
 
-    let system = &operation_context.query_context.system;
+    let system = &query_context.get_system();
 
-    let nested = compute_update_columns(field_model_type, argument, operation_context);
-    let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.iter().partition(|elem| elem.0.is_pk);
+    let nested = compute_update_columns(field_model_type, argument, query_context);
+    let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
 
     let predicate = pk_columns
-        .iter()
+        .into_iter()
         .fold(Predicate::True, |acc, (pk_col, value)| {
-            let pk_column = operation_context.create_column(Column::Physical(pk_col));
-            Predicate::And(Box::new(acc), Box::new(Predicate::Eq(pk_column, value)))
+            Predicate::and(
+                acc,
+                Predicate::Eq(Column::Physical(pk_col).into(), value.into()),
+            )
         });
     let table = &system.tables[field_model_type.table_id().unwrap()];
 
     let mut nested_proxies: Vec<_> = nested
         .into_iter()
-        .map(|(column, value)| (column, ProxyColumn::Concrete(value)))
+        .map(|(column, value)| (column, ProxyColumn::Concrete(value.into())))
         .collect();
     nested_proxies.push((
         nested_reference_col,
@@ -327,7 +319,7 @@ fn compute_nested_update_object_arg<'a>(
 
     let op = TemplateSQLOperation::Update(TemplateUpdate {
         table,
-        predicate: operation_context.create_predicate(predicate),
+        predicate,
         column_values: nested_proxies,
         returning: vec![],
     });
@@ -342,18 +334,18 @@ fn compute_nested_update_object_arg<'a>(
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
 fn compute_nested_create<'a>(
     field_model_type: &'a GqlType,
-    argument: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    argument: &'a ConstValue,
+    query_context: &'a QueryContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
-    let system = &operation_context.query_context.system;
+    let system = &query_context.get_system();
 
-    let step = operation_context
+    let step = query_context
         .get_argument_field(argument, "create")
         .map(|create_argument| {
             field_model_type
-                .map_to_sql(create_argument, operation_context)
+                .map_to_sql(create_argument, query_context)
                 .unwrap()
         })
         .map(|insertion_info| {
@@ -367,10 +359,8 @@ fn compute_nested_create<'a>(
                 .values
                 .into_iter()
                 .map(|subvalues| {
-                    let mut proxied: Vec<_> = subvalues
-                        .into_iter()
-                        .map(|value| ProxyColumn::Concrete(value))
-                        .collect();
+                    let mut proxied: Vec<_> =
+                        subvalues.into_iter().map(ProxyColumn::Concrete).collect();
                     proxied.push(ProxyColumn::Template {
                         col_index: 0,
                         step: prev_step.clone(),
@@ -401,8 +391,8 @@ fn compute_nested_create<'a>(
 
 fn compute_nested_delete<'a>(
     field_model_type: &'a GqlType,
-    argument: &'a Value,
-    operation_context: &'a OperationContext<'a>,
+    argument: &'a ConstValue,
+    query_context: &'a QueryContext<'a>,
     prev_step: Rc<TransactionStep<'a>>,
     _container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
@@ -410,33 +400,35 @@ fn compute_nested_delete<'a>(
     // TODO: Revisit this.
 
     fn compute_predicate<'a>(
-        elem_value: &Value,
+        elem_value: &ConstValue,
         field_model_type: &'a GqlType,
-        operation_context: &'a OperationContext<'a>,
+        query_context: &'a QueryContext<'a>,
     ) -> Predicate<'a> {
-        let system = &operation_context.query_context.system;
+        let system = &query_context.get_system();
 
         let pk_field = field_model_type.pk_field().unwrap();
 
         match elem_value {
-            Value::Object(map) => {
-                let pk_value = map.get(pk_field.name.as_str()).unwrap().clone();
+            ConstValue::Object(map) => {
+                let pk_value = map.get(pk_field.name.as_str()).unwrap();
                 let pk_column = field_model_type
                     .pk_column_id()
                     .map(|pk_column| pk_column.get_column(system))
                     .unwrap();
 
                 Predicate::Eq(
-                    operation_context.create_column(Column::Physical(pk_column)),
-                    operation_context.literal_column(pk_value, pk_column),
+                    Column::Physical(pk_column).into(),
+                    query_context
+                        .literal_column(pk_value, pk_column)
+                        .unwrap()
+                        .into(),
                 )
             }
-            Value::List(values) => {
+            ConstValue::List(values) => {
                 let mut predicate = Predicate::False;
                 for value in values {
-                    let elem_predicate =
-                        compute_predicate(value, field_model_type, operation_context);
-                    predicate = Predicate::Or(Box::new(predicate), Box::new(elem_predicate));
+                    let elem_predicate = compute_predicate(value, field_model_type, query_context);
+                    predicate = Predicate::or(predicate, elem_predicate);
                 }
                 predicate
             }
@@ -444,16 +436,16 @@ fn compute_nested_delete<'a>(
         }
     }
 
-    let argument = operation_context.get_argument_field(argument, "delete");
+    let argument = query_context.get_argument_field(argument, "delete");
 
     match argument {
         Some(argument) => {
-            let predicate = compute_predicate(argument, field_model_type, operation_context);
-            let system = &operation_context.query_context.system;
+            let predicate = compute_predicate(argument, field_model_type, query_context);
+            let system = &query_context.get_system();
             vec![TransactionStep::Template(TemplateTransactionStep {
                 operation: TemplateSQLOperation::Delete(TemplateDelete {
                     table: &system.tables[field_model_type.table_id().unwrap()],
-                    predicate: Some(operation_context.create_predicate(predicate)),
+                    predicate,
                     returning: vec![],
                 }),
                 step: prev_step,

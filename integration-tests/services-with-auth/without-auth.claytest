@@ -1,0 +1,25 @@
+operation: |
+    mutation {
+      logNormal(entry: {
+      	level: "NORMAL",
+        message: "allowed"
+      })
+    
+      logPrivileged(entry: {
+        level: "NORMAL"
+        message: "not allowed"
+      })
+    }
+auth: |
+    {
+        "sub": 2,
+        "role": "ROLE_NOT_PRIVILEGED"
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Not authorized"
+        }
+      ]
+    }

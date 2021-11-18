@@ -1,12 +1,12 @@
-use super::{column::Column, Expression, ParameterBinding};
+use super::{column::PhysicalColumn, Expression, ParameterBinding};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ordering {
     Asc,
     Desc,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct OrderBy<'a>(pub Vec<(&'a Column<'a>, Ordering)>);
+#[derive(Debug, PartialEq)]
+pub struct OrderBy<'a>(pub Vec<(&'a PhysicalColumn, Ordering)>);
 
 impl<'a> Expression for OrderBy<'a> {
     fn binding(&self, expression_context: &mut super::ExpressionContext) -> ParameterBinding {
@@ -26,7 +26,10 @@ impl<'a> Expression for OrderBy<'a> {
             })
             .unzip();
 
-        ParameterBinding::new(stmts.join(", "), params.into_iter().flatten().collect())
+        ParameterBinding::new(
+            format!("ORDER BY {}", stmts.join(", ")),
+            params.into_iter().flatten().collect(),
+        )
     }
 }
 
@@ -46,14 +49,13 @@ mod test {
             is_autoincrement: false,
             is_nullable: true,
         };
-        let age_col = Column::Physical(&age_col);
 
         let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
 
         let mut expression_context = ExpressionContext::default();
         let binding = order_by.binding(&mut expression_context);
 
-        assert_binding!(binding, r#""people"."age" DESC"#);
+        assert_binding!(binding, r#"ORDER BY "people"."age" DESC"#);
     }
 
     #[test]
@@ -66,7 +68,6 @@ mod test {
             is_autoincrement: false,
             is_nullable: true,
         };
-        let name_col = Column::Physical(&name_col);
 
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
@@ -76,7 +77,6 @@ mod test {
             is_autoincrement: false,
             is_nullable: true,
         };
-        let age_col = Column::Physical(&age_col);
 
         {
             let order_by = OrderBy(vec![(&name_col, Ordering::Asc), (&age_col, Ordering::Desc)]);
@@ -84,7 +84,10 @@ mod test {
             let mut expression_context = ExpressionContext::default();
             let binding = order_by.binding(&mut expression_context);
 
-            assert_binding!(binding, r#""people"."name" ASC, "people"."age" DESC"#);
+            assert_binding!(
+                binding,
+                r#"ORDER BY "people"."name" ASC, "people"."age" DESC"#
+            );
         }
 
         // Reverse the order and it should be refleted in the statement
@@ -94,7 +97,10 @@ mod test {
             let mut expression_context = ExpressionContext::default();
             let binding = order_by.binding(&mut expression_context);
 
-            assert_binding!(binding, r#""people"."age" DESC, "people"."name" ASC"#);
+            assert_binding!(
+                binding,
+                r#"ORDER BY "people"."age" DESC, "people"."name" ASC"#
+            );
         }
     }
 }

@@ -19,10 +19,10 @@ model ConcertArtist {
 model Artist {
   id: Int @pk @autoincrement
   name: String
-  aristsConcerts: Set[ConcertArtist]
+  aristsConcerts: Set<ConcertArtist>
 }
 
 model Venue {
   id: Int @pk @autoincrement
-  concerts: Set[Concert] @column("venue_id")
+  concerts: Set<Concert> @column("venue_id")
 }

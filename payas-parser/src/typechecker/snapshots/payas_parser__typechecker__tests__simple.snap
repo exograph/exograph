@@ -25,6 +25,13 @@ values:
   - - ~
     - Primitive: Json
   - - ~
+    - Primitive: Blob
+  - - ~
+    - Primitive: ClaytipInjected
+  - - ~
+    - Primitive:
+        Interception: Operation
+  - - ~
     - Composite:
         name: User
         kind: Persistent
@@ -52,7 +59,7 @@ values:
                                               - Single:
                                                   - - self
                                                   - Reference:
-                                                      index: 10
+                                                      index: 13
                                                       generation: ~
                                               - - role
                                               - Reference:
@@ -68,7 +75,7 @@ values:
                                               - Single:
                                                   - - self
                                                   - Reference:
-                                                      index: 10
+                                                      index: 13
                                                       generation: ~
                                               - - role
                                               - Reference:
@@ -84,11 +91,11 @@ values:
                                       - Single:
                                           - - self
                                           - Reference:
-                                              index: 10
+                                              index: 13
                                               generation: ~
                                       - - doc
                                       - Reference:
-                                          index: 11
+                                          index: 14
                                           generation: ~
                                   - - is_public
                                   - Reference:
@@ -127,18 +134,21 @@ values:
         annotations:
           annotations: {}
   - ~
-  - ~
-  - ~
-  - ~
 map:
+  Blob:
+    index: 10
+    generation: ~
   Boolean:
     index: 0
+    generation: ~
+  Claytip:
+    index: 11
     generation: ~
   Decimal:
     index: 3
     generation: ~
   Doc:
-    index: 11
+    index: 14
     generation: ~
   Float:
     index: 2
@@ -161,10 +171,13 @@ map:
   LocalTime:
     index: 5
     generation: ~
+  Operation:
+    index: 12
+    generation: ~
   String:
     index: 4
     generation: ~
   User:
-    index: 10
+    index: 13
     generation: ~
 

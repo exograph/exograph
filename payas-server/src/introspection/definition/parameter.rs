@@ -4,6 +4,7 @@ use async_graphql_parser::types::InputValueDefinition;
 use crate::introspection::util;
 
 use payas_model::model::{
+    argument::ArgumentParameter,
     limit_offset::{LimitParameter, OffsetParameter},
     operation::{CreateDataParameter, UpdateDataParameter},
     order::*,
@@ -124,6 +125,20 @@ impl Parameter for GqlField {
             GqlFieldType::Reference { .. } => &GqlTypeModifier::NonNull,
             GqlFieldType::List(_) => &GqlTypeModifier::List,
         }
+    }
+}
+
+impl Parameter for ArgumentParameter {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn type_name(&self) -> &str {
+        &self.type_name
+    }
+
+    fn type_modifier(&self) -> &GqlTypeModifier {
+        &self.type_modifier
     }
 }
 

@@ -1,42 +1,36 @@
 use std::rc::Rc;
 
+use maybe_owned::MaybeOwned;
+
 use super::{
     column::Column, physical_table::PhysicalTable, predicate::Predicate,
     transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Delete<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: Option<&'a Predicate<'a>>,
-    pub returning: Vec<&'a Column<'a>>,
+    pub predicate: MaybeOwned<'a, Predicate<'a>>,
+    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> Expression for Delete<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         let table_binding = self.table.binding(expression_context);
 
-        let predicate_binding = self
-            .predicate
-            .map(|predicate| predicate.binding(expression_context));
+        let predicate_binding = self.predicate.binding(expression_context);
 
-        let (stmt, mut params) = match predicate_binding {
-            Some(predicate_binding) => {
-                let mut params = table_binding.params;
-                params.extend(predicate_binding.params);
+        let (stmt, mut params) = {
+            let mut params = table_binding.params;
+            params.extend(predicate_binding.params);
 
-                (
-                    format!(
-                        "DELETE FROM {} WHERE {}",
-                        table_binding.stmt, predicate_binding.stmt
-                    ),
-                    params,
-                )
-            }
-            None => (
-                format!("DELETE FROM {}", table_binding.stmt,),
-                table_binding.params,
-            ),
+            (
+                format!(
+                    "DELETE FROM {} WHERE {}",
+                    table_binding.stmt, predicate_binding.stmt
+                ),
+                params,
+            )
         };
 
         if self.returning.is_empty() {
@@ -59,17 +53,26 @@ impl<'a> Expression for Delete<'a> {
 #[derive(Debug)]
 pub struct TemplateDelete<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: Option<&'a Predicate<'a>>,
-    pub returning: Vec<&'a Column<'a>>,
+    pub predicate: Predicate<'a>,
+    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 // TODO: Tie this properly to the prev_step
 impl<'a> TemplateDelete<'a> {
     pub fn resolve(&'a self, _prev_step: Rc<TransactionStep<'a>>) -> Delete<'a> {
+        let TemplateDelete {
+            table,
+            predicate,
+            returning,
+        } = self;
+
         Delete {
-            table: self.table,
-            predicate: self.predicate,
-            returning: self.returning.clone(),
+            table,
+            predicate: predicate.into(),
+            returning: returning
+                .iter()
+                .map(|c| MaybeOwned::Borrowed(c.as_ref()))
+                .collect(),
         }
     }
 }

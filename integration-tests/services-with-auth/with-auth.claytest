@@ -1,0 +1,18 @@
+operation: |
+    mutation {
+      logPrivileged(entry: {
+        level: "NORMAL"
+        message: "this is allowed now"
+      })
+    }
+auth: |
+    {
+        "sub": 1,
+        "role": "ROLE_PRIVILEGED"
+    }
+response: |
+    {
+      "data": {
+        "logPrivileged": true
+      }
+    }

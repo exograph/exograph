@@ -13,7 +13,42 @@ module.exports = grammar({
   rules: {
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
-      $.model
+      $.model,
+      $.service
+    ),
+    service: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      "service",
+      field("name", $.term),
+      field("body", $.service_body)
+    ),
+    service_body: $ => seq(
+      "{", 
+      repeat(field("field", $.service_field)), 
+      "}"
+    ),
+    service_field: $ => choice(
+      $.model,
+      $.service_method,
+      $.interceptor
+    ),
+    service_method: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      optional(field("is_exported", "export")),
+      field("type", choice("query", "mutation")),
+      field("name", $.term),
+      "(",
+      optional(commaSep(field("args", $.argument))),
+      "):",
+      field("return_type", $.type)
+    ),
+    interceptor: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      "interceptor",
+      field("name", $.term),
+      "(",
+      optional(commaSep(field("args", $.argument))),
+      ")",
     ),
     model: $ => seq(
       repeat(field("annotation", $.annotation)),
@@ -21,7 +56,7 @@ module.exports = grammar({
       field("name", $.term),
       field("body", $.model_body)
     ),
-    model_kind: $ => choice("model", "context"),
+    model_kind: $ => choice("model", "context", "type", "input type"),
     model_body: $ => seq("{", repeat(field("field", $.field)), "}"),
     annotation: $ => seq(
       "@",
@@ -38,6 +73,12 @@ module.exports = grammar({
     ),
     annotation_map_params: $ => commaSep(field("param", $.annotation_map_param)),
     annotation_map_param: $ => seq(field("name", $.term), "=", field("expr", $.expression)),
+    argument: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      field("name", $.term),
+      ":",
+      field("type", $.type),
+    ),
     field: $ => seq(
       field("name", $.term),
       ":",
@@ -46,9 +87,9 @@ module.exports = grammar({
     ),
     type: $ => choice(
       $.optional_type,
-      seq($.term, optional(seq("[", commaSep(field("type_param", $.type)), "]")))
+      seq($.term, optional(seq("<", commaSep(field("type_param", $.type)), ">")))
     ),
-    array_type: $ => seq("[", field("inner", $.type), "]"),
+    array_type: $ => seq("<", field("inner", $.type), ">"),
     optional_type: $ => seq(field("inner", $.type), "?"),
     expression: $ => choice(
       $.parenthetical,
@@ -110,8 +151,9 @@ module.exports = grammar({
       field("left", $.expression), ">=", field("right", $.expression)
     )),
     term: $ => /[a-zA-Z_]+/,
+    str: $ => /(?:[^"\\]|\\.)*/, // string with escaped quotes
     number: $ => /\d+/,
-    literal_str: $ => seq("\"", field("value", $.term), "\""),
+    literal_str: $ => seq("\"", field("value", $.str), "\""),
     literal_boolean: $ => choice("true", "false"),
     literal_number: $ => field("value", $.number),
     comment: $ => token(choice(

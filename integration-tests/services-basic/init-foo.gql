@@ -1,0 +1,26 @@
+operation: |
+    mutation {
+        foo1: createFoo(data: {
+            bar: 3,
+            baz: 4,
+            qux: 5
+        }) {
+            id
+        }
+
+        foo2: createFoo(data: {
+            bar: 1,
+            baz: 4,
+            qux: 6 
+        }) {
+            id
+        }
+
+        foo3: createFoo(data: {
+            bar: 10,
+            baz: 20,
+            qux: 30 
+        }) {
+            id
+        }
+    }  
