@@ -128,9 +128,14 @@ pub trait DataParamBuilder<D> {
             .flat_map(|field| {
                 // Create a nested input data type only if it refers to a many side
                 // So for Venue <-> [Concert] case, create only ConcertCreationInputFromVenue
-                if let ResolvedFieldType::List(_) = field.typ {
+                let typ = match &field.typ {
+                    ResolvedFieldType::Optional(inner_type) => inner_type.as_ref(),
+                    _ => &field.typ,
+                };
+
+                if let ResolvedFieldType::List(_) = typ {
                     if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) =
-                        field.typ.deref(resolved_types)
+                        typ.deref(resolved_types)
                     {
                         Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
                     } else {

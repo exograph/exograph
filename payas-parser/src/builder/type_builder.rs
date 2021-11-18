@@ -295,9 +295,7 @@ fn create_column(
                     typ: determine_column_type(pt, field),
                     is_pk: field.get_is_pk(),
                     is_autoincrement: if field.get_is_autoincrement() {
-                        assert!(
-                            field.typ.deref(env) == &ResolvedType::Primitive(PrimitiveType::Int)
-                        );
+                        assert!(typ.deref(env) == &ResolvedType::Primitive(PrimitiveType::Int));
                         true
                     } else {
                         false
@@ -530,6 +528,12 @@ fn create_relation(
     building: &SystemContextBuilding,
     env: &MappedArena<ResolvedType>,
 ) -> GqlRelation {
+    // we can treat Optional fields as their inner type for the purposes of computing relations
+    let typ = match &field.typ {
+        ResolvedFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+        _ => &field.typ,
+    };
+
     fn compute_column_id(
         table: &PhysicalTable,
         table_id: SerializableSlabIndex<PhysicalTable>,
@@ -550,12 +554,6 @@ fn create_relation(
             column_id: column_id.unwrap(),
         }
     } else {
-        // we can treat Optional fields as their inner type for the purposes of computing relations
-        let typ = match &field.typ {
-            ResolvedFieldType::Optional(inner_typ) => inner_typ.as_ref(),
-            _ => &field.typ,
-        };
-
         match typ {
             ResolvedFieldType::List(underlying) => {
                 // TODO: should grab separate syntaxes for primitive arrays and relations
@@ -573,6 +571,12 @@ fn create_relation(
                 let other_table = &building.tables[other_table_id];
 
                 let column_name = field.get_column_name().to_string();
+
+                //println!("{:#?}", table);
+                //println!("Our field: {}", field.name);
+                //println!("Looking for their: {}", column_name);
+                //println!("{:#?}", other_table);
+
                 let other_type_column_id = other_table
                     .column_index(&column_name)
                     .map(|index| ColumnId::new(other_table_id, index))

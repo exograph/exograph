@@ -963,10 +963,14 @@ fn compute_column_name(
         field: &AstField<Typed>,
         types: &MappedArena<Type>,
     ) -> String {
-        match &field.typ {
-            AstFieldType::Optional(_) => field.name.to_string(),
+        let field_typ = match &field.typ {
+            AstFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+            _ => &field.typ,
+        };
+
+        match field_typ {
             AstFieldType::Plain(_, _, _, _) => {
-                let field_type = field.typ.to_typ(types).deref(types);
+                let field_type = field_typ.to_typ(types).deref(types);
                 match field_type {
                     Type::Composite(_) => format!("{}_id", field.name),
                     Type::Set(typ) => {
@@ -996,6 +1000,7 @@ fn compute_column_name(
                     _ => field.name.clone(),
                 }
             }
+            AstFieldType::Optional(_) => panic!("Optional of Optional?"),
         }
     }
 
