@@ -1115,6 +1115,31 @@ mod tests {
     }
 
     #[test]
+    fn with_optional_fields() {
+        let src = r#"
+        model Concert {
+          id: Int @pk @autoincrement 
+          title: String 
+          venue: Venue?
+          icon: Blob?
+        }
+
+        model Venue {
+          id: Int @pk @autoincrement
+          name: String
+          address: String? @column("custom_address")
+          concerts: Set<Concert>? @column("custom_venueid")
+        }    
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
+    }
+
+    #[test]
     fn with_access() {
         let src = r#"
         context AuthContext {
