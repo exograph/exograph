@@ -101,23 +101,18 @@ async fn resolve(
                         .streaming(Box::pin(response_stream))
                 }
                 Err(err) => {
-                    // TODO: There doesn't seem a way to conditionally yield inside try_stream!,
-                    // so we take the allocation cost for location information
-                    let location_info = match err.downcast_ref::<ExecutionError>() {
-                        Some(err) => format!(
-                            r#", "locations": [{{"line": {}, "column": {}}}]"#,
-                            err.position().line,
-                            err.position().column
-                        ),
-                        None => "".to_string(),
-                    };
-
                     let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         yield to_bytes_static(r#"{"errors": [{"message":""#);
                         yield to_bytes(format!("{}", err.chain().last().unwrap()));
                         yield to_bytes_static(r#"""#);
                         eprintln!("{:?}", err);
-                        yield to_bytes(location_info);
+                        if let Some(err) = err.downcast_ref::<ExecutionError>() {
+                            yield to_bytes_static(r#", "locations": [{"line": "#);
+                            yield to_bytes(err.position().line.to_string());
+                            yield to_bytes_static(r#", "column": "#);
+                            yield to_bytes(err.position().column.to_string());
+                            yield to_bytes_static(r#"}]"#);
+                        };
                         yield to_bytes_static(r#"}"#);
                         yield to_bytes_static("]}");
                     };
