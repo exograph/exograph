@@ -143,10 +143,9 @@ impl<'qc> QueryContext<'qc> {
             .arguments
             .iter()
             .map(|(name, value)| {
-                let v = value
-                    .node
-                    .clone()
-                    .into_const_with(|_| self.var_value(name))?;
+                let v = value.node.clone().into_const_with(|var_name| {
+                    self.var_value(&Positioned::new(var_name, name.pos))
+                })?;
 
                 Ok((name.clone(), Positioned::new(v, value.pos)))
             })
@@ -156,15 +155,16 @@ impl<'qc> QueryContext<'qc> {
     }
 
     fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ExecutionError> {
-        let resolved: Option<&serde_json::Value> = self
+        let resolved = self
             .variables
-            .and_then(|variables| variables.get(name.node.as_str()));
-
-        resolved
-            .map(|json_value| ConstValue::from_json(json_value.to_owned()).unwrap())
+            .and_then(|variables| variables.get(name.node.as_str()))
             .ok_or_else(|| {
                 ExecutionError::VariableNotFound(name.node.as_str().to_string(), name.pos)
-            })
+            })?;
+
+        ConstValue::from_json(resolved.to_owned()).map_err(|e| {
+            ExecutionError::MalformedVariable(name.node.as_str().to_string(), name.pos, e)
+        })
     }
 
     pub fn get_argument_field(
