@@ -1,0 +1,4 @@
+model Venue {
+  id: Int @pk @autoincrement
+  name: String
+}

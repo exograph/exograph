@@ -1,0 +1,26 @@
+# Supply a single element even when an array is expected. GraphQL allows auto-coercing a single element to an array
+operation: |
+    query($id: Int!) {
+      venue(id: $id) {
+        ...Name
+      }
+    }
+variable: |
+    {
+      "id": 1
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Fragment definition 'Name' not found",
+          "locations": [
+            {
+              "line": 3,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
+    

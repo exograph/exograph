@@ -22,7 +22,7 @@ use typed_arena::Arena;
 
 use super::{executor::Executor, resolver::*};
 
-use crate::{data::data_resolver::DataResolver, introspection::schema::*};
+use crate::{data::data_resolver::DataResolver, error::ExecutionError, introspection::schema::*};
 
 pub struct QueryContext<'a> {
     pub operation_name: Option<&'a str>,
@@ -68,10 +68,16 @@ impl<'qc> QueryContext<'qc> {
     pub fn fragment_definition(
         &self,
         fragment: &Positioned<FragmentSpread>,
-    ) -> Option<&FragmentDefinition> {
+    ) -> Result<&FragmentDefinition, ExecutionError> {
         self.fragment_definitions
             .get(&fragment.node.fragment_name.node)
             .map(|v| &v.node)
+            .ok_or_else(|| {
+                ExecutionError::FragmentDefinitionNotFound(
+                    fragment.node.fragment_name.node.as_str().to_string(),
+                    fragment.pos,
+                )
+            })
     }
 
     fn resolve_type(&self, field: &Field) -> Result<JsonValue> {
@@ -132,30 +138,33 @@ impl<'qc> QueryContext<'qc> {
     pub fn field_arguments(
         &'qc self,
         field: &Field,
-    ) -> &'qc Vec<(Positioned<Name>, Positioned<ConstValue>)> {
-        let args = field
+    ) -> Result<&'qc Vec<(Positioned<Name>, Positioned<ConstValue>)>> {
+        let args: Result<Vec<(Positioned<Name>, Positioned<ConstValue>)>> = field
             .arguments
             .iter()
-            .flat_map(|(name, value)| {
-                value
-                    .node
-                    .clone()
-                    .into_const_with(|name| self.var_value(&name))
-                    .ok()
-                    .map(|v| (name.clone(), Positioned::new(v, value.pos)))
+            .map(|(name, value)| {
+                let v = value.node.clone().into_const_with(|var_name| {
+                    self.var_value(&Positioned::new(var_name, name.pos))
+                })?;
+
+                Ok((name.clone(), Positioned::new(v, value.pos)))
             })
             .collect();
 
-        self.field_arguments.alloc(args)
+        Ok(self.field_arguments.alloc(args?))
     }
 
-    fn var_value(&self, name: &str) -> Result<ConstValue> {
-        let resolved: Option<&serde_json::Value> =
-            self.variables.and_then(|variables| variables.get(name));
+    fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ExecutionError> {
+        let resolved = self
+            .variables
+            .and_then(|variables| variables.get(name.node.as_str()))
+            .ok_or_else(|| {
+                ExecutionError::VariableNotFound(name.node.as_str().to_string(), name.pos)
+            })?;
 
-        Ok(resolved
-            .map(|json_value| ConstValue::from_json(json_value.to_owned()).unwrap())
-            .unwrap())
+        ConstValue::from_json(resolved.to_owned()).map_err(|e| {
+            ExecutionError::MalformedVariable(name.node.as_str().to_string(), name.pos, e)
+        })
     }
 
     pub fn get_argument_field(

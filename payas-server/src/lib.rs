@@ -15,6 +15,7 @@ use actix_web::Error;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::{bail, Result};
 
+use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
 
 use async_stream::try_stream;
@@ -27,6 +28,7 @@ use std::time::{Duration, SystemTime};
 
 mod authentication;
 mod data;
+mod error;
 pub mod execution;
 mod introspection;
 pub mod model_watcher;
@@ -102,8 +104,17 @@ async fn resolve(
                     let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         yield to_bytes_static(r#"{"errors": [{"message":""#);
                         yield to_bytes(format!("{}", err.chain().last().unwrap()));
+                        yield to_bytes_static(r#"""#);
                         eprintln!("{:?}", err);
-                        yield to_bytes_static(r#""}]}"#);
+                        if let Some(err) = err.downcast_ref::<ExecutionError>() {
+                            yield to_bytes_static(r#", "locations": [{"line": "#);
+                            yield to_bytes(err.position().line.to_string());
+                            yield to_bytes_static(r#", "column": "#);
+                            yield to_bytes(err.position().column.to_string());
+                            yield to_bytes_static(r#"}]"#);
+                        };
+                        yield to_bytes_static(r#"}"#);
+                        yield to_bytes_static("]}");
                     };
 
                     HttpResponse::Ok()
