@@ -192,7 +192,7 @@ fn resolve_deno(
 
     let function_result = futures::executor::block_on(async {
         let mapped_args = query_context
-            .field_arguments(&field.node)
+            .field_arguments(&field.node)?
             .iter()
             .map(|(gql_name, gql_value)| {
                 (

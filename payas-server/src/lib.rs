@@ -15,6 +15,7 @@ use actix_web::Error;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::{bail, Result};
 
+use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
 
 use async_stream::try_stream;
@@ -27,6 +28,7 @@ use std::time::{Duration, SystemTime};
 
 mod authentication;
 mod data;
+mod error;
 pub mod execution;
 mod introspection;
 pub mod model_watcher;
@@ -99,11 +101,25 @@ async fn resolve(
                         .streaming(Box::pin(response_stream))
                 }
                 Err(err) => {
+                    // TODO: There doesn't seem a way to conditionally yield inside try_stream!,
+                    // so we take the allocation cost for location information
+                    let location_info = match err.downcast_ref::<ExecutionError>() {
+                        Some(err) => format!(
+                            r#", "locations": [{{"line": {}, "column": {}}}]"#,
+                            err.position().line,
+                            err.position().column
+                        ),
+                        None => "".to_string(),
+                    };
+
                     let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         yield to_bytes_static(r#"{"errors": [{"message":""#);
                         yield to_bytes(format!("{}", err.chain().last().unwrap()));
+                        yield to_bytes_static(r#"""#);
                         eprintln!("{:?}", err);
-                        yield to_bytes_static(r#""}]}"#);
+                        yield to_bytes(location_info);
+                        yield to_bytes_static(r#"}"#);
+                        yield to_bytes_static("]}");
                     };
 
                     HttpResponse::Ok()

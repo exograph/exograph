@@ -2980,6 +2980,7 @@ dependencies = [
  "r2d2_postgres",
  "rust_decimal",
  "serde_json",
+ "thiserror",
  "typed-arena",
  "typed-generational-arena",
 ]

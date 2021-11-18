@@ -34,6 +34,7 @@ ctrlc = "3.1.9"
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 maybe-owned = "0.3.4"
 globwalk = "0.8.1"
+thiserror = "1.0.30"
 
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }

@@ -103,7 +103,7 @@ fn create_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let field_arguments = query_context.field_arguments(field);
+    let field_arguments = query_context.field_arguments(field)?;
     let info = insertion_info(data_param, field_arguments, query_context)?.unwrap();
     let ops = info.operation(query_context, true);
 
@@ -134,7 +134,7 @@ fn delete_operation<'a>(
 
     let predicate = super::compute_predicate(
         Some(predicate_param),
-        query_context.field_arguments(field),
+        query_context.field_arguments(field)?,
         access_predicate,
         query_context,
     )
@@ -174,7 +174,7 @@ fn update_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let field_arguments = query_context.field_arguments(field);
+    let field_arguments = query_context.field_arguments(field)?;
     let predicate = super::compute_predicate(
         Some(predicate_param),
         field_arguments,

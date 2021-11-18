@@ -22,7 +22,7 @@ use typed_arena::Arena;
 
 use super::{executor::Executor, resolver::*};
 
-use crate::{data::data_resolver::DataResolver, introspection::schema::*};
+use crate::{data::data_resolver::DataResolver, error::ExecutionError, introspection::schema::*};
 
 pub struct QueryContext<'a> {
     pub operation_name: Option<&'a str>,
@@ -132,30 +132,33 @@ impl<'qc> QueryContext<'qc> {
     pub fn field_arguments(
         &'qc self,
         field: &Field,
-    ) -> &'qc Vec<(Positioned<Name>, Positioned<ConstValue>)> {
-        let args = field
+    ) -> Result<&'qc Vec<(Positioned<Name>, Positioned<ConstValue>)>> {
+        let args: Result<Vec<(Positioned<Name>, Positioned<ConstValue>)>> = field
             .arguments
             .iter()
-            .flat_map(|(name, value)| {
-                value
+            .map(|(name, value)| {
+                let v = value
                     .node
                     .clone()
-                    .into_const_with(|name| self.var_value(&name))
-                    .ok()
-                    .map(|v| (name.clone(), Positioned::new(v, value.pos)))
+                    .into_const_with(|_| self.var_value(name))?;
+
+                Ok((name.clone(), Positioned::new(v, value.pos)))
             })
             .collect();
 
-        self.field_arguments.alloc(args)
+        Ok(self.field_arguments.alloc(args?))
     }
 
-    fn var_value(&self, name: &str) -> Result<ConstValue> {
-        let resolved: Option<&serde_json::Value> =
-            self.variables.and_then(|variables| variables.get(name));
+    fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ExecutionError> {
+        let resolved: Option<&serde_json::Value> = self
+            .variables
+            .and_then(|variables| variables.get(name.node.as_str()));
 
-        Ok(resolved
+        resolved
             .map(|json_value| ConstValue::from_json(json_value.to_owned()).unwrap())
-            .unwrap())
+            .ok_or_else(|| {
+                ExecutionError::VariableNotFound(name.node.as_str().to_string(), name.pos)
+            })
     }
 
     pub fn get_argument_field(
