@@ -68,10 +68,16 @@ impl<'qc> QueryContext<'qc> {
     pub fn fragment_definition(
         &self,
         fragment: &Positioned<FragmentSpread>,
-    ) -> Option<&FragmentDefinition> {
+    ) -> Result<&FragmentDefinition, ExecutionError> {
         self.fragment_definitions
             .get(&fragment.node.fragment_name.node)
             .map(|v| &v.node)
+            .ok_or_else(|| {
+                ExecutionError::FragmentDefinitionNotFound(
+                    fragment.node.fragment_name.node.as_str().to_string(),
+                    fragment.pos,
+                )
+            })
     }
 
     fn resolve_type(&self, field: &Field) -> Result<JsonValue> {

@@ -251,7 +251,7 @@ fn map_selection<'a>(
     match selection {
         Selection::Field(field) => Ok(vec![map_field(query, &field.node, query_context)?]),
         Selection::FragmentSpread(fragment_spread) => {
-            let fragment_definition = query_context.fragment_definition(fragment_spread).unwrap();
+            let fragment_definition = query_context.fragment_definition(fragment_spread)?;
             fragment_definition
                 .selection_set
                 .node
