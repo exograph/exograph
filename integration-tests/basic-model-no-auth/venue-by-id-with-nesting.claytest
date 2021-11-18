@@ -46,7 +46,13 @@ response: |
               "title": "Concert1",
               "published": true,
               "price": 20.50
-            }
+            },
+            {
+              "id": 3,
+              "title": "Concert3",
+              "published": true,
+              "price": 30.5
+            }            
           ]
         },
         "venue2": {
