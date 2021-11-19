@@ -4,7 +4,7 @@ use std::{collections::HashMap, path::Path};
 use anyhow::{anyhow, Result};
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
-use tree_sitter::{Node, Tree};
+use tree_sitter::{Node, Tree, TreeCursor};
 
 use super::sitter_ffi;
 use crate::ast::ast_types::*;
@@ -198,32 +198,17 @@ pub fn convert_service(
     source_span: Span,
     filepath: &Path,
 ) -> AstService<Untyped> {
-    let mut model_cursor = node.walk();
-    let mut method_cursor = node.walk();
-    let mut iterceptor_cursor = node.walk();
-
-    let mut cursor = node.walk();
-
-    let model_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut model_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "model");
-
-    let method_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut method_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "service_method");
-
-    let intercetor_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut iterceptor_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "interceptor");
+    fn matching_nodes<'a, 'b>(
+        node: Node<'a>,
+        cursor: &'b mut TreeCursor<'a>,
+        kind: &'static str,
+    ) -> impl Iterator<Item = Node<'a>> + 'b {
+        node.child_by_field_name("body")
+            .unwrap()
+            .children_by_field_name("field", cursor)
+            .map(|n| n.child(0).unwrap())
+            .filter(move |node| node.kind() == kind)
+    }
 
     AstService {
         name: node
@@ -232,17 +217,17 @@ pub fn convert_service(
             .utf8_text(source)
             .unwrap()
             .to_string(),
-        models: model_nodes
+        models: matching_nodes(node, &mut node.walk(), "model")
             .map(|n| convert_model(n, source, source_span))
             .collect(),
-        methods: method_nodes
+        methods: matching_nodes(node, &mut node.walk(), "service_method")
             .map(|n| convert_service_method(n, source, source_span))
             .collect(),
-        interceptors: intercetor_nodes
-            .map(|n| convert_intercetor(n, source, source_span))
+        interceptors: matching_nodes(node, &mut node.walk(), "interceptor")
+            .map(|n| convert_interceptor(n, source, source_span))
             .collect(),
         annotations: node
-            .children_by_field_name("annotation", &mut cursor)
+            .children_by_field_name("annotation", &mut node.walk())
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
         base_clayfile: filepath.into(),
@@ -281,7 +266,11 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
     }
 }
 
-pub fn convert_intercetor(node: Node, source: &[u8], source_span: Span) -> AstInterceptor<Untyped> {
+pub fn convert_interceptor(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> AstInterceptor<Untyped> {
     let mut cursor = node.walk();
 
     AstInterceptor {
@@ -741,7 +730,7 @@ mod tests {
         parsing_test(
             r#"
         context AuthUser {
-            id: Int @jwt("sub") 
+            id: Int @jwt("sub")
             roles: Array<String> @jwt
          }
         "#,
