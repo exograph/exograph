@@ -116,7 +116,7 @@ fn collect_parsing_errors(
 }
 
 // TODO: dedup
-pub fn convert_declaration_to_model(
+fn convert_declaration_to_model(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -131,7 +131,7 @@ pub fn convert_declaration_to_model(
     }
 }
 
-pub fn convert_declaration_to_service(
+fn convert_declaration_to_service(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -148,7 +148,7 @@ pub fn convert_declaration_to_service(
     }
 }
 
-pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
+fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
     assert_eq!(node.kind(), "model");
 
     let mut cursor = node.walk();
@@ -192,7 +192,7 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
     }
 }
 
-pub fn convert_service(
+fn convert_service(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -234,7 +234,7 @@ pub fn convert_service(
     }
 }
 
-pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
+fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
     let mut cursor = node.walk();
 
     AstMethod {
@@ -266,11 +266,7 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
     }
 }
 
-pub fn convert_interceptor(
-    node: Node,
-    source: &[u8],
-    source_span: Span,
-) -> AstInterceptor<Untyped> {
+fn convert_interceptor(node: Node, source: &[u8], source_span: Span) -> AstInterceptor<Untyped> {
     let mut cursor = node.walk();
 
     AstInterceptor {
@@ -292,14 +288,14 @@ pub fn convert_interceptor(
     }
 }
 
-pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
+fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
     let mut cursor = node.walk();
     node.children_by_field_name("field", &mut cursor)
         .map(|c| convert_field(c, source, source_span))
         .collect()
 }
 
-pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
+fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
     assert!(node.kind() == "field");
 
     let mut cursor = node.walk();
@@ -324,7 +320,7 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
 }
 
 // TODO: dedup
-pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
+fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
     assert!(node.kind() == "argument");
 
     let mut cursor = node.walk();
@@ -348,7 +344,7 @@ pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgu
     }
 }
 
-pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
+fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
     assert_eq!(node.kind(), "type");
     let first_child = node.child(0).unwrap();
     let mut cursor = node.walk();
