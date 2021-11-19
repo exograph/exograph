@@ -123,6 +123,15 @@ pub enum AstFieldType<T: NodeTypedness> {
 }
 
 impl<T: NodeTypedness> AstFieldType<T> {
+    pub fn span(&self) -> Span {
+        match self {
+            AstFieldType::Plain(_, _, _, span) => *span,
+            AstFieldType::Optional(inner) => inner.span(),
+        }
+    }
+}
+
+impl<T: NodeTypedness> AstFieldType<T> {
     pub fn name(&self) -> String {
         match self {
             AstFieldType::Optional(underlying) => underlying.name(),

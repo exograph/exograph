@@ -970,9 +970,31 @@ fn compute_column_name(
                 match field_type {
                     Type::Composite(_) => format!("{}_id", field.name),
                     Type::Set(typ) => {
-                        if let Type::Composite(_) = typ.deref(types) {
+                        if let Type::Composite(x) = typ.deref(types) {
                             // OneToMany
-                            format!("{}_id", enclosing_type.name.to_ascii_lowercase())
+                            let matching_field_names: Vec<_> = x
+                                .fields
+                                .into_iter()
+                                .filter(|f| f.typ.name() == enclosing_type.name)
+                                .map(|f| f.name)
+                                .collect();
+
+                            match &matching_field_names[..] {
+                                [] => panic!(
+                                    "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
+                                    enclosing_type.name, field.name
+                                ),
+                                [matching_field_name] => format!("{}_id", matching_field_name),
+                                _ => panic!(
+                                    "Found multiple matching fields {} of '{}' type when determining the matching column for '{}'",
+                                    matching_field_names
+                                        .into_iter()
+                                        .map(|name| format!("'{}'", name))
+                                        .collect::<Vec<_>>()
+                                        .join(", "),
+                                    enclosing_type.name, field.name
+                                ),
+                            }
                         } else {
                             panic!("Sets of non-composites are not supported");
                         }
@@ -1197,7 +1219,31 @@ mod tests {
           public1: Boolean
           PUBLIC2: Boolean
           foo123: Int
+        }"#;
+
+        let resolved = create_resolved_system(src);
+
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
+    }
+
+    #[test]
+    fn column_names_for_non_standard_relational_field_names() {
+        let src = r#"
+        model Concert {
+          id: Int @pk @autoincrement
+          title: String
+          venuex: Venue // non-standard name
+          published: Boolean
         }
+        
+        model Venue {
+          id: Int @pk @autoincrement
+          name: String
+          concerts: Set<Concert>
+          published: Boolean
+        }             
         "#;
 
         let resolved = create_resolved_system(src);
