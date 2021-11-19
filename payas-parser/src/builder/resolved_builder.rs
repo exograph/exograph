@@ -1043,6 +1043,7 @@ fn resolve_argument(
 mod tests {
     use super::*;
     use crate::{parser, typechecker};
+    use std::fs::File;
 
     #[test]
     fn with_annotations() {
@@ -1073,6 +1074,8 @@ mod tests {
             mutation quuz(): String
         }
         "#;
+
+        File::create("bar.js").unwrap();
 
         let resolved = create_resolved_system(src);
 
@@ -1153,6 +1156,8 @@ mod tests {
         }
         "#;
 
+        File::create("logger.js").unwrap();
+
         let resolved = create_resolved_system(src);
 
         insta::with_settings!({sort_maps => true}, {
@@ -1173,6 +1178,26 @@ mod tests {
           title: String
           public: Boolean
         }      
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
+    }
+
+    #[test]
+    fn field_name_variations() {
+        let src = r#"
+        model Entity {
+          _id: Int @pk @autoincrement
+          title_main: String
+          title_main1: String
+          public1: Boolean
+          PUBLIC2: Boolean
+          foo123: Int
+        }
         "#;
 
         let resolved = create_resolved_system(src);
