@@ -1,0 +1,169 @@
+---
+source: payas-parser/src/builder/resolved_builder.rs
+expression: resolved
+
+---
+types:
+  values:
+    - - ~
+      - Primitive: Boolean
+    - - ~
+      - Primitive: Int
+    - - ~
+      - Primitive: Float
+    - - ~
+      - Primitive: Decimal
+    - - ~
+      - Primitive: String
+    - - ~
+      - Primitive: LocalTime
+    - - ~
+      - Primitive: LocalDateTime
+    - - ~
+      - Primitive: LocalDate
+    - - ~
+      - Primitive: Instant
+    - - ~
+      - Primitive: Json
+    - - ~
+      - Primitive: Blob
+    - - ~
+      - Primitive: ClaytipInjected
+    - - ~
+      - Primitive:
+          Interception: Operation
+    - - ~
+      - Composite:
+          name: Entity
+          plural_name: Entitys
+          fields:
+            - name: _id
+              typ:
+                Plain: Int
+              kind:
+                Persistent:
+                  column_name: _id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint: ~
+            - name: title_main
+              typ:
+                Plain: String
+              kind:
+                Persistent:
+                  column_name: title_main
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+            - name: title_main1
+              typ:
+                Plain: String
+              kind:
+                Persistent:
+                  column_name: title_main1
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+            - name: public1
+              typ:
+                Plain: Boolean
+              kind:
+                Persistent:
+                  column_name: public1
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+            - name: PUBLIC2
+              typ:
+                Plain: Boolean
+              kind:
+                Persistent:
+                  column_name: PUBLIC2
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+            - name: foo123
+              typ:
+                Plain: Int
+              kind:
+                Persistent:
+                  column_name: foo123
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+          kind:
+            Persistent:
+              table_name: entitys
+          access:
+            creation:
+              BooleanLiteral:
+                - true
+            read:
+              BooleanLiteral:
+                - true
+            update:
+              BooleanLiteral:
+                - true
+            delete:
+              BooleanLiteral:
+                - true
+    - ~
+    - ~
+  map:
+    Blob:
+      index: 10
+      generation: ~
+    Boolean:
+      index: 0
+      generation: ~
+    ClaytipInjected:
+      index: 11
+      generation: ~
+    Decimal:
+      index: 3
+      generation: ~
+    Entity:
+      index: 13
+      generation: ~
+    Float:
+      index: 2
+      generation: ~
+    Instant:
+      index: 8
+      generation: ~
+    Int:
+      index: 1
+      generation: ~
+    Json:
+      index: 9
+      generation: ~
+    LocalDate:
+      index: 7
+      generation: ~
+    LocalDateTime:
+      index: 6
+      generation: ~
+    LocalTime:
+      index: 5
+      generation: ~
+    Operation:
+      index: 12
+      generation: ~
+    String:
+      index: 4
+      generation: ~
+contexts:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+services:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+
