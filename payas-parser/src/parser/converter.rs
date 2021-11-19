@@ -4,7 +4,7 @@ use std::{collections::HashMap, path::Path};
 use anyhow::{anyhow, Result};
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
-use tree_sitter::{Node, Tree};
+use tree_sitter::{Node, Tree, TreeCursor};
 
 use super::sitter_ffi;
 use crate::ast::ast_types::*;
@@ -116,7 +116,7 @@ fn collect_parsing_errors(
 }
 
 // TODO: dedup
-pub fn convert_declaration_to_model(
+fn convert_declaration_to_model(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -131,7 +131,7 @@ pub fn convert_declaration_to_model(
     }
 }
 
-pub fn convert_declaration_to_service(
+fn convert_declaration_to_service(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -148,7 +148,7 @@ pub fn convert_declaration_to_service(
     }
 }
 
-pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
+fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
     assert_eq!(node.kind(), "model");
 
     let mut cursor = node.walk();
@@ -192,38 +192,23 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
     }
 }
 
-pub fn convert_service(
+fn convert_service(
     node: Node,
     source: &[u8],
     source_span: Span,
     filepath: &Path,
 ) -> AstService<Untyped> {
-    let mut model_cursor = node.walk();
-    let mut method_cursor = node.walk();
-    let mut iterceptor_cursor = node.walk();
-
-    let mut cursor = node.walk();
-
-    let model_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut model_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "model");
-
-    let method_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut method_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "service_method");
-
-    let intercetor_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut iterceptor_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "interceptor");
+    fn matching_nodes<'a, 'b>(
+        node: Node<'a>,
+        cursor: &'b mut TreeCursor<'a>,
+        kind: &'static str,
+    ) -> impl Iterator<Item = Node<'a>> + 'b {
+        node.child_by_field_name("body")
+            .unwrap()
+            .children_by_field_name("field", cursor)
+            .map(|n| n.child(0).unwrap())
+            .filter(move |node| node.kind() == kind)
+    }
 
     AstService {
         name: node
@@ -232,24 +217,24 @@ pub fn convert_service(
             .utf8_text(source)
             .unwrap()
             .to_string(),
-        models: model_nodes
+        models: matching_nodes(node, &mut node.walk(), "model")
             .map(|n| convert_model(n, source, source_span))
             .collect(),
-        methods: method_nodes
+        methods: matching_nodes(node, &mut node.walk(), "service_method")
             .map(|n| convert_service_method(n, source, source_span))
             .collect(),
-        interceptors: intercetor_nodes
-            .map(|n| convert_intercetor(n, source, source_span))
+        interceptors: matching_nodes(node, &mut node.walk(), "interceptor")
+            .map(|n| convert_interceptor(n, source, source_span))
             .collect(),
         annotations: node
-            .children_by_field_name("annotation", &mut cursor)
+            .children_by_field_name("annotation", &mut node.walk())
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
         base_clayfile: filepath.into(),
     }
 }
 
-pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
+fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
     let mut cursor = node.walk();
 
     AstMethod {
@@ -281,7 +266,7 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
     }
 }
 
-pub fn convert_intercetor(node: Node, source: &[u8], source_span: Span) -> AstInterceptor<Untyped> {
+fn convert_interceptor(node: Node, source: &[u8], source_span: Span) -> AstInterceptor<Untyped> {
     let mut cursor = node.walk();
 
     AstInterceptor {
@@ -303,14 +288,14 @@ pub fn convert_intercetor(node: Node, source: &[u8], source_span: Span) -> AstIn
     }
 }
 
-pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
+fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
     let mut cursor = node.walk();
     node.children_by_field_name("field", &mut cursor)
         .map(|c| convert_field(c, source, source_span))
         .collect()
 }
 
-pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
+fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
     assert!(node.kind() == "field");
 
     let mut cursor = node.walk();
@@ -335,7 +320,7 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
 }
 
 // TODO: dedup
-pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
+fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
     assert!(node.kind() == "argument");
 
     let mut cursor = node.walk();
@@ -359,7 +344,7 @@ pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgu
     }
 }
 
-pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
+fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
     assert_eq!(node.kind(), "type");
     let first_child = node.child(0).unwrap();
     let mut cursor = node.walk();
@@ -741,7 +726,7 @@ mod tests {
         parsing_test(
             r#"
         context AuthUser {
-            id: Int @jwt("sub") 
+            id: Int @jwt("sub")
             roles: Array<String> @jwt
          }
         "#,
