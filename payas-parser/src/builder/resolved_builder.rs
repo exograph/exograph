@@ -488,7 +488,7 @@ fn build_shallow(
                                 let kind_annots = vec![before_annot, after_annot, around_annot];
                                 let kind_annots: Vec<_> =
                                     kind_annots.into_iter().flatten().collect();
-                                
+
                                 fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T> {
                                     errors.push(
                                         Diagnostic {
@@ -502,7 +502,7 @@ fn build_shallow(
                                             }],
                                         });
                                     Err(anyhow!(message.to_string()))
-                                }    
+                                }
 
                                 let kind_annot = match kind_annots.as_slice() {
                                     [] => {
