@@ -385,7 +385,7 @@ pub mod test_support {
     use crate::parser::*;
 
     pub fn build(src: &str) -> Result<MappedArena<Type>, ParserError> {
-        let (parsed, _codemap) = parse_str(src)?;
+        let parsed = parse_str(src, "input.clay")?;
         super::build(parsed)
     }
 

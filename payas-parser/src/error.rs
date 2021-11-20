@@ -6,6 +6,9 @@ pub enum ParserError {
     #[error("Could not process input clay files")]
     Diagosis(Vec<Diagnostic>),
 
+    #[error("File '{0}' not found")]
+    FileNotFound(String),
+
     #[error(transparent)]
     IO(#[from] std::io::Error),
 

@@ -1340,7 +1340,7 @@ mod tests {
     }
 
     fn create_resolved_system(src: &str) -> ResolvedSystem {
-        let (parsed, _codemap) = parser::parse_str(src).unwrap();
+        let parsed = parser::parse_str(src, "input.clay").unwrap();
         let types = typechecker::build(parsed).unwrap();
         build(types).unwrap()
     }
