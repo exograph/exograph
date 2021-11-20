@@ -249,7 +249,8 @@ fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMe
             .unwrap()
             .utf8_text(source)
             .unwrap()
-            .to_string(),
+            .try_into()
+            .unwrap(),
         arguments: node
             .children_by_field_name("args", &mut cursor)
             .map(|c| convert_argument(c, source, source_span))
@@ -280,11 +281,11 @@ fn convert_interceptor(node: Node, source: &[u8], source_span: Span) -> AstInter
             .children_by_field_name("args", &mut cursor)
             .map(|c| convert_argument(c, source, source_span))
             .collect(),
-
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        span: span_from_node(source_span, node),
     }
 }
 

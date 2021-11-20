@@ -122,23 +122,6 @@ impl TypecheckFrom<AstMethod<Untyped>> for AstMethod<Typed> {
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        let diagnostic = Diagnostic {
-            level: Level::Error,
-            message: format!(
-                "Unknown method type `{}` for method `{}`",
-                self.typ, self.name
-            ),
-            code: Some("A000".to_string()),
-            spans: vec![],
-        };
-
-        match self.typ.as_ref() {
-            "query" | "mutation" => {}
-            _ => {
-                errors.push(diagnostic);
-            }
-        }
-
         let arguments_changes = self
             .arguments
             .iter_mut()
@@ -175,6 +158,7 @@ impl TypecheckFrom<AstInterceptor<Untyped>> for AstInterceptor<Typed> {
                 .map(|f| AstArgument::shallow(f))
                 .collect(),
             annotations: annotation_map,
+            span: untyped.span,
         }
     }
 

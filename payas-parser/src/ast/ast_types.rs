@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    convert::TryFrom,
     fmt::{Display, Formatter},
     path::PathBuf,
 };
@@ -72,7 +73,7 @@ pub struct AstService<T: NodeTypedness> {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstMethod<T: NodeTypedness> {
     pub name: String,
-    pub typ: String, // query or mutation?
+    pub typ: AstMethodType, // query or mutation?
     pub arguments: Vec<AstArgument<T>>,
     pub return_type: AstFieldType<T>,
     pub is_exported: bool,
@@ -80,10 +81,31 @@ pub struct AstMethod<T: NodeTypedness> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstMethodType {
+    Query,
+    Mutation,
+}
+
+impl TryFrom<&str> for AstMethodType {
+    type Error = ();
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "query" => Ok(AstMethodType::Query),
+            "mutation" => Ok(AstMethodType::Mutation),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstInterceptor<T: NodeTypedness> {
     pub name: String,
     pub arguments: Vec<AstArgument<T>>,
     pub annotations: T::Annotations,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

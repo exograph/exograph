@@ -46,16 +46,12 @@ use crate::typechecker;
 /// (this is done in place, so references created from elsewhere remain valid). Since all model
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
-pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSystem> {
+pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSystem, ParserError> {
     let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
-    fn process_dignostics(emitter: &mut Emitter, err: &anyhow::Error) {
-        if let Some(err) = err.downcast_ref::<ParserError>() {
-            match err {
-                ParserError::Generic(err) => {
-                    emitter.emit(err);
-                }
-            }
+    fn process_dignostics(emitter: &mut Emitter, err: &ParserError) {
+        if let ParserError::Diagosis(err) = err {
+            emitter.emit(err);
         };
     }
 

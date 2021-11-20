@@ -309,7 +309,7 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
     }
 }
 
-pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>> {
+pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, ParserError> {
     let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
@@ -371,7 +371,7 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>> {
 
         if !did_change {
             if !errors.is_empty() {
-                return Err(ParserError::Generic(errors).into());
+                return Err(ParserError::Diagosis(errors));
             } else {
                 return Ok(types_arena);
             }
@@ -384,7 +384,7 @@ pub mod test_support {
     use super::*;
     use crate::parser::*;
 
-    pub fn build(src: &str) -> Result<MappedArena<Type>> {
+    pub fn build(src: &str) -> Result<MappedArena<Type>, ParserError> {
         let (parsed, _codemap) = parse_str(src)?;
         super::build(parsed)
     }

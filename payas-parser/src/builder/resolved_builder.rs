@@ -8,12 +8,15 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
 
+use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToPlural, ToTableName};
 use payas_model::model::GqlTypeModifier;
 
-use crate::ast::ast_types::{AstAnnotationParams, AstArgument, AstFieldType, AstService};
+use crate::ast::ast_types::{
+    AstAnnotationParams, AstArgument, AstFieldType, AstMethodType, AstService,
+};
 use crate::error::ParserError;
 use crate::typechecker::AnnotationMap;
 use crate::{
@@ -332,7 +335,7 @@ impl ResolvedFieldType {
     }
 }
 
-pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem> {
+pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem, ParserError> {
     let mut errors = Vec::new();
 
     let mut resolved_system = build_shallow(&types, &mut errors)?;
@@ -341,14 +344,14 @@ pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem> {
     if errors.is_empty() {
         Ok(resolved_system)
     } else {
-        Err(ParserError::Generic(errors).into())
+        Err(ParserError::Diagosis(errors))
     }
 }
 
 fn build_shallow(
     types: &MappedArena<Type>,
-    _errors: &mut Vec<Diagnostic>,
-) -> Result<ResolvedSystem> {
+    errors: &mut Vec<Diagnostic>,
+) -> Result<ResolvedSystem, ParserError> {
     let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
@@ -460,10 +463,9 @@ fn build_shallow(
                                 let access = build_access(m.annotations.get("access"));
                                 ResolvedMethod {
                                     name: m.name.clone(),
-                                    operation_kind: match m.typ.as_str() {
-                                        "query" => ResolvedMethodType::Query,
-                                        "mutation" => ResolvedMethodType::Mutation,
-                                        _ => panic!(),
+                                    operation_kind: match m.typ {
+                                        AstMethodType::Query   => ResolvedMethodType::Query,
+                                        AstMethodType::Mutation => ResolvedMethodType::Mutation,
                                     },
                                     is_exported: m.is_exported,
                                     access,
@@ -475,7 +477,7 @@ fn build_shallow(
                         interceptors: service
                             .interceptors
                             .iter()
-                            .map(|i| {
+                            .flat_map(|i| {
                                 let before_annot = extract_intercept_annot(&i.annotations, "before")
                                     .map(|s| ResolvedInterceptorKind::Before(s.clone()));
                                 let after_annot = extract_intercept_annot(&i.annotations, "after")
@@ -486,22 +488,37 @@ fn build_shallow(
                                 let kind_annots = vec![before_annot, after_annot, around_annot];
                                 let kind_annots: Vec<_> =
                                     kind_annots.into_iter().flatten().collect();
+                                
+                                fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T> {
+                                    errors.push(
+                                        Diagnostic {
+                                            level: Level::Error,
+                                            message: message.to_string(),
+                                            code: Some("C000".to_string()),
+                                            spans: vec![SpanLabel {
+                                                span,
+                                                style: SpanStyle::Primary,
+                                                label: None,
+                                            }],
+                                        });
+                                    Err(anyhow!(message.to_string()))
+                                }    
 
                                 let kind_annot = match kind_annots.as_slice() {
                                     [] => {
-                                        panic!("Interceptor must have at least one of the before/after/around annotation")
+                                        create_diagnostic("Interceptor must have at least one of the before/after/around annotation", i.span, errors)
                                     }
-                                    [single] => single,
-                                    _ => panic!(
-                                        "Interceptor cannot have more than of the before/after/around annotations"
+                                    [single] => Ok(single),
+                                    _ => create_diagnostic(
+                                        "Interceptor cannot have more than of the before/after/around annotations", i.span, errors
                                     ),
-                                };
+                                }?;
 
-                                ResolvedInterceptor {
+                                Result::<ResolvedInterceptor, anyhow::Error>::Ok(ResolvedInterceptor {
                                     name: i.name.clone(),
                                     arguments: vec![],
                                     interceptor_kind: kind_annot.clone(),
-                                }
+                                })
                             })
                             .collect(),
                     },
@@ -1005,19 +1022,19 @@ fn compute_column_name(
                             match &matching_fields[..] {
                                 [] => {
                                     errors.push(
-                                    Diagnostic {
-                                        level: Level::Error,
-                                        message: format!(
-                                            "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
-                                            enclosing_type.name, field.name
-                                        ),
-                                        code: Some("C000".to_string()),
-                                        spans: vec![SpanLabel {
-                                            span: field.span,
-                                            style: SpanStyle::Primary,
-                                            label: None,
-                                        }],
-                                    });
+                                        Diagnostic {
+                                            level: Level::Error,
+                                            message: format!(
+                                                "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
+                                                enclosing_type.name, field.name
+                                            ),
+                                            code: Some("C000".to_string()),
+                                            spans: vec![SpanLabel {
+                                                span: field.span,
+                                                style: SpanStyle::Primary,
+                                                label: None,
+                                            }],
+                                        });
                                     Err(anyhow!("Could not find matching field"))
                                 }
                                 [matching_field] => Ok(format!("{}_id", matching_field.name)),
@@ -1042,7 +1059,17 @@ fn compute_column_name(
                                 }
                             }
                         } else {
-                            panic!("Sets of non-composites are not supported");
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: "Sets of non-composites are not supported".to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: field.span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            });
+                            Err(anyhow!("Sets of non-composites are not supported"))
                         }
                     }
 
@@ -1057,6 +1084,16 @@ fn compute_column_name(
                             // base type is a primitive, which means this is an Array
                             Ok(field.name.clone())
                         } else {
+                            errors.push(Diagnostic {
+                                level: Level::Error,
+                                message: "Arrays of non-primitives are not supported".to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: field.span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            });
                             Err(anyhow!("Arrays of non-primitives are not supported"))
                         }
                     }
