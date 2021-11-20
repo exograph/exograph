@@ -6,13 +6,15 @@
 
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::naming::{ToPlural, ToTableName};
 use payas_model::model::GqlTypeModifier;
 
 use crate::ast::ast_types::{AstAnnotationParams, AstArgument, AstFieldType, AstService};
+use crate::error::ParserError;
 use crate::typechecker::AnnotationMap;
 use crate::{
     ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
@@ -331,12 +333,22 @@ impl ResolvedFieldType {
 }
 
 pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem> {
-    let mut resolved_system = build_shallow(&types)?;
-    build_expanded(types, &mut resolved_system);
-    Ok(resolved_system)
+    let mut errors = Vec::new();
+
+    let mut resolved_system = build_shallow(&types, &mut errors)?;
+    build_expanded(types, &mut resolved_system, &mut errors);
+
+    if errors.is_empty() {
+        Ok(resolved_system)
+    } else {
+        Err(ParserError::Generic(errors).into())
+    }
 }
 
-fn build_shallow(types: &MappedArena<Type>) -> Result<ResolvedSystem> {
+fn build_shallow(
+    types: &MappedArena<Type>,
+    _errors: &mut Vec<Diagnostic>,
+) -> Result<ResolvedSystem> {
     let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
@@ -553,14 +565,18 @@ fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -
     }
 }
 
-fn build_expanded(types: MappedArena<Type>, resolved_system: &mut ResolvedSystem) {
+fn build_expanded(
+    types: MappedArena<Type>,
+    resolved_system: &mut ResolvedSystem,
+    errors: &mut Vec<Diagnostic>,
+) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
             if ct.kind == AstModelKind::Persistent
                 || ct.kind == AstModelKind::NonPersistent
                 || ct.kind == AstModelKind::NonPersistentInput
             {
-                build_expanded_persistent_type(ct, &types, resolved_system);
+                build_expanded_persistent_type(ct, &types, resolved_system, errors).unwrap();
             } else if ct.kind == AstModelKind::Context {
                 build_expanded_context_type(ct, &types, resolved_system);
             } else {
@@ -645,7 +661,8 @@ fn build_expanded_persistent_type(
     ct: &AstModel<Typed>,
     types: &MappedArena<Type>,
     resolved_system: &mut ResolvedSystem,
-) {
+    errors: &mut Vec<Diagnostic>,
+) -> Result<()> {
     let resolved_types = &mut resolved_system.types;
 
     let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
@@ -662,20 +679,24 @@ fn build_expanded_persistent_type(
         let resolved_fields = ct
             .fields
             .iter()
-            .map(|field| ResolvedField {
-                name: field.name.clone(),
-                typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
-                kind: match kind {
-                    ResolvedCompositeTypeKind::Persistent { .. } => ResolvedFieldKind::Persistent {
-                        column_name: compute_column_name(ct, field, types),
-                        is_pk: field.annotations.contains("pk"),
-                        is_autoincrement: field.annotations.contains("autoincrement"),
-                        type_hint: build_type_hint(field, types),
+            .flat_map(|field| {
+                Result::<ResolvedField, anyhow::Error>::Ok(ResolvedField {
+                    name: field.name.clone(),
+                    typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
+                    kind: match kind {
+                        ResolvedCompositeTypeKind::Persistent { .. } => {
+                            ResolvedFieldKind::Persistent {
+                                column_name: compute_column_name(ct, field, types, errors)?,
+                                is_pk: field.annotations.contains("pk"),
+                                is_autoincrement: field.annotations.contains("autoincrement"),
+                                type_hint: build_type_hint(field, types),
+                            }
+                        }
+                        ResolvedCompositeTypeKind::NonPersistent { .. } => {
+                            ResolvedFieldKind::NonPersistent
+                        }
                     },
-                    ResolvedCompositeTypeKind::NonPersistent { .. } => {
-                        ResolvedFieldKind::NonPersistent
-                    }
-                },
+                })
             })
             .collect();
 
@@ -688,6 +709,7 @@ fn build_expanded_persistent_type(
         });
         resolved_types[existing_type_id] = expanded;
     }
+    Ok(())
 }
 
 fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option<ResolvedTypeHint> {
@@ -957,43 +979,67 @@ fn compute_column_name(
     enclosing_type: &AstModel<Typed>,
     field: &AstField<Typed>,
     types: &MappedArena<Type>,
-) -> String {
+    errors: &mut Vec<Diagnostic>,
+) -> Result<String> {
     fn default_column_name(
         enclosing_type: &AstModel<Typed>,
         field: &AstField<Typed>,
         types: &MappedArena<Type>,
-    ) -> String {
+        errors: &mut Vec<Diagnostic>,
+    ) -> Result<String> {
         match &field.typ {
-            AstFieldType::Optional(_) => field.name.to_string(),
+            AstFieldType::Optional(_) => Ok(field.name.to_string()),
             AstFieldType::Plain(_, _, _, _) => {
                 let field_type = field.typ.to_typ(types).deref(types);
                 match field_type {
-                    Type::Composite(_) => format!("{}_id", field.name),
+                    Type::Composite(_) => Ok(format!("{}_id", field.name)),
                     Type::Set(typ) => {
-                        if let Type::Composite(x) = typ.deref(types) {
+                        if let Type::Composite(model) = typ.deref(types) {
                             // OneToMany
-                            let matching_field_names: Vec<_> = x
+                            let matching_fields: Vec<_> = model
                                 .fields
                                 .into_iter()
                                 .filter(|f| f.typ.name() == enclosing_type.name)
-                                .map(|f| f.name)
                                 .collect();
 
-                            match &matching_field_names[..] {
-                                [] => panic!(
-                                    "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
-                                    enclosing_type.name, field.name
-                                ),
-                                [matching_field_name] => format!("{}_id", matching_field_name),
-                                _ => panic!(
-                                    "Found multiple matching fields {} of '{}' type when determining the matching column for '{}'",
-                                    matching_field_names
-                                        .into_iter()
-                                        .map(|name| format!("'{}'", name))
-                                        .collect::<Vec<_>>()
-                                        .join(", "),
-                                    enclosing_type.name, field.name
-                                ),
+                            match &matching_fields[..] {
+                                [] => {
+                                    errors.push(
+                                    Diagnostic {
+                                        level: Level::Error,
+                                        message: format!(
+                                            "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
+                                            enclosing_type.name, field.name
+                                        ),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: field.span,
+                                            style: SpanStyle::Primary,
+                                            label: None,
+                                        }],
+                                    });
+                                    Err(anyhow!("Could not find matching field"))
+                                }
+                                [matching_field] => Ok(format!("{}_id", matching_field.name)),
+                                _ => {
+                                    errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: format!(
+                                            "Found multiple matching fields {} of '{}' type when determining the matching column for '{}'",
+                                            matching_fields
+                                                .into_iter()
+                                                .map(|f| format!("'{}'", f.name))
+                                                .collect::<Vec<_>>()
+                                                .join(", "), enclosing_type.name, field.name),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: field.span,
+                                            style: SpanStyle::Primary,
+                                            label: None,
+                                        }],
+                                    });
+                                    Err(anyhow!("Could not find matching field"))
+                                }
                             }
                         } else {
                             panic!("Sets of non-composites are not supported");
@@ -1009,23 +1055,26 @@ fn compute_column_name(
 
                         if let Type::Primitive(_) = underlying_typ.deref(types) {
                             // base type is a primitive, which means this is an Array
-                            field.name.clone()
+                            Ok(field.name.clone())
                         } else {
-                            panic!("Arrays of non-primitives are not supported");
+                            Err(anyhow!("Arrays of non-primitives are not supported"))
                         }
                     }
 
-                    _ => field.name.clone(),
+                    _ => Ok(field.name.clone()),
                 }
             }
         }
     }
 
-    field
+    match field
         .annotations
         .get("column")
         .map(|p| p.as_single().as_string())
-        .unwrap_or_else(|| default_column_name(enclosing_type, field, types))
+    {
+        Some(name) => Ok(name),
+        None => default_column_name(enclosing_type, field, types, errors),
+    }
 }
 
 fn resolve_field_type(
@@ -1254,9 +1303,8 @@ mod tests {
     }
 
     fn create_resolved_system(src: &str) -> ResolvedSystem {
-        let (parsed, codemap) = parser::parse_str(src).unwrap();
-        let types = typechecker::build(parsed, codemap).unwrap();
-
+        let (parsed, _codemap) = parser::parse_str(src).unwrap();
+        let types = typechecker::build(parsed).unwrap();
         build(types).unwrap()
     }
 }

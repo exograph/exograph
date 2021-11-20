@@ -2943,6 +2943,7 @@ dependencies = [
  "payas-model",
  "serde",
  "serde_json",
+ "thiserror",
  "tree-sitter",
  "typed-generational-arena",
  "wildmatch",

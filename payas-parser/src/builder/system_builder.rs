@@ -1,5 +1,6 @@
 use anyhow::Result;
 use codemap::CodeMap;
+use codemap_diagnostic::{ColorConfig, Emitter};
 use payas_model::{
     model::{
         argument::ArgumentParameterType,
@@ -25,6 +26,7 @@ use super::{
     service_builder, type_builder,
 };
 
+use crate::error::ParserError;
 use crate::typechecker;
 
 /// Build a [ModelSystem] given an [AstSystem].
@@ -45,8 +47,27 @@ use crate::typechecker;
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
 pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSystem> {
-    let typechecked_system = typechecker::build(ast_system, codemap)?;
-    let resolved_system = resolved_builder::build(typechecked_system)?;
+    let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
+
+    fn process_dignostics(emitter: &mut Emitter, err: &anyhow::Error) {
+        if let Some(err) = err.downcast_ref::<ParserError>() {
+            match err {
+                ParserError::Generic(err) => {
+                    emitter.emit(err);
+                }
+            }
+        };
+    }
+
+    let typechecked_system = typechecker::build(ast_system).map_err(|err| {
+        process_dignostics(&mut emitter, &err);
+        err
+    })?;
+
+    let resolved_system = resolved_builder::build(typechecked_system).map_err(|err| {
+        process_dignostics(&mut emitter, &err);
+        err
+    })?;
 
     let mut building = SystemContextBuilding::default();
 

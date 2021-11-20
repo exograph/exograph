@@ -4,6 +4,7 @@ use payas_model::model::system::ModelSystem;
 
 mod ast;
 mod builder;
+pub(crate) mod error;
 mod parser;
 mod typechecker;
 mod util;

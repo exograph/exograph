@@ -316,6 +316,7 @@ fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyp
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        span: span_from_node(source_span, node),
     }
 }
 

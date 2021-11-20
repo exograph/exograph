@@ -13,6 +13,7 @@ codemap-diagnostic = "0.1.1"
 anyhow = "1.0"
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 wildmatch = "2.1.0"
+thiserror = "1.0.30"
 payas-model = { path = "../payas-model" }
 
 [build-dependencies]

@@ -99,6 +99,10 @@ pub struct AstField<T: NodeTypedness> {
     pub name: String,
     pub typ: AstFieldType<T>,
     pub annotations: T::Annotations,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
