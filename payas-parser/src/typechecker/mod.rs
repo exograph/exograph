@@ -13,7 +13,6 @@ mod typ;
 
 use std::collections::HashMap;
 
-use anyhow::Result;
 use codemap_diagnostic::Diagnostic;
 use serde::{Deserialize, Serialize};
 

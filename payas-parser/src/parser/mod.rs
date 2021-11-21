@@ -1,6 +1,5 @@
 use std::{fs, path::Path};
 
-use anyhow::Result;
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use tree_sitter::Node;

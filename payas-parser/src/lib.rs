@@ -11,7 +11,6 @@ pub(crate) mod error;
 mod parser;
 mod typechecker;
 mod util;
-use anyhow::Result;
 
 /// Build a model system from a clay file
 pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserError> {
@@ -23,19 +22,12 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
     );
     let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
-    let mut process_dignostics = |err: &ParserError| {
-        if let ParserError::Diagosis(err) = err {
-            emitter.emit(err);
-        };
-    };
-
-    let ast_system = parser::parse_file(&model_file).map_err(|err| {
-        process_dignostics(&err);
-        err
-    })?;
-
-    builder::build(ast_system).map_err(|err| {
-        process_dignostics(&err);
-        err
-    })
+    parser::parse_file(&model_file)
+        .and_then(builder::build)
+        .map_err(|err| {
+            if let ParserError::Diagosis(err) = err {
+                emitter.emit(&err);
+            };
+            ParserError::Generic("Failed to parse input file".to_string())
+        })
 }

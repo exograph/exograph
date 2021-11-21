@@ -6,8 +6,6 @@
 
 use std::path::PathBuf;
 
-use anyhow::{anyhow, Result};
-
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
@@ -489,7 +487,7 @@ fn build_shallow(
                                 let kind_annots: Vec<_> =
                                     kind_annots.into_iter().flatten().collect();
 
-                                fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T> {
+                                fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T, ParserError> {
                                     errors.push(
                                         Diagnostic {
                                             level: Level::Error,
@@ -501,7 +499,7 @@ fn build_shallow(
                                                 label: None,
                                             }],
                                         });
-                                    Err(anyhow!(message.to_string()))
+                                    Err(ParserError::Generic(message.to_string()))
                                 }
 
                                 let kind_annot = match kind_annots.as_slice() {
@@ -514,7 +512,7 @@ fn build_shallow(
                                     ),
                                 }?;
 
-                                Result::<ResolvedInterceptor, anyhow::Error>::Ok(ResolvedInterceptor {
+                                Result::<ResolvedInterceptor, ParserError>::Ok(ResolvedInterceptor {
                                     name: i.name.clone(),
                                     arguments: vec![],
                                     interceptor_kind: kind_annot.clone(),
@@ -524,10 +522,12 @@ fn build_shallow(
                     },
                 );
             }
-            o => panic!(
-                "Unable to build shallow type for non-primitve, non-composite type: {:?}",
-                o
-            ),
+            o => {
+                return Err(ParserError::Generic(format!(
+                    "Unable to build shallow type for non-primitve, non-composite type: {:?}",
+                    o
+                )))
+            }
         };
     }
 
@@ -679,7 +679,7 @@ fn build_expanded_persistent_type(
     types: &MappedArena<Type>,
     resolved_system: &mut ResolvedSystem,
     errors: &mut Vec<Diagnostic>,
-) -> Result<()> {
+) -> Result<(), ParserError> {
     let resolved_types = &mut resolved_system.types;
 
     let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
@@ -697,7 +697,7 @@ fn build_expanded_persistent_type(
             .fields
             .iter()
             .flat_map(|field| {
-                Result::<ResolvedField, anyhow::Error>::Ok(ResolvedField {
+                Result::<ResolvedField, ParserError>::Ok(ResolvedField {
                     name: field.name.clone(),
                     typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
                     kind: match kind {
@@ -997,13 +997,13 @@ fn compute_column_name(
     field: &AstField<Typed>,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-) -> Result<String> {
+) -> Result<String, ParserError> {
     fn default_column_name(
         enclosing_type: &AstModel<Typed>,
         field: &AstField<Typed>,
         types: &MappedArena<Type>,
         errors: &mut Vec<Diagnostic>,
-    ) -> Result<String> {
+    ) -> Result<String, ParserError> {
         match &field.typ {
             AstFieldType::Optional(_) => Ok(field.name.to_string()),
             AstFieldType::Plain(_, _, _, _) => {
@@ -1035,7 +1035,9 @@ fn compute_column_name(
                                                 label: None,
                                             }],
                                         });
-                                    Err(anyhow!("Could not find matching field"))
+                                    Err(ParserError::Generic(
+                                        "Could not find matching field".to_string(),
+                                    ))
                                 }
                                 [matching_field] => Ok(format!("{}_id", matching_field.name)),
                                 _ => {
@@ -1055,7 +1057,9 @@ fn compute_column_name(
                                             label: None,
                                         }],
                                     });
-                                    Err(anyhow!("Could not find matching field"))
+                                    Err(ParserError::Generic(
+                                        "Could not find matching field".to_string(),
+                                    ))
                                 }
                             }
                         } else {
@@ -1069,7 +1073,9 @@ fn compute_column_name(
                                     label: None,
                                 }],
                             });
-                            Err(anyhow!("Sets of non-composites are not supported"))
+                            Err(ParserError::Generic(
+                                "Sets of non-composites are not supported".to_string(),
+                            ))
                         }
                     }
 
@@ -1094,7 +1100,9 @@ fn compute_column_name(
                                     label: None,
                                 }],
                             });
-                            Err(anyhow!("Arrays of non-primitives are not supported"))
+                            Err(ParserError::Generic(
+                                "Arrays of non-primitives are not supported".to_string(),
+                            ))
                         }
                     }
 

@@ -12,6 +12,6 @@ pub enum ParserError {
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    #[error("{0}")]
+    Generic(String),
 }

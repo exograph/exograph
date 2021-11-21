@@ -1,7 +1,6 @@
 use std::convert::TryInto;
 use std::{collections::HashMap, path::Path};
 
-use anyhow::Result;
 use codemap::Span;
 use tree_sitter::{Node, Tree, TreeCursor};
 

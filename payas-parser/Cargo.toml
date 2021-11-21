@@ -10,7 +10,7 @@ serde = { version = "1.0.125", features = ["derive"] }
 lazy_static = "1.4.0"
 codemap = "0.1.3"
 codemap-diagnostic = "0.1.1"
-anyhow = "1.0"
+
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 wildmatch = "2.1.0"
 thiserror = "1.0.30"
