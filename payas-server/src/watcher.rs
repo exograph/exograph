@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use std::path::Path;
-use std::thread;
+use std::{fs, thread};
 
 use crate::ServerLoopEvent;
 
@@ -60,17 +60,20 @@ where
 
         loop {
             for watched_path in watched_paths().iter() {
-                watcher.watch(watched_path, RecursiveMode::NonRecursive)?;
+                watcher.watch(watched_path, RecursiveMode::Recursive)?;
             }
 
             match watcher_rx.recv() {
-                Ok(e) => {
-                    if matches!(e, DebouncedEvent::Write(_))
-                        || matches!(e, DebouncedEvent::Remove(_))
-                    {
-                        tx.send(ServerLoopEvent::FileChange)?;
+                Ok(e) => match &e {
+                    DebouncedEvent::Write(changed_path) | DebouncedEvent::Remove(changed_path) => {
+                        if fs::metadata(changed_path).unwrap().is_file()
+                            && !&changed_path.to_str().unwrap().ends_with(".bundle.js")
+                        {
+                            tx.send(ServerLoopEvent::FileChange)?;
+                        }
                     }
-                }
+                    _ => {}
+                },
                 Err(e) => bail!(e),
             }
         }
