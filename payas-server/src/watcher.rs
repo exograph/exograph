@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use std::path::Path;
-use std::{fs, thread};
+use std::thread;
 
 use crate::ServerLoopEvent;
 
@@ -8,19 +8,18 @@ use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
-pub fn with_watch<T, P, WATCHF, STARTF, STOPF>(
-    watched_paths: WATCHF,
+pub fn with_watch<T, STARTF, STOPF>(
+    watched_paths: Vec<impl AsRef<Path> + Send + 'static>,
     watch_delay: Duration,
+    should_restart: fn(&Path) -> bool,
     start: STARTF,
     mut stop: STOPF,
 ) -> Result<()>
 where
-    P: AsRef<Path> + Send + 'static,
-    WATCHF: Fn() -> Vec<P> + Send + 'static,
     STARTF: Fn(bool) -> Result<T>,
     STOPF: FnMut(&mut T),
 {
-    let rx = setup_watch(watched_paths, watch_delay)?;
+    let rx = setup_watch(watched_paths, watch_delay, should_restart)?;
 
     let mut restart = false;
 
@@ -42,33 +41,30 @@ where
     Ok(())
 }
 
-fn setup_watch<P, WATCHF>(
-    watched_paths: WATCHF,
+fn setup_watch(
+    watched_paths: Vec<impl AsRef<Path> + Send + 'static>,
     watch_delay: Duration,
-) -> Result<Receiver<ServerLoopEvent>>
-where
-    P: AsRef<Path> + Send + 'static,
-    WATCHF: Fn() -> Vec<P> + Send + 'static,
-{
+    should_restart: fn(&Path) -> bool,
+) -> Result<Receiver<ServerLoopEvent>> {
     let (tx, rx) = mpsc::channel();
 
-    let tx2 = tx.clone();
+    let tx_clone = tx.clone();
+
+    let (watcher_tx, watcher_rx) = mpsc::channel();
+    let mut watcher = notify::watcher(watcher_tx, watch_delay)?;
 
     thread::spawn(move || -> Result<()> {
-        let (watcher_tx, watcher_rx) = mpsc::channel();
-        let mut watcher = notify::watcher(watcher_tx, watch_delay)?;
+        for watched_path in watched_paths.iter() {
+            watcher.watch(watched_path, RecursiveMode::Recursive)?;
+        }
 
         loop {
-            for watched_path in watched_paths().iter() {
-                watcher.watch(watched_path, RecursiveMode::Recursive)?;
-            }
-
             match watcher_rx.recv() {
                 Ok(e) => match &e {
-                    DebouncedEvent::Write(changed_path) | DebouncedEvent::Remove(changed_path) => {
-                        if fs::metadata(changed_path).unwrap().is_file()
-                            && !&changed_path.to_str().unwrap().ends_with(".bundle.js")
-                        {
+                    DebouncedEvent::Create(changed_path)
+                    | DebouncedEvent::Write(changed_path)
+                    | DebouncedEvent::Remove(changed_path) => {
+                        if should_restart(changed_path.as_path()) {
                             tx.send(ServerLoopEvent::FileChange)?;
                         }
                     }
@@ -81,7 +77,7 @@ where
 
     // Watch for ctrl-c (SIGINT)
     ctrlc::set_handler(move || {
-        tx2.send(ServerLoopEvent::SigInt).unwrap();
+        tx_clone.send(ServerLoopEvent::SigInt).unwrap();
     })?;
 
     Ok(rx)

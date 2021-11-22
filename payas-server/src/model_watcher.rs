@@ -1,5 +1,4 @@
 use anyhow::Result;
-use globwalk;
 use std::{fs, path::Path};
 
 use super::watcher;
@@ -16,25 +15,23 @@ where
     STARTF: Fn(bool) -> Result<T>,
     STOPF: FnMut(&mut T),
 {
-    // We must canonicalize since we may be handed path such as "index.clay", and getting its parent
+    // We must canonicalize since we may be given a path such as "index.clay", and getting its parent
     // without canonicalizing would yield just "" and thus watches nothing.
     let model_path = fs::canonicalize(model_path).unwrap();
 
-    // Watch everything in the parent of the model file, expept for the artifacts we generate (the bundle files)
-    // under the assumption that users won't include files whose names match the *.bundle.* pattern.
-    // An alternative would be to parse the model file and look for the artifacts used, but that will
-    // require parsing the js/ts files referred to in the model files recursively to gather all the dependencies.
-    let watched_paths = move || {
-        let parent_path = model_path.parent().unwrap();
-        let mut paths: Vec<_> =
-            globwalk::GlobWalkerBuilder::from_patterns(parent_path, &["**/*", "!*.bundle.*"])
-                .build()
-                .unwrap()
-                .filter_map(|file| file.ok().map(|f| f.path().to_owned()))
-                .collect();
-        paths.push(parent_path.to_path_buf());
-        paths
-    };
+    // Recursively (done by `watcher::with_watch`) watch everything in the parent of the model file
+    // But do not restart unless the changed path is a file (and not a directory) changes and that
+    // file isn't an artifcact of our building (currently, we assume that we build files that end with ".bundle.js")
+    let watched_paths = vec![model_path.parent().unwrap().to_path_buf()];
 
-    watcher::with_watch(watched_paths, watch_delay, start, stop)
+    fn should_restart(changed_path: &Path) -> bool {
+        match fs::metadata(changed_path) {
+            Ok(metadata) => {
+                metadata.is_file() && !&changed_path.to_str().unwrap().ends_with(".bundle.js")
+            }
+            Err(_) => true, // An error occurred, perhaps a file/directory was removed, so we should restart to be safe
+        }
+    }
+
+    watcher::with_watch(watched_paths, watch_delay, should_restart, start, stop)
 }
