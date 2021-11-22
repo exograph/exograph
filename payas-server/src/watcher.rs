@@ -8,13 +8,15 @@ use notify::{self, DebouncedEvent, RecursiveMode, Watcher};
 use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
-pub fn with_watch<T, STARTF, STOPF>(
-    watched_paths: Vec<impl AsRef<Path> + Send + 'static>,
+pub fn with_watch<T, P, WATCHF, STARTF, STOPF>(
+    watched_paths: WATCHF,
     watch_delay: Duration,
     start: STARTF,
     mut stop: STOPF,
 ) -> Result<()>
 where
+    P: AsRef<Path> + Send + 'static,
+    WATCHF: Fn() -> Vec<P> + Send + 'static,
     STARTF: Fn(bool) -> Result<T>,
     STOPF: FnMut(&mut T),
 {
@@ -40,32 +42,27 @@ where
     Ok(())
 }
 
-fn setup_watch(
-    watched_paths: Vec<impl AsRef<Path> + Send + 'static>,
+fn setup_watch<P, WATCHF>(
+    watched_paths: WATCHF,
     watch_delay: Duration,
-) -> Result<Receiver<ServerLoopEvent>> {
+) -> Result<Receiver<ServerLoopEvent>>
+where
+    P: AsRef<Path> + Send + 'static,
+    WATCHF: Fn() -> Vec<P> + Send + 'static,
+{
     let (tx, rx) = mpsc::channel();
 
-    //let watched_path = watched_path.as_ref().to_path_buf();
     let tx2 = tx.clone();
 
     thread::spawn(move || -> Result<()> {
         let (watcher_tx, watcher_rx) = mpsc::channel();
         let mut watcher = notify::watcher(watcher_tx, watch_delay)?;
 
-        // for entry in globwalk::GlobWalkerBuilder::from_patterns(
-        //     watched_path.parent().unwrap(),
-        //     &["*", "!*.bundle.*"],
-        // )
-        // .build()?
-        // {
-        //     watcher.watch(entry?.path(), RecursiveMode::NonRecursive)?;
-        // }
-        for watched_path in watched_paths.iter() {
-            watcher.watch(watched_path, RecursiveMode::NonRecursive)?;
-        }
-
         loop {
+            for watched_path in watched_paths().iter() {
+                watcher.watch(watched_path, RecursiveMode::NonRecursive)?;
+            }
+
             match watcher_rx.recv() {
                 Ok(e) => {
                     if matches!(e, DebouncedEvent::Write(_))
