@@ -1,5 +1,3 @@
-use anyhow::Result;
-use codemap::CodeMap;
 use payas_model::{
     model::{
         argument::ArgumentParameterType,
@@ -25,6 +23,7 @@ use super::{
     service_builder, type_builder,
 };
 
+use crate::error::ParserError;
 use crate::typechecker;
 
 /// Build a [ModelSystem] given an [AstSystem].
@@ -44,8 +43,8 @@ use crate::typechecker;
 /// (this is done in place, so references created from elsewhere remain valid). Since all model
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
-pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<ModelSystem> {
-    let typechecked_system = typechecker::build(ast_system, codemap)?;
+pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError> {
+    let typechecked_system = typechecker::build(ast_system)?;
     let resolved_system = resolved_builder::build(typechecked_system)?;
 
     let mut building = SystemContextBuilding::default();
@@ -276,7 +275,7 @@ mod tests {
     }
 
     fn create_system(src: &str) -> ModelSystem {
-        let (parsed, codemap) = parser::parse_str(src).unwrap();
-        build(parsed, codemap).unwrap()
+        let parsed = parser::parse_str(src, "input.clay").unwrap();
+        build(parsed).unwrap()
     }
 }
