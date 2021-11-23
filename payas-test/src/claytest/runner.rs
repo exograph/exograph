@@ -127,8 +127,10 @@ pub fn run_testfile(
     }
 
     let mut buffer_port = String::new();
-    server_stdout.read_line(&mut buffer_port)?; // read port clay-server is using
-                                                // take the digits part which represents the port (and ingore other information such as time to start the server)
+    server_stdout
+        .read_line(&mut buffer_port)
+        .context("While reading magic string")?; // read port clay-server is using
+                                                 // take the digits part which represents the port (and ingore other information such as time to start the server)
     let port_string: String = buffer_port.chars().take_while(|c| c.is_digit(10)).collect();
     let endpoint = format!("http://127.0.0.1:{}/", port_string);
 
