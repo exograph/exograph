@@ -4,8 +4,7 @@ use codemap_diagnostic::{Diagnostic, Level};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{
-    AstArgument, AstFieldType, AstInterceptor, AstMethod, AstModel, AstModelKind, AstService,
-    Untyped,
+    AstArgument, AstFieldType, AstInterceptor, AstMethod, AstModelKind, AstService, Untyped,
 };
 
 use super::{
@@ -13,27 +12,19 @@ use super::{
     AnnotationMap, Scope, Type, TypecheckFrom, Typed,
 };
 
+fn typed<U, T: TypecheckFrom<U>>(untyped: &[U]) -> Vec<T> {
+    untyped.iter().map(|u| T::shallow(u)).collect()
+}
+
 impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
     fn shallow(untyped: &AstService<Untyped>) -> AstService<Typed> {
         let annotation_map = AnnotationMap::new(&untyped.annotations);
 
         AstService {
             name: untyped.name.clone(),
-            models: untyped
-                .models
-                .iter()
-                .map(|m| AstModel::shallow(m))
-                .collect(),
-            methods: untyped
-                .methods
-                .iter()
-                .map(|m| AstMethod::shallow(m))
-                .collect(),
-            interceptors: untyped
-                .interceptors
-                .iter()
-                .map(|m| AstInterceptor::shallow(m))
-                .collect(),
+            models: typed(&untyped.models),
+            methods: typed(&untyped.methods),
+            interceptors: typed(&untyped.interceptors),
             annotations: annotation_map,
             base_clayfile: untyped.base_clayfile.clone(),
         }
@@ -104,11 +95,7 @@ impl TypecheckFrom<AstMethod<Untyped>> for AstMethod<Typed> {
         AstMethod {
             name: untyped.name.clone(),
             typ: untyped.typ.clone(),
-            arguments: untyped
-                .arguments
-                .iter()
-                .map(|f| AstArgument::shallow(f))
-                .collect(),
+            arguments: typed(&untyped.arguments),
             return_type: AstFieldType::shallow(&untyped.return_type),
             is_exported: untyped.is_exported,
             annotations: annotation_map,
@@ -152,11 +139,7 @@ impl TypecheckFrom<AstInterceptor<Untyped>> for AstInterceptor<Typed> {
 
         AstInterceptor {
             name: untyped.name.clone(),
-            arguments: untyped
-                .arguments
-                .iter()
-                .map(|f| AstArgument::shallow(f))
-                .collect(),
+            arguments: typed(&untyped.arguments),
             annotations: annotation_map,
             span: untyped.span,
         }
