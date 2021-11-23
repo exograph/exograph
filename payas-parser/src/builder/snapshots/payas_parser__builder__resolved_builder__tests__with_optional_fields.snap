@@ -61,7 +61,7 @@ types:
                   Plain: Venue
               kind:
                 Persistent:
-                  column_name: venue
+                  column_name: venue_id
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~

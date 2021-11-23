@@ -152,7 +152,9 @@ pub fn run_testfile(
     // run the init section
     println!("{} Initializing database...", log_prefix);
     for operation in testfile.init_operations.iter() {
-        run_operation(&endpoint, operation, &jwtsecret, &dburl_for_clay)??
+        run_operation(&endpoint, operation, &jwtsecret, &dburl_for_clay).with_context(|| {
+            format!("While initializing database for testfile {}", testfile.name)
+        })??
     }
 
     // run test

@@ -3,7 +3,7 @@ model Concert {
   id: Int @pk @autoincrement
   title: String
   concertArtists: Set<ConcertArtist>
-  venue: Venue @column("venue_id")
+  venue: Venue? @column("venue_id")
 }
 
 @table("concert_artists")

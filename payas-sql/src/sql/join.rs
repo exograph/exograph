@@ -64,6 +64,7 @@ mod tests {
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_autoincrement: false,
+                    is_nullable: true,
                 },
                 PhysicalColumn {
                     table_name: "concerts".to_string(),
@@ -71,6 +72,7 @@ mod tests {
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_autoincrement: false,
+                    is_nullable: true,
                 },
             ],
         };
@@ -84,6 +86,7 @@ mod tests {
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_autoincrement: false,
+                    is_nullable: true,
                 },
                 PhysicalColumn {
                     table_name: "venues".to_string(),
@@ -91,6 +94,7 @@ mod tests {
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
                     is_autoincrement: false,
+                    is_nullable: true,
                 },
             ],
         };
