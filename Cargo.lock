@@ -2883,7 +2883,6 @@ dependencies = [
 name = "payas-parser"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "cc",
  "codemap",
  "codemap-diagnostic",
@@ -2892,6 +2891,7 @@ dependencies = [
  "payas-model",
  "serde",
  "serde_json",
+ "thiserror",
  "tree-sitter",
  "typed-generational-arena",
  "wildmatch",

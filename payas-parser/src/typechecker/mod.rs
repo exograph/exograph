@@ -13,9 +13,7 @@ mod typ;
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
-use codemap::CodeMap;
-use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter};
+use codemap_diagnostic::Diagnostic;
 use serde::{Deserialize, Serialize};
 
 pub(super) use annotation_map::AnnotationMap;
@@ -24,6 +22,7 @@ pub(super) use typ::{PrimitiveType, Type};
 
 use crate::ast::ast_types::{AstModel, AstService, NodeTypedness};
 use crate::ast::ast_types::{AstSystem, Untyped};
+use crate::error::ParserError;
 use payas_model::model::mapped_arena::MappedArena;
 
 use self::annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec};
@@ -309,15 +308,13 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
     }
 }
 
-pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedArena<Type>> {
+pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, ParserError> {
     let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     let mut annotation_env = HashMap::new();
     populate_type_env(&mut types_arena);
     populate_annotation_env(&mut annotation_env);
-
-    let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
     for service in ast_system.services.iter() {
         ast_service_models.extend(service.models.clone());
@@ -373,8 +370,7 @@ pub fn build(ast_system: AstSystem<Untyped>, codemap: CodeMap) -> Result<MappedA
 
         if !did_change {
             if !errors.is_empty() {
-                emitter.emit(&errors);
-                return Err(anyhow!("Could not process input clay files"));
+                return Err(ParserError::Diagosis(errors));
             } else {
                 return Ok(types_arena);
             }
@@ -387,9 +383,9 @@ pub mod test_support {
     use super::*;
     use crate::parser::*;
 
-    pub fn build(src: &str) -> Result<MappedArena<Type>> {
-        let (parsed, codemap) = parse_str(src)?;
-        super::build(parsed, codemap)
+    pub fn build(src: &str) -> Result<MappedArena<Type>, ParserError> {
+        let parsed = parse_str(src, "input.clay")?;
+        super::build(parsed)
     }
 
     pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {

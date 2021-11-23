@@ -1,0 +1,211 @@
+---
+source: payas-parser/src/builder/resolved_builder.rs
+expression: resolved
+
+---
+types:
+  values:
+    - - ~
+      - Primitive: Boolean
+    - - ~
+      - Primitive: Int
+    - - ~
+      - Primitive: Float
+    - - ~
+      - Primitive: Decimal
+    - - ~
+      - Primitive: String
+    - - ~
+      - Primitive: LocalTime
+    - - ~
+      - Primitive: LocalDateTime
+    - - ~
+      - Primitive: LocalDate
+    - - ~
+      - Primitive: Instant
+    - - ~
+      - Primitive: Json
+    - - ~
+      - Primitive: Blob
+    - - ~
+      - Primitive: ClaytipInjected
+    - - ~
+      - Primitive:
+          Interception: Operation
+    - - ~
+      - Composite:
+          name: Concert
+          plural_name: Concerts
+          fields:
+            - name: id
+              typ:
+                Plain: Int
+              kind:
+                Persistent:
+                  column_name: id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint: ~
+            - name: title
+              typ:
+                Plain: String
+              kind:
+                Persistent:
+                  column_name: title
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+            - name: venuex
+              typ:
+                Plain: Venue
+              kind:
+                Persistent:
+                  column_name: venuex_id
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+            - name: published
+              typ:
+                Plain: Boolean
+              kind:
+                Persistent:
+                  column_name: published
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+          kind:
+            Persistent:
+              table_name: concerts
+          access:
+            creation:
+              BooleanLiteral:
+                - true
+            read:
+              BooleanLiteral:
+                - true
+            update:
+              BooleanLiteral:
+                - true
+            delete:
+              BooleanLiteral:
+                - true
+    - - ~
+      - Composite:
+          name: Venue
+          plural_name: Venues
+          fields:
+            - name: id
+              typ:
+                Plain: Int
+              kind:
+                Persistent:
+                  column_name: id
+                  is_pk: true
+                  is_autoincrement: true
+                  type_hint: ~
+            - name: name
+              typ:
+                Plain: String
+              kind:
+                Persistent:
+                  column_name: name
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+            - name: concerts
+              typ:
+                List:
+                  Plain: Concert
+              kind:
+                Persistent:
+                  column_name: venuex_id
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+            - name: published
+              typ:
+                Plain: Boolean
+              kind:
+                Persistent:
+                  column_name: published
+                  is_pk: false
+                  is_autoincrement: false
+                  type_hint: ~
+          kind:
+            Persistent:
+              table_name: venues
+          access:
+            creation:
+              BooleanLiteral:
+                - true
+            read:
+              BooleanLiteral:
+                - true
+            update:
+              BooleanLiteral:
+                - true
+            delete:
+              BooleanLiteral:
+                - true
+    - ~
+  map:
+    Blob:
+      index: 10
+      generation: ~
+    Boolean:
+      index: 0
+      generation: ~
+    ClaytipInjected:
+      index: 11
+      generation: ~
+    Concert:
+      index: 13
+      generation: ~
+    Decimal:
+      index: 3
+      generation: ~
+    Float:
+      index: 2
+      generation: ~
+    Instant:
+      index: 8
+      generation: ~
+    Int:
+      index: 1
+      generation: ~
+    Json:
+      index: 9
+      generation: ~
+    LocalDate:
+      index: 7
+      generation: ~
+    LocalDateTime:
+      index: 6
+      generation: ~
+    LocalTime:
+      index: 5
+      generation: ~
+    Operation:
+      index: 12
+      generation: ~
+    String:
+      index: 4
+      generation: ~
+    Venue:
+      index: 14
+      generation: ~
+contexts:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+services:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+
