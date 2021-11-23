@@ -71,6 +71,7 @@ pub fn run(directory: &Path) -> Result<()> {
             }
 
             Err(e) => {
+                result.as_ref().unwrap();
                 println!("Testfile failure: {:?}", e)
             }
         }
