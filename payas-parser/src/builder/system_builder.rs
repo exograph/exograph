@@ -143,6 +143,57 @@ mod tests {
     use crate::parser;
 
     #[test]
+    fn optional_fields() {
+        let src = r#"
+            @table("concerts")
+            model Concert {
+                id: Int @pk @autoincrement
+                title: String
+                venue: Venue? @column("venue_id")
+                icon: Blob?
+            }
+
+            @table("venues")
+            model Venue {
+                id: Int @pk @autoincrement
+                name: String
+                address: String?
+                concerts: Set<Concert>?
+            }
+        "#;
+
+        let system = create_system(src);
+        let get_table = |n| get_table_from_arena(n, &system.tables);
+
+        let concerts = get_table("concerts");
+        let venues = get_table("venues");
+
+        // pks should just have PRIMARY KEY constraint, not NOT NULL
+        let concerts_id = get_column_from_table("id", concerts);
+        let venues_id = get_column_from_table("id", venues);
+        assert!(concerts_id.is_pk);
+        assert!(venues_id.is_pk);
+
+        // NOT NULL default
+        let concerts_title = get_column_from_table("title", concerts);
+        let venues_name = get_column_from_table("name", venues);
+        assert!(!concerts_title.is_nullable);
+        assert!(!venues_name.is_nullable);
+
+        // NOT NULL when field is marked with '?'
+        let concerts_venue = get_column_from_table("venue_id", concerts); // composite type field (ManyToOne)
+        let concerts_icon = get_column_from_table("icon", concerts); // primitive type field
+
+        // OneToMany fields don't exist in database
+        let venues_address = get_column_from_table("address", venues); // primitive type field
+
+        assert!(concerts_venue.is_nullable);
+        assert!(concerts_icon.is_nullable);
+
+        assert!(venues_address.is_nullable);
+    }
+
+    #[test]
     fn type_hint_annotations() {
         let src = r#"
             @table("logs")
@@ -270,6 +321,8 @@ mod tests {
                 return item;
             }
         }
+
+        println!("{:#?}", table);
 
         panic!("No such column {}", name)
     }

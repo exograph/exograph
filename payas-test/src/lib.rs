@@ -47,6 +47,12 @@ pub fn run(directory: &Path) -> Result<()> {
             std::cmp::Ordering::Greater
         } else if a.is_err() && b.is_ok() {
             std::cmp::Ordering::Less
+        } else if let Ok(a) = a.as_ref() {
+            if let Ok(b) = b.as_ref() {
+                a.cmp(b)
+            } else {
+                std::cmp::Ordering::Equal
+            }
         } else {
             std::cmp::Ordering::Equal
         }

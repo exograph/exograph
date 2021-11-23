@@ -276,7 +276,13 @@ fn create_column(
     table_name: &str,
     env: &MappedArena<ResolvedType>,
 ) -> Option<PhysicalColumn> {
-    match &field.typ {
+    // split Optional types into a bool and its inner type
+    let (typ, optional) = match &field.typ {
+        ResolvedFieldType::Optional(inner_typ) => (inner_typ.as_ref(), true),
+        _ => (&field.typ, false),
+    };
+
+    match typ {
         ResolvedFieldType::Plain(type_name) => {
             // Either a scalar (primitive) or a many-to-one relatioship with another table
 
@@ -289,13 +295,12 @@ fn create_column(
                     typ: determine_column_type(pt, field),
                     is_pk: field.get_is_pk(),
                     is_autoincrement: if field.get_is_autoincrement() {
-                        assert!(
-                            field.typ.deref(env) == &ResolvedType::Primitive(PrimitiveType::Int)
-                        );
+                        assert!(typ.deref(env) == &ResolvedType::Primitive(PrimitiveType::Int));
                         true
                     } else {
                         false
                     },
+                    is_nullable: optional,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -315,12 +320,10 @@ fn create_column(
                         },
                         is_pk: false,
                         is_autoincrement: false,
+                        is_nullable: optional,
                     })
                 }
             }
-        }
-        ResolvedFieldType::Optional(_) => {
-            todo!()
         }
         ResolvedFieldType::List(typ) => {
             // unwrap list to base type
@@ -358,12 +361,14 @@ fn create_column(
                     typ: determine_column_type(&pt, field),
                     is_pk: false,
                     is_autoincrement: false,
+                    is_nullable: optional,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column
                 None
             }
         }
+        ResolvedFieldType::Optional(_) => panic!("Optional in an Optional?"),
     }
 }
 
@@ -523,6 +528,12 @@ fn create_relation(
     building: &SystemContextBuilding,
     env: &MappedArena<ResolvedType>,
 ) -> GqlRelation {
+    // we can treat Optional fields as their inner type for the purposes of computing relations
+    let typ = match &field.typ {
+        ResolvedFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+        _ => &field.typ,
+    };
+
     fn compute_column_id(
         table: &PhysicalTable,
         table_id: SerializableSlabIndex<PhysicalTable>,
@@ -543,7 +554,7 @@ fn create_relation(
             column_id: column_id.unwrap(),
         }
     } else {
-        match &field.typ {
+        match typ {
             ResolvedFieldType::List(underlying) => {
                 // TODO: should grab separate syntaxes for primitive arrays and relations
                 let field_type = if let ResolvedType::Primitive(_) = underlying.deref(env) {
@@ -560,6 +571,7 @@ fn create_relation(
                 let other_table = &building.tables[other_table_id];
 
                 let column_name = field.get_column_name().to_string();
+
                 let other_type_column_id = other_table
                     .column_index(&column_name)
                     .map(|index| ColumnId::new(other_table_id, index))
@@ -588,12 +600,11 @@ fn create_relation(
                         GqlRelation::ManyToOne {
                             column_id: column_id.unwrap(),
                             other_type_id,
-                            optional: matches!(field.typ, ResolvedFieldType::Optional(_)),
                         }
                     }
                 }
             }
-            ResolvedFieldType::Optional(_) => todo!(),
+            ResolvedFieldType::Optional(_) => panic!("Optional in an Optional?"),
         }
     }
 }
