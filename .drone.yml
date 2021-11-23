@@ -66,6 +66,7 @@ steps:
 services:
   - name: database
     image: postgres:12-buster
+    command: ["postgres", "-c", "max_connections=1000"]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: test
