@@ -32,7 +32,7 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
 }
 
-const JSERROR_PREFIX: &str = "Uncaught Error: ";
+const JSERROR_PREFIX: &str = "Uncaught ClaytipError: ";
 
 // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number
 const JS_MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
@@ -139,6 +139,9 @@ impl DenoModule {
         worker.js_runtime.sync_ops_cache();
 
         worker.execute_main_module(&main_module).await?;
+        worker
+            .execute_script("", include_str!("./utils.js"))
+            .unwrap();
         worker.run_event_loop(false).await?;
 
         let shim_object_names = shims.iter().map(|(name, _)| name.to_string()).collect();

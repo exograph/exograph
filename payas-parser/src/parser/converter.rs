@@ -1,13 +1,12 @@
 use std::convert::TryInto;
 use std::{collections::HashMap, path::Path};
 
-use anyhow::{anyhow, Result};
-use codemap::{CodeMap, Span};
-use codemap_diagnostic::{ColorConfig, Diagnostic, Emitter, Level, SpanLabel, SpanStyle};
-use tree_sitter::{Node, Tree};
+use codemap::Span;
+use tree_sitter::{Node, Tree, TreeCursor};
 
-use super::sitter_ffi;
+use super::{sitter_ffi, span_from_node};
 use crate::ast::ast_types::*;
+use crate::error::ParserError;
 
 pub fn parse(input: &str) -> Option<Tree> {
     let mut parser = tree_sitter::Parser::new();
@@ -15,108 +14,32 @@ pub fn parse(input: &str) -> Option<Tree> {
     parser.parse(input, None)
 }
 
-fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
-    source_span.subspan(
-        (node.start_byte() as usize).try_into().unwrap(),
-        (node.end_byte() as usize).try_into().unwrap(),
-    )
-}
-
 pub fn convert_root(
     node: Node,
     source: &[u8],
-    codemap: &CodeMap,
     source_span: Span,
     filepath: &Path,
-) -> Result<AstSystem<Untyped>> {
+) -> Result<AstSystem<Untyped>, ParserError> {
     assert_eq!(node.kind(), "source_file");
-    if node.has_error() {
-        let mut errors = vec![];
-        collect_parsing_errors(node, source, codemap, source_span, &mut errors);
-        let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
-        emitter.emit(&errors);
-        Err(anyhow!("Parsing failed"))
-    } else {
-        let mut cursor = node.walk();
-        Ok(AstSystem {
-            models: node
-                .children(&mut cursor)
-                .filter(|n| n.kind() == "declaration")
-                .map(|c| convert_declaration_to_model(c, source, source_span))
-                .flatten()
-                .collect::<Vec<_>>(),
-            services: node
-                .children(&mut cursor)
-                .filter(|n| n.kind() == "declaration")
-                .map(|c| convert_declaration_to_service(c, source, source_span, filepath))
-                .flatten()
-                .collect::<Vec<_>>(),
-        })
-    }
+
+    let mut cursor = node.walk();
+    Ok(AstSystem {
+        models: node
+            .children(&mut cursor)
+            .filter(|n| n.kind() == "declaration")
+            .map(|c| convert_declaration_to_model(c, source, source_span))
+            .flatten()
+            .collect::<Vec<_>>(),
+        services: node
+            .children(&mut cursor)
+            .filter(|n| n.kind() == "declaration")
+            .map(|c| convert_declaration_to_service(c, source, source_span, filepath))
+            .flatten()
+            .collect::<Vec<_>>(),
+    })
 }
 
-fn collect_parsing_errors(
-    node: Node,
-    source: &[u8],
-    codemap: &CodeMap,
-    source_span: Span,
-    errors: &mut Vec<Diagnostic>,
-) {
-    if node.is_error() {
-        let expl = node.child(0).unwrap();
-        let sexp = node.to_sexp();
-        if sexp.starts_with("(ERROR (UNEXPECTED") {
-            let mut tok_getter = sexp.chars();
-            for _ in 0.."(ERROR (UNEXPECTED '".len() {
-                tok_getter.next();
-            }
-            for _ in 0.."'))".len() {
-                tok_getter.next_back();
-            }
-            let tok = tok_getter.as_str();
-
-            errors.push(Diagnostic {
-                level: Level::Error,
-                message: format!("Unexpected token: \"{}\"", tok),
-                code: Some("S000".to_string()),
-                spans: vec![SpanLabel {
-                    span: span_from_node(source_span, expl).subspan(1, 1),
-                    style: SpanStyle::Primary,
-                    label: Some(format!("unexpected \"{}\"", tok)),
-                }],
-            })
-        } else {
-            errors.push(Diagnostic {
-                level: Level::Error,
-                message: format!("Unexpected token: \"{}\"", expl.kind()),
-                code: Some("S000".to_string()),
-                spans: vec![SpanLabel {
-                    span: span_from_node(source_span, expl),
-                    style: SpanStyle::Primary,
-                    label: Some(format!("unexpected \"{}\"", expl.kind())),
-                }],
-            })
-        }
-    } else if node.is_missing() {
-        errors.push(Diagnostic {
-            level: Level::Error,
-            message: format!("Missing token: \"{}\"", node.kind()),
-            code: Some("S000".to_string()),
-            spans: vec![SpanLabel {
-                span: span_from_node(source_span, node),
-                style: SpanStyle::Primary,
-                label: Some(format!("missing \"{}\"", node.kind())),
-            }],
-        })
-    } else {
-        let mut cursor = node.walk();
-        node.children(&mut cursor)
-            .for_each(|c| collect_parsing_errors(c, source, codemap, source_span, errors));
-    }
-}
-
-// TODO: dedup
-pub fn convert_declaration_to_model(
+fn convert_declaration_to_model(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -131,7 +54,7 @@ pub fn convert_declaration_to_model(
     }
 }
 
-pub fn convert_declaration_to_service(
+fn convert_declaration_to_service(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -148,7 +71,7 @@ pub fn convert_declaration_to_service(
     }
 }
 
-pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
+fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
     assert_eq!(node.kind(), "model");
 
     let mut cursor = node.walk();
@@ -192,38 +115,23 @@ pub fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<U
     }
 }
 
-pub fn convert_service(
+fn convert_service(
     node: Node,
     source: &[u8],
     source_span: Span,
     filepath: &Path,
 ) -> AstService<Untyped> {
-    let mut model_cursor = node.walk();
-    let mut method_cursor = node.walk();
-    let mut iterceptor_cursor = node.walk();
-
-    let mut cursor = node.walk();
-
-    let model_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut model_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "model");
-
-    let method_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut method_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "service_method");
-
-    let intercetor_nodes = node
-        .child_by_field_name("body")
-        .unwrap()
-        .children_by_field_name("field", &mut iterceptor_cursor)
-        .map(|n| n.child(0).unwrap())
-        .filter(|node| node.kind() == "interceptor");
+    fn matching_nodes<'a, 'b>(
+        node: Node<'a>,
+        cursor: &'b mut TreeCursor<'a>,
+        kind: &'static str,
+    ) -> impl Iterator<Item = Node<'a>> + 'b {
+        node.child_by_field_name("body")
+            .unwrap()
+            .children_by_field_name("field", cursor)
+            .map(|n| n.child(0).unwrap())
+            .filter(move |node| node.kind() == kind)
+    }
 
     AstService {
         name: node
@@ -232,24 +140,24 @@ pub fn convert_service(
             .utf8_text(source)
             .unwrap()
             .to_string(),
-        models: model_nodes
+        models: matching_nodes(node, &mut node.walk(), "model")
             .map(|n| convert_model(n, source, source_span))
             .collect(),
-        methods: method_nodes
+        methods: matching_nodes(node, &mut node.walk(), "service_method")
             .map(|n| convert_service_method(n, source, source_span))
             .collect(),
-        interceptors: intercetor_nodes
-            .map(|n| convert_intercetor(n, source, source_span))
+        interceptors: matching_nodes(node, &mut node.walk(), "interceptor")
+            .map(|n| convert_interceptor(n, source, source_span))
             .collect(),
         annotations: node
-            .children_by_field_name("annotation", &mut cursor)
+            .children_by_field_name("annotation", &mut node.walk())
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
         base_clayfile: filepath.into(),
     }
 }
 
-pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
+fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMethod<Untyped> {
     let mut cursor = node.walk();
 
     AstMethod {
@@ -264,7 +172,8 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
             .unwrap()
             .utf8_text(source)
             .unwrap()
-            .to_string(),
+            .try_into()
+            .unwrap(),
         arguments: node
             .children_by_field_name("args", &mut cursor)
             .map(|c| convert_argument(c, source, source_span))
@@ -281,7 +190,7 @@ pub fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> A
     }
 }
 
-pub fn convert_intercetor(node: Node, source: &[u8], source_span: Span) -> AstInterceptor<Untyped> {
+fn convert_interceptor(node: Node, source: &[u8], source_span: Span) -> AstInterceptor<Untyped> {
     let mut cursor = node.walk();
 
     AstInterceptor {
@@ -295,22 +204,22 @@ pub fn convert_intercetor(node: Node, source: &[u8], source_span: Span) -> AstIn
             .children_by_field_name("args", &mut cursor)
             .map(|c| convert_argument(c, source, source_span))
             .collect(),
-
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        span: span_from_node(source_span, node),
     }
 }
 
-pub fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
+fn convert_fields(node: Node, source: &[u8], source_span: Span) -> Vec<AstField<Untyped>> {
     let mut cursor = node.walk();
     node.children_by_field_name("field", &mut cursor)
         .map(|c| convert_field(c, source, source_span))
         .collect()
 }
 
-pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
+fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyped> {
     assert!(node.kind() == "field");
 
     let mut cursor = node.walk();
@@ -331,11 +240,12 @@ pub fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<U
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        span: span_from_node(source_span, node),
     }
 }
 
 // TODO: dedup
-pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
+fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
     assert!(node.kind() == "argument");
 
     let mut cursor = node.walk();
@@ -359,7 +269,7 @@ pub fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgu
     }
 }
 
-pub fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
+fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
     assert_eq!(node.kind(), "type");
     let first_child = node.child(0).unwrap();
     let mut cursor = node.walk();
@@ -689,7 +599,6 @@ mod tests {
         insta::assert_yaml_snapshot!(convert_root(
             parsed.root_node(),
             src.as_bytes(),
-            &codemap,
             file_span,
             Path::new("input.payas")
         )
@@ -741,7 +650,7 @@ mod tests {
         parsing_test(
             r#"
         context AuthUser {
-            id: Int @jwt("sub") 
+            id: Int @jwt("sub")
             roles: Array<String> @jwt
          }
         "#,
