@@ -1,0 +1,9 @@
+context AuthContext {
+  roles: Array<String> @jwt("roles")
+}
+
+@access("ADMIN" in AuthContext.roles)
+model Document {
+  id: Int @pk @autoincrement
+}
+

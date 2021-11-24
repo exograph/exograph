@@ -1,0 +1,17 @@
+operation: |
+    query {
+      documents {
+        id
+      }
+    }
+response: |
+    {
+      "data": {
+        "createVenues": [
+          {
+            "id": 3
+          }
+        ]
+      }
+    }
+    

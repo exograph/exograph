@@ -57,7 +57,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
 
                         other => {
                             *o_typ = Type::Error;
-                            if !other.is_incomplete() {
+                            if other.is_complete() {
                                 errors.push(Diagnostic {
                                     level: Level::Error,
                                     message: format!("Cannot negate non-boolean type {}", &other),
@@ -92,10 +92,10 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                     } else {
                         *o_typ = Type::Error;
 
-                        if !left_typ.is_incomplete() || !right_typ.is_incomplete() {
+                        if left_typ.is_complete() || right_typ.is_complete() {
                             let mut spans = vec![];
                             if left_typ != Type::Primitive(PrimitiveType::Boolean)
-                                && !left_typ.is_incomplete()
+                                && left_typ.is_complete()
                             {
                                 spans.push(SpanLabel {
                                     span: *left.span(),
@@ -105,7 +105,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                             }
 
                             if right_typ != Type::Primitive(PrimitiveType::Boolean)
-                                && !left_typ.is_incomplete()
+                                && left_typ.is_complete()
                             {
                                 spans.push(SpanLabel {
                                     span: *right.span(),
@@ -144,10 +144,10 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                     } else {
                         *o_typ = Type::Error;
 
-                        if !left_typ.is_incomplete() || !right_typ.is_incomplete() {
+                        if left_typ.is_complete() || right_typ.is_complete() {
                             let mut spans = vec![];
                             if left_typ != Type::Primitive(PrimitiveType::Boolean)
-                                && !left_typ.is_incomplete()
+                                && left_typ.is_complete()
                             {
                                 spans.push(SpanLabel {
                                     span: *left.span(),
@@ -157,7 +157,7 @@ impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
                             }
 
                             if right_typ != Type::Primitive(PrimitiveType::Boolean)
-                                && !right_typ.is_incomplete()
+                                && right_typ.is_complete()
                             {
                                 spans.push(SpanLabel {
                                     span: *right.span(),

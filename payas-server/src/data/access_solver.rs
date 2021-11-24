@@ -11,31 +11,34 @@ use crate::execution::query_context::QueryContext;
 
 #[derive(Debug)]
 enum ReducedExpression<'a> {
-    Value(Option<&'a Value>),
-    Column(Option<MaybeOwned<'a, Column<'a>>>),
+    Value(&'a Value),
+    Column(MaybeOwned<'a, Column<'a>>),
     Predicate(Predicate<'a>),
+    UnresolvedContext(&'a AccessConextSelection), // For example, AuthContext.role for an anonymous user
 }
 
 fn reduce_expression<'a>(
-    expr: &AccessExpression,
+    expr: &'a AccessExpression,
     request_context: &'a Value,
     query_context: &'a QueryContext<'a>,
 ) -> ReducedExpression<'a> {
     match expr {
-        AccessExpression::ContextSelection(selection) => ReducedExpression::Column(literal_column(
-            reduce_context_selection(selection, request_context).unwrap_or(&Value::Null),
-        )),
+        AccessExpression::ContextSelection(selection) => {
+            reduce_context_selection(selection, request_context)
+                .map(|v| ReducedExpression::Column(literal_column(v)))
+                .unwrap_or(ReducedExpression::UnresolvedContext(selection))
+        }
         AccessExpression::Column(column_id) => {
-            ReducedExpression::Column(Some(query_context.create_column_with_id(column_id).into()))
+            ReducedExpression::Column(query_context.create_column_with_id(column_id).into())
         }
         AccessExpression::StringLiteral(value) => {
-            ReducedExpression::Column(Some(Column::Literal(Box::new(value.clone())).into()))
+            ReducedExpression::Column(Column::Literal(Box::new(value.clone())).into())
         }
         AccessExpression::BooleanLiteral(value) => {
-            ReducedExpression::Column(Some(Column::Literal(Box::new(*value)).into()))
+            ReducedExpression::Column(Column::Literal(Box::new(*value)).into())
         }
         AccessExpression::NumberLiteral(value) => {
-            ReducedExpression::Column(Some(Column::Literal(Box::new(*value)).into()))
+            ReducedExpression::Column(Column::Literal(Box::new(*value)).into())
         }
         AccessExpression::LogicalOp(op) => {
             ReducedExpression::Predicate(reduce_logical_op(op, request_context, query_context))
@@ -58,74 +61,52 @@ fn reduce_context_selection<'a>(
     }
 }
 
-fn literal_column(value: &Value) -> Option<MaybeOwned<Column>> {
-    let col = match value {
-        Value::Null => None,
-        Value::Bool(v) => Some(Column::Literal(Box::new(*v))),
-        Value::Number(v) => Some(Column::Literal(Box::new(v.as_i64().unwrap()))), // Deal with the exact number type
-        Value::String(v) => Some(Column::Literal(Box::new(v.clone()))),
+fn literal_column(value: &Value) -> MaybeOwned<Column> {
+    match value {
+        Value::Null => Column::Null,
+        Value::Bool(v) => Column::Literal(Box::new(*v)),
+        Value::Number(v) => Column::Literal(Box::new(v.as_i64().unwrap())), // Deal with the exact number type
+        Value::String(v) => Column::Literal(Box::new(v.clone())),
         Value::Array(_) => todo!(),
         Value::Object(_) => todo!(),
-    };
-
-    col.map(|col| col.into())
+    }
+    .into()
 }
 
 fn reduce_relational_op<'a>(
-    op: &AccessRelationalOp,
+    op: &'a AccessRelationalOp,
     request_context: &'a Value,
     query_context: &'a QueryContext<'a>,
 ) -> Predicate<'a> {
+    let (left, right) = op.sides();
+    let left = reduce_expression(left, request_context, query_context);
+    let right = reduce_expression(right, request_context, query_context);
+
     match op {
-        AccessRelationalOp::Eq(left, right) => {
-            let left = reduce_expression(left, request_context, query_context);
-            let right = reduce_expression(right, request_context, query_context);
-
-            match (left, right) {
-                (ReducedExpression::Column(left_col), ReducedExpression::Column(right_col)) => {
-                    if left_col == right_col {
-                        Predicate::True
-                    } else {
-                        match (left_col, right_col) {
-                            (Some(left_col), Some(right_col)) => {
-                                match (left_col.as_ref(), right_col.as_ref()) {
-                                    (Column::Literal(v1), Column::Literal(v2)) if v1 != v2 => {
-                                        Predicate::False
-                                    }
-                                    _ => Predicate::Eq(left_col, right_col),
-                                }
-                            }
-                            _ => Predicate::False, // One of the side is None
-                        }
-                    }
-                }
-                (ReducedExpression::Value(left_value), ReducedExpression::Value(right_value)) => {
-                    if left_value == right_value {
-                        Predicate::True
-                    } else {
-                        Predicate::False
-                    }
-                }
-                (ReducedExpression::Value(value), ReducedExpression::Column(column))
-                | (ReducedExpression::Column(column), ReducedExpression::Value(value)) => {
-                    match (column, value) {
-                        (Some(column), Some(value)) => {
-                            let value = literal_column(value).unwrap();
-                            Predicate::Eq(column, value)
-                        }
-                        _ => Predicate::False,
-                    }
-                }
-
-                _ => panic!("Operand of relational operator cannot be a predicate"),
+        AccessRelationalOp::Eq(..) => match (left, right) {
+            (ReducedExpression::UnresolvedContext(_), _)
+            | (_, ReducedExpression::UnresolvedContext(_)) => Predicate::False,
+            (ReducedExpression::Column(left_col), ReducedExpression::Column(right_col)) => {
+                Predicate::eq(left_col, right_col)
             }
-        }
+            (ReducedExpression::Value(left_value), ReducedExpression::Value(right_value)) => {
+                (left_value == right_value).into()
+            }
+            (ReducedExpression::Value(value), ReducedExpression::Column(column))
+            | (ReducedExpression::Column(column), ReducedExpression::Value(value)) => {
+                Predicate::Eq(column, literal_column(value))
+            }
+            _ => panic!("Operand of relational operator cannot be a predicate"),
+        },
         AccessRelationalOp::Neq(_, _) => todo!(),
+        AccessRelationalOp::In(..) => {
+            todo!()
+        }
     }
 }
 
 fn reduce_logical_op<'a>(
-    op: &AccessLogicalOp,
+    op: &'a AccessLogicalOp,
     request_context: &'a Value,
     query_context: &'a QueryContext<'a>,
 ) -> Predicate<'a> {
@@ -135,6 +116,7 @@ fn reduce_logical_op<'a>(
             match underlying {
                 ReducedExpression::Value(_) => todo!(),
                 ReducedExpression::Column(_) => todo!(),
+                ReducedExpression::UnresolvedContext(_) => todo!(),
                 ReducedExpression::Predicate(predicate) => predicate.not(),
             }
         }

@@ -130,7 +130,8 @@ module.exports = grammar({
       $.relational_lt,
       $.relational_lte,
       $.relational_gt,
-      $.relational_gte
+      $.relational_gte,
+      $.relational_in,
     ),
     relational_eq: $ => prec.left(relational_level, seq(
       field("left", $.expression), "==", field("right", $.expression)
@@ -149,6 +150,9 @@ module.exports = grammar({
     )),
     relational_gte: $ => prec.left(relational_level, seq(
       field("left", $.expression), ">=", field("right", $.expression)
+    )),
+    relational_in: $ => prec.left(relational_level, seq(
+      field("left", $.expression), "in", field("right", $.expression)
     )),
     term: $ => /[a-zA-Z_][a-zA-Z0-9_]*/,
     str: $ => /(?:[^"\\]|\\.)*/, // string with escaped quotes

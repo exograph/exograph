@@ -18,6 +18,7 @@ pub enum Predicate<'a> {
     Lte(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
     Gt(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
     Gte(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
+    In(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
     // Prefer Predicate::and(), which simplifies the clause, to construct an And expression
     And(
         Box<MaybeOwned<'a, Predicate<'a>>>,
@@ -73,6 +74,19 @@ impl<'a> Predicate<'a> {
         }
     }
 
+    // The next set of methods try to minimize the expression
+    pub fn eq(lhs: MaybeOwned<'a, Column<'a>>, rhs: MaybeOwned<'a, Column<'a>>) -> Predicate<'a> {
+        if lhs == rhs {
+            Predicate::True
+        } else {
+            match (lhs.as_ref(), rhs.as_ref()) {
+                // For literal columns, we can check for Predicate::False directly
+                (Column::Literal(v1), Column::Literal(v2)) if v1 != v2 => Predicate::False,
+                _ => Predicate::Eq(lhs, rhs),
+            }
+        }
+    }
+
     pub fn and(lhs: Predicate<'a>, rhs: Predicate<'a>) -> Predicate<'a> {
         match (lhs, rhs) {
             (Predicate::True, rhs) => rhs,
@@ -90,6 +104,16 @@ impl<'a> Predicate<'a> {
             (Predicate::False, rhs) => rhs,
             (lhs, Predicate::False) => lhs,
             (lhs, rhs) => Predicate::Or(Box::new(lhs.into()), Box::new(rhs.into())),
+        }
+    }
+}
+
+impl From<bool> for Predicate<'static> {
+    fn from(b: bool) -> Predicate<'static> {
+        if b {
+            Predicate::True
+        } else {
+            Predicate::False
         }
     }
 }
@@ -139,6 +163,11 @@ impl<'a> Expression for Predicate<'a> {
             Predicate::Gte(column1, column2) => {
                 combine(column1, column2, expression_context, |stmt1, stmt2| {
                     format!("{} >= {}", stmt1, stmt2)
+                })
+            }
+            Predicate::In(column1, column2) => {
+                combine(column1, column2, expression_context, |stmt1, stmt2| {
+                    format!("{} IN ({})", stmt1, stmt2)
                 })
             }
             Predicate::And(predicate1, predicate2) => {

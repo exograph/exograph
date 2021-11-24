@@ -464,85 +464,25 @@ fn convert_relational_op(node: Node, source: &[u8], source_span: Span) -> Relati
     assert_eq!(node.kind(), "relational_op");
     let first_child = node.child(0).unwrap();
 
+    let left_expr = Box::new(convert_expression(
+        first_child.child_by_field_name("left").unwrap(),
+        source,
+        source_span,
+    ));
+    let right_expr = Box::new(convert_expression(
+        first_child.child_by_field_name("right").unwrap(),
+        source,
+        source_span,
+    ));
+
     match first_child.kind() {
-        "relational_eq" => RelationalOp::Eq(
-            Box::new(convert_expression(
-                first_child.child_by_field_name("left").unwrap(),
-                source,
-                source_span,
-            )),
-            Box::new(convert_expression(
-                first_child.child_by_field_name("right").unwrap(),
-                source,
-                source_span,
-            )),
-            (),
-        ),
-        "relational_neq" => RelationalOp::Neq(
-            Box::new(convert_expression(
-                first_child.child_by_field_name("left").unwrap(),
-                source,
-                source_span,
-            )),
-            Box::new(convert_expression(
-                first_child.child_by_field_name("right").unwrap(),
-                source,
-                source_span,
-            )),
-            (),
-        ),
-        "relational_lt" => RelationalOp::Lt(
-            Box::new(convert_expression(
-                first_child.child_by_field_name("left").unwrap(),
-                source,
-                source_span,
-            )),
-            Box::new(convert_expression(
-                first_child.child_by_field_name("right").unwrap(),
-                source,
-                source_span,
-            )),
-            (),
-        ),
-        "relational_lte" => RelationalOp::Lte(
-            Box::new(convert_expression(
-                first_child.child_by_field_name("left").unwrap(),
-                source,
-                source_span,
-            )),
-            Box::new(convert_expression(
-                first_child.child_by_field_name("right").unwrap(),
-                source,
-                source_span,
-            )),
-            (),
-        ),
-        "relational_gt" => RelationalOp::Gt(
-            Box::new(convert_expression(
-                first_child.child_by_field_name("left").unwrap(),
-                source,
-                source_span,
-            )),
-            Box::new(convert_expression(
-                first_child.child_by_field_name("right").unwrap(),
-                source,
-                source_span,
-            )),
-            (),
-        ),
-        "relational_gte" => RelationalOp::Gte(
-            Box::new(convert_expression(
-                first_child.child_by_field_name("left").unwrap(),
-                source,
-                source_span,
-            )),
-            Box::new(convert_expression(
-                first_child.child_by_field_name("right").unwrap(),
-                source,
-                source_span,
-            )),
-            (),
-        ),
+        "relational_eq" => RelationalOp::Eq(left_expr, right_expr, ()),
+        "relational_neq" => RelationalOp::Neq(left_expr, right_expr, ()),
+        "relational_lt" => RelationalOp::Lt(left_expr, right_expr, ()),
+        "relational_lte" => RelationalOp::Lte(left_expr, right_expr, ()),
+        "relational_gt" => RelationalOp::Gt(left_expr, right_expr, ()),
+        "relational_gte" => RelationalOp::Gte(left_expr, right_expr, ()),
+        "relational_in" => RelationalOp::In(left_expr, right_expr, ()),
         o => panic!("unsupported relational op kind: {}", o),
     }
 }
