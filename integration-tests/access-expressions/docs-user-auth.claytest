@@ -1,0 +1,25 @@
+operation: |
+    query {
+      publicDocs: docs {
+        id
+      }
+    }
+auth: |
+    {
+        "sub": 2,
+        "roles": ["USER"]
+    }  
+response: |
+    {
+      "data": {
+        "publicDocs": [
+          {
+            "id": 1
+          },
+          {
+            "id": 3
+          }
+        ]
+      }
+    }
+    

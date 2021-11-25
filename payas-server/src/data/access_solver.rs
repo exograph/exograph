@@ -11,7 +11,7 @@ use crate::execution::query_context::QueryContext;
 
 #[derive(Debug)]
 enum ReducedExpression<'a> {
-    Value(&'a Value),
+    Value(Value),
     Column(MaybeOwned<'a, Column<'a>>),
     Predicate(Predicate<'a>),
     UnresolvedContext(&'a AccessConextSelection), // For example, AuthContext.role for an anonymous user
@@ -25,20 +25,18 @@ fn reduce_expression<'a>(
     match expr {
         AccessExpression::ContextSelection(selection) => {
             reduce_context_selection(selection, request_context)
-                .map(|v| ReducedExpression::Column(literal_column(v)))
+                .map(|v| ReducedExpression::Value(v.to_owned()))
                 .unwrap_or(ReducedExpression::UnresolvedContext(selection))
         }
         AccessExpression::Column(column_id) => {
             ReducedExpression::Column(query_context.create_column_with_id(column_id).into())
         }
         AccessExpression::StringLiteral(value) => {
-            ReducedExpression::Column(Column::Literal(Box::new(value.clone())).into())
+            ReducedExpression::Value(Value::String(value.clone()))
         }
-        AccessExpression::BooleanLiteral(value) => {
-            ReducedExpression::Column(Column::Literal(Box::new(*value)).into())
-        }
+        AccessExpression::BooleanLiteral(value) => ReducedExpression::Value(Value::Bool(*value)),
         AccessExpression::NumberLiteral(value) => {
-            ReducedExpression::Column(Column::Literal(Box::new(*value)).into())
+            ReducedExpression::Value(Value::Number((*value as i64).into()))
         }
         AccessExpression::LogicalOp(op) => {
             ReducedExpression::Predicate(reduce_logical_op(op, request_context, query_context))
@@ -61,13 +59,13 @@ fn reduce_context_selection<'a>(
     }
 }
 
-fn literal_column(value: &Value) -> MaybeOwned<Column> {
+fn literal_column(value: Value) -> MaybeOwned<'static, Column<'static>> {
     match value {
         Value::Null => Column::Null,
-        Value::Bool(v) => Column::Literal(Box::new(*v)),
+        Value::Bool(v) => Column::Literal(Box::new(v)),
         Value::Number(v) => Column::Literal(Box::new(v.as_i64().unwrap())), // Deal with the exact number type
-        Value::String(v) => Column::Literal(Box::new(v.clone())),
-        Value::Array(_) => todo!(),
+        Value::String(v) => Column::Literal(Box::new(v)),
+        Value::Array(values) => Column::Literal(Box::new(values)),
         Value::Object(_) => todo!(),
     }
     .into()
@@ -99,9 +97,24 @@ fn reduce_relational_op<'a>(
             _ => panic!("Operand of relational operator cannot be a predicate"),
         },
         AccessRelationalOp::Neq(_, _) => todo!(),
-        AccessRelationalOp::In(..) => {
-            todo!()
-        }
+        AccessRelationalOp::In(..) => match (left, right) {
+            (ReducedExpression::UnresolvedContext(_), _)
+            | (_, ReducedExpression::UnresolvedContext(_)) => Predicate::False,
+            (ReducedExpression::Column(left_col), ReducedExpression::Column(right_col)) => {
+                Predicate::In(left_col, right_col)
+            }
+            (ReducedExpression::Value(left_value), ReducedExpression::Value(right_value)) => {
+                match right_value {
+                    Value::Array(values) => values.contains(&left_value).into(),
+                    _ => panic!("The right side operand of IN operator must be an array"),
+                }
+            }
+            (ReducedExpression::Value(value), ReducedExpression::Column(column))
+            | (ReducedExpression::Column(column), ReducedExpression::Value(value)) => {
+                Predicate::In(column, literal_column(value))
+            }
+            _ => panic!("Operand of relational operator cannot be a predicate"),
+        },
     }
 }
 
