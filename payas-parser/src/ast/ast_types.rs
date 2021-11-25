@@ -308,6 +308,7 @@ pub enum RelationalOp<T: NodeTypedness> {
     Lte(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
     Gt(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
     Gte(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
+    In(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

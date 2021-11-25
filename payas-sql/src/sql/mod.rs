@@ -39,14 +39,14 @@ pub use sql_operation::{SQLOperation, TemplateSQLOperation};
 pub use table::TableQuery;
 pub use update::{TemplateUpdate, Update};
 
-pub trait SQLParam: ToSql + Sync + Display {
+pub trait SQLParam: ToSql + Sync {
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, other: &dyn SQLParam) -> bool;
 
     fn as_pg(&self) -> &(dyn ToSql + Sync);
 }
 
-impl<T: ToSql + Sync + Any + PartialEq + Display> SQLParam for T {
+impl<T: ToSql + Sync + Any + PartialEq> SQLParam for T {
     fn as_any(&self) -> &dyn Any {
         self
     }

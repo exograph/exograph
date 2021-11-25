@@ -31,14 +31,14 @@ impl Display for Type {
                 f.write_str("?")
             }
             Type::Set(l) => {
-                f.write_str("Set[")?;
+                f.write_str("Set<")?;
                 l.fmt(f)?;
-                f.write_str("]")
+                f.write_str(">")
             }
             Type::Array(l) => {
-                f.write_str("Array[")?;
+                f.write_str("Array<")?;
                 l.fmt(f)?;
-                f.write_str("]")
+                f.write_str(">")
             }
             Type::Reference(r) => {
                 f.write_str("ref#")?;
@@ -72,6 +72,10 @@ impl Type {
 
     pub fn is_incomplete(&self) -> bool {
         self.is_defer() || self.is_error()
+    }
+
+    pub fn is_complete(&self) -> bool {
+        !self.is_incomplete()
     }
 
     pub fn get_underlying_typename(&self, types: &MappedArena<Type>) -> Option<String> {

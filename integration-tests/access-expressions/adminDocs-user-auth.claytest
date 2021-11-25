@@ -1,0 +1,20 @@
+operation: |
+    query {
+      adminDocs {
+        id
+        content
+      }
+    }
+auth: |
+    {
+        "sub": 2,
+        "roles": ["USER"]
+    }   
+response: |
+    {
+      "errors": [
+        {
+          "message": "Not authorized"
+        }
+      ]
+    }

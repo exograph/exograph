@@ -140,6 +140,12 @@ pub fn compute_expression(
             RelationalOp::Gte(_left, _right, _) => {
                 todo!()
             }
+            RelationalOp::In(left, right, _) => {
+                AccessExpression::RelationalOp(AccessRelationalOp::In(
+                    Box::new(compute_expression(left, self_type_info, building, false)),
+                    Box::new(compute_expression(right, self_type_info, building, false)),
+                ))
+            }
         },
         AstExpr::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
         AstExpr::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),

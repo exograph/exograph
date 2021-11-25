@@ -1,0 +1,17 @@
+context AuthContext {
+  roles: Array<String> @jwt("roles")
+}
+
+@access(query="ADMIN" in AuthContext.roles || self.public, mutation="ADMIN" in AuthContext.roles)
+model Doc {
+  id: Int @pk @autoincrement
+  content: String
+  public: Boolean
+}
+
+// Only admins can do anything with this model
+@access("ADMIN" in AuthContext.roles) 
+model AdminDoc {
+  id: Int @pk @autoincrement
+  content: String
+}

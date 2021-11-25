@@ -1,0 +1,20 @@
+operation: |
+    query {
+      publicDocs: docs {
+        id
+      }
+    }
+response: |
+    {
+      "data": {
+        "publicDocs": [
+          {
+            "id": 1
+          },
+          {
+            "id": 3
+          }
+        ]
+      }
+    }
+  

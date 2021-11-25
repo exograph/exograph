@@ -1,0 +1,32 @@
+operation: |
+    mutation {
+        doc1: createDoc(data: {content: "doc1", public: true}) {
+            id
+        }
+        doc2: createDoc(data: {content: "doc2", public: false}) {
+            id
+        }
+        doc3: createDoc(data: {content: "doc3", public: true}) {
+            id
+        }
+        doc4: createDoc(data: {content: "doc4", public: false}) {
+            id
+        }   
+        adminDoc1: createAdminDoc(data: {content: "adminDoc1"}) {
+            id
+        }
+        adminDoc2: createAdminDoc(data: {content: "adminDoc2"}) {
+            id
+        }
+        adminDoc3: createAdminDoc(data: {content: "adminDoc3"}) {
+            id
+        }
+        adminDoc4: createAdminDoc(data: {content: "adminDoc4"}) {
+            id
+        }                       
+    }  
+auth: |
+    {
+        "sub": 1,
+        "roles": ["ADMIN"]
+    }

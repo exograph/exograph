@@ -1,0 +1,35 @@
+operation: |
+    query {
+      docs {
+        id
+        content
+      }
+    }
+auth: |
+    {
+        "sub": 2,
+        "roles": ["ADMIN"]
+    }   
+response: |
+    {
+      "data": {
+        "docs": [
+          {
+            "id": 1,
+            "content": "doc1"
+          },
+          {
+            "id": 2,
+            "content": "doc2"
+          },
+          {
+            "id": 3,
+            "content": "doc3"
+          },
+          {
+            "id": 4,
+            "content": "doc4"
+          }
+        ]
+      }
+    }
