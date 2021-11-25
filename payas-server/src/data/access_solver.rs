@@ -1,13 +1,14 @@
 use maybe_owned::MaybeOwned;
 use payas_model::{
-    model::access::{AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp},
+    model::{
+        access::{AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp},
+        system::ModelSystem,
+    },
     sql::{column::Column, predicate::Predicate},
 };
 use serde_json::Value;
 
 use std::ops::Not;
-
-use crate::execution::query_context::QueryContext;
 
 #[derive(Debug)]
 enum ReducedExpression<'a> {
@@ -20,7 +21,7 @@ enum ReducedExpression<'a> {
 fn reduce_expression<'a>(
     expr: &'a AccessExpression,
     request_context: &'a Value,
-    query_context: &'a QueryContext<'a>,
+    system: &'a ModelSystem,
 ) -> ReducedExpression<'a> {
     match expr {
         AccessExpression::ContextSelection(selection) => {
@@ -29,7 +30,7 @@ fn reduce_expression<'a>(
                 .unwrap_or(ReducedExpression::UnresolvedContext(selection))
         }
         AccessExpression::Column(column_id) => {
-            ReducedExpression::Column(query_context.create_column_with_id(column_id).into())
+            ReducedExpression::Column(system.create_column_with_id(column_id).into())
         }
         AccessExpression::StringLiteral(value) => {
             ReducedExpression::Value(Value::String(value.clone()))
@@ -39,10 +40,10 @@ fn reduce_expression<'a>(
             ReducedExpression::Value(Value::Number((*value as i64).into()))
         }
         AccessExpression::LogicalOp(op) => {
-            ReducedExpression::Predicate(reduce_logical_op(op, request_context, query_context))
+            ReducedExpression::Predicate(reduce_logical_op(op, request_context, system))
         }
         AccessExpression::RelationalOp(op) => {
-            ReducedExpression::Predicate(reduce_relational_op(op, request_context, query_context))
+            ReducedExpression::Predicate(reduce_relational_op(op, request_context, system))
         }
     }
 }
@@ -74,11 +75,11 @@ fn literal_column(value: Value) -> MaybeOwned<'static, Column<'static>> {
 fn reduce_relational_op<'a>(
     op: &'a AccessRelationalOp,
     request_context: &'a Value,
-    query_context: &'a QueryContext<'a>,
+    system: &'a ModelSystem,
 ) -> Predicate<'a> {
     let (left, right) = op.sides();
-    let left = reduce_expression(left, request_context, query_context);
-    let right = reduce_expression(right, request_context, query_context);
+    let left = reduce_expression(left, request_context, system);
+    let right = reduce_expression(right, request_context, system);
 
     match op {
         AccessRelationalOp::Eq(..) => match (left, right) {
@@ -121,11 +122,11 @@ fn reduce_relational_op<'a>(
 fn reduce_logical_op<'a>(
     op: &'a AccessLogicalOp,
     request_context: &'a Value,
-    query_context: &'a QueryContext<'a>,
+    system: &'a ModelSystem,
 ) -> Predicate<'a> {
     match op {
         AccessLogicalOp::Not(underlying) => {
-            let underlying = reduce_expression(underlying, request_context, query_context);
+            let underlying = reduce_expression(underlying, request_context, system);
             match underlying {
                 ReducedExpression::Value(_) => todo!(),
                 ReducedExpression::Column(_) => todo!(),
@@ -134,12 +135,12 @@ fn reduce_logical_op<'a>(
             }
         }
         AccessLogicalOp::And(left, right) => {
-            let left_predicate = match reduce_expression(left, request_context, query_context) {
+            let left_predicate = match reduce_expression(left, request_context, system) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
 
-            let right_predicate = match reduce_expression(right, request_context, query_context) {
+            let right_predicate = match reduce_expression(right, request_context, system) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
@@ -156,11 +157,11 @@ fn reduce_logical_op<'a>(
             }
         }
         AccessLogicalOp::Or(left, right) => {
-            let left_predicate = match reduce_expression(left, request_context, query_context) {
+            let left_predicate = match reduce_expression(left, request_context, system) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
-            let right_predicate = match reduce_expression(right, request_context, query_context) {
+            let right_predicate = match reduce_expression(right, request_context, system) {
                 ReducedExpression::Predicate(predicate) => predicate,
                 _ => panic!("Operand of 'And' isn't a predicate"),
             };
@@ -183,15 +184,13 @@ fn reduce_logical_op<'a>(
 pub fn reduce_access<'a>(
     access_expression: &'a AccessExpression,
     request_context: &'a Value,
-    query_context: &'a QueryContext<'a>,
+    system: &'a ModelSystem,
 ) -> Predicate<'a> {
     match access_expression {
         AccessExpression::ContextSelection(_) => todo!(),
         AccessExpression::Column(_) => todo!(),
-        AccessExpression::LogicalOp(op) => reduce_logical_op(op, request_context, query_context),
-        AccessExpression::RelationalOp(op) => {
-            reduce_relational_op(op, request_context, query_context)
-        }
+        AccessExpression::LogicalOp(op) => reduce_logical_op(op, request_context, system),
+        AccessExpression::RelationalOp(op) => reduce_relational_op(op, request_context, system),
         AccessExpression::StringLiteral(_) => todo!(),
         AccessExpression::BooleanLiteral(value) => {
             if *value {
@@ -206,25 +205,69 @@ pub fn reduce_access<'a>(
 
 #[cfg(test)]
 mod tests {
-    use std::ptr;
-
+    use payas_model::{
+        model::{column_id::ColumnId, system::ModelSystem},
+        sql::{
+            column::{IntBits, PhysicalColumn, PhysicalColumnType},
+            PhysicalTable,
+        },
+    };
     use serde_json::json;
-
-    use crate::execution::query_context::QueryContext;
+    use typed_generational_arena::{IgnoreGeneration, Index};
 
     use super::*;
+
+    struct TestSystem {
+        system: ModelSystem,
+        table_id: Index<PhysicalTable, usize, IgnoreGeneration>,
+        published_column_id: ColumnId,
+        owner_id_column_id: ColumnId,
+    }
+
+    fn test_system() -> TestSystem {
+        let published_column = PhysicalColumn {
+            table_name: "article".to_string(),
+            column_name: "published".to_string(),
+            typ: PhysicalColumnType::Boolean,
+            is_pk: false,
+            is_autoincrement: false,
+            is_nullable: false,
+        };
+
+        let owner_id_column = PhysicalColumn {
+            table_name: "article".to_string(),
+            column_name: "owner_id".to_string(),
+            typ: PhysicalColumnType::Int { bits: IntBits::_64 },
+            is_pk: false,
+            is_autoincrement: false,
+            is_nullable: false,
+        };
+
+        let table = PhysicalTable {
+            name: "article".to_string(),
+            columns: vec![published_column, owner_id_column],
+        };
+
+        let mut system = ModelSystem::default();
+        let table_id = system.tables.insert(table);
+
+        let table = &system.tables[table_id];
+        let published_column_id = ColumnId::new(table_id, table.column_index("published").unwrap());
+        let owner_id_column_id = ColumnId::new(table_id, table.column_index("owner_id").unwrap());
+
+        TestSystem {
+            system,
+            table_id,
+            published_column_id,
+            owner_id_column_id,
+        }
+    }
 
     #[test]
     fn context_only() {
         // Scenario: AuthContext.role == "ROLE_ADMIN"
 
-        // SAFETY: Temporory code until we improve the design of OperationContext
-        // For now, we don't acces query_context, so safe to use a null pointer
-        let query_context = unsafe {
-            let null_query_context: *const QueryContext = ptr::null();
-            let query_context: &QueryContext = &*null_query_context;
-            query_context
-        };
+        let system = ModelSystem::default();
 
         let test_ae = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
             Box::new(AccessExpression::ContextSelection(
@@ -237,212 +280,175 @@ mod tests {
         ));
 
         let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-        let reduced = reduce_access(&test_ae, &context, query_context);
+        let reduced = reduce_access(&test_ae, &context, &system);
         assert_eq!(reduced, Predicate::True);
 
         let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-        let reduced = reduce_access(&test_ae, &context, query_context);
+        let reduced = reduce_access(&test_ae, &context, &system);
         assert_eq!(reduced, Predicate::False)
     }
 
-    // TODO: Re-enable tests
+    #[test]
+    fn context_and_dynamic() {
+        // Scenario: AuthContext.role == "ROLE_ADMIN" || self.published
 
-    // #[test]
-    // fn context_and_dynamic() {
-    //     // Scenario: AuthContext.role == "ROLE_ADMIN" || self.published
+        let TestSystem {
+            system,
+            table_id,
+            published_column_id,
+            ..
+        } = test_system();
 
-    //     // SAFETY: Temporory code until we improve the design of OperationContext
-    //     // For now, we don't acces query_context, so safe to use a null pointer
-    //     let query_context = unsafe {
-    //         let null_query_context: *const QueryContext = ptr::null();
-    //         let query_context: &QueryContext = &*null_query_context;
-    //         OperationContext::new(&query_context)
-    //     };
+        let test_ae = {
+            let admin_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
+                Box::new(AccessExpression::ContextSelection(
+                    AccessConextSelection::Select(
+                        Box::new(AccessConextSelection::Single("AccessContext".to_string())),
+                        "role".to_string(),
+                    ),
+                )),
+                Box::new(AccessExpression::StringLiteral("ROLE_ADMIN".to_owned())),
+            ));
+            let user_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
+                Box::new(AccessExpression::Column(published_column_id)),
+                Box::new(AccessExpression::BooleanLiteral(true)),
+            ));
 
-    //     let admin_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-    //         Box::new(AccessExpression::ContextSelection(
-    //             AccessConextSelection::Select(
-    //                 Box::new(AccessConextSelection::Single("AccessContext".to_string())),
-    //                 "role".to_string(),
-    //             ),
-    //         )),
-    //         Box::new(AccessExpression::StringLiteral("ROLE_ADMIN".to_owned())),
-    //     ));
+            AccessExpression::LogicalOp(AccessLogicalOp::Or(
+                Box::new(admin_access),
+                Box::new(user_access),
+            ))
+        };
 
-    //     let published_column = PhysicalColumn {
-    //         table_name: "article".to_string(),
-    //         column_name: "published".to_string(),
-    //         typ: PhysicalColumnType::Boolean,
-    //         is_pk: false,
-    //         is_autoincrement: false,
-    //         references: None,
-    //     };
+        let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
+        let reduced = reduce_access(&test_ae, &context, &system);
+        assert_eq!(reduced, Predicate::True);
 
-    //     let user_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-    //         Box::new(AccessExpression::Column(
-    //             query_context.create_column(Column::Physical(&published_column)),
-    //         )),
-    //         Box::new(AccessExpression::Column(
-    //             query_context.create_column(Column::Literal(Box::new(true))),
-    //         )),
-    //     ));
+        let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
+        let reduced = reduce_access(&test_ae, &context, &system);
+        let table = &system.tables[table_id];
+        assert_eq!(
+            reduced,
+            Predicate::Eq(
+                table.get_column("published").unwrap().into(),
+                Column::Literal(Box::new(true)).into()
+            )
+        )
+    }
 
-    //     let test_ae = AccessExpression::LogicalOp(AccessLogicalOp::Or(
-    //         Box::new(admin_access),
-    //         Box::new(user_access),
-    //     ));
+    #[test]
+    fn context_compared_with_dynamic() {
+        // Scenario: AuthContext.user_id == self.owner_id
 
-    //     let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-    //     let reduced = reduce_access(&test_ae, &context, &query_context);
-    //     assert_eq!(reduced, &Predicate::True);
+        let TestSystem {
+            system,
+            table_id,
+            owner_id_column_id,
+            ..
+        } = test_system();
 
-    //     let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-    //     let reduced = reduce_access(&test_ae, &context, &query_context);
-    //     assert_eq!(
-    //         reduced,
-    //         &Predicate::Eq(
-    //             &Column::Physical(&published_column),
-    //             &Column::Literal(Box::new(true))
-    //         )
-    //     )
-    // }
+        let test_ae = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
+            Box::new(AccessExpression::ContextSelection(
+                AccessConextSelection::Select(
+                    Box::new(AccessConextSelection::Single("AccessContext".to_string())),
+                    "user_id".to_string(),
+                ),
+            )),
+            Box::new(AccessExpression::Column(owner_id_column_id)),
+        ));
 
-    // #[test]
-    // fn context_compared_with_dynamic() {
-    //     // Scenario: AuthContext.user_id == self.owner_id
+        let table = &system.tables[table_id];
 
-    //     // SAFETY: Temporory code until we improve the design of OperationContext
-    //     // For now, we don't acces query_context, so safe to use a null pointer
-    //     let query_context = unsafe {
-    //         let null_query_context: *const QueryContext = ptr::null();
-    //         let query_context: &QueryContext = &*null_query_context;
-    //         OperationContext::new(&query_context)
-    //     };
+        let context = json!({ "AccessContext": {"user_id": "1"} });
+        let reduced = reduce_access(&test_ae, &context, &system);
+        assert_eq!(
+            reduced,
+            Predicate::Eq(
+                table.get_column("owner_id").unwrap().into(),
+                Column::Literal(Box::new("1".to_string())).into(),
+            )
+        );
 
-    //     let owner_id_column = PhysicalColumn {
-    //         table_name: "article".to_string(),
-    //         column_name: "owner_id".to_string(),
-    //         typ: PhysicalColumnType::String,
-    //         is_pk: false,
-    //         is_autoincrement: false,
-    //         references: None,
-    //     };
+        let context = json!({ "AccessContext": {"user_id": "2"} });
+        let reduced = reduce_access(&test_ae, &context, &system);
+        assert_eq!(
+            reduced,
+            Predicate::Eq(
+                table.get_column("owner_id").unwrap().into(),
+                Column::Literal(Box::new("2".to_string())).into(),
+            )
+        )
+    }
 
-    //     let test_ae = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-    //         Box::new(AccessExpression::ContextSelection(
-    //             AccessConextSelection::Select(
-    //                 Box::new(AccessConextSelection::Single("AccessContext".to_string())),
-    //                 "user_id".to_string(),
-    //             ),
-    //         )),
-    //         Box::new(AccessExpression::Column(
-    //             query_context.create_column(Column::Physical(&owner_id_column)),
-    //         )),
-    //     ));
+    #[test]
+    fn varied_rule_for_roles() {
+        // Scenaior: AuthContext.role == "ROLE_ADMIN" || (AuthContext.role == "ROLE_USER" && self.published == true)
 
-    //     let context = json!({ "AccessContext": {"user_id": "1"} });
-    //     let reduced = reduce_access(&test_ae, &context, &query_context);
-    //     assert_eq!(
-    //         reduced,
-    //         &Predicate::Eq(
-    //             &Column::Literal(Box::new("1".to_string())),
-    //             &Column::Physical(&owner_id_column),
-    //         )
-    //     );
+        let TestSystem {
+            system,
+            table_id,
+            published_column_id,
+            ..
+        } = test_system();
 
-    //     let context = json!({ "AccessContext": {"user_id": "2"} });
-    //     let reduced = reduce_access(&test_ae, &context, &query_context);
+        let admin_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
+            Box::new(AccessExpression::ContextSelection(
+                AccessConextSelection::Select(
+                    Box::new(AccessConextSelection::Single("AccessContext".to_string())),
+                    "role".to_string(),
+                ),
+            )),
+            Box::new(AccessExpression::StringLiteral("ROLE_ADMIN".to_owned())),
+        ));
 
-    //     assert_eq!(
-    //         reduced,
-    //         &Predicate::Eq(
-    //             &Column::Literal(Box::new("2".to_string())),
-    //             &Column::Physical(&owner_id_column),
-    //         )
-    //     )
-    // }
+        let user_access = {
+            let role_rule = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
+                Box::new(AccessExpression::ContextSelection(
+                    AccessConextSelection::Select(
+                        Box::new(AccessConextSelection::Single("AccessContext".to_string())),
+                        "role".to_string(),
+                    ),
+                )),
+                Box::new(AccessExpression::StringLiteral("ROLE_USER".to_owned())),
+            ));
 
-    // #[test]
-    // fn varied_rule_for_roles() {
-    //     // Scenaior: AuthContext.role == "ROLE_ADMIN" || (AuthContext.role == "ROLE_USER" && self.published == true)
+            let data_rule = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
+                Box::new(AccessExpression::Column(published_column_id)),
+                Box::new(AccessExpression::BooleanLiteral(true)),
+            ));
 
-    //     // SAFETY: Temporory code until we improve the design of OperationContext
-    //     // For now, we don't acces query_context, so safe to use a null pointer
-    //     let query_context = unsafe {
-    //         let null_query_context: *const QueryContext = ptr::null();
-    //         let query_context: &QueryContext = &*null_query_context;
-    //         OperationContext::new(&query_context)
-    //     };
+            AccessExpression::LogicalOp(AccessLogicalOp::And(
+                Box::new(role_rule),
+                Box::new(data_rule),
+            ))
+        };
 
-    //     let published_column = PhysicalColumn {
-    //         table_name: "article".to_string(),
-    //         column_name: "published".to_string(),
-    //         typ: PhysicalColumnType::Boolean,
-    //         is_pk: false,
-    //         is_autoincrement: false,
-    //         references: None,
-    //     };
+        let test_ae = AccessExpression::LogicalOp(AccessLogicalOp::Or(
+            Box::new(admin_access),
+            Box::new(user_access),
+        ));
 
-    //     let admin_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-    //         Box::new(AccessExpression::ContextSelection(
-    //             AccessConextSelection::Select(
-    //                 Box::new(AccessConextSelection::Single("AccessContext".to_string())),
-    //                 "role".to_string(),
-    //             ),
-    //         )),
-    //         Box::new(AccessExpression::StringLiteral("ROLE_ADMIN".to_owned())),
-    //     ));
+        let table = &system.tables[table_id];
 
-    //     let user_access = {
-    //         let role_rule = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-    //             Box::new(AccessExpression::ContextSelection(
-    //                 AccessConextSelection::Select(
-    //                     Box::new(AccessConextSelection::Single("AccessContext".to_string())),
-    //                     "role".to_string(),
-    //                 ),
-    //             )),
-    //             Box::new(AccessExpression::StringLiteral("ROLE_USER".to_owned())),
-    //         ));
+        // For admins, allow access without any further restrictions
+        let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
+        let reduced = reduce_access(&test_ae, &context, &system);
+        assert_eq!(reduced, Predicate::True);
 
-    //         let data_rule = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-    //             Box::new(AccessExpression::Column(
-    //                 query_context.create_column(Column::Physical(&published_column)),
-    //             )),
-    //             Box::new(AccessExpression::Column(
-    //                 query_context.create_column(Column::Literal(Box::new(true))),
-    //             )),
-    //         ));
+        // For users, allow only if the article is published
+        let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
+        let reduced = reduce_access(&test_ae, &context, &system);
+        assert_eq!(
+            reduced,
+            Predicate::Eq(
+                table.get_column("published").unwrap().into(),
+                Column::Literal(Box::new(true)).into(),
+            )
+        );
 
-    //         AccessExpression::LogicalOp(AccessLogicalOp::And(
-    //             Box::new(role_rule),
-    //             Box::new(data_rule),
-    //         ))
-    //     };
-
-    //     let test_ae = AccessExpression::LogicalOp(AccessLogicalOp::Or(
-    //         Box::new(admin_access),
-    //         Box::new(user_access),
-    //     ));
-
-    //     // For admins, allow access without any further restrictions
-    //     let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-    //     let reduced = reduce_access(&test_ae, &context, &query_context);
-    //     assert_eq!(reduced, &Predicate::True);
-
-    //     // For users, allow only if the article is published
-    //     let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-    //     let reduced = reduce_access(&test_ae, &context, &query_context);
-    //     assert_eq!(
-    //         reduced,
-    //         &Predicate::Eq(
-    //             &Column::Physical(&published_column),
-    //             &Column::Literal(Box::new(true)),
-    //         )
-    //     );
-
-    //     // For others, do not allow
-    //     let context = json!({ "AccessContext": {"role": "ROLE_GUEST"} });
-    //     let reduced = reduce_access(&test_ae, &context, &query_context);
-    //     assert_eq!(reduced, &Predicate::False);
-    // }
+        // For others, do not allow
+        let context = json!({ "AccessContext": {"role": "ROLE_GUEST"} });
+        let reduced = reduce_access(&test_ae, &context, &system);
+        assert_eq!(reduced, Predicate::False);
+    }
 }

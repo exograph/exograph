@@ -1,4 +1,5 @@
 use super::argument::ArgumentParameterType;
+use super::column_id::ColumnId;
 use super::mapped_arena::SerializableSlab;
 use super::order::*;
 use super::predicate::*;
@@ -9,6 +10,7 @@ use super::{mapped_arena::MappedArena, operation::*};
 use crate::sql::PhysicalTable;
 
 use super::types::GqlType;
+use payas_sql::sql::column::Column;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -39,5 +41,11 @@ impl Default for ModelSystem {
             methods: SerializableSlab::new(),
             argument_types: SerializableSlab::new(),
         }
+    }
+}
+
+impl ModelSystem {
+    pub fn create_column_with_id<'a>(&'a self, column_id: &ColumnId) -> Column<'a> {
+        Column::Physical(column_id.get_column(self))
     }
 }
