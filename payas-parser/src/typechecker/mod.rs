@@ -438,6 +438,21 @@ mod tests {
     }
 
     #[test]
+    fn with_array_in_operator() {
+        let src = r#"
+        context AuthContext {
+            roles: Array<String> @jwt
+        }
+    
+        model Doc {
+          content: String @access("ROLE_ADMIN" in AuthContext.roles)
+        }
+        "#;
+
+        assert_typechecking(src);
+    }
+
+    #[test]
     fn with_auth_context_use_in_type_annotation() {
         let src = r#"
         context AuthContext {

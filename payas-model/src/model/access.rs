@@ -53,4 +53,19 @@ pub enum AccessRelationalOp {
     // Lte(Box<AccessExpression<'a>>, Box<AccessExpression<'a>>),
     // Gt(Box<AccessExpression<'a>>, Box<AccessExpression<'a>>),
     // Gte(Box<AccessExpression<'a>>, Box<AccessExpression<'a>>),
+    In(Box<AccessExpression>, Box<AccessExpression>),
+}
+
+impl AccessRelationalOp {
+    pub fn sides(&self) -> (&AccessExpression, &AccessExpression) {
+        match self {
+            AccessRelationalOp::Eq(left, right) => (left, right),
+            AccessRelationalOp::Neq(left, right) => (left, right),
+            // AccessRelationalOp::Lt(left, right) => (left, right),
+            // AccessRelationalOp::Lte(left, right) => (left, right),
+            // AccessRelationalOp::Gt(left, right) => (left, right),
+            // AccessRelationalOp::Gte(left, right) => (left, right),
+            AccessRelationalOp::In(left, right) => (left, right),
+        }
+    }
 }

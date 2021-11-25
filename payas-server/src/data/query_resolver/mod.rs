@@ -482,6 +482,7 @@ fn columns_referred<'a>(predicate: &'a Predicate) -> Vec<&'a PhysicalColumn> {
         | Predicate::Lte(left, right)
         | Predicate::Gt(left, right)
         | Predicate::Gte(left, right)
+        | Predicate::In(left, right)
         | Predicate::StringLike(left, right, _)
         | Predicate::StringStartsWith(left, right)
         | Predicate::StringEndsWith(left, right)

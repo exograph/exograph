@@ -17,6 +17,7 @@ impl RelationalOp<Typed> {
             RelationalOp::Lte(_, _, typ) => typ,
             RelationalOp::Gt(_, _, typ) => typ,
             RelationalOp::Gte(_, _, typ) => typ,
+            RelationalOp::In(_, _, typ) => typ,
         }
     }
 }
@@ -54,6 +55,11 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
                 Box::new(AstExpr::shallow(right)),
                 Type::Defer,
             ),
+            RelationalOp::In(left, right, _) => RelationalOp::In(
+                Box::new(AstExpr::shallow(left)),
+                Box::new(AstExpr::shallow(right)),
+                Type::Defer,
+            ),
         }
     }
 
@@ -64,65 +70,81 @@ impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        match self {
-            RelationalOp::Eq(left, right, o_typ) => {
-                let in_updated = left.pass(type_env, annotation_env, scope, errors)
-                    || right.pass(type_env, annotation_env, scope, errors);
-                let out_updated = if o_typ.is_incomplete() {
-                    let left_typ = left.typ().deref(type_env);
-                    let right_typ = right.typ().deref(type_env);
-                    if left_typ == right_typ && !left_typ.is_incomplete() {
-                        *o_typ = Type::Primitive(PrimitiveType::Boolean);
-                        true
-                    } else {
-                        *o_typ = Type::Error;
-
-                        if !left_typ.is_incomplete() && !right_typ.is_incomplete() {
-                            let mut spans = vec![];
-                            spans.push(SpanLabel {
-                                span: *left.span(),
-                                style: SpanStyle::Primary,
-                                label: Some(format!("got {}", left_typ)),
-                            });
-
-                            spans.push(SpanLabel {
-                                span: *right.span(),
-                                style: SpanStyle::Primary,
-                                label: Some(format!("got {}", right_typ)),
-                            });
-
-                            errors.push(Diagnostic {
-                                level: Level::Error,
-                                message: format!(
-                                    "Mismatched types, comparing {} with {}",
-                                    left_typ, right_typ
-                                ),
-                                code: Some("C000".to_string()),
-                                spans,
-                            });
-                        }
-
-                        false
-                    }
+        let mut typecheck_operands = |left: &mut Box<AstExpr<Typed>>,
+                                      right: &mut Box<AstExpr<Typed>>,
+                                      o_typ: &mut Type,
+                                      type_match: fn(&Type, &Type) -> bool|
+         -> bool {
+            let in_updated = left.pass(type_env, annotation_env, scope, errors)
+                || right.pass(type_env, annotation_env, scope, errors);
+            let out_updated = if o_typ.is_incomplete() {
+                let left_typ = left.typ().deref(type_env);
+                let right_typ = right.typ().deref(type_env);
+                if left_typ.is_complete()
+                    && right_typ.is_complete()
+                    && type_match(&left_typ, &right_typ)
+                {
+                    *o_typ = Type::Primitive(PrimitiveType::Boolean);
+                    true
                 } else {
+                    *o_typ = Type::Error;
+
+                    if left_typ.is_complete() && right_typ.is_complete() {
+                        let mut spans = vec![];
+                        spans.push(SpanLabel {
+                            span: *left.span(),
+                            style: SpanStyle::Primary,
+                            label: Some(format!("got {}", left_typ)),
+                        });
+
+                        spans.push(SpanLabel {
+                            span: *right.span(),
+                            style: SpanStyle::Primary,
+                            label: Some(format!("got {}", right_typ)),
+                        });
+
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "Mismatched types, comparing {} with {}",
+                                left_typ, right_typ
+                            ),
+                            code: Some("C000".to_string()),
+                            spans,
+                        });
+                    }
+
                     false
-                };
-                in_updated || out_updated
+                }
+            } else {
+                false
+            };
+            in_updated || out_updated
+        };
+
+        fn identical_match(left: &Type, right: &Type) -> bool {
+            left == right
+        }
+
+        fn in_relation_match(left: &Type, right: &Type) -> bool {
+            match right {
+                Type::Array(inner) => *left == **inner,
+                Type::Set(inner) => *left == **inner,
+                _ => false,
             }
-            RelationalOp::Neq(left, right, _) => {
-                let in_updated = left.pass(type_env, annotation_env, scope, errors)
-                    || right.pass(type_env, annotation_env, scope, errors);
-                let out_updated = false;
-                in_updated || out_updated
+        }
+
+        match self {
+            RelationalOp::Eq(left, right, o_typ)
+            | RelationalOp::Neq(left, right, o_typ)
+            | RelationalOp::Lt(left, right, o_typ)
+            | RelationalOp::Lte(left, right, o_typ)
+            | RelationalOp::Gt(left, right, o_typ)
+            | RelationalOp::Gte(left, right, o_typ) => {
+                typecheck_operands(left, right, o_typ, identical_match)
             }
-            RelationalOp::Lt(left, right, _)
-            | RelationalOp::Lte(left, right, _)
-            | RelationalOp::Gt(left, right, _)
-            | RelationalOp::Gte(left, right, _) => {
-                let in_updated = left.pass(type_env, annotation_env, scope, errors)
-                    || right.pass(type_env, annotation_env, scope, errors);
-                let out_updated = false;
-                in_updated || out_updated
+            RelationalOp::In(left, right, o_typ) => {
+                typecheck_operands(left, right, o_typ, in_relation_match)
             }
         }
     }
