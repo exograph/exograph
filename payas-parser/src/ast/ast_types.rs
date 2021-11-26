@@ -311,6 +311,20 @@ pub enum RelationalOp<T: NodeTypedness> {
     In(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
 }
 
+impl<T: NodeTypedness> RelationalOp<T> {
+    pub fn sides(&self) -> (&AstExpr<T>, &AstExpr<T>) {
+        match self {
+            RelationalOp::Eq(l, r, _) => (l, r),
+            RelationalOp::Neq(l, r, _) => (l, r),
+            RelationalOp::Lt(l, r, _) => (l, r),
+            RelationalOp::Lte(l, r, _) => (l, r),
+            RelationalOp::Gt(l, r, _) => (l, r),
+            RelationalOp::Gte(l, r, _) => (l, r),
+            RelationalOp::In(l, r, _) => (l, r),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Identifier(
     pub String,
