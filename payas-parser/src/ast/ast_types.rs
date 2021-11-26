@@ -312,16 +312,26 @@ pub enum RelationalOp<T: NodeTypedness> {
 }
 
 impl<T: NodeTypedness> RelationalOp<T> {
-    pub fn sides(&self) -> (&AstExpr<T>, &AstExpr<T>) {
+    pub fn to_tuple(&self) -> (&AstExpr<T>, &AstExpr<T>, &T::RelationalOp) {
         match self {
-            RelationalOp::Eq(l, r, _) => (l, r),
-            RelationalOp::Neq(l, r, _) => (l, r),
-            RelationalOp::Lt(l, r, _) => (l, r),
-            RelationalOp::Lte(l, r, _) => (l, r),
-            RelationalOp::Gt(l, r, _) => (l, r),
-            RelationalOp::Gte(l, r, _) => (l, r),
-            RelationalOp::In(l, r, _) => (l, r),
+            RelationalOp::Eq(l, r, typ) => (l, r, typ),
+            RelationalOp::Neq(l, r, typ) => (l, r, typ),
+            RelationalOp::Lt(l, r, typ) => (l, r, typ),
+            RelationalOp::Lte(l, r, typ) => (l, r, typ),
+            RelationalOp::Gt(l, r, typ) => (l, r, typ),
+            RelationalOp::Gte(l, r, typ) => (l, r, typ),
+            RelationalOp::In(l, r, typ) => (l, r, typ),
         }
+    }
+
+    pub fn typ(&self) -> &T::RelationalOp {
+        let (_, _, typ) = self.to_tuple();
+        typ
+    }
+
+    pub fn sides(&self) -> (&AstExpr<T>, &AstExpr<T>) {
+        let (l, r, _) = self.to_tuple();
+        (l, r)
     }
 }
 
