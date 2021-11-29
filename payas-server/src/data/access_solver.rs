@@ -250,49 +250,24 @@ mod tests {
     }
 
     fn test_system() -> TestSystem {
-        let published_column = PhysicalColumn {
-            table_name: "article".to_string(),
-            column_name: "published".to_string(),
-            typ: PhysicalColumnType::Boolean,
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: false,
-        };
-
-        let owner_id_column = PhysicalColumn {
-            table_name: "article".to_string(),
-            column_name: "owner_id".to_string(),
-            typ: PhysicalColumnType::Int { bits: IntBits::_64 },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: false,
-        };
-
-        let dept1_id_column = PhysicalColumn {
-            table_name: "article".to_string(),
-            column_name: "dept1_id".to_string(),
-            typ: PhysicalColumnType::Int { bits: IntBits::_64 },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: false,
-        };
-
-        let dept2_id_column = PhysicalColumn {
-            table_name: "article".to_string(),
-            column_name: "dept2_id".to_string(),
-            typ: PhysicalColumnType::Int { bits: IntBits::_64 },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: false,
-        };
+        fn mk_column(column_name: &str, typ: PhysicalColumnType) -> PhysicalColumn {
+            PhysicalColumn {
+                table_name: "article".to_string(),
+                column_name: column_name.to_string(),
+                typ,
+                is_pk: false,
+                is_autoincrement: false,
+                is_nullable: false,
+            }
+        }
 
         let table = PhysicalTable {
             name: "article".to_string(),
             columns: vec![
-                published_column,
-                owner_id_column,
-                dept1_id_column,
-                dept2_id_column,
+                mk_column("published", PhysicalColumnType::Boolean),
+                mk_column("owner_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
+                mk_column("dept1_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
+                mk_column("dept2_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
             ],
         };
 
