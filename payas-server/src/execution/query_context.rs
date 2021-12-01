@@ -100,7 +100,7 @@ impl<'qc> QueryContext<'qc> {
     }
 
     pub fn create_column_with_id(&self, column_id: &ColumnId) -> Column<'qc> {
-        Column::Physical(column_id.get_column(self.executor.system))
+        self.executor.system.create_column_with_id(column_id)
     }
 
     // TODO: currently just unwrapping the result when we call this method from somewhere

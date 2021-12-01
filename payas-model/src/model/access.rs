@@ -49,10 +49,10 @@ pub enum AccessLogicalOp {
 pub enum AccessRelationalOp {
     Eq(Box<AccessExpression>, Box<AccessExpression>),
     Neq(Box<AccessExpression>, Box<AccessExpression>),
-    // Lt(Box<AccessExpression<'a>>, Box<AccessExpression<'a>>),
-    // Lte(Box<AccessExpression<'a>>, Box<AccessExpression<'a>>),
-    // Gt(Box<AccessExpression<'a>>, Box<AccessExpression<'a>>),
-    // Gte(Box<AccessExpression<'a>>, Box<AccessExpression<'a>>),
+    Lt(Box<AccessExpression>, Box<AccessExpression>),
+    Lte(Box<AccessExpression>, Box<AccessExpression>),
+    Gt(Box<AccessExpression>, Box<AccessExpression>),
+    Gte(Box<AccessExpression>, Box<AccessExpression>),
     In(Box<AccessExpression>, Box<AccessExpression>),
 }
 
@@ -61,10 +61,10 @@ impl AccessRelationalOp {
         match self {
             AccessRelationalOp::Eq(left, right) => (left, right),
             AccessRelationalOp::Neq(left, right) => (left, right),
-            // AccessRelationalOp::Lt(left, right) => (left, right),
-            // AccessRelationalOp::Lte(left, right) => (left, right),
-            // AccessRelationalOp::Gt(left, right) => (left, right),
-            // AccessRelationalOp::Gte(left, right) => (left, right),
+            AccessRelationalOp::Lt(left, right) => (left, right),
+            AccessRelationalOp::Lte(left, right) => (left, right),
+            AccessRelationalOp::Gt(left, right) => (left, right),
+            AccessRelationalOp::Gte(left, right) => (left, right),
             AccessRelationalOp::In(left, right) => (left, right),
         }
     }
