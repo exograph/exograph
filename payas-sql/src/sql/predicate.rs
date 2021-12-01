@@ -87,6 +87,10 @@ impl<'a> Predicate<'a> {
         }
     }
 
+    pub fn neq(lhs: MaybeOwned<'a, Column<'a>>, rhs: MaybeOwned<'a, Column<'a>>) -> Predicate<'a> {
+        !Predicate::eq(lhs, rhs)
+    }
+
     pub fn and(lhs: Predicate<'a>, rhs: Predicate<'a>) -> Predicate<'a> {
         match (lhs, rhs) {
             (Predicate::True, rhs) => rhs,
@@ -123,8 +127,15 @@ impl<'a> std::ops::Not for Predicate<'a> {
 
     fn not(self) -> Self::Output {
         match self {
+            // Reduced to a simpler form when possible, else fall back to Predicate::Not
             Predicate::True => Predicate::False,
             Predicate::False => Predicate::True,
+            Predicate::Eq(lhs, rhs) => Predicate::Neq(lhs, rhs),
+            Predicate::Neq(lhs, rhs) => Predicate::Eq(lhs, rhs),
+            Predicate::Lt(lhs, rhs) => Predicate::Gte(lhs, rhs),
+            Predicate::Lte(lhs, rhs) => Predicate::Gt(lhs, rhs),
+            Predicate::Gt(lhs, rhs) => Predicate::Lte(lhs, rhs),
+            Predicate::Gte(lhs, rhs) => Predicate::Lt(lhs, rhs),
             predicate => Predicate::Not(Box::new(predicate.into())),
         }
     }

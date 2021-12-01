@@ -311,6 +311,30 @@ pub enum RelationalOp<T: NodeTypedness> {
     In(Box<AstExpr<T>>, Box<AstExpr<T>>, T::RelationalOp),
 }
 
+impl<T: NodeTypedness> RelationalOp<T> {
+    pub fn typ(&self) -> &T::RelationalOp {
+        let (_, _, typ) = self.to_tuple();
+        typ
+    }
+
+    pub fn sides(&self) -> (&AstExpr<T>, &AstExpr<T>) {
+        let (l, r, _) = self.to_tuple();
+        (l, r)
+    }
+
+    fn to_tuple(&self) -> (&AstExpr<T>, &AstExpr<T>, &T::RelationalOp) {
+        match self {
+            RelationalOp::Eq(l, r, typ) => (l, r, typ),
+            RelationalOp::Neq(l, r, typ) => (l, r, typ),
+            RelationalOp::Lt(l, r, typ) => (l, r, typ),
+            RelationalOp::Lte(l, r, typ) => (l, r, typ),
+            RelationalOp::Gt(l, r, typ) => (l, r, typ),
+            RelationalOp::Gte(l, r, typ) => (l, r, typ),
+            RelationalOp::In(l, r, typ) => (l, r, typ),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Identifier(
     pub String,

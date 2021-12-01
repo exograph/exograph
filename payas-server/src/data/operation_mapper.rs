@@ -96,7 +96,11 @@ pub fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver::reduce_access(access_expr, query_context.request_context, query_context)
+            access_solver::reduce_access(
+                access_expr,
+                query_context.request_context,
+                query_context.executor.system,
+            )
         }
     }
 }
@@ -119,7 +123,11 @@ pub fn compute_service_access_predicate<'a>(
                 ServiceMethodType::Query(_) => &access.read, // query
                 ServiceMethodType::Mutation(_) => &access.creation, // mutation
             };
-            access_solver::reduce_access(access_expr, query_context.request_context, query_context)
+            access_solver::reduce_access(
+                access_expr,
+                query_context.request_context,
+                query_context.executor.system,
+            )
         }
         _ => panic!(),
     };
@@ -132,7 +140,7 @@ pub fn compute_service_access_predicate<'a>(
     let method_level_access = access_solver::reduce_access(
         method_access_expr,
         query_context.request_context,
-        query_context,
+        query_context.executor.system,
     );
 
     if matches!(type_level_access, Predicate::False)

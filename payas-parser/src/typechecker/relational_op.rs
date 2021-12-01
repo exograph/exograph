@@ -8,59 +8,24 @@ use crate::ast::ast_types::{AstExpr, RelationalOp, Untyped};
 use super::annotation::AnnotationSpec;
 use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
-impl RelationalOp<Typed> {
-    pub fn typ(&self) -> &Type {
-        match &self {
-            RelationalOp::Eq(_, _, typ) => typ,
-            RelationalOp::Neq(_, _, typ) => typ,
-            RelationalOp::Lt(_, _, typ) => typ,
-            RelationalOp::Lte(_, _, typ) => typ,
-            RelationalOp::Gt(_, _, typ) => typ,
-            RelationalOp::Gte(_, _, typ) => typ,
-            RelationalOp::In(_, _, typ) => typ,
-        }
-    }
-}
-
 impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
     fn shallow(untyped: &RelationalOp<Untyped>) -> RelationalOp<Typed> {
-        match untyped {
-            RelationalOp::Eq(left, right, _) => RelationalOp::Eq(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
-                Type::Defer,
-            ),
-            RelationalOp::Neq(left, right, _) => RelationalOp::Neq(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
-                Type::Defer,
-            ),
-            RelationalOp::Lt(left, right, _) => RelationalOp::Lt(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
-                Type::Defer,
-            ),
-            RelationalOp::Lte(left, right, _) => RelationalOp::Lte(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
-                Type::Defer,
-            ),
-            RelationalOp::Gt(left, right, _) => RelationalOp::Gt(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
-                Type::Defer,
-            ),
-            RelationalOp::Gte(left, right, _) => RelationalOp::Gte(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
-                Type::Defer,
-            ),
-            RelationalOp::In(left, right, _) => RelationalOp::In(
-                Box::new(AstExpr::shallow(left)),
-                Box::new(AstExpr::shallow(right)),
-                Type::Defer,
-            ),
-        }
+        let (left, right) = untyped.sides();
+
+        let combiner = match untyped {
+            RelationalOp::Eq(..) => RelationalOp::Eq,
+            RelationalOp::Neq(..) => RelationalOp::Neq,
+            RelationalOp::Lt(..) => RelationalOp::Lt,
+            RelationalOp::Lte(..) => RelationalOp::Lte,
+            RelationalOp::Gt(..) => RelationalOp::Gt,
+            RelationalOp::Gte(..) => RelationalOp::Gte,
+            RelationalOp::In(..) => RelationalOp::In,
+        };
+
+        let left = Box::new(AstExpr::shallow(left));
+        let right = Box::new(AstExpr::shallow(right));
+
+        combiner(left, right, Type::Defer)
     }
 
     fn pass(

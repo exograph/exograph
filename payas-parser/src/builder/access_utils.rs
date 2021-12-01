@@ -88,7 +88,7 @@ pub fn compute_expression(
                     let column = AccessExpression::Column(column_id);
 
                     // Coerces the result into an equivalent RelationalOp if `coerce_boolean` is true
-                    // For example, exapnds `self.published` to `self.published == true`, if `published` is a boolean column
+                    // For example, expands `self.published` to `self.published == true`, if `published` is a boolean column
                     // This allows specifying access rule such as `AuthContext.role == "ROLE_ADMIN" || self.published` instead of
                     // AuthContext.role == "ROLE_ADMIN" || self.published == true`
                     if coerce_boolean
@@ -118,35 +118,24 @@ pub fn compute_expression(
                 Box::new(compute_expression(value, self_type_info, building, true)),
             )),
         },
-        AstExpr::RelationalOp(op) => match op {
-            RelationalOp::Eq(left, right, _) => {
-                AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-                    Box::new(compute_expression(left, self_type_info, building, false)),
-                    Box::new(compute_expression(right, self_type_info, building, false)),
-                ))
-            }
-            RelationalOp::Neq(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::Lt(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::Lte(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::Gt(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::Gte(_left, _right, _) => {
-                todo!()
-            }
-            RelationalOp::In(left, right, _) => {
-                AccessExpression::RelationalOp(AccessRelationalOp::In(
-                    Box::new(compute_expression(left, self_type_info, building, false)),
-                    Box::new(compute_expression(right, self_type_info, building, false)),
-                ))
-            }
-        },
+        AstExpr::RelationalOp(op) => {
+            let combiner = match op {
+                RelationalOp::Eq(..) => AccessRelationalOp::Eq,
+                RelationalOp::Neq(..) => AccessRelationalOp::Neq,
+                RelationalOp::Lt(..) => AccessRelationalOp::Lt,
+                RelationalOp::Lte(..) => AccessRelationalOp::Lte,
+                RelationalOp::Gt(..) => AccessRelationalOp::Gt,
+                RelationalOp::Gte(..) => AccessRelationalOp::Gte,
+                RelationalOp::In(..) => AccessRelationalOp::In,
+            };
+
+            let (left, right) = op.sides();
+
+            AccessExpression::RelationalOp(combiner(
+                Box::new(compute_expression(left, self_type_info, building, true)),
+                Box::new(compute_expression(right, self_type_info, building, true)),
+            ))
+        }
         AstExpr::StringLiteral(value, _) => AccessExpression::StringLiteral(value.clone()),
         AstExpr::BooleanLiteral(value, _) => AccessExpression::BooleanLiteral(*value),
         AstExpr::NumberLiteral(value, _) => AccessExpression::NumberLiteral(*value),
