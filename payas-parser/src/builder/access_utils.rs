@@ -10,6 +10,7 @@ use payas_model::model::{
 
 use crate::{
     ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
+    error::ParserError,
     typechecker::Typed,
 };
 
@@ -24,41 +25,53 @@ pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
     self_type_info: Option<&GqlCompositeType>,
     building: &SystemContextBuilding,
-) -> AccessPredicateExpression {
+) -> Result<AccessPredicateExpression, ParserError> {
     match expr {
         AstExpr::FieldSelection(selection) => {
             match compute_selection(selection, self_type_info, building) {
                 PathSelection::Column(column_id, column_type) => {
                     if column_type.base_type(&building.types.values).name == "Boolean" {
-                        AccessPredicateExpression::BooleanColumn(column_id)
+                        Ok(AccessPredicateExpression::BooleanColumn(column_id))
                     } else {
-                        panic!("Field selection must be a boolean") // TODO: Result::Err
+                        Err(ParserError::Generic(
+                            "Field selection must be a boolean".to_string(),
+                        ))
                     }
                 }
                 PathSelection::Context(context_selection, field_type) => {
                     if field_type.base_type(&building.types.values).name == "Boolean" {
-                        AccessPredicateExpression::BooleanContextSelection(context_selection)
+                        Ok(AccessPredicateExpression::BooleanContextSelection(
+                            context_selection,
+                        ))
                     } else {
-                        panic!("Context selection must be a boolean") // TODO: Result::Err
+                        Err(ParserError::Generic(
+                            "Context selection must be a boolean".to_string(),
+                        ))
                     }
                 }
             }
         }
         AstExpr::LogicalOp(op) => {
             let predicate_expr = |expr: &AstExpr<Typed>| {
-                Box::new(compute_predicate_expression(expr, self_type_info, building))
+                compute_predicate_expression(expr, self_type_info, building)
             };
-            match op {
-                LogicalOp::And(left, right, _, _) => AccessPredicateExpression::LogicalOp(
-                    AccessLogicalOp::And(predicate_expr(left), predicate_expr(right)),
-                ),
-                LogicalOp::Or(left, right, _, _) => AccessPredicateExpression::LogicalOp(
-                    AccessLogicalOp::Or(predicate_expr(left), predicate_expr(right)),
-                ),
+            Ok(match op {
+                LogicalOp::And(left, right, _, _) => {
+                    AccessPredicateExpression::LogicalOp(AccessLogicalOp::And(
+                        Box::new(predicate_expr(left)?),
+                        Box::new(predicate_expr(right)?),
+                    ))
+                }
+                LogicalOp::Or(left, right, _, _) => {
+                    AccessPredicateExpression::LogicalOp(AccessLogicalOp::Or(
+                        Box::new(predicate_expr(left)?),
+                        Box::new(predicate_expr(right)?),
+                    ))
+                }
                 LogicalOp::Not(value, _, _) => AccessPredicateExpression::LogicalOp(
-                    AccessLogicalOp::Not(predicate_expr(value)),
+                    AccessLogicalOp::Not(Box::new(predicate_expr(value)?)),
                 ),
-            }
+            })
         }
         AstExpr::RelationalOp(op) => {
             let combiner = match op {
@@ -73,14 +86,16 @@ pub fn compute_predicate_expression(
 
             let (left, right) = op.sides();
 
-            AccessPredicateExpression::RelationalOp(combiner(
+            Ok(AccessPredicateExpression::RelationalOp(combiner(
                 Box::new(compute_primitive_expr(left, self_type_info, building)),
                 Box::new(compute_primitive_expr(right, self_type_info, building)),
-            ))
+            )))
         }
-        AstExpr::BooleanLiteral(value, _) => AccessPredicateExpression::BooleanLiteral(*value),
+        AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
 
-        _ => panic!("Unsupported expression type"), // String or NumberLiteral cannot be used as a top-level expression in access rules
+        _ => Err(ParserError::Generic(
+            "Unsupported expression type".to_string(),
+        )), // String or NumberLiteral cannot be used as a top-level expression in access rules
     }
 }
 
@@ -99,8 +114,8 @@ fn compute_primitive_expr(
         AstExpr::StringLiteral(value, _) => AccessPrimitiveExpression::StringLiteral(value.clone()),
         AstExpr::BooleanLiteral(value, _) => AccessPrimitiveExpression::BooleanLiteral(*value),
         AstExpr::NumberLiteral(value, _) => AccessPrimitiveExpression::NumberLiteral(*value),
-        AstExpr::LogicalOp(_) => panic!(),
-        AstExpr::RelationalOp(_) => panic!(),
+        AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
+        AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
     }
 }
 

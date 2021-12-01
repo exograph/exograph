@@ -50,7 +50,7 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError>
     let mut building = SystemContextBuilding::default();
 
     build_shallow(&resolved_system, &mut building);
-    build_expanded(&resolved_system, &mut building);
+    build_expanded(&resolved_system, &mut building)?;
 
     Ok(ModelSystem {
         types: building.types.values,
@@ -87,7 +87,10 @@ fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextB
     service_builder::build_shallow(resolved_types, resolved_services, building);
 }
 
-fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
+fn build_expanded(
+    resolved_system: &ResolvedSystem,
+    building: &mut SystemContextBuilding,
+) -> Result<(), ParserError> {
     let resolved_types = &resolved_system.types;
 
     let resolved_methods = &resolved_system
@@ -102,7 +105,7 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     // First fully build the model types.
     // First context, since model types may refer to context types in @access annotation
     context_builder::build_expanded(resolved_contexts, building);
-    type_builder::build_expanded(resolved_types, resolved_methods, building);
+    type_builder::build_expanded(resolved_types, resolved_methods, building)?;
 
     // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
     // after running type_builder::build_expanded (since they depend on expanded GqlTypes (note the next ones do not access resolved_types))
@@ -116,6 +119,8 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     service_builder::build_expanded(building);
 
     interceptor_weaver::weave_interceptors(resolved_system, building);
+
+    Ok(())
 }
 
 #[derive(Debug, Default)]
