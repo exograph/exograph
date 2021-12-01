@@ -2,6 +2,7 @@ use super::column_id::ColumnId;
 
 use serde::{Deserialize, Serialize};
 
+/// Access specification for a model
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Access {
     pub creation: AccessPredicateExpression,
@@ -21,35 +22,40 @@ impl Access {
     }
 }
 
+/// Primitive expression (that doesn't contain any other expressions).
+/// Used as sides of `AccessRelationalExpression` to form more complex expressions
+/// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessPrimitiveExpression {
-    ContextSelection(AccessConextSelection), // AuthContext.role
-    Column(ColumnId), // self.id (special case of a boolean column such as self.published will be expanded to self.published == true when building an AccessExpression)
-    StringLiteral(String), // "ROLE_ADMIN"
-    BooleanLiteral(bool), // true as in `self.published == true`
-    NumberLiteral(i64), // integer (-13, 0, 300, etc.)
+    ContextSelection(AccessConextSelection), // for example, AuthContext.role
+    Column(ColumnId),                        // for example, self.id
+    StringLiteral(String),                   // for example, "ROLE_ADMIN"
+    BooleanLiteral(bool),                    // for example, true
+    NumberLiteral(i64),                      // for example, integer (-13, 0, 300, etc.)
 }
 
+/// An expression that can be evaluated to a `Predicate`.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessPredicateExpression {
-    LogicalOp(AccessLogicalOp),
+    LogicalOp(AccessLogicalExpression),
     RelationalOp(AccessRelationalOp),
     BooleanLiteral(bool),
-    // This allows specifying access rule such as `AuthContext.role == "ROLE_ADMIN" || self.published` instead of
-    // AuthContext.role == "ROLE_ADMIN" || self.published == true`
+    // This allows specifying access rule such as `self.published` instead of self.published == true`
     BooleanColumn(ColumnId),
     // Similarly, this allows specifying access rule such as `AuthContext.superUser` instead of `AuthContext.superUser == true`
     BooleanContextSelection(AccessConextSelection),
 }
 
+/// A path representing context selection such as `AuthContext.role`
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessConextSelection {
-    Single(String),
-    Select(Box<AccessConextSelection>, String),
+    Single(String),                             // for example, `role`
+    Select(Box<AccessConextSelection>, String), // for example, `AuthContext.role`
 }
 
+/// Logical operation created from `AccessPredicateExpression`s
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessLogicalOp {
+pub enum AccessLogicalExpression {
     Not(Box<AccessPredicateExpression>),
     And(
         Box<AccessPredicateExpression>,
@@ -61,6 +67,7 @@ pub enum AccessLogicalOp {
     ),
 }
 
+/// Relational operators expressing a relation betweend two primitive expressions
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessRelationalOp {
     Eq(

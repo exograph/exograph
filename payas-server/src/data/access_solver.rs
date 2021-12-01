@@ -2,7 +2,7 @@ use maybe_owned::MaybeOwned;
 use payas_model::{
     model::{
         access::{
-            AccessConextSelection, AccessLogicalOp, AccessPredicateExpression,
+            AccessConextSelection, AccessLogicalExpression, AccessPredicateExpression,
             AccessPrimitiveExpression, AccessRelationalOp,
         },
         system::ModelSystem,
@@ -13,31 +13,42 @@ use serde_json::Value;
 
 use std::ops::Not;
 
-pub fn reduce_access<'a>(
-    access_expression: &'a AccessPredicateExpression,
+/// Solve access control logic.
+/// The access control logic is expressed as a predicate expression. This method
+/// tried to produce a simplest possible `Predicate` given the request context. It tries
+/// to produce `Predicate::True` or `Predicate::False` when sufficient information is avaialble
+/// to make such determination. This allows (in case of `Predicate::True`) to skip the database
+/// filtering and (in case of `Predicate::False`) to return a "Not authorized" error (instead of an
+/// empty/null result).
+pub fn solve_access<'a>(
+    expr: &'a AccessPredicateExpression,
     request_context: &'a Value,
     system: &'a ModelSystem,
 ) -> Predicate<'a> {
-    reduce_predicate_expression(access_expression, request_context, system)
+    solve_predicate_expression(expr, request_context, system)
 }
 
-fn reduce_predicate_expression<'a>(
+fn solve_predicate_expression<'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a Value,
     system: &'a ModelSystem,
 ) -> Predicate<'a> {
     match expr {
-        AccessPredicateExpression::LogicalOp(op) => reduce_logical_op(op, request_context, system),
+        AccessPredicateExpression::LogicalOp(op) => solve_logical_op(op, request_context, system),
         AccessPredicateExpression::RelationalOp(op) => {
-            reduce_relational_op(op, request_context, system)
+            solve_relational_op(op, request_context, system)
         }
         AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
-        AccessPredicateExpression::BooleanColumn(column_id) => Predicate::Eq(
-            system.create_column_with_id(column_id).into(),
-            Column::Literal(Box::new(true)).into(),
-        ),
+        AccessPredicateExpression::BooleanColumn(column_id) => {
+            // Special case we have a boolean literal column by itself, so we create an equivalent Predicate::Eq.
+            // This allows supporting expressions such as `self.published` (and not require `self.published = true`)
+            Predicate::Eq(
+                system.create_column_with_id(column_id).into(),
+                Column::Literal(Box::new(true)).into(),
+            )
+        }
         AccessPredicateExpression::BooleanContextSelection(selection) => {
-            let context_value = reduce_context_selection(selection, request_context);
+            let context_value = solve_context_selection(selection, request_context);
             context_value
                 .map(|value| {
                     match value {
@@ -45,53 +56,20 @@ fn reduce_predicate_expression<'a>(
                         _ => unreachable!("Context selection must be a boolean"), // access_utils ensures that only boolean values are allowed
                     }
                 })
-                .unwrap_or(false)
+                .unwrap_or(false) // context value wasn't found, so treat it as false
                 .into()
         }
     }
 }
 
-#[derive(Debug)]
-enum ReducedExpression<'a> {
-    Value(Value),
-    Column(MaybeOwned<'a, Column<'a>>),
-    UnresolvedContext(&'a AccessConextSelection), // For example, AuthContext.role for an anonymous user
-}
-
-fn reduce_expression<'a>(
-    expr: &'a AccessPrimitiveExpression,
-    request_context: &'a Value,
-    system: &'a ModelSystem,
-) -> ReducedExpression<'a> {
-    match expr {
-        AccessPrimitiveExpression::ContextSelection(selection) => {
-            reduce_context_selection(selection, request_context)
-                .map(|v| ReducedExpression::Value(v.to_owned()))
-                .unwrap_or(ReducedExpression::UnresolvedContext(selection))
-        }
-        AccessPrimitiveExpression::Column(column_id) => {
-            ReducedExpression::Column(system.create_column_with_id(column_id).into())
-        }
-        AccessPrimitiveExpression::StringLiteral(value) => {
-            ReducedExpression::Value(Value::String(value.clone()))
-        }
-        AccessPrimitiveExpression::BooleanLiteral(value) => {
-            ReducedExpression::Value(Value::Bool(*value))
-        }
-        AccessPrimitiveExpression::NumberLiteral(value) => {
-            ReducedExpression::Value(Value::Number((*value as i64).into()))
-        }
-    }
-}
-
-fn reduce_context_selection<'a>(
+fn solve_context_selection<'a>(
     context_selection: &AccessConextSelection,
     value: &'a Value,
 ) -> Option<&'a Value> {
     match context_selection {
         AccessConextSelection::Single(key) => value.get(key),
         AccessConextSelection::Select(path, key) => {
-            reduce_context_selection(path, value).and_then(|value| value.get(key))
+            solve_context_selection(path, value).and_then(|value| value.get(key))
         }
     }
 }
@@ -108,14 +86,47 @@ fn literal_column(value: Value) -> MaybeOwned<'static, Column<'static>> {
     .into()
 }
 
-fn reduce_relational_op<'a>(
+fn solve_relational_op<'a>(
     op: &'a AccessRelationalOp,
     request_context: &'a Value,
     system: &'a ModelSystem,
 ) -> Predicate<'a> {
+    #[derive(Debug)]
+    enum SolvedPrimitiveExpression<'a> {
+        Value(Value),
+        Column(MaybeOwned<'a, Column<'a>>),
+        UnresolvedContext(&'a AccessConextSelection), // For example, AuthContext.role for an anonymous user
+    }
+
+    fn reduce_primitive_expression<'a>(
+        expr: &'a AccessPrimitiveExpression,
+        request_context: &'a Value,
+        system: &'a ModelSystem,
+    ) -> SolvedPrimitiveExpression<'a> {
+        match expr {
+            AccessPrimitiveExpression::ContextSelection(selection) => {
+                solve_context_selection(selection, request_context)
+                    .map(|v| SolvedPrimitiveExpression::Value(v.to_owned()))
+                    .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection))
+            }
+            AccessPrimitiveExpression::Column(column_id) => {
+                SolvedPrimitiveExpression::Column(system.create_column_with_id(column_id).into())
+            }
+            AccessPrimitiveExpression::StringLiteral(value) => {
+                SolvedPrimitiveExpression::Value(Value::String(value.clone()))
+            }
+            AccessPrimitiveExpression::BooleanLiteral(value) => {
+                SolvedPrimitiveExpression::Value(Value::Bool(*value))
+            }
+            AccessPrimitiveExpression::NumberLiteral(value) => {
+                SolvedPrimitiveExpression::Value(Value::Number((*value).into()))
+            }
+        }
+    }
+
     let (left, right) = op.sides();
-    let left = reduce_expression(left, request_context, system);
-    let right = reduce_expression(right, request_context, system);
+    let left = reduce_primitive_expression(left, request_context, system);
+    let right = reduce_primitive_expression(right, request_context, system);
 
     let helper = |unresolved_context_predicate: Predicate<'static>,
                   column_predicate: fn(
@@ -125,18 +136,24 @@ fn reduce_relational_op<'a>(
                   value_predicate: fn(Value, Value) -> Predicate<'a>|
      -> Predicate<'a> {
         match (left, right) {
-            (ReducedExpression::UnresolvedContext(_), _)
-            | (_, ReducedExpression::UnresolvedContext(_)) => unresolved_context_predicate,
-            (ReducedExpression::Column(left_col), ReducedExpression::Column(right_col)) => {
-                column_predicate(left_col, right_col)
-            }
-            (ReducedExpression::Value(left_value), ReducedExpression::Value(right_value)) => {
-                value_predicate(left_value, right_value)
-            }
-            (ReducedExpression::Value(value), ReducedExpression::Column(column))
-            | (ReducedExpression::Column(column), ReducedExpression::Value(value)) => {
-                column_predicate(column, literal_column(value))
-            }
+            (SolvedPrimitiveExpression::UnresolvedContext(_), _)
+            | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => unresolved_context_predicate,
+            (
+                SolvedPrimitiveExpression::Column(left_col),
+                SolvedPrimitiveExpression::Column(right_col),
+            ) => column_predicate(left_col, right_col),
+            (
+                SolvedPrimitiveExpression::Value(left_value),
+                SolvedPrimitiveExpression::Value(right_value),
+            ) => value_predicate(left_value, right_value),
+            (
+                SolvedPrimitiveExpression::Value(value),
+                SolvedPrimitiveExpression::Column(column),
+            )
+            | (
+                SolvedPrimitiveExpression::Column(column),
+                SolvedPrimitiveExpression::Value(value),
+            ) => column_predicate(column, literal_column(value)),
         }
     };
 
@@ -173,23 +190,22 @@ fn reduce_relational_op<'a>(
     }
 }
 
-fn reduce_logical_op<'a>(
-    op: &'a AccessLogicalOp,
+fn solve_logical_op<'a>(
+    op: &'a AccessLogicalExpression,
     request_context: &'a Value,
     system: &'a ModelSystem,
 ) -> Predicate<'a> {
     match op {
-        AccessLogicalOp::Not(underlying) => {
-            let underlying = reduce_predicate_expression(underlying, request_context, system);
+        AccessLogicalExpression::Not(underlying) => {
+            let underlying = solve_predicate_expression(underlying, request_context, system);
             underlying.not()
         }
-        AccessLogicalOp::And(left, right) => {
-            let left_predicate = reduce_predicate_expression(left, request_context, system);
-            let right_predicate = reduce_predicate_expression(right, request_context, system);
+        AccessLogicalExpression::And(left, right) => {
+            let left_predicate = solve_predicate_expression(left, request_context, system);
+            let right_predicate = solve_predicate_expression(right, request_context, system);
 
             match (left_predicate, right_predicate) {
                 (Predicate::False, _) | (_, Predicate::False) => Predicate::False,
-                (Predicate::True, Predicate::True) => Predicate::True,
 
                 (Predicate::True, right_predicate) => right_predicate,
                 (left_predicate, Predicate::True) => left_predicate,
@@ -198,19 +214,16 @@ fn reduce_logical_op<'a>(
                 }
             }
         }
-        AccessLogicalOp::Or(left, right) => {
-            let left_predicate = reduce_predicate_expression(left, request_context, system);
-            let right_predicate = reduce_predicate_expression(right, request_context, system);
+        AccessLogicalExpression::Or(left, right) => {
+            let left_predicate = solve_predicate_expression(left, request_context, system);
+            let right_predicate = solve_predicate_expression(right, request_context, system);
 
             match (left_predicate, right_predicate) {
                 (Predicate::True, _) | (_, Predicate::True) => Predicate::True,
-                (Predicate::False, Predicate::False) => Predicate::False,
 
                 (Predicate::False, right_predicate) => right_predicate,
                 (left_predicate, Predicate::False) => left_predicate,
-                (left_predicate, right_predicate) => {
-                    Predicate::and(left_predicate, right_predicate)
-                }
+                (left_predicate, right_predicate) => Predicate::or(left_predicate, right_predicate),
             }
         }
     }
@@ -359,9 +372,9 @@ mod tests {
 
             let context =
                 json!({ "AccessContext": {"token1": "token_value", "token2": "token_value"} });
-            let reduced = reduce_access(&test_ae, &context, system);
+            let solved = solve_access(&test_ae, &context, system);
             assert_eq!(
-                reduced,
+                solved,
                 context_match_predicate(
                     Column::Literal(Box::new("token_value".to_string())).into(),
                     Column::Literal(Box::new("token_value".to_string())).into(),
@@ -373,9 +386,9 @@ mod tests {
             // the unoptimized predicate created works for both match and mismatch cases.
             let context =
                 json!({ "AccessContext": {"token1": "token_value1", "token2": "token_value2"} });
-            let reduced = reduce_access(&test_ae, &context, system);
+            let solved = solve_access(&test_ae, &context, system);
             assert_eq!(
-                reduced,
+                solved,
                 context_mismatch_predicate(
                     Column::Literal(Box::new("token_value1".to_string())).into(),
                     Column::Literal(Box::new("token_value2".to_string())).into(),
@@ -387,9 +400,9 @@ mod tests {
         {
             let test_context_column = |test_ae: AccessPredicateExpression| {
                 let context = json!({ "AccessContext": {"user_id": "u1"} });
-                let reduced = reduce_access(&test_ae, &context, system);
+                let solved = solve_access(&test_ae, &context, system);
                 assert_eq!(
-                    reduced,
+                    solved,
                     context_value_predicate(
                         test_system.owner_id_column(),
                         Column::Literal(Box::new("u1".to_string())).into(),
@@ -397,8 +410,8 @@ mod tests {
                 );
 
                 let context = Value::Null; // No user_id, so we can definitely declare it Predicate::False
-                let reduced = reduce_access(&test_ae, &context, system);
-                assert_eq!(reduced, context_missing_predicate);
+                let solved = solve_access(&test_ae, &context, system);
+                assert_eq!(solved, context_missing_predicate);
             };
 
             // Once test with `context op column` and then `column op context`
@@ -429,9 +442,9 @@ mod tests {
             ));
 
             let context = Value::Null; // context is irrelevant
-            let reduced = reduce_access(&test_ae, &context, system);
+            let solved = solve_access(&test_ae, &context, system);
             assert_eq!(
-                reduced,
+                solved,
                 column_column_predicate(
                     test_system.dept1_id_column(),
                     test_system.dept2_id_column(),
@@ -518,6 +531,189 @@ mod tests {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
+    fn test_logical_op<'a>(
+        test_system: &'a TestSystem,
+        op: fn(
+            Box<AccessPredicateExpression>,
+            Box<AccessPredicateExpression>,
+        ) -> AccessLogicalExpression,
+        both_value_true: Predicate,
+        both_value_false: Predicate,
+        one_value_true: Predicate,
+        one_literal_true_other_column: fn(Predicate<'a>) -> Predicate<'a>,
+        one_literal_false_other_column: fn(Predicate<'a>) -> Predicate<'a>,
+        both_columns: fn(
+            Box<MaybeOwned<'a, Predicate<'a>>>,
+            Box<MaybeOwned<'a, Predicate<'a>>>,
+        ) -> Predicate<'a>,
+    ) {
+        let TestSystem {
+            system,
+            dept1_id_column_id,
+            dept2_id_column_id,
+            ..
+        } = &test_system;
+
+        {
+            // Two literals
+            let context = Value::Null; // context is irrelevant
+
+            let scenarios = [
+                (true, true, &both_value_true),
+                (true, false, &one_value_true),
+                (false, true, &one_value_true),
+                (false, false, &both_value_false),
+            ];
+
+            for (l1, l2, expected) in scenarios.iter() {
+                let test_ae = AccessPredicateExpression::LogicalOp(op(
+                    Box::new(AccessPredicateExpression::BooleanLiteral(*l1)),
+                    Box::new(AccessPredicateExpression::BooleanLiteral(*l2)),
+                ));
+
+                let solved = solve_access(&test_ae, &context, system);
+                assert_eq!(&&solved, expected);
+            }
+        }
+        {
+            // Two context values
+            let context = json!({ "AccessContext": {"v1": true, "v1_clone": true, "v2": false, "v2_clone": false} });
+
+            let scenarios = [
+                ("v1", "v1_clone", &both_value_true),
+                ("v1", "v2", &one_value_true),
+                ("v2", "v1", &one_value_true),
+                ("v2", "v2_clone", &both_value_false),
+            ];
+
+            for (c1, c2, expected) in scenarios.iter() {
+                let test_ae = AccessPredicateExpression::LogicalOp(op(
+                    Box::new(AccessPredicateExpression::BooleanContextSelection(
+                        AccessConextSelection::Select(
+                            Box::new(AccessConextSelection::Single("AccessContext".to_string())),
+                            c1.to_string(),
+                        ),
+                    )),
+                    Box::new(AccessPredicateExpression::BooleanContextSelection(
+                        AccessConextSelection::Select(
+                            Box::new(AccessConextSelection::Single("AccessContext".to_string())),
+                            c2.to_string(),
+                        ),
+                    )),
+                ));
+
+                let solved = solve_access(&test_ae, &context, system);
+                assert_eq!(&&solved, expected);
+            }
+        }
+        {
+            // One literal and other a column
+            let scenarios = [
+                (true, &one_literal_true_other_column),
+                (false, &one_literal_false_other_column),
+            ];
+            let context = Value::Null; // context is irrelevant
+
+            for (l, predicate_fn) in scenarios.iter() {
+                let test_ae = AccessPredicateExpression::LogicalOp(op(
+                    Box::new(AccessPredicateExpression::BooleanLiteral(*l)),
+                    Box::new(AccessPredicateExpression::BooleanColumn(
+                        dept1_id_column_id.clone(),
+                    )),
+                ));
+
+                let solved = solve_access(&test_ae, &context, system);
+                assert_eq!(
+                    solved,
+                    predicate_fn(Predicate::Eq(
+                        test_system.dept1_id_column(),
+                        Column::Literal(Box::new(true)).into()
+                    ))
+                );
+
+                // The swapped version
+                let test_ae = AccessPredicateExpression::LogicalOp(op(
+                    Box::new(AccessPredicateExpression::BooleanColumn(
+                        dept1_id_column_id.clone(),
+                    )),
+                    Box::new(AccessPredicateExpression::BooleanLiteral(*l)),
+                ));
+
+                let solved = solve_access(&test_ae, &context, system);
+                assert_eq!(
+                    solved,
+                    predicate_fn(Predicate::Eq(
+                        test_system.dept1_id_column(),
+                        Column::Literal(Box::new(true)).into()
+                    ))
+                );
+            }
+        }
+
+        {
+            // Two columns
+            let test_ae = AccessPredicateExpression::LogicalOp(op(
+                Box::new(AccessPredicateExpression::BooleanColumn(
+                    dept1_id_column_id.clone(),
+                )),
+                Box::new(AccessPredicateExpression::BooleanColumn(
+                    dept2_id_column_id.clone(),
+                )),
+            ));
+
+            let context = Value::Null; // context is irrelevant
+            let solved = solve_access(&test_ae, &context, system);
+            assert_eq!(
+                solved,
+                both_columns(
+                    Box::new(
+                        Predicate::Eq(
+                            test_system.dept1_id_column(),
+                            Column::Literal(Box::new(true)).into()
+                        )
+                        .into()
+                    ),
+                    Box::new(
+                        Predicate::Eq(
+                            test_system.dept2_id_column(),
+                            Column::Literal(Box::new(true)).into()
+                        )
+                        .into()
+                    )
+                )
+            )
+        }
+    }
+
+    #[test]
+    fn basic_and() {
+        test_logical_op(
+            &test_system(),
+            AccessLogicalExpression::And,
+            Predicate::True,
+            Predicate::False,
+            Predicate::False,
+            |p| p,
+            |_| Predicate::False,
+            Predicate::And,
+        );
+    }
+
+    #[test]
+    fn basic_or() {
+        test_logical_op(
+            &test_system(),
+            AccessLogicalExpression::Or,
+            Predicate::True,
+            Predicate::False,
+            Predicate::True,
+            |_| Predicate::True,
+            |p| p,
+            Predicate::Or,
+        );
+    }
+
     #[test]
     fn context_only() {
         // Scenario: AuthContext.role == "ROLE_ADMIN"
@@ -532,12 +728,12 @@ mod tests {
         ));
 
         let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-        let reduced = reduce_access(&test_ae, &context, &system);
-        assert_eq!(reduced, Predicate::True);
+        let solved = solve_access(&test_ae, &context, &system);
+        assert_eq!(solved, Predicate::True);
 
         let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-        let reduced = reduce_access(&test_ae, &context, &system);
-        assert_eq!(reduced, Predicate::False)
+        let solved = solve_access(&test_ae, &context, &system);
+        assert_eq!(solved, Predicate::False)
     }
 
     #[test]
@@ -565,20 +761,20 @@ mod tests {
                 Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
             ));
 
-            AccessPredicateExpression::LogicalOp(AccessLogicalOp::Or(
+            AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Or(
                 Box::new(admin_access),
                 Box::new(user_access),
             ))
         };
 
         let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-        let reduced = reduce_access(&test_ae, &context, system);
-        assert_eq!(reduced, Predicate::True);
+        let solved = solve_access(&test_ae, &context, system);
+        assert_eq!(solved, Predicate::True);
 
         let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-        let reduced = reduce_access(&test_ae, &context, system);
+        let solved = solve_access(&test_ae, &context, system);
         assert_eq!(
-            reduced,
+            solved,
             Predicate::Eq(
                 test_system.published_column(),
                 Column::Literal(Box::new(true)).into()
@@ -605,9 +801,9 @@ mod tests {
         ));
 
         let context = json!({ "AccessContext": {"user_id": "1"} });
-        let reduced = reduce_access(&test_ae, &context, system);
+        let solved = solve_access(&test_ae, &context, system);
         assert_eq!(
-            reduced,
+            solved,
             Predicate::Eq(
                 test_system.owner_id_column(),
                 Column::Literal(Box::new("1".to_string())).into(),
@@ -615,9 +811,9 @@ mod tests {
         );
 
         let context = json!({ "AccessContext": {"user_id": "2"} });
-        let reduced = reduce_access(&test_ae, &context, system);
+        let solved = solve_access(&test_ae, &context, system);
         assert_eq!(
-            reduced,
+            solved,
             Predicate::Eq(
                 test_system.owner_id_column(),
                 Column::Literal(Box::new("2".to_string())).into(),
@@ -658,27 +854,27 @@ mod tests {
                 Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
             ));
 
-            AccessPredicateExpression::LogicalOp(AccessLogicalOp::And(
+            AccessPredicateExpression::LogicalOp(AccessLogicalExpression::And(
                 Box::new(role_rule),
                 Box::new(data_rule),
             ))
         };
 
-        let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalOp::Or(
+        let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Or(
             Box::new(admin_access),
             Box::new(user_access),
         ));
 
         // For admins, allow access without any further restrictions
         let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
-        let reduced = reduce_access(&test_ae, &context, system);
-        assert_eq!(reduced, Predicate::True);
+        let solved = solve_access(&test_ae, &context, system);
+        assert_eq!(solved, Predicate::True);
 
         // For users, allow only if the article is published
         let context = json!({ "AccessContext": {"role": "ROLE_USER"} });
-        let reduced = reduce_access(&test_ae, &context, system);
+        let solved = solve_access(&test_ae, &context, system);
         assert_eq!(
-            reduced,
+            solved,
             Predicate::Eq(
                 test_system.published_column(),
                 Column::Literal(Box::new(true)).into(),
@@ -687,17 +883,17 @@ mod tests {
 
         // For other roles, do not allow
         let context = json!({ "AccessContext": {"role": "ROLE_GUEST"} });
-        let reduced = reduce_access(&test_ae, &context, system);
-        assert_eq!(reduced, Predicate::False);
+        let solved = solve_access(&test_ae, &context, system);
+        assert_eq!(solved, Predicate::False);
 
         // For anonymous users, too, do not allow (irrelevant context content that doesn't define a user role)
         let context = json!({ "Foo": "bar" });
-        let reduced = reduce_access(&test_ae, &context, system);
-        assert_eq!(reduced, Predicate::False);
+        let solved = solve_access(&test_ae, &context, system);
+        assert_eq!(solved, Predicate::False);
 
         // For anonymous users, too, do not allow (no context content)
-        let reduced = reduce_access(&test_ae, &Value::Null, system);
-        assert_eq!(reduced, Predicate::False);
+        let solved = solve_access(&test_ae, &Value::Null, system);
+        assert_eq!(solved, Predicate::False);
     }
 
     #[test]
@@ -707,13 +903,13 @@ mod tests {
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(true);
         let context = Value::Null; // irrelevant context content
-        let reduced = reduce_access(&test_ae, &context, &system);
-        assert_eq!(reduced, Predicate::True);
+        let solved = solve_access(&test_ae, &context, &system);
+        assert_eq!(solved, Predicate::True);
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(false);
         let context = Value::Null; // irrelevant context content
-        let reduced = reduce_access(&test_ae, &context, &system);
-        assert_eq!(reduced, Predicate::False);
+        let solved = solve_access(&test_ae, &context, &system);
+        assert_eq!(solved, Predicate::False);
     }
 
     #[test]
@@ -730,9 +926,9 @@ mod tests {
         let test_ae = AccessPredicateExpression::BooleanColumn(published_column_id.clone());
 
         let context = Value::Null; // irrelevant context content
-        let reduced = reduce_access(&test_ae, &context, system);
+        let solved = solve_access(&test_ae, &context, system);
         assert_eq!(
-            reduced,
+            solved,
             Predicate::Eq(
                 test_system.published_column(),
                 Column::Literal(Box::new(true)).into()
@@ -753,15 +949,15 @@ mod tests {
         ));
 
         let context = json!({ "AccessContext": {"is_admin": true} });
-        let reduced = reduce_access(&test_ae, &context, system);
-        assert_eq!(reduced, Predicate::True);
+        let solved = solve_access(&test_ae, &context, system);
+        assert_eq!(solved, Predicate::True);
 
         let context = json!({ "AccessContext": {"is_admin": false} });
-        let reduced = reduce_access(&test_ae, &context, system);
-        assert_eq!(reduced, Predicate::False);
+        let solved = solve_access(&test_ae, &context, system);
+        assert_eq!(solved, Predicate::False);
 
         let context = Value::Null; // context not provided, so we should assume that the user is not an admin
-        let reduced = reduce_access(&test_ae, &context, system);
-        assert_eq!(reduced, Predicate::False)
+        let solved = solve_access(&test_ae, &context, system);
+        assert_eq!(solved, Predicate::False)
     }
 }

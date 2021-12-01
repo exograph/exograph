@@ -1,6 +1,6 @@
 use payas_model::model::{
     access::{
-        AccessConextSelection, AccessLogicalOp, AccessPredicateExpression,
+        AccessConextSelection, AccessLogicalExpression, AccessPredicateExpression,
         AccessPrimitiveExpression, AccessRelationalOp,
     },
     column_id::ColumnId,
@@ -57,19 +57,19 @@ pub fn compute_predicate_expression(
             };
             Ok(match op {
                 LogicalOp::And(left, right, _, _) => {
-                    AccessPredicateExpression::LogicalOp(AccessLogicalOp::And(
+                    AccessPredicateExpression::LogicalOp(AccessLogicalExpression::And(
                         Box::new(predicate_expr(left)?),
                         Box::new(predicate_expr(right)?),
                     ))
                 }
                 LogicalOp::Or(left, right, _, _) => {
-                    AccessPredicateExpression::LogicalOp(AccessLogicalOp::Or(
+                    AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Or(
                         Box::new(predicate_expr(left)?),
                         Box::new(predicate_expr(right)?),
                     ))
                 }
                 LogicalOp::Not(value, _, _) => AccessPredicateExpression::LogicalOp(
-                    AccessLogicalOp::Not(Box::new(predicate_expr(value)?)),
+                    AccessLogicalExpression::Not(Box::new(predicate_expr(value)?)),
                 ),
             })
         }
