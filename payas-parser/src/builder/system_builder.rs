@@ -100,8 +100,9 @@ fn build_expanded(resolved_system: &ResolvedSystem, building: &mut SystemContext
     let resolved_contexts = &resolved_system.contexts;
 
     // First fully build the model types.
-    type_builder::build_expanded(resolved_types, resolved_methods, building);
+    // First context, since model types may refer to context types in @access annotation
     context_builder::build_expanded(resolved_contexts, building);
+    type_builder::build_expanded(resolved_types, resolved_methods, building);
 
     // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
     // after running type_builder::build_expanded (since they depend on expanded GqlTypes (note the next ones do not access resolved_types))

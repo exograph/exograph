@@ -1,7 +1,10 @@
 use maybe_owned::MaybeOwned;
 use payas_model::{
     model::{
-        access::{AccessConextSelection, AccessExpression, AccessLogicalOp, AccessRelationalOp},
+        access::{
+            AccessConextSelection, AccessLogicalOp, AccessPredicateExpression,
+            AccessPrimitiveExpression, AccessRelationalOp,
+        },
         system::ModelSystem,
     },
     sql::{column::Column, predicate::Predicate},
@@ -11,18 +14,40 @@ use serde_json::Value;
 use std::ops::Not;
 
 pub fn reduce_access<'a>(
-    access_expression: &'a AccessExpression,
+    access_expression: &'a AccessPredicateExpression,
     request_context: &'a Value,
     system: &'a ModelSystem,
 ) -> Predicate<'a> {
-    match access_expression {
-        AccessExpression::ContextSelection(_) => todo!(),
-        AccessExpression::Column(_) => todo!(),
-        AccessExpression::LogicalOp(op) => reduce_logical_op(op, request_context, system),
-        AccessExpression::RelationalOp(op) => reduce_relational_op(op, request_context, system),
-        AccessExpression::StringLiteral(_) => todo!(),
-        AccessExpression::BooleanLiteral(value) => (*value).into(),
-        AccessExpression::NumberLiteral(_) => todo!(),
+    reduce_predicate_expression(access_expression, request_context, system)
+}
+
+fn reduce_predicate_expression<'a>(
+    expr: &'a AccessPredicateExpression,
+    request_context: &'a Value,
+    system: &'a ModelSystem,
+) -> Predicate<'a> {
+    match expr {
+        AccessPredicateExpression::LogicalOp(op) => reduce_logical_op(op, request_context, system),
+        AccessPredicateExpression::RelationalOp(op) => {
+            reduce_relational_op(op, request_context, system)
+        }
+        AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
+        AccessPredicateExpression::BooleanColumn(column_id) => Predicate::Eq(
+            system.create_column_with_id(column_id).into(),
+            Column::Literal(Box::new(true)).into(),
+        ),
+        AccessPredicateExpression::BooleanContextSelection(selection) => {
+            let context_value = reduce_context_selection(selection, request_context);
+            context_value
+                .map(|value| {
+                    match value {
+                        Value::Bool(value) => *value,
+                        _ => unreachable!("Context selection must be a boolean"), // access_utils ensures that only boolean values are allowed
+                    }
+                })
+                .unwrap_or(false)
+                .into()
+        }
     }
 }
 
@@ -34,39 +59,28 @@ enum ReducedExpression<'a> {
 }
 
 fn reduce_expression<'a>(
-    expr: &'a AccessExpression,
+    expr: &'a AccessPrimitiveExpression,
     request_context: &'a Value,
     system: &'a ModelSystem,
 ) -> ReducedExpression<'a> {
     match expr {
-        AccessExpression::ContextSelection(selection) => {
+        AccessPrimitiveExpression::ContextSelection(selection) => {
             reduce_context_selection(selection, request_context)
                 .map(|v| ReducedExpression::Value(v.to_owned()))
                 .unwrap_or(ReducedExpression::UnresolvedContext(selection))
         }
-        AccessExpression::Column(column_id) => {
+        AccessPrimitiveExpression::Column(column_id) => {
             ReducedExpression::Column(system.create_column_with_id(column_id).into())
         }
-        AccessExpression::StringLiteral(value) => {
+        AccessPrimitiveExpression::StringLiteral(value) => {
             ReducedExpression::Value(Value::String(value.clone()))
         }
-        AccessExpression::BooleanLiteral(value) => ReducedExpression::Value(Value::Bool(*value)),
-        AccessExpression::NumberLiteral(value) => {
+        AccessPrimitiveExpression::BooleanLiteral(value) => {
+            ReducedExpression::Value(Value::Bool(*value))
+        }
+        AccessPrimitiveExpression::NumberLiteral(value) => {
             ReducedExpression::Value(Value::Number((*value as i64).into()))
         }
-        _ => panic!("Unsupported expression type"),
-    }
-}
-
-fn reduce_predicate_expression<'a>(
-    expr: &'a AccessExpression,
-    request_context: &'a Value,
-    system: &'a ModelSystem,
-) -> Predicate<'a> {
-    match expr {
-        AccessExpression::LogicalOp(op) => reduce_logical_op(op, request_context, system),
-        AccessExpression::RelationalOp(op) => reduce_relational_op(op, request_context, system),
-        _ => panic!("Expected predicate expression"),
     }
 }
 
@@ -153,7 +167,7 @@ fn reduce_relational_op<'a>(
             Predicate::In,
             |left_value, right_value| match right_value {
                 Value::Array(values) => values.contains(&left_value).into(),
-                _ => panic!("The right side operand of `in` operator must be an array"),
+                _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
             },
         ),
     }
@@ -171,13 +185,12 @@ fn reduce_logical_op<'a>(
         }
         AccessLogicalOp::And(left, right) => {
             let left_predicate = reduce_predicate_expression(left, request_context, system);
-
             let right_predicate = reduce_predicate_expression(right, request_context, system);
 
             match (left_predicate, right_predicate) {
-                (Predicate::False, _) => Predicate::False,
-                (_, Predicate::False) => Predicate::False,
+                (Predicate::False, _) | (_, Predicate::False) => Predicate::False,
                 (Predicate::True, Predicate::True) => Predicate::True,
+
                 (Predicate::True, right_predicate) => right_predicate,
                 (left_predicate, Predicate::True) => left_predicate,
                 (left_predicate, right_predicate) => {
@@ -190,8 +203,7 @@ fn reduce_logical_op<'a>(
             let right_predicate = reduce_predicate_expression(right, request_context, system);
 
             match (left_predicate, right_predicate) {
-                (Predicate::True, _) => Predicate::True,
-                (_, Predicate::True) => Predicate::True,
+                (Predicate::True, _) | (_, Predicate::True) => Predicate::True,
                 (Predicate::False, Predicate::False) => Predicate::False,
 
                 (Predicate::False, right_predicate) => right_predicate,
@@ -290,23 +302,28 @@ mod tests {
         }
     }
 
-    fn context_selection(path: &[&str]) -> Box<AccessExpression> {
-        fn helper(path: &[&str]) -> AccessConextSelection {
-            match path {
-                [single] => AccessConextSelection::Single(single.to_string()),
-                [init @ .., last] => {
-                    AccessConextSelection::Select(Box::new(helper(init)), last.to_string())
-                }
-                [] => panic!("Empty path"),
-            }
+    fn context_selection(head: &str, tail: &[&str]) -> AccessConextSelection {
+        match tail {
+            [] => AccessConextSelection::Single(head.to_string()),
+            [init @ .., last] => AccessConextSelection::Select(
+                Box::new(context_selection(head, init)),
+                last.to_string(),
+            ),
         }
+    }
 
-        Box::new(AccessExpression::ContextSelection(helper(path)))
+    fn context_selection_expr(head: &str, tail: &[&str]) -> Box<AccessPrimitiveExpression> {
+        Box::new(AccessPrimitiveExpression::ContextSelection(
+            context_selection(head, tail),
+        ))
     }
 
     fn test_relational_op<'a>(
         test_system: &'a TestSystem,
-        op: fn(Box<AccessExpression>, Box<AccessExpression>) -> AccessRelationalOp,
+        op: fn(
+            Box<AccessPrimitiveExpression>,
+            Box<AccessPrimitiveExpression>,
+        ) -> AccessRelationalOp,
         context_match_predicate: fn(
             MaybeOwned<'a, Column<'a>>,
             MaybeOwned<'a, Column<'a>>,
@@ -335,9 +352,9 @@ mod tests {
 
         // Case 1: Both values from AuthContext
         {
-            let test_ae = AccessExpression::RelationalOp(op(
-                context_selection(&["AccessContext", "token1"]),
-                context_selection(&["AccessContext", "token2"]),
+            let test_ae = AccessPredicateExpression::RelationalOp(op(
+                context_selection_expr("AccessContext", &["token1"]),
+                context_selection_expr("AccessContext", &["token2"]),
             ));
 
             let context =
@@ -368,7 +385,7 @@ mod tests {
 
         // One value from AuthContext and other from a column
         {
-            let test_context_column = |test_ae: AccessExpression| {
+            let test_context_column = |test_ae: AccessPredicateExpression| {
                 let context = json!({ "AccessContext": {"user_id": "u1"} });
                 let reduced = reduce_access(&test_ae, &context, system);
                 assert_eq!(
@@ -385,22 +402,30 @@ mod tests {
             };
 
             // Once test with `context op column` and then `column op context`
-            test_context_column(AccessExpression::RelationalOp(op(
-                context_selection(&["AccessContext", "user_id"]),
-                Box::new(AccessExpression::Column(owner_id_column_id.clone())),
+            test_context_column(AccessPredicateExpression::RelationalOp(op(
+                context_selection_expr("AccessContext", &["user_id"]),
+                Box::new(AccessPrimitiveExpression::Column(
+                    owner_id_column_id.clone(),
+                )),
             )));
 
-            test_context_column(AccessExpression::RelationalOp(op(
-                Box::new(AccessExpression::Column(owner_id_column_id.clone())),
-                context_selection(&["AccessContext", "user_id"]),
+            test_context_column(AccessPredicateExpression::RelationalOp(op(
+                Box::new(AccessPrimitiveExpression::Column(
+                    owner_id_column_id.clone(),
+                )),
+                context_selection_expr("AccessContext", &["user_id"]),
             )));
         }
 
         // Both values from columns
         {
-            let test_ae = AccessExpression::RelationalOp(op(
-                Box::new(AccessExpression::Column(dept1_id_column_id.clone())),
-                Box::new(AccessExpression::Column(dept2_id_column_id.clone())),
+            let test_ae = AccessPredicateExpression::RelationalOp(op(
+                Box::new(AccessPrimitiveExpression::Column(
+                    dept1_id_column_id.clone(),
+                )),
+                Box::new(AccessPrimitiveExpression::Column(
+                    dept2_id_column_id.clone(),
+                )),
             ));
 
             let context = Value::Null; // context is irrelevant
@@ -481,7 +506,7 @@ mod tests {
     }
 
     #[test]
-    fn basic_gt1() {
+    fn basic_gte() {
         test_relational_op(
             &test_system(),
             AccessRelationalOp::Gte,
@@ -499,9 +524,11 @@ mod tests {
 
         let system = ModelSystem::default();
 
-        let test_ae = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-            context_selection(&["AccessContext", "role"]),
-            Box::new(AccessExpression::StringLiteral("ROLE_ADMIN".to_owned())),
+        let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+            context_selection_expr("AccessContext", &["role"]),
+            Box::new(AccessPrimitiveExpression::StringLiteral(
+                "ROLE_ADMIN".to_owned(),
+            )),
         ));
 
         let context = json!({ "AccessContext": {"role": "ROLE_ADMIN"} });
@@ -525,16 +552,20 @@ mod tests {
         } = &test_system;
 
         let test_ae = {
-            let admin_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-                context_selection(&["AccessContext", "role"]),
-                Box::new(AccessExpression::StringLiteral("ROLE_ADMIN".to_owned())),
+            let admin_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+                context_selection_expr("AccessContext", &["role"]),
+                Box::new(AccessPrimitiveExpression::StringLiteral(
+                    "ROLE_ADMIN".to_owned(),
+                )),
             ));
-            let user_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-                Box::new(AccessExpression::Column(published_column_id.clone())),
-                Box::new(AccessExpression::BooleanLiteral(true)),
+            let user_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+                Box::new(AccessPrimitiveExpression::Column(
+                    published_column_id.clone(),
+                )),
+                Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
             ));
 
-            AccessExpression::LogicalOp(AccessLogicalOp::Or(
+            AccessPredicateExpression::LogicalOp(AccessLogicalOp::Or(
                 Box::new(admin_access),
                 Box::new(user_access),
             ))
@@ -566,9 +597,11 @@ mod tests {
             ..
         } = &test_system;
 
-        let test_ae = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-            context_selection(&["AccessContext", "user_id"]),
-            Box::new(AccessExpression::Column(owner_id_column_id.clone())),
+        let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+            context_selection_expr("AccessContext", &["user_id"]),
+            Box::new(AccessPrimitiveExpression::Column(
+                owner_id_column_id.clone(),
+            )),
         ));
 
         let context = json!({ "AccessContext": {"user_id": "1"} });
@@ -603,29 +636,35 @@ mod tests {
             ..
         } = &test_system;
 
-        let admin_access = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-            context_selection(&["AccessContext", "role"]),
-            Box::new(AccessExpression::StringLiteral("ROLE_ADMIN".to_owned())),
+        let admin_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+            context_selection_expr("AccessContext", &["role"]),
+            Box::new(AccessPrimitiveExpression::StringLiteral(
+                "ROLE_ADMIN".to_owned(),
+            )),
         ));
 
         let user_access = {
-            let role_rule = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-                context_selection(&["AccessContext", "role"]),
-                Box::new(AccessExpression::StringLiteral("ROLE_USER".to_owned())),
+            let role_rule = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+                context_selection_expr("AccessContext", &["role"]),
+                Box::new(AccessPrimitiveExpression::StringLiteral(
+                    "ROLE_USER".to_owned(),
+                )),
             ));
 
-            let data_rule = AccessExpression::RelationalOp(AccessRelationalOp::Eq(
-                Box::new(AccessExpression::Column(published_column_id.clone())),
-                Box::new(AccessExpression::BooleanLiteral(true)),
+            let data_rule = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+                Box::new(AccessPrimitiveExpression::Column(
+                    published_column_id.clone(),
+                )),
+                Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
             ));
 
-            AccessExpression::LogicalOp(AccessLogicalOp::And(
+            AccessPredicateExpression::LogicalOp(AccessLogicalOp::And(
                 Box::new(role_rule),
                 Box::new(data_rule),
             ))
         };
 
-        let test_ae = AccessExpression::LogicalOp(AccessLogicalOp::Or(
+        let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalOp::Or(
             Box::new(admin_access),
             Box::new(user_access),
         ));
@@ -659,5 +698,70 @@ mod tests {
         // For anonymous users, too, do not allow (no context content)
         let reduced = reduce_access(&test_ae, &Value::Null, system);
         assert_eq!(reduced, Predicate::False);
+    }
+
+    #[test]
+    fn top_level_boolean_literal() {
+        // Scenario: true or false
+        let system = ModelSystem::default();
+
+        let test_ae = AccessPredicateExpression::BooleanLiteral(true);
+        let context = Value::Null; // irrelevant context content
+        let reduced = reduce_access(&test_ae, &context, &system);
+        assert_eq!(reduced, Predicate::True);
+
+        let test_ae = AccessPredicateExpression::BooleanLiteral(false);
+        let context = Value::Null; // irrelevant context content
+        let reduced = reduce_access(&test_ae, &context, &system);
+        assert_eq!(reduced, Predicate::False);
+    }
+
+    #[test]
+    fn top_level_boolean_column() {
+        // Scenario: self.published
+
+        let test_system = test_system();
+        let TestSystem {
+            system,
+            published_column_id,
+            ..
+        } = &test_system;
+
+        let test_ae = AccessPredicateExpression::BooleanColumn(published_column_id.clone());
+
+        let context = Value::Null; // irrelevant context content
+        let reduced = reduce_access(&test_ae, &context, system);
+        assert_eq!(
+            reduced,
+            Predicate::Eq(
+                test_system.published_column(),
+                Column::Literal(Box::new(true)).into()
+            )
+        )
+    }
+
+    #[test]
+    fn top_level_boolean_context() {
+        // Scenario: AuthComntext.is_admin
+
+        let test_system = test_system();
+        let TestSystem { system, .. } = &test_system;
+
+        let test_ae = AccessPredicateExpression::BooleanContextSelection(context_selection(
+            "AccessContext",
+            &["is_admin"],
+        ));
+
+        let context = json!({ "AccessContext": {"is_admin": true} });
+        let reduced = reduce_access(&test_ae, &context, system);
+        assert_eq!(reduced, Predicate::True);
+
+        let context = json!({ "AccessContext": {"is_admin": false} });
+        let reduced = reduce_access(&test_ae, &context, system);
+        assert_eq!(reduced, Predicate::False);
+
+        let context = Value::Null; // context not provided, so we should assume that the user is not an admin
+        let reduced = reduce_access(&test_ae, &context, system);
+        assert_eq!(reduced, Predicate::False)
     }
 }

@@ -22,7 +22,11 @@ use super::{
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
-use crate::{builder::resolved_builder::ResolvedCompositeTypeKind, typechecker::PrimitiveType};
+use crate::{
+    ast::ast_types::AstExpr,
+    builder::resolved_builder::ResolvedCompositeTypeKind,
+    typechecker::{PrimitiveType, Typed},
+};
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
@@ -198,40 +202,27 @@ fn compute_access_composite_types(
     self_type_info: &GqlCompositeType,
     building: &SystemContextBuilding,
 ) -> Access {
+    let access_expr = |expr: &AstExpr<Typed>| {
+        access_utils::compute_predicate_expression(expr, Some(self_type_info), building)
+    };
+
     Access {
-        creation: access_utils::compute_expression(
-            &resolved.creation,
-            Some(self_type_info),
-            building,
-            true,
-        ),
-        read: access_utils::compute_expression(
-            &resolved.read,
-            Some(self_type_info),
-            building,
-            true,
-        ),
-        update: access_utils::compute_expression(
-            &resolved.update,
-            Some(self_type_info),
-            building,
-            true,
-        ),
-        delete: access_utils::compute_expression(
-            &resolved.delete,
-            Some(self_type_info),
-            building,
-            true,
-        ),
+        creation: access_expr(&resolved.creation),
+        read: access_expr(&resolved.read),
+        update: access_expr(&resolved.update),
+        delete: access_expr(&resolved.delete),
     }
 }
 
 fn compute_access_method(resolved: &ResolvedAccess, building: &SystemContextBuilding) -> Access {
+    let access_expr =
+        |expr: &AstExpr<Typed>| access_utils::compute_predicate_expression(expr, None, building);
+
     Access {
-        creation: access_utils::compute_expression(&resolved.creation, None, building, true),
-        read: access_utils::compute_expression(&resolved.read, None, building, true),
-        update: access_utils::compute_expression(&resolved.update, None, building, true),
-        delete: access_utils::compute_expression(&resolved.delete, None, building, true),
+        creation: access_expr(&resolved.creation),
+        read: access_expr(&resolved.read),
+        update: access_expr(&resolved.update),
+        delete: access_expr(&resolved.delete),
     }
 }
 
