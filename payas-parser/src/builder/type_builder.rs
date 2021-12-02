@@ -22,7 +22,12 @@ use super::{
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
-use crate::{builder::resolved_builder::ResolvedCompositeTypeKind, typechecker::PrimitiveType};
+use crate::{
+    ast::ast_types::AstExpr,
+    builder::resolved_builder::ResolvedCompositeTypeKind,
+    error::ParserError,
+    typechecker::{PrimitiveType, Typed},
+};
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
@@ -36,7 +41,7 @@ pub fn build_expanded(
     resolved_types: &MappedArena<ResolvedType>,
     resolved_methods: &[&ResolvedMethod],
     building: &mut SystemContextBuilding,
-) {
+) -> Result<(), ParserError> {
     for (_, model_type) in resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
             expand_type_no_fields(c, building, resolved_types);
@@ -51,13 +56,15 @@ pub fn build_expanded(
 
     for (_, model_type) in resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_type_access(c, building);
+            expand_type_access(c, building)?;
         }
     }
 
     for method in resolved_methods.iter() {
-        expand_method_access(method, building)
+        expand_method_access(method, building)?
     }
+
+    Ok(())
 }
 
 fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
@@ -169,14 +176,16 @@ fn expand_type_fields(
 }
 
 // Expand access expressions (pre-condition: all model fields have been populated)
-fn expand_type_access(resolved_type: &ResolvedCompositeType, building: &mut SystemContextBuilding) {
+fn expand_type_access(
+    resolved_type: &ResolvedCompositeType,
+    building: &mut SystemContextBuilding,
+) -> Result<(), ParserError> {
     let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
     let existing_type = &building.types[existing_type_id];
 
     if let GqlTypeKind::Composite(self_type_info) = &existing_type.kind {
-        let expr = compute_access_composite_types(&resolved_type.access, self_type_info, building);
+        let expr = compute_access_composite_types(&resolved_type.access, self_type_info, building)?;
 
-        // TODO: Figure out a way to avoid the clone()s
         let kind = GqlTypeKind::Composite(GqlCompositeType {
             fields: self_type_info.fields.clone(),
             kind: self_type_info.kind.clone(),
@@ -185,54 +194,51 @@ fn expand_type_access(resolved_type: &ResolvedCompositeType, building: &mut Syst
 
         building.types.values[existing_type_id].kind = kind;
     }
+
+    Ok(())
 }
 
-fn expand_method_access(resolved_method: &ResolvedMethod, building: &mut SystemContextBuilding) {
+fn expand_method_access(
+    resolved_method: &ResolvedMethod,
+    building: &mut SystemContextBuilding,
+) -> Result<(), ParserError> {
     let existing_method_id = building.methods.get_id(&resolved_method.name).unwrap();
-    let expr = compute_access_method(&resolved_method.access, building);
+    let expr = compute_access_method(&resolved_method.access, building)?;
     building.methods.values[existing_method_id].access = expr;
+
+    Ok(())
 }
 
 fn compute_access_composite_types(
     resolved: &ResolvedAccess,
     self_type_info: &GqlCompositeType,
     building: &SystemContextBuilding,
-) -> Access {
-    Access {
-        creation: access_utils::compute_expression(
-            &resolved.creation,
-            Some(self_type_info),
-            building,
-            true,
-        ),
-        read: access_utils::compute_expression(
-            &resolved.read,
-            Some(self_type_info),
-            building,
-            true,
-        ),
-        update: access_utils::compute_expression(
-            &resolved.update,
-            Some(self_type_info),
-            building,
-            true,
-        ),
-        delete: access_utils::compute_expression(
-            &resolved.delete,
-            Some(self_type_info),
-            building,
-            true,
-        ),
-    }
+) -> Result<Access, ParserError> {
+    let access_expr = |expr: &AstExpr<Typed>| {
+        access_utils::compute_predicate_expression(expr, Some(self_type_info), building)
+    };
+
+    Ok(Access {
+        creation: access_expr(&resolved.creation)?,
+        read: access_expr(&resolved.read)?,
+        update: access_expr(&resolved.update)?,
+        delete: access_expr(&resolved.delete)?,
+    })
 }
 
-fn compute_access_method(resolved: &ResolvedAccess, building: &SystemContextBuilding) -> Access {
-    Access {
-        creation: access_utils::compute_expression(&resolved.creation, None, building, true),
-        read: access_utils::compute_expression(&resolved.read, None, building, true),
-        update: access_utils::compute_expression(&resolved.update, None, building, true),
-        delete: access_utils::compute_expression(&resolved.delete, None, building, true),
-    }
+fn compute_access_method(
+    resolved: &ResolvedAccess,
+    building: &SystemContextBuilding,
+) -> Result<Access, ParserError> {
+    let access_expr =
+        |expr: &AstExpr<Typed>| access_utils::compute_predicate_expression(expr, None, building);
+
+    Ok(Access {
+        creation: access_expr(&resolved.creation)?,
+        read: access_expr(&resolved.read)?,
+        update: access_expr(&resolved.update)?,
+        delete: access_expr(&resolved.delete)?,
+    })
 }
 
 fn create_field(
