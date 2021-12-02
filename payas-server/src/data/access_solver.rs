@@ -2,7 +2,7 @@ use maybe_owned::MaybeOwned;
 use payas_model::{
     model::{
         access::{
-            AccessConextSelection, AccessLogicalExpression, AccessPredicateExpression,
+            AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
             AccessPrimitiveExpression, AccessRelationalOp,
         },
         system::ModelSystem,
@@ -63,12 +63,12 @@ fn solve_predicate_expression<'a>(
 }
 
 fn solve_context_selection<'a>(
-    context_selection: &AccessConextSelection,
+    context_selection: &AccessContextSelection,
     value: &'a Value,
 ) -> Option<&'a Value> {
     match context_selection {
-        AccessConextSelection::Single(key) => value.get(key),
-        AccessConextSelection::Select(path, key) => {
+        AccessContextSelection::Single(key) => value.get(key),
+        AccessContextSelection::Select(path, key) => {
             solve_context_selection(path, value).and_then(|value| value.get(key))
         }
     }
@@ -95,7 +95,7 @@ fn solve_relational_op<'a>(
     enum SolvedPrimitiveExpression<'a> {
         Value(Value),
         Column(MaybeOwned<'a, Column<'a>>),
-        UnresolvedContext(&'a AccessConextSelection), // For example, AuthContext.role for an anonymous user
+        UnresolvedContext(&'a AccessContextSelection), // For example, AuthContext.role for an anonymous user
     }
 
     fn reduce_primitive_expression<'a>(
@@ -315,10 +315,10 @@ mod tests {
         }
     }
 
-    fn context_selection(head: &str, tail: &[&str]) -> AccessConextSelection {
+    fn context_selection(head: &str, tail: &[&str]) -> AccessContextSelection {
         match tail {
-            [] => AccessConextSelection::Single(head.to_string()),
-            [init @ .., last] => AccessConextSelection::Select(
+            [] => AccessContextSelection::Single(head.to_string()),
+            [init @ .., last] => AccessContextSelection::Select(
                 Box::new(context_selection(head, init)),
                 last.to_string(),
             ),
@@ -590,14 +590,14 @@ mod tests {
             for (c1, c2, expected) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(op(
                     Box::new(AccessPredicateExpression::BooleanContextSelection(
-                        AccessConextSelection::Select(
-                            Box::new(AccessConextSelection::Single("AccessContext".to_string())),
+                        AccessContextSelection::Select(
+                            Box::new(AccessContextSelection::Single("AccessContext".to_string())),
                             c1.to_string(),
                         ),
                     )),
                     Box::new(AccessPredicateExpression::BooleanContextSelection(
-                        AccessConextSelection::Select(
-                            Box::new(AccessConextSelection::Single("AccessContext".to_string())),
+                        AccessContextSelection::Select(
+                            Box::new(AccessContextSelection::Single("AccessContext".to_string())),
                             c2.to_string(),
                         ),
                     )),
@@ -712,6 +712,70 @@ mod tests {
             |p| p,
             Predicate::Or,
         );
+    }
+
+    #[test]
+    fn basic_not() {
+        let test_system = test_system();
+        let TestSystem {
+            system,
+            dept1_id_column_id,
+            ..
+        } = &test_system;
+
+        {
+            // A literal
+            let context = Value::Null; // context is irrelevant
+
+            let scenarios = [(true, Predicate::False), (false, Predicate::True)];
+
+            for (l1, expected) in scenarios.iter() {
+                let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(
+                    Box::new(AccessPredicateExpression::BooleanLiteral(*l1)),
+                ));
+
+                let solved = solve_access(&test_ae, &context, system);
+                assert_eq!(&solved, expected);
+            }
+        }
+        {
+            // A context value
+            let context = json!({ "AccessContext": {"v1": true, "v2": false} });
+
+            let scenarios = [("v1", Predicate::False), ("v2", Predicate::True)];
+
+            for (c1, expected) in scenarios.iter() {
+                let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(
+                    Box::new(AccessPredicateExpression::BooleanContextSelection(
+                        AccessContextSelection::Select(
+                            Box::new(AccessContextSelection::Single("AccessContext".to_string())),
+                            c1.to_string(),
+                        ),
+                    )),
+                ));
+
+                let solved = solve_access(&test_ae, &context, system);
+                assert_eq!(&solved, expected);
+            }
+        }
+
+        {
+            // Two columns
+            let test_ae =
+                AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(Box::new(
+                    AccessPredicateExpression::BooleanColumn(dept1_id_column_id.clone()),
+                )));
+
+            let context = Value::Null; // context is irrelevant
+            let solved = solve_access(&test_ae, &context, system);
+            assert_eq!(
+                solved,
+                Predicate::Neq(
+                    test_system.dept1_id_column(),
+                    Column::Literal(Box::new(true)).into()
+                )
+            )
+        }
     }
 
     #[test]

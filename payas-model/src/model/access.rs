@@ -27,11 +27,11 @@ impl Access {
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessPrimitiveExpression {
-    ContextSelection(AccessConextSelection), // for example, AuthContext.role
-    Column(ColumnId),                        // for example, self.id
-    StringLiteral(String),                   // for example, "ROLE_ADMIN"
-    BooleanLiteral(bool),                    // for example, true
-    NumberLiteral(i64),                      // for example, integer (-13, 0, 300, etc.)
+    ContextSelection(AccessContextSelection), // for example, AuthContext.role
+    Column(ColumnId),                         // for example, self.id
+    StringLiteral(String),                    // for example, "ROLE_ADMIN"
+    BooleanLiteral(bool),                     // for example, true
+    NumberLiteral(i64),                       // for example, integer (-13, 0, 300, etc.)
 }
 
 /// An expression that can be evaluated to a `Predicate`.
@@ -43,14 +43,14 @@ pub enum AccessPredicateExpression {
     // This allows specifying access rule such as `self.published` instead of self.published == true`
     BooleanColumn(ColumnId),
     // Similarly, this allows specifying access rule such as `AuthContext.superUser` instead of `AuthContext.superUser == true`
-    BooleanContextSelection(AccessConextSelection),
+    BooleanContextSelection(AccessContextSelection),
 }
 
 /// A path representing context selection such as `AuthContext.role`
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessConextSelection {
-    Single(String),                             // for example, `role`
-    Select(Box<AccessConextSelection>, String), // for example, `AuthContext.role`
+pub enum AccessContextSelection {
+    Single(String),                              // for example, `role`
+    Select(Box<AccessContextSelection>, String), // for example, `AuthContext.role`
 }
 
 /// Logical operation created from `AccessPredicateExpression`s

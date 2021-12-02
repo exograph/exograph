@@ -1,6 +1,6 @@
 use payas_model::model::{
     access::{
-        AccessConextSelection, AccessLogicalExpression, AccessPredicateExpression,
+        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
         AccessPrimitiveExpression, AccessRelationalOp,
     },
     column_id::ColumnId,
@@ -18,7 +18,7 @@ use super::system_builder::SystemContextBuilding;
 
 enum PathSelection<'a> {
     Column(ColumnId, &'a GqlFieldType),
-    Context(AccessConextSelection, &'a GqlFieldType),
+    Context(AccessContextSelection, &'a GqlFieldType),
 }
 
 pub fn compute_predicate_expression(
@@ -159,7 +159,7 @@ fn compute_selection<'a>(
     fn get_context<'a>(
         path_elements: &[String],
         building: &'a SystemContextBuilding,
-    ) -> (AccessConextSelection, &'a GqlFieldType) {
+    ) -> (AccessContextSelection, &'a GqlFieldType) {
         if path_elements.len() == 2 {
             let context_type = building
                 .contexts
@@ -174,8 +174,8 @@ fn compute_selection<'a>(
                 .find(|field| field.name == path_elements[1])
                 .unwrap();
             (
-                AccessConextSelection::Select(
-                    Box::new(AccessConextSelection::Single(path_elements[0].clone())),
+                AccessContextSelection::Select(
+                    Box::new(AccessContextSelection::Single(path_elements[0].clone())),
                     path_elements[1].clone(),
                 ),
                 &field.typ,
