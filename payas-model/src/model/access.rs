@@ -2,62 +2,106 @@ use super::column_id::ColumnId;
 
 use serde::{Deserialize, Serialize};
 
+/// Access specification for a model
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Access {
-    pub creation: AccessExpression,
-    pub read: AccessExpression,
-    pub update: AccessExpression,
-    pub delete: AccessExpression,
+    pub creation: AccessPredicateExpression,
+    pub read: AccessPredicateExpression,
+    pub update: AccessPredicateExpression,
+    pub delete: AccessPredicateExpression,
 }
 
 impl Access {
     pub const fn restrictive() -> Self {
         Self {
-            creation: AccessExpression::BooleanLiteral(false),
-            read: AccessExpression::BooleanLiteral(false),
-            update: AccessExpression::BooleanLiteral(false),
-            delete: AccessExpression::BooleanLiteral(false),
+            creation: AccessPredicateExpression::BooleanLiteral(false),
+            read: AccessPredicateExpression::BooleanLiteral(false),
+            update: AccessPredicateExpression::BooleanLiteral(false),
+            delete: AccessPredicateExpression::BooleanLiteral(false),
         }
     }
 }
 
+/// Primitive expression (that doesn't contain any other expressions).
+/// Used as sides of `AccessRelationalExpression` to form more complex expressions
+/// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessExpression {
-    ContextSelection(AccessConextSelection), // AuthContext.role
-    Column(ColumnId), // self.id (special case of a boolean column such as self.published will be expanded to self.published == true when building an AccessExpression)
-    StringLiteral(String), // "ROLE_ADMIN"
-    BooleanLiteral(bool), // true as in `self.published == true`
-    NumberLiteral(i64), // integer (-13, 0, 300, etc.)
-    LogicalOp(AccessLogicalOp),
+pub enum AccessPrimitiveExpression {
+    ContextSelection(AccessContextSelection), // for example, AuthContext.role
+    Column(ColumnId),                         // for example, self.id
+    StringLiteral(String),                    // for example, "ROLE_ADMIN"
+    BooleanLiteral(bool),                     // for example, true
+    NumberLiteral(i64),                       // for example, integer (-13, 0, 300, etc.)
+}
+
+/// An expression that can be evaluated to a `Predicate`.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum AccessPredicateExpression {
+    LogicalOp(AccessLogicalExpression),
     RelationalOp(AccessRelationalOp),
+    BooleanLiteral(bool),
+    // This allows specifying access rule such as `self.published` instead of self.published == true`
+    BooleanColumn(ColumnId),
+    // Similarly, this allows specifying access rule such as `AuthContext.superUser` instead of `AuthContext.superUser == true`
+    BooleanContextSelection(AccessContextSelection),
 }
 
+/// A path representing context selection such as `AuthContext.role`
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessConextSelection {
-    Single(String),
-    Select(Box<AccessConextSelection>, String),
+pub enum AccessContextSelection {
+    Single(String),                              // for example, `role`
+    Select(Box<AccessContextSelection>, String), // for example, `AuthContext.role`
 }
 
+/// Logical operation created from `AccessPredicateExpression`s
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessLogicalOp {
-    Not(Box<AccessExpression>),
-    And(Box<AccessExpression>, Box<AccessExpression>),
-    Or(Box<AccessExpression>, Box<AccessExpression>),
+pub enum AccessLogicalExpression {
+    Not(Box<AccessPredicateExpression>),
+    And(
+        Box<AccessPredicateExpression>,
+        Box<AccessPredicateExpression>,
+    ),
+    Or(
+        Box<AccessPredicateExpression>,
+        Box<AccessPredicateExpression>,
+    ),
 }
 
+/// Relational operators expressing a relation betweend two primitive expressions
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessRelationalOp {
-    Eq(Box<AccessExpression>, Box<AccessExpression>),
-    Neq(Box<AccessExpression>, Box<AccessExpression>),
-    Lt(Box<AccessExpression>, Box<AccessExpression>),
-    Lte(Box<AccessExpression>, Box<AccessExpression>),
-    Gt(Box<AccessExpression>, Box<AccessExpression>),
-    Gte(Box<AccessExpression>, Box<AccessExpression>),
-    In(Box<AccessExpression>, Box<AccessExpression>),
+    Eq(
+        Box<AccessPrimitiveExpression>,
+        Box<AccessPrimitiveExpression>,
+    ),
+    Neq(
+        Box<AccessPrimitiveExpression>,
+        Box<AccessPrimitiveExpression>,
+    ),
+    Lt(
+        Box<AccessPrimitiveExpression>,
+        Box<AccessPrimitiveExpression>,
+    ),
+    Lte(
+        Box<AccessPrimitiveExpression>,
+        Box<AccessPrimitiveExpression>,
+    ),
+    Gt(
+        Box<AccessPrimitiveExpression>,
+        Box<AccessPrimitiveExpression>,
+    ),
+    Gte(
+        Box<AccessPrimitiveExpression>,
+        Box<AccessPrimitiveExpression>,
+    ),
+    In(
+        Box<AccessPrimitiveExpression>,
+        Box<AccessPrimitiveExpression>,
+    ),
 }
 
 impl AccessRelationalOp {
-    pub fn sides(&self) -> (&AccessExpression, &AccessExpression) {
+    pub fn sides(&self) -> (&AccessPrimitiveExpression, &AccessPrimitiveExpression) {
         match self {
             AccessRelationalOp::Eq(left, right) => (left, right),
             AccessRelationalOp::Neq(left, right) => (left, right),
