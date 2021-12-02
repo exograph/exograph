@@ -36,12 +36,13 @@ impl Operation for Query {
         );
 
         match &self.kind {
-            QueryKind::Database(DatabaseQueryParameter {
-                predicate_param,
-                order_by_param,
-                limit_param,
-                offset_param,
-            }) => {
+            QueryKind::Database(db_query_param) => {
+                let DatabaseQueryParameter {
+                    predicate_param,
+                    order_by_param,
+                    limit_param,
+                    offset_param,
+                } = db_query_param.as_ref();
                 populate_params!(&predicate_param);
                 populate_params!(&order_by_param);
                 populate_params!(&limit_param);

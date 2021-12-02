@@ -68,6 +68,7 @@ pub trait OperationResolver<'a> {
     fn interceptors(&self) -> &Interceptors;
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum OperationResolverResult<'a> {
     SQLOperation(TransactionScript<'a>),
     DenoOperation(SerializableSlabIndex<ServiceMethod>),

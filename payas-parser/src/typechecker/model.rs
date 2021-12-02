@@ -15,11 +15,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
         AstModel {
             name: untyped.name.clone(),
             kind: untyped.kind.clone(),
-            fields: untyped
-                .fields
-                .iter()
-                .map(|f| AstField::shallow(f))
-                .collect(),
+            fields: untyped.fields.iter().map(AstField::shallow).collect(),
             annotations: annotation_map,
         }
     }

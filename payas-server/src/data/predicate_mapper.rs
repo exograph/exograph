@@ -94,8 +94,8 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                                     };
 
                                     let predicate_connector = match boolean_predicate_name {
-                                        "and" => |a, b| Predicate::and(a, b),
-                                        "or" => |a, b| Predicate::or(a, b),
+                                        "and" => Predicate::and,
+                                        "or" => Predicate::or,
                                         _ => todo!(),
                                     };
 

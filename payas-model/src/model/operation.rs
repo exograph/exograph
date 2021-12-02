@@ -25,7 +25,7 @@ pub struct Query {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum QueryKind {
-    Database(DatabaseQueryParameter),
+    Database(Box<DatabaseQueryParameter>),
     Service {
         method_id: Option<SerializableSlabIndex<ServiceMethod>>,
         argument_param: Vec<ArgumentParameter>,
