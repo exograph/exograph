@@ -80,12 +80,14 @@ impl FieldDefinitionProvider for GqlField {
                         let collection_query = &system.queries[collection_query];
 
                         match &collection_query.kind {
-                            QueryKind::Database(DatabaseQueryParameter {
-                                predicate_param,
-                                order_by_param,
-                                limit_param,
-                                offset_param,
-                            }) => {
+                            QueryKind::Database(db_query_params) => {
+                                let DatabaseQueryParameter {
+                                    predicate_param,
+                                    order_by_param,
+                                    limit_param,
+                                    offset_param,
+                                } = db_query_params.as_ref();
+
                                 let predicate_parameter_arg =
                                     predicate_param.as_ref().map(|p| p.input_value());
                                 let order_by_parameter_arg =

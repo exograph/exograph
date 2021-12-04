@@ -102,7 +102,8 @@ impl<'a> QuerySQLOperations<'a> for Query {
         query_context: &'a QueryContext<'a>,
     ) -> Option<OrderBy<'a>> {
         match &self.kind {
-            QueryKind::Database(DatabaseQueryParameter { order_by_param, .. }) => {
+            QueryKind::Database(db_query_param) => {
+                let DatabaseQueryParameter { order_by_param, .. } = db_query_param.as_ref();
                 order_by_param
                     .as_ref()
                     .and_then(|order_by_param| {
@@ -144,15 +145,19 @@ impl<'a> QuerySQLOperations<'a> for Query {
         query_context: &'a QueryContext<'a>,
     ) -> Option<Limit> {
         match &self.kind {
-            QueryKind::Database(DatabaseQueryParameter { limit_param, .. }) => limit_param
-                .as_ref()
-                .and_then(|limit_param| {
-                    let argument_value = super::find_arg(arguments, &limit_param.name);
-                    argument_value
-                        .map(|argument_value| limit_param.map_to_sql(argument_value, query_context))
-                })
-                .transpose()
-                .unwrap(),
+            QueryKind::Database(db_query_param) => {
+                let DatabaseQueryParameter { limit_param, .. } = db_query_param.as_ref();
+                limit_param
+                    .as_ref()
+                    .and_then(|limit_param| {
+                        let argument_value = super::find_arg(arguments, &limit_param.name);
+                        argument_value.map(|argument_value| {
+                            limit_param.map_to_sql(argument_value, query_context)
+                        })
+                    })
+                    .transpose()
+                    .unwrap()
+            }
             QueryKind::Service { .. } => panic!(),
         }
     }
@@ -163,16 +168,19 @@ impl<'a> QuerySQLOperations<'a> for Query {
         query_context: &'a QueryContext<'a>,
     ) -> Option<Offset> {
         match &self.kind {
-            QueryKind::Database(DatabaseQueryParameter { offset_param, .. }) => offset_param
-                .as_ref()
-                .and_then(|offset_param| {
-                    let argument_value = super::find_arg(arguments, &offset_param.name);
-                    argument_value.map(|argument_value| {
-                        offset_param.map_to_sql(argument_value, query_context)
+            QueryKind::Database(db_query_param) => {
+                let DatabaseQueryParameter { offset_param, .. } = db_query_param.as_ref();
+                offset_param
+                    .as_ref()
+                    .and_then(|offset_param| {
+                        let argument_value = super::find_arg(arguments, &offset_param.name);
+                        argument_value.map(|argument_value| {
+                            offset_param.map_to_sql(argument_value, query_context)
+                        })
                     })
-                })
-                .transpose()
-                .unwrap(),
+                    .transpose()
+                    .unwrap()
+            }
             QueryKind::Service { .. } => panic!(),
         }
     }
@@ -185,9 +193,10 @@ impl<'a> QuerySQLOperations<'a> for Query {
         top_level_selection: bool,
     ) -> Result<Select<'a>> {
         match &self.kind {
-            QueryKind::Database(DatabaseQueryParameter {
-                predicate_param, ..
-            }) => {
+            QueryKind::Database(db_query_param) => {
+                let DatabaseQueryParameter {
+                    predicate_param, ..
+                } = db_query_param.as_ref();
                 let access_predicate = compute_sql_access_predicate(
                     &self.return_type,
                     &SQLOperationKind::Retrieve,

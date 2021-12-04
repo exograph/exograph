@@ -73,12 +73,12 @@ fn shallow_pk_query(
     let operation_name = typ.pk_query();
     Query {
         name: operation_name,
-        kind: QueryKind::Database(DatabaseQueryParameter {
+        kind: QueryKind::Database(Box::new(DatabaseQueryParameter {
             predicate_param: None,
             order_by_param: None,
             limit_param: None,
             offset_param: None,
-        }),
+        })),
         return_type: OperationReturnType {
             type_id: model_type_id,
             type_name: typ.name.clone(),
@@ -96,12 +96,12 @@ fn expanded_pk_query(model_type: &GqlType, building: &SystemContextBuilding) -> 
 
     Query {
         name: operation_name,
-        kind: QueryKind::Database(DatabaseQueryParameter {
+        kind: QueryKind::Database(Box::new(DatabaseQueryParameter {
             predicate_param: Some(pk_param),
             order_by_param: None,
             limit_param: None,
             offset_param: None,
-        }),
+        })),
         return_type: existing_query.return_type.clone(),
         interceptors: existing_query.interceptors.clone(),
     }
@@ -132,12 +132,12 @@ fn shallow_collection_query(
     let operation_name = model.collection_query();
     Query {
         name: operation_name,
-        kind: QueryKind::Database(DatabaseQueryParameter {
+        kind: QueryKind::Database(Box::new(DatabaseQueryParameter {
             predicate_param: None,
             order_by_param: None,
             limit_param: None,
             offset_param: None,
-        }),
+        })),
         return_type: OperationReturnType {
             type_id: model_type_id,
             type_name: model.name.clone(),
@@ -158,12 +158,12 @@ fn expanded_collection_query(model_type: &GqlType, building: &SystemContextBuild
 
     Query {
         name: operation_name.clone(),
-        kind: QueryKind::Database(DatabaseQueryParameter {
+        kind: QueryKind::Database(Box::new(DatabaseQueryParameter {
             predicate_param: Some(predicate_param),
             order_by_param: Some(order_by_param),
             limit_param: Some(limit_param),
             offset_param: Some(offset_param),
-        }),
+        })),
         return_type: existing_query.return_type.clone(),
         interceptors: Interceptors::default(),
     }

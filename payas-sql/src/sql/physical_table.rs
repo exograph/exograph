@@ -21,8 +21,7 @@ impl PhysicalTable {
     }
 
     pub fn get_column(&self, name: &str) -> Option<Column> {
-        self.get_physical_column(name)
-            .map(|physical_column| Column::Physical(physical_column))
+        self.get_physical_column(name).map(Column::Physical)
     }
 
     pub fn get_physical_column(&self, name: &str) -> Option<&PhysicalColumn> {
