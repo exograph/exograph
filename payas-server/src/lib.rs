@@ -58,7 +58,7 @@ async fn resolve(
 ) -> impl Responder {
     let auth = authenticator.extract_authentication(req);
 
-    let to_bytes = |s: String| Bytes::from(s);
+    // let to_bytes = Bytes::from;
     let to_bytes_static = |s: &'static str| Bytes::from_static(s.as_bytes());
 
     match auth {
@@ -82,11 +82,11 @@ async fn resolve(
                         yield to_bytes_static(r#"{"data": {"#);
                         for (index, part) in parts.into_iter().enumerate() {
                             yield to_bytes_static("\"");
-                            yield to_bytes(part.0);
+                            yield Bytes::from(part.0);
                             yield to_bytes_static(r#"":"#);
                             match part.1 {
-                                QueryResponse::Json(value) => yield to_bytes(value.to_string()),
-                                QueryResponse::Raw(Some(value)) => yield to_bytes(value),
+                                QueryResponse::Json(value) => yield Bytes::from(value.to_string()),
+                                QueryResponse::Raw(Some(value)) => yield Bytes::from(value),
                                 QueryResponse::Raw(None) => yield to_bytes_static("null"),
                             };
                             if index != parts_len - 1 {
@@ -103,7 +103,7 @@ async fn resolve(
                 Err(err) => {
                     let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         yield to_bytes_static(r#"{"errors": [{"message":""#);
-                        yield to_bytes(
+                        yield Bytes::from(
                             // TODO: escape PostgreSQL errors properly here
                             format!("{}", err.chain().last().unwrap())
                                 .replace("\"", "")
@@ -113,9 +113,9 @@ async fn resolve(
                         eprintln!("{:?}", err);
                         if let Some(err) = err.downcast_ref::<ExecutionError>() {
                             yield to_bytes_static(r#", "locations": [{"line": "#);
-                            yield to_bytes(err.position().line.to_string());
+                            yield Bytes::from(err.position().line.to_string());
                             yield to_bytes_static(r#", "column": "#);
-                            yield to_bytes(err.position().column.to_string());
+                            yield Bytes::from(err.position().column.to_string());
                             yield to_bytes_static(r#"}]"#);
                         };
                         yield to_bytes_static(r#"}"#);

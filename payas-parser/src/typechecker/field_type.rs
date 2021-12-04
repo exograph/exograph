@@ -41,7 +41,7 @@ impl TypecheckFrom<AstFieldType<Untyped>> for AstFieldType<Typed> {
         match untyped {
             AstFieldType::Plain(name, params, _, s) => AstFieldType::Plain(
                 name.clone(),
-                params.iter().map(|p| AstFieldType::shallow(p)).collect(),
+                params.iter().map(AstFieldType::shallow).collect(),
                 false,
                 *s,
             ),
