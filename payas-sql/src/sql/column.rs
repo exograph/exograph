@@ -424,7 +424,6 @@ impl PhysicalColumnType {
 #[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
-    Array(Box<dyn SQLParam>),
     Literal(Box<dyn SQLParam>),
     JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
     JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
@@ -479,16 +478,10 @@ impl<'a> Expression for PhysicalColumn {
     }
 }
 
-// Array[$1, $2, $3]
-
 impl<'a> Expression for Column<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
             Column::Physical(pc) => pc.binding(expression_context),
-            Column::Array(list) => {
-                let param_index = expression_context.next_param();
-                ParameterBinding::new(format! {"${}", param_index}, vec![list.as_ref()])
-            }
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();
                 ParameterBinding::new(format! {"${}", param_index}, vec![value.as_ref()])
