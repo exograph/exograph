@@ -161,6 +161,45 @@ impl ToSql for SQLBytes {
     postgres::types::to_sql_checked!();
 }
 
+impl ToSql for &dyn SQLParam {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut bytes::BytesMut,
+    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        (*self).to_sql_checked(ty, out)
+    }
+
+    fn accepts(_ty: &Type) -> bool {
+        true // TODO: Can we check this?
+    }
+
+    postgres::types::to_sql_checked!();
+}
+
+#[derive(Debug, PartialEq)]
+pub struct SQLParamVec(pub Vec<Box<dyn SQLParam>>);
+
+impl ToSql for SQLParamVec {
+    fn to_sql(
+        &self,
+        ty: &Type,
+        out: &mut bytes::BytesMut,
+    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+        let slice: Vec<_> = self.0.iter().map(|p| p.as_ref()).collect();
+        slice.to_sql_checked(ty, out)
+    }
+
+    fn accepts(_ty: &Type) -> bool
+    where
+        Self: Sized,
+    {
+        true // TODO
+    }
+
+    postgres::types::to_sql_checked!();
+}
+
 impl Display for SQLBytes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)

@@ -103,36 +103,37 @@ impl<'qc> QueryContext<'qc> {
         self.executor.system.create_column_with_id(column_id)
     }
 
-    // TODO: currently just unwrapping the result when we call this method from somewhere
-    // take a look at how to properly handle errors from this...
+    fn literal_value(
+        &'qc self,
+        value: &ConstValue,
+        associated_column: &PhysicalColumn,
+    ) -> Result<Option<Box<dyn SQLParam>>> {
+        match value {
+            ConstValue::Number(number) => Ok(Some(cast_number(number, &associated_column.typ))),
+            ConstValue::String(v) => cast_string(v, &associated_column.typ).map(Some),
+            ConstValue::Boolean(v) => Ok(Some(Box::new(*v))),
+            ConstValue::Null => Ok(None),
+            ConstValue::Enum(v) => Ok(Some(Box::new(v.to_string()))), // We might need guidance from the database to do a correct translation
+            ConstValue::List(elems) => {
+                let mapped = elems
+                    .iter()
+                    .flat_map(|elem| self.literal_value(elem, associated_column).unwrap())
+                    .collect::<Vec<_>>();
+
+                Ok(Some(Box::new(payas_model::sql::SQLParamVec(mapped))))
+            }
+            ConstValue::Object(_) => Ok(Some(cast_value(value, &associated_column.typ))),
+            ConstValue::Binary(bytes) => Ok(Some(Box::new(SQLBytes(bytes.clone())))),
+        }
+    }
+
     pub fn literal_column(
         &'qc self,
         value: &ConstValue,
         associated_column: &PhysicalColumn,
     ) -> Result<Column<'qc>> {
-        let value = match value {
-            ConstValue::Number(number) => {
-                Column::Literal(cast_number(number, &associated_column.typ))
-            }
-            ConstValue::String(v) => Column::Literal(cast_string(v, &associated_column.typ)?),
-            ConstValue::Boolean(v) => Column::Literal(Box::new(*v)),
-            ConstValue::Null => Column::Null,
-            ConstValue::Enum(v) => Column::Literal(Box::new(v.to_string())), // We might need guidance from the database to do a correct translation
-            ConstValue::List(v) => {
-                let values = v
-                    .iter()
-                    .map(|elem| self.literal_column(elem, associated_column))
-                    .collect::<Result<Vec<_>>>()?;
-
-                let deref = values.into_iter().map(Into::into).collect();
-
-                Column::Array(deref)
-            }
-            ConstValue::Object(_) => Column::Literal(cast_value(value, &associated_column.typ)),
-            ConstValue::Binary(bytes) => Column::Literal(Box::new(SQLBytes(bytes.clone()))),
-        };
-
-        Ok(value)
+        self.literal_value(value, associated_column)
+            .map(|value| value.map(Column::Literal).unwrap_or(Column::Null))
     }
 
     pub fn field_arguments(
