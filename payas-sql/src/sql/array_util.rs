@@ -12,9 +12,59 @@ pub enum ArrayEntry<'a, T> {
 
 type OptionalSQLParam = Option<Box<dyn SQLParam>>;
 
+/// Convert a Rust array into an SQLParam.
+///
+/// Postgres's multi-dimensional arrays are represented as a single array of
+/// elements in a row-major order. This function processes the elements whose content
+/// may be a single element (ArrayEntry::Single) or a list of elements (ArrayEntry::List).
+///# Arguments
+/// * `elems` - The array to convert.
+/// * `destination_type` - The type of the array of the primitive element in the database.
+/// * `array_entry` - A function to convert an element of an array to an ArrayEntry (ArrayEntry::Single or ArrayEntry::List).
+/// * `to_sql_param` - A function to convert an element of an array to an SQLParam.
+pub fn to_sql_param<T>(
+    elems: &[T],
+    destination_type: &PhysicalColumnType,
+    array_entry: fn(&T) -> ArrayEntry<T>,
+    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam>,
+) -> Result<Option<Box<dyn SQLParam>>> {
+    to_sql_array(elems, destination_type, array_entry, to_sql_param)
+        .map(|array| Some(Box::new(array) as Box<dyn SQLParam>))
+}
+
+// Separate function to enable testing
+fn to_sql_array<T>(
+    elems: &[T],
+    destination_type: &PhysicalColumnType,
+    array_entry: fn(&T) -> ArrayEntry<T>,
+    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam>,
+) -> Result<Array<Box<dyn SQLParam>>> {
+    let mut result = (Vec::new(), HashMap::new());
+    process_array(
+        elems,
+        destination_type,
+        &mut result,
+        0,
+        array_entry,
+        to_sql_param,
+    )?;
+
+    let mut dimension_lens = result.1.iter().collect::<Vec<_>>();
+    dimension_lens.sort_by_key(|(key, _)| **key);
+    let dimensions = dimension_lens
+        .into_iter()
+        .map(|(_, v)| Dimension {
+            len: *v,
+            lower_bound: 0,
+        })
+        .collect::<Vec<_>>();
+
+    Ok(Array::from_parts(result.0, dimensions))
+}
+
 /// Process a (possibly nested) array of values to extract information to use it as Postgres parameter.
 ///
-/// The output is the `result` param that has flattened all the elements and a set of dimension->value mappings.
+/// The output is the `result` param that has flattened all the elements and a set of dimension->value mapping.
 /// See the tests module for examples.
 fn process_array<T>(
     elems: &[T],
@@ -46,6 +96,9 @@ fn process_array<T>(
         }
     }
 
+    // Update the dimension if this is the first time we are at this depth
+    // If this is a repeated visit at a depth, check if the length is the same
+    // (we do not support entries in the array of different lengths)
     match result.1.entry(depth) {
         Entry::Vacant(entry) => {
             entry.insert(len);
@@ -63,45 +116,6 @@ fn process_array<T>(
     }
 
     Ok(())
-}
-
-fn to_sql_array<T>(
-    elems: &[T],
-    destination_type: &PhysicalColumnType,
-    array_entry: fn(&T) -> ArrayEntry<T>,
-    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam>,
-) -> Result<Array<Box<dyn SQLParam>>> {
-    let mut result = (Vec::new(), HashMap::new());
-    process_array(
-        elems,
-        destination_type,
-        &mut result,
-        0,
-        array_entry,
-        to_sql_param,
-    )?;
-
-    let mut dimension_lens = result.1.iter().collect::<Vec<_>>();
-    dimension_lens.sort_by_key(|(key, _)| **key);
-    let dimensions = dimension_lens
-        .into_iter()
-        .map(|(_, v)| Dimension {
-            len: *v,
-            lower_bound: 0,
-        })
-        .collect::<Vec<_>>();
-
-    Ok(Array::from_parts(result.0, dimensions))
-}
-
-pub fn to_sql_param<T>(
-    elems: &[T],
-    destination_type: &PhysicalColumnType,
-    array_entry: fn(&T) -> ArrayEntry<T>,
-    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam>,
-) -> Result<Option<Box<dyn SQLParam>>> {
-    to_sql_array(elems, destination_type, array_entry, to_sql_param)
-        .map(|array| Some(Box::new(array) as Box<dyn SQLParam>))
 }
 
 #[cfg(test)]
