@@ -19,6 +19,7 @@ mod physical_table;
 mod select;
 mod sql_operation;
 
+pub mod array_util;
 mod join;
 mod limit;
 mod offset;
@@ -70,6 +71,7 @@ impl PartialEq for dyn SQLParam {
     }
 }
 
+/// An SQL value to transfer result of a step to another
 #[derive(Debug, Clone, PartialEq)]
 pub struct SQLValue {
     value: Vec<u8>,
@@ -161,40 +163,17 @@ impl ToSql for SQLBytes {
     postgres::types::to_sql_checked!();
 }
 
-impl ToSql for &dyn SQLParam {
+impl ToSql for Box<dyn SQLParam> {
     fn to_sql(
         &self,
         ty: &Type,
         out: &mut bytes::BytesMut,
     ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        (*self).to_sql_checked(ty, out)
+        self.as_ref().to_sql_checked(ty, out)
     }
 
     fn accepts(_ty: &Type) -> bool {
         true // TODO: Can we check this?
-    }
-
-    postgres::types::to_sql_checked!();
-}
-
-#[derive(Debug, PartialEq)]
-pub struct SQLParamVec(pub Vec<Box<dyn SQLParam>>);
-
-impl ToSql for SQLParamVec {
-    fn to_sql(
-        &self,
-        ty: &Type,
-        out: &mut bytes::BytesMut,
-    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        let slice: Vec<_> = self.0.iter().map(|p| p.as_ref()).collect();
-        slice.to_sql_checked(ty, out)
-    }
-
-    fn accepts(_ty: &Type) -> bool
-    where
-        Self: Sized,
-    {
-        true // TODO
     }
 
     postgres::types::to_sql_checked!();

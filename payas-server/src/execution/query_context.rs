@@ -13,7 +13,11 @@ use chrono::prelude::*;
 use chrono::DateTime;
 use payas_model::{
     model::{column_id::ColumnId, system::ModelSystem},
-    sql::{column::*, SQLBytes, SQLParam},
+    sql::{
+        array_util::{self, ArrayEntry},
+        column::*,
+        SQLBytes, SQLParam,
+    },
 };
 use rust_decimal::prelude::*;
 use rust_decimal::Decimal;
@@ -103,36 +107,12 @@ impl<'qc> QueryContext<'qc> {
         self.executor.system.create_column_with_id(column_id)
     }
 
-    fn literal_value(
-        &'qc self,
-        value: &ConstValue,
-        associated_column: &PhysicalColumn,
-    ) -> Result<Option<Box<dyn SQLParam>>> {
-        match value {
-            ConstValue::Number(number) => Ok(Some(cast_number(number, &associated_column.typ))),
-            ConstValue::String(v) => cast_string(v, &associated_column.typ).map(Some),
-            ConstValue::Boolean(v) => Ok(Some(Box::new(*v))),
-            ConstValue::Null => Ok(None),
-            ConstValue::Enum(v) => Ok(Some(Box::new(v.to_string()))), // We might need guidance from the database to do a correct translation
-            ConstValue::List(elems) => {
-                let mapped = elems
-                    .iter()
-                    .flat_map(|elem| self.literal_value(elem, associated_column).unwrap())
-                    .collect::<Vec<_>>();
-
-                Ok(Some(Box::new(payas_model::sql::SQLParamVec(mapped))))
-            }
-            ConstValue::Object(_) => Ok(Some(cast_value(value, &associated_column.typ))),
-            ConstValue::Binary(bytes) => Ok(Some(Box::new(SQLBytes(bytes.clone())))),
-        }
-    }
-
     pub fn literal_column(
         &'qc self,
         value: &ConstValue,
         associated_column: &PhysicalColumn,
     ) -> Result<Column<'qc>> {
-        self.literal_value(value, associated_column)
+        cast_value(value, &associated_column.typ)
             .map(|value| value.map(Column::Literal).unwrap_or(Column::Null))
     }
 
@@ -182,6 +162,36 @@ impl<'qc> QueryContext<'qc> {
     pub fn get_system(&self) -> &ModelSystem {
         self.executor.system
     }
+}
+
+fn cast_value(
+    value: &ConstValue,
+    destination_type: &PhysicalColumnType,
+) -> Result<Option<Box<dyn SQLParam>>> {
+    match value {
+        ConstValue::Number(number) => Ok(Some(cast_number(number, destination_type))),
+        ConstValue::String(v) => cast_string(v, destination_type).map(Some),
+        ConstValue::Boolean(v) => Ok(Some(Box::new(*v))),
+        ConstValue::Null => Ok(None),
+        ConstValue::Enum(v) => Ok(Some(Box::new(v.to_string()))), // We might need guidance from the database to do a correct translation
+        ConstValue::List(elems) => cast_list(elems, destination_type),
+        ConstValue::Object(_) => Ok(Some(cast_object(value, destination_type))),
+        ConstValue::Binary(bytes) => Ok(Some(Box::new(SQLBytes(bytes.clone())))),
+    }
+}
+
+fn cast_list(
+    elems: &[ConstValue],
+    destination_type: &PhysicalColumnType,
+) -> Result<Option<Box<dyn SQLParam>>> {
+    fn array_entry(elem: &ConstValue) -> ArrayEntry<ConstValue> {
+        match elem {
+            ConstValue::List(elems) => ArrayEntry::List(elems),
+            _ => ArrayEntry::Single(elem),
+        }
+    }
+
+    array_util::to_sql_param(elems, destination_type, array_entry, cast_value)
 }
 
 fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
@@ -245,7 +255,7 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
     Ok(value)
 }
 
-fn cast_value(val: &ConstValue, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
+fn cast_object(val: &ConstValue, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
     match destination_type {
         PhysicalColumnType::Json => {
             let json_object = val.clone().into_json().unwrap();
