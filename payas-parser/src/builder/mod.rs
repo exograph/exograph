@@ -15,6 +15,7 @@ mod query_builder;
 mod reference_input_type_builder;
 mod resolved_builder;
 mod service_builder;
+mod service_skeleton_generator;
 mod type_builder;
 mod update_mutation_builder;
 
