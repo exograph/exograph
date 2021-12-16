@@ -21,8 +21,50 @@ interface Operation {
 }
 "#;
 
-/// Generates a service skeleton.
-/// This gives the user a starter code for their service definitions in the clay file.
+/// Generates a service skeleton based on service definitions in the clay file so that users can have a good starting point.
+///
+/// # Example:
+/// For a service definition in a clay file as follows:
+/// ```clay
+/// @external("todo.ts")
+/// service TodoService {
+///     type Todo {
+///       userId: Int
+///       id: Int
+///       title: String
+///       completed: Boolean
+///     }
+///
+///     query todo(id: Int): Todo
+///   }
+/// ```
+///
+/// The generated code will look like this:
+/// ```typescript
+/// interface Todo {
+///     userId: number
+///     id: number
+///     title: string
+///     completed: boolean
+/// }
+///
+/// export /*async*/ function todo(id: number): Todo {
+///     // TODO
+///     throw new Error('not implemented');
+/// }
+/// ```
+///
+/// Note that we add a commented `async` to let user know that they may have an async function.
+///
+/// If the `@external("todo.js") was specified, the generated code will look like this:
+/// ```javascript
+/// export /*async*/ function todo(id) {
+///     // TODO
+///     throw new Error('not implemented');
+/// }
+/// ```
+/// We also generate a claytip.d.ts file that contains the Claytip interface.
+///
 pub fn generate_service_skeleton(
     service: &AstService<Typed>,
     out_file: impl AsRef<Path>,
