@@ -227,29 +227,37 @@ fn resolve_deno(
             })
             .collect::<Result<Vec<_>>>()?;
 
-        query_context.executor.deno_execution.preload_module(path, 1).await;
-        query_context.executor.deno_execution.execute_function_with_shims(
-            path,
-            &method.name,
-            arg_sequence,
-            Some(&|query_string, variables| {
-                let result = query_context
-                    .executor
-                    .execute_with_request_context(
-                        None,
-                        &query_string,
-                        variables.as_ref(),
-                        query_context.request_context.clone(),
-                    )?
-                    .into_iter()
-                    .map(|(name, response)| (name, response.to_json().unwrap()))
-                    .collect::<Map<_, _>>();
+        query_context
+            .executor
+            .deno_execution
+            .preload_module(path, 1)
+            .await;
+        query_context
+            .executor
+            .deno_execution
+            .execute_function_with_shims(
+                path,
+                &method.name,
+                arg_sequence,
+                Some(&|query_string, variables| {
+                    let result = query_context
+                        .executor
+                        .execute_with_request_context(
+                            None,
+                            &query_string,
+                            variables.as_ref(),
+                            query_context.request_context.clone(),
+                        )?
+                        .into_iter()
+                        .map(|(name, response)| (name, response.to_json().unwrap()))
+                        .collect::<Map<_, _>>();
 
-                Ok(serde_json::Value::Object(result))
-            }),
-            None,
-            None,
-        ).await
+                    Ok(serde_json::Value::Object(result))
+                }),
+                None,
+                None,
+            )
+            .await
     };
 
     let function_result = futures::executor::block_on(function_result_future)?;

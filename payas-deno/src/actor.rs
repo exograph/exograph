@@ -35,7 +35,8 @@ pub enum ToDenoMessage {
     ResponseClaytipExecute(Result<Value>),
 }
 
-pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> Result<Value> + 'a);
+pub type FnClaytipExecuteQuery<'a> =
+    (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> Result<Value> + 'a);
 pub type FnClaytipInterceptorGetName<'a> = (dyn Fn() -> String + 'a);
 pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> Result<Value> + 'a);
 
@@ -59,6 +60,7 @@ impl DenoActor {
             ("Operation", include_str!("operation_shim.js")),
         ];
 
+        // TODO
         let (from_deno_sender, from_deno_receiver) = unbounded();
         let (to_deno_sender, to_deno_receiver) = unbounded();
 
@@ -171,7 +173,7 @@ pub struct MethodCall {
     pub arguments: Vec<Arg>,
 
     pub to_user: Sender<FromDenoMessage>,
-    pub from_user: Receiver<ToDenoMessage>
+    pub from_user: Receiver<ToDenoMessage>,
 }
 
 unsafe impl Send for MethodCall {}

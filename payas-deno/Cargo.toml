@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 actix = "0.12"
+actix-rt = "2.5.0"
 anyhow = "1.0"
 crossbeam-channel = "0.5"
 deno_runtime = "0.29.0"

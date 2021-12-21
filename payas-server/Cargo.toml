@@ -28,6 +28,7 @@ r2d2 = "0.8"
 r2d2_postgres = "0.18"
 rust_decimal = { version = "1.15", features = ["db-postgres"] }
 chrono = "0.4.19"
+tokio = "1.12"
 typed-arena = "2.0.1"
 notify = "4.0.17"
 ctrlc = "3.1.9"

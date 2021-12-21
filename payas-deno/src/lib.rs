@@ -1,8 +1,11 @@
 mod actor;
-mod executor;
 mod deno_module;
 mod embedded_module_loader;
+mod executor;
 
+pub use actor::{
+    DenoActor, FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed,
+    InProgress, MethodCall,
+};
 pub use deno_module::{Arg, DenoModule, DenoModuleSharedState};
-pub use actor::{DenoActor, MethodCall, InProgress, FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed};
 pub use executor::DenoExecutor;
