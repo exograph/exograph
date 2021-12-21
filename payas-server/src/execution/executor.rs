@@ -4,7 +4,7 @@ use async_graphql_parser::{parse_query, types::DocumentOperations};
 
 use anyhow::Result;
 
-use payas_deno::DenoExecutionManager;
+use payas_deno::DenoExecutor;
 use payas_model::{
     model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
     sql::database::Database,
@@ -17,7 +17,7 @@ pub struct Executor<'a> {
     pub system: &'a ModelSystem,
     pub schema: &'a Schema,
     pub database: &'a Database,
-    pub deno_execution: &'a DenoExecutionManager,
+    pub deno_execution: &'a DenoExecutor,
 }
 
 impl<'a> Executor<'a> {

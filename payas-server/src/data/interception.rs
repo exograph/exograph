@@ -1,10 +1,10 @@
 use async_graphql_parser::{types::Field, Positioned};
-use payas_deno::Arg;
+use payas_deno::{Arg, FnClaytipInterceptorProceed};
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 use anyhow::{bail, Result};
-use serde_json::Map;
+use serde_json::{Map, Value};
 
 /// Determine the order and nesting for interceptors.
 ///
@@ -199,7 +199,7 @@ fn execute_interceptor<'a>(
     operation_name: &'a str,
     interceptor: &Interceptor,
     query_context: &QueryContext<'_>,
-    proceed_operation: Option<&dyn Fn() -> Result<serde_json::Value>>,
+    proceed_operation: Option<&FnClaytipInterceptorProceed>,
 ) -> Result<serde_json::Value> {
     let path = &interceptor.module_path;
     let arg_sequence = interceptor
@@ -217,18 +217,13 @@ fn execute_interceptor<'a>(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    query_context.executor.deno_execution.execute_function(
-        path,
-        &interceptor.name,
-        arg_sequence,
-        // TODO: This block is duplicate of that from resolve_deno()
-        &|query_string, variables| {
+    let claytip_execute_query = |query_string: String, variables: Option<Map<String, Value>>| {
             let result = query_context
                 .executor
                 .execute_with_request_context(
                     None,
                     &query_string,
-                    variables,
+                    variables.as_ref(),
                     query_context.request_context.clone(),
                 )?
                 .into_iter()
@@ -236,8 +231,23 @@ fn execute_interceptor<'a>(
                 .collect::<Map<_, _>>();
 
             Ok(serde_json::Value::Object(result))
-        },
-        Some(&|| operation_name.to_string()),
-        proceed_operation,
-    )
+        };
+
+    let claytip_get_interceptor = || operation_name.to_string();
+    
+    let future = async {
+        query_context.executor.deno_execution.preload_module(path, 1).await;
+
+        query_context.executor.deno_execution.execute_function_with_shims(
+            path,
+            &interceptor.name,
+            arg_sequence,
+            // TODO: This block is duplicate of that from resolve_deno()
+            Some(&claytip_execute_query),
+            Some(&claytip_get_interceptor),
+            proceed_operation,
+        ).await
+    };
+
+    futures::executor::block_on(future)
 }

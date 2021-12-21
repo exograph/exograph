@@ -199,7 +199,7 @@ fn resolve_deno(
 ) -> Result<serde_json::Value> {
     let path = &method.module_path;
 
-    let function_result = futures::executor::block_on(async {
+    let function_result_future = async {
         let mapped_args = query_context
             .field_arguments(&field.node)?
             .iter()
@@ -227,17 +227,18 @@ fn resolve_deno(
             })
             .collect::<Result<Vec<_>>>()?;
 
-        query_context.executor.deno_execution.execute_function(
+        query_context.executor.deno_execution.preload_module(path, 1).await;
+        query_context.executor.deno_execution.execute_function_with_shims(
             path,
             &method.name,
             arg_sequence,
-            &|query_string, variables| {
+            Some(&|query_string, variables| {
                 let result = query_context
                     .executor
                     .execute_with_request_context(
                         None,
                         &query_string,
-                        variables,
+                        variables.as_ref(),
                         query_context.request_context.clone(),
                     )?
                     .into_iter()
@@ -245,11 +246,13 @@ fn resolve_deno(
                     .collect::<Map<_, _>>();
 
                 Ok(serde_json::Value::Object(result))
-            },
+            }),
             None,
             None,
-        )
-    })?;
+        ).await
+    };
+
+    let function_result = futures::executor::block_on(function_result_future)?;
 
     let result = if let serde_json::Value::Object(_) = function_result {
         let resolved_set =

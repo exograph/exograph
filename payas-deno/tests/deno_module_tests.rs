@@ -3,9 +3,13 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use actix::prelude::*;
 use anyhow::Result;
 use deno_core::{serde_json::Value, JsRuntime};
-use payas_deno::{Arg, DenoExecutionManager, DenoModule, DenoModuleSharedState};
+use futures::future::{join, join_all};
+use payas_deno::{
+    Arg, DenoActor, DenoModule, DenoModuleSharedState, MethodCall, DenoExecutor,
+};
 
 use deno_core::serde_json::json;
 
@@ -41,40 +45,79 @@ async fn test_direct_sync() {
     assert_eq!(sync_ret_value, Value::Number(12.into()));
 }
 
-#[tokio::test]
-async fn test_module_map_threaded() {
-    let deno_execution_manager = Arc::new(Mutex::new(DenoExecutionManager::new()));
+//#[actix::test]
+//async fn test_actor() {
+//    let actor = DenoActor::new(
+//        Path::new("./tests/direct.js"), 
+//        DenoModuleSharedState::default()
+//    );
+//
+//    let addr = actor.start();
+//    let res = addr.send(MethodCall {
+//        method_name: "addAndDouble".to_string(),
+//        arguments: vec![
+//            Arg::Serde(2.into()),
+//            Arg::Serde(3.into())
+//        ],
+//        execute_query: Some(Box::new(no_op)),
+//        get_intercepted_operation_name: None,
+//        proceed_intercepted_operation: None,
+//    }).await;
+//
+//    assert_eq!(res.unwrap().unwrap(), 10);
+//}
+
+#[actix::test]
+async fn test_actor_executor() {
+    let mut executor = DenoExecutor::new();
+    let module_path = Path::new("./tests/direct.js");
+
+    executor.preload_module(
+        module_path,
+        1
+    ).await;
+
+    let res = executor.execute_function(
+        module_path,
+        "addAndDouble",
+        vec![
+            Arg::Serde(2.into()),
+            Arg::Serde(3.into())
+        ]
+    );
+
+    assert_eq!(res.await.unwrap(), 10);
+}
+
+#[actix::test]
+async fn test_actor_executor_threaded() {
+    let mut executor = DenoExecutor::new();
+    let module_path = Path::new("./tests/direct.js");
+
+    executor.preload_module(
+        module_path,
+       1 
+    ).await;
+    
     let mut handles = vec![];
 
-    for _ in 1..=10 {
-        let deno_execution_manager = deno_execution_manager.clone();
-
-        let handle = std::thread::spawn(move || {
-            let ret_value = deno_execution_manager
-                .lock()
-                .unwrap()
-                .execute_function(
-                    Path::new("./tests/direct.js"),
-                    "addAndDouble",
-                    vec![
-                        Arg::Serde(Value::Number(4.into())),
-                        Arg::Serde(Value::Number(2.into())),
-                    ],
-                    &no_op,
-                    None,
-                    None,
-                )
-                .unwrap();
-
-            assert_eq!(ret_value, Value::Number(12.into()));
-        });
+    for _ in 1..=3 {
+        let handle = executor
+            .execute_function(
+               module_path, 
+               "addAndDouble",
+               vec![
+                   Arg::Serde(Value::Number(4.into())),
+                   Arg::Serde(Value::Number(2.into())),
+               ],
+           );
 
         handles.push(handle);
     }
+    
+    let res = join_all(handles).await;
 
-    for handle in handles.into_iter() {
-        handle.join().unwrap()
-    }
+    assert_eq!(res.into_iter().map(|res| res.unwrap()).filter(|x| x == 12).count(), 3);
 }
 
 #[tokio::test]

@@ -2,7 +2,7 @@ use actix_web::dev::Server;
 use async_stream::AsyncStream;
 use bincode::deserialize_from;
 use execution::executor::Executor;
-use payas_deno::DenoExecutionManager;
+use payas_deno::DenoExecutor;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -48,7 +48,7 @@ async fn playground() -> impl Responder {
     HttpResponse::Ok().body(PLAYGROUND_HTML)
 }
 
-pub type SystemInfo = Arc<(ModelSystem, Schema, Database, DenoExecutionManager)>;
+pub type SystemInfo = Arc<(ModelSystem, Schema, Database, DenoExecutor)>;
 
 async fn resolve(
     req: HttpRequest,
@@ -254,10 +254,10 @@ fn start_server(
     restart: bool,
 ) -> Result<Server> {
     let database = Database::from_env(None)?; // TODO: error handling here
-    let deno_modules_map = DenoExecutionManager::new();
+    let deno_executor = DenoExecutor::new();
 
     let schema = Schema::new(&system);
-    let system_info = Arc::new((system, schema, database, deno_modules_map));
+    let system_info = Arc::new((system, schema, database, deno_executor));
     let authenticator = Arc::new(JwtAuthenticator::new_from_env());
 
     let server = HttpServer::new(move || {
