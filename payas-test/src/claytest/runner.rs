@@ -23,7 +23,7 @@ struct ClayPost {
     variables: serde_json::Value,
 }
 
-pub fn run_testfile(
+pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
     bootstrap_dburl: String,
     dev_mode: bool,
@@ -282,7 +282,7 @@ fn run_operation(
     }
 }
 
-pub fn build_clay_file(path: &str) -> Result<()> {
+pub(crate) fn build_claypot_file(path: &str) -> Result<()> {
     let build_child = cmd("clay").args(["build", path]).output()?;
 
     if !build_child.status.success() {

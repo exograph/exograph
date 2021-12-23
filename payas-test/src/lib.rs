@@ -2,7 +2,7 @@ mod claytest;
 
 use anyhow::{bail, Result};
 use claytest::loader::{load_testfiles_from_dir, ParsedTestfile};
-use claytest::runner::{build_clay_file, run_testfile};
+use claytest::runner::{build_claypot_file, run_testfile};
 use rayon::ThreadPoolBuilder;
 use std::cmp::min;
 use std::collections::HashMap;
@@ -68,7 +68,7 @@ pub fn run(directory: &Path) -> Result<()> {
         let tx = tx.clone();
         let url = database_url.clone();
 
-        pool.spawn(move || match build_clay_file(&model_path) {
+        pool.spawn(move || match build_claypot_file(&model_path) {
             Ok(()) => {
                 for file in testfiles.iter() {
                     let result = run_testfile(file, url.clone(), false);
