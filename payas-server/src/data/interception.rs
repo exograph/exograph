@@ -1,4 +1,5 @@
 use async_graphql_parser::{types::Field, Positioned};
+use async_recursion::async_recursion;
 use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
@@ -142,7 +143,8 @@ impl<'a> InterceptedOperation<'a> {
         }
     }
 
-    pub fn execute(
+    #[async_recursion(?Send)]
+    pub async fn execute(
         &self,
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
@@ -155,11 +157,11 @@ impl<'a> InterceptedOperation<'a> {
                 after,
             } => {
                 for before_interceptor in before {
-                    execute_interceptor(operation_name, before_interceptor, query_context, None)?;
+                    execute_interceptor(operation_name, before_interceptor, query_context, None).await?;
                 }
-                let res = core.execute(field, query_context)?;
+                let res = core.execute(field, query_context).await?;
                 for after_interceptor in after {
-                    execute_interceptor(operation_name, after_interceptor, query_context, None)?;
+                    execute_interceptor(operation_name, after_interceptor, query_context, None).await?;
                 }
                 Ok(res)
             }
@@ -173,7 +175,7 @@ impl<'a> InterceptedOperation<'a> {
                     interceptor,
                     query_context,
                     Some(&|| {
-                        core.execute(field, query_context)
+                        futures::executor::block_on(core.execute(field, query_context))
                             .map(|response| match response {
                                 QueryResponse::Json(json) => json,
                                 QueryResponse::Raw(string) => match string {
@@ -182,20 +184,20 @@ impl<'a> InterceptedOperation<'a> {
                                 },
                             })
                     }),
-                )?;
+                ).await?;
                 match res {
                     serde_json::Value::String(value) => Ok(QueryResponse::Raw(Some(value))),
                     _ => Ok(QueryResponse::Json(res)),
                 }
             }
             InterceptedOperation::Plain { resolver_result } => {
-                resolver_result.execute(field, query_context)
+                resolver_result.execute(field, query_context).await
             }
         }
     }
 }
 
-fn execute_interceptor<'a>(
+async fn execute_interceptor<'a>(
     operation_name: &'a str,
     interceptor: &Interceptor,
     query_context: &QueryContext<'_>,

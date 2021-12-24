@@ -21,7 +21,7 @@ pub struct Executor<'a> {
 }
 
 impl<'a> Executor<'a> {
-    pub fn execute(
+    pub async fn execute(
         &'a self,
         operation_name: Option<&'a str>,
         query_str: &'a str,
@@ -30,11 +30,11 @@ impl<'a> Executor<'a> {
     ) -> Result<Vec<(String, QueryResponse)>> {
         let request_context = create_request_contexts(&self.system.contexts, jwt_claims);
 
-        self.execute_with_request_context(operation_name, query_str, variables, request_context)
+        self.execute_with_request_context(operation_name, query_str, variables, request_context).await
     }
 
     // A version of execute that is suitable to be exposed through a shim to services
-    pub fn execute_with_request_context(
+    pub async fn execute_with_request_context(
         &'a self,
         operation_name: Option<&'a str>,
         query_str: &'a str,
@@ -44,9 +44,15 @@ impl<'a> Executor<'a> {
         let (operations, query_context) =
             self.create_query_context(operation_name, query_str, &variables, &request_context);
 
-        operations
+        let resolution: Vec<_> = operations
             .iter()
-            .flat_map(|query| match query_context.resolve_operation(query) {
+            .map(|query| query_context.resolve_operation(query))
+            .collect()
+            .await;
+
+        resolution
+            .into_iter()
+            .flat_map(|query: Result<Vec<(String, QueryResponse)>>| match query {
                 Ok(resolved) => resolved.into_iter().map(Ok).collect(),
                 Err(err) => vec![Err(err)],
             })

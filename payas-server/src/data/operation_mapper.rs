@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use async_trait::async_trait;
 use anyhow::{anyhow, bail, Result};
 use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
@@ -41,6 +42,8 @@ pub trait SQLUpdateMapper<'a> {
         query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript>;
 }
+
+#[async_trait(?Send)]
 pub trait OperationResolver<'a> {
     fn resolve_operation(
         &'a self,
@@ -48,7 +51,7 @@ pub trait OperationResolver<'a> {
         query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>>;
 
-    fn execute(
+    async fn execute(
         &'a self,
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
@@ -60,7 +63,7 @@ pub trait OperationResolver<'a> {
 
         let intercepted_operation =
             InterceptedOperation::new(op_name, resolver_result, interceptors);
-        intercepted_operation.execute(field, query_context)
+        intercepted_operation.execute(field, query_context).await
     }
 
     fn name(&self) -> &str;
@@ -154,7 +157,7 @@ pub fn compute_service_access_predicate<'a>(
 }
 
 impl<'a> OperationResolverResult<'a> {
-    pub fn execute(
+    pub async fn execute(
         &self,
         field: &Positioned<Field>,
         query_context: &'a QueryContext<'a>,
@@ -186,13 +189,13 @@ impl<'a> OperationResolverResult<'a> {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
-                resolve_deno(method, field, query_context).map(QueryResponse::Json)
+                resolve_deno(method, field, query_context).await.map(QueryResponse::Json)
             }
         }
     }
 }
 
-fn resolve_deno(
+async fn resolve_deno(
     method: &ServiceMethod,
     field: &Positioned<Field>,
     query_context: &QueryContext<'_>,
@@ -253,7 +256,7 @@ fn resolve_deno(
 
     let result = if let serde_json::Value::Object(_) = function_result {
         let resolved_set =
-            function_result.resolve_selection_set(query_context, &field.node.selection_set)?;
+            function_result.resolve_selection_set(query_context, &field.node.selection_set).await?;
         serde_json::Value::Object(resolved_set.into_iter().collect())
     } else {
         function_result
