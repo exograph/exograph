@@ -294,6 +294,7 @@ fn run_script(runtime: &mut JsRuntime, ds: &DenoScript) -> Result<Global<v8::Val
     }
 }
 
+#[derive(Clone)]
 pub enum Arg {
     Serde(serde_json::Value),
     Shim(String),

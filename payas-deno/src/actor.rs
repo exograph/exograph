@@ -2,16 +2,16 @@ use std::panic;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use actix::Context;
+use actix::{SyncContext, Context};
 use actix::{Actor, Handler, Message};
 use anyhow::Result;
-use futures::stream::StreamExt;
+use deno_core::JsRuntime;
 use futures::{pin_mut, select, FutureExt};
 use serde_json::Value;
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use async_channel::{unbounded, Receiver, Sender};
 
-use crate::{Arg, DenoModule, DenoModuleSharedState};
+use crate::{Arg, DenoModule, DenoModuleSharedState, deno_module};
 
 pub struct DenoActor {
     deno_module: DenoModule,
@@ -64,11 +64,7 @@ impl DenoActor {
         let (from_deno_sender, from_deno_receiver) = unbounded();
         let (to_deno_sender, to_deno_receiver) = unbounded();
 
-        let deno_module = DenoModule::new(
-            &path,
-            "Claytip",
-            &shims,
-            &move |runtime| {
+        let register_ops = move |runtime: &mut JsRuntime| {
                 let mut sync_ops = vec![];
 
                 add_op!(
@@ -84,14 +80,14 @@ impl DenoActor {
                             args.get(1).map(|vars| serde_json::from_str(vars).unwrap());
 
                         sender
-                            .send(FromDenoMessage::RequestClaytipExecute {
+                            .try_send(FromDenoMessage::RequestClaytipExecute {
                                 query_string: query_string.to_owned(),
                                 variables,
                             })
                             .unwrap();
 
                         if let ToDenoMessage::ResponseClaytipExecute(result) =
-                            receiver.recv().unwrap()
+                            futures::executor::block_on(receiver.recv()).unwrap()
                         {
                             result
                         } else {
@@ -107,11 +103,11 @@ impl DenoActor {
                     to_deno_receiver,
                     |_: (), sender: Sender<FromDenoMessage>, receiver: Receiver<ToDenoMessage>| {
                         sender
-                            .send(FromDenoMessage::RequestInteceptedOperationName)
+                            .try_send(FromDenoMessage::RequestInteceptedOperationName)
                             .unwrap();
 
                         if let ToDenoMessage::ResponseInteceptedOperationName(result) =
-                            receiver.recv().unwrap()
+                            futures::executor::block_on(receiver.recv()).unwrap()
                         {
                             Ok(result)
                         } else {
@@ -127,11 +123,11 @@ impl DenoActor {
                     to_deno_receiver,
                     |_: (), sender: Sender<FromDenoMessage>, receiver: Receiver<ToDenoMessage>| {
                         sender
-                            .send(FromDenoMessage::RequestInteceptedOperationProceed)
+                            .try_send(FromDenoMessage::RequestInteceptedOperationProceed)
                             .unwrap();
 
                         if let ToDenoMessage::ResponseInteceptedOperationProceed(result) =
-                            receiver.recv().unwrap()
+                            futures::executor::block_on(receiver.recv()).unwrap()
                         {
                             result
                         } else {
@@ -143,11 +139,17 @@ impl DenoActor {
                 for (name, op) in sync_ops {
                     runtime.register_op(name, op);
                 }
-            },
+            };
+
+        let deno_module = DenoModule::new(
+            &path,
+            "Claytip",
+            &shims,
+            &register_ops,
             shared_state,
-        )
-        .await
-        .unwrap();
+        );
+
+        let deno_module = futures::executor::block_on(deno_module).unwrap();
 
         DenoActor {
             deno_module,
@@ -195,8 +197,7 @@ impl Handler<MethodCall> for DenoActor {
                 .execute_function(&msg.method_name, msg.arguments)
                 .fuse();
 
-            let mut recv_stream = futures::stream::iter(self.deno_receiver.iter());
-            let recv = recv_stream.next().fuse();
+            let recv = self.deno_receiver.recv().fuse();
 
             pin_mut!(finished, recv);
 
@@ -208,9 +209,9 @@ impl Handler<MethodCall> for DenoActor {
                     },
 
                     message = recv => {
-                        msg.to_user.send(message.unwrap()).unwrap();
-                        let result = msg.from_user.recv().unwrap();
-                        self.deno_sender.send(result).unwrap();
+                        msg.to_user.send(message.unwrap()).await.unwrap();
+                        let result = msg.from_user.recv().await.unwrap();
+                        self.deno_sender.send(result).await.unwrap();
                     },
                 };
             }

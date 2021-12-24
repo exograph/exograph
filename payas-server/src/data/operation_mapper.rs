@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail, Result};
 use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
 use postgres::{types::FromSqlOwned, Row};
-use serde_json::Map;
+use serde_json::{Map, Value};
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 
@@ -192,54 +192,46 @@ impl<'a> OperationResolverResult<'a> {
     }
 }
 
-fn resolve_deno(
+async fn resolve_deno(
     method: &ServiceMethod,
     field: &Positioned<Field>,
     query_context: &QueryContext<'_>,
 ) -> Result<serde_json::Value> {
     let path = &method.module_path;
 
-    let function_result_future = async {
-        let mapped_args = query_context
-            .field_arguments(&field.node)?
-            .iter()
-            .map(|(gql_name, gql_value)| {
-                (
-                    gql_name.node.as_str().to_owned(),
-                    gql_value.node.clone().into_json().unwrap(),
-                )
-            })
-            .collect::<HashMap<_, _>>();
+    let mapped_args = query_context
+        .field_arguments(&field.node)?
+        .iter()
+        .map(|(gql_name, gql_value)| {
+            (
+                gql_name.node.as_str().to_owned(),
+                gql_value.node.clone().into_json().unwrap(),
+            )
+        })
+        .collect::<HashMap<_, _>>();
 
-        let arg_sequence = method
-            .arguments
-            .iter()
-            .map(|arg| {
-                let arg_type = &query_context.executor.system.types[arg.type_id];
+    let arg_sequence = method
+        .arguments
+        .iter()
+        .map(|arg| {
+            let arg_type = &query_context.executor.system.types[arg.type_id];
 
-                if arg.is_injected {
-                    Ok(Arg::Shim(arg_type.name.clone()))
-                } else if let Some(val) = mapped_args.get(&arg.name) {
-                    Ok(Arg::Serde(val.clone()))
-                } else {
-                    Err(anyhow!("Invalid argument {}", arg.name))
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
+            if arg.is_injected {
+                Ok(Arg::Shim(arg_type.name.clone()))
+            } else if let Some(val) = mapped_args.get(&arg.name) {
+                Ok(Arg::Serde(val.clone()))
+            } else {
+                Err(anyhow!("Invalid argument {}", arg.name))
+            }
+        })
+        .collect::<Result<Vec<_>>>()?;
 
-        query_context
-            .executor
-            .deno_execution
-            .preload_module(path, 1)
-            .await;
-        query_context
-            .executor
-            .deno_execution
-            .execute_function_with_shims(
-                path,
-                &method.name,
-                arg_sequence,
-                Some(&|query_string, variables| {
+    futures::executor::block_on(query_context
+        .executor
+        .deno_execution
+        .preload_module(path, 1));
+
+    let claytip_execute_query = |query_string: String, variables: Option<Map<String, Value>>| {
                     let result = query_context
                         .executor
                         .execute_with_request_context(
@@ -253,14 +245,27 @@ fn resolve_deno(
                         .collect::<Map<_, _>>();
 
                     Ok(serde_json::Value::Object(result))
-                }),
-                None,
-                None,
-            )
-            .await
-    };
+                };
 
-    let function_result = futures::executor::block_on(function_result_future)?;
+    let future = query_context
+            .executor
+            .deno_execution
+            .execute_function_with_shims(
+                path,
+                &method.name,
+                arg_sequence,
+                Some(&claytip_execute_query),
+                None,
+                None,
+            );
+
+    println!("blocking func result");
+
+    let function_result = tokio::task::block_in_place(|| {
+        futures::executor::block_on(future)
+    })?;
+
+    println!("unblocking func result");
 
     let result = if let serde_json::Value::Object(_) = function_result {
         let resolved_set =

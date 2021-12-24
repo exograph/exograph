@@ -1,4 +1,3 @@
-use actix_web::rt::Runtime;
 use async_graphql_parser::{types::Field, Positioned};
 use payas_deno::{Arg, FnClaytipInterceptorProceed};
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
@@ -236,27 +235,25 @@ fn execute_interceptor<'a>(
 
     let claytip_get_interceptor = || operation_name.to_string();
 
-    let future = async {
-        query_context
-            .executor
-            .deno_execution
-            .preload_module(path, 1)
-            .await;
+    println!("blocking interceptor");
+    futures::executor::block_on(query_context
+        .executor
+        .deno_execution
+        .preload_module(path, 1));
+    println!("unblocking interceptor");
 
-        query_context
-            .executor
-            .deno_execution
-            .execute_function_with_shims(
-                path,
-                &interceptor.name,
-                arg_sequence,
-                // TODO: This block is duplicate of that from resolve_deno()
-                Some(&claytip_execute_query),
-                Some(&claytip_get_interceptor),
-                proceed_operation,
-            )
-            .await
-    };
+    let future = query_context
+        .executor
+        .deno_execution
+        .execute_function_with_shims(
+            path,
+            &interceptor.name,
+            arg_sequence,
+            // TODO: This block is duplicate of that from resolve_deno()
+            Some(&claytip_execute_query),
+            Some(&claytip_get_interceptor),
+            proceed_operation,
+        );
 
     futures::executor::block_on(future)
 }
