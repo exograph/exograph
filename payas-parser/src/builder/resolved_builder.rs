@@ -15,6 +15,7 @@ use payas_model::model::GqlTypeModifier;
 use crate::ast::ast_types::{
     AstAnnotationParams, AstArgument, AstFieldType, AstMethodType, AstService,
 };
+use crate::builder::service_skeleton_generator;
 use crate::error::ParserError;
 use crate::typechecker::AnnotationMap;
 use crate::{
@@ -423,6 +424,8 @@ fn build_shallow(
                 let mut full_module_path = service.base_clayfile.clone();
                 full_module_path.pop();
                 full_module_path.push(module_path);
+
+                service_skeleton_generator::generate_service_skeleton(service, &full_module_path)?;
 
                 // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
                 let mut out_path = full_module_path.clone();

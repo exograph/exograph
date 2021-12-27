@@ -7,7 +7,7 @@ use serde_json::{json, Map, Value};
 
 use std::{
     env,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader},
     process::{Command, Stdio},
     sync::{Arc, Mutex},
     time::SystemTime,
@@ -118,19 +118,28 @@ pub fn run_testfile(
     let mut server_stdout = BufReader::new(ctx.server.as_mut().unwrap().stdout.take().unwrap());
     let mut server_stderr = BufReader::new(ctx.server.as_mut().unwrap().stderr.take().unwrap());
 
-    let mut buffer = [0; MAGIC_STRING.len()];
-    server_stdout.read_exact(&mut buffer)?; // block while waiting for process output
-    let output = String::from(std::str::from_utf8(&buffer)?);
+    let mut line = String::new();
+    server_stdout.read_line(&mut line).context(format!(
+        r#"Failed to read output line for "{}" server"#,
+        testfile.name
+    ))?;
 
-    if !output.eq(MAGIC_STRING) {
-        bail!("Unexpected output from clay-server: {}", output)
+    if !line.starts_with(MAGIC_STRING) {
+        bail!(
+            r#"Unexpected output from clay-server "{}", {}: {}"#,
+            testfile.name,
+            dev_mode,
+            line
+        )
     }
 
-    let mut buffer_port = String::new();
-    server_stdout.read_line(&mut buffer_port)?; // read port clay-server is using
-                                                // take the digits part which represents the port (and ingore other information such as time to start the server)
-    let port_string: String = buffer_port.chars().take_while(|c| c.is_digit(10)).collect();
-    let endpoint = format!("http://127.0.0.1:{}/", port_string);
+    // take the digits part which represents the port (and ignore other information such as time to start the server)
+    let port: String = line
+        .trim_start_matches(MAGIC_STRING)
+        .chars()
+        .take_while(|c| c.is_digit(10))
+        .collect();
+    let endpoint = format!("http://127.0.0.1:{}/", port);
 
     // spawn threads to continually drain stdout and stderr
     let output_mutex = Arc::new(Mutex::new(String::new()));

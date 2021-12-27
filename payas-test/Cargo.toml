@@ -11,11 +11,13 @@ anyhow = "1.0"
 ansi_term = "0.12"
 jsonwebtoken = "7.2"
 isahc = { version = "1.4", features = ["json"] }
+num_cpus = "1.13.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8.17"
 serde_json = "1.0"
 postgres = { version = "0.19.0", features = ["with-chrono-0_4"] }
 postgres-openssl = "0.5.0"
 rand = "0.8"
+rayon = "1.5.1"
 async-graphql-parser = "2.6.5"
 md5 = "0.7"

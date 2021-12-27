@@ -2,11 +2,12 @@ use std::{env, path::PathBuf, time::SystemTime};
 
 use anyhow::Result;
 use clap::{App, AppSettings, Arg, SubCommand};
-
-use crate::commands::{
-    build::BuildCommand, import, schema, Command, MigrateCommand, ServeCommand, TestCommand,
-    YoloCommand,
+use commands::{
+    command::Command, migrate::MigrateCommand, serve::ServeCommand, test::TestCommand,
+    yolo::YoloCommand,
 };
+
+use crate::commands::{build::BuildCommand, import, schema};
 
 mod commands;
 

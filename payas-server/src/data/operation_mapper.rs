@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use async_trait::async_trait;
 use anyhow::{anyhow, bail, Result};
 use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
@@ -41,6 +42,8 @@ pub trait SQLUpdateMapper<'a> {
         query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript>;
 }
+
+#[async_trait(?Send)]
 pub trait OperationResolver<'a> {
     fn resolve_operation(
         &'a self,
@@ -48,7 +51,7 @@ pub trait OperationResolver<'a> {
         query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>>;
 
-    fn execute(
+    async fn execute(
         &'a self,
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
@@ -60,7 +63,7 @@ pub trait OperationResolver<'a> {
 
         let intercepted_operation =
             InterceptedOperation::new(op_name, resolver_result, interceptors);
-        intercepted_operation.execute(field, query_context)
+        intercepted_operation.execute(field, query_context).await
     }
 
     fn name(&self) -> &str;
@@ -154,7 +157,7 @@ pub fn compute_service_access_predicate<'a>(
 }
 
 impl<'a> OperationResolverResult<'a> {
-    pub fn execute(
+    pub async fn execute(
         &self,
         field: &Positioned<Field>,
         query_context: &'a QueryContext<'a>,
@@ -186,7 +189,7 @@ impl<'a> OperationResolverResult<'a> {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
-                resolve_deno(method, field, query_context).map(QueryResponse::Json)
+                resolve_deno(method, field, query_context).await.map(QueryResponse::Json)
             }
         }
     }
@@ -231,45 +234,39 @@ async fn resolve_deno(
         .deno_execution
         .preload_module(path, 1));
 
-    let claytip_execute_query = |query_string: String, variables: Option<Map<String, Value>>| {
-                    let result = query_context
-                        .executor
-                        .execute_with_request_context(
-                            None,
-                            &query_string,
-                            variables.as_ref(),
-                            query_context.request_context.clone(),
-                        )?
-                        .into_iter()
-                        .map(|(name, response)| (name, response.to_json().unwrap()))
-                        .collect::<Map<_, _>>();
+    // FIXME
+    //let claytip_execute_query = |query_string: String, variables: Option<Map<String, Value>>| {
+    //    let result = query_context
+    //        .executor
+    //        .execute_with_request_context(
+    //            None,
+    //            &query_string,
+    //            variables.as_ref(),
+    //            query_context.request_context.clone(),
+    //        )?
+    //        .into_iter()
+    //        .map(|(name, response)| (name, response.to_json().unwrap()))
+    //        .collect::<Map<_, _>>();
 
-                    Ok(serde_json::Value::Object(result))
-                };
+    //    Ok(serde_json::Value::Object(result))
+    //};
 
-    let future = query_context
-            .executor
-            .deno_execution
-            .execute_function_with_shims(
-                path,
-                &method.name,
-                arg_sequence,
-                Some(&claytip_execute_query),
-                None,
-                None,
-            );
-
-    println!("blocking func result");
-
-    let function_result = tokio::task::block_in_place(|| {
-        futures::executor::block_on(future)
-    })?;
-
-    println!("unblocking func result");
+    let function_result = query_context
+        .executor
+        .deno_execution
+        .execute_function_with_shims(
+            path,
+            &method.name,
+            arg_sequence,
+            //Some(&claytip_execute_query),
+            None,
+            None,
+            None,
+        ).await?;
 
     let result = if let serde_json::Value::Object(_) = function_result {
         let resolved_set =
-            function_result.resolve_selection_set(query_context, &field.node.selection_set)?;
+            function_result.resolve_selection_set(query_context, &field.node.selection_set).await?;
         serde_json::Value::Object(resolved_set.into_iter().collect())
     } else {
         function_result

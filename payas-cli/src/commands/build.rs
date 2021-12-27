@@ -8,7 +8,7 @@ use std::{path::PathBuf, time::SystemTime};
 
 use bincode::serialize_into;
 
-use super::Command;
+use super::command::Command;
 
 const FILE_WATCHER_DELAY: Duration = Duration::from_millis(10);
 

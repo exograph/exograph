@@ -6,7 +6,7 @@ use payas_model::sql::database::Database;
 use payas_sql::spec::SchemaSpec;
 use std::{fs::File, io::Write, path::PathBuf, time::SystemTime};
 
-use super::Command;
+use super::command::Command;
 
 /// Create a claytip model file based on a database schema
 pub struct ImportCommand {

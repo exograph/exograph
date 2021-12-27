@@ -6,7 +6,7 @@ use std::{path::PathBuf, time::SystemTime};
 
 use payas_sql::spec::SchemaSpec;
 
-use super::Command;
+use super::command::Command;
 
 /// Create a database schema from a claytip model
 pub struct CreateCommand {

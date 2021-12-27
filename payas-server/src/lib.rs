@@ -74,7 +74,7 @@ async fn resolve(
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            match executor.execute(operation_name, query_str, variables, claims) {
+            match executor.execute(operation_name, query_str, variables, claims).await {
                 Ok(parts) => {
                     let response_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         let parts_len = parts.len();
@@ -196,10 +196,20 @@ pub fn start_prod_mode(
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
             let in_file = BufReader::new(claypot_file_buffer);
-            let system: ModelSystem = deserialize_from(in_file).unwrap();
-
-            let server = start_server(system, system_start_time, false)?;
-            actix_system.block_on(server)?;
+            match deserialize_from(in_file) {
+                Ok(system) => {
+                    let server = start_server(system, system_start_time, false)?;
+                    actix_system.block_on(server)?;
+                }
+                Err(e) => {
+                    println!(
+                        "Failed to read claypot file {:?}: {}",
+                        claypot_file.as_ref(),
+                        e
+                    );
+                    std::process::exit(1);
+                }
+            }
 
             Ok(())
         }
