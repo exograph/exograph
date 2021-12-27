@@ -1,12 +1,14 @@
 use std::panic;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use actix::{SyncContext, Context};
 use actix::{Actor, Handler, Message};
 use anyhow::Result;
 use deno_core::JsRuntime;
-use futures::{pin_mut, select, FutureExt};
+use futures::future::LocalBoxFuture;
+use futures::{pin_mut, select, FutureExt, Future};
 use serde_json::Value;
 
 use async_channel::{unbounded, Receiver, Sender};
@@ -36,9 +38,11 @@ pub enum ToDenoMessage {
 }
 
 pub type FnClaytipExecuteQuery<'a> =
-    (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> Result<Value> + 'a);
+    (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> 
+        LocalBoxFuture<'a, Result<Value>> + 'a);
 pub type FnClaytipInterceptorGetName<'a> = (dyn Fn() -> String + 'a);
-pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> Result<Value> + 'a);
+pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> 
+        LocalBoxFuture<'a, Result<Value>> + 'a);
 
 macro_rules! add_op {
     ($sync_ops:expr, $name:expr, $sender:expr, $receiver:expr, $op:expr) => {

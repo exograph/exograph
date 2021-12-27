@@ -229,27 +229,10 @@ async fn resolve_deno(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    futures::executor::block_on(query_context
+    query_context
         .executor
         .deno_execution
-        .preload_module(path, 1));
-
-    // FIXME
-    //let claytip_execute_query = |query_string: String, variables: Option<Map<String, Value>>| {
-    //    let result = query_context
-    //        .executor
-    //        .execute_with_request_context(
-    //            None,
-    //            &query_string,
-    //            variables.as_ref(),
-    //            query_context.request_context.clone(),
-    //        )?
-    //        .into_iter()
-    //        .map(|(name, response)| (name, response.to_json().unwrap()))
-    //        .collect::<Map<_, _>>();
-
-    //    Ok(serde_json::Value::Object(result))
-    //};
+        .preload_module(path, 1).await;
 
     let function_result = query_context
         .executor
@@ -259,7 +242,23 @@ async fn resolve_deno(
             &method.name,
             arg_sequence,
             //Some(&claytip_execute_query),
-            None,
+            Some(&|query_string: String, variables: Option<Map<String, Value>>| {
+                Box::pin(async move {
+                    let result = query_context
+                        .executor
+                        .execute_with_request_context(
+                            None,
+                            &query_string,
+                            variables.as_ref(),
+                            query_context.request_context.clone(),
+                        ).await?
+                        .into_iter()
+                        .map(|(name, response)| (name, response.to_json().unwrap()))
+                        .collect::<Map<_, _>>();
+
+                    Ok(serde_json::Value::Object(result))
+                })
+            }),
             None,
             None,
         ).await?;

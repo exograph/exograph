@@ -77,9 +77,9 @@ impl<'a> DenoExecutor {
         method_name: &'a str,
         arguments: Vec<Arg>,
 
-        claytip_execute_query: Option<&'a FnClaytipExecuteQuery>,
+        claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
         claytip_get_interceptor: Option<&'a FnClaytipInterceptorGetName>,
-        claytip_proceed: Option<&'a FnClaytipInterceptorProceed>,
+        claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
     ) -> impl Future<Output = Result<Value>> + 'a {
         async move {
             println!("inside execution");
@@ -149,11 +149,11 @@ impl<'a> DenoExecutor {
                                 from_user_sender.send(ToDenoMessage::ResponseInteceptedOperationName(name)).await.unwrap();
                             },
                             FromDenoMessage::RequestInteceptedOperationProceed => {
-                                let proceed_result = claytip_proceed.unwrap()();
+                                let proceed_result = claytip_proceed.unwrap()().await;
                                 from_user_sender.send(ToDenoMessage::ResponseInteceptedOperationProceed(proceed_result)).await.unwrap();
                             },
                             FromDenoMessage::RequestClaytipExecute { query_string, variables } => {
-                                let query_result = claytip_execute_query.unwrap()(query_string, variables);
+                                let query_result = claytip_execute_query.unwrap()(query_string, variables).await;
                                 from_user_sender.send(ToDenoMessage::ResponseClaytipExecute(query_result)).await.unwrap();
                             },
                         }

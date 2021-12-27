@@ -1,5 +1,6 @@
 use async_graphql_parser::{types::Field, Positioned};
-use payas_deno::{Arg, FnClaytipInterceptorProceed};
+use futures::{FutureExt, Future};
+use payas_deno::{Arg, FnClaytipInterceptorProceed, FnClaytipExecuteQuery};
 use async_recursion::async_recursion;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
@@ -145,7 +146,7 @@ impl<'a> InterceptedOperation<'a> {
 
     #[async_recursion(?Send)]
     pub async fn execute(
-        &self,
+        &'a self,
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
@@ -175,15 +176,18 @@ impl<'a> InterceptedOperation<'a> {
                     interceptor,
                     query_context,
                     Some(&|| {
-                        futures::executor::block_on(core.execute(field, query_context))
-                            .map(|response| match response {
-                                QueryResponse::Json(json) => json,
-                                QueryResponse::Raw(string) => match string {
-                                    Some(string) => serde_json::Value::String(string),
-                                    None => serde_json::Value::Null,
-                                },
+                            Box::pin(async move {
+                                core.execute(field, query_context)
+                                    .await
+                                    .map(|response| match response {
+                                        QueryResponse::Json(json) => json,
+                                        QueryResponse::Raw(string) => match string {
+                                            Some(string) => serde_json::Value::String(string),
+                                            None => serde_json::Value::Null,
+                                        },
+                                    })
                             })
-                    }),
+                        }),
                 ).await?;
                 match res {
                     serde_json::Value::String(value) => Ok(QueryResponse::Raw(Some(value))),
@@ -197,66 +201,101 @@ impl<'a> InterceptedOperation<'a> {
     }
 }
 
-async fn execute_interceptor<'a>(
+fn execute_interceptor<'a>(
     operation_name: &'a str,
-    interceptor: &Interceptor,
-    query_context: &QueryContext<'_>,
+    interceptor: &'a Interceptor,
+    query_context: &'a QueryContext<'a>,
     proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-) -> Result<serde_json::Value> {
-    let path = &interceptor.module_path;
-    let arg_sequence = interceptor
-        .arguments
-        .iter()
-        .map(|arg| {
-            let arg_type = &query_context.executor.system.types[arg.type_id];
+) -> impl Future<Output = Result<serde_json::Value>> + 'a {
+    async move { 
+        let path = &interceptor.module_path;
+        let arg_sequence = interceptor
+            .arguments
+            .iter()
+            .map(|arg| {
+                let arg_type = &query_context.executor.system.types[arg.type_id];
 
-            if arg_type.name == "Operation" || arg_type.name == "ClaytipInjected" {
-                // TODO: Change this to supply a shim if the arg_type is one of the shimmable types
-                Ok(Arg::Shim(arg_type.name.clone()))
-            } else {
-                bail!("Invalid argument type {}", arg_type.name)
-            }
-        })
-        .collect::<Result<Vec<_>>>()?;
+                if arg_type.name == "Operation" || arg_type.name == "ClaytipInjected" {
+                    // TODO: Change this to supply a shim if the arg_type is one of the shimmable types
+                    Ok(Arg::Shim(arg_type.name.clone()))
+                } else {
+                    bail!("Invalid argument type {}", arg_type.name)
+                }
+            })
+            .collect::<Result<Vec<_>>>()?;
 
-    // FIXME
-    //let claytip_execute_query = |query_string: String, variables: Option<Map<String, Value>>| {
-    //    let result = query_context
-    //        .executor
-    //        .execute_with_request_context(
-    //            None,
-    //            &query_string,
-    //            variables.as_ref(),
-    //            query_context.request_context.clone(),
-    //        )?
-    //        .into_iter()
-    //        .map(|(name, response)| (name, response.to_json().unwrap()))
-    //        .collect::<Map<_, _>>();
-    //    Ok(serde_json::Value::Object(result))
-    //};
+        // FIXME
+        //let claytip_execute_query = |query_string: String, variables: Option<Map<String, Value>>| {
+        //    let result = query_context
+        //        .executor
+        //        .execute_with_request_context(
+        //            None,
+        //            &query_string,
+        //            variables.as_ref(),
+        //            query_context.request_context.clone(),
+        //        )?
+        //        .into_iter()
+        //        .map(|(name, response)| (name, response.to_json().unwrap()))
+        //        .collect::<Map<_, _>>();
+        //    Ok(serde_json::Value::Object(result))
+        //};
 
-    let claytip_get_interceptor = || operation_name.to_string();
+        let claytip_get_interceptor = || operation_name.to_string();
 
-    println!("blocking interceptor");
-    query_context
-        .executor
-        .deno_execution
-        .preload_module(path, 1).await;
-    println!("unblocking interceptor");
+        let claytip_execute_query  = |query_string: String, variables: Option<Map<String, Value>>| {
+            Box::pin(async move {
+                let result = query_context
+                    .executor
+                    .execute_with_request_context(
+                        None,
+                        &query_string,
+                        variables.as_ref(),
+                        query_context.request_context.clone(),
+                    ).await?
+                    .into_iter()
+                    .map(|(name, response)| (name, response.to_json().unwrap()))
+                    .collect::<Map<_, _>>();
 
-    let future = query_context
-        .executor
-        .deno_execution
-        .execute_function_with_shims(
-            path,
-            &interceptor.name,
-            arg_sequence,
-            // TODO: This block is duplicate of that from resolve_deno()
-            //Some(&claytip_execute_query),
-            None,
-            Some(&claytip_get_interceptor),
-            proceed_operation,
-        );
+                Result::<serde_json::Value, anyhow::Error>::Ok(serde_json::Value::Object(result))
+            })
+        };
 
-    futures::executor::block_on(future)
+        query_context
+            .executor
+            .deno_execution
+            .preload_module(path, 1).await;
+
+        query_context
+            .executor
+            .deno_execution
+            .execute_function_with_shims(
+                path,
+                &interceptor.name,
+                arg_sequence,
+                // TODO: This block is duplicate of that from resolve_deno()
+                //Some(&move |query_string, variables | {
+                //    Box::pin(async move {
+                //        let result = query_context
+                //            .executor
+                //            .execute_with_request_context(
+                //                None, 
+                //                &query_string, 
+                //                variables.as_ref(), 
+                //                query_context.request_context.clone()
+                //            )
+                //            .await?
+                //            .into_iter()
+                //            .map(|(name, response)| (name, response.to_json().unwrap()) )
+                //            .collect::<Map<_,_>>();
+
+                //        Ok(serde_json::Value::Object(result))
+                //    })
+                //}),
+                None,
+                //None,
+                //Some(&claytip_get_interceptor),
+                None,
+                proceed_operation,
+            ).await
+    }
 }

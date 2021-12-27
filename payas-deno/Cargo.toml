@@ -5,7 +5,7 @@ authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
 edition = "2021"
 
 [dependencies]
-actix = "0.10"
+actix = "0.12"
 actix-rt = "1.1.1"
 anyhow = "1.0"
 async-channel = "1.6.1"
