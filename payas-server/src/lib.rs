@@ -74,7 +74,7 @@ async fn resolve(
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            match executor.execute(operation_name, query_str, variables, claims) {
+            match executor.execute(operation_name, query_str, variables, claims).await {
                 Ok(parts) => {
                     let response_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         let parts_len = parts.len();

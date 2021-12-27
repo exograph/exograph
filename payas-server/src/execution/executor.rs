@@ -4,6 +4,7 @@ use async_graphql_parser::{parse_query, types::DocumentOperations};
 
 use anyhow::Result;
 
+use futures::future::join_all;
 use payas_deno::DenoExecutionManager;
 use payas_model::{
     model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
@@ -47,8 +48,9 @@ impl<'a> Executor<'a> {
         let resolution: Vec<_> = operations
             .iter()
             .map(|query| query_context.resolve_operation(query))
-            .collect()
-            .await;
+            .collect();
+
+        let resolution = join_all(resolution).await;
 
         resolution
             .into_iter()

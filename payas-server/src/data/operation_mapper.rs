@@ -235,14 +235,16 @@ async fn resolve_deno(
             &method.name,
             arg_sequence,
             &|query_string, variables| {
-                let result = query_context
+                let future = query_context
                     .executor
                     .execute_with_request_context(
                         None,
                         &query_string,
                         variables,
                         query_context.request_context.clone(),
-                    )?
+                    );
+                    
+                let result = futures::executor::block_on(future)?
                     .into_iter()
                     .map(|(name, response)| (name, response.to_json().unwrap()))
                     .collect::<Map<_, _>>();
