@@ -551,7 +551,7 @@ fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -
             //       -> mutation -> create
             //                   -> update
             //                   -> delete
-            // Any lower node in the hierarchy get a priority over it parent.
+            // Any lower node in the hierarchy get a priority over its parent.
 
             let (creation, read, update, delete) = match p {
                 AstAnnotationParams::Single(default, _) => (default, default, default, default),
@@ -1014,63 +1014,74 @@ fn compute_column_name(
             _ => &field.typ,
         };
 
+        let mut get_matching_field_name = |model: AstModel<Typed>| -> Result<String, ParserError> {
+            let matching_fields: Vec<_> = model
+                .fields
+                .iter()
+                .filter(|f| f.typ.name() == enclosing_type.name)
+                .collect();
+
+            match &matching_fields[..] {
+                [] => {
+                    errors.push(
+                        Diagnostic {
+                        level: Level::Error,
+                        message: format!(
+                            "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
+                            enclosing_type.name, field.name
+                        ),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: field.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    });
+                    Err(ParserError::Generic(
+                        "Could not find matching field".to_string(),
+                    ))
+                }
+                [matching_field] => Ok(matching_field.name.to_string()),
+                _ => {
+                    errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!(
+                        "Found multiple matching fields {} of '{}' type when determining the matching column for '{}'",
+                        matching_fields
+                            .into_iter()
+                            .map(|f| format!("'{}'", f.name))
+                            .collect::<Vec<_>>()
+                            .join(", "), enclosing_type.name, field.name),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                });
+                    Err(ParserError::Generic(
+                        "Could not find matching field".to_string(),
+                    ))
+                }
+            }
+        };
+
         match field_typ {
             AstFieldType::Plain(_, _, _, _) => {
                 let field_type = field_typ.to_typ(types).deref(types);
                 match field_type {
-                    Type::Composite(_) => Ok(format!("{}_id", field.name)),
+                    Type::Composite(model) => match &field.typ {
+                        AstFieldType::Optional(_) => {
+                            let matching_field_name = get_matching_field_name(model)?;
+                            Ok(format!("{}_id", matching_field_name))
+                        }
+                        _ => Ok(format!("{}_id", field.name)),
+                    },
                     Type::Set(typ) => {
                         if let Type::Composite(model) = typ.deref(types) {
                             // OneToMany
-                            let matching_fields: Vec<_> = model
-                                .fields
-                                .into_iter()
-                                .filter(|f| f.typ.name() == enclosing_type.name)
-                                .collect();
-
-                            match &matching_fields[..] {
-                                [] => {
-                                    errors.push(
-                                        Diagnostic {
-                                            level: Level::Error,
-                                            message: format!(
-                                                "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
-                                                enclosing_type.name, field.name
-                                            ),
-                                            code: Some("C000".to_string()),
-                                            spans: vec![SpanLabel {
-                                                span: field.span,
-                                                style: SpanStyle::Primary,
-                                                label: None,
-                                            }],
-                                        });
-                                    Err(ParserError::Generic(
-                                        "Could not find matching field".to_string(),
-                                    ))
-                                }
-                                [matching_field] => Ok(format!("{}_id", matching_field.name)),
-                                _ => {
-                                    errors.push(Diagnostic {
-                                        level: Level::Error,
-                                        message: format!(
-                                            "Found multiple matching fields {} of '{}' type when determining the matching column for '{}'",
-                                            matching_fields
-                                                .into_iter()
-                                                .map(|f| format!("'{}'", f.name))
-                                                .collect::<Vec<_>>()
-                                                .join(", "), enclosing_type.name, field.name),
-                                        code: Some("C000".to_string()),
-                                        spans: vec![SpanLabel {
-                                            span: field.span,
-                                            style: SpanStyle::Primary,
-                                            label: None,
-                                        }],
-                                    });
-                                    Err(ParserError::Generic(
-                                        "Could not find matching field".to_string(),
-                                    ))
-                                }
-                            }
+                            let matching_field_name = get_matching_field_name(model)?;
+                            Ok(format!("{}_id", matching_field_name))
                         } else {
                             errors.push(Diagnostic {
                                 level: Level::Error,

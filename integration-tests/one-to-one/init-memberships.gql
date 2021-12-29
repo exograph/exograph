@@ -1,0 +1,29 @@
+operation: |
+    mutation (
+        $user_name1: String!, $user_name2: String!, $user_name3: String!,
+        $membership_kind1: String!, $membership_kind2: String!
+    ) {
+        user1: createUser(data: {name: $user_name1}) {
+            id
+        }
+        user2: createUser(data: {name: $user_name2}) {
+            id
+        }
+        user3: createUser(data: {name: $user_name3}) {
+            id
+        }
+        membership1: createMembership(data: {kind: $membership_kind1, user: {id: 1}}) {
+            id
+        }
+        membership2: createMembership(data: {kind: $membership_kind2, user: {id: 2}}) {
+            id
+        }   
+    }  
+variable: |
+    {
+        "user_name1": "u1",
+        "user_name2": "u2",
+        "user_name3": "u3",
+        "membership_kind1": "individual",
+        "membership_kind2": "family"
+    }
