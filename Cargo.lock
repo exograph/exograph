@@ -2916,6 +2916,7 @@ dependencies = [
  "serde_json",
  "serde_v8",
  "tokio 0.2.25",
+ "tokio 1.15.0",
 ]
 
 [[package]]
