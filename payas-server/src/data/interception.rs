@@ -331,7 +331,7 @@ async fn execute_interceptor<'a>(
     query_context
         .executor
         .deno_execution
-        .preload_module(path, 10)
+        .preload_module(path, 1)
         .await;
 
     query_context
