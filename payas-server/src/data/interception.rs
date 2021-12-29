@@ -154,8 +154,11 @@ impl<'a> InterceptedOperation<'a> {
     ) -> Result<QueryResponse> {
         // TODO: This block is duplicate of that from resolve_deno()
 
+        //
         // FIXME the claytip_execute_query argument is the same for all invocations of execute_interceptor.
-        // however this doesn't work....
+        // however the following doesn't work:
+        //
+        /////////////////////////////////////
         //
         //  let claytip_execute_query = &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
         //      Box::pin(async move {
@@ -177,7 +180,10 @@ impl<'a> InterceptedOperation<'a> {
         //  };
         //  execute_interceptor(operation_name, before_interceptor, query_context, Some(&claytip_execute_query))
         //
-        //  rustc doesn't seem to be able to infer the associated type of claytip_execute_query's Future type unless it's drectly inlined
+        /////////////////////////////////////
+        //
+        //  rustc doesn't seem to be able to infer the associated type Output of claytip_execute_query's impl Future type unless it's drectly inlined
+        //
 
         match self {
             InterceptedOperation::Intercepted {

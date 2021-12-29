@@ -157,13 +157,10 @@ impl DenoModule {
     }
 
     pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
-        println!("running {}", function_name);
-
         let worker = &mut self.worker;
         let runtime = &mut worker.try_lock().unwrap().js_runtime;
 
         // TODO: does this yield any significant optimization?
-        //let func_value = run_script(runtime, &self.script_map[function_name]).unwrap();
         let func_value = runtime.execute_script("", &format!("mod.{}", function_name))?;
 
         let shim_objects_vals: Vec<_> = self
