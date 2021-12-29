@@ -72,7 +72,8 @@ where
             )]),
             Selection::FragmentSpread(fragment_spread) => {
                 let fragment_definition = query_context.fragment_definition(fragment_spread)?;
-                self.resolve_selection_set(query_context, &fragment_definition.selection_set).await
+                self.resolve_selection_set(query_context, &fragment_definition.selection_set)
+                    .await
             }
             Selection::InlineFragment(_inline_fragment) => {
                 Ok(vec![]) // TODO
@@ -85,7 +86,7 @@ where
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
     ) -> Result<Vec<(String, R)>> {
-        let selections: Vec<_>  = selection_set
+        let selections: Vec<_> = selection_set
             .node
             .items
             .iter()
@@ -96,9 +97,9 @@ where
             .await
             .into_iter()
             .flat_map(|selection| match selection {
-                    Ok(s) => s.into_iter().map(Ok).collect(),
-                    Err(err) => vec![Err(err)],
-                })
+                Ok(s) => s.into_iter().map(Ok).collect(),
+                Err(err) => vec![Err(err)],
+            })
             .collect()
     }
 }
@@ -162,7 +163,8 @@ where
         selection_set: &'e Positioned<SelectionSet>,
     ) -> Result<Value> {
         Ok(Value::Object(FromIterator::from_iter(
-            self.resolve_selection_set(query_context, selection_set).await?,
+            self.resolve_selection_set(query_context, selection_set)
+                .await?,
         )))
     }
 }
@@ -213,10 +215,7 @@ where
             .map(|elem| elem.resolve_value(query_context, selection_set))
             .collect();
 
-        let resolved: Result<Vec<Value>> = 
-            join_all(resolved).await
-            .into_iter()
-            .collect();
+        let resolved: Result<Vec<Value>> = join_all(resolved).await.into_iter().collect();
 
         Ok(Value::Array(resolved?))
     }

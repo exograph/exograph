@@ -16,18 +16,29 @@ impl FieldResolver<Value> for Schema {
     ) -> Result<Value> {
         let schema = query_context.executor.schema;
         match field.node.name.node.as_str() {
-            "types" => self
-                .type_definitions
-                .resolve_value(query_context, &field.node.selection_set).await,
-            "queryType" => schema
-                .get_type_definition(QUERY_ROOT_TYPENAME)
-                .resolve_value(query_context, &field.node.selection_set).await,
-            "mutationType" => schema
-                .get_type_definition(MUTATION_ROOT_TYPENAME)
-                .resolve_value(query_context, &field.node.selection_set).await,
-            "subscriptionType" => schema
-                .get_type_definition(SUBSCRIPTION_ROOT_TYPENAME)
-                .resolve_value(query_context, &field.node.selection_set).await,
+            "types" => {
+                self.type_definitions
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
+            "queryType" => {
+                schema
+                    .get_type_definition(QUERY_ROOT_TYPENAME)
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
+            "mutationType" => {
+                schema
+                    .get_type_definition(MUTATION_ROOT_TYPENAME)
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
+            "subscriptionType" => {
+                schema
+                    .get_type_definition(SUBSCRIPTION_ROOT_TYPENAME)
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "directives" => Ok(Value::Null), // TODO
             "__typename" => Ok(Value::String("__Schema".to_string())),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(

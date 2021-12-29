@@ -1,7 +1,9 @@
 use async_graphql_parser::{types::Field, Positioned};
-use futures::{FutureExt, Future};
-use payas_deno::{Arg, FnClaytipInterceptorProceed, FnClaytipExecuteQuery};
 use async_recursion::async_recursion;
+use futures::{Future, FutureExt};
+use payas_deno::{
+    Arg, FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed,
+};
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
@@ -150,6 +152,26 @@ impl<'a> InterceptedOperation<'a> {
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
+        // TODO: This block is duplicate of that from resolve_deno()
+        //let claytip_execute_query = &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
+        //            Box::pin(async move {
+        //                let result = query_context
+        //                    .executor
+        //                    .execute_with_request_context(
+        //                        None,
+        //                        &query_string,
+        //                        variables.as_ref(),
+        //                        query_context.request_context.clone()
+        //                    )
+        //                    .await?
+        //                    .into_iter()
+        //                    .map(|(name, response)| (name, response.to_json().unwrap()) )
+        //                    .collect::<Map<_,_>>();
+
+        //                Ok(serde_json::Value::Object(result))
+        //            })
+        //        };
+
         match self {
             InterceptedOperation::Intercepted {
                 operation_name,
@@ -158,12 +180,62 @@ impl<'a> InterceptedOperation<'a> {
                 after,
             } => {
                 for before_interceptor in before {
-                    execute_interceptor(operation_name, before_interceptor, query_context, None).await?;
+                    execute_interceptor(
+                        operation_name, 
+                        before_interceptor, 
+                        query_context, 
+                        Some(&move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
+                            async move {
+                                let result = query_context
+                                    .executor
+                                    .execute_with_request_context(
+                                        None,
+                                        &query_string,
+                                        variables.as_ref(),
+                                        query_context.request_context.clone()
+                                    )
+                                    .await?
+                                    .into_iter()
+                                    .map(|(name, response)| (name, response.to_json().unwrap()) )
+                                    .collect::<Map<_,_>>();
+
+                                Ok(serde_json::Value::Object(result))
+                            }.boxed_local()
+                        }), 
+                        Some(&|| {
+                            (*operation_name).to_owned()
+                        }), None
+                    ).await?;
                 }
                 let res = core.execute(field, query_context).await?;
                 for after_interceptor in after {
-                    execute_interceptor(operation_name, after_interceptor, query_context, None).await?;
+                    execute_interceptor(
+                        operation_name, 
+                        after_interceptor, 
+                        query_context, 
+                        Some(&move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
+                            async move {
+                                let result = query_context
+                                    .executor
+                                    .execute_with_request_context(
+                                        None,
+                                        &query_string,
+                                        variables.as_ref(),
+                                        query_context.request_context.clone()
+                                    )
+                                    .await?
+                                    .into_iter()
+                                    .map(|(name, response)| (name, response.to_json().unwrap()) )
+                                    .collect::<Map<_,_>>();
+
+                                Ok(serde_json::Value::Object(result))
+                            }.boxed_local()
+                        }), Some(&|| {
+                            (*operation_name).to_owned()
+                        }), None
+                    ).await?;
                 }
+
                 Ok(res)
             }
             &InterceptedOperation::Around {
@@ -175,8 +247,29 @@ impl<'a> InterceptedOperation<'a> {
                     operation_name,
                     interceptor,
                     query_context,
+                    Some(&move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
+                        async move {
+                            let result = query_context
+                                .executor
+                                .execute_with_request_context(
+                                    None,
+                                    &query_string,
+                                    variables.as_ref(),
+                                    query_context.request_context.clone()
+                                )
+                                .await?
+                                .into_iter()
+                                .map(|(name, response)| (name, response.to_json().unwrap()) )
+                                .collect::<Map<_,_>>();
+
+                            Ok(serde_json::Value::Object(result))
+                        }.boxed_local()
+                    }),
                     Some(&|| {
-                            Box::pin(async move {
+                        operation_name.to_owned()
+                    }),
+                    Some(&|| {
+                            async move {
                                 core.execute(field, query_context)
                                     .await
                                     .map(|response| match response {
@@ -186,7 +279,7 @@ impl<'a> InterceptedOperation<'a> {
                                             None => serde_json::Value::Null,
                                         },
                                     })
-                            })
+                            }.boxed_local()
                         }),
                 ).await?;
                 match res {
@@ -205,9 +298,12 @@ fn execute_interceptor<'a>(
     operation_name: &'a str,
     interceptor: &'a Interceptor,
     query_context: &'a QueryContext<'a>,
-    proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
+
+    claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
+    claytip_get_interceptor: Option<&'a FnClaytipInterceptorGetName<'a>>,
+    claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> impl Future<Output = Result<serde_json::Value>> + 'a {
-    async move { 
+    async move {
         let path = &interceptor.module_path;
         let arg_sequence = interceptor
             .arguments
@@ -224,46 +320,11 @@ fn execute_interceptor<'a>(
             })
             .collect::<Result<Vec<_>>>()?;
 
-        // FIXME
-        //let claytip_execute_query = |query_string: String, variables: Option<Map<String, Value>>| {
-        //    let result = query_context
-        //        .executor
-        //        .execute_with_request_context(
-        //            None,
-        //            &query_string,
-        //            variables.as_ref(),
-        //            query_context.request_context.clone(),
-        //        )?
-        //        .into_iter()
-        //        .map(|(name, response)| (name, response.to_json().unwrap()))
-        //        .collect::<Map<_, _>>();
-        //    Ok(serde_json::Value::Object(result))
-        //};
-
-        let claytip_get_interceptor = || operation_name.to_string();
-
-        let claytip_execute_query  = |query_string: String, variables: Option<Map<String, Value>>| {
-            Box::pin(async move {
-                let result = query_context
-                    .executor
-                    .execute_with_request_context(
-                        None,
-                        &query_string,
-                        variables.as_ref(),
-                        query_context.request_context.clone(),
-                    ).await?
-                    .into_iter()
-                    .map(|(name, response)| (name, response.to_json().unwrap()))
-                    .collect::<Map<_, _>>();
-
-                Result::<serde_json::Value, anyhow::Error>::Ok(serde_json::Value::Object(result))
-            })
-        };
-
         query_context
             .executor
             .deno_execution
-            .preload_module(path, 1).await;
+            .preload_module(path, 10)
+            .await;
 
         query_context
             .executor
@@ -272,30 +333,10 @@ fn execute_interceptor<'a>(
                 path,
                 &interceptor.name,
                 arg_sequence,
-                // TODO: This block is duplicate of that from resolve_deno()
-                //Some(&move |query_string, variables | {
-                //    Box::pin(async move {
-                //        let result = query_context
-                //            .executor
-                //            .execute_with_request_context(
-                //                None, 
-                //                &query_string, 
-                //                variables.as_ref(), 
-                //                query_context.request_context.clone()
-                //            )
-                //            .await?
-                //            .into_iter()
-                //            .map(|(name, response)| (name, response.to_json().unwrap()) )
-                //            .collect::<Map<_,_>>();
-
-                //        Ok(serde_json::Value::Object(result))
-                //    })
-                //}),
-                None,
-                //None,
-                //Some(&claytip_get_interceptor),
-                None,
-                proceed_operation,
-            ).await
+                claytip_execute_query,
+                claytip_get_interceptor,
+                claytip_proceed_operation,
+            )
+            .await
     }
 }

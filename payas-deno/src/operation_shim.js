@@ -1,8 +1,8 @@
 ({
-  name: function () {
-      return Deno.core.opSync("op_intercepted_operation_name");
+  name: async function () {
+      return await Deno.core.opAsync("op_intercepted_operation_name")
   },
-  proceed: function () {
-    return Deno.core.opSync("op_intercepted_proceed");
+  proceed: async function () {
+      return await Deno.core.opAsync("op_intercepted_proceed")
   }
 })

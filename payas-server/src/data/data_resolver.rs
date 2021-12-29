@@ -3,11 +3,11 @@ use crate::execution::{
     resolver::FieldResolver,
 };
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
 use async_graphql_parser::{
     types::{Field, OperationType},
     Positioned,
 };
+use async_trait::async_trait;
 
 use payas_model::model::system::ModelSystem;
 use serde_json::Value;

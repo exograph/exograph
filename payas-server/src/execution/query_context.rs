@@ -315,10 +315,13 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
                 };
                 Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
             }
-            _ => query_context
-                .executor
-                .system
-                .resolve(field, &self.ty, query_context).await,
+            _ => {
+                query_context
+                    .executor
+                    .system
+                    .resolve(field, &self.ty, query_context)
+                    .await
+            }
         }
     }
 }

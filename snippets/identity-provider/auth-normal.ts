@@ -2,7 +2,7 @@ import * as bcrypt from 'https://deno.land/x/crypt@v0.1.0/bcrypt.ts';
 import { createJwt, queryUserInfo, secret } from "./login-utils.ts";
 
 export async function loginNormal(email: string, password: string, claytip: any): Promise<string> {
-    const res = claytip.executeQuery(`
+    const res = await claytip.executeQuery(`
         query ($email: String!) {
             users(where: { email: { eq: $email }}) {
                 password
@@ -30,7 +30,7 @@ export async function signupNormal(
 ): Promise<string> {
     const hashed = bcrypt.hashSync(password);
 
-    let res = claytip.executeQuery(
+    let res = await claytip.executeQuery(
         `mutation(
           $email: String!, 
           $password: String!,

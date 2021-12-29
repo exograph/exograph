@@ -4,8 +4,8 @@ use async_graphql_parser::{parse_query, types::DocumentOperations};
 
 use anyhow::Result;
 
-use payas_deno::DenoExecutor;
 use futures::future::join_all;
+use payas_deno::DenoExecutor;
 use payas_model::{
     model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
     sql::database::Database,
@@ -31,7 +31,8 @@ impl<'a> Executor<'a> {
     ) -> Result<Vec<(String, QueryResponse)>> {
         let request_context = create_request_contexts(&self.system.contexts, jwt_claims);
 
-        self.execute_with_request_context(operation_name, query_str, variables, request_context).await
+        self.execute_with_request_context(operation_name, query_str, variables, request_context)
+            .await
     }
 
     // A version of execute that is suitable to be exposed through a shim to services

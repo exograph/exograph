@@ -63,13 +63,16 @@ pub struct DenoScript {
 }
 
 impl DenoModule {
-    pub async fn new(
+    pub async fn new<F>(
         user_module_path: &Path,
         user_agent_name: &str,
         shims: &[(&str, &str)],
-        register_ops: &dyn Fn(&mut JsRuntime),
+        register_ops: F,
         shared_state: DenoModuleSharedState,
-    ) -> Result<Self, AnyError> {
+    ) -> Result<Self, AnyError>
+    where
+        F: FnOnce(&mut JsRuntime),
+    {
         let user_module_path = fs::canonicalize(user_module_path)?
             .to_string_lossy()
             .to_string();
@@ -155,7 +158,8 @@ impl DenoModule {
 
     pub fn preload_function(&mut self, function_names: Vec<&str>) {
         let worker = &mut self.worker;
-        let runtime = &mut worker.lock().unwrap().js_runtime;
+        println!("locking preload...");
+        let runtime = &mut worker.try_lock().unwrap().js_runtime;
 
         for fname in function_names.iter() {
             let script = preload_script(runtime, fname, &format!("mod.{}", fname));
@@ -164,8 +168,11 @@ impl DenoModule {
     }
 
     pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
+        println!("running {}", function_name);
+
         let worker = &mut self.worker;
-        let runtime = &mut worker.lock().unwrap().js_runtime;
+        println!("locking execute...");
+        let runtime = &mut worker.try_lock().unwrap().js_runtime;
 
         // TODO: does this yield any significant optimization?
         let func_value = run_script(runtime, &self.script_map[function_name]).unwrap();
@@ -234,11 +241,13 @@ impl DenoModule {
         };
 
         {
+            println!("resolving...");
             let value = runtime.resolve_value(global).await.map_err(|err| {
                 // got some AnyError from Deno internals...
                 eprintln!("{}", err);
                 anyhow!("Internal server error")
             })?;
+            println!("resolved");
 
             let scope = &mut runtime.handle_scope();
             let res = v8::Local::new(scope, value);

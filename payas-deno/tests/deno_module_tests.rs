@@ -1,8 +1,5 @@
-use std::{
-    path::Path,
-};
+use std::path::Path;
 
-use actix::prelude::*;
 use anyhow::Result;
 use async_channel::unbounded;
 use deno_core::{serde_json::Value, JsRuntime};
@@ -21,7 +18,7 @@ async fn test_direct_sync() {
         Path::new("./tests/direct.js"),
         "deno_module",
         &[],
-        &|_| {},
+        |_| {},
         DenoModuleSharedState::default(),
     )
     .await
@@ -43,42 +40,43 @@ async fn test_direct_sync() {
     assert_eq!(sync_ret_value, Value::Number(12.into()));
 }
 
-#[actix_rt::test]
+#[tokio::test]
 async fn test_actor() {
-    let actor = DenoActor::new(
+    let mut actor = DenoActor::new(
         Path::new("./tests/direct.js"),
-        DenoModuleSharedState::default()
-    ).await;
+        DenoModuleSharedState::default(),
+    )
+    .await;
 
     let (to_user_sender, _to_user_receiver) = unbounded();
     let (_from_user_sender, from_user_receiver) = unbounded();
 
-    let addr = actor.start();
-    let res = addr.send(MethodCall {
-        method_name: "addAndDouble".to_string(),
-        arguments: vec![
-            Arg::Serde(2.into()),
-            Arg::Serde(3.into())
-        ],
-        to_user: to_user_sender,
-        from_user: from_user_receiver
-    }).await;
+    let res = actor
+        .handle(MethodCall {
+            method_name: "addAndDouble".to_string(),
+            arguments: vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
+            to_user: to_user_sender,
+            from_user: from_user_receiver,
+        })
+        .await;
 
-    assert_eq!(res.unwrap().unwrap(), 10);
+    assert_eq!(res.unwrap(), 10);
 }
 
-#[actix_rt::test]
+#[tokio::test]
 async fn test_actor_executor() {
     let executor = DenoExecutor::new();
     let module_path = Path::new("./tests/direct.js");
 
-    executor.preload_module(module_path, 1).await;
+    //executor.preload_module(module_path, 1).await;
 
-    let res = executor.execute_function(
-        module_path,
-        "addAndDouble",
-        vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
-    ).await;
+    let res = executor
+        .execute_function(
+            module_path,
+            "addAndDouble",
+            vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
+        )
+        .await;
 
     assert_eq!(res.unwrap(), 10);
 }
@@ -123,7 +121,7 @@ async fn test_direct_async() {
         Path::new("./tests/direct.js"),
         "deno_module",
         &[],
-        &|_| {},
+        |_| {},
         DenoModuleSharedState::default(),
     )
     .await
@@ -159,7 +157,7 @@ async fn test_shim_sync() {
         Path::new("./tests/through_shim.js"),
         "deno_module",
         &[GET_JSON_SHIM],
-        &|_| {},
+        |_| {},
         DenoModuleSharedState::default(),
     )
     .await
@@ -202,7 +200,7 @@ async fn test_shim_async() {
         Path::new("./tests/through_shim.js"),
         "deno_module",
         &[GET_JSON_SHIM],
-        &|_| {},
+        |_| {},
         DenoModuleSharedState::default(),
     )
     .await

@@ -2,15 +2,12 @@ use std::{
     cell::RefCell,
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
 };
 
-use actix::{Actor, Addr};
-use async_channel::unbounded;
 use futures::{pin_mut, select, Future, FutureExt, StreamExt};
-use tokio::runtime::Runtime;
 
-use crate::actor::{InProgress, MethodCall};
+use crate::actor::MethodCall;
 use crate::{
     actor::{
         FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed,
@@ -21,26 +18,26 @@ use crate::{
 use anyhow::Result;
 use serde_json::Value;
 
-type DenoActorPool = Vec<Addr<DenoActor>>;
+type DenoActorPoolMap = HashMap<PathBuf, DenoActorPool>;
+type DenoActorPool = Vec<Arc<Mutex<DenoActor>>>;
 
 pub struct DenoExecutor {
-    actor_pool_map: Arc<Mutex<RefCell<HashMap<PathBuf, DenoActorPool>>>>,
+    actor_pool_map: Arc<Mutex<DenoActorPoolMap>>,
     shared_state: DenoModuleSharedState,
-    runtime: Arc<Mutex<Runtime>>,
 }
+
+unsafe impl Send for DenoActor {}
 
 impl<'a> DenoExecutor {
     pub fn new() -> DenoExecutor {
         DenoExecutor {
             actor_pool_map: Default::default(),
             shared_state: Default::default(),
-            runtime: Arc::new(Mutex::new(Runtime::new().unwrap())),
         }
     }
 
     pub async fn preload_module(&self, path: &Path, instances: usize) {
-        let actor_pool_map = self.actor_pool_map.lock().unwrap();
-        let mut actor_pool_map = actor_pool_map.borrow_mut();
+        let mut actor_pool_map = self.actor_pool_map.lock().unwrap();
 
         if let Some(actor_pool) = actor_pool_map.get(path) {
             if actor_pool.len() >= instances {
@@ -53,112 +50,116 @@ impl<'a> DenoExecutor {
 
         for _ in 0..instances {
             let path = path.to_owned();
-            let addr = DenoActor::new(&path, self.shared_state.clone())
-                .await
-                .start();
-            initial_actor_pool.push(addr);
+            let actor = DenoActor::new(&path, self.shared_state.clone()).await;
+            initial_actor_pool.push(Arc::new(Mutex::new(actor)));
         }
 
         actor_pool_map.insert(path.to_owned(), initial_actor_pool);
     }
-    
+
     pub async fn execute_function(
         &self,
         module_path: &Path,
         method_name: &str,
         arguments: Vec<Arg>,
     ) -> Result<Value> {
-        self.execute_function_with_shims(module_path, method_name, arguments, None, None, None).await
+        self.execute_function_with_shims(module_path, method_name, arguments, None, None, None)
+            .await
     }
 
-    pub fn execute_function_with_shims(
+    pub async fn execute_function_with_shims(
         &'a self,
         module_path: &'a Path,
         method_name: &'a str,
         arguments: Vec<Arg>,
 
         claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
-        claytip_get_interceptor: Option<&'a FnClaytipInterceptorGetName>,
+        claytip_get_interceptor: Option<&'a FnClaytipInterceptorGetName<'a>>,
         claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
-    ) -> impl Future<Output = Result<Value>> + 'a {
-        async move {
-            println!("inside execution");
+    ) -> Result<Value> {
+        println!("locking actor pool map...");
 
-            let actor_pool_map = self.actor_pool_map.lock().unwrap();
-            let mut actor_pool = actor_pool_map.borrow().get(module_path).unwrap().clone();
+        let actor_pool_copy = {
+            let mut actor_pool_map = self.actor_pool_map.try_lock().unwrap().clone();
+            let actor_pool = actor_pool_map
+                .entry(module_path.to_path_buf())
+                .or_insert(vec![]);
 
-            let actor: Addr<DenoActor> = {
-                let free_actors: Vec<Addr<DenoActor>> = futures::stream::iter(actor_pool.iter())
-                    .filter_map(|addr| async move { // TODO: find map
+            actor_pool.clone()
+        };
 
-                        println!("about to await");
-                        let is_in_progress = addr.send(InProgress).await;
-                        is_in_progress.ok().map(|_| addr.to_owned())
-                    })
-                    .collect()
-                    .await;
+        let mut actor_mutex: Option<Arc<Mutex<DenoActor>>> = None;
 
-                println!("after free_actors");
+        let lock =
+            actor_pool_copy
+                .iter()
+                .find_map(|addr| addr.try_lock().ok());
 
-                if let Some(actor) = free_actors.iter().next() {
-                    println!("one free");
-                    (*actor).clone()
-                } else {
-                    println!("none free");
+        let mut actor = if let Some(actor) = lock {
+            println!("one free");
+            actor
+        } else {
+            println!("none free, allocating");
 
-                    // allocate new DenoActor
-                    let module_path = module_path.to_owned();
-                    actor_pool.push(
-                        DenoActor::new(&module_path, self.shared_state.clone())
-                            .await
-                            .start(),
-                    );
-                    actor_pool.iter().last().unwrap().clone()
-                }
-            };
+            // allocate new DenoActor
+            let module_path = module_path.to_owned();
+            let new_actor = DenoActor::new(&module_path, self.shared_state.clone()).await;
+            actor_mutex = Some(Arc::new(Mutex::new(new_actor)));
 
-            let (from_user_sender, from_user_receiver) = unbounded();
-            let (to_user_sender, to_user_receiver) = unbounded();
+            {
+                let mut actor_pool_map = self.actor_pool_map.lock().unwrap().clone();
+                let actor_pool = actor_pool_map.get_mut(&module_path).unwrap();
+                actor_pool.push(actor_mutex.clone().unwrap());
+            }
 
-            let on_finished = actor
-                .send(MethodCall {
-                    method_name: method_name.to_string(),
-                    arguments,
-                    from_user: from_user_receiver,
-                    to_user: to_user_sender,
-                })
-                .fuse();
+            actor_mutex.as_deref().unwrap().lock().unwrap()
+        };
 
-            let on_recv = to_user_receiver.recv().fuse();
-            pin_mut!(on_finished, on_recv);
+        let (to_user_sender, mut to_user_receiver) = tokio::sync::mpsc::channel(1);
 
-            println!("looping...");
-            loop {
-                select! {
-                    final_result = on_finished => {
+        let on_finished = actor
+            .handle(MethodCall {
+                method_name: method_name.to_string(),
+                arguments,
+                to_user: to_user_sender,
+            });
 
-                        println!("finished");
-                        break final_result.unwrap();
-                    },
+        pin_mut!(on_finished);
 
-                    msg = on_recv => {
-                        println!("recv");
-                        match msg.unwrap() {
-                            FromDenoMessage::RequestInteceptedOperationName => {
-                                let name = claytip_get_interceptor.unwrap()();
-                                from_user_sender.send(ToDenoMessage::ResponseInteceptedOperationName(name)).await.unwrap();
-                            },
-                            FromDenoMessage::RequestInteceptedOperationProceed => {
-                                let proceed_result = claytip_proceed.unwrap()().await;
-                                from_user_sender.send(ToDenoMessage::ResponseInteceptedOperationProceed(proceed_result)).await.unwrap();
-                            },
-                            FromDenoMessage::RequestClaytipExecute { query_string, variables } => {
-                                let query_result = claytip_execute_query.unwrap()(query_string, variables).await;
-                                from_user_sender.send(ToDenoMessage::ResponseClaytipExecute(query_result)).await.unwrap();
-                            },
-                        }
+        loop {
+            println!("executor recv loop turn start");
+            let on_recv = to_user_receiver.recv();
+            pin_mut!(on_recv);
+
+            tokio::select! {
+                msg = on_recv => {
+                    match msg.unwrap() {
+                        FromDenoMessage::RequestInteceptedOperationName {
+                            response_sender
+                        } => {
+                            println!("executor recv loop: name request!");
+                            let name = claytip_get_interceptor.unwrap()();
+                            response_sender.send(ToDenoMessage::ResponseInteceptedOperationName(name)).ok().unwrap();
+                        },
+                        FromDenoMessage::RequestInteceptedOperationProceed {
+                            response_sender
+                        } => {
+                            println!("executor recv loop: proceed request!");
+                            let proceed_result = claytip_proceed.unwrap()().await;
+                            response_sender.send(ToDenoMessage::ResponseInteceptedOperationProceed(proceed_result)).ok().unwrap();
+                        },
+                        FromDenoMessage::RequestClaytipExecute { query_string, variables, response_sender } => {
+                            println!("executor recv loop: execution request!");
+                            let query_result = claytip_execute_query.unwrap()(query_string, variables).await;
+                            response_sender.send(ToDenoMessage::ResponseClaytipExecute(query_result)).ok().unwrap();
+                        },
                     }
                 }
+
+                final_result = &mut on_finished => {
+                    println!("executor recv loop: got final result");
+                    break final_result;
+                },
             }
         }
     }

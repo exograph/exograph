@@ -29,7 +29,7 @@ postgres-openssl = "0.5.0"
 r2d2 = "0.8"
 r2d2_postgres = "0.18"
 rust_decimal = { version = "1.15", features = ["db-postgres"] }
-tokio = "0.2"
+tokio = { version = "0.2", features = ["full"] }
 chrono = "0.4.19"
 typed-arena = "2.0.1"
 notify = "4.0.17"

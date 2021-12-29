@@ -23,9 +23,11 @@ impl FieldResolver<Value> for InputValueDefinition {
                 .clone()
                 .map(|v| Value::String(v.node))
                 .unwrap_or(Value::Null)),
-            "type" => self
-                .ty
-                .resolve_value(query_context, &field.node.selection_set).await,
+            "type" => {
+                self.ty
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "defaultValue" => Ok(Value::Null), // TODO
             "__typename" => Ok(Value::String("__InputValue".to_string())),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(

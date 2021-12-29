@@ -24,7 +24,7 @@ export async function createJwt(payload: JWTPayload, secret: string): Promise<st
 }
 
 export async function queryUserInfo(email: string, claytip: any): Promise<JWTPayload> {
-  const res = claytip.executeQuery(`
+  const res = await claytip.executeQuery(`
         query ($email: String!) {
             users(where: { email: { eq: $email }}) {
                 id

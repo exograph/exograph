@@ -5,13 +5,12 @@ authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
 edition = "2021"
 
 [dependencies]
-actix = "0.12"
-actix-rt = "1.1.1"
 anyhow = "1.0"
 async-channel = "1.6.1"
+async-recursion = "0.3.2"
 deno_runtime = "0.29.0"
 deno_core = "0.103.0"
-tokio = { version = "1", features = ["full"] }
+tokio = "0.2" 
 futures = "0.3"
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }

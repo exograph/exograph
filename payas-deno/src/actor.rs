@@ -3,31 +3,32 @@ use std::path::Path;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use actix::{SyncContext, Context};
-use actix::{Actor, Handler, Message};
 use anyhow::Result;
 use deno_core::JsRuntime;
 use futures::future::LocalBoxFuture;
-use futures::{pin_mut, select, FutureExt, Future};
+use futures::{pin_mut, select, Future, FutureExt};
 use serde_json::Value;
 
-use async_channel::{unbounded, Receiver, Sender};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use crate::{Arg, DenoModule, DenoModuleSharedState, deno_module};
+use crate::{deno_module, Arg, DenoModule, DenoModuleSharedState};
 
 pub struct DenoActor {
     deno_module: DenoModule,
-    in_progress: AtomicBool,
-    deno_sender: Sender<ToDenoMessage>,
-    deno_receiver: Receiver<FromDenoMessage>,
+    from_deno_receiver: Receiver<FromDenoMessage>,
 }
 
 pub enum FromDenoMessage {
-    RequestInteceptedOperationName,
-    RequestInteceptedOperationProceed,
+    RequestInteceptedOperationName {
+        response_sender: tokio::sync::oneshot::Sender<ToDenoMessage>
+    },
+    RequestInteceptedOperationProceed {
+        response_sender: tokio::sync::oneshot::Sender<ToDenoMessage>
+    },
     RequestClaytipExecute {
         query_string: String,
         variables: Option<serde_json::Map<String, Value>>,
+        response_sender: tokio::sync::oneshot::Sender<ToDenoMessage>
     },
 }
 
@@ -37,24 +38,16 @@ pub enum ToDenoMessage {
     ResponseClaytipExecute(Result<Value>),
 }
 
-pub type FnClaytipExecuteQuery<'a> =
-    (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> 
-        LocalBoxFuture<'a, Result<Value>> + 'a);
+pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> LocalBoxFuture<'a, Result<Value>>
+     + 'a);
 pub type FnClaytipInterceptorGetName<'a> = (dyn Fn() -> String + 'a);
-pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> 
-        LocalBoxFuture<'a, Result<Value>> + 'a);
+pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> LocalBoxFuture<'a, Result<Value>> + 'a);
 
-macro_rules! add_op {
-    ($sync_ops:expr, $name:expr, $sender:expr, $receiver:expr, $op:expr) => {
-        let sender = $sender.clone();
-        let receiver = $receiver.clone();
-        $sync_ops.push((
-            $name,
-            deno_core::op_sync(move |_state, args, _: ()| {
-                $op(args, sender.clone(), receiver.clone())
-            }),
-        ))
-    };
+pub struct MethodCall {
+    pub method_name: String,
+    pub arguments: Vec<Arg>,
+
+    pub to_user: tokio::sync::mpsc::Sender<FromDenoMessage>,
 }
 
 impl DenoActor {
@@ -65,176 +58,169 @@ impl DenoActor {
         ];
 
         // TODO
-        let (from_deno_sender, from_deno_receiver) = unbounded();
-        let (to_deno_sender, to_deno_receiver) = unbounded();
+        let (from_deno_sender, from_deno_receiver) = tokio::sync::mpsc::channel(1);
 
         let register_ops = move |runtime: &mut JsRuntime| {
-                let mut sync_ops = vec![];
+            let mut async_ops = vec![];
 
-                add_op!(
-                    sync_ops,
+            {
+                let from_deno_sender = from_deno_sender.clone();
+
+                async_ops.push((
                     "op_claytip_execute_query",
-                    from_deno_sender,
-                    to_deno_receiver,
-                    move |args: Vec<String>,
-                          sender: Sender<FromDenoMessage>,
-                          receiver: Receiver<ToDenoMessage>| {
-                        let query_string = &args[0];
-                        let variables: Option<serde_json::Map<String, Value>> =
-                            args.get(1).map(|vars| serde_json::from_str(vars).unwrap());
+                    deno_core::op_async(move |_state, args: Vec<String>, (): _| {
+                        let mut sender = from_deno_sender.clone();
 
-                        sender
-                            .try_send(FromDenoMessage::RequestClaytipExecute {
-                                query_string: query_string.to_owned(),
-                                variables,
-                            })
-                            .unwrap();
+                        println!("op_claytip_execute_query");
+                        async move {
+                            println!("op_claytip_execute_query future start");
 
-                        if let ToDenoMessage::ResponseClaytipExecute(result) =
-                            futures::executor::block_on(receiver.recv()).unwrap()
-                        {
-                            result
-                        } else {
-                            panic!()
+                            let query_string = &args[0];
+                            let variables: Option<serde_json::Map<String, Value>> =
+                                args.get(1).map(|vars| serde_json::from_str(vars).unwrap());
+
+                            let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+
+                            println!("op_claytip_execute_query send...");
+                            sender
+                                .send(FromDenoMessage::RequestClaytipExecute {
+                                    query_string: query_string.to_owned(),
+                                    variables,
+                                    response_sender
+                                })
+                                .await
+                                .ok()
+                                .unwrap();
+
+
+                            println!("op_claytip_execute_query recv...");
+                            //println!("exec2");
+                            if let ToDenoMessage::ResponseClaytipExecute(result) =
+                                response_receiver.await.unwrap()
+                            {
+                                result
+                            } else {
+                                panic!()
+                            }
                         }
-                    }
-                );
+                    }),
+                ));
+            }
 
-                add_op!(
-                    sync_ops,
+            {
+                let from_deno_sender = from_deno_sender.clone();
+
+                async_ops.push((
                     "op_intercepted_operation_name",
-                    from_deno_sender,
-                    to_deno_receiver,
-                    |_: (), sender: Sender<FromDenoMessage>, receiver: Receiver<ToDenoMessage>| {
-                        sender
-                            .try_send(FromDenoMessage::RequestInteceptedOperationName)
-                            .unwrap();
+                    deno_core::op_async(move |_state, _: (), (): _| {
+                        let mut sender = from_deno_sender.clone();
 
-                        if let ToDenoMessage::ResponseInteceptedOperationName(result) =
-                            futures::executor::block_on(receiver.recv()).unwrap()
-                        {
-                            Ok(result)
-                        } else {
-                            panic!()
+                        println!("op_intercepted_operation_name");
+                        async move {
+                            println!("op_intercepted_operation_name future start");
+                            let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+
+                            println!("op_intercepted_operation_name send...");
+                            sender
+                                .send(FromDenoMessage::RequestInteceptedOperationName {
+                                    response_sender
+                                })
+                                .await
+                                .ok()
+                                .unwrap();
+
+                            println!("op_intercepted_operation_name recv...");
+                            if let ToDenoMessage::ResponseInteceptedOperationName(result) =
+                                response_receiver.await.unwrap()
+                            {
+                                Ok(result)
+                            } else {
+                                panic!()
+                            }
                         }
-                    }
-                );
+                    }),
+                ));
+            }
 
-                add_op!(
-                    sync_ops,
+            {
+                let from_deno_sender = from_deno_sender.clone();
+
+                async_ops.push((
                     "op_intercepted_proceed",
-                    from_deno_sender,
-                    to_deno_receiver,
-                    |_: (), sender: Sender<FromDenoMessage>, receiver: Receiver<ToDenoMessage>| {
-                        sender
-                            .try_send(FromDenoMessage::RequestInteceptedOperationProceed)
-                            .unwrap();
+                    deno_core::op_async(move |_state, _: (), (): _| {
+                        let mut sender = from_deno_sender.clone();
 
-                        if let ToDenoMessage::ResponseInteceptedOperationProceed(result) =
-                            futures::executor::block_on(receiver.recv()).unwrap()
-                        {
-                            result
-                        } else {
-                            panic!()
+                        println!("op_intercepted_proceed");
+                        async move {
+                            println!("op_intercepted_proceed future start");
+
+                            let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+
+                            println!("op_intercepted_proceed send...");
+                            sender
+                                .send(FromDenoMessage::RequestInteceptedOperationProceed {
+                                    response_sender
+                                })
+                                .await
+                                .ok()
+                                .unwrap();
+
+                            println!("op_intercepted_proceed recv...");
+                            if let ToDenoMessage::ResponseInteceptedOperationProceed(result) =
+                                response_receiver.await.unwrap()
+                            {
+                                result
+                            } else {
+                                panic!()
+                            }
                         }
-                    }
-                );
+                    }),
+                ));
+            }
 
-                for (name, op) in sync_ops {
-                    runtime.register_op(name, op);
-                }
-            };
+            for (name, op) in async_ops {
+                runtime.register_op(name, op);
+            }
+        };
 
-        let deno_module = DenoModule::new(
-            &path,
-            "Claytip",
-            &shims,
-            &register_ops,
-            shared_state,
-        );
+        let deno_module = DenoModule::new(&path, "Claytip", &shims, register_ops, shared_state);
 
-        let deno_module = futures::executor::block_on(deno_module).unwrap();
+        let deno_module = deno_module.await.unwrap();
 
         DenoActor {
             deno_module,
-            deno_receiver: from_deno_receiver,
-            deno_sender: to_deno_sender,
-            in_progress: AtomicBool::new(false),
+            from_deno_receiver: from_deno_receiver,
         }
     }
 
-    pub fn in_progress(&self) -> bool {
-        self.in_progress.load(Ordering::Relaxed)
-    }
-}
-
-impl Actor for DenoActor {
-    type Context = Context<Self>;
-}
-
-#[derive(Message)]
-#[rtype(result = "Result<Value>")]
-pub struct MethodCall {
-    pub method_name: String,
-    pub arguments: Vec<Arg>,
-
-    pub to_user: Sender<FromDenoMessage>,
-    pub from_user: Receiver<ToDenoMessage>,
-}
-
-unsafe impl Send for MethodCall {}
-
-impl Handler<MethodCall> for DenoActor {
-    type Result = Result<Value>;
-
-    fn handle(&mut self, msg: MethodCall, _: &mut Self::Context) -> Self::Result {
-        println!("Executing {}", &msg.method_name,);
-
-        self.in_progress.store(true, Ordering::Relaxed);
+    pub async fn handle(&mut self, mut msg: MethodCall) -> Result<Value> {
+        println!("Executing {}", &msg.method_name);
 
         // load function by name in module
         self.deno_module.preload_function(vec![&msg.method_name]);
 
-        let future = async {
-            let finished = self
-                .deno_module
-                .execute_function(&msg.method_name, msg.arguments)
-                .fuse();
+        let finished = self
+            .deno_module
+            .execute_function(&msg.method_name, msg.arguments);
 
-            let recv = self.deno_receiver.recv().fuse();
+        pin_mut!(finished);
 
-            pin_mut!(finished, recv);
+        loop {
+            println!("actor recv loop turn start");
+            let recv = self.from_deno_receiver.recv();
+            pin_mut!(recv);
 
-            loop {
-                //println!("loop");
-                select! {
-                    final_result = finished => {
-                        break final_result;
-                    },
+            tokio::select! {
+                message = recv => {
+                    println!("actor recv loop: got from_deno_receiver message, forwarding to user");
+                    msg.to_user.send(message.unwrap()).await.ok().unwrap();
+                }
 
-                    message = recv => {
-                        msg.to_user.send(message.unwrap()).await.unwrap();
-                        let result = msg.from_user.recv().await.unwrap();
-                        self.deno_sender.send(result).await.unwrap();
-                    },
-                };
-            }
-        };
-
-        let val = futures::executor::block_on(future);
-        self.in_progress.store(false, Ordering::Relaxed);
-        val
-    }
-}
-
-#[derive(Message)]
-#[rtype(result = "bool")]
-pub struct InProgress;
-
-impl Handler<InProgress> for DenoActor {
-    type Result = bool;
-
-    fn handle(&mut self, _: InProgress, _: &mut Self::Context) -> Self::Result {
-        self.in_progress()
+                final_result = &mut finished => {
+                    println!("actor recv loop: got final result");
+                    break final_result;
+                }
+            };
+        }
     }
 }

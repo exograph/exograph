@@ -12,12 +12,12 @@ use crate::{
 // Then, we will have this imported in each generated service code (currently, it suffices to just have it in the same directory as the service code).
 static CLAYTIP_D_TS: &str = r#"
 interface Claytip {
-  executeQuery(query: string, variable?: { [key: string]: any }): void;
+  executeQuery(query: string, variable?: { [key: string]: any }): Promise<void>;
 }
 
 interface Operation {
-  name(): string;
-  proceed<T>(): T
+  name(): Promise<string>;
+  proceed<T>(): Promise<T>;
 }
 "#;
 

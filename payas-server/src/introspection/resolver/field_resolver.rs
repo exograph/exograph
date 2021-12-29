@@ -23,14 +23,16 @@ impl FieldResolver<Value> for FieldDefinition {
                 .clone()
                 .map(|v| Value::String(v.node))
                 .unwrap_or(Value::Null)),
-            "type" => self
-                .ty
-                .resolve_value(query_context, &field.node.selection_set)
-                .await,
-            "args" => self
-                .arguments
-                .resolve_value(query_context, &field.node.selection_set)
-                .await,
+            "type" => {
+                self.ty
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
+            "args" => {
+                self.arguments
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "isDeprecated" => Ok(Value::Bool(false)), // TODO
             "deprecationReason" => Ok(Value::Null),   // TODO
             "__typename" => Ok(Value::String("__Field".to_string())),

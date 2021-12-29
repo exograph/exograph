@@ -5,7 +5,7 @@ mod executor;
 
 pub use actor::{
     DenoActor, FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed,
-    InProgress, MethodCall,
+    MethodCall,
 };
 pub use deno_module::{Arg, DenoModule, DenoModuleSharedState};
 pub use executor::DenoExecutor;

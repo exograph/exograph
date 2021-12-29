@@ -27,20 +27,23 @@ impl FieldResolver<Value> for TypeDefinition {
             "name" => Ok(Value::String(self.name())),
             "kind" => Ok(Value::String(self.kind())),
             "description" => Ok(self.description().map(Value::String).unwrap_or(Value::Null)),
-            "fields" => self
-                .fields()
-                .resolve_value(query_context, &field.node.selection_set)
-                .await,
+            "fields" => {
+                self.fields()
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "interfaces" => Ok(Value::Array(vec![])), // TODO
             "possibleTypes" => Ok(Value::Null),       // TODO
-            "enumValues" => self
-                .enum_values()
-                .resolve_value(query_context, &field.node.selection_set)
-                .await,
-            "inputFields" => self
-                .input_fields()
-                .resolve_value(query_context, &field.node.selection_set)
-                .await,
+            "enumValues" => {
+                self.enum_values()
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
+            "inputFields" => {
+                self.input_fields()
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "ofType" => Ok(Value::Null),
             "specifiedByUrl" => Ok(Value::Null),
             "__typename" => Ok(Value::String("__Type".to_string())),
@@ -105,9 +108,11 @@ impl<'a> FieldResolver<Value> for BoxedType<'a> {
     ) -> Result<Value> {
         match field.node.name.node.as_str() {
             "kind" => Ok(Value::String(self.type_kind.to_owned())),
-            "ofType" => self
-                .tpe
-                .resolve_value(query_context, &field.node.selection_set).await,
+            "ofType" => {
+                self.tpe
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"
             | "possibleTypes" | "enumValues" | "inoutFields" => Ok(Value::Null),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
