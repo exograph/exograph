@@ -267,7 +267,7 @@ fn start_server(
     restart: bool,
 ) -> Result<Server> {
     let database = Database::from_env(None)?; // TODO: error handling here
-    let deno_executor = DenoExecutor::new();
+    let deno_executor = DenoExecutor::default();
 
     let schema = Schema::new(&system);
     let system_info = Arc::new((system, schema, database, deno_executor));

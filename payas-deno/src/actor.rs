@@ -1,41 +1,37 @@
 use std::panic;
 use std::path::Path;
-use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use anyhow::Result;
 use deno_core::JsRuntime;
 use futures::future::LocalBoxFuture;
-use futures::{pin_mut, select, Future, FutureExt};
+use futures::pin_mut;
 use serde_json::Value;
+use tokio::sync::mpsc::Receiver;
 
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-
-use crate::{deno_module, Arg, DenoModule, DenoModuleSharedState};
+use crate::{Arg, DenoModule, DenoModuleSharedState};
 
 pub struct DenoActor {
     deno_module: DenoModule,
-    from_deno_receiver: Receiver<FromDenoMessage>,
+    from_deno_receiver: Receiver<RequestFromDenoMessage>,
 }
 
-pub enum FromDenoMessage {
-    RequestInteceptedOperationName {
-        response_sender: tokio::sync::oneshot::Sender<ToDenoMessage>
+pub enum RequestFromDenoMessage {
+    InteceptedOperationName {
+        response_sender: tokio::sync::oneshot::Sender<ResponseForDenoMessage>,
     },
-    RequestInteceptedOperationProceed {
-        response_sender: tokio::sync::oneshot::Sender<ToDenoMessage>
+    InteceptedOperationProceed {
+        response_sender: tokio::sync::oneshot::Sender<ResponseForDenoMessage>,
     },
-    RequestClaytipExecute {
+    ClaytipExecute {
         query_string: String,
         variables: Option<serde_json::Map<String, Value>>,
-        response_sender: tokio::sync::oneshot::Sender<ToDenoMessage>
+        response_sender: tokio::sync::oneshot::Sender<ResponseForDenoMessage>,
     },
 }
 
-pub enum ToDenoMessage {
-    ResponseInteceptedOperationName(String),
-    ResponseInteceptedOperationProceed(Result<Value>),
-    ResponseClaytipExecute(Result<Value>),
+pub enum ResponseForDenoMessage {
+    InteceptedOperationName(String),
+    InteceptedOperationProceed(Result<Value>),
+    ClaytipExecute(Result<Value>),
 }
 
 pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> LocalBoxFuture<'a, Result<Value>>
@@ -47,7 +43,7 @@ pub struct MethodCall {
     pub method_name: String,
     pub arguments: Vec<Arg>,
 
-    pub to_user: tokio::sync::mpsc::Sender<FromDenoMessage>,
+    pub to_user: tokio::sync::mpsc::Sender<RequestFromDenoMessage>,
 }
 
 impl DenoActor {
@@ -79,23 +75,23 @@ impl DenoActor {
                             let variables: Option<serde_json::Map<String, Value>> =
                                 args.get(1).map(|vars| serde_json::from_str(vars).unwrap());
 
-                            let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+                            let (response_sender, response_receiver) =
+                                tokio::sync::oneshot::channel();
 
                             println!("op_claytip_execute_query send...");
                             sender
-                                .send(FromDenoMessage::RequestClaytipExecute {
+                                .send(RequestFromDenoMessage::ClaytipExecute {
                                     query_string: query_string.to_owned(),
                                     variables,
-                                    response_sender
+                                    response_sender,
                                 })
                                 .await
                                 .ok()
                                 .unwrap();
 
-
                             println!("op_claytip_execute_query recv...");
                             //println!("exec2");
-                            if let ToDenoMessage::ResponseClaytipExecute(result) =
+                            if let ResponseForDenoMessage::ClaytipExecute(result) =
                                 response_receiver.await.unwrap()
                             {
                                 result
@@ -118,19 +114,20 @@ impl DenoActor {
                         println!("op_intercepted_operation_name");
                         async move {
                             println!("op_intercepted_operation_name future start");
-                            let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+                            let (response_sender, response_receiver) =
+                                tokio::sync::oneshot::channel();
 
                             println!("op_intercepted_operation_name send...");
                             sender
-                                .send(FromDenoMessage::RequestInteceptedOperationName {
-                                    response_sender
+                                .send(RequestFromDenoMessage::InteceptedOperationName {
+                                    response_sender,
                                 })
                                 .await
                                 .ok()
                                 .unwrap();
 
                             println!("op_intercepted_operation_name recv...");
-                            if let ToDenoMessage::ResponseInteceptedOperationName(result) =
+                            if let ResponseForDenoMessage::InteceptedOperationName(result) =
                                 response_receiver.await.unwrap()
                             {
                                 Ok(result)
@@ -154,19 +151,20 @@ impl DenoActor {
                         async move {
                             println!("op_intercepted_proceed future start");
 
-                            let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+                            let (response_sender, response_receiver) =
+                                tokio::sync::oneshot::channel();
 
                             println!("op_intercepted_proceed send...");
                             sender
-                                .send(FromDenoMessage::RequestInteceptedOperationProceed {
-                                    response_sender
+                                .send(RequestFromDenoMessage::InteceptedOperationProceed {
+                                    response_sender,
                                 })
                                 .await
                                 .ok()
                                 .unwrap();
 
                             println!("op_intercepted_proceed recv...");
-                            if let ToDenoMessage::ResponseInteceptedOperationProceed(result) =
+                            if let ResponseForDenoMessage::InteceptedOperationProceed(result) =
                                 response_receiver.await.unwrap()
                             {
                                 result
@@ -183,13 +181,13 @@ impl DenoActor {
             }
         };
 
-        let deno_module = DenoModule::new(&path, "Claytip", &shims, register_ops, shared_state);
+        let deno_module = DenoModule::new(path, "Claytip", &shims, register_ops, shared_state);
 
         let deno_module = deno_module.await.unwrap();
 
         DenoActor {
             deno_module,
-            from_deno_receiver: from_deno_receiver,
+            from_deno_receiver,
         }
     }
 

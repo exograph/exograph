@@ -1,17 +1,16 @@
 use std::{
-    cell::RefCell,
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex},
 };
 
-use futures::{pin_mut, select, Future, FutureExt, StreamExt};
+use futures::pin_mut;
 
 use crate::actor::MethodCall;
 use crate::{
     actor::{
         FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed,
-        FromDenoMessage, ToDenoMessage,
+        RequestFromDenoMessage, ResponseForDenoMessage,
     },
     Arg, DenoActor, DenoModuleSharedState,
 };
@@ -21,6 +20,7 @@ use serde_json::Value;
 type DenoActorPoolMap = HashMap<PathBuf, DenoActorPool>;
 type DenoActorPool = Vec<Arc<Mutex<DenoActor>>>;
 
+#[derive(Default)]
 pub struct DenoExecutor {
     actor_pool_map: Arc<Mutex<DenoActorPoolMap>>,
     shared_state: DenoModuleSharedState,
@@ -29,13 +29,6 @@ pub struct DenoExecutor {
 unsafe impl Send for DenoActor {}
 
 impl<'a> DenoExecutor {
-    pub fn new() -> DenoExecutor {
-        DenoExecutor {
-            actor_pool_map: Default::default(),
-            shared_state: Default::default(),
-        }
-    }
-
     pub async fn preload_module(&self, path: &Path, instances: usize) {
         let mut actor_pool_map = self.actor_pool_map.lock().unwrap();
 
@@ -83,17 +76,15 @@ impl<'a> DenoExecutor {
             let mut actor_pool_map = self.actor_pool_map.try_lock().unwrap().clone();
             let actor_pool = actor_pool_map
                 .entry(module_path.to_path_buf())
-                .or_insert(vec![]);
+                .or_insert_with(Vec::new);
 
             actor_pool.clone()
         };
 
+        #[allow(unused_assignments)]
         let mut actor_mutex: Option<Arc<Mutex<DenoActor>>> = None;
 
-        let lock =
-            actor_pool_copy
-                .iter()
-                .find_map(|addr| addr.try_lock().ok());
+        let lock = actor_pool_copy.iter().find_map(|addr| addr.try_lock().ok());
 
         let mut actor = if let Some(actor) = lock {
             println!("one free");
@@ -117,12 +108,11 @@ impl<'a> DenoExecutor {
 
         let (to_user_sender, mut to_user_receiver) = tokio::sync::mpsc::channel(1);
 
-        let on_finished = actor
-            .handle(MethodCall {
-                method_name: method_name.to_string(),
-                arguments,
-                to_user: to_user_sender,
-            });
+        let on_finished = actor.handle(MethodCall {
+            method_name: method_name.to_string(),
+            arguments,
+            to_user: to_user_sender,
+        });
 
         pin_mut!(on_finished);
 
@@ -134,24 +124,24 @@ impl<'a> DenoExecutor {
             tokio::select! {
                 msg = on_recv => {
                     match msg.unwrap() {
-                        FromDenoMessage::RequestInteceptedOperationName {
+                        RequestFromDenoMessage::InteceptedOperationName {
                             response_sender
                         } => {
                             println!("executor recv loop: name request!");
                             let name = claytip_get_interceptor.unwrap()();
-                            response_sender.send(ToDenoMessage::ResponseInteceptedOperationName(name)).ok().unwrap();
+                            response_sender.send(ResponseForDenoMessage::InteceptedOperationName(name)).ok().unwrap();
                         },
-                        FromDenoMessage::RequestInteceptedOperationProceed {
+                        RequestFromDenoMessage::InteceptedOperationProceed {
                             response_sender
                         } => {
                             println!("executor recv loop: proceed request!");
                             let proceed_result = claytip_proceed.unwrap()().await;
-                            response_sender.send(ToDenoMessage::ResponseInteceptedOperationProceed(proceed_result)).ok().unwrap();
+                            response_sender.send(ResponseForDenoMessage::InteceptedOperationProceed(proceed_result)).ok().unwrap();
                         },
-                        FromDenoMessage::RequestClaytipExecute { query_string, variables, response_sender } => {
+                        RequestFromDenoMessage::ClaytipExecute { query_string, variables, response_sender } => {
                             println!("executor recv loop: execution request!");
                             let query_result = claytip_execute_query.unwrap()(query_string, variables).await;
-                            response_sender.send(ToDenoMessage::ResponseClaytipExecute(query_result)).ok().unwrap();
+                            response_sender.send(ResponseForDenoMessage::ClaytipExecute(query_result)).ok().unwrap();
                         },
                     }
                 }
