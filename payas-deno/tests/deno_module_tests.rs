@@ -1,18 +1,17 @@
 use std::path::Path;
 
 use anyhow::Result;
-use async_channel::unbounded;
-use deno_core::{serde_json::Value, JsRuntime};
-use futures::future::{join, join_all};
-use payas_deno::{Arg, DenoActor, DenoExecutor, DenoModule, DenoModuleSharedState, MethodCall};
-
 use deno_core::serde_json::json;
+use deno_core::{serde_json::Value, JsRuntime};
+use futures::future::join_all;
+use payas_deno::{Arg, DenoActor, DenoExecutor, DenoModule, DenoModuleSharedState, MethodCall};
+use tokio::sync::mpsc::channel;
 
 fn no_op(_: String, _: Option<&serde_json::Map<String, Value>>) -> Result<serde_json::Value> {
     panic!()
 }
 
-#[tokio::test]
+#[actix_rt::test]
 async fn test_direct_sync() {
     let mut deno_module = DenoModule::new(
         Path::new("./tests/direct.js"),
@@ -23,8 +22,6 @@ async fn test_direct_sync() {
     )
     .await
     .unwrap();
-
-    deno_module.preload_function(vec!["addAndDouble"]);
 
     let sync_ret_value = deno_module
         .execute_function(
@@ -40,7 +37,7 @@ async fn test_direct_sync() {
     assert_eq!(sync_ret_value, Value::Number(12.into()));
 }
 
-#[tokio::test]
+#[actix_rt::test]
 async fn test_actor() {
     let mut actor = DenoActor::new(
         Path::new("./tests/direct.js"),
@@ -48,27 +45,25 @@ async fn test_actor() {
     )
     .await;
 
-    let (to_user_sender, _to_user_receiver) = unbounded();
-    let (_from_user_sender, from_user_receiver) = unbounded();
+    let (to_user_sender, _to_user_receiver) = channel(1);
 
     let res = actor
         .handle(MethodCall {
             method_name: "addAndDouble".to_string(),
             arguments: vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
             to_user: to_user_sender,
-            from_user: from_user_receiver,
         })
         .await;
 
     assert_eq!(res.unwrap(), 10);
 }
 
-#[tokio::test]
+#[actix_rt::test]
 async fn test_actor_executor() {
-    let executor = DenoExecutor::new();
+    let executor = DenoExecutor::default();
     let module_path = Path::new("./tests/direct.js");
 
-    //executor.preload_module(module_path, 1).await;
+    executor.preload_module(module_path, 1).await;
 
     let res = executor
         .execute_function(
@@ -81,41 +76,40 @@ async fn test_actor_executor() {
     assert_eq!(res.unwrap(), 10);
 }
 
-//#[actix::test]
-//async fn test_actor_executor_threaded() {
-//    let mut executor = DenoExecutor::new();
-//    let module_path = Path::new("./tests/direct.js");
-//
-//    executor.preload_module(module_path, 1);
-//
-//    let mut handles = vec![];
-//
-//    for _ in 1..=3 {
-//        let handle = executor.execute_function(
-//            module_path,
-//            "addAndDouble",
-//            vec![
-//                Arg::Serde(Value::Number(4.into())),
-//                Arg::Serde(Value::Number(2.into())),
-//            ],
-//        );
-//
-//        handles.push(handle);
-//    }
-//
-//    let res = handles
-//        .into_iter()
-//        .map(|h| h.join().unwrap().unwrap())
-//        .filter(|x| x == 12)
-//        .count();
-//
-//    assert_eq!(
-//        res,
-//        3
-//    );
-//}
-//
 #[tokio::test]
+async fn test_actor_executor_concurrent() {
+    let executor = DenoExecutor::default();
+    let module_path = Path::new("./tests/direct.js");
+    let total_futures = 10;
+
+    // start with one preloaded DenoModule
+    executor.preload_module(module_path, 1).await;
+
+    let mut handles = vec![];
+
+    for _ in 1..=total_futures {
+        let handle = executor.execute_function(
+            module_path,
+            "addAndDouble",
+            vec![
+                Arg::Serde(Value::Number(4.into())),
+                Arg::Serde(Value::Number(2.into())),
+            ],
+        );
+
+        handles.push(handle);
+    }
+
+    let result = join_all(handles)
+        .await
+        .iter()
+        .filter(|res| res.as_ref().unwrap() == 12)
+        .count();
+
+    assert_eq!(result, total_futures);
+}
+
+#[actix_rt::test]
 async fn test_direct_async() {
     let mut deno_module = DenoModule::new(
         Path::new("./tests/direct.js"),
@@ -126,8 +120,6 @@ async fn test_direct_async() {
     )
     .await
     .unwrap();
-
-    deno_module.preload_function(vec!["getJson"]);
 
     let async_ret_value = deno_module
         .execute_function("getJson", vec![Arg::Serde(Value::String("4".into()))])
@@ -149,7 +141,7 @@ async fn test_direct_async() {
     );
 }
 
-#[tokio::test]
+#[actix_rt::test]
 async fn test_shim_sync() {
     static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("shim.js"));
 
@@ -162,8 +154,6 @@ async fn test_shim_sync() {
     )
     .await
     .unwrap();
-
-    deno_module.preload_function(vec!["addAndDoubleThroughShim"]);
 
     let sync_ret_value = deno_module
         .execute_function(
@@ -192,7 +182,7 @@ async fn test_shim_sync() {
     assert_eq!(sync_ret_value, Value::Number(126.into()));
 }
 
-#[tokio::test]
+#[actix_rt::test]
 async fn test_shim_async() {
     static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("shim.js"));
 
@@ -205,8 +195,6 @@ async fn test_shim_async() {
     )
     .await
     .unwrap();
-
-    deno_module.preload_function(vec!["getJsonThroughShim"]);
 
     let async_ret_value = deno_module
         .execute_function(
@@ -240,7 +228,7 @@ async fn test_shim_async() {
     );
 }
 
-#[tokio::test]
+#[actix_rt::test]
 async fn test_register_ops() {
     fn register_ops(runtime: &mut JsRuntime) {
         let sync_ops = vec![(
@@ -263,8 +251,6 @@ async fn test_register_ops() {
     )
     .await
     .unwrap();
-
-    deno_module.preload_function(vec!["syncUsingRegisteredFunction"]);
 
     let sync_ret_value = deno_module
         .execute_function(

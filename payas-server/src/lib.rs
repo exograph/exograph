@@ -81,7 +81,6 @@ async fn resolve(
                 Ok(parts) => {
                     let response_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         let parts_len = parts.len();
-
                         yield to_bytes_static(r#"{"data": {"#);
                         for (index, part) in parts.into_iter().enumerate() {
                             yield to_bytes_static("\"");
@@ -282,7 +281,8 @@ fn start_server(
             .data(authenticator.clone())
             .route("/", web::get().to(playground))
             .route("/", web::post().to(resolve))
-    });
+    })
+    .workers(1); // see payas-deno/executor.rs
 
     let server_port = env::var(SERVER_PORT_PARAM)
         .ok()

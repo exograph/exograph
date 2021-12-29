@@ -156,26 +156,15 @@ impl DenoModule {
         })
     }
 
-    pub fn preload_function(&mut self, function_names: Vec<&str>) {
-        let worker = &mut self.worker;
-        println!("locking preload...");
-        let runtime = &mut worker.try_lock().unwrap().js_runtime;
-
-        for fname in function_names.iter() {
-            let script = preload_script(runtime, fname, &format!("mod.{}", fname));
-            self.script_map.insert(fname.to_string(), script);
-        }
-    }
-
     pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
         println!("running {}", function_name);
 
         let worker = &mut self.worker;
-        println!("locking execute...");
         let runtime = &mut worker.try_lock().unwrap().js_runtime;
 
         // TODO: does this yield any significant optimization?
-        let func_value = run_script(runtime, &self.script_map[function_name]).unwrap();
+        //let func_value = run_script(runtime, &self.script_map[function_name]).unwrap();
+        let func_value = runtime.execute_script("", &format!("mod.{}", function_name))?;
 
         let shim_objects_vals: Vec<_> = self
             .shim_object_names
@@ -241,64 +230,16 @@ impl DenoModule {
         };
 
         {
-            println!("resolving...");
             let value = runtime.resolve_value(global).await.map_err(|err| {
                 // got some AnyError from Deno internals...
                 eprintln!("{}", err);
                 anyhow!("Internal server error")
             })?;
-            println!("resolved");
 
             let scope = &mut runtime.handle_scope();
             let res = v8::Local::new(scope, value);
             let res: Value = serde_v8::from_v8(scope, res)?;
             Ok(res)
-        }
-    }
-}
-
-fn preload_script(runtime: &mut JsRuntime, name: &str, source_code: &str) -> DenoScript {
-    let mut scope = runtime.handle_scope();
-
-    let source = v8::String::new(&mut scope, source_code).unwrap();
-    let name = v8::String::new(&mut scope, name).unwrap();
-
-    let source_map_url = v8::String::new(&mut scope, "").unwrap();
-    let origin = v8::ScriptOrigin::new(
-        &mut scope,
-        name.into(),
-        0,
-        0,
-        false,
-        123,
-        source_map_url.into(),
-        true,
-        false,
-        false,
-    );
-
-    let mut tc_scope = v8::TryCatch::new(&mut scope);
-
-    match v8::Script::compile(&mut tc_scope, source, Some(&origin)) {
-        Some(local_script) => {
-            let script = v8::Global::new(&mut tc_scope, local_script);
-            DenoScript { script }
-        }
-        None => panic!(),
-    }
-}
-
-fn run_script(runtime: &mut JsRuntime, ds: &DenoScript) -> Result<Global<v8::Value>> {
-    let mut scope = runtime.handle_scope();
-    let mut tc_scope = v8::TryCatch::new(&mut scope);
-
-    match ds.script.get(&mut tc_scope).run(&mut tc_scope) {
-        Some(value) => {
-            let value_handle = v8::Global::new(&mut tc_scope, value);
-            Ok(value_handle)
-        }
-        None => {
-            panic!("Exception");
         }
     }
 }

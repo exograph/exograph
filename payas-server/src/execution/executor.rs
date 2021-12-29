@@ -1,6 +1,9 @@
 use super::query_context;
 use crate::introspection::schema::Schema;
-use async_graphql_parser::{parse_query, types::DocumentOperations};
+use async_graphql_parser::{
+    parse_query,
+    types::{DocumentOperations, OperationType},
+};
 
 use anyhow::Result;
 
@@ -46,15 +49,31 @@ impl<'a> Executor<'a> {
         let (operations, query_context) =
             self.create_query_context(operation_name, query_str, &variables, &request_context);
 
-        let resolution: Vec<_> = operations
+        let mutation_operations = operations
             .iter()
+            .filter(|(_, op)| op.node.ty == OperationType::Mutation);
+
+        let query_operations = operations
+            .iter()
+            .filter(|(_, op)| op.node.ty == OperationType::Query);
+
+        // process mutations one-by-one
+        let mut mutation_resolution = vec![];
+        for query in mutation_operations {
+            let result = query_context.resolve_operation(query).await;
+            mutation_resolution.push(result);
+        }
+
+        // process queries concurrently
+        let query_resolution_futures: Vec<_> = query_operations
             .map(|query| query_context.resolve_operation(query))
             .collect();
+        let query_resolution = join_all(query_resolution_futures).await;
 
-        let resolution = join_all(resolution).await;
-
-        resolution
+        vec![]
             .into_iter()
+            .chain(mutation_resolution.into_iter())
+            .chain(query_resolution.into_iter())
             .flat_map(|query: Result<Vec<(String, QueryResponse)>>| match query {
                 Ok(resolved) => resolved.into_iter().map(Ok).collect(),
                 Err(err) => vec![Err(err)],

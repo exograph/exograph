@@ -6,7 +6,7 @@ use async_graphql_parser::{
     Positioned,
 };
 use async_trait::async_trait;
-use futures::future::join_all;
+use futures::StreamExt;
 use serde_json::Value;
 
 use super::query_context::QueryContext;
@@ -86,15 +86,12 @@ where
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
     ) -> Result<Vec<(String, R)>> {
-        let selections: Vec<_> = selection_set
-            .node
-            .items
-            .iter()
-            .map(|selection| self.resolve_selection(query_context, selection))
-            .collect();
+        let selections: Vec<_> = futures::stream::iter(selection_set.node.items.iter())
+            .then(|selection| self.resolve_selection(query_context, selection))
+            .collect()
+            .await;
 
-        join_all(selections)
-            .await
+        selections
             .into_iter()
             .flat_map(|selection| match selection {
                 Ok(s) => s.into_iter().map(Ok).collect(),
@@ -210,12 +207,12 @@ where
         query_context: &'e QueryContext<'e>,
         selection_set: &'e Positioned<SelectionSet>,
     ) -> Result<Value> {
-        let resolved: Vec<_> = self
-            .iter()
-            .map(|elem| elem.resolve_value(query_context, selection_set))
-            .collect();
+        let resolved: Vec<_> = futures::stream::iter(self.iter())
+            .then(|elem| elem.resolve_value(query_context, selection_set))
+            .collect()
+            .await;
 
-        let resolved: Result<Vec<Value>> = join_all(resolved).await.into_iter().collect();
+        let resolved: Result<Vec<Value>> = resolved.into_iter().collect();
 
         Ok(Value::Array(resolved?))
     }

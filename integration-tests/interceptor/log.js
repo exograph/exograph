@@ -5,7 +5,7 @@ export async function enterConcertMutation(operation, claytip) {
 
 export async function enterVenueMutation(operation, claytip) {
     console.log(`exitConcertMutation: ${await operation.name()}`);
-    await logEntry(`enterVenueMutation: ${name}`, claytip)
+    await logEntry(`enterVenueMutation: ${await operation.name()}`, claytip)
     return true
 }
 
@@ -15,7 +15,7 @@ export async function exitConcertMutation(operation, claytip) {
 
 export async function exitVenueMutation(operation, claytip) {
     console.log(`exitVenueMutation: ${await operation.name()}`);
-    await logEntry(`exitVenueMutation: ${name}`, claytip)
+    await logEntry(`exitVenueMutation: ${await operation.name()}`, claytip)
     return true
 }
 

@@ -1,6 +1,6 @@
 use async_graphql_parser::{types::Field, Positioned};
 use async_recursion::async_recursion;
-use futures::{FutureExt};
+use futures::FutureExt;
 use payas_deno::{
     Arg, FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed,
 };
@@ -306,38 +306,38 @@ async fn execute_interceptor<'a>(
     claytip_get_interceptor: Option<&'a FnClaytipInterceptorGetName<'a>>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<serde_json::Value> {
-        let path = &interceptor.module_path;
-        let arg_sequence = interceptor
-            .arguments
-            .iter()
-            .map(|arg| {
-                let arg_type = &query_context.executor.system.types[arg.type_id];
+    let path = &interceptor.module_path;
+    let arg_sequence = interceptor
+        .arguments
+        .iter()
+        .map(|arg| {
+            let arg_type = &query_context.executor.system.types[arg.type_id];
 
-                if arg_type.name == "Operation" || arg_type.name == "ClaytipInjected" {
-                    // TODO: Change this to supply a shim if the arg_type is one of the shimmable types
-                    Ok(Arg::Shim(arg_type.name.clone()))
-                } else {
-                    bail!("Invalid argument type {}", arg_type.name)
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
+            if arg_type.name == "Operation" || arg_type.name == "ClaytipInjected" {
+                // TODO: Change this to supply a shim if the arg_type is one of the shimmable types
+                Ok(Arg::Shim(arg_type.name.clone()))
+            } else {
+                bail!("Invalid argument type {}", arg_type.name)
+            }
+        })
+        .collect::<Result<Vec<_>>>()?;
 
-        query_context
-            .executor
-            .deno_execution
-            .preload_module(path, 10)
-            .await;
+    query_context
+        .executor
+        .deno_execution
+        .preload_module(path, 10)
+        .await;
 
-        query_context
-            .executor
-            .deno_execution
-            .execute_function_with_shims(
-                path,
-                &interceptor.name,
-                arg_sequence,
-                claytip_execute_query,
-                claytip_get_interceptor,
-                claytip_proceed_operation,
-            )
-            .await
+    query_context
+        .executor
+        .deno_execution
+        .execute_function_with_shims(
+            path,
+            &interceptor.name,
+            arg_sequence,
+            claytip_execute_query,
+            claytip_get_interceptor,
+            claytip_proceed_operation,
+        )
+        .await
 }

@@ -1,14 +1,15 @@
-use std::panic;
-use std::path::Path;
 use anyhow::Result;
 use deno_core::JsRuntime;
 use futures::future::LocalBoxFuture;
 use futures::pin_mut;
 use serde_json::Value;
+use std::panic;
+use std::path::Path;
 use tokio::sync::mpsc::Receiver;
 
 use crate::{Arg, DenoModule, DenoModuleSharedState};
 
+/// An actor-like wrapper for DenoModule.
 pub struct DenoActor {
     deno_module: DenoModule,
     from_deno_receiver: Receiver<RequestFromDenoMessage>,
@@ -67,10 +68,7 @@ impl DenoActor {
                     deno_core::op_async(move |_state, args: Vec<String>, (): _| {
                         let mut sender = from_deno_sender.clone();
 
-                        println!("op_claytip_execute_query");
                         async move {
-                            println!("op_claytip_execute_query future start");
-
                             let query_string = &args[0];
                             let variables: Option<serde_json::Map<String, Value>> =
                                 args.get(1).map(|vars| serde_json::from_str(vars).unwrap());
@@ -78,7 +76,6 @@ impl DenoActor {
                             let (response_sender, response_receiver) =
                                 tokio::sync::oneshot::channel();
 
-                            println!("op_claytip_execute_query send...");
                             sender
                                 .send(RequestFromDenoMessage::ClaytipExecute {
                                     query_string: query_string.to_owned(),
@@ -89,8 +86,6 @@ impl DenoActor {
                                 .ok()
                                 .unwrap();
 
-                            println!("op_claytip_execute_query recv...");
-                            //println!("exec2");
                             if let ResponseForDenoMessage::ClaytipExecute(result) =
                                 response_receiver.await.unwrap()
                             {
@@ -111,13 +106,10 @@ impl DenoActor {
                     deno_core::op_async(move |_state, _: (), (): _| {
                         let mut sender = from_deno_sender.clone();
 
-                        println!("op_intercepted_operation_name");
                         async move {
-                            println!("op_intercepted_operation_name future start");
                             let (response_sender, response_receiver) =
                                 tokio::sync::oneshot::channel();
 
-                            println!("op_intercepted_operation_name send...");
                             sender
                                 .send(RequestFromDenoMessage::InteceptedOperationName {
                                     response_sender,
@@ -126,7 +118,6 @@ impl DenoActor {
                                 .ok()
                                 .unwrap();
 
-                            println!("op_intercepted_operation_name recv...");
                             if let ResponseForDenoMessage::InteceptedOperationName(result) =
                                 response_receiver.await.unwrap()
                             {
@@ -147,14 +138,10 @@ impl DenoActor {
                     deno_core::op_async(move |_state, _: (), (): _| {
                         let mut sender = from_deno_sender.clone();
 
-                        println!("op_intercepted_proceed");
                         async move {
-                            println!("op_intercepted_proceed future start");
-
                             let (response_sender, response_receiver) =
                                 tokio::sync::oneshot::channel();
 
-                            println!("op_intercepted_proceed send...");
                             sender
                                 .send(RequestFromDenoMessage::InteceptedOperationProceed {
                                     response_sender,
@@ -163,7 +150,6 @@ impl DenoActor {
                                 .ok()
                                 .unwrap();
 
-                            println!("op_intercepted_proceed recv...");
                             if let ResponseForDenoMessage::InteceptedOperationProceed(result) =
                                 response_receiver.await.unwrap()
                             {
@@ -194,9 +180,6 @@ impl DenoActor {
     pub async fn handle(&mut self, mut msg: MethodCall) -> Result<Value> {
         println!("Executing {}", &msg.method_name);
 
-        // load function by name in module
-        self.deno_module.preload_function(vec![&msg.method_name]);
-
         let finished = self
             .deno_module
             .execute_function(&msg.method_name, msg.arguments);
@@ -204,18 +187,16 @@ impl DenoActor {
         pin_mut!(finished);
 
         loop {
-            println!("actor recv loop turn start");
             let recv = self.from_deno_receiver.recv();
             pin_mut!(recv);
 
             tokio::select! {
                 message = recv => {
-                    println!("actor recv loop: got from_deno_receiver message, forwarding to user");
+                    // forward message from Deno to the caller through the channel they gave us
                     msg.to_user.send(message.unwrap()).await.ok().unwrap();
                 }
 
                 final_result = &mut finished => {
-                    println!("actor recv loop: got final result");
                     break final_result;
                 }
             };
