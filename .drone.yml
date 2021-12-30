@@ -6,19 +6,18 @@ trigger:
   - main
 
 steps:
-  - name: slack-start
-    image: plugins/slack
+  - name: discord-start
+    image: appleboy/drone-discord
+    pull: if-not-exists
     settings:
-      webhook: https://hooks.slack.com/services/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
-      username: drone
-      channel: ci
-      template: Build {{build.number}} started {{build.link}}
-
+      webhook_id: "926191813780459520"
+      webhook_token: "i2MeZ0VMXm1oVH8sC6HD6GBS6L-UEUyOxr16Dv3kCLVyknE4FiiNSy5R-hKaQYUxfMYB"
+      message: "Build {{build.number}} started {{build.link}}"
   - name: rustfmt-clippy
     image: payas-ci-image
     pull: if-not-exists
     depends_on:
-      - slack-start
+      - discord-start
     volumes:
     - name: sccache
       path: /sccache
@@ -30,7 +29,7 @@ steps:
     image: payas-ci-image
     pull: if-not-exists
     depends_on:
-      - slack-start
+      - discord-start
     volumes:
     - name: sccache
       path: /sccache
@@ -41,7 +40,7 @@ steps:
     image: payas-ci-image
     pull: if-not-exists
     depends_on:
-      - slack-start
+      - discord-start
     volumes:
     - name: sccache
       path: /sccache
@@ -50,8 +49,9 @@ steps:
       - export PATH=./target/release:$PATH
       - CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 clay test integration-tests
 
-  - name: slack-end
-    image: plugins/slack
+  - name: discord-end
+    image: appleboy/drone-discord
+    pull: if-not-exists
     depends_on:
       - rustfmt-clippy
       - test
@@ -59,9 +59,8 @@ steps:
     when:
       status: [success, failure]
     settings:
-      webhook: https://hooks.slack.com/services/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
-      username: drone
-      channel: ci
+      webhook_id: "926191813780459520"
+      webhook_token: "i2MeZ0VMXm1oVH8sC6HD6GBS6L-UEUyOxr16Dv3kCLVyknE4FiiNSy5R-hKaQYUxfMYB"
 
 services:
   - name: database
