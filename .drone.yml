@@ -17,7 +17,7 @@ steps:
     image: payas-ci-image
     pull: if-not-exists
     depends_on:
-      - slack-start
+      - discord-start
     volumes:
     - name: sccache
       path: /sccache
@@ -29,7 +29,7 @@ steps:
     image: payas-ci-image
     pull: if-not-exists
     depends_on:
-      - slack-start
+      - discord-start
     volumes:
     - name: sccache
       path: /sccache
@@ -40,7 +40,7 @@ steps:
     image: payas-ci-image
     pull: if-not-exists
     depends_on:
-      - slack-start
+      - discord-start
     volumes:
     - name: sccache
       path: /sccache
