@@ -10,7 +10,7 @@ steps:
     image: appleboy/drone-discord
     pull: if-not-exists
     settings:
-      webhook_id: 926191813780459520
+      webhook_id: "926191813780459520"
       webhook_token: "i2MeZ0VMXm1oVH8sC6HD6GBS6L-UEUyOxr16Dv3kCLVyknE4FiiNSy5R-hKaQYUxfMYB"
       message: "Build {{build.number}} started {{build.link}}"
   - name: rustfmt-clippy
@@ -59,7 +59,7 @@ steps:
     when:
       status: [success, failure]
     settings:
-      webhook_id: 926191813780459520
+      webhook_id: "926191813780459520"
       webhook_token: "i2MeZ0VMXm1oVH8sC6HD6GBS6L-UEUyOxr16Dv3kCLVyknE4FiiNSy5R-hKaQYUxfMYB"
 
 services:
