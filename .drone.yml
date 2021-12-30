@@ -8,6 +8,7 @@ trigger:
 steps:
   - name: discord-start
     image: appleboy/drone-discord
+    pull: if-not-exists
     settings:
       webhook_id: 926191813780459520
       webhook_token: "i2MeZ0VMXm1oVH8sC6HD6GBS6L-UEUyOxr16Dv3kCLVyknE4FiiNSy5R-hKaQYUxfMYB"
@@ -50,6 +51,7 @@ steps:
 
   - name: discord-end
     image: appleboy/drone-discord
+    pull: if-not-exists
     depends_on:
       - rustfmt-clippy
       - test
