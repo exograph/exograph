@@ -43,6 +43,7 @@ types:
               kind:
                 Persistent:
                   column_name: _id
+                  self_column: true
                   is_pk: true
                   is_autoincrement: true
                   type_hint: ~
@@ -52,6 +53,7 @@ types:
               kind:
                 Persistent:
                   column_name: title_main
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
@@ -61,6 +63,7 @@ types:
               kind:
                 Persistent:
                   column_name: title_main1
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
@@ -70,6 +73,7 @@ types:
               kind:
                 Persistent:
                   column_name: public1
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
@@ -79,6 +83,7 @@ types:
               kind:
                 Persistent:
                   column_name: PUBLIC2
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
@@ -88,6 +93,7 @@ types:
               kind:
                 Persistent:
                   column_name: foo123
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~

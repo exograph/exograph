@@ -16,8 +16,8 @@ use payas_model::{
 use super::{
     access_utils,
     resolved_builder::{
-        ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedMethod, ResolvedType,
-        ResolvedTypeHint,
+        ResolvedAccess, ResolvedField, ResolvedFieldKind, ResolvedFieldType, ResolvedMethod,
+        ResolvedType, ResolvedTypeHint,
     },
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
@@ -282,7 +282,18 @@ fn create_column(
     table_name: &str,
     env: &MappedArena<ResolvedType>,
 ) -> Option<PhysicalColumn> {
-    // split Optional types into a bool and its inner type
+    // Check that the field holds to a self column
+    match &field.kind {
+        ResolvedFieldKind::Persistent { self_column, .. } => {
+            if !self_column {
+                return None;
+            }
+        }
+        ResolvedFieldKind::NonPersistent => {
+            panic!("Non-persistent fields are not supported")
+        }
+    };
+    // split a Optional type into its inner type and the optional marker
     let (typ, optional) = match &field.typ {
         ResolvedFieldType::Optional(inner_typ) => (inner_typ.as_ref(), true),
         _ => (&field.typ, false),
@@ -290,9 +301,6 @@ fn create_column(
 
     match typ {
         ResolvedFieldType::Plain(type_name) => {
-            if matches!(field.typ, ResolvedFieldType::Optional(_)) {
-                return None; // The optional side in one-to-one relations doesn't have a column (much like the many side in many-to-one relations)
-            }
             // Either a scalar (primitive) or a many-to-one relationship with another table
             let field_type = env.get_by_key(type_name).unwrap();
 
@@ -556,13 +564,16 @@ fn create_relation(
             column_id: column_id.unwrap(),
         }
     } else {
+        fn compute_base_type(field_type: &ResolvedFieldType) -> &ResolvedFieldType {
+            match field_type {
+                ResolvedFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+                _ => field_type,
+            }
+        }
         // we can treat Optional fields as their inner type for the purposes of computing relations
-        let typ = match &field.typ {
-            ResolvedFieldType::Optional(inner_typ) => inner_typ.as_ref(),
-            _ => &field.typ,
-        };
+        let field_base_typ = compute_base_type(&field.typ);
 
-        match typ {
+        match field_base_typ {
             ResolvedFieldType::List(underlying) => {
                 if let ResolvedType::Primitive(_) = underlying.deref(env) {
                     // List of a primitive type is still a scalar from the database perspective
@@ -639,18 +650,24 @@ fn create_relation(
                                     cardinality: RelationCardinality::Optional,
                                 }
                             }
-                            (ResolvedFieldType::List(_), ResolvedFieldType::Plain(_)) => {
-                                let column_id = compute_column_id(table, table_id, field);
-                                GqlRelation::ManyToOne {
-                                    column_id: column_id.unwrap(),
-                                    other_type_id,
-                                    cardinality: RelationCardinality::Unbounded,
+                            (field_typ, other_field_type) => {
+                                match (field_base_typ, compute_base_type(other_field_type)) {
+                                    (ResolvedFieldType::Plain(_), ResolvedFieldType::List(_)) => {
+                                        let column_id = compute_column_id(table, table_id, field);
+                                        GqlRelation::ManyToOne {
+                                            column_id: column_id.unwrap(),
+                                            other_type_id,
+                                            cardinality: RelationCardinality::Unbounded,
+                                        }
+                                    }
+                                    _ => {
+                                        panic!(
+                                            "Unexpected relation type for field `{}` of {:?} type. The matching field is {:?}",
+                                            field.name, field_typ, other_field_type
+                                        )
+                                    }
                                 }
                             }
-                            (field_typ, other_field_type) => panic!(
-                                "Unexpected relation type {:?} -> {:?}",
-                                field_typ, other_field_type
-                            ),
                         }
                     }
                 }

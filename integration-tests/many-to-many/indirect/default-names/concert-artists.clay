@@ -15,4 +15,5 @@ model ConcertArtist {
 model Artist {
   id: Int @pk @autoincrement
   name: String
+  concertArtists: Set<ConcertArtist>
 }

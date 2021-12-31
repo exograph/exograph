@@ -209,6 +209,7 @@ impl ResolvedField {
 pub enum ResolvedFieldKind {
     Persistent {
         column_name: String,
+        self_column: bool, // is the column name in the same table or does it point to a column in a different table?
         is_pk: bool,
         is_autoincrement: bool,
         type_hint: Option<ResolvedTypeHint>,
@@ -705,8 +706,11 @@ fn build_expanded_persistent_type(
                     typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
                     kind: match kind {
                         ResolvedCompositeTypeKind::Persistent { .. } => {
+                            let (column_name, self_column) =
+                                compute_column_name(ct, field, types, errors)?;
                             ResolvedFieldKind::Persistent {
-                                column_name: compute_column_name(ct, field, types, errors)?,
+                                column_name,
+                                self_column,
                                 is_pk: field.annotations.contains("pk"),
                                 is_autoincrement: field.annotations.contains("autoincrement"),
                                 type_hint: build_type_hint(field, types),
@@ -1000,88 +1004,92 @@ fn compute_column_name(
     field: &AstField<Typed>,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-) -> Result<String, ParserError> {
-    fn default_column_name(
+) -> Result<(String, bool), ParserError> {
+    fn column_name(
+        user_supplied_column_name: Option<String>,
         enclosing_type: &AstModel<Typed>,
         field: &AstField<Typed>,
         types: &MappedArena<Type>,
         errors: &mut Vec<Diagnostic>,
-    ) -> Result<String, ParserError> {
+    ) -> Result<(String, bool), ParserError> {
+        let id_column_name = |field_name: &str| {
+            user_supplied_column_name
+                .clone()
+                .unwrap_or(format!("{}_id", field_name))
+        };
         // we can treat Optional fields as their inner type for the purposes
         // of computing their default column name
-        let field_typ = match &field.typ {
+        let field_base_type = match &field.typ {
             AstFieldType::Optional(inner_typ) => inner_typ.as_ref(),
             _ => &field.typ,
         };
 
-        let mut get_matching_field_name = |model: AstModel<Typed>| -> Result<String, ParserError> {
-            let matching_fields: Vec<_> = model
-                .fields
-                .iter()
-                .filter(|f| f.typ.name() == enclosing_type.name)
-                .collect();
-
-            match &matching_fields[..] {
-                [] => {
-                    errors.push(
-                        Diagnostic {
-                        level: Level::Error,
-                        message: format!(
-                            "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
-                            enclosing_type.name, field.name
-                        ),
-                        code: Some("C000".to_string()),
-                        spans: vec![SpanLabel {
-                            span: field.span,
-                            style: SpanStyle::Primary,
-                            label: None,
-                        }],
-                    });
-                    Err(ParserError::Generic(
-                        "Could not find matching field".to_string(),
-                    ))
-                }
-                [matching_field] => Ok(matching_field.name.to_string()),
-                _ => {
-                    errors.push(Diagnostic {
-                    level: Level::Error,
-                    message: format!(
-                        "Found multiple matching fields {} of '{}' type when determining the matching column for '{}'",
-                        matching_fields
-                            .into_iter()
-                            .map(|f| format!("'{}'", f.name))
-                            .collect::<Vec<_>>()
-                            .join(", "), enclosing_type.name, field.name),
-                    code: Some("C000".to_string()),
-                    spans: vec![SpanLabel {
-                        span: field.span,
-                        style: SpanStyle::Primary,
-                        label: None,
-                    }],
-                });
-                    Err(ParserError::Generic(
-                        "Could not find matching field".to_string(),
-                    ))
-                }
-            }
-        };
-
-        match field_typ {
+        match field_base_type {
             AstFieldType::Plain(_, _, _, _) => {
-                let field_type = field_typ.to_typ(types).deref(types);
-                match field_type {
-                    Type::Composite(model) => match &field.typ {
+                match field_base_type.to_typ(types).deref(types) {
+                    Type::Composite(field_model) => match &field.typ {
                         AstFieldType::Optional(_) => {
-                            let matching_field_name = get_matching_field_name(model)?;
-                            Ok(format!("{}_id", matching_field_name))
+                            // If the field is optional, we need to look at the cardinality of the matching field in the type of
+                            // the field.
+                            //
+                            // If the cardinality is One (thus forming a one-to-one relationship), then we need to use the matching field's name.
+                            // For example, if we have the following model, we will have a `user_id` column in `memberships` table, but no column in the `users` table:
+                            // model User {
+                            //     ...
+                            //     membership: Membership?
+                            // }
+                            // model Membership {
+                            //     ...
+                            //     user: User
+                            // }
+                            //
+                            // If the cardinality is Unbounded, then we need to use the field's name. For example, if we have
+                            // the following model, we will have a `venue_id` column in the `concerts` table.
+                            // model Concert {
+                            //    ...
+                            //    venue: Venue?
+                            // }
+                            // model Venue {
+                            //    ...
+                            //    concerts: Set<Concert>
+                            // }
+
+                            let matching_field =
+                                get_matching_field(field, enclosing_type, &field_model, types)
+                                    .map_err(|diagnosis| ParserError::Diagosis(vec![diagnosis]))?;
+
+                            match field_cardinality(&matching_field.typ) {
+                                Cardinality::ZeroOrOne => {
+                                    errors.push(Diagnostic {
+                                        level: Level::Error,
+                                        message: "Both side of one-to-one relationship cannot be optional".to_string(),
+                                        code: Some("C000".to_string()),
+                                        spans: vec![SpanLabel {
+                                            span: field.span,
+                                            style: SpanStyle::Primary,
+                                            label: None,
+                                        }],
+                                    });
+                                    Err(ParserError::Generic(
+                                        "Both side of one-to-one relationship cannot be optional"
+                                            .to_string(),
+                                    ))
+                                }
+                                Cardinality::One => {
+                                    Ok((id_column_name(&matching_field.name), false))
+                                }
+                                Cardinality::Unbounded => Ok((id_column_name(&field.name), true)),
+                            }
                         }
-                        _ => Ok(format!("{}_id", field.name)),
+                        _ => Ok((id_column_name(&field.name), true)),
                     },
                     Type::Set(typ) => {
-                        if let Type::Composite(model) = typ.deref(types) {
+                        if let Type::Composite(field_model) = typ.deref(types) {
                             // OneToMany
-                            let matching_field_name = get_matching_field_name(model)?;
-                            Ok(format!("{}_id", matching_field_name))
+                            let matching_field =
+                                get_matching_field(field, enclosing_type, &field_model, types)
+                                    .map_err(|diagnosis| ParserError::Diagosis(vec![diagnosis]))?;
+                            Ok((id_column_name(&matching_field.name), false))
                         } else {
                             errors.push(Diagnostic {
                                 level: Level::Error,
@@ -1098,7 +1106,6 @@ fn compute_column_name(
                             ))
                         }
                     }
-
                     Type::Array(typ) => {
                         // unwrap type
                         let mut underlying_typ = &typ;
@@ -1108,7 +1115,10 @@ fn compute_column_name(
 
                         if let Type::Primitive(_) = underlying_typ.deref(types) {
                             // base type is a primitive, which means this is an Array
-                            Ok(field.name.clone())
+                            Ok((
+                                user_supplied_column_name.unwrap_or_else(|| field.name.clone()),
+                                true,
+                            ))
                         } else {
                             errors.push(Diagnostic {
                                 level: Level::Error,
@@ -1125,8 +1135,10 @@ fn compute_column_name(
                             ))
                         }
                     }
-
-                    _ => Ok(field.name.clone()),
+                    _ => Ok((
+                        user_supplied_column_name.unwrap_or_else(|| field.name.clone()),
+                        true,
+                    )),
                 }
             }
             AstFieldType::Optional(_) => {
@@ -1149,14 +1161,18 @@ fn compute_column_name(
         }
     }
 
-    match field
+    let user_supplied_column_name = field
         .annotations
         .get("column")
-        .map(|p| p.as_single().as_string())
-    {
-        Some(name) => Ok(name),
-        None => default_column_name(enclosing_type, field, types, errors),
-    }
+        .map(|p| p.as_single().as_string());
+
+    column_name(
+        user_supplied_column_name,
+        enclosing_type,
+        field,
+        types,
+        errors,
+    )
 }
 
 fn resolve_field_type(
@@ -1189,6 +1205,91 @@ fn resolve_argument(
         name: arg.name.clone(),
         typ: resolve_field_type(&arg.typ.to_typ(types), types, resolved_types),
         is_injected: arg.annotations.get("inject").is_some(),
+    }
+}
+
+fn get_matching_field<'a>(
+    field: &AstField<Typed>,
+    enclosing_type: &AstModel<Typed>,
+    field_model: &'a AstModel<Typed>,
+    types: &MappedArena<Type>,
+) -> Result<&'a AstField<Typed>, Diagnostic> {
+    let matching_fields: Vec<_> = field_model
+        .fields
+        .iter()
+        .filter(|f| {
+            let field_underlying_type = f.typ.to_typ(types);
+            field_underlying_type
+                .get_underlying_typename(types)
+                .unwrap()
+                == enclosing_type.name
+        })
+        .collect();
+
+    match &matching_fields[..] {
+        [] => {
+            Err(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Could not find the matching field of the '{}' type when determining the matching column for '{}'",
+                    enclosing_type.name, field.name
+                ),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }
+            ],
+        })},
+        [matching_field] => Ok(matching_field),
+        _ => {
+            Err(
+                Diagnostic {
+                    level: Level::Error,
+                    message: format!(
+                        "Found multiple matching fields {} of '{}' type when determining the matching column for '{}'",
+                        matching_fields
+                            .into_iter()
+                            .map(|f| format!("'{}'", f.name))
+                            .collect::<Vec<_>>()
+                            .join(", "), enclosing_type.name, field.name),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: field.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                }
+            )
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum Cardinality {
+    ZeroOrOne,
+    One,
+    Unbounded,
+}
+
+fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
+    match field_type {
+        AstFieldType::Optional(underlying) => {
+            let underlying_cardinality = field_cardinality(underlying);
+            if underlying_cardinality == Cardinality::Unbounded {
+                Cardinality::Unbounded
+            } else {
+                Cardinality::ZeroOrOne
+            }
+        }
+        AstFieldType::Plain(name, ..) => {
+            if name == "Set" {
+                Cardinality::Unbounded
+            } else {
+                Cardinality::One
+            }
+        }
     }
 }
 
