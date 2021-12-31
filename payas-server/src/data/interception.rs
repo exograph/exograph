@@ -104,6 +104,34 @@ pub enum InterceptedOperation<'a> {
     },
 }
 
+// this is a macro because rustc doesn't seem to be able to infer the associated type of
+// the following future closure unless it's directly inlined
+macro_rules! claytip_execute_query {
+    ($query_context:ident) => {
+        Some(
+            &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
+                async move {
+                    let result = $query_context
+                        .executor
+                        .execute_with_request_context(
+                            None,
+                            &query_string,
+                            variables.as_ref(),
+                            $query_context.request_context.clone(),
+                        )
+                        .await?
+                        .into_iter()
+                        .map(|(name, response)| (name, response.to_json().unwrap()))
+                        .collect::<Map<_, _>>();
+
+                    Ok(serde_json::Value::Object(result))
+                }
+                .boxed_local()
+            },
+        )
+    };
+}
+
 impl<'a> InterceptedOperation<'a> {
     pub fn new(
         operation_name: &'a str,
@@ -150,39 +178,6 @@ impl<'a> InterceptedOperation<'a> {
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
-        // TODO: This block is duplicate of that from resolve_deno()
-
-        //
-        // FIXME the claytip_execute_query argument is the same for all invocations of execute_interceptor.
-        // however the following doesn't work:
-        //
-        /////////////////////////////////////
-        //
-        //  let claytip_execute_query = &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
-        //      Box::pin(async move {
-        //          let result = query_context
-        //              .executor
-        //              .execute_with_request_context(
-        //                  None,
-        //                  &query_string,
-        //                  variables.as_ref(),
-        //                  query_context.request_context.clone()
-        //              )
-        //              .await?
-        //              .into_iter()
-        //              .map(|(name, response)| (name, response.to_json().unwrap()) )
-        //              .collect::<Map<_,_>>();
-
-        //          Ok(serde_json::Value::Object(result))
-        //      })
-        //  };
-        //  execute_interceptor(operation_name, before_interceptor, query_context, Some(&claytip_execute_query))
-        //
-        /////////////////////////////////////
-        //
-        //  rustc doesn't seem to be able to infer the associated type Output of claytip_execute_query's impl Future type unless it's drectly inlined
-        //
-
         match self {
             InterceptedOperation::Intercepted {
                 operation_name,
@@ -194,58 +189,27 @@ impl<'a> InterceptedOperation<'a> {
                     execute_interceptor(
                         before_interceptor,
                         query_context,
-                        Some(&move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
-                            async move {
-                                let result = query_context
-                                    .executor
-                                    .execute_with_request_context(
-                                        None,
-                                        &query_string,
-                                        variables.as_ref(),
-                                        query_context.request_context.clone()
-                                    )
-                                    .await?
-                                    .into_iter()
-                                    .map(|(name, response)| (name, response.to_json().unwrap()) )
-                                    .collect::<Map<_,_>>();
-
-                                Ok(serde_json::Value::Object(result))
-                            }.boxed_local()
-                        }),
+                        claytip_execute_query!(query_context),
                         Some(operation_name.to_string()),
-                        None
-                    ).await?;
+                        None,
+                    )
+                    .await?;
                 }
                 let res = core.execute(field, query_context).await?;
                 for after_interceptor in after {
                     execute_interceptor(
                         after_interceptor,
                         query_context,
-                        Some(&move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
-                            async move {
-                                let result = query_context
-                                    .executor
-                                    .execute_with_request_context(
-                                        None,
-                                        &query_string,
-                                        variables.as_ref(),
-                                        query_context.request_context.clone()
-                                    )
-                                    .await?
-                                    .into_iter()
-                                    .map(|(name, response)| (name, response.to_json().unwrap()) )
-                                    .collect::<Map<_,_>>();
-
-                                Ok(serde_json::Value::Object(result))
-                            }.boxed_local()
-                        }),
+                        claytip_execute_query!(query_context),
                         Some(operation_name.to_string()),
-                        None
-                    ).await?;
+                        None,
+                    )
+                    .await?;
                 }
 
                 Ok(res)
             }
+
             &InterceptedOperation::Around {
                 operation_name,
                 ref core,
@@ -254,44 +218,30 @@ impl<'a> InterceptedOperation<'a> {
                 let res = execute_interceptor(
                     interceptor,
                     query_context,
-                    Some(&move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
-                        async move {
-                            let result = query_context
-                                .executor
-                                .execute_with_request_context(
-                                    None,
-                                    &query_string,
-                                    variables.as_ref(),
-                                    query_context.request_context.clone()
-                                )
-                                .await?
-                                .into_iter()
-                                .map(|(name, response)| (name, response.to_json().unwrap()) )
-                                .collect::<Map<_,_>>();
-
-                            Ok(serde_json::Value::Object(result))
-                        }.boxed_local()
-                    }),
+                    claytip_execute_query!(query_context),
                     Some(operation_name.to_string()),
                     Some(&|| {
-                            async move {
-                                core.execute(field, query_context)
-                                    .await
-                                    .map(|response| match response {
-                                        QueryResponse::Json(json) => json,
-                                        QueryResponse::Raw(string) => match string {
-                                            Some(string) => serde_json::Value::String(string),
-                                            None => serde_json::Value::Null,
-                                        },
-                                    })
-                            }.boxed_local()
-                        }),
-                ).await?;
+                        async move {
+                            core.execute(field, query_context).await.map(
+                                |response| match response {
+                                    QueryResponse::Json(json) => json,
+                                    QueryResponse::Raw(string) => match string {
+                                        Some(string) => serde_json::Value::String(string),
+                                        None => serde_json::Value::Null,
+                                    },
+                                },
+                            )
+                        }
+                        .boxed_local()
+                    }),
+                )
+                .await?;
                 match res {
                     serde_json::Value::String(value) => Ok(QueryResponse::Raw(Some(value))),
                     _ => Ok(QueryResponse::Json(res)),
                 }
             }
+
             InterceptedOperation::Plain { resolver_result } => {
                 resolver_result.execute(field, query_context).await
             }
