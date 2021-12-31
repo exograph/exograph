@@ -1,0 +1,24 @@
+operation: |
+  mutation {
+    updateMembership(id: 1, data: {kind: "free", user: {id: 3}}) {
+      id
+      kind
+      user {
+        id
+        name
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "updateMembership": {
+        "id": 1,
+        "kind": "free",
+        "user": {
+          "id": 3,
+          "name": "u3"
+        }
+      }
+    }
+  }

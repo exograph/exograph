@@ -1,0 +1,19 @@
+operation: |
+  mutation {
+    updateMembership(id: 1, data: {kind: "free", user: {id: 2}}) {
+      id
+      kind
+      user {
+        id
+        name
+      }
+    }
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "ERROR: duplicate key value violates unique constraint memberships_user_id_key; DETAIL: Key (user_id)=(2) already exists."
+      }
+    ]
+  }
