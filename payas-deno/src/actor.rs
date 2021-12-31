@@ -54,7 +54,6 @@ impl DenoActor {
             ("Operation", include_str!("operation_shim.js")),
         ];
 
-        // TODO
         let (from_deno_sender, from_deno_receiver) = tokio::sync::mpsc::channel(1);
 
         let register_ops = move |runtime: &mut JsRuntime| {

@@ -160,7 +160,6 @@ impl DenoModule {
         let worker = &mut self.worker;
         let runtime = &mut worker.try_lock().unwrap().js_runtime;
 
-        // TODO: does this yield any significant optimization?
         let func_value = runtime.execute_script("", &format!("mod.{}", function_name))?;
 
         let shim_objects_vals: Vec<_> = self
