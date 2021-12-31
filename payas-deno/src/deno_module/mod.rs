@@ -26,7 +26,8 @@ use anyhow::{anyhow, Result};
 
 use deno_core::v8;
 
-use crate::embedded_module_loader::EmbeddedModuleLoader;
+mod embedded_module_loader;
+use self::embedded_module_loader::EmbeddedModuleLoader;
 
 fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
@@ -62,6 +63,10 @@ pub struct DenoScript {
     pub script: Global<Script>,
 }
 
+/// A Deno-based runner for JavaScript.
+/// 
+/// DenoModule has no concept of Claytip; it exists solely to configure the JavaScript execution environment 
+/// and to load & execute methods in the Deno runtime from sources.
 impl DenoModule {
     pub async fn new<F>(
         user_module_path: &Path,
@@ -248,17 +253,6 @@ impl DenoModule {
             .op_state()
             .borrow_mut()
             .put(val)
-    }
-
-    /// Try to take a single instance of a type into Deno's op_state
-    pub fn try_take<T: 'static>(&mut self) -> Option<T> {
-        self.worker
-            .lock()
-            .unwrap()
-            .js_runtime
-            .op_state()
-            .borrow_mut()
-            .try_take()
     }
 }
 

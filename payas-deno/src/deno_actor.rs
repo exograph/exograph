@@ -37,15 +37,30 @@ pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<Stri
      + 'a);
 pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> LocalBoxFuture<'a, Result<Value>> + 'a);
 
-pub struct MethodCall {
-    pub method_name: String,
-    pub arguments: Vec<Arg>,
-
-    pub claytip_intercepted_operation_name: Option<String>,
-
-    pub to_user: tokio::sync::mpsc::Sender<RequestFromDenoMessage>,
-}
-
+/// A wrapper around DenoModule.
+///
+/// DenoActor exists only to make passing invoking operations from DenoModule easier. JavaScript code running on Deno can 
+/// invoke preregistered Rust code through Deno.core.op_sync() or Deno.core.op_async(). We use Deno ops to facilitate 
+/// operations such as executing Claytip queries directly from JavaScript.
+/// 
+/// Deno ops cannot be re-registered or unregistered; ops must stay static, which presents a problem if we want to
+/// dynamically change what the operations do (like in the case of the proceed() call from @around interceptors). 
+/// 
+/// To work around this, DenoActor adopts message passing to handle operations. On creation, DenoActor will first 
+/// initialize a Tokio mpsc channel. It will also initialize an instance of DenoModule and register operations that will send a
+/// RequestFromDenoMessage to the channel on invocation. This way, the actual operation does not have to change, just the recipient 
+/// of Deno op request messages.
+/// 
+/// A complete Deno op would consist of an exchange that looks like this:
+/// ________________                                                                                                          _______________________________
+/// |    caller    | -> DenoActor.call_method -> DenoModule.execute_function -> {user code} --------------------------------> |    Deno.core.opAsync(...)   |      |
+/// |              |                                                                                                          |                             |      |
+/// |              | <-- to_user_sender  <- DenoActor forwarding loop <- from_deno_sender  <- [ RequestFromDenoMessage ] <--- |                             |     time
+/// |              |                                                                                                          |                             |      |
+/// |              | -> [ ResponseForDenoMessage ] -> response_sender ------------------------------------------------------> |                             |      V
+/// |              |                                                                                                          |                             |
+/// |______________|                                                                                           {user code} <- |_____________________________|
+/// 
 impl DenoActor {
     pub async fn new(path: &Path, shared_state: DenoModuleSharedState) -> DenoActor {
         let shims = vec![
@@ -157,33 +172,36 @@ impl DenoActor {
         }
     }
 
-    pub async fn handle(&mut self, mut msg: MethodCall) -> Result<Value> {
-        println!("Executing {}", &msg.method_name);
+    pub async fn call_method(&mut self, 
+        method_name: String,
+        arguments: Vec<Arg>,
+        claytip_intercepted_operation_name: Option<String>,
+        mut to_user_sender: tokio::sync::mpsc::Sender<RequestFromDenoMessage>
+    ) -> Result<Value> {
+        println!("Executing {}", &method_name);
 
         // put the intercepted operation name into Deno's op_state
         self.deno_module.put(InterceptedOperationName(
-            msg.claytip_intercepted_operation_name,
+            claytip_intercepted_operation_name,
         ));
 
-        let finished = self
+        let on_function_result = self
             .deno_module
-            .execute_function(&msg.method_name, msg.arguments);
+            .execute_function(&method_name, arguments);
 
-        pin_mut!(finished);
+        pin_mut!(on_function_result);
 
         loop {
-            let recv = self.from_deno_receiver.recv();
-            pin_mut!(recv);
+            let on_recv_request = self.from_deno_receiver.recv();
+            pin_mut!(on_recv_request);
 
             tokio::select! {
-                message = recv => {
+                message = on_recv_request => {
                     // forward message from Deno to the caller through the channel they gave us
-                    msg.to_user.send(message.unwrap()).await.ok().unwrap();
+                    to_user_sender.send(message.unwrap()).await.ok().unwrap();
                 }
 
-                final_result = &mut finished => {
-                    // clear the intercepted operation name from Deno's op_state
-
+                final_result = &mut on_function_result => {
                     break final_result;
                 }
             };

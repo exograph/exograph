@@ -9,7 +9,7 @@ use anyhow::Result;
 use deno_core::serde_json::json;
 use deno_core::{serde_json::Value, JsRuntime};
 use futures::future::join_all;
-use payas_deno::{Arg, DenoActor, DenoExecutor, DenoModule, DenoModuleSharedState, MethodCall};
+use payas_deno::{Arg, DenoActor, DenoExecutor, DenoModule, DenoModuleSharedState};
 use tokio_0_2::sync::mpsc::channel;
 
 fn no_op(_: String, _: Option<&serde_json::Map<String, Value>>) -> Result<serde_json::Value> {
@@ -53,12 +53,12 @@ async fn test_actor() {
     let (to_user_sender, _to_user_receiver) = channel(1);
 
     let res = actor
-        .handle(MethodCall {
-            method_name: "addAndDouble".to_string(),
-            arguments: vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
-            claytip_intercepted_operation_name: None,
-            to_user: to_user_sender,
-        })
+        .call_method(
+            "addAndDouble".to_string(),
+            vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
+            None,
+            to_user_sender,
+        )
         .await;
 
     assert_eq!(res.unwrap(), 10);

@@ -6,9 +6,8 @@ use std::{
 
 use futures::pin_mut;
 
-use crate::actor::MethodCall;
 use crate::{
-    actor::{
+    deno_actor::{
         FnClaytipExecuteQuery, FnClaytipInterceptorProceed, RequestFromDenoMessage,
         ResponseForDenoMessage,
     },
@@ -22,8 +21,18 @@ type DenoActorPool = Vec<Arc<Mutex<DenoActor>>>;
 
 /// DenoExecutor maintains a pool of DenoActors for each module to delegate work to.
 ///
-/// Calling execute_function* will either select a free actor or allocate a new DenoActor
-/// for the function.
+/// Calling execute_function_with_shims will either select a free actor or allocate a new DenoActor to run the function on. 
+/// DenoExecutor will then set up a Tokio channel for the DenoActor to use in order to talk back to DenoExecutor.
+/// Afterwards, it will kick off the execution by awaiting on the DenoActor's asynchronous `call_method` method. 
+/// It will concurrently listen and handle requests from DenoActor sent through the channel by calling the 
+/// appropriate function pointer passed to execute_function_with_shims and responding with the result.
+///
+/// The hiearchy of modules: 
+/// 
+/// DenoExecutor -> DenoActor -> DenoModule
+///              -> DenoActor -> DenoModule
+///              -> DenoActor -> DenoModule
+///               ...
 #[derive(Default)]
 pub struct DenoExecutor {
     actor_pool_map: Arc<Mutex<DenoActorPoolMap>>,
@@ -118,22 +127,22 @@ impl<'a> DenoExecutor {
         let (to_user_sender, mut to_user_receiver) = tokio::sync::mpsc::channel(1);
 
         // construct a future for our final result
-        let on_finished_future = actor.handle(MethodCall {
-            method_name: method_name.to_string(),
+        let on_function_result = actor.call_method(
+            method_name.to_string(),
             arguments,
             claytip_intercepted_operation_name,
-            to_user: to_user_sender,
-        });
+            to_user_sender,
+        );
 
-        pin_mut!(on_finished_future); // needs to be pinned to reuse it
+        pin_mut!(on_function_result); // needs to be pinned to reuse it
 
         // receive loop
         loop {
-            let on_recv = to_user_receiver.recv();
-            pin_mut!(on_recv);
+            let on_recv_request = to_user_receiver.recv();
+            pin_mut!(on_recv_request);
 
             tokio::select! {
-                msg = on_recv => {
+                msg = on_recv_request => {
                     // handle requests from Deno for data
                     match msg.unwrap() {
                         RequestFromDenoMessage::InteceptedOperationProceed {
@@ -149,7 +158,8 @@ impl<'a> DenoExecutor {
                     }
                 }
 
-                final_result = &mut on_finished_future => {
+                final_result = &mut on_function_result => {
+                    // function has resolved with the return value
                     break final_result;
                 },
             }
