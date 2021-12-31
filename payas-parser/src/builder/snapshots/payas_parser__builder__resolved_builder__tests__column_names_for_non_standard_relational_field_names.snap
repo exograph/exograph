@@ -47,6 +47,7 @@ types:
                   is_pk: true
                   is_autoincrement: true
                   type_hint: ~
+                  unique: false
             - name: title
               typ:
                 Plain: String
@@ -57,6 +58,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: venuex
               typ:
                 Plain: Venue
@@ -67,6 +69,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: published
               typ:
                 Plain: Boolean
@@ -77,6 +80,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
           kind:
             Persistent:
               table_name: concerts
@@ -108,6 +112,7 @@ types:
                   is_pk: true
                   is_autoincrement: true
                   type_hint: ~
+                  unique: false
             - name: name
               typ:
                 Plain: String
@@ -118,6 +123,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: concerts
               typ:
                 List:
@@ -129,6 +135,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: published
               typ:
                 Plain: Boolean
@@ -139,6 +146,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
           kind:
             Persistent:
               table_name: venues

@@ -283,11 +283,16 @@ fn create_column(
     env: &MappedArena<ResolvedType>,
 ) -> Option<PhysicalColumn> {
     // Check that the field holds to a self column
-    match &field.kind {
-        ResolvedFieldKind::Persistent { self_column, .. } => {
+    let unique = match &field.kind {
+        ResolvedFieldKind::Persistent {
+            self_column,
+            unique,
+            ..
+        } => {
             if !self_column {
                 return None;
             }
+            *unique
         }
         ResolvedFieldKind::NonPersistent => {
             panic!("Non-persistent fields are not supported")
@@ -317,6 +322,7 @@ fn create_column(
                         false
                     },
                     is_nullable: optional,
+                    is_unique: unique,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -337,6 +343,7 @@ fn create_column(
                         is_pk: false,
                         is_autoincrement: false,
                         is_nullable: optional,
+                        is_unique: unique,
                     })
                 }
             }
@@ -378,6 +385,7 @@ fn create_column(
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: optional,
+                    is_unique: unique,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column

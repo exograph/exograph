@@ -213,6 +213,7 @@ pub enum ResolvedFieldKind {
         is_pk: bool,
         is_autoincrement: bool,
         type_hint: Option<ResolvedTypeHint>,
+        unique: bool,
     },
     NonPersistent,
 }
@@ -706,14 +707,18 @@ fn build_expanded_persistent_type(
                     typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
                     kind: match kind {
                         ResolvedCompositeTypeKind::Persistent { .. } => {
-                            let (column_name, self_column) =
-                                compute_column_name(ct, field, types, errors)?;
+                            let ColumnInfo {
+                                name: column_name,
+                                self_column,
+                                unique,
+                            } = compute_column_info(ct, field, types, errors)?;
                             ResolvedFieldKind::Persistent {
                                 column_name,
                                 self_column,
                                 is_pk: field.annotations.contains("pk"),
                                 is_autoincrement: field.annotations.contains("autoincrement"),
                                 type_hint: build_type_hint(field, types),
+                                unique,
                             }
                         }
                         ResolvedCompositeTypeKind::NonPersistent { .. } => {
@@ -999,19 +1004,25 @@ fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
     ResolvedContextSource::Jwt { claim }
 }
 
-fn compute_column_name(
+struct ColumnInfo {
+    name: String,
+    self_column: bool,
+    unique: bool,
+}
+
+fn compute_column_info(
     enclosing_type: &AstModel<Typed>,
     field: &AstField<Typed>,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-) -> Result<(String, bool), ParserError> {
+) -> Result<ColumnInfo, ParserError> {
     fn column_name(
         user_supplied_column_name: Option<String>,
         enclosing_type: &AstModel<Typed>,
         field: &AstField<Typed>,
         types: &MappedArena<Type>,
         errors: &mut Vec<Diagnostic>,
-    ) -> Result<(String, bool), ParserError> {
+    ) -> Result<ColumnInfo, ParserError> {
         let id_column_name = |field_name: &str| {
             user_supplied_column_name
                 .clone()
@@ -1027,40 +1038,42 @@ fn compute_column_name(
         match field_base_type {
             AstFieldType::Plain(_, _, _, _) => {
                 match field_base_type.to_typ(types).deref(types) {
-                    Type::Composite(field_model) => match &field.typ {
-                        AstFieldType::Optional(_) => {
-                            // If the field is optional, we need to look at the cardinality of the matching field in the type of
-                            // the field.
-                            //
-                            // If the cardinality is One (thus forming a one-to-one relationship), then we need to use the matching field's name.
-                            // For example, if we have the following model, we will have a `user_id` column in `memberships` table, but no column in the `users` table:
-                            // model User {
-                            //     ...
-                            //     membership: Membership?
-                            // }
-                            // model Membership {
-                            //     ...
-                            //     user: User
-                            // }
-                            //
-                            // If the cardinality is Unbounded, then we need to use the field's name. For example, if we have
-                            // the following model, we will have a `venue_id` column in the `concerts` table.
-                            // model Concert {
-                            //    ...
-                            //    venue: Venue?
-                            // }
-                            // model Venue {
-                            //    ...
-                            //    concerts: Set<Concert>
-                            // }
+                    Type::Composite(field_model) => {
+                        let matching_field =
+                            get_matching_field(field, enclosing_type, &field_model, types)
+                                .map_err(|diagnosis| ParserError::Diagosis(vec![diagnosis]))?;
+                        let cardinality = field_cardinality(&matching_field.typ);
 
-                            let matching_field =
-                                get_matching_field(field, enclosing_type, &field_model, types)
-                                    .map_err(|diagnosis| ParserError::Diagosis(vec![diagnosis]))?;
+                        match &field.typ {
+                            AstFieldType::Optional(_) => {
+                                // If the field is optional, we need to look at the cardinality of the matching field in the type of
+                                // the field.
+                                //
+                                // If the cardinality is One (thus forming a one-to-one relationship), then we need to use the matching field's name.
+                                // For example, if we have the following model, we will have a `user_id` column in `memberships` table, but no column in the `users` table:
+                                // model User {
+                                //     ...
+                                //     membership: Membership?
+                                // }
+                                // model Membership {
+                                //     ...
+                                //     user: User
+                                // }
+                                //
+                                // If the cardinality is Unbounded, then we need to use the field's name. For example, if we have
+                                // the following model, we will have a `venue_id` column in the `concerts` table.
+                                // model Concert {
+                                //    ...
+                                //    venue: Venue?
+                                // }
+                                // model Venue {
+                                //    ...
+                                //    concerts: Set<Concert>
+                                // }
 
-                            match field_cardinality(&matching_field.typ) {
-                                Cardinality::ZeroOrOne => {
-                                    errors.push(Diagnostic {
+                                match cardinality {
+                                    Cardinality::ZeroOrOne => {
+                                        errors.push(Diagnostic {
                                         level: Level::Error,
                                         message: "Both side of one-to-one relationship cannot be optional".to_string(),
                                         code: Some("C000".to_string()),
@@ -1070,26 +1083,44 @@ fn compute_column_name(
                                             label: None,
                                         }],
                                     });
-                                    Err(ParserError::Generic(
+                                        Err(ParserError::Generic(
                                         "Both side of one-to-one relationship cannot be optional"
                                             .to_string(),
                                     ))
+                                    }
+                                    Cardinality::One => Ok(ColumnInfo {
+                                        name: id_column_name(&matching_field.name),
+                                        self_column: false,
+                                        unique: false,
+                                    }),
+                                    Cardinality::Unbounded => Ok(ColumnInfo {
+                                        name: id_column_name(&field.name),
+                                        self_column: true,
+                                        unique: false,
+                                    }),
                                 }
-                                Cardinality::One => {
-                                    Ok((id_column_name(&matching_field.name), false))
-                                }
-                                Cardinality::Unbounded => Ok((id_column_name(&field.name), true)),
+                            }
+                            _ => {
+                                let unique = matches!(cardinality, Cardinality::ZeroOrOne);
+                                Ok(ColumnInfo {
+                                    name: id_column_name(&field.name),
+                                    self_column: true,
+                                    unique,
+                                })
                             }
                         }
-                        _ => Ok((id_column_name(&field.name), true)),
-                    },
+                    }
                     Type::Set(typ) => {
                         if let Type::Composite(field_model) = typ.deref(types) {
                             // OneToMany
                             let matching_field =
                                 get_matching_field(field, enclosing_type, &field_model, types)
                                     .map_err(|diagnosis| ParserError::Diagosis(vec![diagnosis]))?;
-                            Ok((id_column_name(&matching_field.name), false))
+                            Ok(ColumnInfo {
+                                name: id_column_name(&matching_field.name),
+                                self_column: false,
+                                unique: false,
+                            })
                         } else {
                             errors.push(Diagnostic {
                                 level: Level::Error,
@@ -1115,10 +1146,12 @@ fn compute_column_name(
 
                         if let Type::Primitive(_) = underlying_typ.deref(types) {
                             // base type is a primitive, which means this is an Array
-                            Ok((
-                                user_supplied_column_name.unwrap_or_else(|| field.name.clone()),
-                                true,
-                            ))
+                            Ok(ColumnInfo {
+                                name: user_supplied_column_name
+                                    .unwrap_or_else(|| field.name.clone()),
+                                self_column: true,
+                                unique: false,
+                            })
                         } else {
                             errors.push(Diagnostic {
                                 level: Level::Error,
@@ -1135,10 +1168,11 @@ fn compute_column_name(
                             ))
                         }
                     }
-                    _ => Ok((
-                        user_supplied_column_name.unwrap_or_else(|| field.name.clone()),
-                        true,
-                    )),
+                    _ => Ok(ColumnInfo {
+                        name: user_supplied_column_name.unwrap_or_else(|| field.name.clone()),
+                        self_column: true,
+                        unique: false,
+                    }),
                 }
             }
             AstFieldType::Optional(_) => {

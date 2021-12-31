@@ -283,6 +283,7 @@ mod tests {
                 is_pk: false,
                 is_autoincrement: false,
                 is_nullable: false,
+                is_unique: false,
             }
         }
 

@@ -229,6 +229,7 @@ pub struct ColumnSpec {
     pub is_pk: bool,
     pub is_autoincrement: bool,
     pub is_nullable: bool,
+    pub is_unique: bool,
 }
 
 impl ColumnSpec {
@@ -317,6 +318,7 @@ impl ColumnSpec {
                 is_autoincrement: serial_columns
                     .contains(&format!("{}_{}_seq", table_name, column_name)),
                 is_nullable: !not_null,
+                is_unique: false,
             }),
             issues,
         })
@@ -337,11 +339,12 @@ impl ColumnSpec {
         } else {
             ""
         };
+        let unique_str = if self.is_unique { " UNIQUE" } else { "" };
 
         SQLStatement {
             statement: format!(
-                "\"{}\" {}{}{}",
-                self.column_name, statement, pk_str, not_null_str
+                "\"{}\" {}{}{}{}",
+                self.column_name, statement, pk_str, not_null_str, unique_str
             ),
             foreign_constraints,
         }

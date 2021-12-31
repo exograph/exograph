@@ -47,6 +47,7 @@ types:
                   is_pk: true
                   is_autoincrement: true
                   type_hint: ~
+                  unique: false
             - name: title_main
               typ:
                 Plain: String
@@ -57,6 +58,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: title_main1
               typ:
                 Plain: String
@@ -67,6 +69,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: public1
               typ:
                 Plain: Boolean
@@ -77,6 +80,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: PUBLIC2
               typ:
                 Plain: Boolean
@@ -87,6 +91,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: foo123
               typ:
                 Plain: Int
@@ -97,6 +102,7 @@ types:
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
           kind:
             Persistent:
               table_name: entitys
