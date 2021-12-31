@@ -56,6 +56,7 @@ async fn test_actor() {
         .handle(MethodCall {
             method_name: "addAndDouble".to_string(),
             arguments: vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
+            claytip_intercepted_operation_name: None,
             to_user: to_user_sender,
         })
         .await;

@@ -9,8 +9,8 @@ use futures::pin_mut;
 use crate::actor::MethodCall;
 use crate::{
     actor::{
-        FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed,
-        RequestFromDenoMessage, ResponseForDenoMessage,
+        FnClaytipExecuteQuery, FnClaytipInterceptorProceed, RequestFromDenoMessage,
+        ResponseForDenoMessage,
     },
     Arg, DenoActor, DenoModuleSharedState,
 };
@@ -76,7 +76,7 @@ impl<'a> DenoExecutor {
         arguments: Vec<Arg>,
 
         claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
-        claytip_get_interceptor: Option<&'a FnClaytipInterceptorGetName<'a>>,
+        claytip_intercepted_operation_name: Option<String>,
         claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
     ) -> Result<Value> {
         // grab a copy of the actor pool for module_path
@@ -121,6 +121,7 @@ impl<'a> DenoExecutor {
         let on_finished_future = actor.handle(MethodCall {
             method_name: method_name.to_string(),
             arguments,
+            claytip_intercepted_operation_name,
             to_user: to_user_sender,
         });
 
@@ -135,12 +136,6 @@ impl<'a> DenoExecutor {
                 msg = on_recv => {
                     // handle requests from Deno for data
                     match msg.unwrap() {
-                        RequestFromDenoMessage::InteceptedOperationName {
-                            response_sender
-                        } => {
-                            let name = claytip_get_interceptor.unwrap()();
-                            response_sender.send(ResponseForDenoMessage::InteceptedOperationName(name)).ok().unwrap();
-                        },
                         RequestFromDenoMessage::InteceptedOperationProceed {
                             response_sender
                         } => {

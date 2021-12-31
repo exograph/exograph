@@ -238,6 +238,28 @@ impl DenoModule {
             Ok(res)
         }
     }
+
+    /// Put a single instance of a type into Deno's op_state
+    pub fn put<T: 'static>(&mut self, val: T) {
+        self.worker
+            .lock()
+            .unwrap()
+            .js_runtime
+            .op_state()
+            .borrow_mut()
+            .put(val)
+    }
+
+    /// Try to take a single instance of a type into Deno's op_state
+    pub fn try_take<T: 'static>(&mut self) -> Option<T> {
+        self.worker
+            .lock()
+            .unwrap()
+            .js_runtime
+            .op_state()
+            .borrow_mut()
+            .try_take()
+    }
 }
 
 #[derive(Clone)]

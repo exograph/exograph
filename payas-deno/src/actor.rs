@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use deno_core::JsRuntime;
 use futures::future::LocalBoxFuture;
 use futures::pin_mut;
@@ -16,9 +16,6 @@ pub struct DenoActor {
 }
 
 pub enum RequestFromDenoMessage {
-    InteceptedOperationName {
-        response_sender: tokio::sync::oneshot::Sender<ResponseForDenoMessage>,
-    },
     InteceptedOperationProceed {
         response_sender: tokio::sync::oneshot::Sender<ResponseForDenoMessage>,
     },
@@ -30,19 +27,21 @@ pub enum RequestFromDenoMessage {
 }
 
 pub enum ResponseForDenoMessage {
-    InteceptedOperationName(String),
     InteceptedOperationProceed(Result<Value>),
     ClaytipExecute(Result<Value>),
 }
 
+struct InterceptedOperationName(Option<String>);
+
 pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> LocalBoxFuture<'a, Result<Value>>
      + 'a);
-pub type FnClaytipInterceptorGetName<'a> = (dyn Fn() -> String + 'a);
 pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> LocalBoxFuture<'a, Result<Value>> + 'a);
 
 pub struct MethodCall {
     pub method_name: String,
     pub arguments: Vec<Arg>,
+
+    pub claytip_intercepted_operation_name: Option<String>,
 
     pub to_user: tokio::sync::mpsc::Sender<RequestFromDenoMessage>,
 }
@@ -57,12 +56,12 @@ impl DenoActor {
         let (from_deno_sender, from_deno_receiver) = tokio::sync::mpsc::channel(1);
 
         let register_ops = move |runtime: &mut JsRuntime| {
-            let mut async_ops = vec![];
+            let mut ops = vec![];
 
             {
                 let from_deno_sender = from_deno_sender.clone();
 
-                async_ops.push((
+                ops.push((
                     "op_claytip_execute_query",
                     deno_core::op_async(move |_state, args: Vec<String>, (): _| {
                         let mut sender = from_deno_sender.clone();
@@ -98,32 +97,14 @@ impl DenoActor {
             }
 
             {
-                let from_deno_sender = from_deno_sender.clone();
-
-                async_ops.push((
+                ops.push((
                     "op_intercepted_operation_name",
-                    deno_core::op_async(move |_state, _: (), (): _| {
-                        let mut sender = from_deno_sender.clone();
-
-                        async move {
-                            let (response_sender, response_receiver) =
-                                tokio::sync::oneshot::channel();
-
-                            sender
-                                .send(RequestFromDenoMessage::InteceptedOperationName {
-                                    response_sender,
-                                })
-                                .await
-                                .ok()
-                                .unwrap();
-
-                            if let ResponseForDenoMessage::InteceptedOperationName(result) =
-                                response_receiver.await.unwrap()
-                            {
-                                Ok(result)
-                            } else {
-                                panic!()
-                            }
+                    deno_core::op_sync(move |state, _: (), (): _| {
+                        // try to read the intercepted operation name out of Deno's GothamStorage
+                        if let InterceptedOperationName(Some(name)) = state.try_borrow().unwrap() {
+                            Ok(name.clone())
+                        } else {
+                            Err(anyhow!("no stored operation name"))
                         }
                     }),
                 ));
@@ -132,7 +113,7 @@ impl DenoActor {
             {
                 let from_deno_sender = from_deno_sender.clone();
 
-                async_ops.push((
+                ops.push((
                     "op_intercepted_proceed",
                     deno_core::op_async(move |_state, _: (), (): _| {
                         let mut sender = from_deno_sender.clone();
@@ -161,7 +142,7 @@ impl DenoActor {
                 ));
             }
 
-            for (name, op) in async_ops {
+            for (name, op) in ops {
                 runtime.register_op(name, op);
             }
         };
@@ -178,6 +159,11 @@ impl DenoActor {
 
     pub async fn handle(&mut self, mut msg: MethodCall) -> Result<Value> {
         println!("Executing {}", &msg.method_name);
+
+        // put the intercepted operation name into Deno's op_state
+        self.deno_module.put(InterceptedOperationName(
+            msg.claytip_intercepted_operation_name,
+        ));
 
         let finished = self
             .deno_module
@@ -196,6 +182,8 @@ impl DenoActor {
                 }
 
                 final_result = &mut finished => {
+                    // clear the intercepted operation name from Deno's op_state
+
                     break final_result;
                 }
             };

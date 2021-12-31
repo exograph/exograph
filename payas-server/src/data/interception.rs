@@ -1,9 +1,7 @@
 use async_graphql_parser::{types::Field, Positioned};
 use async_recursion::async_recursion;
 use futures::FutureExt;
-use payas_deno::{
-    Arg, FnClaytipExecuteQuery, FnClaytipInterceptorGetName, FnClaytipInterceptorProceed,
-};
+use payas_deno::{Arg, FnClaytipExecuteQuery, FnClaytipInterceptorProceed};
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
@@ -214,9 +212,8 @@ impl<'a> InterceptedOperation<'a> {
                                 Ok(serde_json::Value::Object(result))
                             }.boxed_local()
                         }),
-                        Some(&|| {
-                            (*operation_name).to_owned()
-                        }), None
+                        Some(operation_name.to_string()),
+                        None
                     ).await?;
                 }
                 let res = core.execute(field, query_context).await?;
@@ -241,9 +238,9 @@ impl<'a> InterceptedOperation<'a> {
 
                                 Ok(serde_json::Value::Object(result))
                             }.boxed_local()
-                        }), Some(&|| {
-                            (*operation_name).to_owned()
-                        }), None
+                        }),
+                        Some(operation_name.to_string()),
+                        None
                     ).await?;
                 }
 
@@ -275,9 +272,7 @@ impl<'a> InterceptedOperation<'a> {
                             Ok(serde_json::Value::Object(result))
                         }.boxed_local()
                     }),
-                    Some(&|| {
-                        operation_name.to_owned()
-                    }),
+                    Some(operation_name.to_string()),
                     Some(&|| {
                             async move {
                                 core.execute(field, query_context)
@@ -309,7 +304,7 @@ async fn execute_interceptor<'a>(
     query_context: &'a QueryContext<'a>,
 
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
-    claytip_get_interceptor: Option<&'a FnClaytipInterceptorGetName<'a>>,
+    claytip_get_interceptor: Option<String>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<serde_json::Value> {
     let path = &interceptor.module_path;
