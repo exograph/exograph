@@ -63,9 +63,12 @@ steps:
       webhook_token: "i2MeZ0VMXm1oVH8sC6HD6GBS6L-UEUyOxr16Dv3kCLVyknE4FiiNSy5R-hKaQYUxfMYB"
       message: >
         {{#success build.status}}
-          Build {{build.number}} (branch: {{build.branch}}) succeeded.
+          Build {{build.number}} succeeded.
+          Changes: {{commit.branch}} / {{commit.message}}. 
         {{else}}
-          Build {{build.number}} (branch: {{build.branch}}) failed.
+          Build {{build.number}} (branch: {{commit.branch}}) failed.
+          Changes: {{commit.branch}} / {{commit.message}}.
+          See: {{build.link}}
         {{/success}}
 
 services:
