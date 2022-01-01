@@ -61,6 +61,12 @@ steps:
     settings:
       webhook_id: "926191813780459520"
       webhook_token: "i2MeZ0VMXm1oVH8sC6HD6GBS6L-UEUyOxr16Dv3kCLVyknE4FiiNSy5R-hKaQYUxfMYB"
+      message: >
+        {{#success build.status}}
+          Build {{build.number}} (branch: {{build.branch}}) succeeded.
+        {{else}}
+          Build {{build.number}} (branch: {{build.branch}}) failed.
+        {{/success}}
 
 services:
   - name: database
