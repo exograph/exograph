@@ -195,7 +195,7 @@ impl DenoModule {
                     Arg::Shim(name) => Ok(shim_objects
                         .get(&name)
                         .ok_or_else(|| anyhow!("Missing shim {}", &name))?
-                        .get(tc_scope_ref)
+                        .open(tc_scope_ref)
                         .to_object(tc_scope_ref)
                         .unwrap()
                         .into()),
@@ -203,7 +203,7 @@ impl DenoModule {
                 .collect::<Result<Vec<_>, AnyError>>()?;
 
             let func_obj = func_value
-                .get(tc_scope_ref)
+                .open(tc_scope_ref)
                 .to_object(tc_scope_ref)
                 .unwrap();
             let func = v8::Local::<v8::Function>::try_from(func_obj)?;
@@ -283,7 +283,7 @@ fn run_script(runtime: &mut JsRuntime, ds: &DenoScript) -> Result<Global<v8::Val
     let mut scope = runtime.handle_scope();
     let mut tc_scope = v8::TryCatch::new(&mut scope);
 
-    match ds.script.get(&mut tc_scope).run(&mut tc_scope) {
+    match ds.script.open(&mut tc_scope).run(&mut tc_scope) {
         Some(value) => {
             let value_handle = v8::Global::new(&mut tc_scope, value);
             Ok(value_handle)
