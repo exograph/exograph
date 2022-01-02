@@ -6,8 +6,8 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
-async-graphql-parser = "2.10"
-async-graphql-value = "2.10"
+async-graphql-parser = "3.0.19"
+async-graphql-value = "3.0.19"
 async-stream = "0.3.2"
 actix-web = "3"
 actix-cors = "0.5.4"
