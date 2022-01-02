@@ -17,16 +17,16 @@ response: |
           "id": 1,
           "kind": "individual",
           "user": {
-            "id": 1,
-            "name": "u1"
+            "id": 2,
+            "name": "u2"
           }
         },
         {
           "id": 2,
           "kind": "family",
           "user": {
-            "id": 2,
-            "name": "u2"
+            "id": 3,
+            "name": "u3"
           }
         }
       ]

@@ -1,6 +1,6 @@
 operation: |
   mutation {
-    updateMembership(id: 1, data: {kind: "free", user: {id: 3}}) {
+    updateMembership(id: 1, data: {kind: "free", user: {id: 1}}) {
       id
       kind
       user {
@@ -16,8 +16,8 @@ response: |
         "id": 1,
         "kind": "free",
         "user": {
-          "id": 3,
-          "name": "u3"
+          "id": 1,
+          "name": "u1"
         }
       }
     }

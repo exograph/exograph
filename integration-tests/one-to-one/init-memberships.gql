@@ -12,10 +12,14 @@ operation: |
         user3: createUser(data: {name: $user_name3}) {
             id
         }
-        membership1: createMembership(data: {kind: $membership_kind1, user: {id: 1}}) {
+        # membership1 for user 2, membership2 for user 3 (to ensure that we get the right results for nested query)
+        # If we did membership1 for user 1 and membership2 for user 2, we might get the correct results for wrong reason.
+        # Specifically, querying membership for user 1 might get us membership1, but only because it searched for the membership id 1
+        # and not user id 1.
+        membership1: createMembership(data: {kind: $membership_kind1, user: {id: 2}}) {
             id
         }
-        membership2: createMembership(data: {kind: $membership_kind2, user: {id: 2}}) {
+        membership2: createMembership(data: {kind: $membership_kind2, user: {id: 3}}) {
             id
         }   
     }  

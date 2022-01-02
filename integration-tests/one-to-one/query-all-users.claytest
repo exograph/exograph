@@ -16,23 +16,23 @@ response: |
         {
           "id": 1,
           "name": "u1",
+          "membership": null
+        },
+        {
+          "id": 2,
+          "name": "u2",
           "membership": {
             "id": 1,
             "kind": "individual"
           }
         },
         {
-          "id": 2,
-          "name": "u2",
+          "id": 3,
+          "name": "u3",
           "membership": {
             "id": 2,
             "kind": "family"
           }
-        },
-        {
-          "id": 3,
-          "name": "u3",
-          "membership": null
         }
       ]
     }
