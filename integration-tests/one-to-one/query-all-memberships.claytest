@@ -28,7 +28,23 @@ response: |
             "id": 3,
             "name": "u3"
           }
-        }
+        },
+        {
+          "id": 3,
+          "kind": "individual",
+          "user": {
+            "id": 4,
+            "name": "u4"
+          }
+        },
+        {
+          "id": 4,
+          "kind": "family",
+          "user": {
+            "id": 5,
+            "name": "u5"
+          }
+        }                
       ]
     }
   }

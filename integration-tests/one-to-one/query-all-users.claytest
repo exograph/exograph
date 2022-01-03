@@ -33,7 +33,23 @@ response: |
             "id": 2,
             "kind": "family"
           }
-        }
+        },
+        {
+          "id": 4,
+          "name": "u4",
+          "membership": {
+            "id": 3,
+            "kind": "individual"
+          }
+        },
+        {
+          "id": 5,
+          "name": "u5",
+          "membership": {
+            "id": 4,
+            "kind": "family"
+          }
+        }                
       ]
     }
   }

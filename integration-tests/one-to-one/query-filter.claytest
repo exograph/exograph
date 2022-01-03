@@ -88,6 +88,14 @@ response: |
             "id": 3,
             "name": "u3"
           }
+        },
+        {
+          "id": 4,
+          "kind": "family",
+          "user": {
+            "id": 5,
+            "name": "u5"
+          }
         }
       ],
       "m_individual": [
@@ -97,6 +105,14 @@ response: |
           "user": {
             "id": 2,
             "name": "u2"
+          }
+        },
+        {
+          "id": 3,
+          "kind": "individual",
+          "user": {
+            "id": 4,
+            "name": "u4"
           }
         }
       ],
@@ -128,6 +144,14 @@ response: |
             "id": 2,
             "kind": "family"
           }
+        },
+        {
+          "id": 5,
+          "name": "u5",
+          "membership": {
+            "id": 4,
+            "kind": "family"
+          }
         }
       ],
       "u_individual": [
@@ -136,6 +160,14 @@ response: |
           "name": "u2",
           "membership": {
             "id": 1,
+            "kind": "individual"
+          }
+        },
+        {
+          "id": 4,
+          "name": "u4",
+          "membership": {
+            "id": 3,
             "kind": "individual"
           }
         }
