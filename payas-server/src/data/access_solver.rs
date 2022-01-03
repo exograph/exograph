@@ -78,7 +78,7 @@ fn literal_column(value: Value) -> MaybeOwned<'static, Column<'static>> {
     match value {
         Value::Null => Column::Null,
         Value::Bool(v) => Column::Literal(Box::new(v)),
-        Value::Number(v) => Column::Literal(Box::new(v.as_i64().unwrap())), // Deal with the exact number type
+        Value::Number(v) => Column::Literal(Box::new(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
         Value::String(v) => Column::Literal(Box::new(v)),
         Value::Array(values) => Column::Literal(Box::new(values)),
         Value::Object(_) => todo!(),

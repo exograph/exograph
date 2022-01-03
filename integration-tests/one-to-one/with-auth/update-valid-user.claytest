@@ -1,0 +1,22 @@
+operation: |
+  mutation {
+    updateMembership(id: 1, data: {kind: "free", user: {id: 1}}) {
+      id
+      kind
+      user {
+        id
+        name
+      }
+    }
+  }
+auth: |
+  {
+    "sub": 2,
+    "role": "USER"
+  }   
+response: |
+  {
+    "data": {
+      "updateMembership": null
+    }
+  }

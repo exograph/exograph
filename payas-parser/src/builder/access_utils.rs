@@ -5,7 +5,7 @@ use payas_model::model::{
     },
     column_id::ColumnId,
     relation::GqlRelation,
-    GqlCompositeType, GqlFieldType,
+    GqlCompositeType, GqlFieldType, GqlTypeKind,
 };
 
 use crate::{
@@ -137,22 +137,45 @@ fn compute_selection<'a>(
     fn get_column<'a>(
         path_elements: &[String],
         self_type_info: &'a GqlCompositeType,
+        building: &'a SystemContextBuilding,
     ) -> (ColumnId, &'a GqlFieldType) {
-        if path_elements.len() == 1 {
-            let field = self_type_info
+        let get_field = |field_name: &str| {
+            self_type_info
                 .fields
                 .iter()
-                .find(|field| field.name == path_elements[0])
-                .unwrap();
-            match &field.relation {
-                GqlRelation::Pk { column_id }
-                | GqlRelation::Scalar { column_id }
-                | GqlRelation::ManyToOne { column_id, .. } => (column_id.clone(), &field.typ),
-                GqlRelation::OneToMany { .. } => todo!(),
-                GqlRelation::NonPersistent => panic!(),
+                .find(|f| f.name == field_name)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Field {} not found while processing access rules",
+                        field_name
+                    )
+                })
+        };
+
+        match path_elements {
+            [] => panic!("Cannot get column from an empty path"),
+            [path_element] => {
+                let field = get_field(path_element);
+                match &field.relation {
+                    GqlRelation::Pk { column_id }
+                    | GqlRelation::Scalar { column_id }
+                    | GqlRelation::ManyToOne { column_id, .. } => (column_id.clone(), &field.typ),
+                    GqlRelation::OneToMany { .. } => todo!(),
+                    GqlRelation::NonPersistent => panic!(),
+                }
             }
-        } else {
-            todo!() // Nested selection such as self.venue.published
+            [head_element, rest @ ..] => {
+                let field = get_field(head_element);
+
+                let field_base_type = field.typ.base_type(&building.types.values);
+
+                match &field_base_type.kind {
+                    GqlTypeKind::Primitive => todo!(),
+                    GqlTypeKind::Composite(self_type_info) => {
+                        get_column(rest, self_type_info, building)
+                    }
+                }
+            }
         }
     }
 
@@ -189,7 +212,8 @@ fn compute_selection<'a>(
     flatten(selection, &mut path_elements);
 
     if path_elements[0] == "self" {
-        let (column_id, column_type) = get_column(&path_elements[1..], self_type_info.unwrap());
+        let (column_id, column_type) =
+            get_column(&path_elements[1..], self_type_info.unwrap(), building);
         PathSelection::Column(column_id, column_type)
     } else {
         let (context_selection, column_type) = get_context(&path_elements, building);

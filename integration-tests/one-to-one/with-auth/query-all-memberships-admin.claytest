@@ -1,0 +1,55 @@
+operation: |
+  query {
+    memberships {
+      id
+      kind
+      user {
+        id
+        name
+      }
+    }
+  }
+auth: |
+  {
+    "sub": 2,
+    "role": "ADMIN"
+  }    
+response: |
+  {
+    "data": {
+      "memberships": [
+        {
+          "id": 1,
+          "kind": "individual",
+          "user": {
+            "id": 2,
+            "name": "u2"
+          }
+        },
+        {
+          "id": 2,
+          "kind": "family",
+          "user": {
+            "id": 3,
+            "name": "u3"
+          }
+        },
+        {
+          "id": 3,
+          "kind": "individual",
+          "user": {
+            "id": 4,
+            "name": "u4"
+          }
+        },
+        {
+          "id": 4,
+          "kind": "family",
+          "user": {
+            "id": 5,
+            "name": "u5"
+          }
+        }                
+      ]
+    }
+  }
