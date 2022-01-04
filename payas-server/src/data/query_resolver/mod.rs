@@ -358,18 +358,24 @@ fn map_field<'a>(
             GqlRelation::OneToMany {
                 other_type_column_id,
                 other_type_id,
+                cardinality,
             } => {
                 let other_type = &system.types[*other_type_id];
-                let other_table_collection_query = {
+                let other_table_query = {
                     match &other_type.kind {
                         GqlTypeKind::Primitive => panic!(""),
                         GqlTypeKind::Composite(kind) => {
-                            &system.queries[kind.get_collection_query()]
+                            // Get an appropriate query based on the cardinality of the relation
+                            if cardinality == &RelationCardinality::Unbounded {
+                                &system.queries[kind.get_collection_query()]
+                            } else {
+                                &system.queries[kind.get_pk_query()]
+                            }
                         }
                     }
                 };
 
-                let other_selection_table = other_table_collection_query.operation(
+                let other_selection_table = other_table_query.operation(
                     field,
                     Predicate::Eq(
                         query_context
@@ -432,6 +438,7 @@ fn table_dependency<'a>(
                 | GqlRelation::OneToMany {
                     other_type_column_id: column_id,
                     other_type_id,
+                    ..
                 } => {
                     let field_type = field.typ.base_type(&system.types);
                     // TODO: Move the relationship predicate to relation itself (and then use that here and in map_field)

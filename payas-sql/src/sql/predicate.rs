@@ -297,6 +297,7 @@ mod tests {
             is_pk: false,
             is_autoincrement: false,
             is_nullable: true,
+            is_unique: false,
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -320,6 +321,7 @@ mod tests {
             is_pk: false,
             is_autoincrement: false,
             is_nullable: true,
+            is_unique: false,
         };
         let name_col = Column::Physical(&name_col);
         let name_value_col = Column::Literal(Box::new("foo"));
@@ -331,6 +333,7 @@ mod tests {
             is_pk: false,
             is_autoincrement: false,
             is_nullable: true,
+            is_unique: false,
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -362,6 +365,7 @@ mod tests {
             is_pk: false,
             is_autoincrement: false,
             is_nullable: true,
+            is_unique: false,
         };
 
         fn title_test_data(
@@ -427,6 +431,7 @@ mod tests {
             is_pk: false,
             is_autoincrement: false,
             is_nullable: true,
+            is_unique: false,
         };
 
         fn json_test_data(

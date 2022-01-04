@@ -192,7 +192,7 @@ impl DenoModule {
                     Arg::Shim(name) => Ok(shim_objects
                         .get(&name)
                         .ok_or_else(|| anyhow!("Missing shim {}", &name))?
-                        .get(tc_scope_ref)
+                        .open(tc_scope_ref)
                         .to_object(tc_scope_ref)
                         .unwrap()
                         .into()),
@@ -200,7 +200,7 @@ impl DenoModule {
                 .collect::<Result<Vec<_>, AnyError>>()?;
 
             let func_obj = func_value
-                .get(tc_scope_ref)
+                .open(tc_scope_ref)
                 .to_object(tc_scope_ref)
                 .unwrap();
             let func = v8::Local::<v8::Function>::try_from(func_obj)?;

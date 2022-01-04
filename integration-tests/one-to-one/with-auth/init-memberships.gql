@@ -1,0 +1,54 @@
+operation: |
+    mutation (
+        $user_name1: String!, $user_name2: String!, $user_name3: String!, $user_name4: String!, $user_name5: String!,
+        $membership_kind1: String!, $membership_kind2: String!, $membership_kind3: String!, $membership_kind4: String!
+    ) {
+        user1: createUser(data: {name: $user_name1}) {
+            id
+        }
+        user2: createUser(data: {name: $user_name2}) {
+            id
+        }
+        user3: createUser(data: {name: $user_name3}) {
+            id
+        }
+        user4: createUser(data: {name: $user_name4}) {
+            id
+        }
+        user5: createUser(data: {name: $user_name5}) {
+            id
+        }
+        # membership1 for user 2, membership2 for user 3, and so on (to ensure that we get the right results for nested query)
+        # If we did membership1 for user 1 and membership2 for user 2 and so on, we might get the correct results for wrong reason.
+        # Specifically, querying membership for user 1 might get us membership1, but only because it searched for the membership id 1
+        # and not user id 1.
+        membership1: createMembership(data: {kind: $membership_kind1, user: {id: 2}}) {
+            id
+        }
+        membership2: createMembership(data: {kind: $membership_kind2, user: {id: 3}}) {
+            id
+        }
+        membership3: createMembership(data: {kind: $membership_kind3, user: {id: 4}}) {
+            id
+        }           
+        membership4: createMembership(data: {kind: $membership_kind4, user: {id: 5}}) {
+            id
+        }   
+    } 
+auth: |
+    {
+        "sub": 2,
+        "role": "ADMIN"
+    }      
+variable: |
+    {
+        "user_name1": "u1",
+        "user_name2": "u2",
+        "user_name3": "u3",
+        "user_name4": "u4",
+        "user_name5": "u5",
+        "membership_kind1": "individual",
+        "membership_kind2": "family",
+        "membership_kind3": "individual",
+        "membership_kind4": "family"
+    }

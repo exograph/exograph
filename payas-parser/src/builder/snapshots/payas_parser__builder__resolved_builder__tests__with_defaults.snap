@@ -43,27 +43,33 @@ types:
               kind:
                 Persistent:
                   column_name: id
+                  self_column: true
                   is_pk: true
                   is_autoincrement: true
                   type_hint: ~
+                  unique: false
             - name: title
               typ:
                 Plain: String
               kind:
                 Persistent:
                   column_name: title
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: venue
               typ:
                 Plain: Venue
               kind:
                 Persistent:
                   column_name: venue_id
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: attending
               typ:
                 List:
@@ -71,9 +77,11 @@ types:
               kind:
                 Persistent:
                   column_name: attending
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: seating
               typ:
                 List:
@@ -82,9 +90,11 @@ types:
               kind:
                 Persistent:
                   column_name: seating
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
           kind:
             Persistent:
               table_name: concerts
@@ -112,18 +122,22 @@ types:
               kind:
                 Persistent:
                   column_name: id
+                  self_column: true
                   is_pk: true
                   is_autoincrement: true
                   type_hint: ~
+                  unique: false
             - name: name
               typ:
                 Plain: String
               kind:
                 Persistent:
                   column_name: name
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: concerts
               typ:
                 List:
@@ -131,9 +145,11 @@ types:
               kind:
                 Persistent:
                   column_name: venue_id
+                  self_column: false
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
           kind:
             Persistent:
               table_name: venues

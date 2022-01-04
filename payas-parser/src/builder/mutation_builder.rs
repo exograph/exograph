@@ -20,9 +20,9 @@ use super::update_mutation_builder::UpdateMutationBuilder;
 use super::Builder;
 
 // TODO: Introduce this module as a struct (and have it hold the sub-builders)
-// TODO: Abstract the concept of compisite builders
+// TODO: Abstract the concept of composite builders
 
-/// Build shallow mutaiton input types
+/// Build shallow mutation input types
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     ReferenceInputTypeBuilder {}.build_shallow_only_persistent(models, building);
 
@@ -171,7 +171,7 @@ pub trait DataParamBuilder<D> {
         let optional = Self::mark_fields_optional();
 
         match &field.relation {
-            GqlRelation::Pk { .. } => None, // TODO: Make this decistion based on autoincrement/uuid etc of the id
+            GqlRelation::Pk { .. } => None, // TODO: Make this decision based on autoincrement/uuid etc of the id
             GqlRelation::Scalar { .. } | GqlRelation::NonPersistent => Some(GqlField {
                 typ: if optional {
                     field.typ.optional()
@@ -223,25 +223,30 @@ pub trait DataParamBuilder<D> {
         let optional = Self::mark_fields_optional();
 
         let field_type_name = Self::data_type_name(field.typ.type_name(), container_type);
-        let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-        let field_plain_type = GqlFieldType::Reference {
-            type_name: field_type_name,
-            type_id: field_type_id,
-        };
-        let field_type = GqlFieldType::List(Box::new(field_plain_type));
 
-        match &container_type {
-            Some(value) if value == &field.typ.type_name() => None,
-            _ => Some(GqlField {
-                name: field.name.clone(),
-                typ: if optional {
-                    field_type.optional()
-                } else {
-                    field_type
-                },
-                relation: field.relation.clone(),
-            }),
-        }
+        building
+            .mutation_types
+            .get_id(&field_type_name)
+            .and_then(|field_type_id| {
+                let field_plain_type = GqlFieldType::Reference {
+                    type_name: field_type_name,
+                    type_id: field_type_id,
+                };
+                let field_type = GqlFieldType::List(Box::new(field_plain_type));
+
+                match &container_type {
+                    Some(value) if value == &field.typ.type_name() => None,
+                    _ => Some(GqlField {
+                        name: field.name.clone(),
+                        typ: if optional {
+                            field_type.optional()
+                        } else {
+                            field_type
+                        },
+                        relation: field.relation.clone(),
+                    }),
+                }
+            })
     }
 
     fn expanded_data_type(

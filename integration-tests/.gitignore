@@ -1,0 +1,3 @@
+# Ignore autocreated claytip.d.ts.
+# We need such an arrangement until we have claytip.d.ts  distributed over some repository that can be imported into users source code
+claytip.d.ts

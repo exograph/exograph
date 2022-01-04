@@ -2,29 +2,47 @@ mod claytest;
 
 use anyhow::{bail, Result};
 use claytest::loader::{load_testfiles_from_dir, ParsedTestfile};
-use claytest::runner::run_testfile;
+use claytest::runner::{build_claypot_file, run_testfile};
 use rayon::ThreadPoolBuilder;
 use std::cmp::min;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::mpsc;
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
-pub fn run(directory: &Path) -> Result<()> {
+pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
     println!(
-        "{} {} {}",
+        "{} {} {} {}",
         ansi_term::Color::Blue
             .bold()
             .paint("* Running tests in directory"),
         directory.to_str().unwrap(),
+        pattern
+            .as_ref()
+            .map(|p| format!("'with pattern {}'", p))
+            .unwrap_or_else(|| "".to_string()),
         ansi_term::Color::Blue.bold().paint("..."),
     );
     let start_time = std::time::Instant::now();
     let cpus = num_cpus::get();
 
-    let database_url = std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL");
+    let database_url =
+        std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL must be specified");
 
-    let testfiles = load_testfiles_from_dir(Path::new(&directory)).unwrap();
+    let testfiles = load_testfiles_from_dir(Path::new(&directory), pattern).unwrap();
     let number_of_tests = testfiles.len() * 2; // *2 because we run each testfile twice: dev mode and production mode
+
+    // Work out which tests share a common clay file so we only build it once for all the
+    // dependent production mode tests
+    let mut model_file_deps: HashMap<String, Vec<ParsedTestfile>> = HashMap::new();
+
+    for f in testfiles.iter() {
+        if let Some(files) = model_file_deps.get_mut(&f.model_path_string()) {
+            files.push(f.clone());
+        } else {
+            model_file_deps.insert(f.model_path_string(), vec![f.clone()]);
+        }
+    }
 
     // Estimate an optimal pool size
     let pool_size = min(number_of_tests, cpus * 2);
@@ -35,20 +53,33 @@ pub fn run(directory: &Path) -> Result<()> {
 
     let (tx, rx) = mpsc::channel();
 
-    let run_test_in_pool = |file: ParsedTestfile, is_dev_mode: bool| {
+    // First spawn all the dev mode tests which don't need the clay file built
+    for file in testfiles.iter() {
+        let tx = tx.clone();
+        let url = database_url.clone();
+        let file = file.clone();
+
+        pool.spawn(move || {
+            let result = run_testfile(&file, url, true);
+            tx.send(result).unwrap();
+        });
+    }
+
+    // Then build all the model files, spawning the production mode tests once the build completes
+    for (model_path, testfiles) in model_file_deps {
+        let model_path = model_path.clone();
         let tx = tx.clone();
         let url = database_url.clone();
 
-        pool.spawn(move || {
-            let result = run_testfile(&file, url, is_dev_mode);
-            tx.send(result).unwrap();
+        pool.spawn(move || match build_claypot_file(&model_path) {
+            Ok(()) => {
+                for file in testfiles.iter() {
+                    let result = run_testfile(file, url.clone(), false);
+                    tx.send(result).unwrap();
+                }
+            }
+            Err(e) => tx.send(Err(e)).unwrap(),
         });
-    };
-
-    // Run testfiles in parallel using the thread pool in both production and dev modes
-    for file in testfiles.iter() {
-        run_test_in_pool(file.clone(), false);
-        run_test_in_pool(file.clone(), true);
     }
 
     drop(tx);

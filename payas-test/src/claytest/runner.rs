@@ -7,7 +7,7 @@ use serde_json::{json, Map, Value};
 
 use std::{
     env,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Write},
     process::{Command, Stdio},
     sync::{Arc, Mutex},
     time::SystemTime,
@@ -23,7 +23,7 @@ struct ClayPost {
     variables: serde_json::Value,
 }
 
-pub fn run_testfile(
+pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
     bootstrap_dburl: String,
     dev_mode: bool,
@@ -31,12 +31,9 @@ pub fn run_testfile(
     // iterate through our tests
     let mut ctx = TestfileContext::default();
 
-    let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name));
-    let dbname = if dev_mode {
-        format!("{}_dev", testfile.unique_dbname)
-    } else {
-        testfile.unique_dbname.clone()
-    };
+    let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name()));
+
+    let dbname = testfile.dbname(dev_mode);
     ctx.dbname = Some(dbname.clone());
 
     // generate a JWT secret
@@ -55,7 +52,7 @@ pub fn run_testfile(
     println!("{} Initializing schema in {} ...", log_prefix, dbname);
 
     let cli_child = cmd("clay")
-        .args(["schema", "create", testfile.model_path.as_ref().unwrap()])
+        .args(["schema", "create", &testfile.model_path_string()])
         .output()?;
 
     if !cli_child.status.success() {
@@ -71,46 +68,29 @@ pub fn run_testfile(
 
     let check_on_startup = if rand::random() { "true" } else { "false" };
 
-    if dev_mode {
-        ctx.server = Some(
-            cmd("clay")
-                .args(["serve", testfile.model_path.as_ref().unwrap()])
-                .env("CLAY_DATABASE_URL", &dburl_for_clay)
-                .env("CLAY_DATABASE_USER", dbusername)
-                .env("CLAY_JWT_SECRET", &jwtsecret)
-                .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
-                .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
-                .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .context("clay-server failed to start")?,
-        );
+    let (cmd_name, args) = if dev_mode {
+        (
+            "clay",
+            vec!["serve".to_string(), testfile.model_path_string()],
+        )
     } else {
-        let build_child = cmd("clay")
-            .args(["build", testfile.model_path.as_ref().unwrap()])
-            .output()?;
-
-        if !build_child.status.success() {
-            eprintln!("{}", std::str::from_utf8(&build_child.stderr).unwrap());
-            bail!("Could not build the claypot.");
-        }
-
-        ctx.server = Some(
-            cmd("clay-server")
-                .args([testfile.model_path.as_ref().unwrap()])
-                .env("CLAY_DATABASE_URL", &dburl_for_clay)
-                .env("CLAY_DATABASE_USER", dbusername)
-                .env("CLAY_JWT_SECRET", &jwtsecret)
-                .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
-                .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
-                .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .context("clay-server failed to start")?,
-        );
+        ("clay-server", vec![testfile.model_path_string()])
     };
+
+    ctx.server = Some(
+        cmd(cmd_name)
+            .args(args)
+            .env("CLAY_DATABASE_URL", &dburl_for_clay)
+            .env("CLAY_DATABASE_USER", dbusername)
+            .env("CLAY_JWT_SECRET", &jwtsecret)
+            .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
+            .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
+            .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .context("clay-server failed to start")?,
+    );
 
     // wait for it to start
     const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
@@ -121,13 +101,13 @@ pub fn run_testfile(
     let mut line = String::new();
     server_stdout.read_line(&mut line).context(format!(
         r#"Failed to read output line for "{}" server"#,
-        testfile.name
+        testfile.name()
     ))?;
 
     if !line.starts_with(MAGIC_STRING) {
         bail!(
             r#"Unexpected output from clay-server "{}", {}: {}"#,
-            testfile.name,
+            testfile.name(),
             dev_mode,
             line
         )
@@ -162,7 +142,10 @@ pub fn run_testfile(
     println!("{} Initializing database...", log_prefix);
     for operation in testfile.init_operations.iter() {
         run_operation(&endpoint, operation, &jwtsecret, &dburl_for_clay).with_context(|| {
-            format!("While initializing database for testfile {}", testfile.name)
+            format!(
+                "While initializing database for testfile {}",
+                testfile.name()
+            )
         })??
     }
 
@@ -299,4 +282,15 @@ fn run_operation(
             Ok(Ok(()))
         }
     }
+}
+
+pub(crate) fn build_claypot_file(path: &str) -> Result<()> {
+    let build_child = cmd("clay").args(["build", path]).output()?;
+
+    if !build_child.status.success() {
+        std::io::stdout().write_all(&build_child.stdout).unwrap();
+        std::io::stderr().write_all(&build_child.stderr).unwrap();
+        bail!("Could not build the claypot.");
+    }
+    Ok(())
 }

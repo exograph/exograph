@@ -4,6 +4,7 @@ use deno_core::FsModuleLoader;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
+use deno_core::ModuleType;
 
 use std::pin::Pin;
 
@@ -48,6 +49,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
                     code,
                     module_url_specified: specifier.clone(),
                     module_url_found: specifier,
+                    module_type: ModuleType::JavaScript,
                 })
             }
             .boxed_local()

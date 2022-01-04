@@ -1,0 +1,32 @@
+# Asking for all membership by a non-admin user returns only the user's own membership
+operation: |
+  query {
+    memberships {
+      id
+      kind
+      user {
+        id
+        name
+      }
+    }
+  }
+auth: |
+  {
+    "sub": 2,
+    "role": "USER"
+  }    
+response: |
+  {
+    "data": {
+      "memberships": [
+        {
+          "id": 1,
+          "kind": "individual",
+          "user": {
+            "id": 2,
+            "name": "u2"
+          }
+        }
+      ]
+    }
+  }
