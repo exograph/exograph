@@ -1,0 +1,55 @@
+operation: |
+  query {
+    users {
+      id
+      name
+      membership {
+        id
+        kind
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "users": [
+        {
+          "id": 1,
+          "name": "u1",
+          "membership": null
+        },
+        {
+          "id": 2,
+          "name": "u2",
+          "membership": {
+            "id": 1,
+            "kind": "individual"
+          }
+        },
+        {
+          "id": 3,
+          "name": "u3",
+          "membership": {
+            "id": 2,
+            "kind": "family"
+          }
+        },
+        {
+          "id": 4,
+          "name": "u4",
+          "membership": {
+            "id": 3,
+            "kind": "individual"
+          }
+        },
+        {
+          "id": 5,
+          "name": "u5",
+          "membership": {
+            "id": 4,
+            "kind": "family"
+          }
+        }                
+      ]
+    }
+  }

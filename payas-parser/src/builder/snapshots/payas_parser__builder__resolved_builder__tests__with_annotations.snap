@@ -43,37 +43,44 @@ types:
               kind:
                 Persistent:
                   column_name: custom_id
+                  self_column: true
                   is_pk: true
                   is_autoincrement: true
                   type_hint:
                     Explicit:
                       dbtype: BIGINT
+                  unique: false
             - name: title
               typ:
                 Plain: String
               kind:
                 Persistent:
                   column_name: custom_title
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint:
                     String:
                       length: 12
+                  unique: false
             - name: venue
               typ:
                 Plain: Venue
               kind:
                 Persistent:
                   column_name: custom_venue_id
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: reserved
               typ:
                 Plain: Int
               kind:
                 Persistent:
                   column_name: reserved
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint:
@@ -82,29 +89,34 @@ types:
                       range:
                         - 0
                         - 300
+                  unique: false
             - name: time
               typ:
                 Plain: Instant
               kind:
                 Persistent:
                   column_name: time
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint:
                     DateTime:
                       precision: 4
+                  unique: false
             - name: price
               typ:
                 Plain: Decimal
               kind:
                 Persistent:
                   column_name: price
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint:
                     Decimal:
                       precision: 10
                       scale: 2
+                  unique: false
           kind:
             Persistent:
               table_name: custom_concerts
@@ -132,18 +144,22 @@ types:
               kind:
                 Persistent:
                   column_name: custom_id
+                  self_column: true
                   is_pk: true
                   is_autoincrement: true
                   type_hint: ~
+                  unique: false
             - name: name
               typ:
                 Plain: String
               kind:
                 Persistent:
                   column_name: custom_name
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: concerts
               typ:
                 List:
@@ -151,32 +167,38 @@ types:
               kind:
                 Persistent:
                   column_name: custom_venueid
+                  self_column: false
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: capacity
               typ:
                 Plain: Int
               kind:
                 Persistent:
                   column_name: capacity
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint:
                     Int:
                       bits: 16
                       range: ~
+                  unique: false
             - name: latitude
               typ:
                 Plain: Float
               kind:
                 Persistent:
                   column_name: latitude
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint:
                     Float:
                       bits: 24
+                  unique: false
           kind:
             Persistent:
               table_name: venues

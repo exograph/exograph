@@ -1,0 +1,32 @@
+# User can get only their own data
+operation: |
+  query {
+    users {
+      id
+      name
+      membership {
+        id
+        kind
+      }
+    }
+  }
+auth: |
+  {
+    "sub": 2,
+    "role": "USER"
+  }   
+response: |
+  {
+    "data": {
+      "users": [
+        {
+          "id": 2,
+          "name": "u2",
+          "membership": {
+            "id": 1,
+            "kind": "individual"
+          }
+        }         
+      ]
+    }
+  }

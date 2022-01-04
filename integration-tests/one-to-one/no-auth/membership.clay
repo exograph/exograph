@@ -1,0 +1,12 @@
+// A user may have an optional membership, but a membership must have an associated user
+model User {
+  id: Int @pk @autoincrement
+  name: String
+  membership: Membership?
+}
+
+model Membership {
+  id: Int @pk @autoincrement
+  kind: String
+  user: User
+}

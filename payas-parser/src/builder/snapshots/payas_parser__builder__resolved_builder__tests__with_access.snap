@@ -43,27 +43,33 @@ types:
               kind:
                 Persistent:
                   column_name: id
+                  self_column: true
                   is_pk: true
                   is_autoincrement: true
                   type_hint: ~
+                  unique: false
             - name: title
               typ:
                 Plain: String
               kind:
                 Persistent:
                   column_name: title
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
             - name: public
               typ:
                 Plain: Boolean
               kind:
                 Persistent:
                   column_name: public
+                  self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
+                  unique: false
           kind:
             Persistent:
               table_name: concerts

@@ -116,6 +116,7 @@ mod tests {
                 is_pk: false,
                 is_autoincrement: false,
                 is_nullable: true,
+                is_unique: false,
             }],
         };
 
@@ -162,6 +163,7 @@ mod tests {
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: true,
+                    is_unique: false,
                 },
                 PhysicalColumn {
                     table_name: "people".to_string(),
@@ -170,6 +172,7 @@ mod tests {
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: true,
+                    is_unique: false,
                 },
             ],
         };
