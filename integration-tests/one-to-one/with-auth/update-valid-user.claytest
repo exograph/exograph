@@ -1,3 +1,4 @@
+# User 2 trying to update own membership to point to another user
 operation: |
   mutation {
     updateMembership(id: 1, data: {kind: "free", user: {id: 1}}) {
