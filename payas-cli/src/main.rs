@@ -123,6 +123,12 @@ fn main() -> Result<()> {
                         .help("Integration test directory")
                         .required(true)
                         .index(1),
+                )
+                .arg(
+                    Arg::with_name("pattern")
+                        .help("glob pattern to choose tests to run")
+                        .required(false)
+                        .index(2),
                 ),
         )
         .subcommand(
@@ -170,6 +176,7 @@ fn main() -> Result<()> {
         }),
         ("test", Some(matches)) => Box::new(TestCommand {
             dir: PathBuf::from(matches.value_of("dir").unwrap()),
+            pattern: matches.value_of("pattern").map(|s| s.to_owned()),
         }),
         ("yolo", Some(matches)) => Box::new(YoloCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
