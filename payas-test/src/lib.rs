@@ -12,11 +12,15 @@ use std::sync::mpsc;
 /// Loads test files from the supplied directory and runs them using a thread pool.
 pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
     println!(
-        "{} {} {}",
+        "{} {} {} {}",
         ansi_term::Color::Blue
             .bold()
             .paint("* Running tests in directory"),
         directory.to_str().unwrap(),
+        pattern
+            .as_ref()
+            .map(|p| format!("'with pattern {}'", p))
+            .unwrap_or_else(|| "".to_string()),
         ansi_term::Color::Blue.bold().paint("..."),
     );
     let start_time = std::time::Instant::now();
