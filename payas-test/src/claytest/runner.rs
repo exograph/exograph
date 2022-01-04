@@ -31,12 +31,9 @@ pub(crate) fn run_testfile(
     // iterate through our tests
     let mut ctx = TestfileContext::default();
 
-    let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name));
-    let dbname = if dev_mode {
-        format!("{}_dev", testfile.unique_dbname)
-    } else {
-        testfile.unique_dbname.clone()
-    };
+    let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name()));
+
+    let dbname = testfile.dbname(dev_mode);
     ctx.dbname = Some(dbname.clone());
 
     // generate a JWT secret
@@ -55,7 +52,7 @@ pub(crate) fn run_testfile(
     println!("{} Initializing schema in {} ...", log_prefix, dbname);
 
     let cli_child = cmd("clay")
-        .args(["schema", "create", testfile.model_path.as_ref().unwrap()])
+        .args(["schema", "create", &testfile.model_path_string()])
         .output()?;
 
     if !cli_child.status.success() {
@@ -70,12 +67,14 @@ pub(crate) fn run_testfile(
     println!("{} Initializing clay-server ...", log_prefix);
 
     let check_on_startup = if rand::random() { "true" } else { "false" };
-    let model_file = testfile.model_path.as_ref().unwrap();
 
     let (cmd_name, args) = if dev_mode {
-        ("clay", vec!["serve".to_string(), model_file.clone()])
+        (
+            "clay",
+            vec!["serve".to_string(), testfile.model_path_string()],
+        )
     } else {
-        ("clay-server", vec![model_file.clone()])
+        ("clay-server", vec![testfile.model_path_string()])
     };
 
     ctx.server = Some(
@@ -102,13 +101,13 @@ pub(crate) fn run_testfile(
     let mut line = String::new();
     server_stdout.read_line(&mut line).context(format!(
         r#"Failed to read output line for "{}" server"#,
-        testfile.name
+        testfile.name()
     ))?;
 
     if !line.starts_with(MAGIC_STRING) {
         bail!(
             r#"Unexpected output from clay-server "{}", {}: {}"#,
-            testfile.name,
+            testfile.name(),
             dev_mode,
             line
         )
@@ -143,7 +142,10 @@ pub(crate) fn run_testfile(
     println!("{} Initializing database...", log_prefix);
     for operation in testfile.init_operations.iter() {
         run_operation(&endpoint, operation, &jwtsecret, &dburl_for_clay).with_context(|| {
-            format!("While initializing database for testfile {}", testfile.name)
+            format!(
+                "While initializing database for testfile {}",
+                testfile.name()
+            )
         })??
     }
 

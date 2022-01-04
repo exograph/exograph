@@ -21,13 +21,36 @@ pub enum TestfileOperation {
 
 #[derive(Debug, Default, Clone)]
 pub struct ParsedTestfile {
-    pub name: String,
-    pub unique_dbname: String,
-
-    pub model_path: Option<String>,
+    model_path: PathBuf,
+    testfile_path: PathBuf,
 
     pub init_operations: Vec<TestfileOperation>,
     pub test_operation: Option<TestfileOperation>,
+}
+
+impl ParsedTestfile {
+    pub fn model_path_string(&self) -> String {
+        self.model_path
+            .to_str()
+            .expect("Failed to convert file name into Unicode")
+            .to_string()
+    }
+
+    pub fn name(&self) -> String {
+        // Setting the extension to "", removes the extension
+        Path::with_extension(&self.testfile_path, "")
+            .to_str()
+            .expect("Failed to convert file name into Unicode")
+            .to_string()
+    }
+
+    pub fn dbname(&self, dev_model: bool) -> String {
+        format!(
+            "{}_{}",
+            to_postgres(&self.name()),
+            if dev_model { "dev" } else { "prod" }
+        )
+    }
 }
 
 // serde file formats
@@ -127,8 +150,6 @@ fn load_testfiles_from_dir_(
         }
     };
 
-    let prefix = model_path.to_str().unwrap();
-
     // Parse init files and populate init_ops
     let mut init_ops = init_ops.to_owned();
 
@@ -141,13 +162,7 @@ fn load_testfiles_from_dir_(
     let mut testfiles = vec![];
 
     for testfile_path in claytest_files.iter() {
-        let mut testfile = parse_testfile(testfile_path)?;
-
-        // annotate testfile with our prefix and our init operations collection
-        testfile.name = format!("{} : {}", prefix, testfile.name);
-        testfile.unique_dbname = to_postgres(&format!("{}/{}", prefix, testfile.unique_dbname));
-        testfile.model_path = Some(model_path.to_str().unwrap().to_string());
-        testfile.init_operations = init_ops.clone();
+        let testfile = parse_testfile(testfile_path, &model_path.to_path_buf(), init_ops.clone())?;
 
         testfiles.push(testfile);
     }
@@ -163,38 +178,30 @@ fn load_testfiles_from_dir_(
     Ok(testfiles)
 }
 
-fn parse_testfile(path: &Path) -> Result<ParsedTestfile> {
-    let file = File::open(path).context("Could not open test file")?;
+fn parse_testfile(
+    testfile_path: &Path,
+    model_path: &Path,
+    init_ops: Vec<TestfileOperation>,
+) -> Result<ParsedTestfile> {
+    let file = File::open(testfile_path).context("Could not open test file")?;
     let reader = BufReader::new(file);
     let deserialized_testfile: Testfile = serde_yaml::from_reader(reader)
-        .context(format!("Failed to parse test file at {:?}", path))?;
-
-    let testfile_name = path
-        .file_stem()
-        .context("Failed to get file name from path")?
-        .to_str()
-        .context("Failed to convert file name into Unicode")?
-        .to_string();
-
-    let mut result = ParsedTestfile {
-        name: testfile_name.clone(),
-        unique_dbname: to_postgres(&testfile_name),
-
-        ..ParsedTestfile::default()
-    };
+        .context(format!("Failed to parse test file at {:?}", testfile_path))?;
 
     // validate GraphQL
     let _gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
 
-    // parse operation
-    result.test_operation = Some(TestfileOperation::GqlDocument {
-        document: deserialized_testfile.operation.clone(),
-        auth: deserialized_testfile.auth.map(from_json).transpose()?,
-        variables: deserialized_testfile.variable.map(from_json).transpose()?,
-        expected_payload: Some(from_json(deserialized_testfile.response)?),
-    });
-
-    Ok(result)
+    Ok(ParsedTestfile {
+        model_path: model_path.to_path_buf(),
+        testfile_path: testfile_path.to_path_buf(),
+        init_operations: init_ops,
+        test_operation: Some(TestfileOperation::GqlDocument {
+            document: deserialized_testfile.operation.clone(),
+            auth: deserialized_testfile.auth.map(from_json).transpose()?,
+            variables: deserialized_testfile.variable.map(from_json).transpose()?,
+            expected_payload: Some(from_json(deserialized_testfile.response)?),
+        }),
+    })
 }
 
 fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> {

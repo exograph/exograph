@@ -22,7 +22,8 @@ pub fn run(directory: &Path) -> Result<()> {
     let start_time = std::time::Instant::now();
     let cpus = num_cpus::get();
 
-    let database_url = std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL");
+    let database_url =
+        std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL must be specified");
 
     let testfiles = load_testfiles_from_dir(Path::new(&directory)).unwrap();
     let number_of_tests = testfiles.len() * 2; // *2 because we run each testfile twice: dev mode and production mode
@@ -32,12 +33,10 @@ pub fn run(directory: &Path) -> Result<()> {
     let mut model_file_deps: HashMap<String, Vec<ParsedTestfile>> = HashMap::new();
 
     for f in testfiles.iter() {
-        if let Some(path) = &f.model_path {
-            if let Some(files) = model_file_deps.get_mut(path.as_str()) {
-                files.push(f.clone());
-            } else {
-                model_file_deps.insert(path.to_string(), vec![f.clone()]);
-            }
+        if let Some(files) = model_file_deps.get_mut(&f.model_path_string()) {
+            files.push(f.clone());
+        } else {
+            model_file_deps.insert(f.model_path_string(), vec![f.clone()]);
         }
     }
 
