@@ -10,7 +10,7 @@ use std::path::Path;
 use std::sync::mpsc;
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
-pub fn run(directory: &Path) -> Result<()> {
+pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
     println!(
         "{} {} {}",
         ansi_term::Color::Blue
@@ -25,7 +25,7 @@ pub fn run(directory: &Path) -> Result<()> {
     let database_url =
         std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL must be specified");
 
-    let testfiles = load_testfiles_from_dir(Path::new(&directory)).unwrap();
+    let testfiles = load_testfiles_from_dir(Path::new(&directory), pattern).unwrap();
     let number_of_tests = testfiles.len() * 2; // *2 because we run each testfile twice: dev mode and production mode
 
     // Work out which tests share a common clay file so we only build it once for all the

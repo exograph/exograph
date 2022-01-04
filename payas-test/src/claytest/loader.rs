@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
+use wildmatch::WildMatch;
 
 use anyhow::{bail, Context, Result};
 use async_graphql_parser::parse_query;
@@ -71,14 +72,18 @@ pub struct InitFile {
 }
 
 /// Load and parse testfiles from a given directory.
-pub fn load_testfiles_from_dir(path: &Path) -> Result<Vec<ParsedTestfile>> {
-    load_testfiles_from_dir_(path, None, &[])
+pub fn load_testfiles_from_dir(
+    path: &Path,
+    pattern: &Option<String>,
+) -> Result<Vec<ParsedTestfile>> {
+    load_testfiles_from_dir_(path, None, &[], pattern)
 }
 
 fn load_testfiles_from_dir_(
     path: &Path,
     model_path: Option<&Path>,
     init_ops: &[TestfileOperation],
+    pattern: &Option<String>,
 ) -> Result<Vec<ParsedTestfile>> {
     let path = PathBuf::from(path);
 
@@ -142,7 +147,8 @@ fn load_testfiles_from_dir_(
             // recurse and try to find one
             let mut parsed = vec![];
             for directory in directories {
-                let parsed_testfiles = load_testfiles_from_dir_(&directory, None, init_ops)?;
+                let parsed_testfiles =
+                    load_testfiles_from_dir_(&directory, None, init_ops, pattern)?;
                 parsed.extend(parsed_testfiles);
             }
 
@@ -171,11 +177,22 @@ fn load_testfiles_from_dir_(
     for directory in directories.iter() {
         let child_init_ops = init_ops.clone();
         let child_testfiles =
-            load_testfiles_from_dir_(directory, Some(&model_path), &child_init_ops)?;
+            load_testfiles_from_dir_(directory, Some(&model_path), &child_init_ops, pattern)?;
         testfiles.extend(child_testfiles)
     }
 
-    Ok(testfiles)
+    let filtered_testfiles = match pattern {
+        Some(pattern) => {
+            let wildcard = WildMatch::new(pattern);
+            testfiles
+                .into_iter()
+                .filter(|testfile| wildcard.matches(&testfile.name()))
+                .collect()
+        }
+        None => testfiles,
+    };
+
+    Ok(filtered_testfiles)
 }
 
 fn parse_testfile(
