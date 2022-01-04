@@ -64,8 +64,8 @@ pub struct DenoScript {
 }
 
 /// A Deno-based runner for JavaScript.
-/// 
-/// DenoModule has no concept of Claytip; it exists solely to configure the JavaScript execution environment 
+///
+/// DenoModule has no concept of Claytip; it exists solely to configure the JavaScript execution environment
 /// and to load & execute methods in the Deno runtime from sources.
 impl DenoModule {
     pub async fn new<F>(

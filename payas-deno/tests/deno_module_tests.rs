@@ -48,7 +48,8 @@ async fn test_actor() {
         Path::new("./tests/direct.js"),
         DenoModuleSharedState::default(),
     )
-    .await;
+    .await
+    .unwrap();
 
     let (to_user_sender, _to_user_receiver) = channel(1);
 
@@ -69,7 +70,7 @@ async fn test_actor_executor() {
     let executor = DenoExecutor::default();
     let module_path = Path::new("./tests/direct.js");
 
-    executor.preload_module(module_path, 1).await;
+    executor.preload_module(module_path, 1).await.unwrap();
 
     let res = executor
         .execute_function(
@@ -89,7 +90,7 @@ async fn test_actor_executor_concurrent() {
     let total_futures = 10;
 
     // start with one preloaded DenoModule
-    executor.preload_module(module_path, 1).await;
+    executor.preload_module(module_path, 1).await.unwrap();
 
     let mut handles = vec![];
 

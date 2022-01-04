@@ -235,7 +235,7 @@ async fn resolve_deno(
         .executor
         .deno_execution
         .preload_module(path, 1)
-        .await;
+        .await?;
 
     let function_result = query_context
         .executor
