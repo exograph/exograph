@@ -20,7 +20,7 @@ pub enum TestfileOperation {
     },
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct ParsedTestfile {
     model_path: PathBuf,
     testfile_path: PathBuf,
