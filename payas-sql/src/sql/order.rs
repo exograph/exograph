@@ -48,6 +48,7 @@ mod test {
             is_pk: false,
             is_autoincrement: false,
             is_nullable: true,
+            is_unique: false,
         };
 
         let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
@@ -67,6 +68,7 @@ mod test {
             is_pk: false,
             is_autoincrement: false,
             is_nullable: true,
+            is_unique: false,
         };
 
         let age_col = PhysicalColumn {
@@ -76,6 +78,7 @@ mod test {
             is_pk: false,
             is_autoincrement: false,
             is_nullable: true,
+            is_unique: false,
         };
 
         {

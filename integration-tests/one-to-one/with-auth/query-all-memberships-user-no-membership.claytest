@@ -1,0 +1,23 @@
+# User 1 has no memberships
+operation: |
+  query {
+    memberships {
+      id
+      kind
+      user {
+        id
+        name
+      }
+    }
+  }
+auth: |
+  {
+    "sub": 1,
+    "role": "USER"
+  }    
+response: |
+  {
+    "data": {
+      "memberships": []
+    }
+  }

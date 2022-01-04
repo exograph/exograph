@@ -138,7 +138,7 @@ pub struct AstArgument<T: NodeTypedness> {
 pub enum AstFieldType<T: NodeTypedness> {
     Plain(
         String,
-        Vec<AstFieldType<T>>,
+        Vec<AstFieldType<T>>, // type parameters (for example, `Concert` for `Set<Concert>`)
         T::Type,
         #[serde(skip_serializing)]
         #[serde(skip_deserializing)]

@@ -200,6 +200,36 @@ mod tests {
     }
 
     #[test]
+    fn one_to_one() {
+        let src = r#"
+            model User {
+                id: Int @pk @autoincrement
+                membership: Membership?
+            }
+
+            model Membership {
+                id: Int @pk @autoincrement
+                user: User
+            }
+        "#;
+
+        let system = create_system(src);
+        let get_table = |n| get_table_from_arena(n, &system.tables);
+
+        let users = get_table("users");
+        let memberships = get_table("memberships");
+
+        // pks should just have PRIMARY KEY constraint, not NOT NULL
+        let users_id = get_column_from_table("id", users);
+        let memberships_id = get_column_from_table("id", memberships);
+        assert!(users_id.is_pk);
+        assert!(memberships_id.is_pk);
+
+        let users_membership = get_column_from_table("user_id", memberships);
+        assert!(!users_membership.is_nullable);
+    }
+
+    #[test]
     fn type_hint_annotations() {
         let src = r#"
             @table("logs")
@@ -327,8 +357,6 @@ mod tests {
                 return item;
             }
         }
-
-        println!("{:#?}", table);
 
         panic!("No such column {}", name)
     }

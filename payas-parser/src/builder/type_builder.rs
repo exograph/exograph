@@ -4,7 +4,7 @@ use payas_model::{
         column_id::ColumnId,
         mapped_arena::{MappedArena, SerializableSlabIndex},
         naming::ToGqlQueryName,
-        relation::GqlRelation,
+        relation::{GqlRelation, RelationCardinality},
         GqlCompositeType, GqlCompositeTypeKind, GqlFieldType,
     },
     sql::{
@@ -16,8 +16,8 @@ use payas_model::{
 use super::{
     access_utils,
     resolved_builder::{
-        ResolvedAccess, ResolvedField, ResolvedFieldType, ResolvedMethod, ResolvedType,
-        ResolvedTypeHint,
+        ResolvedAccess, ResolvedField, ResolvedFieldKind, ResolvedFieldType, ResolvedMethod,
+        ResolvedType, ResolvedTypeHint,
     },
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
@@ -282,7 +282,23 @@ fn create_column(
     table_name: &str,
     env: &MappedArena<ResolvedType>,
 ) -> Option<PhysicalColumn> {
-    // split Optional types into a bool and its inner type
+    // Check that the field holds to a self column
+    let unique = match &field.kind {
+        ResolvedFieldKind::Persistent {
+            self_column,
+            unique,
+            ..
+        } => {
+            if !self_column {
+                return None;
+            }
+            *unique
+        }
+        ResolvedFieldKind::NonPersistent => {
+            panic!("Non-persistent fields are not supported")
+        }
+    };
+    // split a Optional type into its inner type and the optional marker
     let (typ, optional) = match &field.typ {
         ResolvedFieldType::Optional(inner_typ) => (inner_typ.as_ref(), true),
         _ => (&field.typ, false),
@@ -290,8 +306,7 @@ fn create_column(
 
     match typ {
         ResolvedFieldType::Plain(type_name) => {
-            // Either a scalar (primitive) or a many-to-one relatioship with another table
-
+            // Either a scalar (primitive) or a many-to-one relationship with another table
             let field_type = env.get_by_key(type_name).unwrap();
 
             match field_type {
@@ -307,6 +322,7 @@ fn create_column(
                         false
                     },
                     is_nullable: optional,
+                    is_unique: unique,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -327,6 +343,7 @@ fn create_column(
                         is_pk: false,
                         is_autoincrement: false,
                         is_nullable: optional,
+                        is_unique: unique,
                     })
                 }
             }
@@ -368,6 +385,7 @@ fn create_column(
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: optional,
+                    is_unique: unique,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column
@@ -534,12 +552,6 @@ fn create_relation(
     building: &SystemContextBuilding,
     env: &MappedArena<ResolvedType>,
 ) -> GqlRelation {
-    // we can treat Optional fields as their inner type for the purposes of computing relations
-    let typ = match &field.typ {
-        ResolvedFieldType::Optional(inner_typ) => inner_typ.as_ref(),
-        _ => &field.typ,
-    };
-
     fn compute_column_id(
         table: &PhysicalTable,
         table_id: SerializableSlabIndex<PhysicalTable>,
@@ -560,32 +572,41 @@ fn create_relation(
             column_id: column_id.unwrap(),
         }
     } else {
-        match typ {
+        fn compute_base_type(field_type: &ResolvedFieldType) -> &ResolvedFieldType {
+            match field_type {
+                ResolvedFieldType::Optional(inner_typ) => inner_typ.as_ref(),
+                _ => field_type,
+            }
+        }
+        // we can treat Optional fields as their inner type for the purposes of computing relations
+        let field_base_typ = compute_base_type(&field.typ);
+
+        match field_base_typ {
             ResolvedFieldType::List(underlying) => {
-                // TODO: should grab separate syntaxes for primitive arrays and relations
-                let field_type = if let ResolvedType::Primitive(_) = underlying.deref(env) {
-                    return GqlRelation::Scalar {
+                if let ResolvedType::Primitive(_) = underlying.deref(env) {
+                    // List of a primitive type is still a scalar from the database perspective
+                    GqlRelation::Scalar {
                         column_id: compute_column_id(table, table_id, field).unwrap(),
-                    };
+                    }
                 } else {
-                    underlying.deref(env).as_composite()
-                };
+                    // If the field is of a list type and the underlying type is not a primitive,
+                    // then it is a OneToMany relation with the self's type being the "One" side
+                    // and the field's type being the "Many" side.
+                    let field_type = underlying.deref(env).as_composite();
 
-                let other_type_id = building.types.get_id(field_type.name.as_str()).unwrap();
-                let other_type = &building.types[other_type_id];
-                let other_table_id = other_type.table_id().unwrap();
-                let other_table = &building.tables[other_table_id];
+                    let other_type_id = building.types.get_id(field_type.name.as_str()).unwrap();
+                    let other_type = &building.types[other_type_id];
+                    let other_table_id = other_type.table_id().unwrap();
+                    let other_table = &building.tables[other_table_id];
 
-                let column_name = field.get_column_name().to_string();
+                    let other_type_column_id =
+                        compute_column_id(other_table, other_table_id, field).unwrap();
 
-                let other_type_column_id = other_table
-                    .column_index(&column_name)
-                    .map(|index| ColumnId::new(other_table_id, index))
-                    .unwrap();
-
-                GqlRelation::OneToMany {
-                    other_type_column_id,
-                    other_type_id,
+                    GqlRelation::OneToMany {
+                        other_type_column_id,
+                        other_type_id,
+                        cardinality: RelationCardinality::Unbounded,
+                    }
                 }
             }
 
@@ -600,12 +621,61 @@ fn create_relation(
                         }
                     }
                     ResolvedType::Composite(ct) => {
-                        // ManyToOne
-                        let column_id = compute_column_id(table, table_id, field);
+                        // A field's type is "Plain" or "Optional" and the field type is composite,
+                        // but we can't be sure if this is a ManyToOne or OneToMany unless we examine the other side's type.
+
+                        let other_resolved_type = env.get_by_key(type_name).unwrap();
+                        let other_type_field_typ = &other_resolved_type
+                            .as_composite()
+                            .fields
+                            .iter()
+                            .find(|f| f.get_column_name() == field.get_column_name())
+                            .unwrap()
+                            .typ;
+
                         let other_type_id = building.types.get_id(&ct.name).unwrap();
-                        GqlRelation::ManyToOne {
-                            column_id: column_id.unwrap(),
-                            other_type_id,
+
+                        match (&field.typ, other_type_field_typ) {
+                            (ResolvedFieldType::Optional(_), ResolvedFieldType::Plain(_)) => {
+                                let other_type = &building.types[other_type_id];
+                                let other_table_id = other_type.table_id().unwrap();
+                                let other_table = &building.tables[other_table_id];
+                                let other_type_column_id =
+                                    compute_column_id(other_table, other_table_id, field).unwrap();
+
+                                GqlRelation::OneToMany {
+                                    other_type_column_id,
+                                    other_type_id,
+                                    cardinality: RelationCardinality::Optional,
+                                }
+                            }
+                            (ResolvedFieldType::Plain(_), ResolvedFieldType::Optional(_)) => {
+                                let column_id = compute_column_id(table, table_id, field);
+
+                                GqlRelation::ManyToOne {
+                                    column_id: column_id.unwrap(),
+                                    other_type_id,
+                                    cardinality: RelationCardinality::Optional,
+                                }
+                            }
+                            (field_typ, other_field_type) => {
+                                match (field_base_typ, compute_base_type(other_field_type)) {
+                                    (ResolvedFieldType::Plain(_), ResolvedFieldType::List(_)) => {
+                                        let column_id = compute_column_id(table, table_id, field);
+                                        GqlRelation::ManyToOne {
+                                            column_id: column_id.unwrap(),
+                                            other_type_id,
+                                            cardinality: RelationCardinality::Unbounded,
+                                        }
+                                    }
+                                    _ => {
+                                        panic!(
+                                            "Unexpected relation type for field `{}` of {:?} type. The matching field is {:?}",
+                                            field.name, field_typ, other_field_type
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
