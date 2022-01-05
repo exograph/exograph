@@ -166,7 +166,7 @@ types:
                   Plain: Concert
               kind:
                 Persistent:
-                  column_name: custom_venueid
+                  column_name: custom_venue_id
                   self_column: false
                   is_pk: false
                   is_autoincrement: false
