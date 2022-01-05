@@ -345,7 +345,7 @@ pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem, ParserError> {
     if errors.is_empty() {
         Ok(resolved_system)
     } else {
-        Err(ParserError::Diagosis(errors))
+        Err(ParserError::Diagnosis(errors))
     }
 }
 

@@ -43,7 +43,7 @@ pub fn parse_str<P: AsRef<Path>>(
     if root_node.has_error() {
         let mut errors = vec![];
         collect_parsing_errors(root_node, source.as_bytes(), source_span, &mut errors);
-        return Err(ParserError::Diagosis(errors));
+        return Err(ParserError::Diagnosis(errors));
     };
 
     convert_root(

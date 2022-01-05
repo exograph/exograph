@@ -370,7 +370,7 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
 
         if !did_change {
             if !errors.is_empty() {
-                return Err(ParserError::Diagosis(errors));
+                return Err(ParserError::Diagnosis(errors));
             } else {
                 return Ok(types_arena);
             }
