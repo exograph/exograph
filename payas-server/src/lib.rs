@@ -2,7 +2,7 @@ use actix_web::dev::Server;
 use async_stream::AsyncStream;
 use bincode::deserialize_from;
 use execution::executor::Executor;
-use payas_deno::DenoExecutionManager;
+use payas_deno::DenoExecutor;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -48,7 +48,7 @@ async fn playground() -> impl Responder {
     HttpResponse::Ok().body(PLAYGROUND_HTML)
 }
 
-pub type SystemInfo = Arc<(ModelSystem, Schema, Database, DenoExecutionManager)>;
+pub type SystemInfo = Arc<(ModelSystem, Schema, Database, DenoExecutor)>;
 
 async fn resolve(
     req: HttpRequest,
@@ -74,11 +74,13 @@ async fn resolve(
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            match executor.execute(operation_name, query_str, variables, claims) {
+            match executor
+                .execute(operation_name, query_str, variables, claims)
+                .await
+            {
                 Ok(parts) => {
                     let response_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
                         let parts_len = parts.len();
-
                         yield to_bytes_static(r#"{"data": {"#);
                         for (index, part) in parts.into_iter().enumerate() {
                             yield to_bytes_static("\"");
@@ -264,10 +266,10 @@ fn start_server(
     restart: bool,
 ) -> Result<Server> {
     let database = Database::from_env(None)?; // TODO: error handling here
-    let deno_modules_map = DenoExecutionManager::new();
+    let deno_executor = DenoExecutor::default();
 
     let schema = Schema::new(&system);
-    let system_info = Arc::new((system, schema, database, deno_modules_map));
+    let system_info = Arc::new((system, schema, database, deno_executor));
     let authenticator = Arc::new(JwtAuthenticator::new_from_env());
 
     let server = HttpServer::new(move || {
@@ -279,7 +281,8 @@ fn start_server(
             .data(authenticator.clone())
             .route("/", web::get().to(playground))
             .route("/", web::post().to(resolve))
-    });
+    })
+    .workers(1); // see payas-deno/executor.rs
 
     let server_port = env::var(SERVER_PORT_PARAM)
         .ok()

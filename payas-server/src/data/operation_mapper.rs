@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
+use async_trait::async_trait;
 use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
 use postgres::{types::FromSqlOwned, Row};
-use serde_json::Map;
+use serde_json::{Map, Value};
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 
@@ -41,6 +42,8 @@ pub trait SQLUpdateMapper<'a> {
         query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript>;
 }
+
+#[async_trait(?Send)]
 pub trait OperationResolver<'a> {
     fn resolve_operation(
         &'a self,
@@ -48,7 +51,7 @@ pub trait OperationResolver<'a> {
         query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>>;
 
-    fn execute(
+    async fn execute(
         &'a self,
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
@@ -60,7 +63,7 @@ pub trait OperationResolver<'a> {
 
         let intercepted_operation =
             InterceptedOperation::new(op_name, resolver_result, interceptors);
-        intercepted_operation.execute(field, query_context)
+        intercepted_operation.execute(field, query_context).await
     }
 
     fn name(&self) -> &str;
@@ -154,7 +157,7 @@ pub fn compute_service_access_predicate<'a>(
 }
 
 impl<'a> OperationResolverResult<'a> {
-    pub fn execute(
+    pub async fn execute(
         &self,
         field: &Positioned<Field>,
         query_context: &'a QueryContext<'a>,
@@ -186,74 +189,90 @@ impl<'a> OperationResolverResult<'a> {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
-                resolve_deno(method, field, query_context).map(QueryResponse::Json)
+                resolve_deno(method, field, query_context)
+                    .await
+                    .map(QueryResponse::Json)
             }
         }
     }
 }
 
-fn resolve_deno(
+async fn resolve_deno(
     method: &ServiceMethod,
     field: &Positioned<Field>,
     query_context: &QueryContext<'_>,
 ) -> Result<serde_json::Value> {
     let path = &method.module_path;
 
-    let function_result = futures::executor::block_on(async {
-        let mapped_args = query_context
-            .field_arguments(&field.node)?
-            .iter()
-            .map(|(gql_name, gql_value)| {
-                (
-                    gql_name.node.as_str().to_owned(),
-                    gql_value.node.clone().into_json().unwrap(),
-                )
-            })
-            .collect::<HashMap<_, _>>();
+    let mapped_args = query_context
+        .field_arguments(&field.node)?
+        .iter()
+        .map(|(gql_name, gql_value)| {
+            (
+                gql_name.node.as_str().to_owned(),
+                gql_value.node.clone().into_json().unwrap(),
+            )
+        })
+        .collect::<HashMap<_, _>>();
 
-        let arg_sequence = method
-            .arguments
-            .iter()
-            .map(|arg| {
-                let arg_type = &query_context.executor.system.types[arg.type_id];
+    let arg_sequence = method
+        .arguments
+        .iter()
+        .map(|arg| {
+            let arg_type = &query_context.executor.system.types[arg.type_id];
 
-                if arg.is_injected {
-                    Ok(Arg::Shim(arg_type.name.clone()))
-                } else if let Some(val) = mapped_args.get(&arg.name) {
-                    Ok(Arg::Serde(val.clone()))
-                } else {
-                    Err(anyhow!("Invalid argument {}", arg.name))
-                }
-            })
-            .collect::<Result<Vec<_>>>()?;
+            if arg.is_injected {
+                Ok(Arg::Shim(arg_type.name.clone()))
+            } else if let Some(val) = mapped_args.get(&arg.name) {
+                Ok(Arg::Serde(val.clone()))
+            } else {
+                Err(anyhow!("Invalid argument {}", arg.name))
+            }
+        })
+        .collect::<Result<Vec<_>>>()?;
 
-        query_context.executor.deno_execution.execute_function(
+    query_context
+        .executor
+        .deno_execution
+        .preload_module(path, 1)
+        .await?;
+
+    let function_result = query_context
+        .executor
+        .deno_execution
+        .execute_function_with_shims(
             path,
             &method.name,
             arg_sequence,
-            &|query_string, variables| {
-                let result = query_context
-                    .executor
-                    .execute_with_request_context(
-                        None,
-                        &query_string,
-                        variables,
-                        query_context.request_context.clone(),
-                    )?
-                    .into_iter()
-                    .map(|(name, response)| (name, response.to_json().unwrap()))
-                    .collect::<Map<_, _>>();
+            Some(
+                &|query_string: String, variables: Option<Map<String, Value>>| {
+                    Box::pin(async move {
+                        let result = query_context
+                            .executor
+                            .execute_with_request_context(
+                                None,
+                                &query_string,
+                                variables.as_ref(),
+                                query_context.request_context.clone(),
+                            )
+                            .await?
+                            .into_iter()
+                            .map(|(name, response)| (name, response.to_json().unwrap()))
+                            .collect::<Map<_, _>>();
 
-                Ok(serde_json::Value::Object(result))
-            },
+                        Ok(serde_json::Value::Object(result))
+                    })
+                },
+            ),
             None,
             None,
         )
-    })?;
+        .await?;
 
     let result = if let serde_json::Value::Object(_) = function_result {
-        let resolved_set =
-            function_result.resolve_selection_set(query_context, &field.node.selection_set)?;
+        let resolved_set = function_result
+            .resolve_selection_set(query_context, &field.node.selection_set)
+            .await?;
         serde_json::Value::Object(resolved_set.into_iter().collect())
     } else {
         function_result
