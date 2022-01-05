@@ -43,7 +43,7 @@ async function signup(
   name: string,
   claytip: any
 ) {
-  let res = claytip.executeQuery(
+  let res = await claytip.executeQuery(
     `mutation(
         $email: String!, 
         $role: String!,

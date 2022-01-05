@@ -9,6 +9,7 @@ use async_graphql_parser::{
     Positioned,
 };
 use async_graphql_value::{ConstValue, Name, Number, Value};
+use async_trait::async_trait;
 use chrono::prelude::*;
 use chrono::DateTime;
 use payas_model::{
@@ -59,7 +60,7 @@ impl QueryResponse {
 }
 
 impl<'qc> QueryContext<'qc> {
-    pub fn resolve_operation<'b>(
+    pub async fn resolve_operation<'b>(
         &self,
         operation: (Option<&Name>, &'b Positioned<OperationDefinition>),
     ) -> Result<Vec<(String, QueryResponse)>> {
@@ -67,6 +68,7 @@ impl<'qc> QueryContext<'qc> {
             .1
             .node
             .resolve_selection_set(self, &operation.1.node.selection_set)
+            .await
     }
 
     pub fn fragment_definition(
@@ -84,7 +86,7 @@ impl<'qc> QueryContext<'qc> {
             })
     }
 
-    fn resolve_type(&self, field: &Field) -> Result<JsonValue> {
+    async fn resolve_type(&self, field: &Field) -> Result<JsonValue> {
         let type_name = &field
             .arguments
             .iter()
@@ -97,7 +99,7 @@ impl<'qc> QueryContext<'qc> {
                 base: BaseType::Named(Name::new(name_specified)),
                 nullable: true,
             };
-            tpe.resolve_value(self, &field.selection_set)
+            tpe.resolve_value(self, &field.selection_set).await
         } else {
             Ok(JsonValue::Null)
         }
@@ -287,21 +289,23 @@ fragment query_info on Query {
 }
 ```
 */
+#[async_trait(?Send)]
 impl FieldResolver<QueryResponse> for OperationDefinition {
-    fn resolve_field<'a>(
-        &'a self,
-        query_context: &QueryContext<'_>,
-        field: &Positioned<Field>,
+    async fn resolve_field<'e>(
+        &'e self,
+        query_context: &'e QueryContext<'e>,
+        field: &'e Positioned<Field>,
     ) -> Result<QueryResponse> {
         match field.node.name.node.as_str() {
             "__type" => Ok(QueryResponse::Json(
-                query_context.resolve_type(&field.node)?,
+                query_context.resolve_type(&field.node).await?,
             )),
             "__schema" => Ok(QueryResponse::Json(
                 query_context
                     .executor
                     .schema
-                    .resolve_value(query_context, &field.node.selection_set)?,
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await?,
             )),
             "__typename" => {
                 let typename = match self.ty {
@@ -311,10 +315,13 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
                 };
                 Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
             }
-            _ => query_context
-                .executor
-                .system
-                .resolve(field, &self.ty, query_context),
+            _ => {
+                query_context
+                    .executor
+                    .system
+                    .resolve(field, &self.ty, query_context)
+                    .await
+            }
         }
     }
 }

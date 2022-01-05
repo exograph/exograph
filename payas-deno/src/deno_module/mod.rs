@@ -26,7 +26,8 @@ use anyhow::{anyhow, Result};
 
 use deno_core::v8;
 
-use crate::embedded_module_loader::EmbeddedModuleLoader;
+mod embedded_module_loader;
+use self::embedded_module_loader::EmbeddedModuleLoader;
 
 fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
@@ -62,14 +63,21 @@ pub struct DenoScript {
     pub script: Global<Script>,
 }
 
+/// A Deno-based runner for JavaScript.
+///
+/// DenoModule has no concept of Claytip; it exists solely to configure the JavaScript execution environment
+/// and to load & execute methods in the Deno runtime from sources.
 impl DenoModule {
-    pub async fn new(
+    pub async fn new<F>(
         user_module_path: &Path,
         user_agent_name: &str,
         shims: &[(&str, &str)],
-        register_ops: &dyn Fn(&mut JsRuntime),
+        register_ops: F,
         shared_state: DenoModuleSharedState,
-    ) -> Result<Self, AnyError> {
+    ) -> Result<Self, AnyError>
+    where
+        F: FnOnce(&mut JsRuntime),
+    {
         let user_module_path = fs::canonicalize(user_module_path)?
             .to_string_lossy()
             .to_string();
@@ -153,22 +161,11 @@ impl DenoModule {
         })
     }
 
-    pub fn preload_function(&mut self, function_names: Vec<&str>) {
-        let worker = &mut self.worker;
-        let runtime = &mut worker.lock().unwrap().js_runtime;
-
-        for fname in function_names.iter() {
-            let script = preload_script(runtime, fname, &format!("mod.{}", fname));
-            self.script_map.insert(fname.to_string(), script);
-        }
-    }
-
     pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
         let worker = &mut self.worker;
-        let runtime = &mut worker.lock().unwrap().js_runtime;
+        let runtime = &mut worker.try_lock().unwrap().js_runtime;
 
-        // TODO: does this yield any significant optimization?
-        let func_value = run_script(runtime, &self.script_map[function_name]).unwrap();
+        let func_value = runtime.execute_script("", &format!("mod.{}", function_name))?;
 
         let shim_objects_vals: Vec<_> = self
             .shim_object_names
@@ -246,54 +243,20 @@ impl DenoModule {
             Ok(res)
         }
     }
-}
 
-fn preload_script(runtime: &mut JsRuntime, name: &str, source_code: &str) -> DenoScript {
-    let mut scope = runtime.handle_scope();
-
-    let source = v8::String::new(&mut scope, source_code).unwrap();
-    let name = v8::String::new(&mut scope, name).unwrap();
-
-    let source_map_url = v8::String::new(&mut scope, "").unwrap();
-    let origin = v8::ScriptOrigin::new(
-        &mut scope,
-        name.into(),
-        0,
-        0,
-        false,
-        123,
-        source_map_url.into(),
-        true,
-        false,
-        false,
-    );
-
-    let mut tc_scope = v8::TryCatch::new(&mut scope);
-
-    match v8::Script::compile(&mut tc_scope, source, Some(&origin)) {
-        Some(local_script) => {
-            let script = v8::Global::new(&mut tc_scope, local_script);
-            DenoScript { script }
-        }
-        None => panic!(),
+    /// Put a single instance of a type into Deno's op_state
+    pub fn put<T: 'static>(&mut self, val: T) {
+        self.worker
+            .lock()
+            .unwrap()
+            .js_runtime
+            .op_state()
+            .borrow_mut()
+            .put(val)
     }
 }
 
-fn run_script(runtime: &mut JsRuntime, ds: &DenoScript) -> Result<Global<v8::Value>> {
-    let mut scope = runtime.handle_scope();
-    let mut tc_scope = v8::TryCatch::new(&mut scope);
-
-    match ds.script.open(&mut tc_scope).run(&mut tc_scope) {
-        Some(value) => {
-            let value_handle = v8::Global::new(&mut tc_scope, value);
-            Ok(value_handle)
-        }
-        None => {
-            panic!("Exception");
-        }
-    }
-}
-
+#[derive(Clone)]
 pub enum Arg {
     Serde(serde_json::Value),
     Shim(String),

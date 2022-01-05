@@ -6,9 +6,11 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+async-recursion = "0.3.2"
 async-graphql-parser = "3.0.19"
 async-graphql-value = "3.0.19"
 async-stream = "0.3.2"
+async-trait = "0.1.52"
 actix-web = "3"
 actix-cors = "0.5.4"
 actix-web-httpauth = "0.5.1"
@@ -27,6 +29,7 @@ postgres-openssl = "0.5.0"
 r2d2 = "0.8"
 r2d2_postgres = "0.18"
 rust_decimal = { version = "1.15", features = ["db-postgres"] }
+tokio = { version = "0.2", features = ["full"] }
 chrono = "0.4.19"
 typed-arena = "2.0.1"
 notify = "4.0.17"

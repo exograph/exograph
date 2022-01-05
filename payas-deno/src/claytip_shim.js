@@ -1,5 +1,5 @@
 ({
-    executeQuery: function (query_string, variables) {
+    executeQuery: async function (query_string, variables) {
         var args = [query_string];
 
         if (variables) {
@@ -7,7 +7,7 @@
             args[1] = stringified_variables;
         }
 
-        let result = Deno.core.opSync("op_claytip_execute_query", args);
+        let result = await Deno.core.opAsync("op_claytip_execute_query", args);
         return result;
     }
 })

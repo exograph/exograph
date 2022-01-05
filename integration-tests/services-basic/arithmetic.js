@@ -16,10 +16,8 @@ export function divide(x, y) {
     }
 }
 
-export function shimQuery(claytip) {
-    // c 
-
-    let result = claytip.executeQuery(
+export async function shimQuery(claytip) {
+    const result = await claytip.executeQuery(
         `query {
             foos(
                 where: { baz: {eq: 4} }
@@ -29,9 +27,9 @@ export function shimQuery(claytip) {
         }`
     );
 
-    var str = "The `foos` with `baz` = 4 have IDs of ";
+    let str = "The `foos` with `baz` = 4 have IDs of ";
 
-    for (let foo of result.foos) {
+    for (const foo of result.foos) {
         str += foo.id += ", ";
     }
 

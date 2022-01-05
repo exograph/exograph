@@ -2,6 +2,7 @@ use async_graphql_parser::{
     types::{BaseType, Field, Type, TypeDefinition},
     Positioned,
 };
+use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::execution::query_context::QueryContext;
@@ -15,27 +16,34 @@ struct BoxedType<'a> {
     type_kind: &'a str,
 }
 
-impl<'a> FieldResolver<Value> for TypeDefinition {
-    fn resolve_field(
-        &self,
-        query_context: &QueryContext<'_>,
-        field: &Positioned<Field>,
+#[async_trait(?Send)]
+impl FieldResolver<Value> for TypeDefinition {
+    async fn resolve_field<'e>(
+        &'e self,
+        query_context: &'e QueryContext<'e>,
+        field: &'e Positioned<Field>,
     ) -> Result<Value> {
         match field.node.name.node.as_str() {
             "name" => Ok(Value::String(self.name())),
             "kind" => Ok(Value::String(self.kind())),
             "description" => Ok(self.description().map(Value::String).unwrap_or(Value::Null)),
-            "fields" => self
-                .fields()
-                .resolve_value(query_context, &field.node.selection_set),
+            "fields" => {
+                self.fields()
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "interfaces" => Ok(Value::Array(vec![])), // TODO
             "possibleTypes" => Ok(Value::Null),       // TODO
-            "enumValues" => self
-                .enum_values()
-                .resolve_value(query_context, &field.node.selection_set),
-            "inputFields" => self
-                .input_fields()
-                .resolve_value(query_context, &field.node.selection_set),
+            "enumValues" => {
+                self.enum_values()
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
+            "inputFields" => {
+                self.input_fields()
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "ofType" => Ok(Value::Null),
             "specifiedByUrl" => Ok(Value::Null),
             "__typename" => Ok(Value::String("__Type".to_string())),
@@ -47,11 +55,12 @@ impl<'a> FieldResolver<Value> for TypeDefinition {
     }
 }
 
+#[async_trait(?Send)]
 impl FieldResolver<Value> for Type {
-    fn resolve_field(
-        &self,
-        query_context: &QueryContext<'_>,
-        field: &Positioned<Field>,
+    async fn resolve_field<'e>(
+        &'e self,
+        query_context: &'e QueryContext<'e>,
+        field: &'e Positioned<Field>,
     ) -> Result<Value> {
         let base_type = &self.base;
 
@@ -64,7 +73,7 @@ impl FieldResolver<Value> for Type {
                 tpe: &underlying,
                 type_kind: "NON_NULL",
             };
-            boxed_type.resolve_field(query_context, field)
+            boxed_type.resolve_field(query_context, field).await
         } else {
             match base_type {
                 BaseType::Named(name) => {
@@ -72,7 +81,7 @@ impl FieldResolver<Value> for Type {
                     //query_context.schema.get_type_definition(name).resolve_field(query_context, field)
                     let tpe = query_context.executor.schema.get_type_definition(name);
                     match tpe {
-                        Some(tpe) => tpe.resolve_field(query_context, field),
+                        Some(tpe) => tpe.resolve_field(query_context, field).await,
                         None => Ok(Value::Null),
                     }
                 }
@@ -81,7 +90,7 @@ impl FieldResolver<Value> for Type {
                         tpe: underlying,
                         type_kind: "LIST",
                     };
-                    boxed_type.resolve_field(query_context, field)
+                    boxed_type.resolve_field(query_context, field).await
                 }
             }
         }
@@ -90,17 +99,20 @@ impl FieldResolver<Value> for Type {
 
 // Resolver for boxed (non-null or list type). Since the underlying type determines the `ofType` value and the type_kind determines the `kind`,
 // all other fields evaluates to null
+#[async_trait(?Send)]
 impl<'a> FieldResolver<Value> for BoxedType<'a> {
-    fn resolve_field(
-        &self,
-        query_context: &QueryContext<'_>,
-        field: &Positioned<Field>,
+    async fn resolve_field<'e>(
+        &'e self,
+        query_context: &'e QueryContext<'e>,
+        field: &'e Positioned<Field>,
     ) -> Result<Value> {
         match field.node.name.node.as_str() {
             "kind" => Ok(Value::String(self.type_kind.to_owned())),
-            "ofType" => self
-                .tpe
-                .resolve_value(query_context, &field.node.selection_set),
+            "ofType" => {
+                self.tpe
+                    .resolve_value(query_context, &field.node.selection_set)
+                    .await
+            }
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"
             | "possibleTypes" | "enumValues" | "inoutFields" => Ok(Value::Null),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(

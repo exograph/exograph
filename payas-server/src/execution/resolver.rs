@@ -5,6 +5,8 @@ use async_graphql_parser::{
     types::{Field, Selection, SelectionSet},
     Positioned,
 };
+use async_trait::async_trait;
+use futures::StreamExt;
 use serde_json::Value;
 
 use super::query_context::QueryContext;
@@ -33,14 +35,16 @@ where
     }
 }
 
+#[async_trait(?Send)]
 pub trait Resolver<R> {
-    fn resolve_value(
+    async fn resolve_value<'e>(
         &self,
-        query_context: &QueryContext<'_>,
-        selection_set: &Positioned<SelectionSet>,
+        query_context: &'e QueryContext<'e>,
+        selection_set: &'e Positioned<SelectionSet>,
     ) -> Result<R>;
 }
 
+#[async_trait(?Send)]
 pub trait FieldResolver<R>
 where
     Self: std::fmt::Debug,
@@ -49,14 +53,14 @@ where
     //   name: ???
     // }
     // `field` is `name` and ??? is the return value
-    fn resolve_field<'a>(
-        &'a self,
-        query_context: &QueryContext<'_>,
-        field: &Positioned<Field>,
+    async fn resolve_field<'e>(
+        &'e self,
+        query_context: &'e QueryContext<'e>,
+        field: &'e Positioned<Field>,
     ) -> Result<R>;
 
     // TODO: Move out of the trait to avoid it being overriden?
-    fn resolve_selection(
+    async fn resolve_selection(
         &self,
         query_context: &QueryContext<'_>,
         selection: &Positioned<Selection>,
@@ -64,11 +68,12 @@ where
         match &selection.node {
             Selection::Field(field) => Ok(vec![(
                 field.output_name(),
-                self.resolve_field(query_context, field)?,
+                self.resolve_field(query_context, field).await?,
             )]),
             Selection::FragmentSpread(fragment_spread) => {
                 let fragment_definition = query_context.fragment_definition(fragment_spread)?;
                 self.resolve_selection_set(query_context, &fragment_definition.selection_set)
+                    .await
             }
             Selection::InlineFragment(_inline_fragment) => {
                 Ok(vec![]) // TODO
@@ -76,21 +81,22 @@ where
         }
     }
 
-    fn resolve_selection_set(
+    async fn resolve_selection_set(
         &self,
         query_context: &QueryContext<'_>,
         selection_set: &Positioned<SelectionSet>,
     ) -> Result<Vec<(String, R)>> {
-        selection_set
-            .node
-            .items
-            .iter()
-            .flat_map(
-                |selection| match self.resolve_selection(query_context, selection) {
-                    Ok(s) => s.into_iter().map(Ok).collect(),
-                    Err(err) => vec![Err(err)],
-                },
-            )
+        let selections: Vec<_> = futures::stream::iter(selection_set.node.items.iter())
+            .then(|selection| self.resolve_selection(query_context, selection))
+            .collect()
+            .await;
+
+        selections
+            .into_iter()
+            .flat_map(|selection| match selection {
+                Ok(s) => s.into_iter().map(Ok).collect(),
+                Err(err) => vec![Err(err)],
+            })
             .collect()
     }
 }
@@ -143,63 +149,70 @@ impl std::fmt::Display for GraphQLExecutionError {
 //     }
 // }
 
+#[async_trait(?Send)]
 impl<T> Resolver<Value> for T
 where
     T: FieldResolver<Value> + std::fmt::Debug,
 {
-    fn resolve_value(
+    async fn resolve_value<'e>(
         &self,
-        query_context: &QueryContext<'_>,
-        selection_set: &Positioned<SelectionSet>,
+        query_context: &'e QueryContext<'e>,
+        selection_set: &'e Positioned<SelectionSet>,
     ) -> Result<Value> {
         Ok(Value::Object(FromIterator::from_iter(
-            self.resolve_selection_set(query_context, selection_set)?,
+            self.resolve_selection_set(query_context, selection_set)
+                .await?,
         )))
     }
 }
 
+#[async_trait(?Send)]
 impl<T> Resolver<Value> for Option<&T>
 where
     T: Resolver<Value> + std::fmt::Debug,
 {
-    fn resolve_value(
+    async fn resolve_value<'e>(
         &self,
-        query_context: &QueryContext<'_>,
-        selection_set: &Positioned<SelectionSet>,
+        query_context: &'e QueryContext<'e>,
+        selection_set: &'e Positioned<SelectionSet>,
     ) -> Result<Value> {
         match self {
-            Some(elem) => elem.resolve_value(query_context, selection_set),
+            Some(elem) => elem.resolve_value(query_context, selection_set).await,
             None => Ok(Value::Null),
         }
     }
 }
 
+#[async_trait(?Send)]
 impl<T> Resolver<Value> for Positioned<T>
 where
     T: Resolver<Value> + std::fmt::Debug,
 {
-    fn resolve_value(
+    async fn resolve_value<'e>(
         &self,
-        query_context: &QueryContext<'_>,
-        selection_set: &Positioned<SelectionSet>,
+        query_context: &'e QueryContext<'e>,
+        selection_set: &'e Positioned<SelectionSet>,
     ) -> Result<Value> {
-        self.node.resolve_value(query_context, selection_set)
+        self.node.resolve_value(query_context, selection_set).await
     }
 }
 
+#[async_trait(?Send)]
 impl<T> Resolver<Value> for Vec<T>
 where
     T: Resolver<Value> + std::fmt::Debug,
 {
-    fn resolve_value(
+    async fn resolve_value<'e>(
         &self,
-        query_context: &QueryContext<'_>,
-        selection_set: &Positioned<SelectionSet>,
+        query_context: &'e QueryContext<'e>,
+        selection_set: &'e Positioned<SelectionSet>,
     ) -> Result<Value> {
-        let resolved: Result<Vec<Value>> = self
-            .iter()
-            .map(|elem| elem.resolve_value(query_context, selection_set))
-            .collect();
+        let resolved: Vec<_> = futures::stream::iter(self.iter())
+            .then(|elem| elem.resolve_value(query_context, selection_set))
+            .collect()
+            .await;
+
+        let resolved: Result<Vec<Value>> = resolved.into_iter().collect();
 
         Ok(Value::Array(resolved?))
     }

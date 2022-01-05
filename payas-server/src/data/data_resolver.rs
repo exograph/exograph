@@ -7,26 +7,29 @@ use async_graphql_parser::{
     types::{Field, OperationType},
     Positioned,
 };
+use async_trait::async_trait;
 
 use payas_model::model::system::ModelSystem;
 use serde_json::Value;
 
 use super::operation_mapper::OperationResolver;
 
+#[async_trait(?Send)]
 pub trait DataResolver {
-    fn resolve(
+    async fn resolve<'e>(
         &self,
-        field: &Positioned<Field>,
-        operation_type: &OperationType,
-        query_context: &QueryContext<'_>,
+        field: &'e Positioned<Field>,
+        operation_type: &'e OperationType,
+        query_context: &'e QueryContext<'e>,
     ) -> Result<QueryResponse>;
 }
 
+#[async_trait(?Send)]
 impl FieldResolver<Value> for Value {
-    fn resolve_field<'a>(
+    async fn resolve_field<'a>(
         &'a self,
-        _query_context: &QueryContext<'_>,
-        field: &Positioned<Field>,
+        _query_context: &'a QueryContext<'a>,
+        field: &'a Positioned<Field>,
     ) -> Result<Value> {
         let field_name = field.node.name.node.as_str();
 
@@ -43,21 +46,22 @@ impl FieldResolver<Value> for Value {
     }
 }
 
+#[async_trait(?Send)]
 impl DataResolver for ModelSystem {
-    fn resolve(
+    async fn resolve<'e>(
         &self,
-        field: &Positioned<Field>,
-        operation_type: &OperationType,
-        query_context: &QueryContext<'_>,
+        field: &'e Positioned<Field>,
+        operation_type: &'e OperationType,
+        query_context: &'e QueryContext<'e>,
     ) -> Result<QueryResponse> {
         match operation_type {
             OperationType::Query => {
                 let operation = self.queries.get_by_key(&field.node.name.node).unwrap();
-                operation.execute(field, query_context)
+                operation.execute(field, query_context).await
             }
             OperationType::Mutation => {
                 let operation = self.mutations.get_by_key(&field.node.name.node).unwrap();
-                operation.execute(field, query_context)
+                operation.execute(field, query_context).await
             }
             OperationType::Subscription => {
                 todo!()
