@@ -78,7 +78,7 @@ impl DenoActor {
                 ops.push((
                     "op_claytip_execute_query",
                     deno_core::op_async(move |_state, args: Vec<String>, (): _| {
-                        let mut sender = from_deno_sender.clone();
+                        let sender = from_deno_sender.clone();
 
                         async move {
                             let query_string = &args[0];
@@ -133,7 +133,7 @@ impl DenoActor {
                 ops.push((
                     "op_intercepted_proceed",
                     deno_core::op_async(move |_state, _: (), (): _| {
-                        let mut sender = from_deno_sender.clone();
+                        let sender = from_deno_sender.clone();
 
                         async move {
                             let (response_sender, response_receiver) =
@@ -181,7 +181,7 @@ impl DenoActor {
         method_name: String,
         arguments: Vec<Arg>,
         claytip_intercepted_operation_name: Option<String>,
-        mut to_user_sender: tokio::sync::mpsc::Sender<RequestFromDenoMessage>,
+        to_user_sender: tokio::sync::mpsc::Sender<RequestFromDenoMessage>,
     ) -> Result<Value> {
         println!("Executing {}", &method_name);
 

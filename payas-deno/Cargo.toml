@@ -9,7 +9,7 @@ async-channel = "1.6.1"
 async-recursion = "0.3.2"
 deno_runtime = "0.38.0"
 deno_core = "0.112.0"
-tokio = "0.2" 
+tokio = "1"
 futures = "0.3"
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -17,8 +17,6 @@ serde_v8 = "0.23.0"
 serde_json = "1.0"
 
 [dev-dependencies]
-actix-rt = "1.1.1" 
-tokio-1 = { package = "tokio", version = "1", features = ["full"] }
 
 payas-model = { path = "../payas-model" }
 

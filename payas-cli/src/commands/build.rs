@@ -1,5 +1,4 @@
 use anyhow::Result;
-use payas_server::model_watcher;
 
 use std::path::Path;
 use std::time::Duration;
@@ -20,25 +19,11 @@ pub struct BuildCommand {
 
 impl Command for BuildCommand {
     fn run(&self, system_start_time: Option<SystemTime>) -> Result<()> {
-        let build_fn = move |restart| {
-            let system_start_time = if restart {
-                Some(SystemTime::now())
-            } else {
-                system_start_time
-            };
-
-            build(&self.model, system_start_time, restart)
-        };
-
-        if !self.watch {
-            build_fn(false)
-        } else {
-            model_watcher::with_watch(&self.model, FILE_WATCHER_DELAY, build_fn, |_: &mut ()| ())
-        }
+        build(&self.model, system_start_time)
     }
 }
 
-fn build(model: &Path, system_start_time: Option<SystemTime>, _restart: bool) -> Result<()> {
+pub(crate) fn build(model: &Path, system_start_time: Option<SystemTime>) -> Result<()> {
     let system = payas_parser::build_system(&model)?;
 
     let claypot_file_name = format!("{}pot", &model.to_str().unwrap());
