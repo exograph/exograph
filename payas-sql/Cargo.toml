@@ -1,7 +1,6 @@
 [package]
 name = "payas-sql"
 version = "0.1.0"
-authors = ["Ramnivas Laddad <ramnivas@payalabs.com>"]
 edition = "2021"
 
 [dependencies]
