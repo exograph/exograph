@@ -345,7 +345,7 @@ pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem, ParserError> {
     if errors.is_empty() {
         Ok(resolved_system)
     } else {
-        Err(ParserError::Diagosis(errors))
+        Err(ParserError::Diagnosis(errors))
     }
 }
 
@@ -598,7 +598,7 @@ fn build_expanded(
                 || ct.kind == AstModelKind::NonPersistent
                 || ct.kind == AstModelKind::NonPersistentInput
             {
-                build_expanded_persistent_type(ct, &types, resolved_system, errors).unwrap();
+                build_expanded_persistent_type(ct, &types, resolved_system, errors);
             } else if ct.kind == AstModelKind::Context {
                 build_expanded_context_type(ct, &types, resolved_system);
             } else {
@@ -684,7 +684,7 @@ fn build_expanded_persistent_type(
     types: &MappedArena<Type>,
     resolved_system: &mut ResolvedSystem,
     errors: &mut Vec<Diagnostic>,
-) -> Result<(), ParserError> {
+) {
     let resolved_types = &mut resolved_system.types;
 
     let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
@@ -702,29 +702,38 @@ fn build_expanded_persistent_type(
             .fields
             .iter()
             .flat_map(|field| {
-                Result::<ResolvedField, ParserError>::Ok(ResolvedField {
-                    name: field.name.clone(),
-                    typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
-                    kind: match kind {
-                        ResolvedCompositeTypeKind::Persistent { .. } => {
-                            let ColumnInfo {
+                let resolved_kind = match kind {
+                    ResolvedCompositeTypeKind::Persistent { .. } => {
+                        let column_info = compute_column_info(ct, field, types);
+
+                        match column_info {
+                            Ok(ColumnInfo {
                                 name: column_name,
                                 self_column,
                                 unique,
-                            } = compute_column_info(ct, field, types, errors)?;
-                            ResolvedFieldKind::Persistent {
+                            }) => Some(ResolvedFieldKind::Persistent {
                                 column_name,
                                 self_column,
                                 is_pk: field.annotations.contains("pk"),
                                 is_autoincrement: field.annotations.contains("autoincrement"),
                                 type_hint: build_type_hint(field, types),
                                 unique,
+                            }),
+                            Err(e) => {
+                                errors.push(e);
+                                None
                             }
                         }
-                        ResolvedCompositeTypeKind::NonPersistent { .. } => {
-                            ResolvedFieldKind::NonPersistent
-                        }
-                    },
+                    }
+                    ResolvedCompositeTypeKind::NonPersistent { .. } => {
+                        Some(ResolvedFieldKind::NonPersistent)
+                    }
+                };
+
+                resolved_kind.map(|kind| ResolvedField {
+                    name: field.name.clone(),
+                    typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
+                    kind,
                 })
             })
             .collect();
@@ -738,7 +747,6 @@ fn build_expanded_persistent_type(
         });
         resolved_types[existing_type_id] = expanded;
     }
-    Ok(())
 }
 
 fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option<ResolvedTypeHint> {
@@ -1014,15 +1022,17 @@ fn compute_column_info(
     enclosing_type: &AstModel<Typed>,
     field: &AstField<Typed>,
     types: &MappedArena<Type>,
-    errors: &mut Vec<Diagnostic>,
-) -> Result<ColumnInfo, ParserError> {
+) -> Result<ColumnInfo, Diagnostic> {
     fn column_name(
-        user_supplied_column_name: Option<String>,
         enclosing_type: &AstModel<Typed>,
         field: &AstField<Typed>,
         types: &MappedArena<Type>,
-        errors: &mut Vec<Diagnostic>,
-    ) -> Result<ColumnInfo, ParserError> {
+    ) -> Result<ColumnInfo, Diagnostic> {
+        let user_supplied_column_name = field
+            .annotations
+            .get("column")
+            .map(|p| p.as_single().as_string());
+
         let id_column_name = |field_name: &str| {
             user_supplied_column_name
                 .clone()
@@ -1040,8 +1050,12 @@ fn compute_column_info(
                 match field_base_type.to_typ(types).deref(types) {
                     Type::Composite(field_model) => {
                         let matching_field =
-                            get_matching_field(field, enclosing_type, &field_model, types)
-                                .map_err(|diagnosis| ParserError::Diagosis(vec![diagnosis]))?;
+                            get_matching_field(field, enclosing_type, &field_model, types);
+                        let matching_field = match matching_field {
+                            Ok(matching_field) => matching_field,
+                            Err(err) => return Err(err),
+                        };
+
                         let cardinality = field_cardinality(&matching_field.typ);
 
                         match &field.typ {
@@ -1073,7 +1087,7 @@ fn compute_column_info(
 
                                 match cardinality {
                                     Cardinality::ZeroOrOne => {
-                                        errors.push(Diagnostic {
+                                        Err(Diagnostic {
                                         level: Level::Error,
                                         message: "Both side of one-to-one relationship cannot be optional".to_string(),
                                         code: Some("C000".to_string()),
@@ -1082,11 +1096,7 @@ fn compute_column_info(
                                             style: SpanStyle::Primary,
                                             label: None,
                                         }],
-                                    });
-                                        Err(ParserError::Generic(
-                                        "Both side of one-to-one relationship cannot be optional"
-                                            .to_string(),
-                                    ))
+                                    })
                                     }
                                     Cardinality::One => Ok(ColumnInfo {
                                         name: id_column_name(&matching_field.name),
@@ -1114,15 +1124,19 @@ fn compute_column_info(
                         if let Type::Composite(field_model) = typ.deref(types) {
                             // OneToMany
                             let matching_field =
-                                get_matching_field(field, enclosing_type, &field_model, types)
-                                    .map_err(|diagnosis| ParserError::Diagosis(vec![diagnosis]))?;
+                                get_matching_field(field, enclosing_type, &field_model, types);
+
+                            let matching_field = match matching_field {
+                                Ok(matching_field) => matching_field,
+                                Err(err) => return Err(err),
+                            };
                             Ok(ColumnInfo {
                                 name: id_column_name(&matching_field.name),
                                 self_column: false,
                                 unique: false,
                             })
                         } else {
-                            errors.push(Diagnostic {
+                            Err(Diagnostic {
                                 level: Level::Error,
                                 message: "Sets of non-composites are not supported".to_string(),
                                 code: Some("C000".to_string()),
@@ -1131,10 +1145,7 @@ fn compute_column_info(
                                     style: SpanStyle::Primary,
                                     label: None,
                                 }],
-                            });
-                            Err(ParserError::Generic(
-                                "Sets of non-composites are not supported".to_string(),
-                            ))
+                            })
                         }
                     }
                     Type::Array(typ) => {
@@ -1153,7 +1164,7 @@ fn compute_column_info(
                                 unique: false,
                             })
                         } else {
-                            errors.push(Diagnostic {
+                            Err(Diagnostic {
                                 level: Level::Error,
                                 message: "Arrays of non-primitives are not supported".to_string(),
                                 code: Some("C000".to_string()),
@@ -1162,10 +1173,7 @@ fn compute_column_info(
                                     style: SpanStyle::Primary,
                                     label: None,
                                 }],
-                            });
-                            Err(ParserError::Generic(
-                                "Arrays of non-primitives are not supported".to_string(),
-                            ))
+                            })
                         }
                     }
                     _ => Ok(ColumnInfo {
@@ -1178,7 +1186,7 @@ fn compute_column_info(
             AstFieldType::Optional(_) => {
                 // we already unwrapped any Optional there may be
                 // a nested Optional doesn't make sense
-                errors.push(Diagnostic {
+                Err(Diagnostic {
                     level: Level::Error,
                     message: "Cannot have Optional of an Optional".to_string(),
                     code: Some("C000".to_string()),
@@ -1187,26 +1195,12 @@ fn compute_column_info(
                         style: SpanStyle::Primary,
                         label: None,
                     }],
-                });
-                Err(ParserError::Generic(
-                    "Cannot have Optional of an Optional".to_string(),
-                ))
+                })
             }
         }
     }
 
-    let user_supplied_column_name = field
-        .annotations
-        .get("column")
-        .map(|p| p.as_single().as_string());
-
-    column_name(
-        user_supplied_column_name,
-        enclosing_type,
-        field,
-        types,
-        errors,
-    )
+    column_name(enclosing_type, field, types)
 }
 
 fn resolve_field_type(
@@ -1248,15 +1242,29 @@ fn get_matching_field<'a>(
     field_model: &'a AstModel<Typed>,
     types: &MappedArena<Type>,
 ) -> Result<&'a AstField<Typed>, Diagnostic> {
+    let user_supplied_column_name = field
+        .annotations
+        .get("column")
+        .map(|p| p.as_single().as_string());
+
     let matching_fields: Vec<_> = field_model
         .fields
         .iter()
         .filter(|f| {
+            // If the user supplied a column name, then we look for the corresponding field
+            // with the same name. We still need to check if the field is the same type though.
+            let field_column_annotation = f
+                .annotations
+                .get("column")
+                .map(|p| p.as_single().as_string());
+
+            let column_name_matches = user_supplied_column_name == field_column_annotation;
             let field_underlying_type = f.typ.to_typ(types);
             field_underlying_type
                 .get_underlying_typename(types)
                 .unwrap()
                 == enclosing_type.name
+                && column_name_matches
         })
         .collect();
 
@@ -1282,7 +1290,7 @@ fn get_matching_field<'a>(
                 Diagnostic {
                     level: Level::Error,
                     message: format!(
-                        "Found multiple matching fields {} of '{}' type when determining the matching column for '{}'",
+                        "Found multiple matching fields ({}) of the '{}' type when determining the matching column for '{}'",
                         matching_fields
                             .into_iter()
                             .map(|f| format!("'{}'", f.name))
@@ -1351,7 +1359,7 @@ mod tests {
         model Venue {
           id: Int @pk @autoincrement @column("custom_id")
           name: String @column("custom_name")
-          concerts: Set<Concert> @column("custom_venueid")
+          concerts: Set<Concert> @column("custom_venue_id")
           capacity: Int @bits(16)
           latitude: Float @size(4)
         }       
@@ -1365,7 +1373,7 @@ mod tests {
 
         File::create("bar.js").unwrap();
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(resolved);
@@ -1391,7 +1399,7 @@ mod tests {
         }        
         "#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(resolved);
@@ -1404,7 +1412,7 @@ mod tests {
         model Concert {
           id: Int @pk @autoincrement 
           title: String 
-          venue: Venue?
+          venue: Venue? 
           icon: Blob?
         }
 
@@ -1412,11 +1420,11 @@ mod tests {
           id: Int @pk @autoincrement
           name: String
           address: String? @column("custom_address")
-          concerts: Set<Concert>? @column("custom_venueid")
+          concerts: Set<Concert>?
         }    
         "#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(resolved);
@@ -1446,7 +1454,7 @@ mod tests {
 
         File::create("logger.js").unwrap();
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(resolved);
@@ -1468,7 +1476,7 @@ mod tests {
         }      
         "#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(resolved);
@@ -1487,7 +1495,7 @@ mod tests {
           foo123: Int
         }"#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(resolved);
@@ -1512,16 +1520,64 @@ mod tests {
         }             
         "#;
 
-        let resolved = create_resolved_system(src);
+        let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(resolved);
         });
     }
 
-    fn create_resolved_system(src: &str) -> ResolvedSystem {
-        let parsed = parser::parse_str(src, "input.clay").unwrap();
-        let types = typechecker::build(parsed).unwrap();
-        build(types).unwrap()
+    #[test]
+    fn with_multiple_matching_field_no_column_annotation() {
+        let src = r#"
+            model Concert {
+                id: Int @pk @autoincrement 
+                title: String 
+                ticket_office: Venue //@column("ticket_office")
+                main: Venue //@column("main")
+            }
+          
+            model Venue {
+                id: Int  @autoincrement @pk 
+                name:String 
+                ticket_events: Set<Concert> //@column("ticket_office")
+                main_events: Set<Concert> //@column("main")
+            }  
+        "#;
+
+        let resolved = create_resolved_system(src);
+
+        assert!(resolved.is_err());
+    }
+
+    #[test]
+    fn with_multiple_matching_field_with_column_annotation() {
+        let src = r#"
+            model Concert {
+                id: Int @pk @autoincrement 
+                title: String 
+                ticket_office: Venue @column("ticket_office")
+                main: Venue @column("main")
+            }
+          
+            model Venue {
+                id: Int  @autoincrement @pk 
+                name:String 
+                ticket_events: Set<Concert> @column("ticket_office")
+                main_events: Set<Concert> @column("main")
+            }  
+        "#;
+
+        let resolved = create_resolved_system(src).unwrap();
+
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
+    }
+
+    fn create_resolved_system(src: &str) -> Result<ResolvedSystem, ParserError> {
+        let parsed = parser::parse_str(src, "input.clay")?;
+        let types = typechecker::build(parsed)?;
+        build(types)
     }
 }

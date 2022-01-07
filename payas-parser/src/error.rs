@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ParserError {
     #[error("Could not process input clay files")]
-    Diagosis(Vec<Diagnostic>),
+    Diagnosis(Vec<Diagnostic>),
 
     #[error("File '{0}' not found")]
     FileNotFound(String),
