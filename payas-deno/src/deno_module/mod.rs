@@ -2,6 +2,7 @@ use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
 use deno_core::JsRuntime;
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use deno_core::v8::Global;
@@ -16,7 +17,6 @@ use serde_json::Value;
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -41,10 +41,16 @@ const JS_MIN_SAFE_INTEGER: i64 = -JS_MAX_SAFE_INTEGER;
 const JS_MAX_VALUE: f64 = 1.797_693_134_862_315_7e308;
 const JS_MIN_VALUE: f64 = 5e-324;
 
+pub enum UserCode {
+    Script(String),
+    Path(PathBuf),
+}
+
 pub struct DenoModule {
     worker: Arc<Mutex<MainWorker>>,
     shim_object_names: Vec<String>,
     script_map: HashMap<String, DenoScript>,
+    user_code: UserCode,
 }
 
 /// Set of shared resources between DenoModules.
@@ -69,7 +75,7 @@ pub struct DenoScript {
 /// and to load & execute methods in the Deno runtime from sources.
 impl DenoModule {
     pub async fn new<F>(
-        user_module_path: &Path,
+        user_code: UserCode,
         user_agent_name: &str,
         shims: &[(&str, &str)],
         register_ops: F,
@@ -78,10 +84,6 @@ impl DenoModule {
     where
         F: FnOnce(&mut JsRuntime),
     {
-        let user_module_path = fs::canonicalize(user_module_path)?
-            .to_string_lossy()
-            .to_string();
-
         let shim_source_code = {
             let shims_source_codes: Vec<_> = shims
                 .iter()
@@ -91,10 +93,22 @@ impl DenoModule {
             shims_source_codes.join("\n")
         };
 
-        let source_code = format!(
-            "import * as mod from '{}'; globalThis.mod = mod; {}",
-            user_module_path, shim_source_code
-        );
+        let source_code = match &user_code {
+            UserCode::Path(user_module_path) => {
+                let user_module_path = fs::canonicalize(user_module_path)?
+                    .to_string_lossy()
+                    .to_string();
+
+                format!(
+                    "import * as mod from '{}'; globalThis.mod = mod; {}",
+                    user_module_path, shim_source_code
+                )
+            }
+
+            UserCode::Script(script) => {
+                format!("const mod = {}; \n{}", script, shim_source_code)
+            }
+        };
 
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
@@ -158,6 +172,7 @@ impl DenoModule {
             worker: Arc::new(Mutex::new(worker)),
             shim_object_names,
             script_map: HashMap::new(),
+            user_code,
         })
     }
 
@@ -165,7 +180,12 @@ impl DenoModule {
         let worker = &mut self.worker;
         let runtime = &mut worker.try_lock().unwrap().js_runtime;
 
-        let func_value = runtime.execute_script("", &format!("mod.{}", function_name))?;
+        let func_value_string = match self.user_code {
+            UserCode::Path(_) => format!("mod.{}", function_name),
+            UserCode::Script(_) => function_name.to_owned(),
+        };
+
+        let func_value = runtime.execute_script("", &func_value_string)?;
 
         let shim_objects_vals: Vec<_> = self
             .shim_object_names

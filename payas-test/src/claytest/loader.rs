@@ -1,3 +1,4 @@
+use async_graphql_parser::types::ExecutableDocument;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
@@ -14,8 +15,9 @@ pub enum TestfileOperation {
     Sql(String),
     GqlDocument {
         document: String,
+        parsed_document: ExecutableDocument,
         variables: Option<serde_json::Value>,
-        expected_payload: Option<serde_json::Value>,
+        expected_payload: Option<String>, // stringified
         auth: Option<serde_json::Value>,
     },
 }
@@ -206,7 +208,7 @@ fn parse_testfile(
         .context(format!("Failed to parse test file at {:?}", testfile_path))?;
 
     // validate GraphQL
-    let _gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
+    let gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
 
     Ok(ParsedTestfile {
         model_path: model_path.to_path_buf(),
@@ -214,9 +216,10 @@ fn parse_testfile(
         init_operations: init_ops,
         test_operation: Some(TestfileOperation::GqlDocument {
             document: deserialized_testfile.operation.clone(),
+            parsed_document: gql_document,
             auth: deserialized_testfile.auth.map(from_json).transpose()?,
             variables: deserialized_testfile.variable.map(from_json).transpose()?,
-            expected_payload: Some(from_json(deserialized_testfile.response)?),
+            expected_payload: Some(deserialized_testfile.response),
         }),
     })
 }
@@ -234,8 +237,13 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
             let deserialized_initfile: InitFile =
                 serde_yaml::from_reader(reader).context(format!("Failed to parse {:?}", path))?;
 
+            // validate GraphQL
+            let gql_document =
+                parse_query(&deserialized_initfile.operation).context("Invalid GraphQL")?;
+
             Ok(TestfileOperation::GqlDocument {
                 document: deserialized_initfile.operation.clone(),
+                parsed_document: gql_document,
                 auth: deserialized_initfile.auth.map(from_json).transpose()?,
                 variables: deserialized_initfile.variable.map(from_json).transpose()?,
                 expected_payload: None,

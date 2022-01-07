@@ -3013,10 +3013,13 @@ dependencies = [
  "ansi_term 0.12.1",
  "anyhow",
  "async-graphql-parser",
+ "async-graphql-value",
+ "insta",
  "isahc",
  "jsonwebtoken",
  "md5",
  "num_cpus",
+ "payas-deno",
  "postgres",
  "postgres-openssl",
  "rand 0.8.4",
@@ -3024,6 +3027,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "tokio 0.2.25",
  "wildmatch",
 ]
 

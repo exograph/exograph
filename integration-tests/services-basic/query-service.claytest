@@ -3,6 +3,8 @@ operation: |
       addDirect: add(x: 1, y: 2)
 
       addVariables: add(x: $x, y: $y)
+
+      currentUnixEpoch
     
       divide(x: 13, y: 2) {
         quotient
@@ -21,10 +23,14 @@ response: |
       "data": {
         "addDirect": 3,
         "addVariables": 11,
+        "currentUnixEpoch": ((t) => {
+          const currentTime = Math.floor(Date.now() / 1000);
+          return (currentTime - t) < 5;
+        }),
         "divide": {
           "quotient": 6,
           "remainder": 1
         },
-        "shimQuery": "The `foos` with `baz` = 4 have IDs of 1, 2, "
+        "shimQuery": "The `foos` with `baz` = 4 have IDs of " + $.foo1_id + ", " + $.foo2_id + ", "
       }
     } 

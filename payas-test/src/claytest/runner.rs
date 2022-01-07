@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 
 use std::{
+    collections::HashMap,
     env,
     io::{BufRead, BufReader, Write},
     process::{Command, Stdio},
@@ -16,6 +17,11 @@ use std::{
 use crate::claytest::dbutils::{createdb_psql, dropdb_psql, run_psql};
 use crate::claytest::loader::{ParsedTestfile, TestfileOperation};
 use crate::claytest::model::*;
+
+use super::{
+    assertion,
+    testvariable_bindings::{build_testvariable_bindings, resolve_testvariable},
+};
 
 #[derive(Serialize)]
 struct ClayPost {
@@ -138,15 +144,36 @@ pub(crate) fn run_testfile(
         stderr_output.lock().unwrap().push_str(&buf);
     });
 
+    let mut testvariables = HashMap::new();
+
     // run the init section
     println!("{} Initializing database...", log_prefix);
     for operation in testfile.init_operations.iter() {
-        run_operation(&endpoint, operation, &jwtsecret, &dburl_for_clay).with_context(|| {
+        let result = run_operation(
+            &endpoint,
+            operation,
+            &jwtsecret,
+            &dburl_for_clay,
+            &testvariables,
+        )
+        .with_context(|| {
             format!(
                 "While initializing database for testfile {}",
                 testfile.name()
             )
-        })??
+        })?;
+
+        match result {
+            OperationResult::Finished { variables } => {
+                if let Some(tv) = variables {
+                    testvariables.extend(tv);
+                };
+            }
+
+            OperationResult::AssertFailed(_) | OperationResult::AssertPassed => {
+                panic!("did not expect assertions in setup")
+            }
+        }
     }
 
     // run test
@@ -156,6 +183,7 @@ pub(crate) fn run_testfile(
         testfile.test_operation.as_ref().unwrap(),
         &jwtsecret,
         &dburl_for_clay,
+        &testvariables,
     );
 
     // did the test run okay?
@@ -163,9 +191,12 @@ pub(crate) fn run_testfile(
         Ok(test_result) => {
             // check test results
             match test_result {
-                Ok(_) => TestResult::Success,
+                OperationResult::AssertPassed => TestResult::Success,
+                OperationResult::AssertFailed(e) => TestResult::AssertionFail(e),
 
-                Err(e) => TestResult::AssertionFail(e),
+                OperationResult::Finished { .. } => {
+                    panic!("did not specify assertion inside testfile operation")
+                }
             }
         }
         Err(e) => TestResult::SetupFail(e),
@@ -193,17 +224,26 @@ fn cmd(binary_name: &str) -> Command {
     }
 }
 
-type OperationResult = Result<()>;
+enum OperationResult {
+    Finished {
+        variables: Option<HashMap<String, serde_json::Value>>,
+    },
+
+    AssertPassed,
+    AssertFailed(anyhow::Error),
+}
 
 fn run_operation(
     url: &str,
     gql: &TestfileOperation,
     jwtsecret: &str,
     dburl: &str,
+    testvariables: &HashMap<String, serde_json::Value>,
 ) -> Result<OperationResult> {
     match gql {
         TestfileOperation::GqlDocument {
             document,
+            parsed_document,
             variables,
             expected_payload,
             auth,
@@ -259,27 +299,41 @@ fn run_operation(
             match expected_payload {
                 Some(expected_payload) => {
                     // expected response detected - do an assertion
-                    if body == *expected_payload {
-                        Ok(Ok(()))
-                    } else {
-                        return Ok(Err(anyhow!(format!(
-                            "➔ Expected:\n{},\n\n➔ Got:\n{}",
-                            serde_json::to_string_pretty(&expected_payload).unwrap(),
-                            serde_json::to_string_pretty(&body).unwrap(),
-                        ))));
+                    match assertion::dynamic_assert_using_deno(
+                        expected_payload,
+                        body,
+                        testvariables,
+                    ) {
+                        Ok(()) => Ok(OperationResult::AssertPassed),
+                        Err(e) => Ok(OperationResult::AssertFailed(e)),
                     }
                 }
 
                 None => {
                     // don't need to check anything
-                    Ok(Ok(()))
+
+                    let bindings = build_testvariable_bindings(parsed_document);
+
+                    let resolved_variables_keys = bindings.keys().cloned();
+                    let resolved_variables_values = bindings
+                        .keys()
+                        .map(|name| resolve_testvariable(name, &body, &bindings))
+                        .collect::<Result<Vec<_>>>()?
+                        .into_iter();
+                    let resolved_variables: HashMap<_, _> = resolved_variables_keys
+                        .zip(resolved_variables_values)
+                        .collect();
+
+                    Ok(OperationResult::Finished {
+                        variables: Some(resolved_variables),
+                    })
                 }
             }
         }
 
         TestfileOperation::Sql(query) => {
             run_psql(query, dburl)?;
-            Ok(Ok(()))
+            Ok(OperationResult::Finished { variables: None })
         }
     }
 }
