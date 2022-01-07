@@ -201,7 +201,7 @@ mod tests {
             }
 
             log1: createLogs(data: []) {
-                id @bind(name: "log1_id")
+                id @bind(name: "log1_ids")
             }
         }    
     "#;
@@ -240,11 +240,11 @@ mod tests {
         .unwrap();
 
         let create_log_id = resolve_testvariable("createLog_id", &response, &bindings).unwrap();
-        let log1_id = resolve_testvariable("log1_id", &response, &bindings).unwrap();
+        let log1_ids = resolve_testvariable("log1_ids", &response, &bindings).unwrap();
 
-        println!("{:#?}", log1_id);
+        println!("{:#?}", log1_ids);
 
         assert_eq!(create_log_id, 1);
-        assert_eq!(log1_id, serde_json::to_value(vec![2, 3, 4]).unwrap());
+        assert_eq!(log1_ids, serde_json::to_value(vec![2, 3, 4]).unwrap());
     }
 }
