@@ -299,10 +299,23 @@ fn run_operation(
             match expected_payload {
                 Some(expected_payload) => {
                     // expected response detected - do an assertion
+
+                    // provide query variables as well as testvariables inside $ object
+                    let variable_map = match variables.clone().unwrap_or(Value::Object(Map::new())) {
+                        Value::Object(map) => {
+                            let mut variable_map = HashMap::new();
+                            variable_map.extend(testvariables.clone());
+                            variable_map.extend(map);
+                            variable_map
+                        },
+
+                        _ => panic!("variables is not an Object")
+                    };
+
                     match assertion::dynamic_assert_using_deno(
                         expected_payload,
                         body,
-                        testvariables,
+                        &variable_map,
                     ) {
                         Ok(()) => Ok(OperationResult::AssertPassed),
                         Err(e) => Ok(OperationResult::AssertFailed(e)),
