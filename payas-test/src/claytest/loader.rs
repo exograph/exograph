@@ -50,12 +50,8 @@ impl ParsedTestfile {
             .to_string()
     }
 
-    pub fn dbname(&self, dev_model: bool) -> String {
-        format!(
-            "{}_{}",
-            to_postgres(&self.name()),
-            if dev_model { "dev" } else { "prod" }
-        )
+    pub fn dbname(&self) -> String {
+        to_postgres(&self.name())
     }
 }
 

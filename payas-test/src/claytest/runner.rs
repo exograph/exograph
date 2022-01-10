@@ -33,14 +33,13 @@ struct ClayPost {
 pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
     bootstrap_dburl: String,
-    dev_mode: bool,
 ) -> Result<TestOutput> {
     // iterate through our tests
     let mut ctx = TestfileContext::default();
 
     let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name()));
 
-    let dbname = testfile.dbname(dev_mode);
+    let dbname = testfile.dbname();
     ctx.dbname = Some(dbname.clone());
 
     // generate a JWT secret
@@ -75,18 +74,9 @@ pub(crate) fn run_testfile(
 
     let check_on_startup = if rand::random() { "true" } else { "false" };
 
-    let (cmd_name, args) = if dev_mode {
-        (
-            "clay",
-            vec!["serve".to_string(), testfile.model_path_string()],
-        )
-    } else {
-        ("clay-server", vec![testfile.model_path_string()])
-    };
-
     ctx.server = Some(
-        cmd(cmd_name)
-            .args(args)
+        cmd("clay-server")
+            .args(vec![testfile.model_path_string()])
             .env("CLAY_DATABASE_URL", &dburl_for_clay)
             .env("CLAY_DATABASE_USER", dbusername)
             .env("CLAY_JWT_SECRET", &jwtsecret)
@@ -113,9 +103,8 @@ pub(crate) fn run_testfile(
 
     if !line.starts_with(MAGIC_STRING) {
         bail!(
-            r#"Unexpected output from clay-server "{}", {}: {}"#,
+            r#"Unexpected output from clay-server "{}": {}"#,
             testfile.name(),
-            dev_mode,
             line
         )
     }
@@ -217,7 +206,6 @@ pub(crate) fn run_testfile(
         log_prefix: log_prefix.to_string(),
         result: success,
         output,
-        dev_mode,
     })
     // implicit ctx drop
 }
