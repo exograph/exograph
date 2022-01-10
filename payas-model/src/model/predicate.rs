@@ -26,7 +26,7 @@ type BooleanPredicateParameters = Vec<PredicateParameter>;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PredicateParameterTypeKind {
     ImplicitEqual,                     // {id: 3}
-    Opeartor(Vec<PredicateParameter>), // {lt: ..,gt: ..} such as IntFilter
+    Operator(Vec<PredicateParameter>), // {lt: ..,gt: ..} such as IntFilter
     Composite(ModelPredicateParameters, BooleanPredicateParameters), // {where: {id: .., name: ..}} such as AccountFilter
                                                                      // also includes boolean predicates like
                                                                      // {where: {

@@ -170,7 +170,7 @@ fn create_operator_filter_type_kind(
             let parameters: Vec<PredicateParameter> =
                 operators.iter().map(parameter_constructor).collect();
 
-            PredicateParameterTypeKind::Opeartor(parameters)
+            PredicateParameterTypeKind::Operator(parameters)
         } else {
             // type supports no specific operations, assume implicit equals
             PredicateParameterTypeKind::ImplicitEqual

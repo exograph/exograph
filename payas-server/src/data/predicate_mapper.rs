@@ -25,7 +25,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                     operands(self, argument_value, query_context);
                 Ok(Predicate::Eq(op_key_column, op_value_column.into()))
             }
-            PredicateParameterTypeKind::Opeartor(parameters) => {
+            PredicateParameterTypeKind::Operator(parameters) => {
                 Ok(parameters.iter().fold(Predicate::True, |acc, parameter| {
                     let arg = query_context.get_argument_field(argument_value, &parameter.name);
                     let new_predicate = match arg {
