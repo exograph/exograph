@@ -29,7 +29,7 @@ pub fn dynamic_assert_using_deno(
 
     // first substitute expected variables
     let script = ASSERT_JS.to_owned();
-    let script = script.replace("\"%%EXPECTED%%\"", expected);
+    let script = script.replace("\"%%JSON%%\"", expected);
 
     let deno_module_future = DenoModule::new(
         UserCode::Script(script),
@@ -51,8 +51,39 @@ pub fn dynamic_assert_using_deno(
     Ok(())
 }
 
+// Evaluates substitutions only in a stringified 'JSON' payload.
+pub fn evaluate_using_deno(
+    not_really_json: &str, 
+    testvariables: &HashMap<String, serde_json::Value>
+) -> Result<serde_json::Value> {
+    let testvariables_json = serde_json::to_value(testvariables)?;
+
+    // first substitute expected variables
+    let script = ASSERT_JS.to_owned();
+    let script = script.replace("\"%%JSON%%\"", not_really_json);
+
+    let deno_module_future = DenoModule::new(
+        UserCode::Script(script),
+        "ClaytipTest",
+        &[],
+        |runtime| runtime.sync_ops_cache(),
+        DenoModuleSharedState::default(),
+    );
+
+    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut deno_module = runtime.block_on(deno_module_future).unwrap();   
+
+    // run method
+    runtime.block_on(deno_module.execute_function(
+        "evaluate",
+        vec![Arg::Serde(testvariables_json)],
+    ))
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::claytest::assertion::evaluate_using_deno;
+
     use super::dynamic_assert_using_deno;
 
     fn actual_payload() -> serde_json::Value {
@@ -90,6 +121,32 @@ mod tests {
         .collect();
 
         dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap();
+    }
+
+    #[test]
+    fn test_evaluation() {
+        let payload = r#"
+            {
+                "data": {
+                    "a": 1, 
+                    "b": $.b,
+                    "c": function () { return "this function should disappear since it is not JSON"; } 
+                }
+            }
+        "#;
+
+        let testvariables = vec![(
+            "b".to_owned(),
+            serde_json::to_value(vec!["foo", "bar"]).unwrap(),
+        )]
+        .into_iter()
+        .collect();
+
+        let result = evaluate_using_deno(payload, &testvariables).unwrap();
+
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(result);
+        });
     }
 
     #[test]

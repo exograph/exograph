@@ -1,6 +1,18 @@
+globalThis.evaluate = function (testvariables) {
+    var $ = testvariables;
+
+    // substituted in from Rust
+    const json = "%%JSON%%";
+
+    // don't inadvertently pass back an invalid JSON object
+    return JSON.parse(JSON.stringify(json));
+}
+
 globalThis.test = function (actualPayload, testvariables) {
     var $ = testvariables;
-    const expectedPayload = "%%EXPECTED%%";
+
+    // substituted in from Rust
+    const expectedPayload = "%%JSON%%";
 
     var lastKey = undefined;
 

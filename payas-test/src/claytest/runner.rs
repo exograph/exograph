@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use isahc::{HttpClient, ReadResponseExt, Request};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use rand::{distributions::Alphanumeric, Rng};
+use regex::Regex;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
@@ -19,7 +20,7 @@ use crate::claytest::loader::{ParsedTestfile, TestfileOperation};
 use crate::claytest::model::*;
 
 use super::{
-    assertion,
+    assertion::{self, evaluate_using_deno},
     testvariable_bindings::{build_testvariable_bindings, resolve_testvariable},
 };
 
@@ -165,12 +166,10 @@ pub(crate) fn run_testfile(
 
         match result {
             OperationResult::Finished { variables } => {
-                if let Some(tv) = variables {
-                    testvariables.extend(tv);
-                };
+                testvariables.extend(variables);
             }
 
-            OperationResult::AssertFailed(_) | OperationResult::AssertPassed => {
+            OperationResult::AssertFailed(_) | OperationResult::AssertPassed { .. } => {
                 panic!("did not expect assertions in setup")
             }
         }
@@ -191,7 +190,11 @@ pub(crate) fn run_testfile(
         Ok(test_result) => {
             // check test results
             match test_result {
-                OperationResult::AssertPassed => TestResult::Success,
+                OperationResult::AssertPassed { 
+                    variables: _ // TODO: we will extend with this set of variables when we do multi-stage tests (#314)
+                } => {
+                    TestResult::Success
+                },
                 OperationResult::AssertFailed(e) => TestResult::AssertionFail(e),
 
                 OperationResult::Finished { .. } => {
@@ -226,10 +229,12 @@ fn cmd(binary_name: &str) -> Command {
 
 enum OperationResult {
     Finished {
-        variables: Option<HashMap<String, serde_json::Value>>,
+        variables: HashMap<String, serde_json::Value>,
     },
 
-    AssertPassed,
+    AssertPassed {
+        variables: HashMap<String, serde_json::Value>,
+    },
     AssertFailed(anyhow::Error),
 }
 
@@ -243,12 +248,24 @@ fn run_operation(
     match gql {
         TestfileOperation::GqlDocument {
             document,
-            parsed_document,
+            testvariable_bindings,
             variables,
             expected_payload,
             auth,
         } => {
             let mut req = Request::post(url);
+
+            // process substitutions in query variables section
+            let variables = variables
+                .as_ref()
+                .map(|vars| evaluate_using_deno(vars, testvariables))
+                .transpose()?;
+
+            // remove @bind directives from our query
+            // TODO: could we take them out of ExecutableDocument and serialize that instead?
+            let query = Regex::new(r"@bind\(.*\)") ?
+                .replace_all(document, "")
+                .to_string();
 
             // add JWT token if specified
             if let Some(auth) = auth {
@@ -269,10 +286,11 @@ fn run_operation(
                 req = req.header("Authorization", format!("Bearer {}", token));
             };
 
+            // run the operation
             let req =
                 req.header("Content-Type", "application/json")
                     .body(serde_json::to_string(&ClayPost {
-                        query: document.to_string(),
+                        query,
                         variables: variables
                             .as_ref()
                             .unwrap_or(&Value::Object(Map::new()))
@@ -296,16 +314,31 @@ fn run_operation(
             })?;
             let body: serde_json::Value = json;
 
+            // resolve testvariables from the result of our current operation
+            let resolved_variables_keys = testvariable_bindings.keys().cloned();
+            let resolved_variables_values = testvariable_bindings
+                .keys()
+                .map(|name| resolve_testvariable(name, &body, &testvariable_bindings))
+                .collect::<Result<Vec<_>>>()?
+                .into_iter();
+            let resolved_variables: HashMap<_, _> = resolved_variables_keys
+                .zip(resolved_variables_values)
+                .collect();
+
             match expected_payload {
                 Some(expected_payload) => {
-                    // expected response detected - do an assertion
+                    // expected response specified - do an assertion
 
-                    // provide query variables as well as testvariables inside $ object
-                    let variable_map = match variables.clone().unwrap_or(Value::Object(Map::new())) {
+                    // provide the following inside $ object
+                    // - query variables
+                    // - testvariables specified to run_operation at the start
+                    // - testvariables resolved just now from the result of our current operation
+                    let variables = match variables.clone().unwrap_or(Value::Object(Map::new())) {
                         Value::Object(map) => {
                             let mut variable_map = HashMap::new();
                             variable_map.extend(testvariables.clone());
                             variable_map.extend(map);
+                            variable_map.extend(resolved_variables.clone());
                             variable_map
                         },
 
@@ -315,9 +348,11 @@ fn run_operation(
                     match assertion::dynamic_assert_using_deno(
                         expected_payload,
                         body,
-                        &variable_map,
+                        &variables,
                     ) {
-                        Ok(()) => Ok(OperationResult::AssertPassed),
+                        Ok(()) => Ok(OperationResult::AssertPassed {
+                            variables: resolved_variables
+                        }),
                         Err(e) => Ok(OperationResult::AssertFailed(e)),
                     }
                 }
@@ -325,20 +360,8 @@ fn run_operation(
                 None => {
                     // don't need to check anything
 
-                    let bindings = build_testvariable_bindings(parsed_document);
-
-                    let resolved_variables_keys = bindings.keys().cloned();
-                    let resolved_variables_values = bindings
-                        .keys()
-                        .map(|name| resolve_testvariable(name, &body, &bindings))
-                        .collect::<Result<Vec<_>>>()?
-                        .into_iter();
-                    let resolved_variables: HashMap<_, _> = resolved_variables_keys
-                        .zip(resolved_variables_values)
-                        .collect();
-
                     Ok(OperationResult::Finished {
-                        variables: Some(resolved_variables),
+                        variables: resolved_variables,
                     })
                 }
             }
@@ -346,7 +369,7 @@ fn run_operation(
 
         TestfileOperation::Sql(query) => {
             run_psql(query, dburl)?;
-            Ok(OperationResult::Finished { variables: None })
+            Ok(OperationResult::Finished { variables: Default::default() })
         }
     }
 }

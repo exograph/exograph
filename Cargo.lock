@@ -3024,6 +3024,7 @@ dependencies = [
  "postgres-openssl",
  "rand 0.8.4",
  "rayon",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

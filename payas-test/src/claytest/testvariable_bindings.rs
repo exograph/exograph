@@ -7,7 +7,7 @@ use async_graphql_parser::{
 };
 use async_graphql_value::{Name, Value};
 
-type TestvariableBindings = HashMap<String, TestvariablePath>;
+pub type TestvariableBindings = HashMap<String, TestvariablePath>;
 type TestvariablePath = Vec<TestvariablePathElements>;
 type TestvariablePathElements = String;
 
