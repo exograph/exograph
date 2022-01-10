@@ -30,8 +30,6 @@ rust_decimal = { version = "1.15", features = ["db-postgres"] }
 chrono = "0.4.19"
 postgres-types = "0.2"
 typed-arena = "2.0.1"
-notify = "4.0.17"
-ctrlc = "3.1.9"
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 maybe-owned = "0.3.4"
 thiserror = "1.0.30"

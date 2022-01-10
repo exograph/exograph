@@ -903,16 +903,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctrlc"
-version = "3.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "377c9b002a72a0b2c1a18c62e2f3864bdfea4a015e3683a96e24aa45dd6c02d1"
-dependencies = [
- "nix",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "curl"
 version = "0.4.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2836,6 +2826,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "clap",
+ "notify 4.0.17",
  "payas-model",
  "payas-parser",
  "payas-server",
@@ -2907,12 +2898,10 @@ dependencies = [
  "base64 0.13.0",
  "bincode",
  "chrono",
- "ctrlc",
  "futures",
  "futures-util",
  "jsonwebtoken",
  "maybe-owned",
- "notify 4.0.17",
  "payas-deno",
  "payas-model",
  "payas-parser",

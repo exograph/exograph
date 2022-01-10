@@ -24,8 +24,6 @@ mod data;
 mod error;
 pub mod execution;
 mod introspection;
-pub mod model_watcher;
-mod watcher;
 
 pub use payas_sql::sql;
 
