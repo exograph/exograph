@@ -53,8 +53,8 @@ pub fn dynamic_assert_using_deno(
 
 // Evaluates substitutions only in a stringified 'JSON' payload.
 pub fn evaluate_using_deno(
-    not_really_json: &str, 
-    testvariables: &HashMap<String, serde_json::Value>
+    not_really_json: &str,
+    testvariables: &HashMap<String, serde_json::Value>,
 ) -> Result<serde_json::Value> {
     let testvariables_json = serde_json::to_value(testvariables)?;
 
@@ -71,13 +71,10 @@ pub fn evaluate_using_deno(
     );
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut deno_module = runtime.block_on(deno_module_future).unwrap();   
+    let mut deno_module = runtime.block_on(deno_module_future).unwrap();
 
     // run method
-    runtime.block_on(deno_module.execute_function(
-        "evaluate",
-        vec![Arg::Serde(testvariables_json)],
-    ))
+    runtime.block_on(deno_module.execute_function("evaluate", vec![Arg::Serde(testvariables_json)]))
 }
 
 #[cfg(test)]

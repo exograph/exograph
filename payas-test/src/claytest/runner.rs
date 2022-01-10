@@ -21,7 +21,7 @@ use crate::claytest::model::*;
 
 use super::{
     assertion::{self, evaluate_using_deno},
-    testvariable_bindings::{build_testvariable_bindings, resolve_testvariable},
+    testvariable_bindings::resolve_testvariable,
 };
 
 #[derive(Serialize)]
@@ -190,11 +190,9 @@ pub(crate) fn run_testfile(
         Ok(test_result) => {
             // check test results
             match test_result {
-                OperationResult::AssertPassed { 
-                    variables: _ // TODO: we will extend with this set of variables when we do multi-stage tests (#314)
-                } => {
-                    TestResult::Success
-                },
+                OperationResult::AssertPassed {
+                    variables: _, // TODO: we will extend with this set of variables when we do multi-stage tests (#314)
+                } => TestResult::Success,
                 OperationResult::AssertFailed(e) => TestResult::AssertionFail(e),
 
                 OperationResult::Finished { .. } => {
@@ -263,7 +261,7 @@ fn run_operation(
 
             // remove @bind directives from our query
             // TODO: could we take them out of ExecutableDocument and serialize that instead?
-            let query = Regex::new(r"@bind\(.*\)") ?
+            let query = Regex::new(r"@bind\(.*\)")?
                 .replace_all(document, "")
                 .to_string();
 
@@ -318,7 +316,7 @@ fn run_operation(
             let resolved_variables_keys = testvariable_bindings.keys().cloned();
             let resolved_variables_values = testvariable_bindings
                 .keys()
-                .map(|name| resolve_testvariable(name, &body, &testvariable_bindings))
+                .map(|name| resolve_testvariable(name, &body, testvariable_bindings))
                 .collect::<Result<Vec<_>>>()?
                 .into_iter();
             let resolved_variables: HashMap<_, _> = resolved_variables_keys
@@ -333,25 +331,21 @@ fn run_operation(
                     // - query variables
                     // - testvariables specified to run_operation at the start
                     // - testvariables resolved just now from the result of our current operation
-                    let variables = match variables.clone().unwrap_or(Value::Object(Map::new())) {
+                    let variables = match variables.unwrap_or_else(|| Value::Object(Map::new())) {
                         Value::Object(map) => {
                             let mut variable_map = HashMap::new();
                             variable_map.extend(testvariables.clone());
                             variable_map.extend(map);
                             variable_map.extend(resolved_variables.clone());
                             variable_map
-                        },
+                        }
 
-                        _ => panic!("variables is not an Object")
+                        _ => panic!("variables is not an Object"),
                     };
 
-                    match assertion::dynamic_assert_using_deno(
-                        expected_payload,
-                        body,
-                        &variables,
-                    ) {
+                    match assertion::dynamic_assert_using_deno(expected_payload, body, &variables) {
                         Ok(()) => Ok(OperationResult::AssertPassed {
-                            variables: resolved_variables
+                            variables: resolved_variables,
                         }),
                         Err(e) => Ok(OperationResult::AssertFailed(e)),
                     }
@@ -369,7 +363,9 @@ fn run_operation(
 
         TestfileOperation::Sql(query) => {
             run_psql(query, dburl)?;
-            Ok(OperationResult::Finished { variables: Default::default() })
+            Ok(OperationResult::Finished {
+                variables: Default::default(),
+            })
         }
     }
 }

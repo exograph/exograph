@@ -1,4 +1,3 @@
-use async_graphql_parser::types::ExecutableDocument;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
@@ -9,8 +8,8 @@ use wildmatch::WildMatch;
 use anyhow::{bail, Context, Result};
 use async_graphql_parser::parse_query;
 
-use super::testvariable_bindings::TestvariableBindings;
 use super::testvariable_bindings::build_testvariable_bindings;
+use super::testvariable_bindings::TestvariableBindings;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
@@ -19,7 +18,7 @@ pub enum TestfileOperation {
     GqlDocument {
         document: String,
         testvariable_bindings: TestvariableBindings,
-        variables: Option<String>, // stringified
+        variables: Option<String>,        // stringified
         expected_payload: Option<String>, // stringified
         auth: Option<serde_json::Value>,
     },
@@ -211,7 +210,7 @@ fn parse_testfile(
         .context(format!("Failed to parse test file at {:?}", testfile_path))?;
 
     // validate GraphQL
-    let mut gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
+    let gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
 
     Ok(ParsedTestfile {
         model_path: model_path.to_path_buf(),
