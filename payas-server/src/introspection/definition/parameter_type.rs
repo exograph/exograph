@@ -82,7 +82,7 @@ impl TypeDefinitionProvider for OrderByParameterType {
 impl TypeDefinitionProvider for PredicateParameterType {
     fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         match &self.kind {
-            PredicateParameterTypeKind::Opeartor(parameters) => {
+            PredicateParameterTypeKind::Operator(parameters) => {
                 let fields = parameters
                     .iter()
                     .map(|parameter| default_positioned(parameter.input_value()))
