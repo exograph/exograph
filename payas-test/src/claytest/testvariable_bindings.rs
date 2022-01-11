@@ -120,9 +120,12 @@ fn process_selection_set(
                 Selection::FragmentSpread(fragment_spread) => {
                     let fragment_spread = &fragment_spread.node;
                     let fragment_name = &fragment_spread.fragment_name.node;
-                    let fragment = fragments.get(fragment_name);
-                    let selection_set =
-                        &fragment.expect("Missing fragment").node.selection_set.node;
+                    let selection_set = if let Some(fragment) = fragments.get(fragment_name) {
+                        &fragment.node.selection_set.node
+                    } else {
+                        // soft fail - some tests may actually depend on missing fragments
+                        return Default::default();
+                    };
 
                     process_selection_set(selection_set, current_path.clone(), fragments)
                 }
