@@ -273,7 +273,8 @@ services:
   values:
     - - ~
       - name: Foo
-        module_path: bar.bundle.js
+        script: "\n"
+        script_path: bar.js
         methods:
           - name: qux
             operation_kind: Query

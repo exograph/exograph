@@ -69,7 +69,7 @@ async fn test_actor() {
 async fn test_actor_executor() {
     let executor = DenoExecutor::default();
 
-    let module_path = "./tests/direct.js";
+    let module_path = "tests/direct.js";
     let module_script = include_str!("./direct.js");
 
     executor
@@ -92,7 +92,7 @@ async fn test_actor_executor() {
 #[tokio_1::test]
 async fn test_actor_executor_concurrent() {
     let executor = DenoExecutor::default();
-    let module_path = "./tests/direct.js";
+    let module_path = "tests/direct.js";
     let module_script = include_str!("./direct.js");
     let total_futures = 10;
 
