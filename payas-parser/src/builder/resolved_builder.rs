@@ -432,21 +432,27 @@ fn build_shallow(
 
                 // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
                 let bundler_output = std::process::Command::new("deno")
-                    .args([
-                        "bundle",
-                        "--no-check",
-                        module_fs_path.to_str().unwrap(),
-                    ])
+                    .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
                     .output()?;
 
                 let bundled_script = if bundler_output.status.success() {
                     std::str::from_utf8(&bundler_output.stdout)
                 } else {
                     std::io::stdout().write_all(&bundler_output.stderr).unwrap();
-                    return Err(ParserError::Generic("Deno bundler did not exit successfully".to_string()))
-                }.map_err(|_| ParserError::Generic(format!("Could not parse script file at \"{}\" into UTF-8", module_fs_path.to_str().unwrap())))?;
+                    return Err(ParserError::Generic(
+                        "Deno bundler did not exit successfully".to_string(),
+                    ));
+                }
+                .map_err(|_| {
+                    ParserError::Generic(format!(
+                        "Could not parse script file at \"{}\" into UTF-8",
+                        module_fs_path.to_str().unwrap()
+                    ))
+                })?;
 
-                let module_anonymized_path = module_fs_path.strip_prefix(&service.base_clayfile.parent().unwrap()).unwrap();
+                let module_anonymized_path = module_fs_path
+                    .strip_prefix(&service.base_clayfile.parent().unwrap())
+                    .unwrap();
 
                 fn extract_intercept_annot<'a>(
                     annotations: &'a AnnotationMap,

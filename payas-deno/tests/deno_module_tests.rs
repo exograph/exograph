@@ -72,7 +72,10 @@ async fn test_actor_executor() {
     let module_path = "./tests/direct.js";
     let module_script = include_str!("./direct.js");
 
-    executor.preload_module(module_path, module_script, 1).await.unwrap();
+    executor
+        .preload_module(module_path, module_script, 1)
+        .await
+        .unwrap();
 
     let res = executor
         .execute_function(
@@ -94,7 +97,10 @@ async fn test_actor_executor_concurrent() {
     let total_futures = 10;
 
     // start with one preloaded DenoModule
-    executor.preload_module(module_path, include_str!("./direct.js"), 1).await.unwrap();
+    executor
+        .preload_module(module_path, include_str!("./direct.js"), 1)
+        .await
+        .unwrap();
 
     let mut handles = vec![];
 

@@ -166,13 +166,7 @@ impl DenoActor {
             }
         };
 
-        let deno_module = DenoModule::new(
-            code,
-            "Claytip",
-            &shims,
-            register_ops,
-            shared_state,
-        );
+        let deno_module = DenoModule::new(code, "Claytip", &shims, register_ops, shared_state);
 
         let deno_module = deno_module.await?;
 

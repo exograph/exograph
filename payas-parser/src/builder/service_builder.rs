@@ -4,7 +4,7 @@ use payas_model::model::{
     interceptor::{Interceptor, InterceptorArgument, InterceptorKind},
     mapped_arena::{MappedArena, SerializableSlabIndex},
     operation::{Interceptors, Mutation, MutationKind, OperationReturnType, Query, QueryKind},
-    service::{Argument, ServiceMethod, ServiceMethodType, Script},
+    service::{Argument, Script, ServiceMethod, ServiceMethodType},
     GqlType,
 };
 
@@ -56,15 +56,20 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
-fn get_or_populate_deno_script(script_path: &str, script: &str, building: &mut SystemContextBuilding) -> SerializableSlabIndex<Script> {
+fn get_or_populate_deno_script(
+    script_path: &str,
+    script: &str,
+    building: &mut SystemContextBuilding,
+) -> SerializableSlabIndex<Script> {
     match building.deno_scripts.get_id(script_path) {
         Some(index) => index,
-        None => {
-            building.deno_scripts.add(script_path, Script {
+        None => building.deno_scripts.add(
+            script_path,
+            Script {
                 path: script_path.to_owned(),
-                script: script.to_owned()
-            })
-        }
+                script: script.to_owned(),
+            },
+        ),
     }
 }
 
@@ -73,7 +78,11 @@ pub fn create_shallow_service(
     resolved_method: &ResolvedMethod,
     building: &mut SystemContextBuilding,
 ) {
-    let script = get_or_populate_deno_script(&resolved_service.script_path, &resolved_service.script, building);
+    let script = get_or_populate_deno_script(
+        &resolved_service.script_path,
+        &resolved_service.script,
+        building,
+    );
 
     building.methods.add(
         &resolved_method.name,
@@ -210,7 +219,11 @@ pub fn create_shallow_intercetor(
     resolved_interceptor: &ResolvedInterceptor,
     building: &mut SystemContextBuilding,
 ) {
-    let script = get_or_populate_deno_script(&resolved_service.script_path, &resolved_service.script, building);
+    let script = get_or_populate_deno_script(
+        &resolved_service.script_path,
+        &resolved_service.script,
+        building,
+    );
 
     building.interceptors.add(
         &resolved_interceptor.name,

@@ -47,9 +47,9 @@ unsafe impl Send for DenoActor {}
 impl<'a> DenoExecutor {
     /// Allocate a number of instances for a module.
     pub async fn preload_module(
-        &self, 
+        &self,
         script_path: &str,
-        script: &str, 
+        script: &str,
         instances: usize,
     ) -> Result<()> {
         let mut actor_pool_map = self.actor_pool_map.lock().unwrap();
@@ -64,10 +64,14 @@ impl<'a> DenoExecutor {
         let mut initial_actor_pool = vec![];
 
         for _ in 0..instances {
-            let actor = DenoActor::new(UserCode::LoadFromMemory { 
-                path: script_path.to_owned(),
-                script: script.to_owned()
-            }, self.shared_state.clone()).await?;
+            let actor = DenoActor::new(
+                UserCode::LoadFromMemory {
+                    path: script_path.to_owned(),
+                    script: script.to_owned(),
+                },
+                self.shared_state.clone(),
+            )
+            .await?;
             initial_actor_pool.push(Arc::new(Mutex::new(actor)));
         }
 
@@ -84,17 +88,19 @@ impl<'a> DenoExecutor {
         arguments: Vec<Arg>,
     ) -> Result<Value> {
         self.execute_function_with_shims(
-            script_path, 
-            script, 
-            method_name, 
-            arguments, 
-            None, 
-            None, 
-            None
+            script_path,
+            script,
+            method_name,
+            arguments,
+            None,
+            None,
+            None,
         )
-            .await
+        .await
     }
 
+    // TODO: look at passing a fn pointer struct as an argument
+    #[allow(clippy::too_many_arguments)]
     pub async fn execute_function_with_shims(
         &'a self,
         script_path: &str,
@@ -131,10 +137,14 @@ impl<'a> DenoExecutor {
         } else {
             // no free actors; need to allocate a new DenoActor
             let module_path = script_path.to_owned();
-            let new_actor = DenoActor::new(UserCode::LoadFromMemory {
-                path: script_path.to_owned(),
-                script: script.to_string()
-            }, self.shared_state.clone()).await?;
+            let new_actor = DenoActor::new(
+                UserCode::LoadFromMemory {
+                    path: script_path.to_owned(),
+                    script: script.to_string(),
+                },
+                self.shared_state.clone(),
+            )
+            .await?;
             actor_mutex = Some(Arc::new(Mutex::new(new_actor)));
 
             {

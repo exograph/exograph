@@ -1,4 +1,3 @@
-
 use super::argument::ArgumentParameterType;
 use super::column_id::ColumnId;
 use super::mapped_arena::SerializableSlab;
@@ -43,7 +42,7 @@ impl Default for ModelSystem {
             tables: SerializableSlab::new(),
             methods: SerializableSlab::new(),
             argument_types: SerializableSlab::new(),
-            deno_scripts: SerializableSlab::new()
+            deno_scripts: SerializableSlab::new(),
         }
     }
 }

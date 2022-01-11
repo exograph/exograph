@@ -6,7 +6,7 @@ use payas_model::{
         operation::{Mutation, Query},
         order::OrderByParameterType,
         predicate::PredicateParameterType,
-        service::{ServiceMethod, Script},
+        service::{Script, ServiceMethod},
         system::ModelSystem,
         types::GqlType,
         ContextType,
@@ -63,7 +63,7 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError>
         mutation_types: building.mutation_types.values,
         mutations: building.mutations,
         methods: building.methods.values,
-        deno_scripts: building.deno_scripts.values
+        deno_scripts: building.deno_scripts.values,
     })
 }
 
@@ -137,7 +137,7 @@ pub struct SystemContextBuilding {
     pub tables: MappedArena<PhysicalTable>,
     pub methods: MappedArena<ServiceMethod>,
     pub interceptors: MappedArena<Interceptor>,
-    pub deno_scripts: MappedArena<Script>
+    pub deno_scripts: MappedArena<Script>,
 }
 
 #[cfg(test)]

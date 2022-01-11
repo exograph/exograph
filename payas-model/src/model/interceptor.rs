@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{mapped_arena::SerializableSlabIndex, GqlType, GqlTypeModifier, service::Script};
+use super::{mapped_arena::SerializableSlabIndex, service::Script, GqlType, GqlTypeModifier};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Interceptor {

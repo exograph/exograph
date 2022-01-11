@@ -21,7 +21,7 @@ pub struct ServiceMethod {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Script {
     pub path: String,
-    pub script: String
+    pub script: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
