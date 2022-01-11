@@ -59,25 +59,23 @@ types:
                   is_autoincrement: false
                   type_hint: ~
                   unique: false
-            - name: venue
+            - name: ticket_office
               typ:
-                Optional:
-                  Plain: Venue
+                Plain: Venue
               kind:
                 Persistent:
-                  column_name: venue_id
+                  column_name: ticket_office
                   self_column: true
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
                   unique: false
-            - name: icon
+            - name: main
               typ:
-                Optional:
-                  Plain: Blob
+                Plain: Venue
               kind:
                 Persistent:
-                  column_name: icon
+                  column_name: main
                   self_column: true
                   is_pk: false
                   is_autoincrement: false
@@ -126,26 +124,25 @@ types:
                   is_autoincrement: false
                   type_hint: ~
                   unique: false
-            - name: address
+            - name: ticket_events
               typ:
-                Optional:
-                  Plain: String
+                List:
+                  Plain: Concert
               kind:
                 Persistent:
-                  column_name: custom_address
-                  self_column: true
+                  column_name: ticket_office
+                  self_column: false
                   is_pk: false
                   is_autoincrement: false
                   type_hint: ~
                   unique: false
-            - name: concerts
+            - name: main_events
               typ:
-                Optional:
-                  List:
-                    Plain: Concert
+                List:
+                  Plain: Concert
               kind:
                 Persistent:
-                  column_name: venue_id
+                  column_name: main
                   self_column: false
                   is_pk: false
                   is_autoincrement: false

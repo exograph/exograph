@@ -25,7 +25,7 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
     parser::parse_file(&model_file)
         .and_then(builder::build)
         .map_err(|err| {
-            if let ParserError::Diagosis(err) = err {
+            if let ParserError::Diagnosis(err) = err {
                 emitter.emit(&err);
             };
             ParserError::Generic("Failed to parse input file".to_string())

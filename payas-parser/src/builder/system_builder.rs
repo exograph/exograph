@@ -157,7 +157,7 @@ mod tests {
             model Concert {
                 id: Int @pk @autoincrement
                 title: String
-                venue: Venue? @column("venue_id")
+                venue: Venue?
                 icon: Blob?
             }
 
