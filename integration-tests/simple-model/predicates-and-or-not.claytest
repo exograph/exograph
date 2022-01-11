@@ -36,7 +36,7 @@ operation: |
   }
 variable: |
   {
-    "log1_id": $.log1_id
+    "log1_id": $.log1_id,
     "log2_id": $.log2_id
   }
 response: |

@@ -19,7 +19,7 @@ fn no_op(_: String, _: Option<&serde_json::Map<String, Value>>) -> Result<serde_
 #[tokio_1::test]
 async fn test_direct_sync() {
     let mut deno_module = DenoModule::new(
-        UserCode::Path(Path::new("./tests/direct.js").to_owned()),
+        UserCode::LoadFromFs(Path::new("./tests/direct.js").to_owned()),
         "deno_module",
         &[],
         |_| {},
@@ -120,7 +120,7 @@ async fn test_actor_executor_concurrent() {
 #[tokio_1::test]
 async fn test_direct_async() {
     let mut deno_module = DenoModule::new(
-        UserCode::Path(Path::new("./tests/direct.js").to_owned()),
+        UserCode::LoadFromFs(Path::new("./tests/direct.js").to_owned()),
         "deno_module",
         &[],
         |_| {},
@@ -154,7 +154,7 @@ async fn test_shim_sync() {
     static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("shim.js"));
 
     let mut deno_module = DenoModule::new(
-        UserCode::Path(Path::new("./tests/through_shim.js").to_owned()),
+        UserCode::LoadFromFs(Path::new("./tests/through_shim.js").to_owned()),
         "deno_module",
         &[GET_JSON_SHIM],
         |_| {},
@@ -195,7 +195,7 @@ async fn test_shim_async() {
     static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("shim.js"));
 
     let mut deno_module = DenoModule::new(
-        UserCode::Path(Path::new("./tests/through_shim.js").to_owned()),
+        UserCode::LoadFromFs(Path::new("./tests/through_shim.js").to_owned()),
         "deno_module",
         &[GET_JSON_SHIM],
         |_| {},
@@ -251,7 +251,7 @@ async fn test_register_ops() {
     }
 
     let mut deno_module = DenoModule::new(
-        UserCode::Path(Path::new("./tests/through_rust_fn.js").to_owned()),
+        UserCode::LoadFromFs(Path::new("./tests/through_rust_fn.js").to_owned()),
         "deno_module",
         &[],
         &register_ops,

@@ -42,14 +42,13 @@ const JS_MAX_VALUE: f64 = 1.797_693_134_862_315_7e308;
 const JS_MIN_VALUE: f64 = 5e-324;
 
 pub enum UserCode {
-    Script(String),
-    Path(PathBuf),
+    LoadFromMemory { script: String, path: String },
+    LoadFromFs(PathBuf),
 }
 
 pub struct DenoModule {
     worker: Arc<Mutex<MainWorker>>,
     shim_object_names: Vec<String>,
-    script_map: HashMap<String, DenoScript>,
     user_code: UserCode,
 }
 
@@ -93,27 +92,29 @@ impl DenoModule {
             shims_source_codes.join("\n")
         };
 
-        let source_code = match &user_code {
-            UserCode::Path(user_module_path) => {
-                let user_module_path = fs::canonicalize(user_module_path)?
-                    .to_string_lossy()
-                    .to_string();
-
-                format!(
-                    "import * as mod from '{}'; globalThis.mod = mod; {}",
-                    user_module_path, shim_source_code
-                )
-            }
-
-            UserCode::Script(script) => {
-                format!("const mod = {}; \n{}", script, shim_source_code)
-            }
+        let user_module_path = match &user_code {
+            UserCode::LoadFromFs(user_module_path) => fs::canonicalize(user_module_path)?
+                .to_string_lossy()
+                .to_string(),
+            UserCode::LoadFromMemory { path, .. } => format!("file:///__claytip/{}", path),
         };
+
+        let source_code = format!(
+            "import * as mod from '{}'; globalThis.mod = mod; {}",
+            &user_module_path, shim_source_code
+        );
 
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
-            source_code,
-            module_specifier: main_module_specifier.clone(),
+            source_code_map: match &user_code {
+                UserCode::LoadFromFs(_) => vec![("file:///main.js".to_owned(), source_code)],
+                UserCode::LoadFromMemory { path, script } => vec![
+                    ("file:///main.js".to_owned(), source_code),
+                    (format!("file:///__claytip/{}", path), script.to_string()),
+                ],
+            }
+            .into_iter()
+            .collect(),
         });
 
         let create_web_worker_cb = Arc::new(|_| {
@@ -171,7 +172,6 @@ impl DenoModule {
         Ok(Self {
             worker: Arc::new(Mutex::new(worker)),
             shim_object_names,
-            script_map: HashMap::new(),
             user_code,
         })
     }
@@ -180,10 +180,7 @@ impl DenoModule {
         let worker = &mut self.worker;
         let runtime = &mut worker.try_lock().unwrap().js_runtime;
 
-        let func_value_string = match self.user_code {
-            UserCode::Path(_) => format!("mod.{}", function_name),
-            UserCode::Script(_) => function_name.to_owned(),
-        };
+        let func_value_string = format!("mod.{}", function_name);
 
         let func_value = runtime.execute_script("", &func_value_string)?;
 
@@ -222,7 +219,16 @@ impl DenoModule {
             let func_obj = func_value
                 .open(tc_scope_ref)
                 .to_object(tc_scope_ref)
-                .unwrap();
+                .ok_or_else(|| {
+                    anyhow!(
+                        "no function named {} exported from {}",
+                        function_name,
+                        match &self.user_code {
+                            UserCode::LoadFromMemory { path, .. } => path,
+                            UserCode::LoadFromFs(path) => path.to_str().unwrap(),
+                        }
+                    )
+                })?;
             let func = v8::Local::<v8::Function>::try_from(func_obj)?;
 
             let undefined = v8::undefined(tc_scope_ref);

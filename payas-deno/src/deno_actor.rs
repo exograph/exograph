@@ -168,7 +168,7 @@ impl DenoActor {
         };
 
         let deno_module = DenoModule::new(
-            UserCode::Path(path.to_owned()),
+            UserCode::LoadFromFs(path.to_owned()),
             "Claytip",
             &shims,
             register_ops,

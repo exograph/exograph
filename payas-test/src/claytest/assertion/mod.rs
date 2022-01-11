@@ -31,8 +31,13 @@ pub fn dynamic_assert_using_deno(
     let script = ASSERT_JS.to_owned();
     let script = script.replace("\"%%JSON%%\"", expected);
 
+    eprintln!("{}", script);
+
     let deno_module_future = DenoModule::new(
-        UserCode::Script(script),
+        UserCode::LoadFromMemory {
+            path: "internal/assert.js".to_owned(),
+            script,
+        },
         "ClaytipTest",
         &[],
         |runtime| runtime.sync_ops_cache(),
@@ -62,8 +67,13 @@ pub fn evaluate_using_deno(
     let script = ASSERT_JS.to_owned();
     let script = script.replace("\"%%JSON%%\"", not_really_json);
 
+    eprintln!("{}", script);
+
     let deno_module_future = DenoModule::new(
-        UserCode::Script(script),
+        UserCode::LoadFromMemory {
+            path: "internal/assert.js".to_owned(),
+            script,
+        },
         "ClaytipTest",
         &[],
         |runtime| runtime.sync_ops_cache(),
@@ -71,7 +81,7 @@ pub fn evaluate_using_deno(
     );
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut deno_module = runtime.block_on(deno_module_future).unwrap();
+    let mut deno_module = runtime.block_on(deno_module_future)?;
 
     // run method
     runtime.block_on(deno_module.execute_function("evaluate", vec![Arg::Serde(testvariables_json)]))

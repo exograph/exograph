@@ -1,4 +1,4 @@
-globalThis.evaluate = function (testvariables) {
+export function evaluate(testvariables) {
     var $ = testvariables;
 
     // substituted in from Rust
@@ -8,7 +8,7 @@ globalThis.evaluate = function (testvariables) {
     return JSON.parse(JSON.stringify(json));
 }
 
-globalThis.test = function (actualPayload, testvariables) {
+export function test(actualPayload, testvariables) {
     var $ = testvariables;
 
     // substituted in from Rust
