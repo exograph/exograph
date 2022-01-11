@@ -1,13 +1,11 @@
-use std::path::PathBuf;
-
 use serde::{Deserialize, Serialize};
 
-use super::{mapped_arena::SerializableSlabIndex, GqlType, GqlTypeModifier};
+use super::{mapped_arena::SerializableSlabIndex, GqlType, GqlTypeModifier, service::Script};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Interceptor {
     pub name: String,
-    pub module_path: PathBuf,
+    pub script: SerializableSlabIndex<Script>,
     pub interceptor_kind: InterceptorKind,
     pub arguments: Vec<InterceptorArgument>,
 }

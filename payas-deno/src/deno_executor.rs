@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
@@ -11,12 +10,12 @@ use crate::{
         FnClaytipExecuteQuery, FnClaytipInterceptorProceed, RequestFromDenoMessage,
         ResponseForDenoMessage,
     },
-    Arg, DenoActor, DenoModuleSharedState,
+    Arg, DenoActor, DenoModuleSharedState, UserCode,
 };
 use anyhow::Result;
 use serde_json::Value;
 
-type DenoActorPoolMap = HashMap<PathBuf, DenoActorPool>;
+type DenoActorPoolMap = HashMap<String, DenoActorPool>;
 type DenoActorPool = Vec<Arc<Mutex<DenoActor>>>;
 
 /// DenoExecutor maintains a pool of DenoActors for each module to delegate work to.
@@ -47,10 +46,15 @@ unsafe impl Send for DenoActor {}
 
 impl<'a> DenoExecutor {
     /// Allocate a number of instances for a module.
-    pub async fn preload_module(&self, path: &Path, instances: usize) -> Result<()> {
+    pub async fn preload_module(
+        &self, 
+        script_path: &str,
+        script: &str, 
+        instances: usize,
+    ) -> Result<()> {
         let mut actor_pool_map = self.actor_pool_map.lock().unwrap();
 
-        if let Some(actor_pool) = actor_pool_map.get(path) {
+        if let Some(actor_pool) = actor_pool_map.get(script_path) {
             if actor_pool.len() >= instances {
                 // already have enough instances
                 return Ok(());
@@ -60,29 +64,41 @@ impl<'a> DenoExecutor {
         let mut initial_actor_pool = vec![];
 
         for _ in 0..instances {
-            let path = path.to_owned();
-            let actor = DenoActor::new(&path, self.shared_state.clone()).await?;
+            let actor = DenoActor::new(UserCode::LoadFromMemory { 
+                path: script_path.to_owned(),
+                script: script.to_owned()
+            }, self.shared_state.clone()).await?;
             initial_actor_pool.push(Arc::new(Mutex::new(actor)));
         }
 
-        actor_pool_map.insert(path.to_owned(), initial_actor_pool);
+        actor_pool_map.insert(script_path.to_owned(), initial_actor_pool);
 
         Ok(())
     }
 
     pub async fn execute_function(
         &self,
-        module_path: &Path,
+        script_path: &str,
+        script: &str,
         method_name: &str,
         arguments: Vec<Arg>,
     ) -> Result<Value> {
-        self.execute_function_with_shims(module_path, method_name, arguments, None, None, None)
+        self.execute_function_with_shims(
+            script_path, 
+            script, 
+            method_name, 
+            arguments, 
+            None, 
+            None, 
+            None
+        )
             .await
     }
 
     pub async fn execute_function_with_shims(
         &'a self,
-        module_path: &'a Path,
+        script_path: &str,
+        script: &str,
         method_name: &'a str,
         arguments: Vec<Arg>,
 
@@ -98,7 +114,7 @@ impl<'a> DenoExecutor {
                 .expect("Poisoned actor pool mutex in Deno executor")
                 .clone();
             let actor_pool = actor_pool_map
-                .entry(module_path.to_path_buf())
+                .entry(script_path.to_string())
                 .or_insert_with(Vec::new);
 
             actor_pool.clone()
@@ -114,8 +130,11 @@ impl<'a> DenoExecutor {
             actor
         } else {
             // no free actors; need to allocate a new DenoActor
-            let module_path = module_path.to_owned();
-            let new_actor = DenoActor::new(&module_path, self.shared_state.clone()).await?;
+            let module_path = script_path.to_owned();
+            let new_actor = DenoActor::new(UserCode::LoadFromMemory {
+                path: script_path.to_owned(),
+                script: script.to_string()
+            }, self.shared_state.clone()).await?;
             actor_mutex = Some(Arc::new(Mutex::new(new_actor)));
 
             {

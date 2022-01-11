@@ -45,7 +45,7 @@ async fn test_direct_sync() {
 #[tokio_1::test]
 async fn test_actor() {
     let mut actor = DenoActor::new(
-        Path::new("./tests/direct.js"),
+        UserCode::LoadFromFs(Path::new("./tests/direct.js").to_path_buf()),
         DenoModuleSharedState::default(),
     )
     .await
@@ -69,13 +69,15 @@ async fn test_actor() {
 async fn test_actor_executor() {
     let executor = DenoExecutor::default();
 
-    let module_path = Path::new("./tests/direct.js");
+    let module_path = "./tests/direct.js";
+    let module_script = include_str!("./direct.js");
 
-    executor.preload_module(module_path, 1).await.unwrap();
+    executor.preload_module(module_path, module_script, 1).await.unwrap();
 
     let res = executor
         .execute_function(
             module_path,
+            module_script,
             "addAndDouble",
             vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
         )
@@ -87,17 +89,19 @@ async fn test_actor_executor() {
 #[tokio_1::test]
 async fn test_actor_executor_concurrent() {
     let executor = DenoExecutor::default();
-    let module_path = Path::new("./tests/direct.js");
+    let module_path = "./tests/direct.js";
+    let module_script = include_str!("./direct.js");
     let total_futures = 10;
 
     // start with one preloaded DenoModule
-    executor.preload_module(module_path, 1).await.unwrap();
+    executor.preload_module(module_path, include_str!("./direct.js"), 1).await.unwrap();
 
     let mut handles = vec![];
 
     for _ in 1..=total_futures {
         let handle = executor.execute_function(
             module_path,
+            module_script,
             "addAndDouble",
             vec![
                 Arg::Serde(Value::Number(4.into())),

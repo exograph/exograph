@@ -4,7 +4,7 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
-use std::path::PathBuf;
+use std::io::Write;
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -49,7 +49,8 @@ pub struct ResolvedContext {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedService {
     pub name: String,
-    pub module_path: PathBuf,
+    pub script: String,
+    pub script_path: String,
     pub methods: Vec<ResolvedMethod>,
     pub interceptors: Vec<ResolvedInterceptor>,
 }
@@ -423,29 +424,29 @@ fn build_shallow(
                 }
                 .clone();
 
-                let mut full_module_path = service.base_clayfile.clone();
-                full_module_path.pop();
-                full_module_path.push(module_path);
+                let mut module_fs_path = service.base_clayfile.clone();
+                module_fs_path.pop();
+                module_fs_path.push(module_path);
 
-                service_skeleton_generator::generate_service_skeleton(service, &full_module_path)?;
+                service_skeleton_generator::generate_service_skeleton(service, &module_fs_path)?;
 
                 // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
-                let mut out_path = full_module_path.clone();
-                out_path.set_extension("bundle.js");
-
-                let mut child = std::process::Command::new("deno")
+                let bundler_output = std::process::Command::new("deno")
                     .args([
                         "bundle",
                         "--no-check",
-                        full_module_path.to_str().unwrap(),
-                        out_path.to_str().unwrap(),
+                        module_fs_path.to_str().unwrap(),
                     ])
-                    .spawn()?;
+                    .output()?;
 
-                child.wait()?;
+                let bundled_script = if bundler_output.status.success() {
+                    std::str::from_utf8(&bundler_output.stdout)
+                } else {
+                    std::io::stdout().write_all(&bundler_output.stderr).unwrap();
+                    return Err(ParserError::Generic("Deno bundler did not exit successfully".to_string()))
+                }.map_err(|_| ParserError::Generic(format!("Could not parse script file at \"{}\" into UTF-8", module_fs_path.to_str().unwrap())))?;
 
-                // replace import with new path
-                full_module_path = out_path;
+                let module_anonymized_path = module_fs_path.strip_prefix(&service.base_clayfile.parent().unwrap()).unwrap();
 
                 fn extract_intercept_annot<'a>(
                     annotations: &'a AnnotationMap,
@@ -458,7 +459,8 @@ fn build_shallow(
                     &service.name,
                     ResolvedService {
                         name: service.name.clone(),
-                        module_path: full_module_path,
+                        script: bundled_script.to_string(),
+                        script_path: module_anonymized_path.to_str().expect("Script path was not UTF-8").to_string(),
                         methods: service
                             .methods
                             .iter()

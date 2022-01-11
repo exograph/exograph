@@ -2,9 +2,9 @@ use payas_model::model::{
     access::Access,
     argument::ArgumentParameter,
     interceptor::{Interceptor, InterceptorArgument, InterceptorKind},
-    mapped_arena::MappedArena,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
     operation::{Interceptors, Mutation, MutationKind, OperationReturnType, Query, QueryKind},
-    service::{Argument, ServiceMethod, ServiceMethodType},
+    service::{Argument, ServiceMethod, ServiceMethodType, Script},
     GqlType,
 };
 
@@ -56,16 +56,30 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
+fn get_or_populate_deno_script(script_path: &str, script: &str, building: &mut SystemContextBuilding) -> SerializableSlabIndex<Script> {
+    match building.deno_scripts.get_id(script_path) {
+        Some(index) => index,
+        None => {
+            building.deno_scripts.add(script_path, Script {
+                path: script_path.to_owned(),
+                script: script.to_owned()
+            })
+        }
+    }
+}
+
 pub fn create_shallow_service(
     resolved_service: &ResolvedService,
     resolved_method: &ResolvedMethod,
     building: &mut SystemContextBuilding,
 ) {
+    let script = get_or_populate_deno_script(&resolved_service.script_path, &resolved_service.script, building);
+
     building.methods.add(
         &resolved_method.name,
         ServiceMethod {
             name: resolved_method.name.clone(),
-            module_path: resolved_service.module_path.clone(),
+            script,
             access: Access::restrictive(),
             operation_kind: match resolved_method.operation_kind {
                 ResolvedMethodType::Query => {
@@ -196,11 +210,13 @@ pub fn create_shallow_intercetor(
     resolved_interceptor: &ResolvedInterceptor,
     building: &mut SystemContextBuilding,
 ) {
+    let script = get_or_populate_deno_script(&resolved_service.script_path, &resolved_service.script, building);
+
     building.interceptors.add(
         &resolved_interceptor.name,
         Interceptor {
             name: resolved_interceptor.name.clone(),
-            module_path: resolved_service.module_path.clone(),
+            script,
             interceptor_kind: match resolved_interceptor.interceptor_kind {
                 super::resolved_builder::ResolvedInterceptorKind::Before(_) => {
                     InterceptorKind::Before

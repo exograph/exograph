@@ -4,7 +4,6 @@ use futures::future::LocalBoxFuture;
 use futures::pin_mut;
 use serde_json::Value;
 use std::panic;
-use std::path::Path;
 use tokio::sync::mpsc::Receiver;
 
 use crate::{Arg, DenoModule, DenoModuleSharedState, UserCode};
@@ -62,7 +61,7 @@ pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> LocalBoxFuture<'a, Resul
 /// |______________|                                                                                           {user code} <- |_____________________________|
 ///
 impl DenoActor {
-    pub async fn new(path: &Path, shared_state: DenoModuleSharedState) -> Result<DenoActor> {
+    pub async fn new(code: UserCode, shared_state: DenoModuleSharedState) -> Result<DenoActor> {
         let shims = vec![
             ("ClaytipInjected", include_str!("claytip_shim.js")),
             ("Operation", include_str!("operation_shim.js")),
@@ -168,7 +167,7 @@ impl DenoActor {
         };
 
         let deno_module = DenoModule::new(
-            UserCode::LoadFromFs(path.to_owned()),
+            code,
             "Claytip",
             &shims,
             register_ops,

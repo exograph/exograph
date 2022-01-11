@@ -1,8 +1,10 @@
+
 use super::argument::ArgumentParameterType;
 use super::column_id::ColumnId;
 use super::mapped_arena::SerializableSlab;
 use super::order::*;
 use super::predicate::*;
+use super::service::Script;
 use super::service::ServiceMethod;
 use super::ContextType;
 use super::{mapped_arena::MappedArena, operation::*};
@@ -25,6 +27,7 @@ pub struct ModelSystem {
     pub mutations: MappedArena<Mutation>,
     pub tables: SerializableSlab<PhysicalTable>,
     pub methods: SerializableSlab<ServiceMethod>,
+    pub deno_scripts: SerializableSlab<Script>,
 }
 
 impl Default for ModelSystem {
@@ -40,6 +43,7 @@ impl Default for ModelSystem {
             tables: SerializableSlab::new(),
             methods: SerializableSlab::new(),
             argument_types: SerializableSlab::new(),
+            deno_scripts: SerializableSlab::new()
         }
     }
 }
