@@ -96,8 +96,11 @@ impl TypeDefinitionProvider for PredicateParameterType {
                     kind: TypeKind::InputObject(InputObjectType { fields }),
                 }
             }
-            PredicateParameterTypeKind::Composite(parameters, boolean_params) => {
-                let parameters = [parameters, &boolean_params[..]].concat();
+            PredicateParameterTypeKind::Composite {
+                field_params,
+                logical_op_params,
+            } => {
+                let parameters = [field_params, &logical_op_params[..]].concat();
 
                 let fields = parameters
                     .iter()

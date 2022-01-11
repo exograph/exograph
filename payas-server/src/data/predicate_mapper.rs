@@ -44,9 +44,12 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                     Predicate::and(acc, new_predicate)
                 }))
             }
-            PredicateParameterTypeKind::Composite(parameters, boolean_params) => {
+            PredicateParameterTypeKind::Composite {
+                field_params,
+                logical_op_params,
+            } => {
                 // first, match any boolean predicates the argument_value might contain
-                let boolean_argument_value: (&str, Option<&ConstValue>) = boolean_params
+                let boolean_argument_value: (&str, Option<&ConstValue>) = logical_op_params
                     .iter()
                     .map(|parameter| {
                         (
@@ -126,7 +129,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                         // map field argument values into their respective predicates
                         let mut new_predicate = Predicate::True;
 
-                        for parameter in parameters.iter() {
+                        for parameter in field_params.iter() {
                             let arg =
                                 query_context.get_argument_field(argument_value, &parameter.name);
                             let mapped = match arg {

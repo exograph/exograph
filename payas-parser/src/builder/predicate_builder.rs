@@ -186,7 +186,7 @@ fn create_composite_filter_type_kind(
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     // populate field names for composite filter
-    let parameters: Vec<PredicateParameter> = fields
+    let field_params: Vec<PredicateParameter> = fields
         .iter()
         .map(|field| {
             let param_type_name = get_parameter_type_name(field.typ.type_name());
@@ -207,7 +207,7 @@ fn create_composite_filter_type_kind(
         ("not", GqlTypeModifier::Optional),
     ];
 
-    let logical_params = logical_operators
+    let logical_op_params = logical_operators
         .into_iter()
         .map(|(name, type_modifier)| {
             let param_type_name = get_parameter_type_name(&composite_type.name);
@@ -226,5 +226,8 @@ fn create_composite_filter_type_kind(
         })
         .collect();
 
-    PredicateParameterTypeKind::Composite(parameters, logical_params)
+    PredicateParameterTypeKind::Composite {
+        field_params,
+        logical_op_params,
+    }
 }
