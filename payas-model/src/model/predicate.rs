@@ -20,15 +20,12 @@ pub struct PredicateParameterType {
     pub kind: PredicateParameterTypeKind,
 }
 
-type ModelPredicateParameters = Vec<PredicateParameter>;
-type LogicalPredicateParameters = Vec<PredicateParameter>;
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PredicateParameterTypeKind {
     ImplicitEqual,                     // {id: 3}
     Operator(Vec<PredicateParameter>), // {lt: ..,gt: ..} such as IntFilter
     Composite {
-        field_params: ModelPredicateParameters, // {where: {id: .., name: ..}} such as AccountFilter
-        logical_op_params: LogicalPredicateParameters, // logical operator predicates like `and: [{name: ..}, {id: ..}]`
+        field_params: Vec<PredicateParameter>, // {where: {id: .., name: ..}} such as AccountFilter
+        logical_op_params: Vec<PredicateParameter>, // logical operator predicates like `and: [{name: ..}, {id: ..}]`
     },
 }
