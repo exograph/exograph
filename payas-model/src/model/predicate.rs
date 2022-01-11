@@ -27,9 +27,8 @@ type LogicalPredicateParameters = Vec<PredicateParameter>;
 pub enum PredicateParameterTypeKind {
     ImplicitEqual,                     // {id: 3}
     Operator(Vec<PredicateParameter>), // {lt: ..,gt: ..} such as IntFilter
-    Composite(ModelPredicateParameters, LogicalPredicateParameters), // {where: {id: .., name: ..}} such as AccountFilter
-                                                                     // also includes boolean predicates like
-                                                                     // {where: {
-                                                                     //   and: [{name: ..}, {id: ..}]
-                                                                     // }}
+    Composite {
+        field_params: ModelPredicateParameters, // {where: {id: .., name: ..}} such as AccountFilter
+        logical_op_params: LogicalPredicateParameters, // logical operator predicates like `and: [{name: ..}, {id: ..}]`
+    },
 }
