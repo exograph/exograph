@@ -202,7 +202,7 @@ async fn resolve_deno(
     field: &Positioned<Field>,
     query_context: &QueryContext<'_>,
 ) -> Result<serde_json::Value> {
-    let path = &method.module_path;
+    let script = &query_context.executor.system.deno_scripts[method.script];
 
     let mapped_args = query_context
         .field_arguments(&field.node)?
@@ -234,14 +234,15 @@ async fn resolve_deno(
     query_context
         .executor
         .deno_execution
-        .preload_module(path, 1)
+        .preload_module(&script.path, &script.script, 1)
         .await?;
 
     let function_result = query_context
         .executor
         .deno_execution
         .execute_function_with_shims(
-            path,
+            &script.path,
+            &script.script,
             &method.name,
             arg_sequence,
             Some(
