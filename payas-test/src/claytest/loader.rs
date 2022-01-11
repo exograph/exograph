@@ -8,14 +8,18 @@ use wildmatch::WildMatch;
 use anyhow::{bail, Context, Result};
 use async_graphql_parser::parse_query;
 
+use super::testvariable_bindings::build_testvariable_bindings;
+use super::testvariable_bindings::TestvariableBindings;
+
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum TestfileOperation {
     Sql(String),
     GqlDocument {
         document: String,
-        variables: Option<serde_json::Value>,
-        expected_payload: Option<serde_json::Value>,
+        testvariable_bindings: TestvariableBindings,
+        variables: Option<String>,        // stringified
+        expected_payload: Option<String>, // stringified
         auth: Option<serde_json::Value>,
     },
 }
@@ -206,7 +210,7 @@ fn parse_testfile(
         .context(format!("Failed to parse test file at {:?}", testfile_path))?;
 
     // validate GraphQL
-    let _gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
+    let gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
 
     Ok(ParsedTestfile {
         model_path: model_path.to_path_buf(),
@@ -214,9 +218,10 @@ fn parse_testfile(
         init_operations: init_ops,
         test_operation: Some(TestfileOperation::GqlDocument {
             document: deserialized_testfile.operation.clone(),
+            testvariable_bindings: build_testvariable_bindings(&gql_document),
             auth: deserialized_testfile.auth.map(from_json).transpose()?,
-            variables: deserialized_testfile.variable.map(from_json).transpose()?,
-            expected_payload: Some(from_json(deserialized_testfile.response)?),
+            variables: deserialized_testfile.variable,
+            expected_payload: Some(deserialized_testfile.response),
         }),
     })
 }
@@ -234,10 +239,15 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
             let deserialized_initfile: InitFile =
                 serde_yaml::from_reader(reader).context(format!("Failed to parse {:?}", path))?;
 
+            // validate GraphQL
+            let gql_document =
+                parse_query(&deserialized_initfile.operation).context("Invalid GraphQL")?;
+
             Ok(TestfileOperation::GqlDocument {
                 document: deserialized_initfile.operation.clone(),
+                testvariable_bindings: build_testvariable_bindings(&gql_document),
                 auth: deserialized_initfile.auth.map(from_json).transpose()?,
-                variables: deserialized_initfile.variable.map(from_json).transpose()?,
+                variables: deserialized_initfile.variable,
                 expected_payload: None,
             })
         }

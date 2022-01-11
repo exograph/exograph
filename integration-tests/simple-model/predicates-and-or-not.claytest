@@ -1,9 +1,9 @@
 operation: |
-  query {
+  query($log1_id: Int!, $log2_id: Int!) {
     test_or: logs(where: {
       or: [
-        {id: {eq: 1} },
-        {id: {eq: 2} }
+        {id: {eq: $log1_id} },
+        {id: {eq: $log2_id} }
       ]
     }) {
       text
@@ -33,6 +33,11 @@ operation: |
     }) {
       text
     }
+  }
+variable: |
+  {
+    "log1_id": $.log1_id,
+    "log2_id": $.log2_id
   }
 response: |
   {

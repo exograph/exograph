@@ -1,10 +1,10 @@
 operation: |
     mutation ($log1_text: String!, $log2_text: String!, $log3_text: String!) {
         log1: createLog(data: {timestamp: 3, text: $log1_text}) {
-            id
+            id @bind(name: "log1_id")
         }
         log2: createLog(data: {timestamp: 6, text: $log2_text}) {
-            id
+            id @bind(name: "log2_id")
         }
         log3: createLog(data: {timestamp: 9, text: $log3_text}) {
             id

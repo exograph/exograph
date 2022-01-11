@@ -4,7 +4,7 @@ operation: |
       id
     }
     logs(orderBy: {id: ASC}) {
-      message
+      message @bind(name: "messages")
     }
   }
 response: |
@@ -13,58 +13,37 @@ response: |
       "venue": {
         "id": 1
       },
-      "logs": [
-        {
-          "message": "enterVenueMutation: createVenue"
-        },
-        {
-          "message": "exitVenueMutation: createVenue"
-        },
-        {
-          "message": "enterVenueMutation: createVenue"
-        },
-        {
-          "message": "exitVenueMutation: createVenue"
-        },
-        {
-          "message": "enterConcertMutation: createConcert"
-        },
-        {
-          "message": "exitConcertMutation createConcert"
-        },
-        {
-          "message": "enterConcertMutation: createConcert"
-        },
-        {
-          "message": "exitConcertMutation createConcert"
-        },
-        {
-          "message": "enterQuery: venue"
-        },
-        {
-          "message": "start timingQuery: venue"
-        },
-        {
-          "message": "start rateLimitingQuery: venue"
-        },
-        {
-          "message": "end rateLimitingQuery: venue"
-        },
-        {
-          "message": "end timingQuery: venue"
-        },
-        {
-          "message": "exitQuery: venue"
-        },
-        {
-          "message": "enterQuery: logs"
-        },
-        {
-          "message": "start timingQuery: logs"
-        },
-        {
-          "message": "start rateLimitingQuery: logs"
+      "logs": () => {
+        const expectedMessages = [
+          "enterVenueMutation: createVenue",
+          "exitVenueMutation: createVenue",
+          "enterVenueMutation: createVenue",
+          "exitVenueMutation: createVenue",
+          "enterConcertMutation: createConcert",
+          "exitConcertMutation createConcert",
+          "enterConcertMutation: createConcert",
+          "exitConcertMutation createConcert",
+          "enterQuery: venue",
+          "start timingQuery: venue",
+          "start rateLimitingQuery: venue",
+          "end rateLimitingQuery: venue",
+          "end timingQuery: venue",
+          "exitQuery: venue",
+          "enterQuery: logs",
+          "start timingQuery: logs",
+          "start rateLimitingQuery: logs"
+        ];
+
+        const actualMessages = $.messages;
+
+        // compare arrays
+        if (JSON.stringify(expectedMessages) != JSON.stringify(actualMessages)) {
+          console.log("expected interceptor order", expectedMessages);
+          console.log("actual interceptor order", actualMessages);
+          return false;
+        } else {
+          return true;
         }
-      ]
+      }
     }
   }

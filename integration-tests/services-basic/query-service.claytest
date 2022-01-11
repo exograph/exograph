@@ -2,9 +2,11 @@ operation: |
     query Foo {
       addDirect: add(x: 1, y: 2)
 
-      addVariables: add(x: $x, y: $y)
+      addVariables: add(x: $factor_a, y: $factor_b)
+
+      currentUnixEpoch
     
-      divide(x: 13, y: 2) {
+      divide(x: $divisor, y: $dividend) {
         quotient
         remainder
       }
@@ -13,18 +15,25 @@ operation: |
     }
 variable: |
     {
-        "x": 5,
-        "y": 6
+        "factor_a": 5,
+        "factor_b": 6,
+
+        "dividend": 13,
+        "divisor": 2
     }
 response: |
     {
       "data": {
         "addDirect": 3,
-        "addVariables": 11,
-        "divide": {
-          "quotient": 6,
-          "remainder": 1
-        },
-        "shimQuery": "The `foos` with `baz` = 4 have IDs of 1, 2, "
+        "addVariables": $.factor_a + $.factor_b,
+        "currentUnixEpoch": ((t) => {
+          const currentTime = Math.floor(Date.now() / 1000);
+          return (currentTime - t) < 5;
+        }),
+        "divide": ((actual) => {
+          (actual.quotient  == Math.floor($.dividend / $.divisor)) &&
+          (actual.remainder == $.dividend % $.divisor)
+        }),
+        "shimQuery": "The `foos` with `baz` = 4 have IDs of " + $.foo1_id + ", " + $.foo2_id + ", "
       }
     } 

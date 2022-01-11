@@ -5,7 +5,7 @@ operation: |
             baz: 4,
             qux: 5
         }) {
-            id
+            id @bind(name: "foo1_id")
         }
 
         foo2: createFoo(data: {
@@ -13,7 +13,7 @@ operation: |
             baz: 4,
             qux: 6 
         }) {
-            id
+            id @bind(name: "foo2_id")
         }
 
         foo3: createFoo(data: {

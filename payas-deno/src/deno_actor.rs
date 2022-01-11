@@ -7,7 +7,7 @@ use std::panic;
 use std::path::Path;
 use tokio::sync::mpsc::Receiver;
 
-use crate::{Arg, DenoModule, DenoModuleSharedState};
+use crate::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 /// An actor-like wrapper for DenoModule.
 pub struct DenoActor {
@@ -167,7 +167,13 @@ impl DenoActor {
             }
         };
 
-        let deno_module = DenoModule::new(path, "Claytip", &shims, register_ops, shared_state);
+        let deno_module = DenoModule::new(
+            UserCode::LoadFromFs(path.to_owned()),
+            "Claytip",
+            &shims,
+            register_ops,
+            shared_state,
+        );
 
         let deno_module = deno_module.await?;
 

@@ -16,6 +16,10 @@ export function divide(x, y) {
     }
 }
 
+export function currentUnixEpoch() {
+    return Math.floor(Date.now() / 1000)
+}
+
 export async function shimQuery(claytip) {
     const result = await claytip.executeQuery(
         `query {

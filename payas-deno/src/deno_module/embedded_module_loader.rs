@@ -6,14 +6,14 @@ use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
 
+use std::collections::HashMap;
 use std::pin::Pin;
 
 /// A module loader that allows loading source code from memory for the given module specifier;
 /// otherwise, loading it from an FsModuleLoader
 /// Based on https://deno.land/x/deno@v1.15.0/cli/standalone.rs
 pub struct EmbeddedModuleLoader {
-    pub source_code: String,
-    pub module_specifier: String,
+    pub source_code_map: HashMap<String, String>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {
@@ -25,7 +25,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
     ) -> Result<ModuleSpecifier, AnyError> {
         // If the specifier matches this modules specifier, return that
         if let Ok(module_specifier) = deno_core::resolve_url(specifier) {
-            if specifier == self.module_specifier {
+            if self.source_code_map.get(specifier).is_some() {
                 return Ok(module_specifier);
             }
         }
@@ -39,14 +39,14 @@ impl ModuleLoader for EmbeddedModuleLoader {
         is_dynamic: bool,
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
         // If the specifier matches this modules specifier, return the source code
-        if module_specifier.to_string() == self.module_specifier {
+        if let Some(script) = self.source_code_map.get(module_specifier.as_str()) {
             let module_specifier = module_specifier.clone();
-            let code = self.source_code.to_string();
+            let script = script.to_string();
             async move {
                 let specifier = module_specifier.to_string();
 
                 Ok(ModuleSource {
-                    code,
+                    code: script,
                     module_url_specified: specifier.clone(),
                     module_url_found: specifier,
                     module_type: ModuleType::JavaScript,
