@@ -200,41 +200,31 @@ fn create_composite_filter_type_kind(
         })
         .collect();
 
-    // TODO: reduce duplication here
     // populate boolean predicate parameters for composite filter
-
-    let boolean_params = vec![
-        PredicateParameter {
-            name: "and".to_string(),
-            type_name: get_parameter_type_name(&composite_type.name.to_string()),
-            type_id: building
-                .predicate_types
-                .get_id(&get_parameter_type_name(&composite_type.name))
-                .unwrap(),
-            type_modifier: GqlTypeModifier::List,
-            column_id: None,
-        },
-        PredicateParameter {
-            name: "or".to_string(),
-            type_name: get_parameter_type_name(&composite_type.name.to_string()),
-            type_id: building
-                .predicate_types
-                .get_id(&get_parameter_type_name(&composite_type.name))
-                .unwrap(),
-            type_modifier: GqlTypeModifier::List,
-            column_id: None,
-        },
-        PredicateParameter {
-            name: "not".to_string(),
-            type_name: get_parameter_type_name(&composite_type.name.to_string()),
-            type_id: building
-                .predicate_types
-                .get_id(&get_parameter_type_name(&composite_type.name))
-                .unwrap(),
-            type_modifier: GqlTypeModifier::Optional,
-            column_id: None,
-        },
+    let logical_operators = [
+        ("and", GqlTypeModifier::List),
+        ("or", GqlTypeModifier::List),
+        ("not", GqlTypeModifier::Optional),
     ];
 
-    PredicateParameterTypeKind::Composite(parameters, boolean_params)
+    let logical_params = logical_operators
+        .into_iter()
+        .map(|(name, type_modifier)| {
+            let param_type_name = get_parameter_type_name(&composite_type.name);
+            PredicateParameter {
+                name: name.to_string(),
+                type_name: get_parameter_type_name(&composite_type.name.to_string()),
+                type_id: building
+                    .predicate_types
+                    .get_id(&param_type_name)
+                    .unwrap_or_else(|| {
+                        panic!("Could not find predicate type '{}'", param_type_name)
+                    }),
+                type_modifier,
+                column_id: None,
+            }
+        })
+        .collect();
+
+    PredicateParameterTypeKind::Composite(parameters, logical_params)
 }
