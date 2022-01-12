@@ -169,7 +169,7 @@ mod tests {
         let err =
             dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap_err();
 
-        assert_eq!(err.to_string(), "assert failed: expected biz, got qux");
+        assert_eq!(err.to_string(), "assert failed: expected biz on key c, got qux");
     }
 
     #[test]
