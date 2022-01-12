@@ -177,32 +177,40 @@ pub(crate) fn run_testfile(
 
     // run test
     println!("{} Testing ...", log_prefix);
-    let result = run_operation(
-        &endpoint,
-        testfile.test_operation.as_ref().unwrap(),
-        &jwtsecret,
-        &dburl_for_clay,
-        &testvariables,
-    );
 
-    // did the test run okay?
-    let success = match result {
-        Ok(test_result) => {
-            // check test results
-            match test_result {
-                OperationResult::AssertPassed {
-                    variables: _, // TODO: we will extend with this set of variables when we do multi-stage tests (#314)
-                } => TestResult::Success,
-                OperationResult::AssertFailed(e) => TestResult::AssertionFail(e),
+    let mut fail = None;
+    for operation in testfile.test_operation_stages.iter() {
+        let result = run_operation(
+            &endpoint,
+            operation,
+            &jwtsecret,
+            &dburl_for_clay,
+            &testvariables,
+        )
+        .with_context(|| anyhow!("While running tests for {}", testfile.name()));
 
-                OperationResult::Finished { .. } => {
-                    panic!("did not specify assertion inside testfile operation")
+        match result {
+            Ok(op_result) => match op_result {
+                OperationResult::AssertPassed { variables }
+                | OperationResult::Finished { variables } => {
+                    // add resulting variables into our map for the next stage
+                    testvariables.extend(variables)
                 }
-            }
-        }
-        Err(e) => TestResult::SetupFail(e),
-    };
 
+                OperationResult::AssertFailed(e) => {
+                    fail = Some(TestResult::AssertionFail(e));
+                    break;
+                }
+            },
+
+            Err(e) => {
+                fail = Some(TestResult::SetupFail(e));
+                break;
+            }
+        };
+    }
+
+    let success = fail.unwrap_or(TestResult::Success);
     let output: String = output_mutex.lock().unwrap().clone();
 
     Ok(TestOutput {

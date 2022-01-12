@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::fs::File;
 use std::io::BufReader;
+use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use wildmatch::WildMatch;
@@ -30,7 +31,7 @@ pub struct ParsedTestfile {
     testfile_path: PathBuf,
 
     pub init_operations: Vec<TestfileOperation>,
-    pub test_operation: Option<TestfileOperation>,
+    pub test_operation_stages: Vec<TestfileOperation>,
 }
 
 impl ParsedTestfile {
@@ -61,11 +62,16 @@ impl ParsedTestfile {
 // serde file formats
 
 #[derive(Deserialize, Debug)]
-pub struct Testfile {
+pub struct TestfileStage {
     pub operation: String,
     pub variable: Option<String>,
     pub auth: Option<String>,
-    pub response: String,
+    pub response: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TestfileMultipleStages {
+    pub stages: Vec<TestfileStage>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -204,25 +210,58 @@ fn parse_testfile(
     model_path: &Path,
     init_ops: Vec<TestfileOperation>,
 ) -> Result<ParsedTestfile> {
-    let file = File::open(testfile_path).context("Could not open test file")?;
-    let reader = BufReader::new(file);
-    let deserialized_testfile: Testfile = serde_yaml::from_reader(reader)
-        .context(format!("Failed to parse test file at {:?}", testfile_path))?;
+    let mut file = File::open(testfile_path).context("Could not open test file")?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)
+        .context("Could not read test file to string")?;
+
+    let deserialized_testfile_multiple_stages: Result<TestfileMultipleStages, _> =
+        serde_yaml::from_str(&contents);
+    let deserialized_testfile_single_stage: Result<TestfileStage, _> =
+        serde_yaml::from_str(&contents);
+
+    let stages = if let Ok(testfile) = deserialized_testfile_multiple_stages {
+        testfile.stages
+    } else if let Ok(stage) = deserialized_testfile_single_stage {
+        vec![stage]
+    } else {
+        let multi_stage_error = deserialized_testfile_multiple_stages.unwrap_err();
+        let single_stage_error = deserialized_testfile_single_stage.unwrap_err();
+
+        bail!(
+            r#"
+Could not deserialize testfile at {} as a single operation test nor as a multistage one.
+
+Error as a single stage test: {}
+Error as a multistage test: {}
+"#,
+            testfile_path.to_str().unwrap(),
+            single_stage_error,
+            multi_stage_error
+        );
+    };
 
     // validate GraphQL
-    let gql_document = parse_query(&deserialized_testfile.operation).context("Invalid GraphQL")?;
+    let test_operation_sequence = stages
+        .into_iter()
+        .map(|stage| {
+            let gql_document = parse_query(&stage.operation).context("Invalid GraphQL")?;
+
+            Ok(TestfileOperation::GqlDocument {
+                document: stage.operation,
+                testvariable_bindings: build_testvariable_bindings(&gql_document),
+                auth: stage.auth.map(from_json).transpose()?,
+                variables: stage.variable,
+                expected_payload: stage.response,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
 
     Ok(ParsedTestfile {
         model_path: model_path.to_path_buf(),
         testfile_path: testfile_path.to_path_buf(),
         init_operations: init_ops,
-        test_operation: Some(TestfileOperation::GqlDocument {
-            document: deserialized_testfile.operation.clone(),
-            testvariable_bindings: build_testvariable_bindings(&gql_document),
-            auth: deserialized_testfile.auth.map(from_json).transpose()?,
-            variables: deserialized_testfile.variable,
-            expected_payload: Some(deserialized_testfile.response),
-        }),
+        test_operation_stages: test_operation_sequence,
     })
 }
 

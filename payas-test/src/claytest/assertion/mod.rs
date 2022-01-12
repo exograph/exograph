@@ -31,8 +31,6 @@ pub fn dynamic_assert_using_deno(
     let script = ASSERT_JS.to_owned();
     let script = script.replace("\"%%JSON%%\"", expected);
 
-    eprintln!("{}", script);
-
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
@@ -66,8 +64,6 @@ pub fn evaluate_using_deno(
     // first substitute expected variables
     let script = ASSERT_JS.to_owned();
     let script = script.replace("\"%%JSON%%\"", not_really_json);
-
-    eprintln!("{}", script);
 
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
@@ -173,7 +169,10 @@ mod tests {
         let err =
             dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap_err();
 
-        assert_eq!(err.to_string(), "assert failed: expected biz, got qux");
+        assert_eq!(
+            err.to_string(),
+            "assert failed: expected biz on key c, got qux"
+        );
     }
 
     #[test]

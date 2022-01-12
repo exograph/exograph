@@ -47,7 +47,7 @@ export function test(actualPayload, testvariables) {
             }
             default: {
                 if (expected !== actual) {
-                    throw new ClaytipError("assert failed: expected " + expected + ", got " + actual)
+                    throw new ClaytipError("assert failed: expected " + expected + " on key " + lastKey + ", got " + actual)
                 }
                 break;
             }
