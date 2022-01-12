@@ -1,6 +1,6 @@
 mod claytest;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use claytest::loader::{load_testfiles_from_dir, ParsedTestfile};
 use claytest::runner::{build_claypot_file, run_testfile};
 use rayon::ThreadPoolBuilder;
@@ -11,12 +11,14 @@ use std::sync::mpsc;
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
 pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
+    let directory_str = directory.to_str().unwrap();
+
     println!(
         "{} {} {} {}",
         ansi_term::Color::Blue
             .bold()
             .paint("* Running tests in directory"),
-        directory.to_str().unwrap(),
+        directory_str,
         pattern
             .as_ref()
             .map(|p| format!("'with pattern {}'", p))
@@ -29,7 +31,9 @@ pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
     let database_url =
         std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL must be specified");
 
-    let testfiles = load_testfiles_from_dir(Path::new(&directory), pattern).unwrap();
+    let testfiles = load_testfiles_from_dir(Path::new(&directory), pattern)
+        .with_context(|| format!("While loading testfiles from directory {}", directory_str))?;
+
     let number_of_tests = testfiles.len() * 2; // *2 because we run each testfile twice: dev mode and production mode
 
     // Work out which tests share a common clay file so we only build it once for all the
