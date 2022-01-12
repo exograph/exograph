@@ -1,23 +1,48 @@
-# User 2 trying to update own membership to point to another user
-operation: |
-  mutation {
-    updateMembership(id: 1, data: {kind: "free", user: {id: 1}}) {
-      id
-      kind
-      user {
-        id
-        name
+stages:
+  # User 2 trying to update own membership to point to another user
+  - operation: |
+      mutation {
+        updateMembership(id: 1, data: {kind: "free", user: {id: 1}}) {
+          id
+          kind
+          user {
+            id
+            name
+          }
+        }
       }
-    }
-  }
-auth: |
-  {
-    "sub": 2,
-    "role": "USER"
-  }   
-response: |
-  {
-    "data": {
-      "updateMembership": null
-    }
-  }
+    auth: |
+      {
+        "sub": 2,
+        "role": "USER"
+      }
+    response: |
+      {
+        "data": {
+          "updateMembership": null
+        }
+      }
+  # Check to make sure that membership 1 points to user 1 now
+  - operation: |
+      query {
+        membership(id: 1) {
+          user {
+            id
+          }
+        }
+      }
+    auth: |
+      {
+        "sub": 2,
+        "role": "ADMIN"
+      }
+    response: |
+      {
+        "data": {
+          "membership": {
+            "user": {
+              "id": 1
+            }
+          }
+        }
+      }
