@@ -135,7 +135,7 @@ fn delete_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let predicate = super::compute_predicate(
+    let (predicate, _column_dependencies) = super::compute_predicate(
         Some(predicate_param),
         query_context.field_arguments(field)?,
         access_predicate,
@@ -181,7 +181,7 @@ fn update_operation<'a>(
     }
 
     let field_arguments = query_context.field_arguments(field)?;
-    let predicate = super::compute_predicate(
+    let (predicate, _column_dependencies) = super::compute_predicate(
         Some(predicate_param),
         field_arguments,
         Predicate::True,

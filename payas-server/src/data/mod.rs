@@ -10,15 +10,15 @@ pub mod predicate_mapper;
 pub mod query_resolver;
 mod update_data_param_mapper;
 
+use predicate_mapper::PredicateParameterMapper;
+
 use anyhow::*;
 use async_graphql_parser::Positioned;
 use async_graphql_value::{ConstValue, Name};
 
 use crate::{execution::query_context::QueryContext, sql::predicate::Predicate};
 
-use payas_model::model::predicate::PredicateParameter;
-
-use self::operation_mapper::SQLMapper;
+use payas_model::model::predicate::{ColumnDependency, PredicateParameter};
 
 pub type Arguments = [(Positioned<Name>, Positioned<ConstValue>)];
 
@@ -38,13 +38,19 @@ fn compute_predicate<'a>(
     arguments: &'a Arguments,
     additional_predicate: Predicate<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<Predicate<'a>> {
+) -> Result<(Predicate<'a>, Vec<ColumnDependency>)> {
+    let mut column_dependencies = vec![];
     let predicate = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
             let argument_value = find_arg(arguments, &predicate_parameter.name);
-            argument_value
-                .map(|argument_value| predicate_parameter.map_to_sql(argument_value, query_context))
+            argument_value.map(|argument_value| {
+                predicate_parameter.map_to_predicate(
+                    argument_value,
+                    query_context,
+                    &mut column_dependencies,
+                )
+            })
         })
         .transpose()
         .context("While mapping predicate parameters to SQL")?;
@@ -54,5 +60,5 @@ fn compute_predicate<'a>(
         None => additional_predicate,
     };
 
-    Ok(predicate)
+    Ok((predicate, column_dependencies))
 }

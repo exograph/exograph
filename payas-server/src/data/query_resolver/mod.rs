@@ -211,19 +211,20 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 let field_arguments = query_context.field_arguments(field)?;
 
-                let predicate = super::compute_predicate(
+                let (predicate, _column_dependencies) = super::compute_predicate(
                     predicate_param.as_ref(),
                     field_arguments,
                     additional_predicate,
                     query_context,
                 )
-                .map(|predicate| Predicate::and(predicate, access_predicate))
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
+
+                let predicate = Predicate::and(predicate, access_predicate);
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
 
                 // We may have a predicate that uses one of the referred object. For example, we may have
-                // concerts(where: {venue: {name: {eq: "v1"}}}). In such cases, we can't just have `where venue.name = "v1"`
+                // `concerts(where: {venue: {name: {eq: "v1"}}})`. In such cases, we can't just have `where venue.name = "v1"`
                 // since the `from` clause would refer to the `concerts` table, not the `venues` table. So we join the
                 // `concerts` table to the `venues` table.
                 // To do so, we first find out all the tabled referred by the predicate and then traverse the return type
@@ -240,7 +241,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 // Apply the join logic only for top-level selections (otherwise subselects gets a join and end up selecting
                 // a lot more that correct data)
-                // TODO: Re-examine a principled way to do this. For example, concerts(where: {veneu: {id: 1}}) { venue {..} } doesn't need
+                // TODO: Re-examine a principled way to do this. For example, with `concerts(where: {venue: {id: 1}})`, `{ venue {..} }` doesn't need
                 // any where clause (or join) in the subselect for venue.
                 let table = if top_level_selection {
                     dependencies

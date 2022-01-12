@@ -8,13 +8,21 @@ use async_graphql_value::ConstValue;
 use maybe_owned::MaybeOwned;
 use payas_model::model::predicate::*;
 
-use super::operation_mapper::SQLMapper;
-
-impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
-    fn map_to_sql(
+pub trait PredicateParameterMapper<'a> {
+    fn map_to_predicate(
         &'a self,
         argument_value: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
+        column_dependencies: &mut Vec<ColumnDependency>,
+    ) -> Result<Predicate<'a>>;
+}
+
+impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
+    fn map_to_predicate(
+        &'a self,
+        argument_value: &'a ConstValue,
+        query_context: &'a QueryContext<'a>,
+        column_dependencies: &mut Vec<ColumnDependency>,
     ) -> Result<Predicate<'a>> {
         let system = query_context.get_system();
         let parameter_type = &system.predicate_types[self.type_id];
@@ -22,7 +30,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_column, op_value_column) =
-                    operands(self, argument_value, query_context);
+                    operands(self, argument_value, column_dependencies, query_context);
                 Ok(Predicate::Eq(op_key_column, op_value_column.into()))
             }
             PredicateParameterTypeKind::Operator(parameters) => {
@@ -31,7 +39,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                     let new_predicate = match arg {
                         Some(op_value) => {
                             let (op_key_column, op_value_column) =
-                                operands(self, op_value, query_context);
+                                operands(self, op_value, column_dependencies, query_context);
                             Predicate::from_name(
                                 &parameter.name,
                                 op_key_column,
@@ -48,8 +56,8 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                 field_params,
                 logical_op_params,
             } => {
-                // first, match any boolean predicates the argument_value might contain
-                let boolean_argument_value: (&str, Option<&ConstValue>) = logical_op_params
+                // first, match any logical op predicates the argument_value might contain
+                let logical_op_argument_value: (&str, Option<&ConstValue>) = logical_op_params
                     .iter()
                     .map(|parameter| {
                         (
@@ -61,7 +69,7 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                         match acc {
                             Ok((acc_name, acc_result)) => {
                                 if acc_result.is_some() && result.is_some() {
-                                    bail!("Cannot specify more than one boolean predicate on the same level")
+                                    bail!("Cannot specify more than one logical operation on the same level")
                                 } else if acc_result.is_some() && result.is_none() {
                                     Ok((acc_name, acc_result))
                                 } else {
@@ -74,29 +82,29 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                     })?;
 
                 // do we have a match?
-                match boolean_argument_value {
-                    (boolean_predicate_name, Some(boolean_argument_value)) => {
-                        // we have a single boolean predicate argument
+                match logical_op_argument_value {
+                    (logical_op_name, Some(logical_op_argument_value)) => {
+                        // we have a single logical op predicate argument
                         // e.g. and: [..], or: [..], not: {..}
 
                         // we will now build a predicate from it
 
-                        match boolean_predicate_name {
+                        match logical_op_name {
                             "and" | "or" => {
-                                if let ConstValue::List(arguments) = boolean_argument_value {
+                                if let ConstValue::List(arguments) = logical_op_argument_value {
                                     // first make sure we have arguments
                                     if arguments.is_empty() {
-                                        bail!("Boolean predicate does not have any arguments")
+                                        bail!("Logical operation predicate does not have any arguments")
                                     }
 
                                     // build our predicate chain from the array of arguments provided
-                                    let identity_predicate = match boolean_predicate_name {
+                                    let identity_predicate = match logical_op_name {
                                         "and" => Predicate::True,
                                         "or" => Predicate::False,
                                         _ => todo!(),
                                     };
 
-                                    let predicate_connector = match boolean_predicate_name {
+                                    let predicate_connector = match logical_op_name {
                                         "and" => Predicate::and,
                                         "or" => Predicate::or,
                                         _ => todo!(),
@@ -105,19 +113,29 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                                     let mut new_predicate = identity_predicate;
 
                                     for argument in arguments.iter() {
-                                        let mapped = self.map_to_sql(argument, query_context)?;
+                                        let mapped = self.map_to_predicate(
+                                            argument,
+                                            query_context,
+                                            column_dependencies,
+                                        )?;
                                         new_predicate = predicate_connector(new_predicate, mapped);
                                     }
 
                                     Ok(new_predicate)
                                 } else {
-                                    bail!("This boolean predicate needs a list of queries")
+                                    bail!(
+                                        "This logical operation predicate needs a list of queries"
+                                    )
                                 }
                             }
 
                             "not" => Ok(Predicate::Not(Box::new(
-                                self.map_to_sql(boolean_argument_value, query_context)?
-                                    .into(),
+                                self.map_to_predicate(
+                                    logical_op_argument_value,
+                                    query_context,
+                                    column_dependencies,
+                                )?
+                                .into(),
                             ))),
 
                             _ => todo!(),
@@ -133,9 +151,11 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
                             let arg =
                                 query_context.get_argument_field(argument_value, &parameter.name);
                             let mapped = match arg {
-                                Some(argument_value_component) => {
-                                    parameter.map_to_sql(argument_value_component, query_context)?
-                                }
+                                Some(argument_value_component) => parameter.map_to_predicate(
+                                    argument_value_component,
+                                    query_context,
+                                    column_dependencies,
+                                )?,
                                 None => Predicate::True,
                             };
 
@@ -153,10 +173,21 @@ impl<'a> SQLMapper<'a, Predicate<'a>> for PredicateParameter {
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
+    dependencies: &mut Vec<ColumnDependency>,
     query_context: &'a QueryContext<'a>,
 ) -> (MaybeOwned<'a, Column<'a>>, Column<'a>) {
     let system = query_context.get_system();
-    let op_physical_column = &param.column_id.as_ref().unwrap().get_column(system);
+
+    if let Some(column_dependency) = param.column_dependency.as_ref() {
+        dependencies.push(column_dependency.clone());
+    };
+
+    let op_physical_column = &param
+        .column_dependency
+        .as_ref()
+        .unwrap()
+        .column_id
+        .get_column(system);
     let op_key_column = Column::Physical(op_physical_column).into();
     let op_value_column = query_context.literal_column(op_value, op_physical_column);
     (op_key_column, op_value_column.unwrap())
