@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{bail, Result, Context};
 use async_graphql_parser::{
     types::{
         BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, OperationType,
@@ -28,6 +28,9 @@ use typed_arena::Arena;
 use super::{executor::Executor, resolver::*};
 
 use crate::{data::data_resolver::DataResolver, error::ExecutionError, introspection::schema::*};
+
+const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
+const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
 pub struct QueryContext<'a> {
     pub operation_name: Option<&'a str>,
@@ -224,25 +227,71 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
     let value: Box<dyn SQLParam> = match destination_type {
         PhysicalColumnType::Numeric { .. } => Box::new(Decimal::from_str(string)?),
 
-        PhysicalColumnType::Timestamp { timezone, .. } => {
-            if *timezone {
-                let dt = DateTime::parse_from_rfc3339(string)?;
-                Box::new(dt)
-            } else {
-                let dt = NaiveDateTime::parse_from_str(string, "%Y-%m-%dT%H:%M:%S%.f")?;
-                Box::new(dt)
-            }
-        }
-
-        PhysicalColumnType::Time { .. } => {
-            let t = NaiveTime::parse_from_str(string, "%H:%M:%S%.f")?;
-            Box::new(t)
-        }
-
+        PhysicalColumnType::Timestamp { .. } |
+        PhysicalColumnType::Time { .. } |
         PhysicalColumnType::Date => {
-            let d = NaiveDate::parse_from_str(string, "%Y-%m-%d")?;
-            Box::new(d)
-        }
+            let datetime = DateTime::parse_from_rfc3339(string);
+            let naive_datetime = NaiveDateTime::parse_from_str(
+                string, &format!("{}T{}", NAIVE_DATE_FORMAT, NAIVE_TIME_FORMAT)
+            );
+
+            // attempt to parse string as either datetime+offset or as a naive datetime 
+            match (datetime, naive_datetime) {
+                (Ok(datetime), _) => {
+                    match &destination_type {
+                        PhysicalColumnType::Timestamp { timezone, .. } => { 
+                            if *timezone {
+                                Box::new(datetime) 
+                            } else {
+                                // default to the naive time if this is a non-timezone field 
+                                Box::new(datetime.naive_local())
+                            }
+                        },
+                        PhysicalColumnType::Time { .. } => Box::new(datetime.time()),
+                        PhysicalColumnType::Date => Box::new(datetime.date().naive_local()),
+                        _ => panic!()
+                    }
+                },
+
+                (_, Ok(naive_datetime)) => {
+                    match &destination_type {
+                        PhysicalColumnType::Timestamp { timezone, .. } => {
+                            if *timezone {
+                                // default to UTC+0 if this field is a timestamp+timezone field 
+                                Box::new(DateTime::<Utc>::from_utc(naive_datetime, chrono::Utc))
+                            } else {
+                                Box::new(naive_datetime)
+                            }
+                        },
+                        PhysicalColumnType::Time { .. } => Box::new(naive_datetime.time()),
+                        PhysicalColumnType::Date { .. } => Box::new(naive_datetime.date()),
+                        _ => panic!()
+                    }
+                },
+
+                (Err(_), Err(_)) => {
+                    match &destination_type {
+                        PhysicalColumnType::Timestamp { .. } => {
+                            // exhausted options for timestamp formats
+                            bail!("Could not parse {} as a valid timestamp format", string)
+                        },
+                        PhysicalColumnType::Time { .. } => {
+                            // try parsing the string as a time only
+                            let t = NaiveTime::parse_from_str(string, NAIVE_TIME_FORMAT)
+                                .with_context(|| format!("Could not parse {} as a valid time-only format", string))?;
+                            Box::new(t)
+                        },
+                        PhysicalColumnType::Date => {
+                            // try parsing the string as a date only
+                            let d = NaiveDate::parse_from_str(string, NAIVE_DATE_FORMAT)
+                                .with_context(|| format!("Could not parse {} as a valid date-only format", string))?;
+                            Box::new(d)
+                        }
+                        _ => panic!()
+                    }
+                } 
+            }
+        },
 
         PhysicalColumnType::Blob => {
             let bytes = base64::decode(string)?;
