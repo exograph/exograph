@@ -250,7 +250,7 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
                         }
                         PhysicalColumnType::Time { .. } => Box::new(datetime.time()),
                         PhysicalColumnType::Date => Box::new(datetime.date().naive_local()),
-                        _ => panic!(),
+                        _ => bail!("missing case for datetime in inner match"),
                     }
                 }
 
@@ -266,7 +266,7 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
                         }
                         PhysicalColumnType::Time { .. } => Box::new(naive_datetime.time()),
                         PhysicalColumnType::Date { .. } => Box::new(naive_datetime.date()),
-                        _ => panic!(),
+                        _ => bail!("missing case for datetime in inner match"),
                     }
                 }
 
