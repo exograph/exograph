@@ -3,6 +3,7 @@ use async_stream::AsyncStream;
 use execution::executor::Executor;
 use payas_deno::DenoExecutor;
 use std::env;
+use std::time;
 
 use actix_cors::Cors;
 use actix_web::web::{Bytes, Data};
@@ -174,6 +175,8 @@ enum ServerLoopEvent {
 }
 
 pub fn start_server(system: ModelSystem) -> Result<Server> {
+    let start_time = time::SystemTime::now();
+
     let database = Database::from_env(None)?; // TODO: error handling here
     let deno_executor = DenoExecutor::default();
 
@@ -200,8 +203,13 @@ pub fn start_server(system: ModelSystem) -> Result<Server> {
 
     let server_url = format!("0.0.0.0:{}", server_port);
     let server = server.bind(&server_url)?;
+    let time_taken = start_time.elapsed()?.as_micros();
 
-    println!("Started server on {}", server.addrs()[0]);
+    println!(
+        "Started server on {} in {:.2} ms",
+        server.addrs()[0],
+        time_taken as f64 / 1000.0
+    );
 
     Ok(server.run())
 }
