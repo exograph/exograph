@@ -44,11 +44,7 @@ impl Command for ServeCommand {
         };
 
         fn should_restart(path: &Path) -> bool {
-            match path.extension().and_then(|e| e.to_str()) {
-                Some("claypot") => false,
-                Some(_) => true,
-                None => false,
-            }
+            !matches!(path.extension().and_then(|e| e.to_str()), Some("claypot"))
         }
 
         let mut server = start_server()?;
