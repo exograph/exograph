@@ -1,26 +1,19 @@
-use actix_web::dev::Server;
-use async_stream::AsyncStream;
+use async_stream::{try_stream, AsyncStream};
 use execution::executor::Executor;
+use introspection::schema::Schema;
 use payas_deno::DenoExecutor;
-use std::env;
-use std::time;
 
-use actix_cors::Cors;
-use actix_web::web::{Bytes, Data};
-use actix_web::Error;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::web::Bytes;
+use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 
 use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
 
-use async_stream::try_stream;
-
-use introspection::schema::Schema;
 use payas_model::{model::system::ModelSystem, sql::database::Database};
 use serde_json::Value;
 
-mod authentication;
+pub mod authentication;
 mod data;
 mod error;
 pub mod execution;
@@ -30,17 +23,9 @@ pub use payas_sql::sql;
 
 use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 
-static PLAYGROUND_HTML: &str = include_str!("assets/playground.html");
-
-const SERVER_PORT_PARAM: &str = "CLAY_SERVER_PORT";
-
-async fn playground() -> impl Responder {
-    HttpResponse::Ok().body(PLAYGROUND_HTML)
-}
-
 pub type SystemInfo = (ModelSystem, Schema, Database, DenoExecutor);
 
-async fn resolve(
+pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
     system_info: web::Data<SystemInfo>,
@@ -145,71 +130,16 @@ async fn resolve(
     }
 }
 
-fn cors_from_env() -> Cors {
-    const CORS_DOMAINS_PARAM: &str = "CLAY_CORS_DOMAINS";
-
-    match env::var(CORS_DOMAINS_PARAM).ok() {
-        Some(domains) => {
-            let domains_list = domains.split(',');
-
-            let cors = domains_list.fold(Cors::default(), |cors, domain| {
-                if domain == "*" {
-                    cors.allow_any_origin()
-                } else {
-                    cors.allowed_origin(domain)
-                }
-            });
-
-            // TODO: Allow more control over headers, max_age etc
-            cors.allowed_methods(vec!["GET", "POST"])
-                .allow_any_header()
-                .max_age(3600)
-        }
-        None => Cors::default(),
-    }
-}
-
 enum ServerLoopEvent {
     FileChange,
     SigInt,
 }
 
-pub fn start_server(system: ModelSystem) -> Result<Server> {
-    let start_time = time::SystemTime::now();
-
-    let database = Database::from_env(None)?; // TODO: error handling here
-    let deno_executor = DenoExecutor::default();
-
+/// Creates the data required by the actix endpoint.
+///
+/// This should be added to the server as actix `app_data`.
+pub fn create_system_info(system: ModelSystem, database: Database) -> SystemInfo {
     let schema = Schema::new(&system);
-    let system_info = Data::new((system, schema, database, deno_executor));
-    let authenticator = Data::new(JwtAuthenticator::new_from_env());
-
-    let server = HttpServer::new(move || {
-        let cors = cors_from_env();
-
-        App::new()
-            .wrap(cors)
-            .app_data(system_info.clone())
-            .app_data(authenticator.clone())
-            .route("/", web::get().to(playground))
-            .route("/", web::post().to(resolve))
-    })
-    .workers(1); // see payas-deno/executor.rs
-
-    let server_port = env::var(SERVER_PORT_PARAM)
-        .ok()
-        .map(|port_str| port_str.parse::<u32>().unwrap())
-        .unwrap_or(9876);
-
-    let server_url = format!("0.0.0.0:{}", server_port);
-    let server = server.bind(&server_url)?;
-    let time_taken = start_time.elapsed()?.as_micros();
-
-    println!(
-        "Started server on {} in {:.2} ms",
-        server.addrs()[0],
-        time_taken as f64 / 1000.0
-    );
-
-    Ok(server.run())
+    let deno_executor = DenoExecutor::default();
+    (system, schema, database, deno_executor)
 }

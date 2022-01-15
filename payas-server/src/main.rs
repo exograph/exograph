@@ -1,15 +1,21 @@
+use actix_cors::Cors;
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::{Context, Result};
 use bincode::deserialize_from;
 use payas_model::model::system::ModelSystem;
-use payas_server::start_server;
+use payas_server::authentication::JwtAuthenticator;
+use payas_server::sql::database::Database;
+use payas_server::{create_system_info, resolve};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::time;
 use std::{env, process::exit};
 
 /// Run the server in production mode with a compiled claypot file
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let start_time = time::SystemTime::now();
     let mut args = env::args().skip(1);
 
     if args.len() > 1 {
@@ -36,14 +42,45 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
-    let server = open_claypot_file(&claypot_file)
-        .and_then(start_server)
-        .map_err(|e| {
-            println!("{}", e);
-            exit(1)
-        });
+    let model_system = open_claypot_file(&claypot_file).unwrap();
 
-    server.unwrap().await
+    let database = Database::from_env(None).expect("Failed to create database"); // TODO: error handling here
+    let system_info = web::Data::new(create_system_info(model_system, database));
+    let authenticator = web::Data::new(JwtAuthenticator::new_from_env());
+    let server_port = env::var("CLAY_SERVER_PORT")
+        .map(|port_str| {
+            port_str
+                .parse::<u32>()
+                .expect("Failed to parse CLAY_SERVER_PORT")
+        })
+        .unwrap_or(9876);
+    let server_url = format!("0.0.0.0:{}", server_port);
+
+    let server = HttpServer::new(move || {
+        let cors = cors_from_env();
+
+        App::new()
+            .wrap(cors)
+            .app_data(system_info.clone())
+            .app_data(authenticator.clone())
+            .route("/", web::get().to(playground))
+            .route("/", web::post().to(resolve))
+    })
+    .workers(1) // see payas-deno/executor.rs
+    .bind(&server_url)
+    .unwrap();
+
+    println!(
+        "Started server on {} in {:.2} ms",
+        server.addrs()[0],
+        start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
+    );
+
+    server.run().await
+}
+
+async fn playground() -> impl Responder {
+    HttpResponse::Ok().body(include_str!("assets/playground.html"))
 }
 
 fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
@@ -60,5 +97,27 @@ fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
         Err(e) => {
             anyhow::bail!("Failed to open claypot file {}: {}", claypot_file, e)
         }
+    }
+}
+
+fn cors_from_env() -> Cors {
+    match env::var("CLAY_CORS_DOMAINS").ok() {
+        Some(domains) => {
+            let domains_list = domains.split(',');
+
+            let cors = domains_list.fold(Cors::default(), |cors, domain| {
+                if domain == "*" {
+                    cors.allow_any_origin()
+                } else {
+                    cors.allowed_origin(domain)
+                }
+            });
+
+            // TODO: Allow more control over headers, max_age etc
+            cors.allowed_methods(vec!["GET", "POST"])
+                .allow_any_header()
+                .max_age(3600)
+        }
+        None => Cors::default(),
     }
 }
