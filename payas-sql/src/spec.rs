@@ -277,9 +277,7 @@ impl ColumnSpec {
                     Err(e) => {
                         issues.push(Issue::Warning(format!(
                             "skipped column `{}.{}` ({})",
-                            table_name,
-                            column_name,
-                            e
+                            table_name, column_name, e
                         )));
                         None
                     }

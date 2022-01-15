@@ -495,22 +495,20 @@ impl<'a> Expression for Column<'a> {
                         let elem_binding = elem.1.binding(expression_context);
                         let mut stmt = elem_binding.stmt;
 
-                        if let
-                            Column::Physical(PhysicalColumn {
-                                typ,
-                                ..
-                            }) =  &elem.1.as_ref() {
-                                stmt = match &typ {
-                                    // encode blob fields in JSON objects as base64
-                                    // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
-                                    // need to filter out using translate(...) function
-                                    PhysicalColumnType::Blob => format!("translate(encode({}, \'base64\'), E'\\n', '')", stmt),
-
-                                    // numerics must be outputted as text to avoid any loss in precision
-                                    PhysicalColumnType::Numeric { .. } => format!("{}::text", stmt),
-                                    _ => stmt
+                        if let Column::Physical(PhysicalColumn { typ, .. }) = &elem.1.as_ref() {
+                            stmt = match &typ {
+                                // encode blob fields in JSON objects as base64
+                                // PostgreSQL inserts newlines into encoded base64 every 76 characters when in aligned mode
+                                // need to filter out using translate(...) function
+                                PhysicalColumnType::Blob => {
+                                    format!("translate(encode({}, \'base64\'), E'\\n', '')", stmt)
                                 }
+
+                                // numerics must be outputted as text to avoid any loss in precision
+                                PhysicalColumnType::Numeric { .. } => format!("{}::text", stmt),
+                                _ => stmt,
                             }
+                        }
 
                         (format!("'{}', {}", elem.0, stmt), elem_binding.params)
                     })

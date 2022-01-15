@@ -46,12 +46,19 @@ pub fn dynamic_assert_using_deno(
     let mut deno_module = runtime.block_on(deno_module_future).unwrap();
 
     // run method
-    let _ = runtime.block_on(deno_module.execute_function(
-        "test",
-        vec![Arg::Serde(actual.clone()), Arg::Serde(testvariables_json)],
-    )).map_err(|e| {
-        anyhow!("{}\n➞ Expected: \n{}\n➞ Got: \n{}\n", e, expected, serde_json::to_string_pretty(&actual).unwrap())
-    })?;
+    let _ = runtime
+        .block_on(deno_module.execute_function(
+            "test",
+            vec![Arg::Serde(actual.clone()), Arg::Serde(testvariables_json)],
+        ))
+        .map_err(|e| {
+            anyhow!(
+                "{}\n➞ Expected: \n{}\n➞ Got: \n{}\n",
+                e,
+                expected,
+                serde_json::to_string_pretty(&actual).unwrap()
+            )
+        })?;
 
     Ok(())
 }

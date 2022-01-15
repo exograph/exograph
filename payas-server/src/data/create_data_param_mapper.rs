@@ -180,7 +180,7 @@ fn map_single<'a>(
                 )),
             } // TODO: Report an error if the field is non-optional and the if-let doesn't match
         }
-    };
+    }
 
     let nested_rows = nested_rows_results
         .into_iter()
@@ -209,7 +209,11 @@ fn map_self_column<'a>(
             let other_type_pk_field_name = other_type
                 .pk_column_id()
                 .map(|column_id| &column_id.get_column(system).column_name)
-                .ok_or(anyhow!("{} did not have a primary key field when computing many-to-one for {}", other_type.name, field.name))?;
+                .ok_or_else(|| anyhow!(
+                    "{} did not have a primary key field when computing many-to-one for {}",
+                    other_type.name,
+                    field.name
+                ))?;
             match query_context.get_argument_field(argument, other_type_pk_field_name) {
                 Some(other_type_pk_arg) => other_type_pk_arg,
                 None => todo!(),
@@ -220,13 +224,12 @@ fn map_self_column<'a>(
 
     let value_column = query_context
         .literal_column(argument_value, key_column)
-        .with_context(|| 
+        .with_context(|| {
             format!(
-                "While trying to get literal column for {}.{}", 
-                key_column.table_name,
-                key_column.column_name
+                "While trying to get literal column for {}.{}",
+                key_column.table_name, key_column.column_name
             )
-        )?;
+        })?;
 
     Ok((key_column, value_column))
 }

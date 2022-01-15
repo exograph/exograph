@@ -20,7 +20,7 @@ use payas_model::{
         SQLBytes, SQLParam,
     },
 };
-use pg_bigdecimal::{PgNumeric, BigDecimal};
+use pg_bigdecimal::{BigDecimal, PgNumeric};
 use serde_json::{Map, Value as JsonValue};
 use typed_arena::Arena;
 
@@ -198,7 +198,10 @@ fn cast_list(
     array_util::to_sql_param(elems, destination_type, array_entry, cast_value)
 }
 
-fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Result<Box<dyn SQLParam>> {
+fn cast_number(
+    number: &Number,
+    destination_type: &PhysicalColumnType,
+) -> Result<Box<dyn SQLParam>> {
     let result: Box<dyn SQLParam> = match destination_type {
         PhysicalColumnType::Int { bits } => match bits {
             IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
@@ -209,11 +212,13 @@ fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Result
             FloatBits::_24 => Box::new(number.as_f64().unwrap() as f32),
             FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
         },
-        PhysicalColumnType::Numeric { .. } => bail!("Number literals cannot be specified for decimal fields"),
+        PhysicalColumnType::Numeric { .. } => {
+            bail!("Number literals cannot be specified for decimal fields")
+        }
         PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
             // TODO assumes that `id` columns are always integers
             cast_number(number, ref_pk_type)?
-        },
+        }
         // TODO: Expand for other number types such as float
         _ => bail!("Unexpected destination_type for number value"),
     };
@@ -226,17 +231,18 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
         PhysicalColumnType::Numeric { .. } => {
             use std::str::FromStr;
 
-            let decimal = match string {
-                "NaN" => PgNumeric { n: None },
-                _ => PgNumeric {
-                    n: Some(
-                        BigDecimal::from_str(string).with_context(|| format!("Could not parse {} into a decimal", string))?
-                    )
-                }
-            };
+            let decimal =
+                match string {
+                    "NaN" => PgNumeric { n: None },
+                    _ => PgNumeric {
+                        n: Some(BigDecimal::from_str(string).with_context(|| {
+                            format!("Could not parse {} into a decimal", string)
+                        })?),
+                    },
+                };
 
             Box::new(decimal)
-        },
+        }
 
         PhysicalColumnType::Timestamp { .. }
         | PhysicalColumnType::Time { .. }
@@ -313,12 +319,12 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
                     }
                 }
             }
-        },
+        }
 
         PhysicalColumnType::Blob => {
             let bytes = base64::decode(string)?;
             Box::new(SQLBytes::new(bytes))
-        },
+        }
 
         PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
 
