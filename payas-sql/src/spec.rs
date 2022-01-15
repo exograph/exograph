@@ -279,7 +279,7 @@ impl ColumnSpec {
                             "skipped column `{}.{}` ({})",
                             table_name,
                             column_name,
-                            e.to_string()
+                            e
                         )));
                         None
                     }

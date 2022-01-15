@@ -209,16 +209,13 @@ fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Result
             FloatBits::_24 => Box::new(number.as_f64().unwrap() as f32),
             FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
         },
-        PhysicalColumnType::Numeric { .. } => {
-            // this is how pg_bigdecimal seems to do it internally anyways
-            cast_string(&number.to_string(), destination_type)?
-        },
+        PhysicalColumnType::Numeric { .. } => bail!("Number literals cannot be provided to numerics"),
         PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
             // TODO assumes that `id` columns are always integers
             cast_number(number, ref_pk_type)?
         },
         // TODO: Expand for other number types such as float
-        _ => panic!("Unexpected destination_type for number value"),
+        _ => bail!("Unexpected destination_type for number value"),
     };
 
     Ok(result)
