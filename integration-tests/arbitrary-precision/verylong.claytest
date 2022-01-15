@@ -12,7 +12,7 @@ response: |
   {
     "data": {
       "string_test": {
-        // @precision is 30, so we should round off at 30 digits
+        // @scale is 30, so we should round off at 30 digits
         "verylong": "1.000000000000000000000000123457" 
       },
     }
