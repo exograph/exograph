@@ -178,10 +178,7 @@ mod tests {
         let err =
             dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap_err();
 
-        assert_eq!(
-            err.to_string(),
-            "assert failed: expected biz on key c, got qux"
-        );
+        assert!(err.to_string().starts_with("assert failed: expected biz on key c, got qux"));
     }
 
     #[test]
@@ -201,6 +198,6 @@ mod tests {
         let err =
             dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap_err();
 
-        assert_eq!(err.to_string(), "assert function failed for field c!");
+        assert!(err.to_string().starts_with("assert function failed for field c!"));
     }
 }
