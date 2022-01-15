@@ -1,11 +1,11 @@
 use anyhow::anyhow;
 use bytes::Bytes;
 use maybe_owned::MaybeOwned;
-use postgres::types::{FromSql, ToSql, Type};
 use std::{
     any::Any,
     fmt::{Debug, Display},
 };
+use tokio_postgres::types::{to_sql_checked, FromSql, ToSql, Type};
 
 #[macro_use]
 #[cfg(test)]
@@ -94,14 +94,14 @@ impl ToSql for SQLValue {
     fn to_sql(
         &self,
         ty: &Type,
-        out: &mut postgres::types::private::BytesMut,
-    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+        out: &mut tokio_postgres::types::private::BytesMut,
+    ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>>
     where
         Self: Sized,
     {
         if *ty == self.type_ {
             out.extend(self.value.as_slice());
-            Ok(postgres::types::IsNull::No)
+            Ok(tokio_postgres::types::IsNull::No)
         } else {
             Err(anyhow!("Type mismatch").into())
         }
@@ -114,7 +114,7 @@ impl ToSql for SQLValue {
         true
     }
 
-    postgres::types::to_sql_checked!();
+    to_sql_checked!();
 }
 
 impl<'a> FromSql<'a> for SQLValue {
@@ -146,7 +146,7 @@ impl ToSql for SQLBytes {
         &self,
         ty: &Type,
         out: &mut bytes::BytesMut,
-    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>>
+    ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>>
     where
         Self: Sized,
     {
@@ -160,7 +160,7 @@ impl ToSql for SQLBytes {
         matches!(*ty, Type::BYTEA)
     }
 
-    postgres::types::to_sql_checked!();
+    to_sql_checked!();
 }
 
 impl ToSql for Box<dyn SQLParam> {
@@ -168,7 +168,7 @@ impl ToSql for Box<dyn SQLParam> {
         &self,
         ty: &Type,
         out: &mut bytes::BytesMut,
-    ) -> Result<postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
+    ) -> Result<tokio_postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> {
         self.as_ref().to_sql_checked(ty, out)
     }
 
@@ -176,7 +176,7 @@ impl ToSql for Box<dyn SQLParam> {
         true // TODO: Can we check this?
     }
 
-    postgres::types::to_sql_checked!();
+    to_sql_checked!();
 }
 
 impl Display for SQLBytes {

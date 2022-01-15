@@ -42,7 +42,7 @@ pub fn dynamic_assert_using_deno(
         DenoModuleSharedState::default(),
     );
 
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let runtime = tokio::runtime::Runtime::new().unwrap();
     let mut deno_module = runtime.block_on(deno_module_future).unwrap();
 
     // run method
@@ -76,7 +76,7 @@ pub fn evaluate_using_deno(
         DenoModuleSharedState::default(),
     );
 
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let runtime = tokio::runtime::Runtime::new().unwrap();
     let mut deno_module = runtime.block_on(deno_module_future)?;
 
     // run method

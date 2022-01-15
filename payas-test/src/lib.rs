@@ -34,10 +34,10 @@ pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
     let testfiles = load_testfiles_from_dir(Path::new(&directory), pattern)
         .with_context(|| format!("While loading testfiles from directory {}", directory_str))?;
 
-    let number_of_tests = testfiles.len() * 2; // *2 because we run each testfile twice: dev mode and production mode
+    let number_of_tests = testfiles.len();
 
     // Work out which tests share a common clay file so we only build it once for all the
-    // dependent production mode tests
+    // dependent tests, avoiding accidental corruption from overwriting.
     let mut model_file_deps: HashMap<String, Vec<ParsedTestfile>> = HashMap::new();
 
     for f in testfiles.iter() {
@@ -57,18 +57,6 @@ pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
 
     let (tx, rx) = mpsc::channel();
 
-    // First spawn all the dev mode tests which don't need the clay file built
-    for file in testfiles.iter() {
-        let tx = tx.clone();
-        let url = database_url.clone();
-        let file = file.clone();
-
-        pool.spawn(move || {
-            let result = run_testfile(&file, url, true);
-            tx.send(result).unwrap();
-        });
-    }
-
     // Then build all the model files, spawning the production mode tests once the build completes
     for (model_path, testfiles) in model_file_deps {
         let model_path = model_path.clone();
@@ -78,7 +66,7 @@ pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
         pool.spawn(move || match build_claypot_file(&model_path) {
             Ok(()) => {
                 for file in testfiles.iter() {
-                    let result = run_testfile(file, url.clone(), false);
+                    let result = run_testfile(file, url.clone());
                     tx.send(result).unwrap();
                 }
             }

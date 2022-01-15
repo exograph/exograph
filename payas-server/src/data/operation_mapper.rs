@@ -4,8 +4,8 @@ use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
-use postgres::{types::FromSqlOwned, Row};
 use serde_json::{Map, Value};
+use tokio_postgres::{types::FromSqlOwned, Row};
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 
@@ -164,8 +164,8 @@ impl<'a> OperationResolverResult<'a> {
     ) -> Result<QueryResponse> {
         match self {
             OperationResolverResult::SQLOperation(transaction_script) => {
-                let mut client = query_context.executor.database.get_client()?;
-                let mut result = transaction_script.execute(&mut client, extractor)?;
+                let mut client = query_context.executor.database.get_client().await?;
+                let mut result = transaction_script.execute(&mut client, extractor).await?;
 
                 if result.len() == 1 {
                     Ok(QueryResponse::Raw(Some(result.swap_remove(0))))

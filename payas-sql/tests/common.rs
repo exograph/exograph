@@ -1,3 +1,4 @@
+/*
 use anyhow::Result;
 use payas_sql::{
     spec::TableSpec,
@@ -20,6 +21,7 @@ impl Drop for TestContext {
         let query = format!("DROP DATABASE \"{}\"", self.db_name);
         self.setup_db
             .get_client()
+            .await
             .unwrap()
             .execute(query.as_str(), &[])
             .unwrap();
@@ -31,11 +33,12 @@ impl TestContext {
         self.test_db.as_mut().unwrap()
     }
 }
-
+*/
+/*
 /// Creates a testing context. This sets up contextual resources
 /// needed for the test, like PostgreSQL databases. Takes a name for
 /// the current test (should be unique!)
-pub fn create_context(test_name: &str) -> Result<TestContext> {
+pub fn create_context(_test_name: &str) -> Result<TestContext> {
     let test_db_url = std::env::var("CLAY_TEST_DATABASE_URL")?;
     let test_user = std::env::var("CLAY_TEST_DATABASE_USER").ok();
     let test_password = std::env::var("CLAY_TEST_DATABASE_PASSWORD").ok();
@@ -93,3 +96,4 @@ pub fn create_physical_table(db: &Database, table_name: &str, query: &str) -> Ph
 
     table_spec.value.into()
 }
+*/

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use anyhow::{Context, Result};
-use postgres::{
+use tokio_postgres::{
     types::{FromSqlOwned, ToSql},
     Client, GenericClient, Row,
 };
@@ -19,23 +19,23 @@ pub enum TransactionScript<'a> {
 }
 
 impl<'a> TransactionScript<'a> {
-    pub fn execute<T: FromSqlOwned>(
+    pub async fn execute<T: FromSqlOwned>(
         &'a self,
         client: &mut Client,
         extractor: fn(Row) -> Result<T>,
     ) -> Result<Vec<T>> {
         match self {
-            Self::Single(step) => step.execute_and_extract(client, extractor),
+            Self::Single(step) => step.execute_and_extract(client, extractor).await,
             Self::Multi(init, last) => {
                 println!("Starting transaction");
-                let mut tx = client.transaction()?;
+                let mut tx = client.transaction().await?;
                 for step in init {
-                    step.execute(&mut tx)?;
+                    step.execute(&mut tx).await?;
                 }
 
-                let result = last.execute_and_extract(&mut tx, extractor);
+                let result = last.execute_and_extract(&mut tx, extractor).await;
                 println!("Committing transaction");
-                tx.commit()?;
+                tx.commit().await?;
                 result
             }
         }
@@ -49,15 +49,15 @@ pub enum TransactionStep<'a> {
 }
 
 impl<'a> TransactionStep<'a> {
-    pub fn execute(&self, client: &mut impl GenericClient) -> Result<()> {
+    pub async fn execute(&self, client: &mut impl GenericClient) -> Result<()> {
         match self {
-            Self::Concrete(step) => step.execute(client),
+            Self::Concrete(step) => step.execute(client).await,
             Self::Template(step) => {
                 let concrete = step.resolve();
 
                 let mut result = Ok(());
                 for substep in concrete {
-                    result = substep.execute(client);
+                    result = substep.execute(client).await;
                     step.values.borrow_mut().extend(substep.values.into_inner());
                 }
                 result
@@ -65,22 +65,22 @@ impl<'a> TransactionStep<'a> {
         }
     }
 
-    fn execute_and_extract<T: FromSqlOwned>(
+    async fn execute_and_extract<T: FromSqlOwned>(
         &self,
         client: &mut impl GenericClient,
         extractor: fn(Row) -> Result<T>,
     ) -> Result<Vec<T>> {
         match self {
-            Self::Concrete(step) => step.execute_and_extract(client, extractor),
+            Self::Concrete(step) => step.execute_and_extract(client, extractor).await,
             Self::Template(step) => {
                 let concrete = step.resolve();
 
                 match concrete.as_slice() {
                     [init @ .., last] => {
                         for substep in init {
-                            substep.execute(client)?;
+                            substep.execute(client).await?;
                         }
-                        last.execute_and_extract(client, extractor)
+                        last.execute_and_extract(client, extractor).await
                     }
                     _ => Ok(vec![]),
                 }
@@ -117,8 +117,8 @@ impl<'a> ConcreteTransactionStep<'a> {
         }
     }
 
-    pub fn execute(&'a self, client: &mut impl GenericClient) -> Result<()> {
-        let rows = self.run_query(client)?;
+    pub async fn execute(&'a self, client: &mut impl GenericClient) -> Result<()> {
+        let rows = self.run_query(client).await?;
 
         let values = Self::result_extractor(&rows)?;
         *self.values.borrow_mut() = values;
@@ -126,17 +126,17 @@ impl<'a> ConcreteTransactionStep<'a> {
         Ok(())
     }
 
-    fn execute_and_extract<T: FromSqlOwned>(
+    async fn execute_and_extract<T: FromSqlOwned>(
         &'a self,
         client: &mut impl GenericClient,
         extractor: fn(Row) -> Result<T>,
     ) -> Result<Vec<T>> {
-        let rows = self.run_query(client)?;
+        let rows = self.run_query(client).await?;
 
         rows.into_iter().map(extractor).collect()
     }
 
-    fn run_query(&'a self, client: &mut impl GenericClient) -> Result<Vec<Row>> {
+    async fn run_query(&'a self, client: &mut impl GenericClient) -> Result<Vec<Row>> {
         let sql_operation = &self.operation;
         let mut context = ExpressionContext::default();
         let binding = sql_operation.binding(&mut context);
@@ -147,6 +147,7 @@ impl<'a> ConcreteTransactionStep<'a> {
         println!("Executing transaction step: {}", binding.stmt);
         client
             .query(binding.stmt.as_str(), &params[..])
+            .await
             .context("PostgreSQL query failed")
     }
 
