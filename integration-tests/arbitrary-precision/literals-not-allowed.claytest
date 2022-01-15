@@ -11,6 +11,8 @@ variable: |
 response: |
   {
     "errors": [
-
-    ]   
+      {
+        "message": "Number literals cannot be specified for decimal fields"
+      }
+    ]
   }

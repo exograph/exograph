@@ -209,7 +209,7 @@ fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Result
             FloatBits::_24 => Box::new(number.as_f64().unwrap() as f32),
             FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
         },
-        PhysicalColumnType::Numeric { .. } => bail!("Number literals cannot be provided to numerics"),
+        PhysicalColumnType::Numeric { .. } => bail!("Number literals cannot be specified for decimal fields"),
         PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
             // TODO assumes that `id` columns are always integers
             cast_number(number, ref_pk_type)?
