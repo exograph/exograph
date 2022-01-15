@@ -1,10 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Display, Formatter};
-use std::ops::DerefMut;
 
 use crate::sql::column::PhysicalColumnType;
 use anyhow::{anyhow, Result};
-use postgres::Client;
+use deadpool_postgres::Client;
 use regex::Regex;
 
 /// An SQL statement along with any foreign constraint statements that should follow after all the
@@ -56,7 +55,7 @@ pub struct SchemaSpec {
 
 impl SchemaSpec {
     /// Creates a new schema specification from an SQL database.
-    pub fn from_db(client: &mut impl DerefMut<Target = Client>) -> Result<WithIssues<SchemaSpec>> {
+    pub async fn from_db(client: &Client) -> Result<WithIssues<SchemaSpec>> {
         // Query to get a list of all the tables in the database
         const QUERY: &str =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
@@ -64,9 +63,9 @@ impl SchemaSpec {
         let mut issues = Vec::new();
         let mut table_specs = Vec::new();
 
-        for row in client.query(QUERY, &[]).map_err(|e| anyhow!(e))? {
+        for row in client.query(QUERY, &[]).await.map_err(|e| anyhow!(e))? {
             let name: String = row.get("table_name");
-            let mut table = TableSpec::from_db(client, &name)?;
+            let mut table = TableSpec::from_db(client, &name).await?;
             issues.append(&mut table.issues);
             table_specs.push(table.value);
         }
@@ -105,10 +104,7 @@ pub struct TableSpec {
 
 impl TableSpec {
     /// Creates a new table specification from an SQL table.
-    pub fn from_db(
-        client: &mut impl DerefMut<Target = Client>,
-        table_name: &str,
-    ) -> Result<WithIssues<TableSpec>> {
+    pub async fn from_db(client: &Client, table_name: &str) -> Result<WithIssues<TableSpec>> {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
@@ -133,7 +129,8 @@ impl TableSpec {
 
         // Get all the constraints in the table
         let constraints = client
-            .query(constraints_query.as_str(), &[])?
+            .query(constraints_query.as_str(), &[])
+            .await?
             .iter()
             .map(|row| {
                 let contype: i8 = row.get("contype");
@@ -159,7 +156,7 @@ impl TableSpec {
             let ref_column_name = matches[3].to_owned(); // name of the column in the referenced table
 
             let mut column =
-                ColumnSpec::from_db(client, &ref_table_name, &ref_column_name, true, None)?;
+                ColumnSpec::from_db(client, &ref_table_name, &ref_column_name, true, None).await?;
             issues.append(&mut column.issues);
 
             if let Some(spec) = column.value {
@@ -175,7 +172,7 @@ impl TableSpec {
         }
 
         let mut column_specs = Vec::new();
-        for row in client.query(columns_query.as_str(), &[])? {
+        for row in client.query(columns_query.as_str(), &[]).await? {
             let name: String = row.get("column_name");
             let mut column = ColumnSpec::from_db(
                 client,
@@ -183,7 +180,8 @@ impl TableSpec {
                 &name,
                 primary_keys.contains(&name),
                 foreign_constraints.get(&name).cloned(),
-            )?;
+            )
+            .await?;
             issues.append(&mut column.issues);
 
             if let Some(spec) = column.value {
@@ -237,8 +235,8 @@ impl ColumnSpec {
     ///
     /// If the column references another table's column, the column's type can be specified with
     /// `explicit_type`.
-    pub fn from_db(
-        client: &mut impl DerefMut<Target = Client>,
+    pub async fn from_db(
+        client: &Client,
         table_name: &str,
         column_name: &str,
         is_pk: bool,
@@ -263,7 +261,7 @@ impl ColumnSpec {
                     table_name, column_name
                 );
 
-                let rows = client.query(db_type_query.as_str(), &[])?;
+                let rows = client.query(db_type_query.as_str(), &[]).await?;
                 let row = rows.get(0).unwrap();
 
                 let mut sql_type: String = row.get("format_type");
@@ -298,13 +296,15 @@ impl ColumnSpec {
         );
 
         let not_null: bool = client
-            .query::<str>(db_not_null_query.as_str(), &[])?
+            .query::<str>(db_not_null_query.as_str(), &[])
+            .await?
             .get(0)
             .map(|row| row.get("attnotnull"))
             .unwrap();
 
         let serial_columns = client
-            .query(serial_columns_query, &[])?
+            .query(serial_columns_query, &[])
+            .await?
             .iter()
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
