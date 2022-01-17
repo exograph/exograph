@@ -21,7 +21,9 @@ use super::{
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {
         if let ResolvedType::Composite(
-            c @ ResolvedCompositeType {
+            c
+            @
+            ResolvedCompositeType {
                 kind: ResolvedCompositeTypeKind::Persistent { .. },
                 ..
             },

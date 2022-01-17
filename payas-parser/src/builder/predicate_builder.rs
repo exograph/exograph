@@ -38,7 +38,9 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
                 );
             }
             ResolvedType::Composite(
-                c @ ResolvedCompositeType {
+                c
+                @
+                ResolvedCompositeType {
                     kind: ResolvedCompositeTypeKind::Persistent { .. },
                     ..
                 },
