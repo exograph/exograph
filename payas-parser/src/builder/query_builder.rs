@@ -2,7 +2,7 @@ use payas_model::model::limit_offset::OffsetParameter;
 use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::naming::ToGqlQueryName;
 use payas_model::model::operation::{DatabaseQueryParameter, Interceptors, QueryKind};
-use payas_model::model::predicate::ColumnDependency;
+use payas_model::model::predicate::JoinDependency;
 use payas_model::model::{
     limit_offset::LimitParameter,
     mapped_arena::MappedArena,
@@ -57,7 +57,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
             }
             {
                 let operation_name = model_type.collection_query();
-                let query = expanded_collection_query(model_type, building);
+                let query = expanded_collection_query(model_type_id, model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
             }
@@ -125,14 +125,14 @@ pub fn pk_predicate_param(
             .get_id(pk_field.typ.type_name())
             .unwrap(),
         type_modifier: GqlTypeModifier::NonNull,
-        column_dependency: pk_field
+        join_dependency: pk_field
             .relation
             .self_column()
-            .map(|column_id| ColumnDependency {
-                column_id,
-                parent_type_id: model_type_id,
-                parent_field_name: pk_field.name.to_string(),
+            .map(|column_id| JoinDependency {
+                self_column_id: column_id,
+                dependent_column_id: None,
             }),
+        underlying_type_id: model_type_id,
     }
 }
 
@@ -158,11 +158,15 @@ fn shallow_collection_query(
     }
 }
 
-fn expanded_collection_query(model_type: &GqlType, building: &SystemContextBuilding) -> Query {
+fn expanded_collection_query(
+    model_type_id: SerializableSlabIndex<GqlType>,
+    model_type: &GqlType,
+    building: &SystemContextBuilding,
+) -> Query {
     let operation_name = model_type.collection_query();
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
-    let predicate_param = collection_predicate_param(model_type, building);
+    let predicate_param = collection_predicate_param(model_type_id, model_type, building);
     let order_by_param = order_by_type_builder::new_root_param(&model_type.name, false, building);
     let limit_param = limit_param(building);
     let offset_param = offset_param(building);
@@ -203,6 +207,7 @@ pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
 }
 
 pub fn collection_predicate_param(
+    model_type_id: SerializableSlabIndex<GqlType>,
     model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
@@ -212,6 +217,7 @@ pub fn collection_predicate_param(
         type_name: param_type_name.clone(),
         type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
         type_modifier: GqlTypeModifier::Optional,
-        column_dependency: None,
+        join_dependency: None,
+        underlying_type_id: model_type_id,
     }
 }

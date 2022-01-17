@@ -74,7 +74,11 @@ impl MutationBuilder for CreateMutationBuilder {
         model_type.collection_create()
     }
 
-    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind {
+    fn multi_mutation_kind(
+        _model_type_id: SerializableSlabIndex<GqlType>,
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+    ) -> MutationKind {
         MutationKind::Create(Self::data_param(model_type, building, true))
     }
 }

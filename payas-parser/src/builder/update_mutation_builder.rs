@@ -85,10 +85,18 @@ impl MutationBuilder for UpdateMutationBuilder {
         model_type.collection_update()
     }
 
-    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind {
+    fn multi_mutation_kind(
+        model_type_id: SerializableSlabIndex<GqlType>,
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+    ) -> MutationKind {
         MutationKind::Update {
             data_param: Self::data_param(model_type, building, true),
-            predicate_param: query_builder::collection_predicate_param(model_type, building),
+            predicate_param: query_builder::collection_predicate_param(
+                model_type_id,
+                model_type,
+                building,
+            ),
         }
     }
 }

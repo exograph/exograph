@@ -6,15 +6,26 @@ use anyhow::*;
 use async_graphql_value::ConstValue;
 
 use maybe_owned::MaybeOwned;
-use payas_model::model::predicate::*;
+use payas_model::{
+    model::{mapped_arena::SerializableSlabIndex, predicate::*, system::ModelSystem, GqlType},
+    sql::PhysicalTable,
+};
 
 pub trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
         &'a self,
         argument_value: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
-        column_dependencies: &mut Vec<ColumnDependency>,
-    ) -> Result<Predicate<'a>>;
+    ) -> Result<(Predicate<'a>, Option<TableJoin>)>;
+}
+
+/// Table dependencies tree suitable for computing a join
+#[derive(Debug)]
+pub struct TableJoin<'a> {
+    /// The base table being joined. In above example, "concerts"
+    pub table: &'a PhysicalTable,
+    /// The tables being joined. In above example, ("venue1_id", "venues") and ("venue2_id", "venues")
+    pub dependencies: Vec<(JoinDependency, TableJoin<'a>)>,
 }
 
 impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
@@ -22,24 +33,23 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         &'a self,
         argument_value: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
-        column_dependencies: &mut Vec<ColumnDependency>,
-    ) -> Result<Predicate<'a>> {
+    ) -> Result<(Predicate<'a>, Option<TableJoin>)> {
         let system = query_context.get_system();
         let parameter_type = &system.predicate_types[self.type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_column, op_value_column) =
-                    operands(self, argument_value, column_dependencies, query_context);
-                Ok(Predicate::Eq(op_key_column, op_value_column.into()))
+                    operands(self, argument_value, query_context);
+                Ok((Predicate::Eq(op_key_column, op_value_column.into()), None))
             }
             PredicateParameterTypeKind::Operator(parameters) => {
-                Ok(parameters.iter().fold(Predicate::True, |acc, parameter| {
+                let predicate = parameters.iter().fold(Predicate::True, |acc, parameter| {
                     let arg = query_context.get_argument_field(argument_value, &parameter.name);
                     let new_predicate = match arg {
                         Some(op_value) => {
                             let (op_key_column, op_value_column) =
-                                operands(self, op_value, column_dependencies, query_context);
+                                operands(self, op_value, query_context);
                             Predicate::from_name(
                                 &parameter.name,
                                 op_key_column,
@@ -50,12 +60,19 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     };
 
                     Predicate::and(acc, new_predicate)
-                }))
+                });
+                Ok((predicate, None))
             }
             PredicateParameterTypeKind::Composite {
                 field_params,
                 logical_op_params,
             } => {
+                let underlying_type = &system.types[self.underlying_type_id];
+                let underlying_table_id = underlying_type
+                    .table_id()
+                    .expect("Table could not be found");
+                let underlying_table = &system.tables[underlying_table_id];
+
                 // first, match any logical op predicates the argument_value might contain
                 let logical_op_argument_value: (&str, Option<&ConstValue>) = logical_op_params
                     .iter()
@@ -111,17 +128,28 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                     };
 
                                     let mut new_predicate = identity_predicate;
+                                    let mut dependencies = vec![];
 
                                     for argument in arguments.iter() {
-                                        let mapped = self.map_to_predicate(
-                                            argument,
-                                            query_context,
-                                            column_dependencies,
-                                        )?;
-                                        new_predicate = predicate_connector(new_predicate, mapped);
+                                        let (mapped_predicate, mapped_dependency) =
+                                            self.map_to_predicate(argument, query_context)?;
+                                        new_predicate =
+                                            predicate_connector(new_predicate, mapped_predicate);
+
+                                        if let Some(mapped_dependency) = mapped_dependency {
+                                            dependencies.push((
+                                                self.join_dependency.clone().unwrap(),
+                                                mapped_dependency,
+                                            ));
+                                        }
                                     }
 
-                                    Ok(new_predicate)
+                                    let table_join = TableJoin {
+                                        table: underlying_table,
+                                        dependencies,
+                                    };
+
+                                    Ok((new_predicate, Some(table_join)))
                                 } else {
                                     bail!(
                                         "This logical operation predicate needs a list of queries"
@@ -129,14 +157,22 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 }
                             }
 
-                            "not" => Ok(Predicate::Not(Box::new(
-                                self.map_to_predicate(
-                                    logical_op_argument_value,
-                                    query_context,
-                                    column_dependencies,
-                                )?
-                                .into(),
-                            ))),
+                            "not" => {
+                                let (new_predicate, new_table_dependency) = self
+                                    .map_to_predicate(logical_op_argument_value, query_context)?;
+
+                                let table_join = TableJoin {
+                                    table: underlying_table,
+                                    dependencies: vec![(
+                                        self.join_dependency.clone().unwrap(),
+                                        new_table_dependency.unwrap(),
+                                    )],
+                                };
+                                Ok((
+                                    Predicate::Not(Box::new(new_predicate.into())),
+                                    Some(table_join),
+                                ))
+                            }
 
                             _ => todo!(),
                         }
@@ -146,23 +182,33 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                         // we are dealing with field predicate arguments
                         // map field argument values into their respective predicates
                         let mut new_predicate = Predicate::True;
+                        let mut dependencies = vec![];
 
                         for parameter in field_params.iter() {
                             let arg =
                                 query_context.get_argument_field(argument_value, &parameter.name);
-                            let mapped = match arg {
-                                Some(argument_value_component) => parameter.map_to_predicate(
-                                    argument_value_component,
-                                    query_context,
-                                    column_dependencies,
-                                )?,
-                                None => Predicate::True,
+
+                            let (field_predicate, field_table_dependency) = match arg {
+                                Some(argument_value_component) => parameter
+                                    .map_to_predicate(argument_value_component, query_context)?,
+                                None => (Predicate::True, None),
                             };
 
-                            new_predicate = Predicate::and(new_predicate, mapped)
+                            new_predicate = Predicate::and(new_predicate, field_predicate);
+                            if let Some(mapped_dependency) = field_table_dependency {
+                                dependencies.push((
+                                    parameter.join_dependency.clone().unwrap(),
+                                    mapped_dependency,
+                                ));
+                            }
                         }
 
-                        Ok(new_predicate)
+                        let table_join = TableJoin {
+                            table: underlying_table,
+                            dependencies,
+                        };
+
+                        Ok((new_predicate, Some(table_join)))
                     }
                 }
             }
@@ -173,22 +219,27 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
-    dependencies: &mut Vec<ColumnDependency>,
     query_context: &'a QueryContext<'a>,
 ) -> (MaybeOwned<'a, Column<'a>>, Column<'a>) {
     let system = query_context.get_system();
 
-    if let Some(column_dependency) = param.column_dependency.as_ref() {
-        dependencies.push(column_dependency.clone());
-    };
-
     let op_physical_column = &param
-        .column_dependency
+        .join_dependency
         .as_ref()
-        .unwrap()
-        .column_id
+        .expect("Could not find join dependency")
+        .self_column_id
         .get_column(system);
     let op_key_column = Column::Physical(op_physical_column).into();
     let op_value_column = query_context.literal_column(op_value, op_physical_column);
     (op_key_column, op_value_column.unwrap())
+}
+
+fn get_table(
+    type_id: SerializableSlabIndex<GqlType>,
+    system: &ModelSystem,
+) -> Option<&PhysicalTable> {
+    let underlying_type = &system.types[type_id];
+    underlying_type
+        .table_id()
+        .map(|table_id| &system.tables[table_id])
 }
