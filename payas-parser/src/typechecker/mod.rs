@@ -427,9 +427,9 @@ mod tests {
         context AuthContext {
             role: String @jwt
         }
-    
+
         model Doc {
-          is_public: Boolean 
+          is_public: Boolean
           content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
         }
         "#;
@@ -443,7 +443,7 @@ mod tests {
         context AuthContext {
             roles: Array<String> @jwt
         }
-    
+
         model Doc {
           content: String @access("ROLE_ADMIN" in AuthContext.roles)
         }
@@ -458,11 +458,11 @@ mod tests {
         context AuthContext {
             role: String @jwt
         }
-    
+
         @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
         model Doc {
-          is_public: Boolean 
-          content: String 
+          is_public: Boolean
+          content: String
         }
         "#;
 
@@ -482,11 +482,11 @@ mod tests {
         let with_whitespace = r#"
 
         @table ( "venues" )
-        model    Venue   
+        model    Venue
         {
-            id:   Int   @column(  "idx"  )    
-            @pk 
-            
+            id:   Int   @column(  "idx"  )
+            @pk
+
             name:String
 
         }
@@ -509,6 +509,7 @@ mod tests {
         assert_err(src);
     }
 
+    #[test]
     fn duplicate_annotation() {
         let src = r#"
         @table("users")
@@ -520,6 +521,7 @@ mod tests {
         assert_err(src);
     }
 
+    #[test]
     fn invalid_annotation_parameter_type() {
         let expected_none = r#"
         model User {
@@ -544,6 +546,7 @@ mod tests {
         assert_err(expected_map);
     }
 
+    #[test]
     fn duplicate_annotation_mapped_param() {
         let src = r#"
         model User {
@@ -554,6 +557,7 @@ mod tests {
         assert_err(src);
     }
 
+    #[test]
     fn unknown_annotation_mapped_param() {
         let src = r#"
         model User {
@@ -564,6 +568,7 @@ mod tests {
         assert_err(src);
     }
 
+    #[test]
     fn invalid_annotation_target() {
         let model = r#"
         @pk

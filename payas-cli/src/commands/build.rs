@@ -1,15 +1,12 @@
 use anyhow::Result;
 
 use std::path::Path;
-use std::time::Duration;
 use std::{fs::File, io::BufWriter};
 use std::{path::PathBuf, time::SystemTime};
 
 use bincode::serialize_into;
 
 use super::command::Command;
-
-const FILE_WATCHER_DELAY: Duration = Duration::from_millis(10);
 
 /// Build claytip server binary
 pub struct BuildCommand {
