@@ -70,9 +70,11 @@ pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
                     tx.send(result).unwrap();
                 }
             }
-            Err(e) => tx.send(
-                Err(e).with_context(|| format!("While trying to build claypot file for {}", model_path))
-            ).unwrap(),
+            Err(e) => tx
+                .send(Err(e).with_context(|| {
+                    format!("While trying to build claypot file for {}", model_path)
+                }))
+                .unwrap(),
         });
     }
 
