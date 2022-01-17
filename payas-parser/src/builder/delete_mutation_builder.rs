@@ -68,9 +68,15 @@ impl MutationBuilder for DeleteMutationBuilder {
         model_type.collection_delete()
     }
 
-    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind {
+    fn multi_mutation_kind(
+        model_type_id: SerializableSlabIndex<GqlType>,
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+    ) -> MutationKind {
         MutationKind::Delete(query_builder::collection_predicate_param(
-            model_type, building,
+            model_type_id,
+            model_type,
+            building,
         ))
     }
 }

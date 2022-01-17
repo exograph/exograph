@@ -1,5 +1,6 @@
 use payas_model::model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
+    relation::GqlRelation,
     types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
     GqlCompositeType, GqlCompositeTypeKind,
 };
@@ -153,7 +154,7 @@ lazy_static! {
 }
 
 fn create_operator_filter_type_kind(
-    _gql_type_id: SerializableSlabIndex<GqlType>,
+    gql_type_id: SerializableSlabIndex<GqlType>,
     scalar_model_type: &GqlType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
@@ -165,7 +166,8 @@ fn create_operator_filter_type_kind(
             .get_id(&scalar_model_type.name)
             .unwrap(),
         type_modifier: GqlTypeModifier::Optional,
-        column_dependency: None,
+        join_dependency: None,
+        underlying_type_id: gql_type_id,
     };
 
     // look up type in (type, operations) table
@@ -196,19 +198,37 @@ fn create_composite_filter_type_kind(
         .iter()
         .map(|field| {
             let param_type_name = get_parameter_type_name(field.typ.type_name());
+            let param_type_id = field.typ.type_id();
+            let param_type = &building.types[*param_type_id];
+
+            let (parent_column_id, dependent_column_id) = match &field.relation {
+                GqlRelation::Pk { column_id, .. } | GqlRelation::Scalar { column_id, .. } => {
+                    (column_id.clone(), None)
+                }
+                GqlRelation::ManyToOne { column_id, .. } => {
+                    let dependent_column_id = param_type.pk_column_id();
+                    (column_id.clone(), dependent_column_id)
+                }
+                GqlRelation::OneToMany {
+                    other_type_column_id,
+                    ..
+                } => {
+                    let parent_column_id = composite_type.pk_column_id().unwrap();
+                    (parent_column_id, Some(other_type_column_id.clone()))
+                }
+                GqlRelation::NonPersistent => panic!("NonPersistent is not supported"),
+            };
+
             PredicateParameter {
                 name: field.name.to_string(),
                 type_name: param_type_name.clone(),
                 type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
                 type_modifier: GqlTypeModifier::Optional,
-                column_dependency: field
-                    .relation
-                    .self_column()
-                    .map(|column_id| ColumnDependency {
-                        column_id,
-                        parent_type_id: gql_type_id,
-                        parent_field_name: field.name.to_string(),
-                    }),
+                underlying_type_id: *param_type_id,
+                join_dependency: Some(JoinDependency {
+                    self_column_id: parent_column_id,
+                    dependent_column_id,
+                }),
             }
         })
         .collect();
@@ -234,7 +254,8 @@ fn create_composite_filter_type_kind(
                         panic!("Could not find predicate type '{}'", param_type_name)
                     }),
                 type_modifier,
-                column_dependency: None,
+                join_dependency: None,
+                underlying_type_id: gql_type_id,
             }
         })
         .collect();
