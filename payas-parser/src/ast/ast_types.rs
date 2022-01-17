@@ -149,26 +149,10 @@ pub enum AstFieldType<T: NodeTypedness> {
 }
 
 impl<T: NodeTypedness> AstFieldType<T> {
-    pub fn span(&self) -> Span {
-        match self {
-            AstFieldType::Plain(_, _, _, span) => *span,
-            AstFieldType::Optional(inner) => inner.span(),
-        }
-    }
-}
-
-impl<T: NodeTypedness> AstFieldType<T> {
     pub fn name(&self) -> String {
         match self {
             AstFieldType::Optional(underlying) => underlying.name(),
             AstFieldType::Plain(base_type, _, _, _) => base_type.clone(),
-        }
-    }
-
-    pub fn optional(&self) -> Self {
-        match self {
-            AstFieldType::Optional(_) => self.clone(),
-            _ => AstFieldType::Optional(Box::new(self.clone())),
         }
     }
 }

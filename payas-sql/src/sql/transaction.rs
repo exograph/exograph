@@ -177,8 +177,6 @@ impl<'a> ConcreteTransactionStep<'a> {
     }
 }
 
-type TransactionStepResult = Vec<SQLValue>;
-
 #[derive(Debug)]
 pub struct TemplateTransactionStep<'a> {
     pub operation: TemplateSQLOperation<'a>,

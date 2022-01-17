@@ -1,15 +1,10 @@
 use std::path::Path;
 
-use anyhow::Result;
 use deno_core::serde_json::json;
 use deno_core::{serde_json::Value, JsRuntime};
 use futures::future::join_all;
 use payas_deno::{Arg, DenoActor, DenoExecutor, DenoModule, DenoModuleSharedState, UserCode};
 use tokio::sync::mpsc::channel;
-
-fn no_op(_: String, _: Option<&serde_json::Map<String, Value>>) -> Result<serde_json::Value> {
-    panic!()
-}
 
 #[tokio::test]
 async fn test_direct_sync() {

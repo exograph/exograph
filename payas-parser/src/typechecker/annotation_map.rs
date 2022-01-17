@@ -49,10 +49,6 @@ impl AnnotationMap {
         AnnotationMap { annotations, spans }
     }
 
-    pub fn add(&mut self, annotation: AstAnnotation<Typed>) {
-        self.annotations.insert(annotation.name.clone(), annotation);
-    }
-
     pub fn contains(&self, name: &str) -> bool {
         self.annotations.contains_key(name)
     }
