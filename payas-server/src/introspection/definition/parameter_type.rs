@@ -16,7 +16,7 @@ use payas_model::model::{
     system::ModelSystem,
 };
 
-use super::{parameter::Parameter, provider::*};
+use super::provider::{InputValueProvider, TypeDefinitionProvider};
 
 pub trait ParameterType {
     fn name(&self) -> &String;
@@ -32,12 +32,6 @@ impl ParameterType for PredicateParameterType {
     fn name(&self) -> &String {
         &self.name
     }
-}
-
-pub enum ParameterTypeKind {
-    Primitive,
-    Composite { parameters: Vec<Box<dyn Parameter>> },
-    Enum { values: Vec<String> },
 }
 
 pub const PRIMITIVE_ORDERING_OPTIONS: [&str; 2] = ["ASC", "DESC"];

@@ -78,12 +78,6 @@ pub struct SQLValue {
     type_: Type,
 }
 
-impl SQLValue {
-    fn as_sql_param(&self) -> &dyn SQLParam {
-        self
-    }
-}
-
 impl Display for SQLValue {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(fmt, "<SQLValue containing {}>", self.type_)

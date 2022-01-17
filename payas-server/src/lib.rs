@@ -130,11 +130,6 @@ pub async fn resolve(
     }
 }
 
-enum ServerLoopEvent {
-    FileChange,
-    SigInt,
-}
-
 /// Creates the data required by the actix endpoint.
 ///
 /// This should be added to the server as actix `app_data`.

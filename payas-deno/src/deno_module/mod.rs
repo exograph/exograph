@@ -5,8 +5,6 @@ use deno_core::JsRuntime;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use deno_core::v8::Global;
-use deno_core::v8::Script;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::permissions::Permissions;
@@ -35,12 +33,6 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
 
 const JSERROR_PREFIX: &str = "Uncaught ClaytipError: ";
 
-// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number
-const JS_MAX_SAFE_INTEGER: i64 = (1 << 53) - 1;
-const JS_MIN_SAFE_INTEGER: i64 = -JS_MAX_SAFE_INTEGER;
-const JS_MAX_VALUE: f64 = 1.797_693_134_862_315_7e308;
-const JS_MIN_VALUE: f64 = 5e-324;
-
 pub enum UserCode {
     LoadFromMemory { script: String, path: String },
     LoadFromFs(PathBuf),
@@ -62,10 +54,6 @@ pub struct DenoModuleSharedState {
     // TODO
     //  shared_array_buffer_store
     //  compiled_wasm_module_store
-}
-
-pub struct DenoScript {
-    pub script: Global<Script>,
 }
 
 /// A Deno-based runner for JavaScript.
