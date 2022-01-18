@@ -42,6 +42,7 @@ pub struct DenoExecutor {
 // https://github.com/denoland/rusty_v8/issues/486 (issue we're seeing)
 // https://github.com/denoland/rusty_v8/issues/643
 // https://github.com/denoland/rusty_v8/pull/738
+#[allow(clippy::non_send_fields_in_send_ty)]
 unsafe impl Send for DenoActor {}
 
 impl<'a> DenoExecutor {
