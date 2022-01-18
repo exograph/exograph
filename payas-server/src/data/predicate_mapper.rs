@@ -6,10 +6,7 @@ use anyhow::*;
 use async_graphql_value::ConstValue;
 
 use maybe_owned::MaybeOwned;
-use payas_model::{
-    model::{mapped_arena::SerializableSlabIndex, predicate::*, system::ModelSystem, GqlType},
-    sql::PhysicalTable,
-};
+use payas_model::{model::predicate::*, sql::PhysicalTable};
 
 pub trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
@@ -232,14 +229,4 @@ fn operands<'a>(
     let op_key_column = Column::Physical(op_physical_column).into();
     let op_value_column = query_context.literal_column(op_value, op_physical_column);
     (op_key_column, op_value_column.unwrap())
-}
-
-fn get_table(
-    type_id: SerializableSlabIndex<GqlType>,
-    system: &ModelSystem,
-) -> Option<&PhysicalTable> {
-    let underlying_type = &system.types[type_id];
-    underlying_type
-        .table_id()
-        .map(|table_id| &system.tables[table_id])
 }

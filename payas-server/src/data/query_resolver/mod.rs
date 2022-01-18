@@ -5,7 +5,6 @@ use crate::sql::order::OrderBy;
 
 use anyhow::*;
 use maybe_owned::MaybeOwned;
-use payas_model::model::system::ModelSystem;
 use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
 use payas_model::sql::{Limit, Offset, TableQuery};
@@ -13,7 +12,6 @@ use payas_model::sql::{Limit, Offset, TableQuery};
 use super::operation_mapper::{
     compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
 };
-use super::predicate_mapper::TableJoin;
 use super::{
     operation_mapper::{OperationResolver, SQLMapper},
     Arguments,
@@ -222,20 +220,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 // Apply the join logic only for top-level selections
                 let system = query_context.get_system();
                 let table = if top_level_selection {
-                    match join {
-                        Some(join) => compute_join(join, system),
-                        None => {
-                            if let GqlTypeKind::Composite(composite_root_type) =
-                                &self.return_type.typ(system).kind
-                            {
-                                let root_physical_table =
-                                    &system.tables[composite_root_type.get_table_id()];
-                                TableQuery::Physical(root_physical_table)
-                            } else {
-                                bail!("Expected a composite type");
-                            }
-                        }
-                    }
+                    super::compute_table_query(join, self.return_type.typ(system), system)?
                 } else if let GqlTypeKind::Composite(composite_root_type) =
                     &self.return_type.typ(system).kind
                 {
@@ -391,26 +376,4 @@ fn map_field<'a>(
     };
 
     Ok((field.output_name(), column.into()))
-}
-
-fn compute_join<'a>(join_info: TableJoin<'a>, system: &'a ModelSystem) -> TableQuery<'a> {
-    join_info.dependencies.into_iter().fold(
-        TableQuery::Physical(join_info.table),
-        |acc, (join_column_dependency, join_table)| {
-            let join_predicate = Predicate::Eq(
-                Column::Physical(join_column_dependency.self_column_id.get_column(system)).into(),
-                Column::Physical(
-                    join_column_dependency
-                        .dependent_column_id
-                        .unwrap()
-                        .get_column(system),
-                )
-                .into(),
-            );
-
-            let join_table_query = compute_join(join_table, system);
-
-            acc.join(join_table_query, join_predicate.into())
-        },
-    )
 }

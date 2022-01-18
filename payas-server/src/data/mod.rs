@@ -18,7 +18,10 @@ use async_graphql_value::{ConstValue, Name};
 
 use crate::{execution::query_context::QueryContext, sql::predicate::Predicate};
 
-use payas_model::model::predicate::PredicateParameter;
+use payas_model::{
+    model::{predicate::PredicateParameter, system::ModelSystem, GqlType, GqlTypeKind},
+    sql::{column::Column, TableQuery},
+};
 
 use self::predicate_mapper::TableJoin;
 
@@ -58,4 +61,44 @@ fn compute_predicate<'a>(
     };
 
     Ok(res)
+}
+
+pub fn compute_join<'a>(join_info: TableJoin<'a>, system: &'a ModelSystem) -> TableQuery<'a> {
+    join_info.dependencies.into_iter().fold(
+        TableQuery::Physical(join_info.table),
+        |acc, (join_column_dependency, join_table)| {
+            let join_predicate = Predicate::Eq(
+                Column::Physical(join_column_dependency.self_column_id.get_column(system)).into(),
+                Column::Physical(
+                    join_column_dependency
+                        .dependent_column_id
+                        .unwrap()
+                        .get_column(system),
+                )
+                .into(),
+            );
+
+            let join_table_query = compute_join(join_table, system);
+
+            acc.join(join_table_query, join_predicate.into())
+        },
+    )
+}
+
+pub fn compute_table_query<'a>(
+    join: Option<TableJoin<'a>>,
+    root_type: &GqlType,
+    system: &'a ModelSystem,
+) -> Result<TableQuery<'a>> {
+    match join {
+        Some(join) => Ok(compute_join(join, system)),
+        None => {
+            if let GqlTypeKind::Composite(composite_root_type) = &root_type.kind {
+                let root_physical_table = &system.tables[composite_root_type.get_table_id()];
+                Ok(TableQuery::Physical(root_physical_table))
+            } else {
+                Err(anyhow!("Expected a composite type"))
+            }
+        }
+    }
 }
