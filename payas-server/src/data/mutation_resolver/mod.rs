@@ -175,7 +175,7 @@ fn update_operation<'a>(
     }
 
     let field_arguments = query_context.field_arguments(field)?;
-    let (predicate, _column_dependencies) = super::compute_predicate(
+    let (predicate, join) = super::compute_predicate(
         Some(predicate_param),
         field_arguments,
         Predicate::True,
@@ -194,6 +194,7 @@ fn update_operation<'a>(
             data_param.update_script(
                 mutation,
                 predicate.into(),
+                join,
                 select,
                 argument_value,
                 query_context,

@@ -6,15 +6,15 @@ use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     predicate::Predicate,
     transaction::TransactionStep,
-    Expression, ExpressionContext, ParameterBinding, PhysicalTable,
+    Expression, ExpressionContext, ParameterBinding, TableQuery,
 };
 
 #[derive(Debug)]
 pub struct Update<'a> {
-    pub table: &'a PhysicalTable,
-    pub predicate: MaybeOwned<'a, Predicate<'a>>,
-    pub column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)>,
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub table: Rc<TableQuery<'a>>,
+    pub predicate: Rc<MaybeOwned<'a, Predicate<'a>>>,
+    pub column_values: Vec<(&'a PhysicalColumn, Rc<MaybeOwned<'a, Column<'a>>>)>,
+    pub returning: Rc<Vec<MaybeOwned<'a, Column<'a>>>>,
 }
 
 impl<'a> Expression for Update<'a> {
@@ -69,16 +69,20 @@ impl<'a> Expression for Update<'a> {
     }
 }
 
+/// An update whose columns may refer to an earlier sql expression through a proxy column.
 #[derive(Debug)]
 pub struct TemplateUpdate<'a> {
-    pub table: &'a PhysicalTable,
+    pub table: TableQuery<'a>,
     pub predicate: Predicate<'a>,
     pub column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)>,
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 impl<'a> TemplateUpdate<'a> {
-    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Vec<Update<'a>> {
+    /// Resolve a template update to update expressions.
+    /// The prev_step will govern how many update expressions this method will return. Use use the prev_step to
+    /// resolve the proxy columns.
+    pub fn resolve(self, prev_step: Rc<TransactionStep<'a>>) -> Vec<Update<'a>> {
         let rows = prev_step.resolved_value().borrow().len();
 
         let TemplateUpdate {
@@ -88,29 +92,35 @@ impl<'a> TemplateUpdate<'a> {
             returning,
         } = self;
 
+        let table = Rc::new(table);
+        let predicate: Rc<MaybeOwned<Predicate>> = Rc::new(predicate.into());
+        let returning = Rc::new(returning);
+
         (0..rows)
             .map(|row_index| {
                 let resolved_column_values = column_values
+                    .clone()
                     .iter()
                     .map(|(physical_col, col)| {
                         let resolved_col = match col {
-                            ProxyColumn::Concrete(col) => col.as_ref().into(),
+                            ProxyColumn::Concrete(col) => col.clone(),
                             ProxyColumn::Template { col_index, step } => {
-                                MaybeOwned::Owned(Column::Lazy {
+                                Rc::new(MaybeOwned::Owned(Column::Lazy {
                                     row_index,
                                     col_index: *col_index,
-                                    step,
-                                })
+                                    step: step.clone(),
+                                }))
                             }
                         };
                         (*physical_col, resolved_col)
                     })
                     .collect();
+
                 Update {
-                    table,
-                    predicate: predicate.into(),
+                    table: table.clone(),
+                    predicate: predicate.clone(),
                     column_values: resolved_column_values,
-                    returning: returning.iter().map(|col| col.as_ref().into()).collect(),
+                    returning: returning.clone(),
                 }
             })
             .collect()

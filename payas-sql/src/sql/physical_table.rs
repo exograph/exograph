@@ -1,9 +1,11 @@
+use std::rc::Rc;
+
 use crate::spec::TableSpec;
 
 use super::{
     column::{Column, PhysicalColumn},
     predicate::Predicate,
-    Delete, Expression, ExpressionContext, Insert, ParameterBinding, Update,
+    Delete, Expression, ExpressionContext, Insert, ParameterBinding,
 };
 
 use maybe_owned::MaybeOwned;
@@ -48,40 +50,8 @@ impl PhysicalTable {
             column_names,
             column_values_seq: column_values_seq
                 .into_iter()
-                .map(|rows| rows.into_iter().map(|col| col.into()).collect())
+                .map(|rows| rows.into_iter().map(|col| Rc::new(col.into())).collect())
                 .collect(),
-            returning,
-        }
-    }
-
-    pub fn delete<'a>(
-        &'a self,
-        predicate: MaybeOwned<'a, Predicate<'a>>,
-        returning: Vec<MaybeOwned<'a, Column<'a>>>,
-    ) -> Delete {
-        Delete {
-            table: self,
-            predicate,
-            returning,
-        }
-    }
-
-    pub fn update<'a, C>(
-        &'a self,
-        column_values: Vec<(&'a PhysicalColumn, C)>,
-        predicate: MaybeOwned<'a, Predicate<'a>>,
-        returning: Vec<MaybeOwned<'a, Column<'a>>>,
-    ) -> Update
-    where
-        C: Into<MaybeOwned<'a, Column<'a>>>,
-    {
-        Update {
-            table: self,
-            column_values: column_values
-                .into_iter()
-                .map(|(pc, col)| (pc, col.into()))
-                .collect(),
-            predicate,
             returning,
         }
     }

@@ -4,14 +4,14 @@ use maybe_owned::MaybeOwned;
 
 use super::{
     column::Column, physical_table::PhysicalTable, predicate::Predicate,
-    transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
+    transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding, TableQuery,
 };
 
 #[derive(Debug)]
 pub struct Delete<'a> {
-    pub table: &'a PhysicalTable,
-    pub predicate: MaybeOwned<'a, Predicate<'a>>,
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub table: TableQuery<'a>,
+    pub predicate: Rc<MaybeOwned<'a, Predicate<'a>>>,
+    pub returning: Rc<Vec<MaybeOwned<'a, Column<'a>>>>,
 }
 
 impl<'a> Expression for Delete<'a> {
@@ -52,14 +52,14 @@ impl<'a> Expression for Delete<'a> {
 
 #[derive(Debug)]
 pub struct TemplateDelete<'a> {
-    pub table: &'a PhysicalTable,
+    pub table: TableQuery<'a>,
     pub predicate: Predicate<'a>,
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
 // TODO: Tie this properly to the prev_step
 impl<'a> TemplateDelete<'a> {
-    pub fn resolve(&'a self, _prev_step: Rc<TransactionStep<'a>>) -> Delete<'a> {
+    pub fn resolve(self, _prev_step: Rc<TransactionStep<'a>>) -> Delete<'a> {
         let TemplateDelete {
             table,
             predicate,
@@ -68,11 +68,8 @@ impl<'a> TemplateDelete<'a> {
 
         Delete {
             table,
-            predicate: predicate.into(),
-            returning: returning
-                .iter()
-                .map(|c| MaybeOwned::Borrowed(c.as_ref()))
-                .collect(),
+            predicate: Rc::new(predicate.into()),
+            returning: Rc::new(returning),
         }
     }
 }

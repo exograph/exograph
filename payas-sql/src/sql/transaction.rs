@@ -49,7 +49,7 @@ pub enum TransactionStep<'a> {
 }
 
 impl<'a> TransactionStep<'a> {
-    pub async fn execute(&self, client: &mut impl GenericClient) -> Result<()> {
+    pub async fn execute(self, client: &mut impl GenericClient) -> Result<()> {
         match self {
             Self::Concrete(step) => step.execute(client).await,
             Self::Template(step) => {
@@ -185,7 +185,7 @@ pub struct TemplateTransactionStep<'a> {
 }
 
 impl<'a> TemplateTransactionStep<'a> {
-    pub fn resolve(&'a self) -> Vec<ConcreteTransactionStep<'a>> {
+    pub fn resolve(self) -> Vec<ConcreteTransactionStep<'a>> {
         self.operation
             .resolve(self.step.clone())
             .into_iter()

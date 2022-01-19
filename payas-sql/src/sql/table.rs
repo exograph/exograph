@@ -1,6 +1,12 @@
+use std::rc::Rc;
+
 use super::{
-    column::Column, join::Join, order::OrderBy, predicate::Predicate, Expression,
-    ExpressionContext, Limit, Offset, ParameterBinding, PhysicalTable, Select,
+    column::{Column, PhysicalColumn},
+    join::Join,
+    order::OrderBy,
+    predicate::Predicate,
+    Delete, Expression, ExpressionContext, Limit, Offset, ParameterBinding, PhysicalTable, Select,
+    Update,
 };
 use maybe_owned::MaybeOwned;
 
@@ -31,6 +37,39 @@ impl<'a> TableQuery<'a> {
             offset,
             limit,
             top_level_selection,
+        }
+    }
+
+    pub fn update<C, P>(
+        self,
+        column_values: Vec<(&'a PhysicalColumn, C)>,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
+        returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    ) -> Update<'a>
+    where
+        C: Into<MaybeOwned<'a, Column<'a>>>,
+        P: Into<MaybeOwned<'a, Predicate<'a>>>,
+    {
+        Update {
+            table: Rc::new(self),
+            column_values: column_values
+                .into_iter()
+                .map(|(pc, col)| (pc, Rc::new(col.into())))
+                .collect(),
+            predicate: Rc::new(predicate),
+            returning: Rc::new(returning),
+        }
+    }
+
+    pub fn delete(
+        self,
+        predicate: MaybeOwned<'a, Predicate<'a>>,
+        returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    ) -> Delete<'a> {
+        Delete {
+            table: self,
+            predicate: Rc::new(predicate),
+            returning: Rc::new(returning),
         }
     }
 

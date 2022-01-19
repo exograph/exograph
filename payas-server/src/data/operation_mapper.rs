@@ -9,8 +9,8 @@ use tokio_postgres::{types::FromSqlOwned, Row};
 
 use crate::execution::query_context::{QueryContext, QueryResponse};
 
-use super::access_solver;
 use super::interception::InterceptedOperation;
+use super::{access_solver, predicate_mapper::TableJoin};
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
 use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::ConstValue;
@@ -37,6 +37,7 @@ pub trait SQLUpdateMapper<'a> {
         &'a self,
         mutation: &'a Mutation,
         predicate: MaybeOwned<'a, Predicate<'a>>,
+        join: Option<TableJoin<'a>>,
         select: Select<'a>,
         argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,

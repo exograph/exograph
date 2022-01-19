@@ -436,7 +436,7 @@ pub enum Column<'a> {
     Lazy {
         row_index: usize,
         col_index: usize,
-        step: &'a TransactionStep<'a>,
+        step: Rc<TransactionStep<'a>>,
     },
 }
 
@@ -544,9 +544,9 @@ impl<'a> Expression for Column<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProxyColumn<'a> {
-    Concrete(MaybeOwned<'a, Column<'a>>),
+    Concrete(Rc<MaybeOwned<'a, Column<'a>>>),
     Template {
         col_index: usize,
         step: Rc<TransactionStep<'a>>,

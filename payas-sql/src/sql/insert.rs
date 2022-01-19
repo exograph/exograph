@@ -12,7 +12,7 @@ use super::{
 pub struct Insert<'a> {
     pub table: &'a PhysicalTable,
     pub column_names: Vec<&'a PhysicalColumn>,
-    pub column_values_seq: Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
+    pub column_values_seq: Vec<Vec<Rc<MaybeOwned<'a, Column<'a>>>>>,
     pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
 }
 
@@ -88,22 +88,22 @@ impl<'a> TemplateInsert<'a> {
         })
     }
 
-    fn expand_row<'b>(
-        column_values_seq: &'b [Vec<ProxyColumn<'b>>],
+    fn resolve_row<'b>(
+        column_values_seq: Vec<Vec<ProxyColumn<'b>>>,
         row_index: usize,
-    ) -> Vec<Vec<MaybeOwned<'b, Column<'b>>>> {
+    ) -> Vec<Vec<Rc<MaybeOwned<'b, Column<'b>>>>> {
         column_values_seq
-            .iter()
+            .into_iter()
             .map(|row| {
-                row.iter()
+                row.into_iter()
                     .map(|col| match col {
-                        ProxyColumn::Concrete(col) => col.as_ref().into(),
+                        ProxyColumn::Concrete(col) => col.clone().into(),
                         ProxyColumn::Template { col_index, step } => {
-                            MaybeOwned::Owned(Column::Lazy {
+                            Rc::new(MaybeOwned::Owned(Column::Lazy {
                                 row_index,
-                                col_index: *col_index,
+                                col_index,
                                 step,
-                            })
+                            }))
                         }
                     })
                     .collect()
@@ -111,7 +111,7 @@ impl<'a> TemplateInsert<'a> {
             .collect()
     }
 
-    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Option<Insert<'a>> {
+    pub fn resolve(self, prev_step: Rc<TransactionStep<'a>>) -> Option<Insert<'a>> {
         let row_count = prev_step.resolved_value().borrow().len();
 
         // If there are template columns, but no way to resolve them, this operation need not be performed
@@ -128,14 +128,14 @@ impl<'a> TemplateInsert<'a> {
             } = self;
 
             let resolved_cols = (0..row_count)
-                .flat_map(move |row_index| Self::expand_row(column_values_seq, row_index))
+                .flat_map(move |row_index| Self::resolve_row(column_values_seq.clone(), row_index))
                 .collect();
 
             Some(Insert {
                 table,
                 column_names: column_names.clone(),
                 column_values_seq: resolved_cols,
-                returning: returning.iter().map(|ret| ret.as_ref().into()).collect(),
+                returning,
             })
         }
     }

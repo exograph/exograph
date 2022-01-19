@@ -29,13 +29,17 @@ use payas_model::{
     },
 };
 
-use super::operation_mapper::{SQLMapper, SQLUpdateMapper};
+use super::{
+    operation_mapper::{SQLMapper, SQLUpdateMapper},
+    predicate_mapper::TableJoin,
+};
 
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
     fn update_script(
         &'a self,
         mutation: &'a Mutation,
         predicate: MaybeOwned<'a, Predicate<'a>>,
+        join: Option<TableJoin<'a>>,
         select: Select<'a>,
         argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
@@ -46,6 +50,9 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         let self_update_columns = compute_update_columns(data_type, argument, query_context);
 
         let (table, _, _) = return_type_info(mutation, query_context);
+
+        let table = super::compute_table_query(join, mutation.return_type.typ(system), system)?;
+
         if !needs_transaction(data_type) {
             let ops = vec![(
                 table_name(mutation, query_context),
@@ -64,6 +71,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 Column::Physical(pk_physical_col).into()
             };
 
+            // Create an Rc so that we can pass it to multiple nested operations as a previous step
             let update_op = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::Update(table.update(self_update_columns, predicate, vec![pk_col])),
             )));
@@ -146,7 +154,7 @@ fn needs_transaction(mutation_type: &GqlType) -> bool {
 
 // A bit hacky way. Ideally, the nested parameter should have the same shape as the container type. Specifically, it should have
 // the predicate parameter and the data parameter. Then we can simply use the same code that we use for the container type. That has
-// an addtional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
+// an additional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
 fn compute_nested<'a>(
@@ -204,7 +212,7 @@ fn compute_nested<'a>(
     .collect()
 }
 
-// Which column in field_model_type coresponds to the primary column in container_model_type?
+// Which column in field_model_type corresponds to the primary column in container_model_type?
 fn compute_nested_reference_column<'a>(
     field_model_type: &'a GqlType,
     container_model_type: &'a GqlType,
