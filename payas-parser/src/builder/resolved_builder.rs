@@ -869,15 +869,6 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
                 panic!("@scale is not allowed without specifying @precision")
             }
 
-            // warn the user about possible loss of precision
-            if let Some(p) = precision_hint {
-                if p > 28 {
-                    eprint!("Warning for {}: we currently only support 28 digits of precision for this type! ", field.name);
-                    eprint!("You specified {}, values will be rounded: ", p);
-                    eprintln!("https://github.com/payalabs/payas/issues/149");
-                }
-            }
-
             Some(ResolvedTypeHint::Decimal {
                 precision: precision_hint,
                 scale: scale_hint,

@@ -1,0 +1,18 @@
+operation: |
+  mutation($verylong_number: Float) {
+    number_test: createFoo(data: { verylong: $verylong_number }) {
+      verylong
+    }
+  }
+variable: |
+  {
+    "verylong_number": 1.000000000123456789,
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Number literals cannot be specified for decimal fields"
+      }
+    ]
+  }

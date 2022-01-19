@@ -45,13 +45,13 @@ response: |
               "id": 1,
               "title": "Concert1",
               "published": true,
-              "price": 20.50
+              "price": "20.50"
             },
             {
               "id": 3,
               "title": "Concert3",
               "published": true,
-              "price": 30.5
+              "price": "30.50"
             }            
           ]
         },
@@ -65,7 +65,7 @@ response: |
               "id": 2,
               "title": "Concert2",
               "published": false,
-              "price": 12.50
+              "price": "12.50"
             }
           ]
         }
