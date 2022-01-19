@@ -37,6 +37,8 @@ pub struct ParsedTestfile {
 impl ParsedTestfile {
     pub fn model_path_string(&self) -> String {
         self.model_path
+            .canonicalize()
+            .expect("Failed to canonicalize model path")
             .to_str()
             .expect("Failed to convert file name into Unicode")
             .to_string()
