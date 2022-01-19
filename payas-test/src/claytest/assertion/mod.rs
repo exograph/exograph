@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use payas_deno::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 const ASSERT_JS: &str = include_str!("./assert.js");
@@ -46,10 +46,19 @@ pub fn dynamic_assert_using_deno(
     let mut deno_module = runtime.block_on(deno_module_future).unwrap();
 
     // run method
-    let _ = runtime.block_on(deno_module.execute_function(
-        "test",
-        vec![Arg::Serde(actual), Arg::Serde(testvariables_json)],
-    ))?;
+    let _ = runtime
+        .block_on(deno_module.execute_function(
+            "test",
+            vec![Arg::Serde(actual.clone()), Arg::Serde(testvariables_json)],
+        ))
+        .map_err(|e| {
+            anyhow!(
+                "{}\n➞ Expected: \n{}\n➞ Got: \n{}\n",
+                e,
+                expected,
+                serde_json::to_string_pretty(&actual).unwrap()
+            )
+        })?;
 
     Ok(())
 }
@@ -169,10 +178,9 @@ mod tests {
         let err =
             dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap_err();
 
-        assert_eq!(
-            err.to_string(),
-            "assert failed: expected biz on key c, got qux"
-        );
+        assert!(err
+            .to_string()
+            .starts_with("assert failed: expected biz on key c, got qux"));
     }
 
     #[test]
@@ -192,6 +200,8 @@ mod tests {
         let err =
             dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap_err();
 
-        assert_eq!(err.to_string(), "assert function failed for field c!");
+        assert!(err
+            .to_string()
+            .starts_with("assert function failed for field c!"));
     }
 }

@@ -1,8 +1,8 @@
 operation: |
     mutation (
         $venue_name1: String!, $venue_name2: String!, 
-        $venue_latitude1: Decimal!, $venue_latitude2: Decimal!, 
-        $concert_price1: Float!, $concert_price2: Float!, $concert_price3: Float!, $concert_price4: Float!,
+        $venue_latitude1: Float!, $venue_latitude2: Float!, 
+        $concert_price1: Decimal!, $concert_price2: Decimal!, $concert_price3: Decimal!, $concert_price4: Decimal!,
         $concert_title1: String!, $concert_title2: String!, $concert_title3: String!, $concert_title4: String!
     ) {
         venue1: createVenue(data: {name: $venue_name1, published: true, latitude: $venue_latitude1}) {

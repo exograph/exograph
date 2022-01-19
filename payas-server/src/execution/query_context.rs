@@ -20,8 +20,7 @@ use payas_model::{
         SQLBytes, SQLParam,
     },
 };
-use rust_decimal::prelude::*;
-use rust_decimal::Decimal;
+use pg_bigdecimal::{BigDecimal, PgNumeric};
 use serde_json::{Map, Value as JsonValue};
 use typed_arena::Arena;
 
@@ -174,7 +173,7 @@ fn cast_value(
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<Box<dyn SQLParam>>> {
     match value {
-        ConstValue::Number(number) => Ok(Some(cast_number(number, destination_type))),
+        ConstValue::Number(number) => cast_number(number, destination_type).map(Some),
         ConstValue::String(v) => cast_string(v, destination_type).map(Some),
         ConstValue::Boolean(v) => Ok(Some(Box::new(*v))),
         ConstValue::Null => Ok(None),
@@ -199,8 +198,11 @@ fn cast_list(
     array_util::to_sql_param(elems, destination_type, array_entry, cast_value)
 }
 
-fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Box<dyn SQLParam> {
-    match destination_type {
+fn cast_number(
+    number: &Number,
+    destination_type: &PhysicalColumnType,
+) -> Result<Box<dyn SQLParam>> {
+    let result: Box<dyn SQLParam> = match destination_type {
         PhysicalColumnType::Int { bits } => match bits {
             IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
             IntBits::_32 => Box::new(number.as_i64().unwrap() as i32),
@@ -211,21 +213,36 @@ fn cast_number(number: &Number, destination_type: &PhysicalColumnType) -> Box<dy
             FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
         },
         PhysicalColumnType::Numeric { .. } => {
-            let decimal = Decimal::from_str(&number.to_string());
-            Box::new(decimal.unwrap())
+            bail!("Number literals cannot be specified for decimal fields")
         }
         PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
             // TODO assumes that `id` columns are always integers
-            cast_number(number, ref_pk_type)
+            cast_number(number, ref_pk_type)?
         }
         // TODO: Expand for other number types such as float
-        _ => panic!("Unexpected destination_type for number value"),
-    }
+        _ => bail!("Unexpected destination_type for number value"),
+    };
+
+    Ok(result)
 }
 
 fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Box<dyn SQLParam>> {
     let value: Box<dyn SQLParam> = match destination_type {
-        PhysicalColumnType::Numeric { .. } => Box::new(Decimal::from_str(string)?),
+        PhysicalColumnType::Numeric { .. } => {
+            use std::str::FromStr;
+
+            let decimal =
+                match string {
+                    "NaN" => PgNumeric { n: None },
+                    _ => PgNumeric {
+                        n: Some(BigDecimal::from_str(string).with_context(|| {
+                            format!("Could not parse {} into a decimal", string)
+                        })?),
+                    },
+                };
+
+            Box::new(decimal)
+        }
 
         PhysicalColumnType::Timestamp { .. }
         | PhysicalColumnType::Time { .. }
