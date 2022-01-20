@@ -174,7 +174,7 @@ impl<'a> InterceptedOperation<'a> {
 
     #[async_recursion(?Send)]
     pub async fn execute(
-        &'a self,
+        self,
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
@@ -210,9 +210,9 @@ impl<'a> InterceptedOperation<'a> {
                 Ok(res)
             }
 
-            &InterceptedOperation::Around {
+            InterceptedOperation::Around {
                 operation_name,
-                ref core,
+                core,
                 interceptor,
             } => {
                 let res = execute_interceptor(
@@ -220,7 +220,7 @@ impl<'a> InterceptedOperation<'a> {
                     query_context,
                     claytip_execute_query!(query_context),
                     Some(operation_name.to_string()),
-                    Some(&|| {
+                    Some(&move || {
                         async move {
                             core.execute(field, query_context).await.map(
                                 |response| match response {

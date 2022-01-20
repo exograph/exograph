@@ -40,7 +40,7 @@ impl<'a> TableQuery<'a> {
         }
     }
 
-    pub fn update<C, P>(
+    pub fn update<C>(
         self,
         column_values: Vec<(&'a PhysicalColumn, C)>,
         predicate: MaybeOwned<'a, Predicate<'a>>,
@@ -48,7 +48,6 @@ impl<'a> TableQuery<'a> {
     ) -> Update<'a>
     where
         C: Into<MaybeOwned<'a, Column<'a>>>,
-        P: Into<MaybeOwned<'a, Predicate<'a>>>,
     {
         Update {
             table: Rc::new(self),

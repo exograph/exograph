@@ -34,7 +34,7 @@ struct InterceptedOperationName(Option<String>);
 
 pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> LocalBoxFuture<'a, Result<Value>>
      + 'a);
-pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> LocalBoxFuture<'a, Result<Value>> + 'a);
+pub type FnClaytipInterceptorProceed<'a> = (dyn FnOnce() -> LocalBoxFuture<'a, Result<Value>> + 'a);
 
 /// A wrapper around DenoModule.
 ///

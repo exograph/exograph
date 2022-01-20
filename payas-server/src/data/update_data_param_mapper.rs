@@ -52,9 +52,9 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 
         let (table, _, _) = return_type_info(mutation, query_context);
 
-        let table = super::compute_table_query(join, mutation.return_type.typ(system), system)?;
-
         if !needs_transaction(data_type) {
+            let table = super::compute_table_query(join, mutation.return_type.typ(system), system)?;
+
             let ops = vec![(
                 table_name(mutation, query_context),
                 SQLOperation::Update(table.update(
@@ -75,6 +75,8 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                 let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
                 Column::Physical(pk_physical_col).into()
             };
+
+            let table = super::compute_table_query(join, mutation.return_type.typ(system), system)?;
 
             let mut transaction_script = TransactionScript::default();
 
@@ -377,8 +379,10 @@ fn compute_nested_create<'a>(
                 .values
                 .into_iter()
                 .map(|subvalues| {
-                    let mut proxied: Vec<_> =
-                        subvalues.into_iter().map(ProxyColumn::Concrete).collect();
+                    let mut proxied: Vec<_> = subvalues
+                        .into_iter()
+                        .map(|v| ProxyColumn::Concrete(Rc::new(v)))
+                        .collect();
                     proxied.push(ProxyColumn::Template {
                         col_index: 0,
                         step_id: prev_step_id,
@@ -459,9 +463,12 @@ fn compute_nested_delete<'a>(
         Some(argument) => {
             let predicate = compute_predicate(argument, field_model_type, query_context);
             let system = &query_context.get_system();
+
+            let table = TableQuery::Physical(&system.tables[field_model_type.table_id().unwrap()]);
+
             vec![TransactionStep::Template(TemplateTransactionStep {
                 operation: TemplateSQLOperation::Delete(TemplateDelete {
-                    table: &system.tables[field_model_type.table_id().unwrap()],
+                    table,
                     predicate,
                     returning: vec![],
                 }),

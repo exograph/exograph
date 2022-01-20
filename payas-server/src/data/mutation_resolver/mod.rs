@@ -122,8 +122,6 @@ fn delete_operation<'a>(
     select: Select<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
-    let (table, _, _) = return_type_info(mutation, query_context);
-
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Delete,
@@ -135,7 +133,7 @@ fn delete_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let (predicate, _column_dependencies) = super::compute_predicate(
+    let (predicate, join) = super::compute_predicate(
         Some(predicate_param),
         query_context.field_arguments(field)?,
         access_predicate,
@@ -147,6 +145,9 @@ fn delete_operation<'a>(
             predicate_param.name
         )
     })?;
+
+    let system = query_context.get_system();
+    let table = super::compute_table_query(join, mutation.return_type.typ(system), system)?;
 
     let ops = vec![(
         table_name(mutation, query_context),
