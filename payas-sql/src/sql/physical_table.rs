@@ -4,8 +4,7 @@ use crate::spec::TableSpec;
 
 use super::{
     column::{Column, PhysicalColumn},
-    predicate::Predicate,
-    Delete, Expression, ExpressionContext, Insert, ParameterBinding,
+    Expression, ExpressionContext, Insert, ParameterBinding,
 };
 
 use maybe_owned::MaybeOwned;

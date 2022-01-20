@@ -107,9 +107,12 @@ fn create_operation<'a>(
     let info = insertion_info(data_param, field_arguments, query_context)?.unwrap();
     let ops = info.operation(query_context, true);
 
-    Ok(TransactionScript::Single(TransactionStep::Concrete(
-        ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
-    )))
+    let mut transaction_script = TransactionScript::default();
+    transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
+        SQLOperation::Cte(Cte { ctes: ops, select }),
+    )));
+
+    Ok(transaction_script)
 }
 
 fn delete_operation<'a>(
@@ -150,9 +153,12 @@ fn delete_operation<'a>(
         SQLOperation::Delete(table.delete(predicate.into(), vec![Column::Star.into()])),
     )];
 
-    Ok(TransactionScript::Single(TransactionStep::Concrete(
-        ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
-    )))
+    let mut transaction_script = TransactionScript::default();
+    transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
+        SQLOperation::Cte(Cte { ctes: ops, select }),
+    )));
+
+    Ok(transaction_script)
 }
 
 fn update_operation<'a>(

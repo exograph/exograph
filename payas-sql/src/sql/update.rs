@@ -5,7 +5,7 @@ use maybe_owned::MaybeOwned;
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     predicate::Predicate,
-    transaction::TransactionStep,
+    transaction::{TransactionContext, TransactionStepId},
     Expression, ExpressionContext, ParameterBinding, TableQuery,
 };
 
@@ -79,11 +79,12 @@ pub struct TemplateUpdate<'a> {
 }
 
 impl<'a> TemplateUpdate<'a> {
-    /// Resolve a template update to update expressions.
-    /// The prev_step will govern how many update expressions this method will return. Use use the prev_step to
-    /// resolve the proxy columns.
-    pub fn resolve(self, prev_step: Rc<TransactionStep<'a>>) -> Vec<Update<'a>> {
-        let rows = prev_step.resolved_value().borrow().len();
+    pub fn resolve(
+        self,
+        prev_step_id: TransactionStepId,
+        transaction_context: &TransactionContext,
+    ) -> Vec<Update<'a>> {
+        let rows = transaction_context.row_count(prev_step_id);
 
         let TemplateUpdate {
             table,
@@ -100,19 +101,18 @@ impl<'a> TemplateUpdate<'a> {
             .map(|row_index| {
                 let resolved_column_values = column_values
                     .clone()
-                    .iter()
+                    .into_iter()
                     .map(|(physical_col, col)| {
                         let resolved_col = match col {
-                            ProxyColumn::Concrete(col) => col.clone(),
-                            ProxyColumn::Template { col_index, step } => {
-                                Rc::new(MaybeOwned::Owned(Column::Lazy {
-                                    row_index,
-                                    col_index: *col_index,
-                                    step: step.clone(),
-                                }))
+                            ProxyColumn::Concrete(col) => col,
+                            ProxyColumn::Template { col_index, step_id } => {
+                                Rc::new(MaybeOwned::Owned(Column::Literal(Box::new(
+                                    transaction_context
+                                        .resolve_value(step_id, row_index, col_index),
+                                ))))
                             }
                         };
-                        (*physical_col, resolved_col)
+                        (physical_col, resolved_col)
                     })
                     .collect();
 

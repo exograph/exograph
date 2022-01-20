@@ -35,11 +35,13 @@ impl<'a> OperationResolver<'a> for Query {
         match &self.kind {
             QueryKind::Database(_) => {
                 let select = self.operation(&field.node, Predicate::True, query_context, true)?;
-                Ok(OperationResolverResult::SQLOperation(
-                    TransactionScript::Single(TransactionStep::Concrete(
-                        ConcreteTransactionStep::new(SQLOperation::Select(select)),
-                    )),
-                ))
+
+                let mut transaction_script = TransactionScript::default();
+                transaction_script.add_step(TransactionStep::Concrete(
+                    ConcreteTransactionStep::new(SQLOperation::Select(select)),
+                ));
+
+                Ok(OperationResolverResult::SQLOperation(transaction_script))
             }
 
             QueryKind::Service { method_id, .. } => {

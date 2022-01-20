@@ -159,17 +159,18 @@ pub fn compute_service_access_predicate<'a>(
 
 impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
-        &self,
+        self,
         field: &Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
             OperationResolverResult::SQLOperation(transaction_script) => {
                 let mut client = query_context.executor.database.get_client().await?;
-                let mut result = transaction_script.execute(&mut client, extractor).await?;
+                let mut result = transaction_script.execute(&mut client).await?;
 
                 if result.len() == 1 {
-                    Ok(QueryResponse::Raw(Some(result.swap_remove(0))))
+                    let string_result = extractor(result.swap_remove(0))?;
+                    Ok(QueryResponse::Raw(Some(string_result)))
                 } else if result.is_empty() {
                     Ok(QueryResponse::Raw(None))
                 } else {
@@ -181,7 +182,7 @@ impl<'a> OperationResolverResult<'a> {
             }
 
             OperationResolverResult::DenoOperation(method_id) => {
-                let method = &query_context.executor.system.methods[*method_id];
+                let method = &query_context.executor.system.methods[method_id];
 
                 let access_predicate =
                     compute_service_access_predicate(&method.return_type, method, query_context);
