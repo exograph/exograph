@@ -1,11 +1,9 @@
-use std::rc::Rc;
-
 use maybe_owned::MaybeOwned;
 
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     predicate::Predicate,
-    transaction::TransactionStep,
+    transaction::{TransactionContext, TransactionStepId},
     Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
@@ -78,8 +76,12 @@ pub struct TemplateUpdate<'a> {
 }
 
 impl<'a> TemplateUpdate<'a> {
-    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Vec<Update<'a>> {
-        let rows = prev_step.resolved_value().borrow().len();
+    pub fn resolve(
+        &'a self,
+        prev_step_id: TransactionStepId,
+        transaction_context: &TransactionContext,
+    ) -> Vec<Update<'a>> {
+        let rows = transaction_context.row_count(prev_step_id);
 
         let TemplateUpdate {
             table,
@@ -95,12 +97,11 @@ impl<'a> TemplateUpdate<'a> {
                     .map(|(physical_col, col)| {
                         let resolved_col = match col {
                             ProxyColumn::Concrete(col) => col.as_ref().into(),
-                            ProxyColumn::Template { col_index, step } => {
-                                MaybeOwned::Owned(Column::Lazy {
-                                    row_index,
-                                    col_index: *col_index,
-                                    step,
-                                })
+                            ProxyColumn::Template { col_index, step_id } => {
+                                MaybeOwned::Owned(Column::Literal(Box::new(
+                                    transaction_context
+                                        .resolve_value(*step_id, row_index, *col_index),
+                                )))
                             }
                         };
                         (*physical_col, resolved_col)
