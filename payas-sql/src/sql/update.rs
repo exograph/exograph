@@ -3,7 +3,7 @@ use maybe_owned::MaybeOwned;
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     predicate::Predicate,
-    transaction::{StepId, TransactionContext},
+    transaction::{TransactionContext, TransactionStepId},
     Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
@@ -78,7 +78,7 @@ pub struct TemplateUpdate<'a> {
 impl<'a> TemplateUpdate<'a> {
     pub fn resolve(
         &'a self,
-        prev_step_id: StepId,
+        prev_step_id: TransactionStepId,
         transaction_context: &TransactionContext,
     ) -> Vec<Update<'a>> {
         let rows = transaction_context.row_count(prev_step_id);

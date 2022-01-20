@@ -1,7 +1,8 @@
 use crate::spec::{ColumnSpec, SQLStatement};
 
 use super::{
-    select::*, transaction::StepId, Expression, ExpressionContext, ParameterBinding, SQLParam,
+    select::*, transaction::TransactionStepId, Expression, ExpressionContext, ParameterBinding,
+    SQLParam,
 };
 use anyhow::{bail, Result};
 use maybe_owned::MaybeOwned;
@@ -531,5 +532,8 @@ impl<'a> Expression for Column<'a> {
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
     Concrete(MaybeOwned<'a, Column<'a>>),
-    Template { col_index: usize, step_id: StepId },
+    Template {
+        col_index: usize,
+        step_id: TransactionStepId,
+    },
 }

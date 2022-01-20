@@ -20,8 +20,8 @@ use payas_model::{
         column::{PhysicalColumn, PhysicalColumnType, ProxyColumn},
         predicate::Predicate,
         transaction::{
-            ConcreteTransactionStep, StepId, TemplateTransactionStep, TransactionScript,
-            TransactionStep,
+            ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
+            TransactionStepId,
         },
         Cte, SQLOperation, Select, TemplateDelete, TemplateInsert, TemplateSQLOperation,
         TemplateUpdate,
@@ -161,7 +161,7 @@ fn needs_transaction(mutation_type: &GqlType) -> bool {
 fn compute_nested<'a>(
     data_type: &'a GqlType,
     argument: &'a ConstValue,
-    prev_step_id: StepId,
+    prev_step_id: TransactionStepId,
     container_model_type: &'a GqlType,
     query_context: &'a QueryContext<'a>,
 ) -> Vec<TransactionStep<'a>> {
@@ -250,7 +250,7 @@ fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step_id: StepId,
+    prev_step_id: TransactionStepId,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
     let system = &query_context.get_system();
@@ -294,7 +294,7 @@ fn compute_nested_update_object_arg<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step_id: StepId,
+    prev_step_id: TransactionStepId,
     nested_reference_col: &'a PhysicalColumn,
 ) -> TransactionStep<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
@@ -344,7 +344,7 @@ fn compute_nested_create<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step_id: StepId,
+    prev_step_id: TransactionStepId,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
     let system = &query_context.get_system();
@@ -400,7 +400,7 @@ fn compute_nested_delete<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step_id: StepId,
+    prev_step_id: TransactionStepId,
     _container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).

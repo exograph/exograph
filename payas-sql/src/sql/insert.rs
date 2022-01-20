@@ -2,7 +2,7 @@ use maybe_owned::MaybeOwned;
 
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
-    transaction::{StepId, TransactionContext},
+    transaction::{TransactionContext, TransactionStepId},
     Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
@@ -110,7 +110,7 @@ impl<'a> TemplateInsert<'a> {
 
     pub fn resolve(
         &'a self,
-        prev_step_id: StepId,
+        prev_step_id: TransactionStepId,
         transaction_context: &TransactionContext,
     ) -> Option<Insert<'a>> {
         let row_count = transaction_context.row_count(prev_step_id);

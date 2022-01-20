@@ -17,10 +17,10 @@ pub struct TransactionContext {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct StepId(pub usize);
+pub struct TransactionStepId(pub usize);
 
 impl TransactionContext {
-    pub fn resolve_value(&self, step_id: StepId, row: usize, col: usize) -> SQLValue {
+    pub fn resolve_value(&self, step_id: TransactionStepId, row: usize, col: usize) -> SQLValue {
         self.results
             .get(step_id.0)
             .unwrap()
@@ -30,7 +30,7 @@ impl TransactionContext {
             .unwrap()
     }
 
-    pub fn row_count(&self, step_id: StepId) -> usize {
+    pub fn row_count(&self, step_id: TransactionStepId) -> usize {
         self.results[step_id.0].len()
     }
 }
@@ -64,10 +64,10 @@ impl<'a> TransactionScript<'a> {
             .ok_or_else(|| anyhow!(""))
     }
 
-    pub fn add_step(&mut self, step: TransactionStep<'a>) -> StepId {
+    pub fn add_step(&mut self, step: TransactionStep<'a>) -> TransactionStepId {
         let id = self.steps.len();
         self.steps.push(step);
-        StepId(id)
+        TransactionStepId(id)
     }
 }
 
@@ -138,7 +138,7 @@ impl<'a> ConcreteTransactionStep<'a> {
 #[derive(Debug)]
 pub struct TemplateTransactionStep<'a> {
     pub operation: TemplateSQLOperation<'a>,
-    pub prev_step_id: StepId,
+    pub prev_step_id: TransactionStepId,
 }
 
 impl<'a> TemplateTransactionStep<'a> {

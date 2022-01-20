@@ -3,7 +3,7 @@ use super::{
     delete::TemplateDelete,
     insert::{Insert, TemplateInsert},
     select::Select,
-    transaction::{StepId, TransactionContext},
+    transaction::{TransactionContext, TransactionStepId},
     update::{TemplateUpdate, Update},
     Delete, Expression, ExpressionContext, OperationExpression, ParameterBinding,
 };
@@ -40,7 +40,7 @@ pub enum TemplateSQLOperation<'a> {
 impl<'a> TemplateSQLOperation<'a> {
     pub fn resolve(
         &'a self,
-        prev_step_id: StepId,
+        prev_step_id: TransactionStepId,
         transaction_context: &TransactionContext,
     ) -> Vec<SQLOperation<'a>> {
         match self {
