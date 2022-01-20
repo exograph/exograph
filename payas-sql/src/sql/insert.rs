@@ -1,10 +1,8 @@
-use std::rc::Rc;
-
 use maybe_owned::MaybeOwned;
 
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
-    transaction::TransactionStep,
+    transaction::{StepId, TransactionContext},
     Expression, ExpressionContext, ParameterBinding, PhysicalTable,
 };
 
@@ -91,6 +89,7 @@ impl<'a> TemplateInsert<'a> {
     fn expand_row<'b>(
         column_values_seq: &'b [Vec<ProxyColumn<'b>>],
         row_index: usize,
+        transaction_context: &TransactionContext,
     ) -> Vec<Vec<MaybeOwned<'b, Column<'b>>>> {
         column_values_seq
             .iter()
@@ -98,12 +97,10 @@ impl<'a> TemplateInsert<'a> {
                 row.iter()
                     .map(|col| match col {
                         ProxyColumn::Concrete(col) => col.as_ref().into(),
-                        ProxyColumn::Template { col_index, step } => {
-                            MaybeOwned::Owned(Column::Lazy {
-                                row_index,
-                                col_index: *col_index,
-                                step,
-                            })
+                        ProxyColumn::Template { col_index, step_id } => {
+                            MaybeOwned::Owned(Column::Literal(Box::new(
+                                transaction_context.resolve_value(*step_id, row_index, *col_index),
+                            )))
                         }
                     })
                     .collect()
@@ -111,8 +108,12 @@ impl<'a> TemplateInsert<'a> {
             .collect()
     }
 
-    pub fn resolve(&'a self, prev_step: Rc<TransactionStep<'a>>) -> Option<Insert<'a>> {
-        let row_count = prev_step.resolved_value().borrow().len();
+    pub fn resolve(
+        &'a self,
+        prev_step_id: StepId,
+        transaction_context: &TransactionContext,
+    ) -> Option<Insert<'a>> {
+        let row_count = transaction_context.row_count(prev_step_id);
 
         // If there are template columns, but no way to resolve them, this operation need not be performed
         // For example, if we are updating concert_artists while updating concerts, and there are no matching concerts
@@ -128,7 +129,9 @@ impl<'a> TemplateInsert<'a> {
             } = self;
 
             let resolved_cols = (0..row_count)
-                .flat_map(move |row_index| Self::expand_row(column_values_seq, row_index))
+                .flat_map(move |row_index| {
+                    Self::expand_row(column_values_seq, row_index, transaction_context)
+                })
                 .collect();
 
             Some(Insert {

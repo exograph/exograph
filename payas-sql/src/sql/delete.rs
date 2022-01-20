@@ -1,10 +1,8 @@
-use std::rc::Rc;
-
 use maybe_owned::MaybeOwned;
 
 use super::{
-    column::Column, physical_table::PhysicalTable, predicate::Predicate,
-    transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
+    column::Column, physical_table::PhysicalTable, predicate::Predicate, Expression,
+    ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug)]
@@ -59,7 +57,7 @@ pub struct TemplateDelete<'a> {
 
 // TODO: Tie this properly to the prev_step
 impl<'a> TemplateDelete<'a> {
-    pub fn resolve(&'a self, _prev_step: Rc<TransactionStep<'a>>) -> Delete<'a> {
+    pub fn resolve(&'a self) -> Delete<'a> {
         let TemplateDelete {
             table,
             predicate,

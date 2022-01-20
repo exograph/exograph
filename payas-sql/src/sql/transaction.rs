@@ -1,44 +1,73 @@
-use std::{cell::RefCell, rc::Rc};
-
-use anyhow::{Context, Result};
-use tokio_postgres::{
-    types::{FromSqlOwned, ToSql},
-    Client, GenericClient, Row,
-};
+use anyhow::{anyhow, Context, Result};
+use tokio_postgres::{types::ToSql, Client, GenericClient, Row};
 
 use crate::sql::ExpressionContext;
 
-use super::{
-    sql_operation::TemplateSQLOperation, OperationExpression, SQLOperation, SQLParam, SQLValue,
-};
+use super::{sql_operation::TemplateSQLOperation, OperationExpression, SQLOperation, SQLValue};
 
-#[derive(Debug)]
-pub enum TransactionScript<'a> {
-    Single(TransactionStep<'a>),
-    Multi(Vec<Rc<TransactionStep<'a>>>, TransactionStep<'a>),
+type TransactionStepResult = Vec<Row>;
+
+#[derive(Default, Debug)]
+pub struct TransactionScript<'a> {
+    steps: Vec<TransactionStep<'a>>,
+}
+
+pub struct TransactionContext {
+    results: Vec<TransactionStepResult>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StepId(pub usize);
+
+impl TransactionContext {
+    pub fn resolve_value(&self, step_id: StepId, row: usize, col: usize) -> SQLValue {
+        self.results
+            .get(step_id.0)
+            .unwrap()
+            .get(row)
+            .unwrap()
+            .try_get::<usize, SQLValue>(col)
+            .unwrap()
+    }
+
+    pub fn row_count(&self, step_id: StepId) -> usize {
+        self.results[step_id.0].len()
+    }
 }
 
 impl<'a> TransactionScript<'a> {
-    pub async fn execute<T: FromSqlOwned>(
-        &'a self,
-        client: &mut Client,
-        extractor: fn(Row) -> Result<T>,
-    ) -> Result<Vec<T>> {
-        match self {
-            Self::Single(step) => step.execute_and_extract(client, extractor).await,
-            Self::Multi(init, last) => {
-                println!("Starting transaction");
-                let mut tx = client.transaction().await?;
-                for step in init {
-                    step.execute(&mut tx).await?;
-                }
+    /// Returns the result of the last step
+    pub async fn execute(&'a self, client: &mut Client) -> Result<TransactionStepResult> {
+        println!("Starting transaction");
+        let mut tx = client.transaction().await?;
 
-                let result = last.execute_and_extract(&mut tx, extractor).await;
-                println!("Committing transaction");
-                tx.commit().await?;
-                result
+        let mut transaction_context = TransactionContext { results: vec![] };
+
+        for (index, step) in self.steps.iter().enumerate() {
+            println!("!! running step {}", index);
+
+            for (index, result) in transaction_context.results.iter().enumerate() {
+                println!("!! result of step {}: {:#?}", index, result);
             }
+
+            let result = step.execute(&mut tx, &transaction_context).await?;
+            transaction_context.results.push(result)
         }
+
+        println!("Committing transaction");
+        tx.commit().await?;
+
+        transaction_context
+            .results
+            .into_iter()
+            .last()
+            .ok_or_else(|| anyhow!(""))
+    }
+
+    pub fn add_step(&mut self, step: TransactionStep<'a>) -> StepId {
+        let id = self.steps.len();
+        self.steps.push(step);
+        StepId(id)
     }
 }
 
@@ -49,56 +78,26 @@ pub enum TransactionStep<'a> {
 }
 
 impl<'a> TransactionStep<'a> {
-    pub async fn execute(&self, client: &mut impl GenericClient) -> Result<()> {
+    pub async fn execute(
+        &self,
+        client: &mut impl GenericClient,
+        transaction_context: &TransactionContext,
+    ) -> Result<TransactionStepResult> {
         match self {
             Self::Concrete(step) => step.execute(client).await,
             Self::Template(step) => {
-                let concrete = step.resolve();
-
-                let mut result = Ok(());
-                for substep in concrete {
-                    result = substep.execute(client).await;
-                    step.values.borrow_mut().extend(substep.values.into_inner());
-                }
-                result
-            }
-        }
-    }
-
-    async fn execute_and_extract<T: FromSqlOwned>(
-        &self,
-        client: &mut impl GenericClient,
-        extractor: fn(Row) -> Result<T>,
-    ) -> Result<Vec<T>> {
-        match self {
-            Self::Concrete(step) => step.execute_and_extract(client, extractor).await,
-            Self::Template(step) => {
-                let concrete = step.resolve();
+                let concrete = step.resolve(transaction_context);
 
                 match concrete.as_slice() {
                     [init @ .., last] => {
                         for substep in init {
                             substep.execute(client).await?;
                         }
-                        last.execute_and_extract(client, extractor).await
+                        last.execute(client).await
                     }
                     _ => Ok(vec![]),
                 }
             }
-        }
-    }
-
-    pub fn resolved_value(&'a self) -> &'a RefCell<Vec<Vec<SQLValue>>> {
-        match self {
-            Self::Concrete(step) => &step.values,
-            Self::Template(step) => &step.values,
-        }
-    }
-
-    pub fn get_value(&'a self, row_index: usize, col_index: usize) -> &'a (dyn SQLParam + 'static) {
-        match self {
-            Self::Concrete(step) => step.get_value(row_index, col_index),
-            Self::Template(step) => step.get_value(row_index, col_index),
         }
     }
 }
@@ -106,34 +105,18 @@ impl<'a> TransactionStep<'a> {
 #[derive(Debug)]
 pub struct ConcreteTransactionStep<'a> {
     pub operation: SQLOperation<'a>,
-    pub values: RefCell<Vec<Vec<SQLValue>>>,
 }
 
 impl<'a> ConcreteTransactionStep<'a> {
     pub fn new(operation: SQLOperation<'a>) -> Self {
-        Self {
-            operation,
-            values: RefCell::new(vec![]),
-        }
+        Self { operation }
     }
 
-    pub async fn execute(&'a self, client: &mut impl GenericClient) -> Result<()> {
-        let rows = self.run_query(client).await?;
-
-        let values = Self::result_extractor(&rows)?;
-        *self.values.borrow_mut() = values;
-
-        Ok(())
-    }
-
-    async fn execute_and_extract<T: FromSqlOwned>(
+    pub async fn execute(
         &'a self,
         client: &mut impl GenericClient,
-        extractor: fn(Row) -> Result<T>,
-    ) -> Result<Vec<T>> {
-        let rows = self.run_query(client).await?;
-
-        rows.into_iter().map(extractor).collect()
+    ) -> Result<TransactionStepResult> {
+        self.run_query(client).await
     }
 
     async fn run_query(&'a self, client: &mut impl GenericClient) -> Result<Vec<Row>> {
@@ -150,61 +133,23 @@ impl<'a> ConcreteTransactionStep<'a> {
             .await
             .context("PostgreSQL query failed")
     }
-
-    fn result_extractor(rows: &[Row]) -> Result<Vec<Vec<SQLValue>>> {
-        Ok(rows
-            .iter()
-            .map(|row| {
-                (0..row.len())
-                    .map(move |col_index| row.get::<usize, SQLValue>(col_index))
-                    .collect::<Vec<SQLValue>>()
-            })
-            .collect::<Vec<_>>())
-    }
-
-    pub fn get_value(&self, row_index: usize, col_index: usize) -> &'a (dyn SQLParam + 'static) {
-        let reference = &self.values.borrow()[row_index][col_index];
-
-        // SAFETY: This is safe because we are casting an SQLValue to a dyn SQLParam and we know that we keep
-        // around a reference to the original SQLValue as long as `self` is alive.
-        // Ideally, we shouldn't need unsafe here (see https://github.com/payalabs/payas/issues/176)
-        unsafe {
-            let ptr: *const std::ffi::c_void = std::mem::transmute(reference);
-            let sql_param: &'a SQLValue = &*(ptr as *const SQLValue);
-
-            sql_param
-        }
-    }
 }
 
 #[derive(Debug)]
 pub struct TemplateTransactionStep<'a> {
     pub operation: TemplateSQLOperation<'a>,
-    pub step: Rc<TransactionStep<'a>>,
-    pub values: RefCell<Vec<Vec<SQLValue>>>,
+    pub prev_step_id: StepId,
 }
 
 impl<'a> TemplateTransactionStep<'a> {
-    pub fn resolve(&'a self) -> Vec<ConcreteTransactionStep<'a>> {
+    pub fn resolve(
+        &'a self,
+        transaction_context: &TransactionContext,
+    ) -> Vec<ConcreteTransactionStep<'a>> {
         self.operation
-            .resolve(self.step.clone())
+            .resolve(self.prev_step_id, transaction_context)
             .into_iter()
-            .map(|operation| ConcreteTransactionStep {
-                operation,
-                values: RefCell::new(vec![]),
-            })
+            .map(|operation| ConcreteTransactionStep { operation })
             .collect()
-    }
-
-    // TODO: Dedup from ConcreteTransactionStep
-    pub fn get_value(&self, row_index: usize, col_index: usize) -> &'a (dyn SQLParam + 'static) {
-        let reference = &self.values.borrow()[row_index][col_index];
-
-        unsafe {
-            let ptr: *const std::ffi::c_void = std::mem::transmute(reference);
-            let sql_param: &'a SQLValue = &*(ptr as *const SQLValue);
-
-            sql_param
-        }
     }
 }

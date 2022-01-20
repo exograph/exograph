@@ -1,13 +1,12 @@
 use crate::spec::{ColumnSpec, SQLStatement};
 
 use super::{
-    select::*, transaction::TransactionStep, Expression, ExpressionContext, ParameterBinding,
-    SQLParam,
+    select::*, transaction::StepId, Expression, ExpressionContext, ParameterBinding, SQLParam,
 };
 use anyhow::{bail, Result};
 use maybe_owned::MaybeOwned;
 use serde::{Deserialize, Serialize};
-use std::{fmt::Write, rc::Rc};
+use std::fmt::Write;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct PhysicalColumn {
@@ -433,11 +432,6 @@ pub enum Column<'a> {
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
-    Lazy {
-        row_index: usize,
-        col_index: usize,
-        step: &'a TransactionStep<'a>,
-    },
 }
 
 impl Column<'_> {
@@ -463,7 +457,6 @@ impl<'a> PartialEq for Column<'a> {
             (Column::Constant(v1), Column::Constant(v2)) => v1 == v2,
             (Column::Star, Column::Star) => true,
             (Column::Null, Column::Null) => true,
-            (a @ Column::Lazy { .. }, b @ Column::Lazy { .. }) => a == b,
             _ => false,
         }
     }
@@ -519,7 +512,7 @@ impl<'a> Expression for Column<'a> {
                 ParameterBinding::new(stmt, params)
             }
             Column::JsonAgg(column) => {
-                // coalesce to return an empty array if we have no matching enities
+                // coalesce to return an empty array if we have no matching entities
                 let column_binding = column.binding(expression_context);
                 let stmt = format!("coalesce(json_agg({}), '[]'::json)", column_binding.stmt);
                 ParameterBinding::new(stmt, column_binding.params)
@@ -531,15 +524,6 @@ impl<'a> Expression for Column<'a> {
             Column::Constant(value) => ParameterBinding::new(format!("'{}'", value), vec![]),
             Column::Star => ParameterBinding::new("*".to_string(), vec![]),
             Column::Null => ParameterBinding::new("NULL".to_string(), vec![]),
-            Column::Lazy {
-                row_index,
-                col_index,
-                step,
-            } => {
-                let sql_val = step.get_value(*row_index, *col_index);
-                let param_index = expression_context.next_param();
-                ParameterBinding::new(format! {"${}", param_index}, vec![sql_val])
-            }
         }
     }
 }
@@ -547,8 +531,5 @@ impl<'a> Expression for Column<'a> {
 #[derive(Debug)]
 pub enum ProxyColumn<'a> {
     Concrete(MaybeOwned<'a, Column<'a>>),
-    Template {
-        col_index: usize,
-        step: Rc<TransactionStep<'a>>,
-    },
+    Template { col_index: usize, step_id: StepId },
 }

@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use anyhow::*;
 use async_graphql_value::ConstValue;
 use maybe_owned::MaybeOwned;
@@ -22,7 +20,8 @@ use payas_model::{
         column::{PhysicalColumn, PhysicalColumnType, ProxyColumn},
         predicate::Predicate,
         transaction::{
-            ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
+            ConcreteTransactionStep, StepId, TemplateTransactionStep, TransactionScript,
+            TransactionStep,
         },
         Cte, SQLOperation, Select, TemplateDelete, TemplateInsert, TemplateSQLOperation,
         TemplateUpdate,
@@ -55,37 +54,47 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
                     vec![Column::Star.into()],
                 )),
             )];
-            Ok(TransactionScript::Single(TransactionStep::Concrete(
+
+            let mut transaction_script = TransactionScript::default();
+            let _ = transaction_script.add_step(TransactionStep::Concrete(
                 ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
-            )))
+            ));
+
+            Ok(transaction_script)
         } else {
             let pk_col = {
                 let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
                 Column::Physical(pk_physical_col).into()
             };
 
-            let update_op = Rc::new(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Update(table.update(self_update_columns, predicate, vec![pk_col])),
-            )));
+            let mut transaction_script = TransactionScript::default();
+
+            let update_op_id = transaction_script.add_step(TransactionStep::Concrete(
+                ConcreteTransactionStep::new(SQLOperation::Update(table.update(
+                    self_update_columns,
+                    predicate,
+                    vec![pk_col],
+                ))),
+            ));
 
             let container_model_type = mutation.return_type.typ(system);
             let nested_updates = compute_nested(
                 data_type,
                 argument,
-                update_op.clone(),
+                update_op_id,
                 container_model_type,
                 query_context,
             );
 
-            let mut ops = vec![update_op.clone()];
-            ops.extend(nested_updates.into_iter().map(Rc::new));
+            for step in nested_updates.into_iter() {
+                let _ = transaction_script.add_step(step);
+            }
 
-            Ok(TransactionScript::Multi(
-                ops,
-                TransactionStep::Concrete(ConcreteTransactionStep::new(SQLOperation::Select(
-                    select,
-                ))),
-            ))
+            transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
+                SQLOperation::Select(select),
+            )));
+
+            Ok(transaction_script)
         }
     }
 }
@@ -146,13 +155,13 @@ fn needs_transaction(mutation_type: &GqlType) -> bool {
 
 // A bit hacky way. Ideally, the nested parameter should have the same shape as the container type. Specifically, it should have
 // the predicate parameter and the data parameter. Then we can simply use the same code that we use for the container type. That has
-// an addtional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
+// an additional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
 fn compute_nested<'a>(
     data_type: &'a GqlType,
     argument: &'a ConstValue,
-    prev_step: Rc<TransactionStep<'a>>,
+    prev_step_id: StepId,
     container_model_type: &'a GqlType,
     query_context: &'a QueryContext<'a>,
 ) -> Vec<TransactionStep<'a>> {
@@ -174,7 +183,7 @@ fn compute_nested<'a>(
                                 field_model_type,
                                 argument,
                                 query_context,
-                                prev_step.clone(),
+                                prev_step_id,
                                 container_model_type,
                             ));
 
@@ -182,7 +191,7 @@ fn compute_nested<'a>(
                                 field_model_type,
                                 argument,
                                 query_context,
-                                prev_step.clone(),
+                                prev_step_id,
                                 container_model_type,
                             ));
 
@@ -190,7 +199,7 @@ fn compute_nested<'a>(
                                 field_model_type,
                                 argument,
                                 query_context,
-                                prev_step.clone(),
+                                prev_step_id,
                                 container_model_type,
                             ));
                             ops
@@ -241,7 +250,7 @@ fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step: Rc<TransactionStep<'a>>,
+    prev_step_id: StepId,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
     let system = &query_context.get_system();
@@ -258,7 +267,7 @@ fn compute_nested_update<'a>(
                     field_model_type,
                     arg,
                     query_context,
-                    prev_step,
+                    prev_step_id,
                     nested_reference_col,
                 )]
             }
@@ -269,7 +278,7 @@ fn compute_nested_update<'a>(
                         field_model_type,
                         arg,
                         query_context,
-                        prev_step.clone(),
+                        prev_step_id,
                         nested_reference_col,
                     )
                 })
@@ -285,7 +294,7 @@ fn compute_nested_update_object_arg<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step: Rc<TransactionStep<'a>>,
+    prev_step_id: StepId,
     nested_reference_col: &'a PhysicalColumn,
 ) -> TransactionStep<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
@@ -313,7 +322,7 @@ fn compute_nested_update_object_arg<'a>(
         nested_reference_col,
         ProxyColumn::Template {
             col_index: 0,
-            step: prev_step.clone(),
+            step_id: prev_step_id,
         },
     ));
 
@@ -326,8 +335,7 @@ fn compute_nested_update_object_arg<'a>(
 
     TransactionStep::Template(TemplateTransactionStep {
         operation: op,
-        step: prev_step,
-        values: RefCell::new(vec![]),
+        prev_step_id,
     })
 }
 
@@ -336,7 +344,7 @@ fn compute_nested_create<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step: Rc<TransactionStep<'a>>,
+    prev_step_id: StepId,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
     let system = &query_context.get_system();
@@ -363,7 +371,7 @@ fn compute_nested_create<'a>(
                         subvalues.into_iter().map(ProxyColumn::Concrete).collect();
                     proxied.push(ProxyColumn::Template {
                         col_index: 0,
-                        step: prev_step.clone(),
+                        step_id: prev_step_id,
                     });
                     proxied
                 })
@@ -378,8 +386,7 @@ fn compute_nested_create<'a>(
 
             TransactionStep::Template(TemplateTransactionStep {
                 operation: op,
-                step: prev_step,
-                values: RefCell::new(vec![]),
+                prev_step_id,
             })
         });
 
@@ -393,7 +400,7 @@ fn compute_nested_delete<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step: Rc<TransactionStep<'a>>,
+    prev_step_id: StepId,
     _container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
@@ -448,8 +455,7 @@ fn compute_nested_delete<'a>(
                     predicate,
                     returning: vec![],
                 }),
-                step: prev_step,
-                values: RefCell::new(vec![]),
+                prev_step_id,
             })]
         }
         None => vec![],
