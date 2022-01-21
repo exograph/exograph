@@ -6,10 +6,7 @@ use anyhow::*;
 use async_graphql_value::ConstValue;
 
 use maybe_owned::MaybeOwned;
-use payas_model::{
-    model::{mapped_arena::SerializableSlabIndex, predicate::*, system::ModelSystem, GqlType},
-    sql::PhysicalTable,
-};
+use payas_model::{model::predicate::*, sql::PhysicalTable};
 
 pub trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
@@ -137,10 +134,10 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                             predicate_connector(new_predicate, mapped_predicate);
 
                                         if let Some(mapped_dependency) = mapped_dependency {
-                                            dependencies.push((
-                                                self.join_dependency.clone().unwrap(),
-                                                mapped_dependency,
-                                            ));
+                                            if let Some(dependency) = &self.join_dependency {
+                                                dependencies
+                                                    .push((dependency.clone(), mapped_dependency));
+                                            }
                                         }
                                     }
 
@@ -158,15 +155,20 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                             }
 
                             "not" => {
-                                let (new_predicate, new_table_dependency) = self
+                                let (new_predicate, mapped_dependency) = self
                                     .map_to_predicate(logical_op_argument_value, query_context)?;
+
+                                let mut dependencies = vec![];
+
+                                if let Some(mapped_dependency) = mapped_dependency {
+                                    if let Some(dependency) = &self.join_dependency {
+                                        dependencies.push((dependency.clone(), mapped_dependency));
+                                    }
+                                }
 
                                 let table_join = TableJoin {
                                     table: underlying_table,
-                                    dependencies: vec![(
-                                        self.join_dependency.clone().unwrap(),
-                                        new_table_dependency.unwrap(),
-                                    )],
+                                    dependencies,
                                 };
                                 Ok((
                                     Predicate::Not(Box::new(new_predicate.into())),
@@ -232,14 +234,4 @@ fn operands<'a>(
     let op_key_column = Column::Physical(op_physical_column).into();
     let op_value_column = query_context.literal_column(op_value, op_physical_column);
     (op_key_column, op_value_column.unwrap())
-}
-
-fn get_table(
-    type_id: SerializableSlabIndex<GqlType>,
-    system: &ModelSystem,
-) -> Option<&PhysicalTable> {
-    let underlying_type = &system.types[type_id];
-    underlying_type
-        .table_id()
-        .map(|table_id| &system.tables[table_id])
 }
