@@ -68,5 +68,5 @@ CLAY_TEST_DATABASE_URL=postgresql://localhost:5432 CLAY_TEST_DATABASE_USER=$USER
 6. Run blackbox integration tests
 
 ```
-CLAY_USE_CARGO=1 CLAY_CONNECTION_POOL_SIZE=1 CLAY_CHECK_CONNECTION_ON_STARTUP=false CLAY_TEST_DATABASE_URL=postgresql://$USER@localhost:5432 cargo run --bin clay test integration-tests
+cargo build && CLAY_TEST_DATABASE_URL=postgresql://$USER@localhost:5432 target/debug/clay test integration-tests
 ```
