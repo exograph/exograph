@@ -93,10 +93,9 @@ pub struct InitFile {
 /// Load and parse testfiles from a given directory.
 pub fn load_testfiles_from_dir(
     root_directory: &Path,
-    directory: &Path,
     pattern: &Option<String>,
 ) -> Result<Vec<ParsedTestfile>> {
-    load_testfiles_from_dir_(root_directory, directory, None, &[], pattern)
+    load_testfiles_from_dir_(root_directory, root_directory, None, &[], pattern)
 }
 
 fn load_testfiles_from_dir_(

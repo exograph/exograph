@@ -31,13 +31,12 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
     let database_url =
         std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL must be specified");
 
-    let testfiles = load_testfiles_from_dir(root_directory, Path::new(&root_directory), pattern)
-        .with_context(|| {
-            format!(
-                "While loading testfiles from directory {}",
-                root_directory_str
-            )
-        })?;
+    let testfiles = load_testfiles_from_dir(root_directory, pattern).with_context(|| {
+        format!(
+            "While loading testfiles from directory {}",
+            root_directory_str
+        )
+    })?;
 
     let number_of_tests = testfiles.len();
 
