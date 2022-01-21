@@ -211,14 +211,18 @@ pub(crate) fn run_testfile(
 }
 
 fn cmd(binary_name: &str) -> Command {
-    match env::var("CLAY_USE_CARGO") {
-        Ok(cargo_env) if &cargo_env == "1" => {
-            let mut cmd = Command::new("cargo");
-            cmd.args(["run", "--bin", binary_name, "--"]);
-            cmd
-        }
-        _ => Command::new(binary_name),
-    }
+    // Pick up the current executable path and replace the file with the specified binary
+    // This allows us to invoke `target/debug/clay test ...` or `target/release/clay test ...`
+    // without updating the PATH env.
+    // Thus, for the former invocation if the `binary_name` is `clay-server` the command will become
+    // `<full-path-to>/target/debug/clay-server`
+    let mut executable = env::current_exe().expect("Could not retrive the current executable");
+    executable.set_file_name(binary_name);
+    Command::new(
+        executable
+            .to_str()
+            .expect("Could not convert executable path to a string"),
+    )
 }
 
 enum OperationResult {
