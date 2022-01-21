@@ -101,7 +101,7 @@ impl Ord for TestOutput {
         } else if !self.is_success() && other.is_success() {
             std::cmp::Ordering::Less
         } else {
-            std::cmp::Ordering::Equal
+            other.log_prefix.cmp(&self.log_prefix)
         }
     }
 }
