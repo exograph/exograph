@@ -27,6 +27,7 @@ pub enum TestfileOperation {
 
 #[derive(Debug, Clone)]
 pub struct ParsedTestfile {
+    root_directory: PathBuf, // Root directory specified when invoking `clay test <root_directory>
     model_path: PathBuf,
     testfile_path: PathBuf,
 
@@ -45,8 +46,18 @@ impl ParsedTestfile {
     }
 
     pub fn name(&self) -> String {
-        // Setting the extension to "", removes the extension
-        Path::with_extension(&self.testfile_path, "")
+        let relative_testfile_path = &self
+            .testfile_path
+            .strip_prefix(
+                self.root_directory
+                    .to_str()
+                    .expect("Could not get string for the root directory"),
+            )
+            .expect("Failed to obtain relative path to testfile");
+
+        // Drop to extension (".claytest") to obtain the name
+        relative_testfile_path
+            .with_extension("")
             .to_str()
             .expect("Failed to convert file name into Unicode")
             .to_string()
@@ -81,19 +92,21 @@ pub struct InitFile {
 
 /// Load and parse testfiles from a given directory.
 pub fn load_testfiles_from_dir(
-    path: &Path,
+    root_directory: &Path,
+    directory: &Path,
     pattern: &Option<String>,
 ) -> Result<Vec<ParsedTestfile>> {
-    load_testfiles_from_dir_(path, None, &[], pattern)
+    load_testfiles_from_dir_(root_directory, directory, None, &[], pattern)
 }
 
 fn load_testfiles_from_dir_(
-    path: &Path,
+    root_directory: &Path,
+    directory: &Path,
     model_path: Option<&Path>,
     init_ops: &[TestfileOperation],
     pattern: &Option<String>,
 ) -> Result<Vec<ParsedTestfile>> {
-    let path = PathBuf::from(path);
+    let directory = PathBuf::from(directory);
 
     // Begin directory traversal
     let mut new_model: Option<PathBuf> = None;
@@ -101,7 +114,7 @@ fn load_testfiles_from_dir_(
     let mut init_files: Vec<PathBuf> = vec![];
     let mut directories: Vec<PathBuf> = vec![];
 
-    for dir_entry in (path.read_dir()?).flatten() {
+    for dir_entry in (directory.read_dir()?).flatten() {
         if dir_entry.path().is_file() {
             if let Some(extension) = dir_entry.path().extension() {
                 // looking for a .clay file in our current directory
@@ -110,7 +123,7 @@ fn load_testfiles_from_dir_(
                     if new_model.is_some() {
                         bail!(
                             "Only one .clay file can exist in a directory! Multiple found in {}",
-                            path.to_str().unwrap()
+                            directory.to_str().unwrap()
                         )
                     }
 
@@ -150,13 +163,13 @@ fn load_testfiles_from_dir_(
     } else {
         // no .clay file found!
         if directories.is_empty() {
-            bail!("No model found in {}", path.to_str().unwrap())
+            bail!("No model found in {}", directory.to_str().unwrap())
         } else {
             // recurse and try to find one
             let mut parsed = vec![];
             for directory in directories {
                 let parsed_testfiles =
-                    load_testfiles_from_dir_(&directory, None, init_ops, pattern)?;
+                    load_testfiles_from_dir_(root_directory, &directory, None, init_ops, pattern)?;
                 parsed.extend(parsed_testfiles);
             }
 
@@ -176,7 +189,12 @@ fn load_testfiles_from_dir_(
     let mut testfiles = vec![];
 
     for testfile_path in claytest_files.iter() {
-        let testfile = parse_testfile(testfile_path, &model_path.to_path_buf(), init_ops.clone())?;
+        let testfile = parse_testfile(
+            root_directory,
+            testfile_path,
+            &model_path.to_path_buf(),
+            init_ops.clone(),
+        )?;
 
         testfiles.push(testfile);
     }
@@ -184,8 +202,13 @@ fn load_testfiles_from_dir_(
     // Recursively parse test files
     for directory in directories.iter() {
         let child_init_ops = init_ops.clone();
-        let child_testfiles =
-            load_testfiles_from_dir_(directory, Some(&model_path), &child_init_ops, pattern)?;
+        let child_testfiles = load_testfiles_from_dir_(
+            root_directory,
+            directory,
+            Some(&model_path),
+            &child_init_ops,
+            pattern,
+        )?;
         testfiles.extend(child_testfiles)
     }
 
@@ -204,6 +227,7 @@ fn load_testfiles_from_dir_(
 }
 
 fn parse_testfile(
+    root_directory: &Path,
     testfile_path: &Path,
     model_path: &Path,
     init_ops: Vec<TestfileOperation>,
@@ -256,6 +280,7 @@ Error as a multistage test: {}
         .collect::<Result<Vec<_>>>()?;
 
     Ok(ParsedTestfile {
+        root_directory: root_directory.to_path_buf(),
         model_path: model_path.to_path_buf(),
         testfile_path: testfile_path.to_path_buf(),
         init_operations: init_ops,

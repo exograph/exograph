@@ -10,15 +10,15 @@ use std::path::Path;
 use std::sync::mpsc;
 
 /// Loads test files from the supplied directory and runs them using a thread pool.
-pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
-    let directory_str = directory.to_str().unwrap();
+pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
+    let root_directory_str = root_directory.to_str().unwrap();
 
     println!(
         "{} {} {} {}",
         ansi_term::Color::Blue
             .bold()
             .paint("* Running tests in directory"),
-        directory_str,
+        root_directory_str,
         pattern
             .as_ref()
             .map(|p| format!("'with pattern {}'", p))
@@ -31,8 +31,13 @@ pub fn run(directory: &Path, pattern: &Option<String>) -> Result<()> {
     let database_url =
         std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL must be specified");
 
-    let testfiles = load_testfiles_from_dir(Path::new(&directory), pattern)
-        .with_context(|| format!("While loading testfiles from directory {}", directory_str))?;
+    let testfiles = load_testfiles_from_dir(root_directory, Path::new(&root_directory), pattern)
+        .with_context(|| {
+            format!(
+                "While loading testfiles from directory {}",
+                root_directory_str
+            )
+        })?;
 
     let number_of_tests = testfiles.len();
 
