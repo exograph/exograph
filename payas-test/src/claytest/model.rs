@@ -104,7 +104,7 @@ impl Ord for TestOutput {
             std::cmp::Ordering::Greater
         } else {
             // If both are successful or both are failure, compare it by their log_prefix
-            // so multiple tests from the same folder are group together
+            // so multiple tests from the same folder are grouped together
             self.log_prefix.cmp(&other.log_prefix)
         }
     }
