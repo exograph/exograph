@@ -96,12 +96,16 @@ impl PartialOrd for TestOutput {
 
 impl Ord for TestOutput {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // If `a` is successful and `b` isn't, mark `a < b`, so that we get all successful tests
+        // shown before the failed ones.
         if self.is_success() && !other.is_success() {
-            std::cmp::Ordering::Greater
-        } else if !self.is_success() && other.is_success() {
             std::cmp::Ordering::Less
+        } else if !self.is_success() && other.is_success() {
+            std::cmp::Ordering::Greater
         } else {
-            std::cmp::Ordering::Equal
+            // If both are successful or both are failure, compare it by their log_prefix
+            // so multiple tests from the same folder are grouped together
+            self.log_prefix.cmp(&other.log_prefix)
         }
     }
 }

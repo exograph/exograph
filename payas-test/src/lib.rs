@@ -102,8 +102,6 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
         }
     });
 
-    test_results.reverse();
-
     let mut number_of_succeeded_tests = 0;
     for result in test_results.iter() {
         match result {
