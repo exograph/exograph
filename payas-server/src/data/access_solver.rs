@@ -34,7 +34,6 @@ fn solve_predicate_expression<'a>(
     request_context: &'a Value,
     system: &'a ModelSystem,
 ) -> (Predicate<'a>, Vec<ColumnPath>) {
-    println!("solve_predicate_expression: {:?}", expr);
     match expr {
         AccessPredicateExpression::LogicalOp(op) => solve_logical_op(op, request_context, system),
         AccessPredicateExpression::RelationalOp(op) => {
