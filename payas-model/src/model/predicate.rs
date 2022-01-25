@@ -6,11 +6,40 @@ use super::GqlType;
 use super::mapped_arena::SerializableSlabIndex;
 use super::types::GqlTypeModifier;
 
-/// The columns that need to form an equals predicate for forming a join.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct JoinDependency {
+/// The two columns that link one table to another
+/// These columns may be used to form a join between two tables
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ColumnPathLink {
     pub self_column_id: ColumnId,
-    pub dependent_column_id: Option<ColumnId>,
+    pub linked_column_id: Option<ColumnId>,
+}
+
+/// A list of path from that represent a relation between two tables
+/// For example to reach concert -> concert_artist -> artist -> name,
+/// the path would be [(concert.id, concert_artist.concert_id), (concert_artists.artists_id, artist.id), (artist.name, None)]
+/// This information could be used to form a join between multiple tables
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
+pub struct ColumnPath {
+    pub path: Vec<ColumnPathLink>,
+}
+
+impl ColumnPath {
+    pub fn leaf_column(&self) -> ColumnId {
+        self.path
+            .last()
+            .expect("Empty column path")
+            .self_column_id
+            .clone()
+    }
+}
+
+impl ColumnPathLink {
+    pub fn new(self_column_id: ColumnId, linked_column_id: Option<ColumnId>) -> Self {
+        Self {
+            self_column_id,
+            linked_column_id,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -26,12 +55,13 @@ pub struct PredicateParameter {
     /// Type id of the parameter type. For example: IntFilter, StringFilter, etc.
     pub type_id: SerializableSlabIndex<PredicateParameterType>,
 
-    /// For example for parameter used as {where: {venue1: {id: {eq: 1}}}}, we will have following column dependencies:
+    /// How does this parameter relates with the parent parameter?
+    /// For example for parameter used as {where: {venue1: {id: {eq: 1}}}}, we will have following column links:
     /// eq: None
     /// id: Some((<the venues.id column>, None))
     /// venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     /// where: None
-    pub join_dependency: Option<JoinDependency>,
+    pub column_path_link: Option<ColumnPathLink>,
 
     /// The type this parameter is filtering on. For example, for ConcertFilter, this will be (the index of) the Concert.
     pub underlying_type_id: SerializableSlabIndex<GqlType>,

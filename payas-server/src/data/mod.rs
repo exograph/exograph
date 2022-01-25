@@ -18,9 +18,7 @@ use async_graphql_value::{ConstValue, Name};
 
 use crate::{execution::query_context::QueryContext, sql::predicate::Predicate};
 
-use payas_model::model::predicate::PredicateParameter;
-
-use self::predicate_mapper::TableJoin;
+use payas_model::model::predicate::{ColumnPath, PredicateParameter};
 
 pub type Arguments = [(Positioned<Name>, Positioned<ConstValue>)];
 
@@ -40,7 +38,7 @@ fn compute_predicate<'a>(
     arguments: &'a Arguments,
     additional_predicate: Predicate<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<(Predicate<'a>, Option<TableJoin<'a>>)> {
+) -> Result<(Predicate<'a>, Vec<ColumnPath>)> {
     let mapped = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
@@ -53,8 +51,10 @@ fn compute_predicate<'a>(
         .context("While mapping predicate parameters to SQL")?;
 
     let res = match mapped {
-        Some((predicate, join)) => (Predicate::and(predicate, additional_predicate), join),
-        None => (additional_predicate, None),
+        Some((predicate, column_path)) => {
+            (Predicate::and(predicate, additional_predicate), column_path)
+        }
+        None => (additional_predicate, vec![]),
     };
 
     Ok(res)

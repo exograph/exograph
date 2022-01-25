@@ -90,7 +90,8 @@ fn create_operation<'a>(
     select: Select<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
-    let access_predicate = compute_sql_access_predicate(
+    // TODO: https://github.com/payalabs/payas/issues/343
+    let (access_predicate, _access_column_paths) = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Create,
         query_context,
@@ -124,7 +125,8 @@ fn delete_operation<'a>(
 ) -> Result<TransactionScript<'a>> {
     let (table, _, _) = return_type_info(mutation, query_context);
 
-    let access_predicate = compute_sql_access_predicate(
+    // TODO: https://github.com/payalabs/payas/issues/343
+    let (access_predicate, _access_column_paths) = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Delete,
         query_context,
@@ -169,7 +171,8 @@ fn update_operation<'a>(
     select: Select<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
-    let access_predicate = compute_sql_access_predicate(
+    // TODO: https://github.com/payalabs/payas/issues/343
+    let (access_predicate, _access_column_path) = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Update,
         query_context,
@@ -181,7 +184,8 @@ fn update_operation<'a>(
     }
 
     let field_arguments = query_context.field_arguments(field)?;
-    let (predicate, _column_dependencies) = super::compute_predicate(
+    // TODO: https://github.com/payalabs/payas/issues/343
+    let (predicate, _column_paths) = super::compute_predicate(
         Some(predicate_param),
         field_arguments,
         Predicate::True,

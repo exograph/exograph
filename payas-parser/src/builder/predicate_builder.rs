@@ -1,12 +1,12 @@
 use payas_model::model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    relation::GqlRelation,
-    types::{GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
+    types::{GqlType, GqlTypeKind, GqlTypeModifier},
     GqlCompositeType, GqlCompositeTypeKind,
 };
 use std::collections::HashMap;
 
 use super::{
+    column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
     system_builder::SystemContextBuilding,
 };
@@ -91,8 +91,8 @@ fn expand_type(
 ) -> PredicateParameterTypeKind {
     match &gql_type.kind {
         GqlTypeKind::Primitive => create_operator_filter_type_kind(gql_type_id, gql_type, building),
-        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
-            create_composite_filter_type_kind(gql_type_id, gql_type, fields, building)
+        GqlTypeKind::Composite(composite_type) => {
+            create_composite_filter_type_kind(gql_type_id, composite_type, &gql_type.name, building)
         }
     }
 }
@@ -166,7 +166,7 @@ fn create_operator_filter_type_kind(
             .get_id(&scalar_model_type.name)
             .unwrap(),
         type_modifier: GqlTypeModifier::Optional,
-        join_dependency: None,
+        column_path_link: None,
         underlying_type_id: gql_type_id,
     };
 
@@ -189,35 +189,23 @@ fn create_operator_filter_type_kind(
 
 fn create_composite_filter_type_kind(
     gql_type_id: SerializableSlabIndex<GqlType>,
-    composite_type: &GqlType,
-    fields: &[GqlField],
+    composite_type: &GqlCompositeType,
+    composite_type_name: &str,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     // populate params for each field
-    let field_params: Vec<PredicateParameter> = fields
+    let field_params: Vec<PredicateParameter> = composite_type
+        .fields
         .iter()
         .map(|field| {
             let param_type_name = get_parameter_type_name(field.typ.type_name());
             let param_type_id = field.typ.type_id();
-            let param_type = &building.types[*param_type_id];
 
-            let (parent_column_id, dependent_column_id) = match &field.relation {
-                GqlRelation::Pk { column_id, .. } | GqlRelation::Scalar { column_id, .. } => {
-                    (column_id.clone(), None)
-                }
-                GqlRelation::ManyToOne { column_id, .. } => {
-                    let dependent_column_id = param_type.pk_column_id();
-                    (column_id.clone(), dependent_column_id)
-                }
-                GqlRelation::OneToMany {
-                    other_type_column_id,
-                    ..
-                } => {
-                    let parent_column_id = composite_type.pk_column_id().unwrap();
-                    (parent_column_id, Some(other_type_column_id.clone()))
-                }
-                GqlRelation::NonPersistent => panic!("NonPersistent is not supported"),
-            };
+            let column_path_link = Some(column_path_utils::column_path_link(
+                composite_type,
+                field,
+                building,
+            ));
 
             PredicateParameter {
                 name: field.name.to_string(),
@@ -225,10 +213,7 @@ fn create_composite_filter_type_kind(
                 type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
                 type_modifier: GqlTypeModifier::Optional,
                 underlying_type_id: *param_type_id,
-                join_dependency: Some(JoinDependency {
-                    self_column_id: parent_column_id,
-                    dependent_column_id,
-                }),
+                column_path_link,
             }
         })
         .collect();
@@ -243,10 +228,10 @@ fn create_composite_filter_type_kind(
     let logical_op_params = logical_ops
         .into_iter()
         .map(|(name, type_modifier)| {
-            let param_type_name = get_parameter_type_name(&composite_type.name);
+            let param_type_name = get_parameter_type_name(composite_type_name);
             PredicateParameter {
                 name: name.to_string(),
-                type_name: get_parameter_type_name(&composite_type.name.to_string()),
+                type_name: get_parameter_type_name(composite_type_name),
                 type_id: building
                     .predicate_types
                     .get_id(&param_type_name)
@@ -254,7 +239,7 @@ fn create_composite_filter_type_kind(
                         panic!("Could not find predicate type '{}'", param_type_name)
                     }),
                 type_modifier,
-                join_dependency: None,
+                column_path_link: None,
                 underlying_type_id: gql_type_id,
             }
         })

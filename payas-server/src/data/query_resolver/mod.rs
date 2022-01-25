@@ -197,7 +197,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 let DatabaseQueryParameter {
                     predicate_param, ..
                 } = db_query_param.as_ref();
-                let access_predicate = compute_sql_access_predicate(
+                let (access_predicate, access_column_path) = compute_sql_access_predicate(
                     &self.return_type,
                     &SQLOperationKind::Retrieve,
                     query_context,
@@ -209,7 +209,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 let field_arguments = query_context.field_arguments(field)?;
 
-                let (predicate, join) = super::compute_predicate(
+                let (predicate, predicate_column_paths) = super::compute_predicate(
                     predicate_param.as_ref(),
                     field_arguments,
                     additional_predicate,
@@ -218,6 +218,12 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
                 let predicate = Predicate::and(predicate, access_predicate);
+                let column_paths: Vec<_> = access_column_path
+                    .into_iter()
+                    .chain(predicate_column_paths.into_iter())
+                    .collect();
+
+                let join = TableJoin::from_column_path(column_paths, query_context.get_system());
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
 
@@ -403,7 +409,7 @@ fn compute_join<'a>(join_info: TableJoin<'a>, system: &'a ModelSystem) -> TableQ
                 Column::Physical(join_column_dependency.self_column_id.get_column(system)).into(),
                 Column::Physical(
                     join_column_dependency
-                        .dependent_column_id
+                        .linked_column_id
                         .unwrap()
                         .get_column(system),
                 )

@@ -2,7 +2,7 @@ use payas_model::model::limit_offset::OffsetParameter;
 use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::naming::ToGqlQueryName;
 use payas_model::model::operation::{DatabaseQueryParameter, Interceptors, QueryKind};
-use payas_model::model::predicate::JoinDependency;
+use payas_model::model::predicate::ColumnPathLink;
 use payas_model::model::{
     limit_offset::LimitParameter,
     mapped_arena::MappedArena,
@@ -125,12 +125,12 @@ pub fn pk_predicate_param(
             .get_id(pk_field.typ.type_name())
             .unwrap(),
         type_modifier: GqlTypeModifier::NonNull,
-        join_dependency: pk_field
+        column_path_link: pk_field
             .relation
             .self_column()
-            .map(|column_id| JoinDependency {
+            .map(|column_id| ColumnPathLink {
                 self_column_id: column_id,
-                dependent_column_id: None,
+                linked_column_id: None,
             }),
         underlying_type_id: model_type_id,
     }
@@ -217,7 +217,7 @@ pub fn collection_predicate_param(
         type_name: param_type_name.clone(),
         type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
         type_modifier: GqlTypeModifier::Optional,
-        join_dependency: None,
+        column_path_link: None,
         underlying_type_id: model_type_id,
     }
 }

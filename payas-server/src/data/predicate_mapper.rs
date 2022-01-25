@@ -1,3 +1,5 @@
+use std::collections::{hash_map::Entry, HashMap};
+
 use crate::{
     execution::query_context::QueryContext,
     sql::{column::Column, predicate::Predicate},
@@ -6,23 +8,110 @@ use anyhow::*;
 use async_graphql_value::ConstValue;
 
 use maybe_owned::MaybeOwned;
-use payas_model::{model::predicate::*, sql::PhysicalTable};
+use payas_model::{
+    model::{predicate::*, system::ModelSystem},
+    sql::PhysicalTable,
+};
 
 pub trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
         &'a self,
         argument_value: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<(Predicate<'a>, Option<TableJoin>)>;
+    ) -> Result<(Predicate<'a>, Vec<ColumnPath>)>;
 }
 
-/// Table dependencies tree suitable for computing a join
 #[derive(Debug)]
 pub struct TableJoin<'a> {
     /// The base table being joined. In above example, "concerts"
     pub table: &'a PhysicalTable,
     /// The tables being joined. In above example, ("venue1_id", "venues") and ("venue2_id", "venues")
-    pub dependencies: Vec<(JoinDependency, TableJoin<'a>)>,
+    pub dependencies: Vec<(ColumnPathLink, TableJoin<'a>)>,
+}
+
+impl<'a> TableJoin<'a> {
+    /// Compute TableJoin from a list of column paths
+    /// If the following path is given:
+    /// ```no_rust
+    /// [
+    ///     (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.name, None)
+    ///     (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.address_id, address.id) -> (address.city, None)
+    ///     (concert.venue_id, venue.id) -> (venue.name, None)
+    /// ]
+    /// ```
+    /// then the result will be the join needed to access the leaf columns:
+    /// ```no_rust
+    /// TableJoin {
+    ///    table: concerts,
+    ///    dependencies: [
+    ///       ((concert.id, concert_artists.concert_id), TableJoin {
+    ///          table: concert_artists,
+    ///          dependencies: [
+    ///             ((concert_artists.artist_id, artists.id), TableJoin {
+    ///                table: artists,
+    ///                dependencies: [
+    ///                   ((artists.address_id, address.id), TableJoin {
+    ///                      table: address,
+    ///                      dependencies: []
+    ///                   }),
+    ///                ]
+    ///             }),
+    ///       ((concert.venue_id, venue.id), TableJoin {
+    ///            table: venue,
+    ///            dependencies: []
+    ///       }),
+    ///    ]
+    /// }
+    /// ```
+    pub fn from_column_path(paths_list: Vec<ColumnPath>, system: &'a ModelSystem) -> Option<Self> {
+        let tables = &system.tables;
+
+        paths_list
+            .first()
+            .and_then(|path| path.path.first().map(|dep| dep.self_column_id.table_id))
+            .map(|table_id| {
+                let table = &tables[table_id];
+
+                let mut grouped: HashMap<ColumnPathLink, Vec<Vec<ColumnPathLink>>> = HashMap::new();
+                for paths in paths_list {
+                    match &paths.path[..] {
+                        [head, tail @ ..] => {
+                            if head.linked_column_id.is_some() {
+                                let existing = grouped.entry(head.clone());
+
+                                match existing {
+                                    Entry::Occupied(mut entry) => {
+                                        entry.get_mut().push(tail.to_vec())
+                                    }
+                                    Entry::Vacant(entry) => {
+                                        entry.insert(vec![tail.to_vec()]);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            panic!("Invalid paths list")
+                        }
+                    }
+                }
+
+                Self {
+                    table,
+                    dependencies: grouped
+                        .into_iter()
+                        .map(|(head, tail)| {
+                            let inner_join = Self::from_column_path(
+                                tail.into_iter().map(|path| ColumnPath { path }).collect(),
+                                system,
+                            )
+                            .unwrap();
+
+                            (head, inner_join)
+                        })
+                        .collect(),
+                }
+            })
+    }
 }
 
 impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
@@ -30,7 +119,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         &'a self,
         argument_value: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<(Predicate<'a>, Option<TableJoin>)> {
+    ) -> Result<(Predicate<'a>, Vec<ColumnPath>)> {
         let system = query_context.get_system();
         let parameter_type = &system.predicate_types[self.type_id];
 
@@ -38,7 +127,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_column, op_value_column) =
                     operands(self, argument_value, query_context);
-                Ok((Predicate::Eq(op_key_column, op_value_column.into()), None))
+                Ok((Predicate::Eq(op_key_column, op_value_column.into()), vec![]))
             }
             PredicateParameterTypeKind::Operator(parameters) => {
                 let predicate = parameters.iter().fold(Predicate::True, |acc, parameter| {
@@ -58,18 +147,19 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
 
                     Predicate::and(acc, new_predicate)
                 });
-                Ok((predicate, None))
+
+                let column_path = match &self.column_path_link {
+                    Some(link) => ColumnPath {
+                        path: vec![link.clone()],
+                    },
+                    None => ColumnPath { path: vec![] },
+                };
+                Ok((predicate, vec![column_path]))
             }
             PredicateParameterTypeKind::Composite {
                 field_params,
                 logical_op_params,
             } => {
-                let underlying_type = &system.types[self.underlying_type_id];
-                let underlying_table_id = underlying_type
-                    .table_id()
-                    .expect("Table could not be found");
-                let underlying_table = &system.tables[underlying_table_id];
-
                 // first, match any logical op predicates the argument_value might contain
                 let logical_op_argument_value: (&str, Option<&ConstValue>) = logical_op_params
                     .iter()
@@ -125,28 +215,20 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                     };
 
                                     let mut new_predicate = identity_predicate;
-                                    let mut dependencies = vec![];
+                                    let mut column_paths: Vec<ColumnPath> = vec![];
 
                                     for argument in arguments.iter() {
-                                        let (mapped_predicate, mapped_dependency) =
+                                        let (arg_predicate, arg_column_paths) =
                                             self.map_to_predicate(argument, query_context)?;
                                         new_predicate =
-                                            predicate_connector(new_predicate, mapped_predicate);
-
-                                        if let Some(mapped_dependency) = mapped_dependency {
-                                            if let Some(dependency) = &self.join_dependency {
-                                                dependencies
-                                                    .push((dependency.clone(), mapped_dependency));
-                                            }
-                                        }
+                                            predicate_connector(new_predicate, arg_predicate);
+                                        column_paths = column_paths
+                                            .into_iter()
+                                            .chain(arg_column_paths.into_iter())
+                                            .collect();
                                     }
 
-                                    let table_join = TableJoin {
-                                        table: underlying_table,
-                                        dependencies,
-                                    };
-
-                                    Ok((new_predicate, Some(table_join)))
+                                    Ok((new_predicate, column_paths))
                                 } else {
                                     bail!(
                                         "This logical operation predicate needs a list of queries"
@@ -155,24 +237,12 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                             }
 
                             "not" => {
-                                let (new_predicate, mapped_dependency) = self
+                                let (arg_predicate, arg_column_paths) = self
                                     .map_to_predicate(logical_op_argument_value, query_context)?;
 
-                                let mut dependencies = vec![];
-
-                                if let Some(mapped_dependency) = mapped_dependency {
-                                    if let Some(dependency) = &self.join_dependency {
-                                        dependencies.push((dependency.clone(), mapped_dependency));
-                                    }
-                                }
-
-                                let table_join = TableJoin {
-                                    table: underlying_table,
-                                    dependencies,
-                                };
                                 Ok((
-                                    Predicate::Not(Box::new(new_predicate.into())),
-                                    Some(table_join),
+                                    Predicate::Not(Box::new(arg_predicate.into())),
+                                    arg_column_paths,
                                 ))
                             }
 
@@ -184,33 +254,34 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                         // we are dealing with field predicate arguments
                         // map field argument values into their respective predicates
                         let mut new_predicate = Predicate::True;
-                        let mut dependencies = vec![];
+                        let mut column_paths = vec![];
 
                         for parameter in field_params.iter() {
                             let arg =
                                 query_context.get_argument_field(argument_value, &parameter.name);
 
-                            let (field_predicate, field_table_dependency) = match arg {
+                            let (field_predicate, field_column_path) = match arg {
                                 Some(argument_value_component) => parameter
                                     .map_to_predicate(argument_value_component, query_context)?,
-                                None => (Predicate::True, None),
+                                None => (Predicate::True, vec![]),
                             };
 
-                            new_predicate = Predicate::and(new_predicate, field_predicate);
-                            if let Some(mapped_dependency) = field_table_dependency {
-                                dependencies.push((
-                                    parameter.join_dependency.clone().unwrap(),
-                                    mapped_dependency,
-                                ));
+                            if let Some(column_path_link) = self.column_path_link.clone() {
+                                for mut column_path in field_column_path.into_iter() {
+                                    column_path.path.insert(0, column_path_link.clone());
+                                    column_paths.push(column_path);
+                                }
+                            } else {
+                                column_paths = column_paths
+                                    .into_iter()
+                                    .chain(field_column_path.into_iter())
+                                    .collect();
                             }
+
+                            new_predicate = Predicate::and(new_predicate, field_predicate);
                         }
 
-                        let table_join = TableJoin {
-                            table: underlying_table,
-                            dependencies,
-                        };
-
-                        Ok((new_predicate, Some(table_join)))
+                        Ok((new_predicate, column_paths))
                     }
                 }
             }
@@ -226,9 +297,9 @@ fn operands<'a>(
     let system = query_context.get_system();
 
     let op_physical_column = &param
-        .join_dependency
+        .column_path_link
         .as_ref()
-        .expect("Could not find join dependency")
+        .expect("Could not find column path link while forming operands")
         .self_column_id
         .get_column(system);
     let op_key_column = Column::Physical(op_physical_column).into();
