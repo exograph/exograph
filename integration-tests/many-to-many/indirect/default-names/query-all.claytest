@@ -24,13 +24,13 @@ response: |
     "data": {
       "concerts": [
         {
-          "id": 1,
+          "id": $.c1_id,
           "title": "C1",
           "mainArtists": [
             {
               "id": 1,
               "artist": {
-                "id": 1,
+                "id": $.A1a_id,
                 "name": "A1a"
               },
               "rank": 1
@@ -38,7 +38,7 @@ response: |
             {
               "id": 2,
               "artist": {
-                "id": 2,
+                "id": $.A1b_id,
                 "name": "A1b"
               },
               "rank": 2
@@ -48,7 +48,7 @@ response: |
             {
               "id": 3,
               "artist": {
-                "id": 3,
+                "id": $.A2a_id,
                 "name": "A2a"
               },
               "rank": 3
@@ -56,13 +56,13 @@ response: |
           ]
         },
         {
-          "id": 2,
+          "id": $.c2_id,
           "title": "C1",
           "mainArtists": [
             {
               "id": 4,
               "artist": {
-                "id": 1,
+                "id": $.A1a_id,
                 "name": "A1a"
               },
               "rank": 1
@@ -72,7 +72,7 @@ response: |
             {
               "id": 5,
               "artist": {
-                "id": 3,
+                "id": $.A2a_id,
                 "name": "A2a"
               },
               "rank": 3
