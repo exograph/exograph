@@ -19,6 +19,35 @@ operation: |
         }
       }
     }
+    # The same as above, but use `and` to ensure that we perform a correct join even with logical expressions
+    by_artist_name_and_id_1: concerts(where: {concertArtists: {artist: {and: [{name: {eq: "A1b"}}, {id: {eq: 2}}]}}}) {
+      id
+      concertArtists {
+        artist {
+          id
+          name
+        }
+      }
+    }
+    # Effectively same as the above, but the logical expression is performed at a higher level  
+    by_artist_name_and_id_2: concerts(where: {concertArtists: {and: [{artist: {name: {eq: "A1b"}}}, {artist: {id: {eq: 2}}}]}}) {
+      id
+      concertArtists {
+        artist {
+          id
+          name
+        }
+      }
+    }
+    by_artist_name_and_id_3: concerts(where: {and: [{concertArtists: {artist: {name: {eq: "A1b"}}}}, {concertArtists: {artist: {id: {eq: 2}}}}]}) {
+      id
+      concertArtists {
+        artist {
+          id
+          name
+        }
+      }
+    }            
   }
 response: |
   {
@@ -89,6 +118,81 @@ response: |
             }
           ]
         }
-      ]
+      ],
+      "by_artist_name_and_id_1": [
+        {
+          "id": 1,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 2,
+                "name": "A1b"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        }
+      ],
+      "by_artist_name_and_id_2": [
+        {
+          "id": 1,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 2,
+                "name": "A1b"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        }
+      ],
+      "by_artist_name_and_id_3": [
+        {
+          "id": 1,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 2,
+                "name": "A1b"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        }
+      ]                   
     }
   }
