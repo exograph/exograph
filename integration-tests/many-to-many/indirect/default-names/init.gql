@@ -11,5 +11,19 @@ operation: |
         }
         A2b: createArtist(data: {name: "A2b"}) {
             id
-        }                    
+        }
+        c1: createConcert(data: {title: "C1", concertArtists: [
+            {artist: {id: 1}, rank: 1, role: "main"},
+            {artist: {id: 2}, rank: 2, role: "main"}, 
+            {artist: {id: 3}, rank: 3, role: "accompanying"}
+        ]}) {
+            id
+        }
+        # c2 doesn't have artist: {id: 2}
+        c2: createConcert(data: {title: "C1", concertArtists: [
+            {artist: {id: 1}, rank: 1, role: "main"},
+            {artist: {id: 3}, rank: 3, role: "accompanying"}
+        ]}) {
+            id
+        }                            
     }  

@@ -1,0 +1,94 @@
+# Exercises the use of deep joins. In this case, concert -> concertArtist -> artist
+operation: |
+  {
+    artist1_concerts: concerts(where: {concertArtists: {artist: {name: {eq: "A1a"}}}}) {
+      id
+      concertArtists {
+        artist {
+          id
+          name
+        }
+      }
+    }
+    artist2_concerts: concerts(where: {concertArtists: {artist: {name: {eq: "A1b"}}}}) {
+      id
+      concertArtists {
+        artist {
+          id
+          name
+        }
+      }
+    }
+  }
+response: |
+  {
+    "data": {
+      "artist1_concerts": [
+        {
+          "id": 1,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 2,
+                "name": "A1b"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        }
+      ],
+      "artist2_concerts": [
+        {
+          "id": 1,
+          "concertArtists": [
+            {
+              "artist": {
+                "id": 1,
+                "name": "A1a"
+              }
+            },
+            {
+              "artist": {
+                "id": 2,
+                "name": "A1b"
+              }
+            },
+            {
+              "artist": {
+                "id": 3,
+                "name": "A2a"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
