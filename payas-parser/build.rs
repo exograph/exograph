@@ -1,16 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 fn main() {
-    Command::new("tree-sitter")
-        .arg("--version")
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute 'tree-sitter --version'")
-        .wait_with_output()
-        .expect("Fail to wait for 'tree-sitter --version'");
-
     let sitter_out = Command::new("tree-sitter")
         .arg("generate")
         .current_dir(fs::canonicalize("./grammar").unwrap())
