@@ -1,0 +1,9 @@
+@table("events")
+model Event {
+    id: Int = autoincrement() @pk
+    timestamp: Instant = now()
+    category: String = "INFO"
+    priority: Int = 0
+    message: String
+    is_system: Boolean = true
+}

@@ -358,11 +358,16 @@ impl ColumnSpec {
             ""
         };
         let unique_str = if self.is_unique { " UNIQUE" } else { "" };
+        let default_value_part = if let Some(default_value) = self.default_value.as_ref() {
+            format!(" DEFAULT {}", default_value)
+        } else {
+            "".to_string()
+        };
 
         SQLStatement {
             statement: format!(
-                "\"{}\" {}{}{}{}",
-                self.column_name, statement, pk_str, not_null_str, unique_str
+                "\"{}\" {}{}{}{}{}",
+                self.column_name, statement, pk_str, not_null_str, unique_str, default_value_part
             ),
             foreign_constraints,
         }

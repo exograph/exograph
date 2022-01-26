@@ -147,6 +147,9 @@ pub(crate) fn run_testfile(
             &testvariables,
         )
         .with_context(|| {
+            let output: String = output_mutex.lock().unwrap().clone();
+            println!("{}", output);
+
             format!(
                 "While initializing database for testfile {}",
                 testfile.name()

@@ -309,10 +309,8 @@ fn create_column(
         .as_ref()
         .map(|default_value| match default_value {
             ResolvedFieldDefault::Value(val) => Some(match &**val {
-                AstExpr::StringLiteral(string, _) => format!("\"{}\"", string),
-                AstExpr::BooleanLiteral(boolean, _) => {
-                    format!("{}", boolean)
-                }
+                AstExpr::StringLiteral(string, _) => format!("'{}'", string.replace("'", "''")),
+                AstExpr::BooleanLiteral(boolean, _) => format!("{}", boolean).to_ascii_uppercase(),
                 AstExpr::NumberLiteral(val, _) => {
                     format!("{}", val)
                 }
@@ -320,7 +318,7 @@ fn create_column(
             }),
             ResolvedFieldDefault::DatabaseFunction(string) => Some(string.to_string()),
             ResolvedFieldDefault::Autoincrement => None,
-            ResolvedFieldDefault::DateNow => Some("GETTIME()".to_string()),
+            ResolvedFieldDefault::DateNow => Some("NOW()".to_string()),
         })
         .flatten();
 
