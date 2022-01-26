@@ -42,11 +42,18 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 
 pub trait MutationBuilder {
     fn single_mutation_name(model_type: &GqlType) -> String;
-    fn single_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding)
-        -> MutationKind;
+    fn single_mutation_kind(
+        model_type_id: SerializableSlabIndex<GqlType>,
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+    ) -> MutationKind;
 
     fn multi_mutation_name(model_type: &GqlType) -> String;
-    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind;
+    fn multi_mutation_kind(
+        model_type_id: SerializableSlabIndex<GqlType>,
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+    ) -> MutationKind;
 
     fn build_mutations(
         &self,
@@ -56,7 +63,7 @@ pub trait MutationBuilder {
     ) -> Vec<Mutation> {
         let single_mutation = Mutation {
             name: Self::single_mutation_name(model_type),
-            kind: Self::single_mutation_kind(model_type, building),
+            kind: Self::single_mutation_kind(model_type_id, model_type, building),
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
@@ -67,7 +74,7 @@ pub trait MutationBuilder {
 
         let multi_mutation = Mutation {
             name: Self::multi_mutation_name(model_type),
-            kind: Self::multi_mutation_kind(model_type, building),
+            kind: Self::multi_mutation_kind(model_type_id, model_type, building),
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),

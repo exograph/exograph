@@ -82,7 +82,7 @@ impl TypeDefinitionProvider for OrderByParameterType {
 impl TypeDefinitionProvider for PredicateParameterType {
     fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
         match &self.kind {
-            PredicateParameterTypeKind::Opeartor(parameters) => {
+            PredicateParameterTypeKind::Operator(parameters) => {
                 let fields = parameters
                     .iter()
                     .map(|parameter| default_positioned(parameter.input_value()))
@@ -96,8 +96,11 @@ impl TypeDefinitionProvider for PredicateParameterType {
                     kind: TypeKind::InputObject(InputObjectType { fields }),
                 }
             }
-            PredicateParameterTypeKind::Composite(parameters, boolean_params) => {
-                let parameters = [parameters, &boolean_params[..]].concat();
+            PredicateParameterTypeKind::Composite {
+                field_params,
+                logical_op_params,
+            } => {
+                let parameters = [field_params, &logical_op_params[..]].concat();
 
                 let fields = parameters
                     .iter()

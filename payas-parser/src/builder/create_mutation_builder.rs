@@ -1,7 +1,7 @@
 //! Build mutation input types associatd with creation (<Type>CreationInput) and
 //! the create mutations (create<Type>, and create<Type>s)
 
-use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
@@ -63,6 +63,7 @@ impl MutationBuilder for CreateMutationBuilder {
     }
 
     fn single_mutation_kind(
+        _model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
     ) -> MutationKind {
@@ -73,7 +74,11 @@ impl MutationBuilder for CreateMutationBuilder {
         model_type.collection_create()
     }
 
-    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind {
+    fn multi_mutation_kind(
+        _model_type_id: SerializableSlabIndex<GqlType>,
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+    ) -> MutationKind {
         MutationKind::Create(Self::data_param(model_type, building, true))
     }
 }

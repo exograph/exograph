@@ -15,7 +15,7 @@ response: |
   {
     "errors": [
       {
-        "message": "Cannot specify more than one boolean predicate on the same level"
+        "message": "Cannot specify more than one logical operation on the same level"
       }
     ]
   }

@@ -3,13 +3,13 @@ use payas_model::model::{
         AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
         AccessPrimitiveExpression, AccessRelationalOp,
     },
-    column_id::ColumnId,
-    relation::GqlRelation,
+    predicate::{ColumnPath, ColumnPathLink},
     GqlCompositeType, GqlFieldType, GqlTypeKind,
 };
 
 use crate::{
     ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
+    builder::column_path_utils,
     error::ParserError,
     typechecker::Typed,
 };
@@ -17,7 +17,7 @@ use crate::{
 use super::system_builder::SystemContextBuilding;
 
 enum PathSelection<'a> {
-    Column(ColumnId, &'a GqlFieldType),
+    Column(ColumnPath, &'a GqlFieldType),
     Context(AccessContextSelection, &'a GqlFieldType),
 }
 
@@ -29,9 +29,9 @@ pub fn compute_predicate_expression(
     match expr {
         AstExpr::FieldSelection(selection) => {
             match compute_selection(selection, self_type_info, building) {
-                PathSelection::Column(column_id, column_type) => {
+                PathSelection::Column(column_path, column_type) => {
                     if column_type.base_type(&building.types.values).name == "Boolean" {
-                        Ok(AccessPredicateExpression::BooleanColumn(column_id))
+                        Ok(AccessPredicateExpression::BooleanColumn(column_path))
                     } else {
                         Err(ParserError::Generic(
                             "Field selection must be a boolean".to_string(),
@@ -107,7 +107,9 @@ fn compute_primitive_expr(
     match expr {
         AstExpr::FieldSelection(selection) => {
             match compute_selection(selection, self_type_info, building) {
-                PathSelection::Column(column_id, _) => AccessPrimitiveExpression::Column(column_id),
+                PathSelection::Column(column_path, _) => {
+                    AccessPrimitiveExpression::Column(column_path)
+                }
                 PathSelection::Context(c, _) => AccessPrimitiveExpression::ContextSelection(c),
             }
         }
@@ -135,48 +137,22 @@ fn compute_selection<'a>(
     }
 
     fn get_column<'a>(
-        path_elements: &[String],
+        field_name: &str,
         self_type_info: &'a GqlCompositeType,
         building: &'a SystemContextBuilding,
-    ) -> (ColumnId, &'a GqlFieldType) {
+    ) -> (ColumnPathLink, &'a GqlFieldType) {
         let get_field = |field_name: &str| {
             self_type_info
-                .fields
-                .iter()
-                .find(|f| f.name == field_name)
+                .get_field_by_name(field_name)
                 .unwrap_or_else(|| {
-                    panic!(
-                        "Field {} not found while processing access rules",
-                        field_name
-                    )
+                    panic!("Field {field_name} not found while processing access rules")
                 })
         };
 
-        match path_elements {
-            [] => panic!("Cannot get column from an empty path"),
-            [path_element] => {
-                let field = get_field(path_element);
-                match &field.relation {
-                    GqlRelation::Pk { column_id }
-                    | GqlRelation::Scalar { column_id }
-                    | GqlRelation::ManyToOne { column_id, .. } => (column_id.clone(), &field.typ),
-                    GqlRelation::OneToMany { .. } => todo!(),
-                    GqlRelation::NonPersistent => panic!(),
-                }
-            }
-            [head_element, rest @ ..] => {
-                let field = get_field(head_element);
+        let field = get_field(field_name);
+        let column_path_link = column_path_utils::column_path_link(self_type_info, field, building);
 
-                let field_base_type = field.typ.base_type(&building.types.values);
-
-                match &field_base_type.kind {
-                    GqlTypeKind::Primitive => todo!(),
-                    GqlTypeKind::Composite(self_type_info) => {
-                        get_column(rest, self_type_info, building)
-                    }
-                }
-            }
-        }
+        (column_path_link, &field.typ)
     }
 
     fn get_context<'a>(
@@ -212,9 +188,38 @@ fn compute_selection<'a>(
     flatten(selection, &mut path_elements);
 
     if path_elements[0] == "self" {
-        let (column_id, column_type) =
-            get_column(&path_elements[1..], self_type_info.unwrap(), building);
-        PathSelection::Column(column_id, column_type)
+        let (_, column_path_elems, field_type) = path_elements[1..].iter().fold(
+            (self_type_info, vec![], None),
+            |(self_type_info, column_path_elems, _field_type), field_name| {
+                let self_type_info =
+                    self_type_info.expect("Type for the access selection is not defined");
+
+                let (field_column_path, field_type) =
+                    get_column(field_name, self_type_info, building);
+
+                let field_composite_type = match &field_type.base_type(&building.types.values).kind
+                {
+                    GqlTypeKind::Composite(composite_type) => Some(composite_type),
+                    _ => None,
+                };
+
+                (
+                    field_composite_type,
+                    column_path_elems
+                        .into_iter()
+                        .chain(vec![field_column_path])
+                        .collect(),
+                    Some(field_type),
+                )
+            },
+        );
+
+        PathSelection::Column(
+            ColumnPath {
+                path: column_path_elems,
+            },
+            field_type.unwrap(),
+        )
     } else {
         let (context_selection, column_type) = get_context(&path_elements, building);
         PathSelection::Context(context_selection, column_type)

@@ -1,15 +1,29 @@
 operation: |
     mutation {
         A1a: createArtist(data: {name: "A1a"}) {
-            id
+            id @bind(name: "A1a_id")
         }
         A1b: createArtist(data: {name: "A1b"}) {
-            id
+            id @bind(name: "A1b_id")
         }
         A2a: createArtist(data: {name: "A2a"}) {
-            id
+            id @bind(name: "A2a_id")
         }
         A2b: createArtist(data: {name: "A2b"}) {
-            id
-        }                    
+            id @bind(name: "A2b_id")
+        }
+        c1: createConcert(data: {title: "C1", concertArtists: [
+            {artist: {id: 1}, rank: 1, role: "main"},
+            {artist: {id: 2}, rank: 2, role: "main"}, 
+            {artist: {id: 3}, rank: 3, role: "accompanying"}
+        ]}) {
+            id @bind(name: "c1_id")
+        }
+        # c2 doesn't have artist: {id: 2}
+        c2: createConcert(data: {title: "C1", concertArtists: [
+            {artist: {id: 1}, rank: 1, role: "main"},
+            {artist: {id: 3}, rank: 3, role: "accompanying"}
+        ]}) {
+            id @bind(name: "c2_id")
+        }                            
     }  

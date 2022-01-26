@@ -1,0 +1,84 @@
+operation: |
+  query {
+    concerts {
+      id
+      title
+      mainArtists: concertArtists(where: {role: {eq: "main"}}) {
+        ...artistInfo
+      }
+      accArtists: concertArtists(where: {role: {eq: "accompanying"}}) {
+        ...artistInfo
+      }
+    }
+  }  
+  fragment artistInfo on ConcertArtist {
+    id
+    artist {
+        id
+        name
+    }
+    rank
+  }
+response: |
+  {
+    "data": {
+      "concerts": [
+        {
+          "id": $.c1_id,
+          "title": "C1",
+          "mainArtists": [
+            {
+              "id": 1,
+              "artist": {
+                "id": $.A1a_id,
+                "name": "A1a"
+              },
+              "rank": 1
+            },
+            {
+              "id": 2,
+              "artist": {
+                "id": $.A1b_id,
+                "name": "A1b"
+              },
+              "rank": 2
+            }
+          ],
+          "accArtists": [
+            {
+              "id": 3,
+              "artist": {
+                "id": $.A2a_id,
+                "name": "A2a"
+              },
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": $.c2_id,
+          "title": "C1",
+          "mainArtists": [
+            {
+              "id": 4,
+              "artist": {
+                "id": $.A1a_id,
+                "name": "A1a"
+              },
+              "rank": 1
+            }
+          ],
+          "accArtists": [
+            {
+              "id": 5,
+              "artist": {
+                "id": $.A2a_id,
+                "name": "A2a"
+              },
+              "rank": 3
+            }
+          ]
+        }
+      ]
+    }
+  }

@@ -48,18 +48,17 @@ impl GqlType {
     }
 
     pub fn pk_field(&self) -> Option<&GqlField> {
-        self.model_fields().iter().find_map(|field| {
-            if let GqlRelation::Pk { .. } = &field.relation {
-                Some(*field)
-            } else {
-                None
-            }
-        })
+        match &self.kind {
+            GqlTypeKind::Primitive => None,
+            GqlTypeKind::Composite(composite_type) => composite_type.pk_field(),
+        }
     }
 
     pub fn pk_column_id(&self) -> Option<ColumnId> {
-        self.pk_field()
-            .and_then(|pk_field| pk_field.relation.self_column())
+        match &self.kind {
+            GqlTypeKind::Primitive => None,
+            GqlTypeKind::Composite(composite_type) => composite_type.pk_column_id(),
+        }
     }
 
     pub fn table_id(&self) -> Option<SerializableSlabIndex<PhysicalTable>> {
@@ -119,6 +118,25 @@ impl GqlCompositeType {
                 panic!("Primary key queries do not exist for non-persistent types!")
             }
         }
+    }
+
+    pub fn get_field_by_name(&self, name: &str) -> Option<&GqlField> {
+        self.fields.iter().find(|field| field.name == name)
+    }
+
+    pub fn pk_field(&self) -> Option<&GqlField> {
+        self.fields.iter().find_map(|field| {
+            if let GqlRelation::Pk { .. } = &field.relation {
+                Some(field)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn pk_column_id(&self) -> Option<ColumnId> {
+        self.pk_field()
+            .and_then(|pk_field| pk_field.relation.self_column())
     }
 }
 

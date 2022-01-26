@@ -4,6 +4,7 @@ mod system_builder;
 
 mod access_utils;
 mod argument_builder;
+mod column_path_utils;
 mod context_builder;
 mod create_mutation_builder;
 mod delete_mutation_builder;
