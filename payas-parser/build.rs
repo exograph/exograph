@@ -7,7 +7,7 @@ fn main() {
         .arg("generate")
         .current_dir(fs::canonicalize("./grammar").unwrap())
         .output()
-        .unwrap();
+        .expect("Failed to execute 'tree-sitter generate'");
 
     if !sitter_out.status.success() {
         println!("{}", String::from_utf8_lossy(&sitter_out.stderr));
