@@ -62,19 +62,14 @@ mod tests {
                     table_name: "concerts".to_string(),
                     column_name: "id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: false,
-                    is_autoincrement: false,
-                    is_nullable: true,
-                    is_unique: false,
+                    is_pk: true,
+                    ..Default::default()
                 },
                 PhysicalColumn {
                     table_name: "concerts".to_string(),
                     column_name: "venue_id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: false,
-                    is_autoincrement: false,
-                    is_nullable: true,
-                    is_unique: false,
+                    ..Default::default()
                 },
             ],
         };
@@ -86,19 +81,13 @@ mod tests {
                     table_name: "venues".to_string(),
                     column_name: "id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: false,
-                    is_autoincrement: false,
-                    is_nullable: true,
-                    is_unique: false,
+                    ..Default::default()
                 },
                 PhysicalColumn {
                     table_name: "venues".to_string(),
                     column_name: "capacity".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-                    is_pk: false,
-                    is_autoincrement: false,
-                    is_nullable: true,
-                    is_unique: false,
+                    ..Default::default()
                 },
             ],
         };

@@ -16,8 +16,8 @@ use payas_model::{
 use super::{
     access_utils,
     resolved_builder::{
-        ResolvedAccess, ResolvedField, ResolvedFieldKind, ResolvedFieldType, ResolvedMethod,
-        ResolvedType, ResolvedTypeHint,
+        ResolvedAccess, ResolvedField, ResolvedFieldDefault, ResolvedFieldKind, ResolvedFieldType,
+        ResolvedMethod, ResolvedType, ResolvedTypeHint,
     },
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
@@ -304,6 +304,26 @@ fn create_column(
         _ => (&field.typ, false),
     };
 
+    let default_value = field
+        .default_value
+        .as_ref()
+        .map(|default_value| match default_value {
+            ResolvedFieldDefault::Value(val) => Some(match &**val {
+                AstExpr::StringLiteral(string, _) => format!("\"{}\"", string),
+                AstExpr::BooleanLiteral(boolean, _) => {
+                    format!("{}", boolean)
+                }
+                AstExpr::NumberLiteral(val, _) => {
+                    format!("{}", val)
+                }
+                _ => panic!("Invalid concrete value"),
+            }),
+            ResolvedFieldDefault::DatabaseFunction(string) => Some(string.to_string()),
+            ResolvedFieldDefault::Autoincrement => None,
+            ResolvedFieldDefault::DateNow => Some("GETTIME()".to_string()),
+        })
+        .flatten();
+
     match typ {
         ResolvedFieldType::Plain(type_name) => {
             // Either a scalar (primitive) or a many-to-one relationship with another table
@@ -323,6 +343,7 @@ fn create_column(
                     },
                     is_nullable: optional,
                     is_unique: unique,
+                    default_value,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -344,6 +365,7 @@ fn create_column(
                         is_autoincrement: false,
                         is_nullable: optional,
                         is_unique: unique,
+                        default_value,
                     })
                 }
             }
@@ -386,6 +408,7 @@ fn create_column(
                     is_autoincrement: false,
                     is_nullable: optional,
                     is_unique: unique,
+                    default_value,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column

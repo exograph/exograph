@@ -228,6 +228,7 @@ pub struct ColumnSpec {
     pub is_autoincrement: bool,
     pub is_nullable: bool,
     pub is_unique: bool,
+    pub default_value: Option<String>,
 }
 
 impl ColumnSpec {
@@ -307,6 +308,24 @@ impl ColumnSpec {
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
+        let default_value = {
+            let db_type_query = format!(
+                "
+                SELECT adbin 
+                FROM pg_attrdef
+                INNER JOIN pg_attribute
+                ON pg_attrdef.adnum = pg_attribute.attnum
+                AND pg_attribute.attrelid = '{}'::regclass
+                AND pg_attribute.attname = '{}'",
+                table_name, column_name
+            );
+
+            let rows = client.query(db_type_query.as_str(), &[]).await?;
+            let row = rows.get(0).unwrap();
+
+            row.try_get("adbin").ok()
+        };
+
         Ok(WithIssues {
             value: db_type.map(|db_type| ColumnSpec {
                 table_name: table_name.to_owned(),
@@ -317,6 +336,7 @@ impl ColumnSpec {
                     .contains(&format!("{}_{}_seq", table_name, column_name)),
                 is_nullable: !not_null,
                 is_unique: false,
+                default_value,
             }),
             issues,
         })

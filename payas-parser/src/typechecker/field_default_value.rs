@@ -1,0 +1,92 @@
+use std::collections::HashMap;
+
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_model::model::mapped_arena::MappedArena;
+
+use crate::ast::ast_types::{AstExpr, AstFieldDefault, AstFieldDefaultKind, Untyped};
+
+use super::annotation::AnnotationSpec;
+use super::{Scope, Type, TypecheckFrom, Typed};
+
+impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
+    fn shallow(untyped: &AstFieldDefault<Untyped>) -> AstFieldDefault<Typed> {
+        let kind = {
+            match &untyped.kind {
+                AstFieldDefaultKind::DatabaseFunction(string) => {
+                    AstFieldDefaultKind::DatabaseFunction(string.clone())
+                }
+                AstFieldDefaultKind::Function(fn_name, args) => AstFieldDefaultKind::Function(
+                    fn_name.clone(),
+                    args.iter().map(AstExpr::shallow).collect(),
+                ),
+                AstFieldDefaultKind::Value(expr) => {
+                    AstFieldDefaultKind::Value(AstExpr::shallow(expr))
+                }
+            }
+        };
+
+        AstFieldDefault {
+            kind,
+            span: untyped.span,
+        }
+    }
+
+    fn pass(
+        &mut self,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
+        scope: &Scope,
+        errors: &mut Vec<Diagnostic>,
+    ) -> bool {
+        let mut pass_literal = |expr: &mut AstExpr<Typed>| match expr {
+            AstExpr::BooleanLiteral(_, _)
+            | AstExpr::StringLiteral(_, _)
+            | AstExpr::NumberLiteral(_, _) => expr.pass(type_env, annotation_env, scope, errors),
+
+            _ => {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: "Must be a literal.".to_string(),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: self.span,
+                        style: SpanStyle::Primary,
+                        label: Some("unknown type".to_string()),
+                    }],
+                });
+                true
+            }
+        };
+
+        match &mut self.kind {
+            AstFieldDefaultKind::DatabaseFunction(_string) => false,
+            AstFieldDefaultKind::Function(fn_name, args) => {
+                let args_pass = args.iter_mut().any(pass_literal);
+
+                let fn_name_pass = match fn_name.as_str() {
+                    "autoincrement" | "now" => false,
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "Unknown kind of default value specified: {}",
+                                fn_name
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: self.span,
+                                style: SpanStyle::Primary,
+                                label: Some("unknown type".to_string()),
+                            }],
+                        });
+
+                        true
+                    }
+                };
+
+                args_pass || fn_name_pass
+            }
+            AstFieldDefaultKind::Value(expr) => pass_literal(expr),
+        }
+    }
+}

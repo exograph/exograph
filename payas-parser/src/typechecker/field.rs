@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use codemap_diagnostic::Diagnostic;
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::ast::ast_types::{AstField, AstFieldType, Untyped};
+use crate::ast::ast_types::{AstField, AstFieldDefault, AstFieldType, Untyped};
 
 use super::annotation::{AnnotationSpec, AnnotationTarget};
 use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed};
@@ -16,6 +16,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             name: untyped.name.clone(),
             typ: AstFieldType::shallow(&untyped.typ),
             annotations: annotation_map,
+            default_value: untyped.default_value.as_ref().map(AstFieldDefault::shallow),
             span: untyped.span,
         }
     }
@@ -37,6 +38,12 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             errors,
         );
 
-        typ_changed || annot_changed
+        let default_value_changed = self
+            .default_value
+            .as_mut()
+            .map(|default_value| default_value.pass(type_env, annotation_env, scope, errors))
+            .unwrap_or(false);
+
+        typ_changed || annot_changed || default_value_changed
     }
 }

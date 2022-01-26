@@ -5,7 +5,7 @@ context AuthContext {
 
 @table("foo")
 model Foo {
-    id: Int @pk @autoincrement
+    id: Int = autoincrement() @pk
     bar: Int
     baz: Int
     qux: Int

@@ -111,6 +111,7 @@ impl FromModel<&PhysicalColumn> for ColumnSpec {
             is_autoincrement: column.is_autoincrement,
             is_nullable: column.is_nullable,
             is_unique: column.is_unique,
+            default_value: column.default_value.clone(),
         }
     }
 }

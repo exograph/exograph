@@ -45,10 +45,7 @@ mod test {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: true,
-            is_unique: false,
+            ..Default::default()
         };
 
         let order_by = OrderBy(vec![(&age_col, Ordering::Desc)]);
@@ -65,20 +62,14 @@ mod test {
             table_name: "people".to_string(),
             column_name: "name".to_string(),
             typ: PhysicalColumnType::String { length: None },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: true,
-            is_unique: false,
+            ..Default::default()
         };
 
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: true,
-            is_unique: false,
+            ..Default::default()
         };
 
         {

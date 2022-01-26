@@ -13,7 +13,8 @@ use payas_model::model::naming::{ToPlural, ToTableName};
 use payas_model::model::GqlTypeModifier;
 
 use crate::ast::ast_types::{
-    AstAnnotationParams, AstArgument, AstFieldType, AstMethodType, AstService,
+    AstAnnotationParams, AstArgument, AstFieldDefault, AstFieldDefaultKind, AstFieldType,
+    AstMethodType, AstService,
 };
 use crate::builder::service_skeleton_generator;
 use crate::error::ParserError;
@@ -161,6 +162,7 @@ pub struct ResolvedField {
     pub name: String,
     pub typ: ResolvedFieldType,
     pub kind: ResolvedFieldKind,
+    pub default_value: Option<ResolvedFieldDefault>,
 }
 
 // TODO: dedup?
@@ -184,15 +186,12 @@ impl ResolvedField {
     }
 
     pub fn get_is_autoincrement(&self) -> bool {
-        match &self.kind {
-            ResolvedFieldKind::Persistent {
-                is_autoincrement, ..
-            } => *is_autoincrement,
-            ResolvedFieldKind::NonPersistent => {
-                panic!("Tried to get persistence-related information from a non-persistent field!")
-            }
-        }
+        matches!(
+            &self.default_value,
+            Some(ResolvedFieldDefault::Autoincrement)
+        )
     }
+
     pub fn get_type_hint(&self) -> &Option<ResolvedTypeHint> {
         match &self.kind {
             ResolvedFieldKind::Persistent { type_hint, .. } => type_hint,
@@ -212,7 +211,6 @@ pub enum ResolvedFieldKind {
         column_name: String,
         self_column: bool, // is the column name in the same table or does it point to a column in a different table?
         is_pk: bool,
-        is_autoincrement: bool,
         type_hint: Option<ResolvedTypeHint>,
         unique: bool,
     },
@@ -237,6 +235,14 @@ pub enum ResolvedFieldType {
     Plain(String), // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
     Optional(Box<ResolvedFieldType>),
     List(Box<ResolvedFieldType>),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedFieldDefault {
+    Value(Box<AstExpr<Typed>>),
+    DatabaseFunction(String),
+    Autoincrement,
+    DateNow,
 }
 
 impl ResolvedFieldType {
@@ -723,7 +729,6 @@ fn build_expanded_persistent_type(
                                 column_name,
                                 self_column,
                                 is_pk: field.annotations.contains("pk"),
-                                is_autoincrement: field.annotations.contains("autoincrement"),
                                 type_hint: build_type_hint(field, types),
                                 unique,
                             }),
@@ -742,6 +747,7 @@ fn build_expanded_persistent_type(
                     name: field.name.clone(),
                     typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
                     kind,
+                    default_value: field.default_value.as_ref().map(resolve_field_default_type),
                 })
             })
             .collect();
@@ -754,6 +760,20 @@ fn build_expanded_persistent_type(
             access: access.clone(),
         });
         resolved_types[existing_type_id] = expanded;
+    }
+}
+
+fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> ResolvedFieldDefault {
+    match &default_value.kind {
+        AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
+        AstFieldDefaultKind::DatabaseFunction(func) => {
+            ResolvedFieldDefault::DatabaseFunction(func.to_owned())
+        }
+        AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
+            "autoincrement" => ResolvedFieldDefault::Autoincrement,
+            "now" => ResolvedFieldDefault::DateNow,
+            _ => panic!(),
+        },
     }
 }
 
@@ -1345,7 +1365,7 @@ mod tests {
         let src = r#"
         @table("custom_concerts")
         model Concert {
-          id: Int @pk @dbtype("bigint") @autoincrement @column("custom_id")
+          id: Int = autoincrement() @pk @dbtype("bigint") @column("custom_id")
           title: String @column("custom_title") @length(12)
           venue: Venue @column("custom_venue_id")
           reserved: Int @range(min=0, max=300)
@@ -1356,7 +1376,7 @@ mod tests {
         @table("venues")
         @plural_name("Venuess")
         model Venue {
-          id: Int @pk @autoincrement @column("custom_id")
+          id: Int = autoincrement() @pk @column("custom_id")
           name: String @column("custom_name")
           concerts: Set<Concert> @column("custom_venue_id")
           capacity: Int @bits(16)
@@ -1381,10 +1401,10 @@ mod tests {
 
     #[test]
     fn with_defaults() {
-        // Note the swapped order between @pk and @autoincrement to assert that our parsing logic permits any order
+        // Note the swapped order between @pk and @dbtype to assert that our parsing logic permits any order
         let src = r#"
         model Concert {
-          id: Int @pk @autoincrement 
+          id: Int = autoincrement() @dbtype("BIGINT") @pk 
           title: String 
           venue: Venue 
           attending: Array<String>
@@ -1392,7 +1412,7 @@ mod tests {
         }
 
         model Venue             {
-          id: Int  @autoincrement @pk 
+          id: Int  = autoincrement() @pk @dbtype("BIGINT")
           name:String 
           concerts: Set<Concert> 
         }        
@@ -1409,14 +1429,14 @@ mod tests {
     fn with_optional_fields() {
         let src = r#"
         model Concert {
-          id: Int @pk @autoincrement 
+          id: Int = autoincrement() @pk 
           title: String 
           venue: Venue? 
           icon: Blob?
         }
 
         model Venue {
-          id: Int @pk @autoincrement
+          id: Int = autoincrement() @pk
           name: String
           address: String? @column("custom_address")
           concerts: Set<Concert>?
@@ -1439,7 +1459,7 @@ mod tests {
 
         @access(AuthContext.role == "ROLE_ADMIN" || self.public)
         model Concert {
-          id: Int @pk @autoincrement 
+          id: Int = autoincrement() @pk 
           title: String
           public: Boolean
         }      
@@ -1469,7 +1489,7 @@ mod tests {
 
         @access(AuthContext.role == "ROLE_ADMIN" || self.public)
         model Concert {
-          id: Int @pk @autoincrement 
+          id: Int = autoincrement() @pk 
           title: String
           public: Boolean
         }      
@@ -1486,7 +1506,7 @@ mod tests {
     fn field_name_variations() {
         let src = r#"
         model Entity {
-          _id: Int @pk @autoincrement
+          _id: Int = autoincrement() @pk
           title_main: String
           title_main1: String
           public1: Boolean
@@ -1505,14 +1525,14 @@ mod tests {
     fn column_names_for_non_standard_relational_field_names() {
         let src = r#"
         model Concert {
-          id: Int @pk @autoincrement
+          id: Int = autoincrement() @pk
           title: String
           venuex: Venue // non-standard name
           published: Boolean
         }
         
         model Venue {
-          id: Int @pk @autoincrement
+          id: Int = autoincrement() @pk
           name: String
           concerts: Set<Concert>
           published: Boolean
@@ -1530,7 +1550,7 @@ mod tests {
     fn with_multiple_matching_field_no_column_annotation() {
         let src = r#"
             model Concert {
-                id: Int @pk @autoincrement 
+                id: Int = autoincrement() @pk 
                 title: String 
                 ticket_office: Venue //@column("ticket_office")
                 main: Venue //@column("main")
@@ -1553,7 +1573,7 @@ mod tests {
     fn with_multiple_matching_field_with_column_annotation() {
         let src = r#"
             model Concert {
-                id: Int @pk @autoincrement 
+                id: Int = autoincrement() @pk 
                 title: String 
                 ticket_office: Venue @column("ticket_office")
                 main: Venue @column("main")

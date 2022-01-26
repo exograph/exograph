@@ -1,6 +1,6 @@
 @table("logs")
 model Log {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   timestamp: Int
   text: String
 }
