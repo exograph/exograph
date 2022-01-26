@@ -43,13 +43,7 @@ impl<'a> TransactionScript<'a> {
 
         let mut transaction_context = TransactionContext { results: vec![] };
 
-        for (index, step) in self.steps.iter().enumerate() {
-            println!("!! running step {}", index);
-
-            for (index, result) in transaction_context.results.iter().enumerate() {
-                println!("!! result of step {}: {:#?}", index, result);
-            }
-
+        for step in self.steps.iter() {
             let result = step.execute(&mut tx, &transaction_context).await?;
             transaction_context.results.push(result)
         }

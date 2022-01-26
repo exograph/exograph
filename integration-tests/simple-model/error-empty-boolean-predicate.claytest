@@ -8,7 +8,7 @@ response: |
   {
     "errors": [
       {
-        "message": "Boolean predicate does not have any arguments"
+        "message": "Logical operation predicate does not have any arguments"
       }
     ]
   }

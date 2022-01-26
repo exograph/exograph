@@ -1,7 +1,7 @@
 //! Build mutation input types associatd with deletion (<Type>DeletionInput) and
 //! the create mutations (delete<Type>, and delete<Type>s)
 
-use payas_model::model::mapped_arena::MappedArena;
+use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::naming::ToGqlMutationNames;
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
@@ -53,19 +53,30 @@ impl MutationBuilder for DeleteMutationBuilder {
     }
 
     fn single_mutation_kind(
+        model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
     ) -> MutationKind {
-        MutationKind::Delete(query_builder::pk_predicate_param(model_type, building))
+        MutationKind::Delete(query_builder::pk_predicate_param(
+            model_type_id,
+            model_type,
+            building,
+        ))
     }
 
     fn multi_mutation_name(model_type: &GqlType) -> String {
         model_type.collection_delete()
     }
 
-    fn multi_mutation_kind(model_type: &GqlType, building: &SystemContextBuilding) -> MutationKind {
+    fn multi_mutation_kind(
+        model_type_id: SerializableSlabIndex<GqlType>,
+        model_type: &GqlType,
+        building: &SystemContextBuilding,
+    ) -> MutationKind {
         MutationKind::Delete(query_builder::collection_predicate_param(
-            model_type, building,
+            model_type_id,
+            model_type,
+            building,
         ))
     }
 }

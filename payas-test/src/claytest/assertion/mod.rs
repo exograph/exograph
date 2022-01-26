@@ -42,8 +42,8 @@ pub fn dynamic_assert_using_deno(
         DenoModuleSharedState::default(),
     );
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    let mut deno_module = runtime.block_on(deno_module_future).unwrap();
+    let runtime = tokio::runtime::Runtime::new()?;
+    let mut deno_module = runtime.block_on(deno_module_future)?;
 
     // run method
     let _ = runtime
