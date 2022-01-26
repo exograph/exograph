@@ -6,7 +6,7 @@ Must have:
 
 - Rust (see the version specified in [rust-toolchain.toml](rust-toolchain.toml))
 - Postgres 12
-- Treesitter (`cargo install --rev v0.19.5 --git https://github.com/tree-sitter/tree-sitter.git tree-sitter-cli`)
+- Tree-sitter (`cargo install --rev v0.20.4 --git https://github.com/tree-sitter/tree-sitter.git tree-sitter-cli`)
 - [Deno](https://deno.land/)
 
 Nice to have:
