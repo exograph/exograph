@@ -11,6 +11,8 @@ const USER_PARAM: &str = "CLAY_DATABASE_USER";
 const PASSWORD_PARAM: &str = "CLAY_DATABASE_PASSWORD";
 const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
 const CHECK_CONNECTION_ON_STARTUP: &str = "CLAY_CHECK_CONNECTION_ON_STARTUP";
+const SSL_METHOD_PARAM: &str = "CLAY_SSL_METHOD"; // Possible values: "none" (default), "tls", "dtls", "tls_client", and "tls_server"
+const SSL_VERIFY_MODE_PARAM: &str = "CLAY_SSL_VERIFY_MODE"; // Possible values: "none" (default) and "peer"
 
 pub struct Database {
     pool: Pool,
@@ -28,21 +30,58 @@ impl<'a> Database {
                 .map(|pool_str| pool_str.parse::<usize>().unwrap())
                 .unwrap_or(10)
         });
+
+        let ssl_method = env::var(SSL_METHOD_PARAM)
+            .ok()
+            .map(
+                |ssl_method_str| match ssl_method_str.as_str().to_ascii_lowercase().as_str() {
+                    "tls" => Ok(Some(SslMethod::tls())),
+                    "dtls" => Ok(Some(SslMethod::dtls())),
+                    "tls_client" => Ok(Some(SslMethod::tls_client())),
+                    "tls_server" => Ok(Some(SslMethod::tls_server())),
+                    _ => bail!("Invalid SSL method: {}", ssl_method_str),
+                },
+            )
+            .unwrap_or_else(|| Ok(None))?;
+        let ssl_verify_mode = env::var(SSL_VERIFY_MODE_PARAM)
+            .ok()
+            .map(|ssl_verify_mode_str| {
+                match ssl_verify_mode_str.as_str().to_ascii_lowercase().as_str() {
+                    "none" => Ok(Some(SslVerifyMode::NONE)),
+                    "peer" => Ok(Some(SslVerifyMode::PEER)),
+                    _ => bail!("Invalid SSL verify mode: {}", ssl_verify_mode_str),
+                }
+            })
+            .unwrap_or_else(|| Ok(None))?;
+
+        let ssl_info = match (ssl_method, ssl_verify_mode) {
+            (Some(ssl_method), Some(ssl_verify_mode)) => Some((ssl_method, ssl_verify_mode)),
+            (Some(ssl_method), None) => {
+                eprintln!("SSL verify mode not provided through the CLAY_SSL_VERIFY_MODE env. Using default SSL verify mode: 'peer'");
+                Some((ssl_method, SslVerifyMode::PEER))
+            }
+            (None, Some(ssl_verify_mode)) => {
+                eprintln!("SSL method not provided through the CLAY_SSL_METHOD env, yet CLAY_SSL_VERIFY_MODE is provided. Using default SSL method: 'tls'");
+                Some((SslMethod::tls(), ssl_verify_mode))
+            }
+            _ => None,
+        };
+
         let check_connection = env::var(CHECK_CONNECTION_ON_STARTUP)
             .ok()
             .map(|pool_str| pool_str.parse::<bool>().unwrap())
             .unwrap_or(true);
 
-        Self::from_env_helper(pool_size, check_connection, url, user, password, None)
+        Self::from_env_helper(pool_size, check_connection, url, user, password, ssl_info)
     }
 
-    pub fn from_env_helper(
+    fn from_env_helper(
         pool_size: usize,
         _check_connection: bool,
         url: String,
         user: Option<String>,
         password: Option<String>,
-        db_name_override: Option<String>,
+        ssl_info: Option<(SslMethod, SslVerifyMode)>,
     ) -> Result<Self> {
         use std::str::FromStr;
 
@@ -55,25 +94,24 @@ impl<'a> Database {
         if let Some(password) = &password {
             config.password(password);
         }
-        if let Some(db_name) = &db_name_override {
-            config.dbname(db_name);
-        }
 
         if config.get_user() == None {
             bail!("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER")
         }
 
-        let mut builder = SslConnector::builder(SslMethod::tls())?;
-        builder.set_verify(SslVerifyMode::NONE);
-        let connector = MakeTlsConnector::new(builder.build());
+        let manager_config = ManagerConfig {
+            recycling_method: RecyclingMethod::Fast,
+        };
 
-        let manager = Manager::from_config(
-            config,
-            connector, // or tokio_postgres::NoTls,
-            ManagerConfig {
-                recycling_method: RecyclingMethod::Fast,
-            },
-        );
+        let manager = match ssl_info {
+            Some((ssl_method, ssl_verify_mode)) => {
+                let mut builder = SslConnector::builder(ssl_method)?;
+                builder.set_verify(ssl_verify_mode);
+                let connector = MakeTlsConnector::new(builder.build());
+                Manager::from_config(config, connector, manager_config)
+            }
+            None => Manager::from_config(config, tokio_postgres::NoTls, manager_config),
+        };
 
         let pool = Pool::builder(manager).max_size(pool_size).build().unwrap();
 
