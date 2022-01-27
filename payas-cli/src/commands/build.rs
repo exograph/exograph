@@ -11,7 +11,6 @@ use super::command::Command;
 /// Build claytip server binary
 pub struct BuildCommand {
     pub model: PathBuf,
-    pub watch: bool,
 }
 
 impl Command for BuildCommand {
