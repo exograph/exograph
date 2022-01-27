@@ -159,7 +159,7 @@ fn generate_method_skeleton(
     is_typescript: bool,
 ) -> Result<(), ParserError> {
     // We put `async` in a comment as an indication to the user that it is okay to have async functions
-    out_file.write_all("export /*async*/ function ".as_bytes())?;
+    out_file.write_all("export async function ".as_bytes())?;
     out_file.write_all(name.as_bytes())?;
     out_file.write_all("(".as_bytes())?;
 
@@ -169,8 +169,9 @@ fn generate_method_skeleton(
 
     if is_typescript {
         if let Some(return_type) = return_type {
-            out_file.write_all(": ".as_bytes())?;
+            out_file.write_all(": Promise<".as_bytes())?;
             out_file.write_all(typescript_type(return_type).as_bytes())?;
+            out_file.write_all(">".as_bytes())?;
         }
     }
 
