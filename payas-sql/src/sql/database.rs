@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use std::env;
 
 use deadpool_postgres::{Client, Manager, ManagerConfig, Pool, RecyclingMethod};
@@ -12,7 +12,7 @@ const PASSWORD_PARAM: &str = "CLAY_DATABASE_PASSWORD";
 const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
 const CHECK_CONNECTION_ON_STARTUP: &str = "CLAY_CHECK_CONNECTION_ON_STARTUP";
 const SSL_METHOD_PARAM: &str = "CLAY_SSL_METHOD"; // Possible values: "none" (default), "tls", "dtls", "tls_client", and "tls_server"
-const SSL_VERIFY_MODE_PARAM: &str = "CLAY_SSL_VERIFY_MODE"; // Possible values: "none" (default) and "peer"
+const SSL_NO_VERIFY_PARAM: &str = "CLAY_SSL_NO_VERIFY"; // boolean (default: false)
 
 pub struct Database {
     pool: Pool,
@@ -98,36 +98,40 @@ impl<'a> Database {
         let ssl_method = env::var(SSL_METHOD_PARAM)
             .ok()
             .map(
-                |ssl_method_str| match ssl_method_str.as_str().to_ascii_lowercase().as_str() {
+                |env_str| match env_str.as_str().to_ascii_lowercase().as_str() {
                     "tls" => Ok(Some(SslMethod::tls())),
                     "dtls" => Ok(Some(SslMethod::dtls())),
                     "tls_client" => Ok(Some(SslMethod::tls_client())),
-                    "tls_server" => Ok(Some(SslMethod::tls_server())),
-                    _ => bail!("Invalid SSL method: {}", ssl_method_str),
+                    _ => Err(anyhow!(
+                        "Invalid SSL method: {}. Env {} must be set to either 'tls', 'dtls', or 'tls_client'", env_str, SSL_METHOD_PARAM
+                    )),
                 },
             )
             .unwrap_or_else(|| Ok(None))?;
-        let ssl_verify_mode = env::var(SSL_VERIFY_MODE_PARAM)
-            .ok()
-            .map(|ssl_verify_mode_str| {
-                match ssl_verify_mode_str.as_str().to_ascii_lowercase().as_str() {
-                    "none" => Ok(Some(SslVerifyMode::NONE)),
-                    "peer" => Ok(Some(SslVerifyMode::PEER)),
-                    _ => bail!("Invalid SSL verify mode: {}", ssl_verify_mode_str),
-                }
-            })
-            .unwrap_or_else(|| Ok(None))?;
 
-        let ssl_config = match (ssl_method, ssl_verify_mode) {
-            (Some(ssl_method), Some(ssl_verify_mode)) => Some((ssl_method, ssl_verify_mode)),
-            (Some(ssl_method), None) => {
-                eprintln!("SSL verify mode not provided through the CLAY_SSL_VERIFY_MODE env. Using default SSL verify mode: 'peer'");
-                Some((ssl_method, SslVerifyMode::PEER))
-            }
-            (None, Some(ssl_verify_mode)) => {
-                eprintln!("SSL method not provided through the CLAY_SSL_METHOD env, yet CLAY_SSL_VERIFY_MODE is provided. Using default SSL method: 'tls'");
-                Some((SslMethod::tls(), ssl_verify_mode))
-            }
+        let ssl_no_verify = env::var(SSL_NO_VERIFY_PARAM)
+            .ok()
+            .map(|env_str| match env_str.parse::<bool>() {
+                Ok(b) => Ok(b),
+                Err(_) => Err(anyhow!(
+                    "Invalid SSL_NO_VERIFY value: {}. Env {} must be set to true or false",
+                    env_str,
+                    SSL_NO_VERIFY_PARAM
+                )),
+            })
+            .unwrap_or(Ok(false))?;
+
+        if !ssl_no_verify && ssl_method.is_none() {
+            bail!(
+                "{} must be set to 'tls', 'dtls', or 'tls_client' when {} is false",
+                SSL_METHOD_PARAM,
+                SSL_NO_VERIFY_PARAM
+            )
+        }
+
+        let ssl_config = match (ssl_method, ssl_no_verify) {
+            (Some(ssl_method), false) => Some((ssl_method, SslVerifyMode::PEER)),
+            (Some(ssl_method), true) => Some((ssl_method, SslVerifyMode::NONE)),
             _ => None,
         };
 
