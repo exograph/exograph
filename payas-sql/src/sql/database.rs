@@ -115,7 +115,7 @@ impl<'a> Database {
             .map(|env_str| match env_str.parse::<bool>() {
                 Ok(b) => Ok(Some(b)),
                 Err(_) => Err(anyhow!(
-                    "Invalid {} value: {}. It must be set to true or false",
+                    "Invalid {} value: {}. It must be set to 'true' or 'false'",
                     SSL_NO_VERIFY_PARAM,
                     env_str,
                 )),
@@ -124,7 +124,7 @@ impl<'a> Database {
 
         if ssl_method.is_none() && ssl_no_verify == Some(false) {
             bail!(
-                "{} must be set to 'tls' or 'dtls' when {} is set to false",
+                "{} must be set to 'tls' or 'dtls' when {} is set to 'false'",
                 SSL_METHOD_PARAM,
                 SSL_NO_VERIFY_PARAM
             )
