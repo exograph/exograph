@@ -11,7 +11,7 @@ const USER_PARAM: &str = "CLAY_DATABASE_USER";
 const PASSWORD_PARAM: &str = "CLAY_DATABASE_PASSWORD";
 const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
 const CHECK_CONNECTION_ON_STARTUP: &str = "CLAY_CHECK_CONNECTION_ON_STARTUP";
-const SSL_METHOD_PARAM: &str = "CLAY_SSL_METHOD"; // Possible values: "none" (default), "tls", "dtls", "tls_client", and "tls_server"
+const SSL_METHOD_PARAM: &str = "CLAY_SSL_METHOD"; // Possible values: "tls" and "dtls"
 const SSL_NO_VERIFY_PARAM: &str = "CLAY_SSL_NO_VERIFY"; // boolean (default: false)
 
 pub struct Database {
@@ -101,9 +101,10 @@ impl<'a> Database {
                 |env_str| match env_str.as_str().to_ascii_lowercase().as_str() {
                     "tls" => Ok(Some(SslMethod::tls())),
                     "dtls" => Ok(Some(SslMethod::dtls())),
-                    "tls_client" => Ok(Some(SslMethod::tls_client())),
                     _ => Err(anyhow!(
-                        "Invalid SSL method: {}. Env {} must be set to either 'tls', 'dtls', or 'tls_client'", env_str, SSL_METHOD_PARAM
+                        "Invalid SSL method: {}. Env {} must be set to either 'tls' or 'dtls'",
+                        env_str,
+                        SSL_METHOD_PARAM
                     )),
                 },
             )
@@ -123,7 +124,7 @@ impl<'a> Database {
 
         if ssl_method.is_none() && ssl_no_verify == Some(false) {
             bail!(
-                "{} must be set to 'tls', 'dtls', or 'tls_client' when {} is set to false",
+                "{} must be set to 'tls' or 'dtls' when {} is set to false",
                 SSL_METHOD_PARAM,
                 SSL_NO_VERIFY_PARAM
             )
