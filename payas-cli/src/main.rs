@@ -103,11 +103,6 @@ fn main() -> Result<()> {
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
-                )
-                .arg(
-                    Arg::with_name("watch")
-                        .help("Automatically restart server when model file changes")
-                        .long("watch"),
                 ),
         )
         .subcommand(
