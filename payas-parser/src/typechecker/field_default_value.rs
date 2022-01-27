@@ -51,7 +51,7 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
                     spans: vec![SpanLabel {
                         span: self.span,
                         style: SpanStyle::Primary,
-                        label: Some("unknown type".to_string()),
+                        label: Some("not a literal".to_string()),
                     }],
                 });
                 true
@@ -76,7 +76,7 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
                             spans: vec![SpanLabel {
                                 span: self.span,
                                 style: SpanStyle::Primary,
-                                label: Some("unknown type".to_string()),
+                                label: Some("unknown kind".to_string()),
                             }],
                         });
 

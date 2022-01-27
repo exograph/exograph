@@ -52,7 +52,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
                         spans: vec![SpanLabel {
                             span: *span,
                             style: SpanStyle::Primary,
-                            label: Some("unknown type".to_string()),
+                            label: Some("bad default field".to_string()),
                         }],
                     });
 
