@@ -27,6 +27,7 @@ impl Display for SQLStatement {
 /// An issue that a user may encounter when dealing with the database schema.
 ///
 /// Used in `model import` command.
+#[derive(Debug)]
 pub enum Issue {
     Warning(String),
     Hint(String),
@@ -43,6 +44,7 @@ impl Display for Issue {
 }
 
 /// Wraps a value with a list of issues.
+#[derive(Debug)]
 pub struct WithIssues<T> {
     pub value: T,
     pub issues: Vec<Issue>,
@@ -220,6 +222,7 @@ impl TableSpec {
 }
 
 /// Specification for a single column.
+#[derive(Debug)]
 pub struct ColumnSpec {
     pub table_name: String,
     pub column_name: String,
@@ -311,7 +314,7 @@ impl ColumnSpec {
         let default_value = {
             let db_type_query = format!(
                 "
-                SELECT adbin 
+                SELECT pg_get_expr(pg_attrdef.adbin, pg_attrdef.adrelid)
                 FROM pg_attrdef
                 INNER JOIN pg_attribute
                 ON pg_attrdef.adnum = pg_attribute.attnum
@@ -321,9 +324,7 @@ impl ColumnSpec {
             );
 
             let rows = client.query(db_type_query.as_str(), &[]).await?;
-            let row = rows.get(0).unwrap();
-
-            row.try_get("adbin").ok()
+            rows.get(0).map(|row| row.get("pg_get_expr"))
         };
 
         Ok(WithIssues {

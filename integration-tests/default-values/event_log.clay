@@ -1,4 +1,4 @@
-@table("events")
+@table("easdfasfasvents")
 model Event {
     id: Int = autoincrement() @pk
     timestamp: Instant = now()
