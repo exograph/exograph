@@ -236,7 +236,7 @@ mod tests {
         let src = r#"
             @table("logs")
             model Log {
-              id: Int @dbtype("bigint") = autoincrement() @pk
+              id: Int = autoincrement() @dbtype("bigint") @pk
               nonce: Int @bits(16)
               hash: Int @size(8)
               float: Float @size(4)

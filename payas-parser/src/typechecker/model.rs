@@ -47,10 +47,10 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
                 if let Some(AstFieldDefault { span, .. }) = &field.default_value {
                     errors.push(Diagnostic {
                         level: Level::Error,
-                        message: format!("Default fields can only be specified in models"),
+                        message: "Default fields can only be specified in models".to_string(),
                         code: Some("C000".to_string()),
                         spans: vec![SpanLabel {
-                            span: span.clone(),
+                            span: *span,
                             style: SpanStyle::Primary,
                             label: Some("unknown type".to_string()),
                         }],

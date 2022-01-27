@@ -1580,7 +1580,7 @@ mod tests {
             }
           
             model Venue {
-                id: Int  @autoincrement @pk 
+                id: Int = autoincrement() @pk 
                 name:String 
                 ticket_events: Set<Concert> @column("ticket_office")
                 main_events: Set<Concert> @column("main")
