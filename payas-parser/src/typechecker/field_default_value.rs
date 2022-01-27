@@ -38,7 +38,7 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        let mut pass_literal = |expr: &mut AstExpr<Typed>| match expr {
+        let mut check_literal = |expr: &mut AstExpr<Typed>| match expr {
             AstExpr::BooleanLiteral(_, _)
             | AstExpr::StringLiteral(_, _)
             | AstExpr::NumberLiteral(_, _) => expr.pass(type_env, annotation_env, scope, errors),
@@ -61,9 +61,9 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
         match &mut self.kind {
             AstFieldDefaultKind::DatabaseFunction(_string) => false,
             AstFieldDefaultKind::Function(fn_name, args) => {
-                let args_pass = args.iter_mut().any(pass_literal);
+                let args_changed = args.iter_mut().any(check_literal);
 
-                let fn_name_pass = match fn_name.as_str() {
+                let fn_name_changed = match fn_name.as_str() {
                     "autoincrement" | "now" => false,
                     _ => {
                         errors.push(Diagnostic {
@@ -84,9 +84,9 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
                     }
                 };
 
-                args_pass || fn_name_pass
+                args_changed || fn_name_changed
             }
-            AstFieldDefaultKind::Value(expr) => pass_literal(expr),
+            AstFieldDefaultKind::Value(expr) => check_literal(expr),
         }
     }
 }
