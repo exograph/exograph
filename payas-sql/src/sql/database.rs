@@ -112,26 +112,26 @@ impl<'a> Database {
         let ssl_no_verify = env::var(SSL_NO_VERIFY_PARAM)
             .ok()
             .map(|env_str| match env_str.parse::<bool>() {
-                Ok(b) => Ok(b),
+                Ok(b) => Ok(Some(b)),
                 Err(_) => Err(anyhow!(
-                    "Invalid SSL_NO_VERIFY value: {}. Env {} must be set to true or false",
+                    "Invalid {} value: {}. It must be set to true or false",
+                    SSL_NO_VERIFY_PARAM,
                     env_str,
-                    SSL_NO_VERIFY_PARAM
                 )),
             })
-            .unwrap_or(Ok(false))?;
+            .unwrap_or_else(|| Ok(None))?;
 
-        if !ssl_no_verify && ssl_method.is_none() {
+        if ssl_method.is_none() && ssl_no_verify == Some(false) {
             bail!(
-                "{} must be set to 'tls', 'dtls', or 'tls_client' when {} is false",
+                "{} must be set to 'tls', 'dtls', or 'tls_client' when {} is set to false",
                 SSL_METHOD_PARAM,
                 SSL_NO_VERIFY_PARAM
             )
         }
 
         let ssl_config = match (ssl_method, ssl_no_verify) {
-            (Some(ssl_method), false) => Some((ssl_method, SslVerifyMode::PEER)),
-            (Some(ssl_method), true) => Some((ssl_method, SslVerifyMode::NONE)),
+            (Some(ssl_method), Some(false)) => Some((ssl_method, SslVerifyMode::PEER)),
+            (Some(ssl_method), Some(true)) => Some((ssl_method, SslVerifyMode::NONE)),
             _ => None,
         };
 
