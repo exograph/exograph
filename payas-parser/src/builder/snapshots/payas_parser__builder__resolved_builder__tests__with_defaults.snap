@@ -45,9 +45,11 @@ types:
                   column_name: id
                   self_column: true
                   is_pk: true
-                  is_autoincrement: true
-                  type_hint: ~
+                  type_hint:
+                    Explicit:
+                      dbtype: BIGINT
                   unique: false
+              default_value: Autoincrement
             - name: title
               typ:
                 Plain: String
@@ -56,9 +58,9 @@ types:
                   column_name: title
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
             - name: venue
               typ:
                 Plain: Venue
@@ -67,9 +69,9 @@ types:
                   column_name: venue_id
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
             - name: attending
               typ:
                 List:
@@ -79,9 +81,9 @@ types:
                   column_name: attending
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
             - name: seating
               typ:
                 List:
@@ -92,9 +94,9 @@ types:
                   column_name: seating
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
           kind:
             Persistent:
               table_name: concerts
@@ -124,9 +126,11 @@ types:
                   column_name: id
                   self_column: true
                   is_pk: true
-                  is_autoincrement: true
-                  type_hint: ~
+                  type_hint:
+                    Explicit:
+                      dbtype: BIGINT
                   unique: false
+              default_value: Autoincrement
             - name: name
               typ:
                 Plain: String
@@ -135,9 +139,9 @@ types:
                   column_name: name
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
             - name: concerts
               typ:
                 List:
@@ -147,9 +151,9 @@ types:
                   column_name: venue_id
                   self_column: false
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
           kind:
             Persistent:
               table_name: venues

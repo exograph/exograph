@@ -45,9 +45,9 @@ types:
                   column_name: _id
                   self_column: true
                   is_pk: true
-                  is_autoincrement: true
                   type_hint: ~
                   unique: false
+              default_value: Autoincrement
             - name: title_main
               typ:
                 Plain: String
@@ -56,9 +56,9 @@ types:
                   column_name: title_main
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
             - name: title_main1
               typ:
                 Plain: String
@@ -67,9 +67,9 @@ types:
                   column_name: title_main1
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
             - name: public1
               typ:
                 Plain: Boolean
@@ -78,9 +78,9 @@ types:
                   column_name: public1
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
             - name: PUBLIC2
               typ:
                 Plain: Boolean
@@ -89,9 +89,9 @@ types:
                   column_name: PUBLIC2
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
             - name: foo123
               typ:
                 Plain: Int
@@ -100,9 +100,9 @@ types:
                   column_name: foo123
                   self_column: true
                   is_pk: false
-                  is_autoincrement: false
                   type_hint: ~
                   unique: false
+              default_value: ~
           kind:
             Persistent:
               table_name: entitys
