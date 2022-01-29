@@ -11,7 +11,7 @@ model ConcertArtist {
   id: Int = autoincrement() @pk
   concert: Concert @column("concert_id")
   artist: Artist @column("artist_id")
-  rank: Int
+  rank: Int = 0
   role: String
 }
 

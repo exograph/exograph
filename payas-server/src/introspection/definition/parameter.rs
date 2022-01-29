@@ -122,7 +122,13 @@ impl Parameter for GqlField {
     fn type_modifier(&self) -> &GqlTypeModifier {
         match self.typ {
             GqlFieldType::Optional(_) => &GqlTypeModifier::Optional,
-            GqlFieldType::Reference { .. } => &GqlTypeModifier::NonNull,
+            GqlFieldType::Reference { .. } => {
+                if self.has_default_value {
+                    &GqlTypeModifier::Optional
+                } else {
+                    &GqlTypeModifier::NonNull
+                }
+            },
             GqlFieldType::List(_) => &GqlTypeModifier::List,
         }
     }
