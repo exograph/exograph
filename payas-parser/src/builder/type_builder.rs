@@ -274,7 +274,7 @@ fn create_field(
             GqlRelation::NonPersistent // was not provided a table id, type is not persistent in database
                                        // TODO: rethink GqlField with non-persistent models in mind
         },
-        has_default_value: field.default_value.is_some()
+        has_default_value: field.default_value.is_some(),
     }
 }
 

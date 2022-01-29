@@ -225,7 +225,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                             name: String::from(name),
                             typ: GqlFieldType::List(Box::new(plain_field_type)),
                             relation: field.relation.clone(),
-                            has_default_value: field.has_default_value
+                            has_default_value: field.has_default_value,
                         }
                     })
                     .collect();

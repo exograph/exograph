@@ -144,7 +144,7 @@ pub struct GqlField {
     pub name: String,
     pub typ: GqlFieldType,
     pub relation: GqlRelation,
-    pub has_default_value: bool // does this field have a default value?
+    pub has_default_value: bool, // does this field have a default value?
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -128,7 +128,7 @@ impl Parameter for GqlField {
                 } else {
                     &GqlTypeModifier::NonNull
                 }
-            },
+            }
             GqlFieldType::List(_) => &GqlTypeModifier::List,
         }
     }

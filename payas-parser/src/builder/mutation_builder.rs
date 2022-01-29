@@ -208,7 +208,7 @@ pub trait DataParamBuilder<D> {
                         name: field.name.clone(),
                         typ: field_type,
                         relation: field.relation.clone(),
-                        has_default_value: field.has_default_value
+                        has_default_value: field.has_default_value,
                     }),
                 }
             }
@@ -245,7 +245,7 @@ pub trait DataParamBuilder<D> {
                             field_type
                         },
                         relation: field.relation.clone(),
-                        has_default_value: field.has_default_value
+                        has_default_value: field.has_default_value,
                     }),
                 }
             })
