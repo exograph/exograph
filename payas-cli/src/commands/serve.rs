@@ -11,7 +11,6 @@ use super::command::Command;
 /// Run local claytip server
 pub struct ServeCommand {
     pub model: PathBuf,
-    pub watch: bool,
 }
 
 impl Command for ServeCommand {
@@ -26,7 +25,7 @@ impl Command for ServeCommand {
         let parent_dir = absolute_path
             .parent()
             .expect("Couldn't get parent directory");
-        println!("Watching: {:?}", &absolute_path);
+        println!("Watching: {:?}", &parent_dir);
         let (tx, rx) = channel();
         let mut watcher: RecommendedWatcher = Watcher::new(tx, std::time::Duration::from_secs(2))?;
         watcher.watch(parent_dir, RecursiveMode::Recursive)?;

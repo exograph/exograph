@@ -28,11 +28,6 @@ fn main() -> Result<()> {
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
-                )
-                .arg(
-                    Arg::with_name("watch")
-                        .help("Automatically build when model file changes")
-                        .long("watch"),
                 ),
         )
         .subcommand(
@@ -108,11 +103,6 @@ fn main() -> Result<()> {
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
-                )
-                .arg(
-                    Arg::with_name("watch")
-                        .help("Automatically restart server when model file changes")
-                        .long("watch"),
                 ),
         )
         .subcommand(
@@ -147,7 +137,6 @@ fn main() -> Result<()> {
     let command: Box<dyn Command> = match matches.subcommand() {
         ("build", Some(matches)) => Box::new(BuildCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
-            watch: matches.is_present("watch"),
         }),
         ("migrate", Some(matches)) => Box::new(MigrateCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
@@ -172,7 +161,6 @@ fn main() -> Result<()> {
 
         ("serve", Some(matches)) => Box::new(ServeCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
-            watch: matches.is_present("watch"),
         }),
         ("test", Some(matches)) => Box::new(TestCommand {
             dir: PathBuf::from(matches.value_of("dir").unwrap()),
