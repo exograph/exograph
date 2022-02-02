@@ -60,6 +60,22 @@
               }
             },
             {
+              "name": "meta.default-value-field.claytip",
+              "begin": "={{opt_ws}}",
+              "end": "{{ws}}",
+              "patterns": [
+                {
+                  "include": "#function-name"
+                },
+                {
+                  "include": "#function-parameters"
+                },
+                {
+                  "include": "#expressions"
+                }
+              ]
+            },
+            {
               "include": "#annotations"
             },
             {

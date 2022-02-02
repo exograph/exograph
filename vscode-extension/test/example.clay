@@ -11,10 +11,11 @@ model Concert {
 
 @table("venues")
 model Venue {
-  id: Int = autoincrement() @pk
-  name: String
+  id: Int = autoincrement() @pk // highlighting of functions in default field
+  name: String = "abc" // highlighting of strings in default field
   concerts: Set<Concert> @column("venueid")
   published: Boolean
+  occupancy: Int = 200 // highlighting of numbers in default field
   latitude: Float @size(4)
 }
 
