@@ -155,7 +155,7 @@ mod tests {
         let src = r#"
             @table("concerts")
             model Concert {
-                id: Int @pk @autoincrement
+                id: Int = autoincrement() @pk
                 title: String
                 venue: Venue?
                 icon: Blob?
@@ -163,7 +163,7 @@ mod tests {
 
             @table("venues")
             model Venue {
-                id: Int @pk @autoincrement
+                id: Int = autoincrement() @pk
                 name: String
                 address: String?
                 concerts: Set<Concert>?
@@ -205,12 +205,12 @@ mod tests {
     fn one_to_one() {
         let src = r#"
             model User {
-                id: Int @pk @autoincrement
+                id: Int = autoincrement() @pk
                 membership: Membership?
             }
 
             model Membership {
-                id: Int @pk @autoincrement
+                id: Int = autoincrement() @pk
                 user: User
             }
         "#;
@@ -236,7 +236,7 @@ mod tests {
         let src = r#"
             @table("logs")
             model Log {
-              id: Int @dbtype("bigint") @pk @autoincrement
+              id: Int = autoincrement() @dbtype("bigint") @pk
               nonce: Int @bits(16)
               hash: Int @size(8)
               float: Float @size(4)

@@ -1,0 +1,12 @@
+operation: |
+    mutation($event1_text: String!) {
+        createEvent(data: {
+            message: $event1_text
+        }) {
+            id @bind(name: "event1_id")
+        }
+    }
+variable: |
+    {
+        "event1_text": "Corrected error, no actions required."
+    }

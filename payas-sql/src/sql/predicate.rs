@@ -294,10 +294,7 @@ mod tests {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: true,
-            is_unique: false,
+            ..Default::default()
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -318,10 +315,7 @@ mod tests {
             table_name: "people".to_string(),
             column_name: "name".to_string(),
             typ: PhysicalColumnType::String { length: None },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: true,
-            is_unique: false,
+            ..Default::default()
         };
         let name_col = Column::Physical(&name_col);
         let name_value_col = Column::Literal(Box::new("foo"));
@@ -330,10 +324,7 @@ mod tests {
             table_name: "people".to_string(),
             column_name: "age".to_string(),
             typ: PhysicalColumnType::Int { bits: IntBits::_16 },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: true,
-            is_unique: false,
+            ..Default::default()
         };
         let age_col = Column::Physical(&age_col);
         let age_value_col = Column::Literal(Box::new(5));
@@ -362,10 +353,7 @@ mod tests {
             table_name: "videos".to_string(),
             column_name: "title".to_string(),
             typ: PhysicalColumnType::String { length: None },
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: true,
-            is_unique: false,
+            ..Default::default()
         };
 
         fn title_test_data(
@@ -428,10 +416,7 @@ mod tests {
             table_name: "card".to_string(),
             column_name: "data".to_string(),
             typ: PhysicalColumnType::Json,
-            is_pk: false,
-            is_autoincrement: false,
-            is_nullable: true,
-            is_unique: false,
+            ..Default::default()
         };
 
         fn json_test_data(

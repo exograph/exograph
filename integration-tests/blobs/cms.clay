@@ -1,6 +1,6 @@
 @table("images")
 model Image {
-    id: Int @pk @autoincrement
+    id: Int = autoincrement() @pk
     name: String
     data: Blob
 }

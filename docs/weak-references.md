@@ -2,25 +2,26 @@
 
 ## Motivation
 
-So let's build a concert management system for an organization that regularly hosts music concerts each featuring a few artists.
+So let's build a concert management system for an organization that regularly
+hosts music concerts each featuring a few artists.
 
 Users will first start with the following domain model.
 
 ```claytip
 export model Concert {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   title: String
   concertArtists: Set[ConcertArtist]
 }
 
 export model Artist {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   name: String
   artistConcerts: Set[ConcertArtist]
 }
 
 model ConcertArtist {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   concert: Concert
   artist: Artist
   role: String // When we support, an enum { main, accompanying }
@@ -28,14 +29,23 @@ model ConcertArtist {
 }
 ```
 
-The core idea here is to set up a many-to-many relationship between `Concert` and `Artist` through a join entity `ConcertArtist`. Since `ConcertArtist` is an artifact of relational database structure, it doesn't make too much sense to manipulate it directly.
+The core idea here is to set up a many-to-many relationship between `Concert`
+and `Artist` through a join entity `ConcertArtist`. Since `ConcertArtist` is an
+artifact of relational database structure, it doesn't make too much sense to
+manipulate it directly.
 
 > Changes so far from the current implementation
 >
-> - The `export` keyword. Only the `export`ed models have top-level API access; others have to be accessed through an exported entity. For example, there will not be `createConcertArtist`, `updateConcertArtists`, etc.
-> - The plain array has been replaced with `Set` to better match the unordered nature and the constraint that each member appears only once. This will also help distinguish from `json_array`, which has the proper array semantics, as a primitive type (see issue #6).
+> - The `export` keyword. Only the `export`ed models have top-level API access;
+  > others have to be accessed through an exported entity. For example, there
+  > will not be `createConcertArtist`, `updateConcertArtists`, etc.
+> - The plain array has been replaced with `Set` to better match the unordered
+  > nature and the constraint that each member appears only once. This will also
+  > help distinguish from `json_array`, which has the proper array semantics, as
+  > a primitive type (see issue #6).
 
-The `Concert` model will have associated APIs such as (and their plural versions as we have in the current implementation)
+The `Concert` model will have associated APIs such as (and their plural versions
+as we have in the current implementation)
 
 - `createConcert`:
   ```graphql
@@ -69,36 +79,60 @@ The `Concert` model will have associated APIs such as (and their plural versions
 
 ## Issues
 
-- How can one delete a concert since just deleting it (without any cascade) will violate the foreign key constraint on the `concert_artist` table?
-- If we say, let's delete the related entries in `ConcertArtist`, would the same logic apply if an `Artist` is deleted? What if the user prefers an error in that case to force the end-user to deal with concerts that host those artists first (otherwise, we can get into artist-less concerts!).
-- As it is set up, there is no way to remove an artist once added to a concert: `ConcertArtist` apis are not exposed and foreign key constraints will prevent deleting them when deleting a `Concert` or an `Artist`.
+- How can one delete a concert since just deleting it (without any cascade) will
+  violate the foreign key constraint on the `concert_artist` table?
+- If we say, let's delete the related entries in `ConcertArtist`, would the same
+  logic apply if an `Artist` is deleted? What if the user prefers an error in
+  that case to force the end-user to deal with concerts that host those artists
+  first (otherwise, we can get into artist-less concerts!).
+- As it is set up, there is no way to remove an artist once added to a concert:
+  `ConcertArtist` apis are not exposed and foreign key constraints will prevent
+  deleting them when deleting a `Concert` or an `Artist`.
 
 ## Proposal
 
-We look at the whole problem as that of Garbage Collection (GC). Like GC, we won't delete any objects that have other (strong) references and introduce the notion of weak references.
+We look at the whole problem as that of Garbage Collection (GC). Like GC, we
+won't delete any objects that have other (strong) references and introduce the
+notion of weak references.
 
 > **Semantics**
 >
-> 1. A weak reference holds onto an object such that it doesn't prevent the object from getting deleted if there is no way to reach to that object through a chain of strong references. Colloquially, weak references may be snatched away by a change to another entity.
-> 2. By default, the database (conceptually the root object) holds onto all **exposed** model elements strongly.
+> 1. A weak reference holds onto an object such that it doesn't prevent the
+   > object from getting deleted if there is no way to reach to that object
+   > through a chain of strong references. Colloquially, weak references may be
+   > snatched away by a change to another entity.
+> 2. By default, the database (conceptually the root object) holds onto all
+   > **exposed** model elements strongly.
 
 ### Weak collections
 
-To model the requirement that deleting a `Concert` should delete `ConcertArtist`s, but deleting an `Artist` should produce an error if that `Artist` is being referred from a `ConcertArtist` (which implies being associated with a `Concert`). This can be accomplished by replacing the type of `artistConcerts` in `Artist` to `WeakSet`:
+To model the requirement that deleting a `Concert` should delete
+`ConcertArtist`s, but deleting an `Artist` should produce an error if that
+`Artist` is being referred from a `ConcertArtist` (which implies being
+associated with a `Concert`). This can be accomplished by replacing the type of
+`artistConcerts` in `Artist` to `WeakSet`:
 
 ```claytip
 export model Artist {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   name: String
   artistConcerts: WeakSet[ConcertArtist]
 }
 ```
 
-Here since `Artist` refers to `artistConcerts` only weakly, the system can delete `ConcertArtist` for when deleting an `Artist` only if there are no strong references from anywhere. So deleting an artist performing in a concert will result in a constraint violation error that the user will have to resolve by first deleting the concerts referring to that artist. On the other hand, deleting a concert will snatch that concert from the artist.
+Here since `Artist` refers to `artistConcerts` only weakly, the system can
+delete `ConcertArtist` for when deleting an `Artist` only if there are no strong
+references from anywhere. So deleting an artist performing in a concert will
+result in a constraint violation error that the user will have to resolve by
+first deleting the concerts referring to that artist. On the other hand,
+deleting a concert will snatch that concert from the artist.
 
 ### Weak models
 
-To promote the fact that it hosts many top-notch artists, the organization wants to designate a few appearances as "featured" (and show them prominently on the home page). We model this requirement by introducing the `FeaturedPerformance` model.
+To promote the fact that it hosts many top-notch artists, the organization wants
+to designate a few appearances as "featured" (and show them prominently on the
+home page). We model this requirement by introducing the `FeaturedPerformance`
+model.
 
 ```claytip
 model ConcertArtist {
@@ -107,17 +141,23 @@ model ConcertArtist {
 }
 
 export model FeaturedPerformance {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   promoTitle: String
   concertArtist: ConcertArtist
 }
 ```
 
-This change will prevent a `Concert` from getting deleted if that concert is promoted (there is a strong reference from `FeaturedPerformance` to `ConcertArtist` and thus to a `Concert`). This is what may be desired, but what if the expected behavior is to delete any `FeaturedPerformance`s along with the `Concert`?
+This change will prevent a `Concert` from getting deleted if that concert is
+promoted (there is a strong reference from `FeaturedPerformance` to
+`ConcertArtist` and thus to a `Concert`). This is what may be desired, but what
+if the expected behavior is to delete any `FeaturedPerformance`s along with the
+`Concert`?
 
-We cannot simply mark `concertArtist` in `FeaturedPerformance` as `Weak`, since that will mean that the `concertArtist` will be set to NULL.
+We cannot simply mark `concertArtist` in `FeaturedPerformance` as `Weak`, since
+that will mean that the `concertArtist` will be set to NULL.
 
-Instead, we want the system to hold `FeaturedPerformance` weakly. We do so by using the `@weak` annotation as follows:
+Instead, we want the system to hold `FeaturedPerformance` weakly. We do so by
+using the `@weak` annotation as follows:
 
 ```claytip
 @weak export model FeaturedPerformance {
@@ -127,7 +167,8 @@ Instead, we want the system to hold `FeaturedPerformance` weakly. We do so by us
 
 ### Weak references
 
-Following a concert, the organization publishes a summary of the performance and lets authenticated users post comments.
+Following a concert, the organization publishes a summary of the performance and
+lets authenticated users post comments.
 
 ```claytip
 export model Post {
@@ -147,9 +188,13 @@ export model Comment {
 }
 ```
 
-Here nothing can be deleted once created: System holds onto all exported objects strongly.
+Here nothing can be deleted once created: System holds onto all exported objects
+strongly.
 
-**Scenario 1**: What if a user wants to delete a comment? We need to allow comments to be snatched away from the associated `Post` (and from the `User`). So we make `comments` in both entities as `WeakSet`. Now deleting a comment removes it from the `Post` and the `User`.
+**Scenario 1**: What if a user wants to delete a comment? We need to allow
+comments to be snatched away from the associated `Post` (and from the `User`).
+So we make `comments` in both entities as `WeakSet`. Now deleting a comment
+removes it from the `Post` and the `User`.
 
 ```claytip
 export model Post {
@@ -163,7 +208,8 @@ export model User {
 }
 ```
 
-**Scenario 2**: Allow deleting a user account. As modeled above, a user who has made a comment cannot be deleted. We have two options:
+**Scenario 2**: Allow deleting a user account. As modeled above, a user who has
+made a comment cannot be deleted. We have two options:
 
 1. Delete comments made by the user. This requires the following change:
 
@@ -179,7 +225,8 @@ export model User {
 
 This change allows comments to be snatched away from the root object.
 
-2. Set the comment's user to NULL (i.e. mark the comment as posted by an anonymous user). This requires the following change:
+2. Set the comment's user to NULL (i.e. mark the comment as posted by an
+   anonymous user). This requires the following change:
 
 ```claytip
 // Same model as in Scenario 1
@@ -195,13 +242,20 @@ This allows the user to be snatched away from a comment.
 
 ## Implementation notes
 
-While we conceptualize the system as a GC problem, we cannot afford to implement using the traditional GC techniques. And even if we did, we will have to do the GC sweep synchronously during the operation itself, otherwise objects will linger for a duration and will be seen by other calls. Instead, we analyze the model and statically set constraints to the extent possible and execute any residue dynamically with the query (similar to how we do it for access control).
+While we conceptualize the system as a GC problem, we cannot afford to implement
+using the traditional GC techniques. And even if we did, we will have to do the
+GC sweep synchronously during the operation itself, otherwise objects will
+linger for a duration and will be seen by other calls. Instead, we analyze the
+model and statically set constraints to the extent possible and execute any
+residue dynamically with the query (similar to how we do it for access control).
 
-1. When possible we produce the schema with an appropriate [ON DELETE](https://www.postgresql.org/docs/9.5/ddl-constraints.html) value. So given this:
+1. When possible we produce the schema with an appropriate
+   [ON DELETE](https://www.postgresql.org/docs/9.5/ddl-constraints.html) value.
+   So given this:
 
 ```claytip
 export model Artist {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   name: String
   artistConcerts: WeakSet[ConcertArtist]
 }
@@ -217,14 +271,17 @@ CREATE TABLE concert_artist (
 )
 ```
 
-Now deleting a `ConcertArtist` while deleting a `Concert` will cause that `Concert` to be allowed to be deleted.
+Now deleting a `ConcertArtist` while deleting a `Concert` will cause that
+`Concert` to be allowed to be deleted.
 
-We have to be careful to make sure that the access rules also align well (in most normal business domains, they will).
+We have to be careful to make sure that the access rules also align well (in
+most normal business domains, they will).
 
 ### Rules
 
-A. A `Weak[T]` reference is always emitted as `ON DELETE SET NULL`.
-B. For non-weak exported models, each strong reference is emitted as `ON DELETE RESTRICT`.
+A. A `Weak[T]` reference is always emitted as `ON DELETE SET NULL`. B. For
+non-weak exported models, each strong reference is emitted as
+`ON DELETE RESTRICT`.
 
 ```claytip
 export model Comment {
@@ -244,11 +301,12 @@ CREATE TABLE comments (
 
 With this arrangement, deleting a comment will set the `user_id` to NULL.
 
-C. For `@weak` and not exported models, emit each strong reference as `ON DELETE CASCADE`.
+C. For `@weak` and not exported models, emit each strong reference as
+`ON DELETE CASCADE`.
 
 ```claytip
 @weak export model FeaturedPerformance {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   promoTitle: String
   concertArtist: ConcertArtist
 }
@@ -262,15 +320,19 @@ CREATE TABLE featured_performances (
 )
 ```
 
-With this arrangement, deleting a `ConcertArtist` (by deleting a `Concert`) will allow removing the corresponding `ConcertArtist` and thus allowing deleting the concert.
+With this arrangement, deleting a `ConcertArtist` (by deleting a `Concert`) will
+allow removing the corresponding `ConcertArtist` and thus allowing deleting the
+concert.
 
 2. Runtime check for access control
 
-A. Posts belong to its author, comments belong to the user. What if the author wants to delete a post?
+A. Posts belong to its author, comments belong to the user. What if the author
+wants to delete a post?
 
 A1. Fail the deletion
 
-Keep the original model (and let admin do this manually assume admin has access to the models involved).
+Keep the original model (and let admin do this manually assume admin has access
+to the models involved).
 
 A2. But let comments stay (with a null post)?
 
@@ -281,7 +343,9 @@ model Comment {
 }
 ```
 
-Here even though the post author doesn't have any mutation rights to the comment, it can snatch the post from a comment (replacing a `Weak` with a NULL doesn't count as a mutation)
+Here even though the post author doesn't have any mutation rights to the
+comment, it can snatch the post from a comment (replacing a `Weak` with a NULL
+doesn't count as a mutation)
 
 A3. Delete comments along with the post
 
@@ -296,4 +360,5 @@ model Comment {
 
 - How to teach users not familiar with the "weak" reference concept?
 - Will this be perceived as too complicated?
-- How to handle legacy database schemas (whose cascades don't conform to our model)? Show as an error? Show as a warning and do runtime checks?
+- How to handle legacy database schemas (whose cascades don't conform to our
+  model)? Show as an error? Show as a warning and do runtime checks?

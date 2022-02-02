@@ -1,11 +1,11 @@
 model Concert {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   title: String
   concertArtists: Set<ConcertArtist>
 }
 
 model ConcertArtist {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   concert: Concert
   artist: Artist
   rank: Int
@@ -13,7 +13,7 @@ model ConcertArtist {
 }
 
 model Artist {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   name: String
   concertArtists: Set<ConcertArtist>
 }

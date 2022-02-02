@@ -1,6 +1,6 @@
 @table("videos")
 model Video {
-  id: Int @dbtype("BIGINT") @pk @autoincrement
+  id: Int = autoincrement() @dbtype("BIGINT") @pk
   name: String  
   slug: String @length(30) 
   nonce: Int @bits(16)

@@ -47,6 +47,7 @@ values:
                 jwt:
                   name: jwt
                   params: None
+            default_value: ~
         annotations:
           annotations: {}
   - - ~
@@ -62,6 +63,7 @@ values:
                 - true
             annotations:
               annotations: {}
+            default_value: ~
           - name: content
             typ:
               Plain:
@@ -104,6 +106,7 @@ values:
                                       index: 0
                                       generation: ~
                             - Primitive: Boolean
+            default_value: ~
         annotations:
           annotations: {}
   - ~

@@ -108,6 +108,7 @@ values:
                     Single:
                       - StringLiteral:
                           - custom_column
+            default_value: ~
           - name: role
             typ:
               Plain:
@@ -116,6 +117,7 @@ values:
                 - true
             annotations:
               annotations: {}
+            default_value: ~
         annotations:
           annotations: {}
   - - ~
@@ -131,6 +133,7 @@ values:
                 - true
             annotations:
               annotations: {}
+            default_value: ~
         annotations:
           annotations: {}
   - ~

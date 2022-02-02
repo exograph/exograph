@@ -121,10 +121,28 @@ pub struct AstField<T: NodeTypedness> {
     pub name: String,
     pub typ: AstFieldType<T>,
     pub annotations: T::Annotations,
+    pub default_value: Option<AstFieldDefault<T>>,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
     #[serde(default = "default_span")]
     pub span: Span,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct AstFieldDefault<T: NodeTypedness> {
+    pub kind: AstFieldDefaultKind<T>,
+
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum AstFieldDefaultKind<T: NodeTypedness> {
+    Value(AstExpr<T>),
+    Function(String, Vec<AstExpr<T>>),
+    DatabaseFunction(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

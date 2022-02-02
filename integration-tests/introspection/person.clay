@@ -1,5 +1,5 @@
 model Person {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   name: String
 }
 

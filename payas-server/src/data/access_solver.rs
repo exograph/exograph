@@ -319,10 +319,8 @@ mod tests {
                 table_name: "article".to_string(),
                 column_name: column_name.to_string(),
                 typ,
-                is_pk: false,
-                is_autoincrement: false,
                 is_nullable: false,
-                is_unique: false,
+                ..Default::default()
             }
         }
 

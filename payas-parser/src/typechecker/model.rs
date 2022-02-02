@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use codemap_diagnostic::Diagnostic;
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
-use crate::ast::ast_types::{AstField, AstModel, Untyped};
+use crate::ast::ast_types::{AstField, AstFieldDefault, AstModel, AstModelKind, Untyped};
 
 use super::annotation::{AnnotationSpec, AnnotationTarget};
 use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed};
@@ -39,6 +39,30 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             .count()
             > 0;
 
+        let fields_default_values_changed = match self.kind {
+            AstModelKind::Persistent => false,
+            AstModelKind::Context
+            | AstModelKind::NonPersistent
+            | AstModelKind::NonPersistentInput => self.fields.iter().any(|field| {
+                if let Some(AstFieldDefault { span, .. }) = &field.default_value {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: "Default fields can only be specified in models".to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: *span,
+                            style: SpanStyle::Primary,
+                            label: Some("bad default field".to_string()),
+                        }],
+                    });
+
+                    true
+                } else {
+                    false
+                }
+            }),
+        };
+
         let annot_changed = self.annotations.pass(
             AnnotationTarget::Model,
             type_env,
@@ -47,6 +71,6 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             errors,
         );
 
-        fields_changed || annot_changed
+        fields_changed || fields_default_values_changed || annot_changed
     }
 }
