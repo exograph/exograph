@@ -242,7 +242,6 @@ pub enum ResolvedFieldDefault {
     Value(Box<AstExpr<Typed>>),
     DatabaseFunction(String),
     Autoincrement,
-    DateNow,
 }
 
 impl ResolvedFieldType {
@@ -771,7 +770,7 @@ fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> Resolve
         }
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
             "autoincrement" => ResolvedFieldDefault::Autoincrement,
-            "now" => ResolvedFieldDefault::DateNow,
+            "now" => ResolvedFieldDefault::DatabaseFunction("NOW()".to_string()),
             _ => panic!(),
         },
     }

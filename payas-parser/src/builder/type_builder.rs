@@ -319,7 +319,6 @@ fn create_column(
             }),
             ResolvedFieldDefault::DatabaseFunction(string) => Some(string.to_string()),
             ResolvedFieldDefault::Autoincrement => None,
-            ResolvedFieldDefault::DateNow => Some("NOW()".to_string()),
         })
         .flatten();
 
