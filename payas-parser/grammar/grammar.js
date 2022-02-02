@@ -83,7 +83,24 @@ module.exports = grammar({
       field("name", $.term),
       ":",
       field("type", $.type),
+      optional(seq(
+        "=",
+        field("default_value", $.field_default_value) 
+      )),
       repeat(field("annotation", $.annotation))
+    ),
+    field_default_value: $ => choice(
+      field("default_value_concrete", $.expression),
+      seq(
+        field("default_value_fn", $.term), 
+        "(", 
+        optional(commaSep(field("default_value_fn_args", $.expression))),
+        ")"
+      ),
+      seq(
+        "db:",
+        field("default_value_db_fn", /[a-zA-Z_][a-zA-Z0-9\(\)_]*/) 
+      )
     ),
     type: $ => choice(
       $.optional_type,

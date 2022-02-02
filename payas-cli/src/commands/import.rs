@@ -18,6 +18,7 @@ impl Command for ImportCommand {
         // Create runtime and make the rest of this an async block
         // (then block on it)
         let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_io()
             .build()
             .unwrap();
 

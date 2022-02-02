@@ -3,6 +3,7 @@ mod annotation_map;
 mod annotation_params;
 mod expression;
 mod field;
+mod field_default_value;
 mod field_type;
 mod logical_op;
 mod model;
@@ -128,15 +129,6 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
                         optional: true,
                     },
                 ]),
-            },
-        ),
-        (
-            "autoincrement",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: true,
-                single_params: false,
-                mapped_params: None,
             },
         ),
         (

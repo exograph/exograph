@@ -1,6 +1,6 @@
 ---
 source: payas-parser/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(), src.as_bytes(), &codemap, file_span)"
+expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span,\n             Path::new(\"input.payas\")).unwrap()"
 
 ---
 models:
@@ -16,8 +16,11 @@ models:
         annotations:
           - name: pk
             params: None
-          - name: autoincrement
-            params: None
+        default_value:
+          kind:
+            Function:
+              - autoincrement
+              - []
       - name: title
         typ:
           Plain:
@@ -25,6 +28,7 @@ models:
             - []
             - ~
         annotations: []
+        default_value: ~
       - name: venue
         typ:
           Plain:
@@ -37,6 +41,7 @@ models:
               Single:
                 - StringLiteral:
                     - venueid
+        default_value: ~
     annotations:
       - name: table
         params:
@@ -55,8 +60,11 @@ models:
         annotations:
           - name: pk
             params: None
-          - name: autoincrement
-            params: None
+        default_value:
+          kind:
+            Function:
+              - autoincrement
+              - []
       - name: name
         typ:
           Plain:
@@ -64,6 +72,7 @@ models:
             - []
             - ~
         annotations: []
+        default_value: ~
       - name: concerts
         typ:
           Plain:
@@ -79,6 +88,7 @@ models:
               Single:
                 - StringLiteral:
                     - venueid
+        default_value: ~
     annotations:
       - name: table
         params:

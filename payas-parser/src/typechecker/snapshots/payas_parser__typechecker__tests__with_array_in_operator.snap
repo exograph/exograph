@@ -50,6 +50,7 @@ values:
                 jwt:
                   name: jwt
                   params: None
+            default_value: ~
         annotations:
           annotations: {}
   - - ~
@@ -86,6 +87,7 @@ values:
                                         index: 4
                                         generation: ~
                             - Primitive: Boolean
+            default_value: ~
         annotations:
           annotations: {}
   - ~

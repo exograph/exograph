@@ -236,10 +236,44 @@ fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyp
             source,
             source_span,
         ),
+        default_value: node
+            .child_by_field_name("default_value")
+            .map(|node| convert_field_default_value(node, source, source_span)),
         annotations: node
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        span: span_from_node(source_span, node),
+    }
+}
+
+fn convert_field_default_value(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+) -> AstFieldDefault<Untyped> {
+    let kind = {
+        if let Some(node) = node.child_by_field_name("default_value_concrete") {
+            AstFieldDefaultKind::Value(convert_expression(node, source, source_span))
+        } else if let Some(node_fn) = node.child_by_field_name("default_value_fn") {
+            let mut cursor = node.walk();
+
+            let fn_name = node_fn.utf8_text(source).unwrap().to_string();
+            let args = node
+                .children_by_field_name("default_value_fn_args", &mut cursor)
+                .map(|node_arg| convert_expression(node_arg, source, source_span))
+                .collect();
+
+            AstFieldDefaultKind::Function(fn_name, args)
+        } else if let Some(node) = node.child_by_field_name("default_value_db_fn") {
+            AstFieldDefaultKind::DatabaseFunction(node.utf8_text(source).unwrap().to_string())
+        } else {
+            panic!("no valid default field")
+        }
+    };
+
+    AstFieldDefault {
+        kind,
         span: span_from_node(source_span, node),
     }
 }
@@ -563,7 +597,7 @@ mod tests {
         // a short comment
         @table("concerts")
         model Concert {
-          id: Int @pk @autoincrement
+          id: Int = autoincrement() @pk
           title: String // a comment
           // another comment
           venue: Venue @column("venueid")
@@ -577,7 +611,7 @@ mod tests {
         */
         @table("venues")
         model Venue {
-          id: Int @pk @autoincrement
+          id: Int = autoincrement() @pk
           name: String
           concerts: Set<Concert /* here too! */> @column("venueid")
         }

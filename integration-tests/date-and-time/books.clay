@@ -1,6 +1,6 @@
 @table("books")
 model Book {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   name: String
   published_on: LocalDate 
   modified_time: Instant @precision(4)

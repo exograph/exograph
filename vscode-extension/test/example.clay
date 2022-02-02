@@ -2,7 +2,7 @@
 @access(query=AuthContext.role == "ROLE_ADMIN" || self.published || price <= 10, 
         mutation=AuthContext.role == "ROLE_ADMIN")
 model Concert {
-  id: Int @pk @autoincrement // comment after annotation
+  id: Int = autoincrement() @pk // comment after annotation
   title: String // comment after type
   venue: Venue @column("venueid")
   published: Boolean
@@ -11,16 +11,17 @@ model Concert {
 
 @table("venues")
 model Venue {
-  id: Int @pk @autoincrement
-  name: String
+  id: Int = autoincrement() @pk // highlighting of functions in default field
+  name: String = "abc" // highlighting of strings in default field
   concerts: Set<Concert> @column("venueid")
   published: Boolean
+  occupancy: Int = 200 // highlighting of numbers in default field
   latitude: Float @size(4)
 }
 
 @auth(self._starts_with_underscore == "foo" || _AuthContext.role == "ROLE_ADMIN")
 model _ModelStartWithAnUnderscore_AndHas_Underscores {
-  id_with_underscores: Int @pk @autoincrement
+  id_with_underscores: Int = autoincrement() @pk
   _starts_with_underscore: String
 }
 

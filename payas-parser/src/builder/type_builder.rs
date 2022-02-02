@@ -16,8 +16,8 @@ use payas_model::{
 use super::{
     access_utils,
     resolved_builder::{
-        ResolvedAccess, ResolvedField, ResolvedFieldKind, ResolvedFieldType, ResolvedMethod,
-        ResolvedType, ResolvedTypeHint,
+        ResolvedAccess, ResolvedField, ResolvedFieldDefault, ResolvedFieldKind, ResolvedFieldType,
+        ResolvedMethod, ResolvedType, ResolvedTypeHint,
     },
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
@@ -274,6 +274,7 @@ fn create_field(
             GqlRelation::NonPersistent // was not provided a table id, type is not persistent in database
                                        // TODO: rethink GqlField with non-persistent models in mind
         },
+        has_default_value: field.default_value.is_some(),
     }
 }
 
@@ -304,6 +305,23 @@ fn create_column(
         _ => (&field.typ, false),
     };
 
+    let default_value = field
+        .default_value
+        .as_ref()
+        .map(|default_value| match default_value {
+            ResolvedFieldDefault::Value(val) => Some(match &**val {
+                AstExpr::StringLiteral(string, _) => format!("'{}'", string.replace("'", "''")),
+                AstExpr::BooleanLiteral(boolean, _) => format!("{}", boolean).to_ascii_uppercase(),
+                AstExpr::NumberLiteral(val, _) => {
+                    format!("{}", val)
+                }
+                _ => panic!("Invalid concrete value"),
+            }),
+            ResolvedFieldDefault::DatabaseFunction(string) => Some(string.to_string()),
+            ResolvedFieldDefault::Autoincrement => None,
+        })
+        .flatten();
+
     match typ {
         ResolvedFieldType::Plain(type_name) => {
             // Either a scalar (primitive) or a many-to-one relationship with another table
@@ -323,6 +341,7 @@ fn create_column(
                     },
                     is_nullable: optional,
                     is_unique: unique,
+                    default_value,
                 }),
                 ResolvedType::Composite(ct) => {
                     // Many-to-one:
@@ -344,6 +363,7 @@ fn create_column(
                         is_autoincrement: false,
                         is_nullable: optional,
                         is_unique: unique,
+                        default_value,
                     })
                 }
             }
@@ -386,6 +406,7 @@ fn create_column(
                     is_autoincrement: false,
                     is_nullable: optional,
                     is_unique: unique,
+                    default_value,
                 })
             } else {
                 // this is a OneToMany relation, so the other side has the associated column

@@ -18,6 +18,22 @@ pub struct PhysicalColumn {
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
     pub is_nullable: bool,      // should this type have a NOT NULL constraint or not?
     pub is_unique: bool,        // should this type have a UNIQUE constraint or not?
+    pub default_value: Option<String>, // the default constraint
+}
+
+impl Default for PhysicalColumn {
+    fn default() -> Self {
+        Self {
+            table_name: Default::default(),
+            column_name: Default::default(),
+            typ: PhysicalColumnType::Blob,
+            is_pk: false,
+            is_autoincrement: false,
+            is_nullable: true,
+            is_unique: false,
+            default_value: None,
+        }
+    }
 }
 
 impl From<ColumnSpec> for PhysicalColumn {
@@ -30,6 +46,7 @@ impl From<ColumnSpec> for PhysicalColumn {
             is_autoincrement: c.is_autoincrement,
             is_nullable: c.is_nullable,
             is_unique: c.is_unique,
+            default_value: c.default_value,
         }
     }
 }

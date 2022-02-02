@@ -83,11 +83,10 @@ response: |
           {
             "name": "rank",
             "type": {
-              "name": null,
-              "ofType": {
-                "name": "Int"
-              },
-              "kind": "NON_NULL"
+              // fields with default values are never NOT_NULL
+              "name": "Int",
+              "ofType": null,
+              "kind": "SCALAR"
             }
           },
           {
@@ -108,11 +107,9 @@ response: |
           {
             "name": "id",
             "type": {
-              "name": null,
-              "ofType": {
-                "name": "Int"
-              },
-              "kind": "NON_NULL"
+              "name": "Int",
+              "ofType": null,
+              "kind": "SCALAR"
             }
           },
           {
@@ -147,11 +144,9 @@ response: |
           {
             "name": "id",
             "type": {
-              "name": null,
-              "ofType": {
-                "name": "Int"
-              },
-              "kind": "NON_NULL"
+              "name": "Int",
+              "ofType": null,
+              "kind": "SCALAR"
             }
           }
         ]

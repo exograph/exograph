@@ -27,6 +27,7 @@ impl Display for SQLStatement {
 /// An issue that a user may encounter when dealing with the database schema.
 ///
 /// Used in `model import` command.
+#[derive(Debug)]
 pub enum Issue {
     Warning(String),
     Hint(String),
@@ -43,6 +44,7 @@ impl Display for Issue {
 }
 
 /// Wraps a value with a list of issues.
+#[derive(Debug)]
 pub struct WithIssues<T> {
     pub value: T,
     pub issues: Vec<Issue>,
@@ -220,6 +222,7 @@ impl TableSpec {
 }
 
 /// Specification for a single column.
+#[derive(Debug)]
 pub struct ColumnSpec {
     pub table_name: String,
     pub column_name: String,
@@ -228,6 +231,7 @@ pub struct ColumnSpec {
     pub is_autoincrement: bool,
     pub is_nullable: bool,
     pub is_unique: bool,
+    pub default_value: Option<String>,
 }
 
 impl ColumnSpec {
@@ -307,6 +311,22 @@ impl ColumnSpec {
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
+        let default_value = {
+            let db_type_query = format!(
+                "
+                SELECT pg_get_expr(pg_attrdef.adbin, pg_attrdef.adrelid)
+                FROM pg_attrdef
+                INNER JOIN pg_attribute
+                ON pg_attrdef.adnum = pg_attribute.attnum
+                AND pg_attribute.attrelid = '{}'::regclass
+                AND pg_attribute.attname = '{}'",
+                table_name, column_name
+            );
+
+            let rows = client.query(db_type_query.as_str(), &[]).await?;
+            rows.get(0).map(|row| row.get("pg_get_expr"))
+        };
+
         Ok(WithIssues {
             value: db_type.map(|db_type| ColumnSpec {
                 table_name: table_name.to_owned(),
@@ -317,6 +337,7 @@ impl ColumnSpec {
                     .contains(&format!("{}_{}_seq", table_name, column_name)),
                 is_nullable: !not_null,
                 is_unique: false,
+                default_value,
             }),
             issues,
         })
@@ -338,11 +359,16 @@ impl ColumnSpec {
             ""
         };
         let unique_str = if self.is_unique { " UNIQUE" } else { "" };
+        let default_value_part = if let Some(default_value) = self.default_value.as_ref() {
+            format!(" DEFAULT {}", default_value)
+        } else {
+            "".to_string()
+        };
 
         SQLStatement {
             statement: format!(
-                "\"{}\" {}{}{}{}",
-                self.column_name, statement, pk_str, not_null_str, unique_str
+                "\"{}\" {}{}{}{}{}",
+                self.column_name, statement, pk_str, not_null_str, unique_str, default_value_part
             ),
             foreign_constraints,
         }

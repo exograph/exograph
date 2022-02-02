@@ -1,5 +1,5 @@
 @table("foo")
 model Foo {
-  id: Int @pk @autoincrement
+  id: Int = autoincrement() @pk
   verylong: Decimal @precision(40) @scale(30)
 }
