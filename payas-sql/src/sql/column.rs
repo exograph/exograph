@@ -450,7 +450,7 @@ impl PhysicalColumnType {
 #[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
-    Literal(Box<dyn SQLParam>),
+    Literal(MaybeOwned<'a, Box<dyn SQLParam>>),
     JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
     JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
     SelectionTableWrapper(Box<Select<'a>>),

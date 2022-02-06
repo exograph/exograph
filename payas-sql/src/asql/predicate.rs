@@ -75,7 +75,7 @@ impl<'a> AbstractPredicate<'a> {
                 ColumnPath::Physical(links) => {
                     Column::Physical(links.last().unwrap().self_column.0).into()
                 }
-                ColumnPath::Literal(l) => Column::Literal(Box::new(5)).into(),
+                ColumnPath::Literal(l) => Column::Literal(l.into()).into(),
             }
         }
 

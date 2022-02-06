@@ -48,7 +48,7 @@ fn solve_predicate_expression<'a>(
                     system
                         .create_column_with_id(&column_path.leaf_column())
                         .into(),
-                    Column::Literal(Box::new(true)).into(),
+                    Column::Literal(MaybeOwned::Owned(Box::new(true))).into(),
                 ),
                 vec![column_path.clone()],
             )
@@ -84,10 +84,12 @@ fn solve_context_selection<'a>(
 fn literal_column(value: Value) -> MaybeOwned<'static, Column<'static>> {
     match value {
         Value::Null => Column::Null,
-        Value::Bool(v) => Column::Literal(Box::new(v)),
-        Value::Number(v) => Column::Literal(Box::new(v.as_i64().unwrap() as i32)), // TODO: Deal with the exact number type
-        Value::String(v) => Column::Literal(Box::new(v)),
-        Value::Array(values) => Column::Literal(Box::new(values)),
+        Value::Bool(v) => Column::Literal(MaybeOwned::Owned(Box::new(v))),
+        Value::Number(v) => {
+            Column::Literal(MaybeOwned::Owned(Box::new(v.as_i64().unwrap() as i32)))
+        } // TODO: Deal with the exact number type
+        Value::String(v) => Column::Literal(MaybeOwned::Owned(Box::new(v))),
+        Value::Array(values) => Column::Literal(MaybeOwned::Owned(Box::new(values))),
         Value::Object(_) => todo!(),
     }
     .into()
@@ -442,8 +444,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_match_predicate(
-                    Column::Literal(Box::new("token_value".to_string())).into(),
-                    Column::Literal(Box::new("token_value".to_string())).into(),
+                    Column::Literal(MaybeOwned::Owned(Box::new("token_value".to_string()))).into(),
+                    Column::Literal(MaybeOwned::Owned(Box::new("token_value".to_string()))).into(),
                 )
             );
             assert_eq!(solved_column_paths, vec![]);
@@ -457,8 +459,8 @@ mod tests {
             assert_eq!(
                 solved_predicate,
                 context_mismatch_predicate(
-                    Column::Literal(Box::new("token_value1".to_string())).into(),
-                    Column::Literal(Box::new("token_value2".to_string())).into(),
+                    Column::Literal(MaybeOwned::Owned(Box::new("token_value1".to_string()))).into(),
+                    Column::Literal(MaybeOwned::Owned(Box::new("token_value2".to_string()))).into(),
                 )
             );
             assert_eq!(solved_column_paths, vec![]);
@@ -474,7 +476,7 @@ mod tests {
                     solved_predicate,
                     context_value_predicate(
                         test_system.owner_id_column(),
-                        Column::Literal(Box::new("u1".to_string())).into(),
+                        Column::Literal(MaybeOwned::Owned(Box::new("u1".to_string()))).into(),
                     )
                 );
                 assert_eq!(solved_column_paths, vec![owner_id_column_path.clone()]);
@@ -709,7 +711,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(Predicate::Eq(
                         test_system.dept1_id_column(),
-                        Column::Literal(Box::new(true)).into()
+                        Column::Literal(MaybeOwned::Owned(Box::new(true))).into()
                     ))
                 );
                 let expected_column_path = if solved_predicate == Predicate::True
@@ -735,7 +737,7 @@ mod tests {
                     solved_predicate,
                     predicate_fn(Predicate::Eq(
                         test_system.dept1_id_column(),
-                        Column::Literal(Box::new(true)).into()
+                        Column::Literal(MaybeOwned::Owned(Box::new(true))).into()
                     ))
                 );
                 let expected_column_path = if solved_predicate == Predicate::True
@@ -768,14 +770,14 @@ mod tests {
                     Box::new(
                         Predicate::Eq(
                             test_system.dept1_id_column(),
-                            Column::Literal(Box::new(true)).into()
+                            Column::Literal(MaybeOwned::Owned(Box::new(true))).into()
                         )
                         .into()
                     ),
                     Box::new(
                         Predicate::Eq(
                             test_system.dept2_id_column(),
-                            Column::Literal(Box::new(true)).into()
+                            Column::Literal(MaybeOwned::Owned(Box::new(true))).into()
                         )
                         .into()
                     )
@@ -878,7 +880,7 @@ mod tests {
                 solved_predicate,
                 Predicate::Neq(
                     test_system.dept1_id_column(),
-                    Column::Literal(Box::new(true)).into()
+                    Column::Literal(MaybeOwned::Owned(Box::new(true))).into()
                 )
             );
             assert_eq!(solved_column_paths, vec![dept1_id_column_id.clone()]);
@@ -951,7 +953,7 @@ mod tests {
             solved_predicate,
             Predicate::Eq(
                 test_system.published_column(),
-                Column::Literal(Box::new(true)).into()
+                Column::Literal(MaybeOwned::Owned(Box::new(true))).into()
             )
         );
         assert_eq!(solved_column_paths, vec![published_column_path.clone()]);
@@ -981,7 +983,7 @@ mod tests {
             solved_predicate,
             Predicate::Eq(
                 test_system.owner_id_column(),
-                Column::Literal(Box::new("1".to_string())).into(),
+                Column::Literal(MaybeOwned::Owned(Box::new("1".to_string()))).into(),
             )
         );
         assert_eq!(solved_column_paths, vec![owner_id_column_path.clone()]);
@@ -992,7 +994,7 @@ mod tests {
             solved_predicate,
             Predicate::Eq(
                 test_system.owner_id_column(),
-                Column::Literal(Box::new("2".to_string())).into(),
+                Column::Literal(MaybeOwned::Owned(Box::new("2".to_string()))).into(),
             )
         );
         assert_eq!(solved_column_paths, vec![owner_id_column_path.clone()]);
@@ -1055,7 +1057,7 @@ mod tests {
             solved_predicate,
             Predicate::Eq(
                 test_system.published_column(),
-                Column::Literal(Box::new(true)).into(),
+                Column::Literal(MaybeOwned::Owned(Box::new(true))).into(),
             )
         );
         assert_eq!(solved_column_paths, vec![published_column_path.clone()]);
@@ -1115,7 +1117,7 @@ mod tests {
             solved_predicate,
             Predicate::Eq(
                 test_system.published_column(),
-                Column::Literal(Box::new(true)).into()
+                Column::Literal(MaybeOwned::Owned(Box::new(true))).into()
             )
         );
         assert_eq!(solved_column_paths, vec![published_column_id.clone()]);

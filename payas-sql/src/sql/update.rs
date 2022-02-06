@@ -98,10 +98,10 @@ impl<'a> TemplateUpdate<'a> {
                         let resolved_col = match col {
                             ProxyColumn::Concrete(col) => col.as_ref().into(),
                             ProxyColumn::Template { col_index, step_id } => {
-                                MaybeOwned::Owned(Column::Literal(Box::new(
+                                MaybeOwned::Owned(Column::Literal(MaybeOwned::Owned(Box::new(
                                     transaction_context
                                         .resolve_value(*step_id, row_index, *col_index),
-                                )))
+                                ))))
                             }
                         };
                         (*physical_col, resolved_col)

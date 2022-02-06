@@ -142,7 +142,12 @@ mod tests {
                 let select = aselect.to_sql();
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
-                assert_eq!(binding.stmt, r#"select "concerts"."id" from "concerts""#);
+                assert_binding!(
+                    binding,
+                    r#"select "concerts"."id" from "concerts" WHERE "concerts"."id" = $1"#,
+                    5
+                );
+                // assert_eq!(binding.stmt, r#"select "concerts"."id" from "concerts" WHERE "concerts"."id" = $1"#);
             },
         );
     }
