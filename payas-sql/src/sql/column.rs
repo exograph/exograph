@@ -459,16 +459,6 @@ pub enum Column<'a> {
     Null,
 }
 
-impl Column<'_> {
-    pub fn get_value(&self) -> &dyn SQLParam {
-        match self {
-            Column::Literal(boxed) => boxed.as_ref(),
-
-            _ => panic!("Not a Literal"),
-        }
-    }
-}
-
 // Due to https://github.com/rust-lang/rust/issues/39128, we have to manually implement PartialEq.
 // If we try to put PartialEq in "derive" above, we get a "moving out... doesn't implement copy" error for the Literal variant
 impl<'a> PartialEq for Column<'a> {
