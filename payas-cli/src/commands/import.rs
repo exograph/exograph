@@ -29,13 +29,17 @@ impl Command for ImportCommand {
         issues.append(&mut schema.issues);
         issues.append(&mut model.issues);
 
-        File::create(&self.output)?.write_all(schema.value.to_model().value.as_bytes())?;
-        for issue in &issues {
-            println!("{}", issue);
-        }
+        if self.output.exists() {
+            Err(anyhow::anyhow!("File {} already exists. Rerun after removing that file or specify a different output file using the -o option", self.output.display()))
+        } else {
+            File::create(&self.output)?.write_all(schema.value.to_model().value.as_bytes())?;
+            for issue in &issues {
+                println!("{}", issue);
+            }
 
-        println!("\nClaytip model written to `{}`", self.output.display());
-        Ok(())
+            println!("\nClaytip model written to `{}`", self.output.display());
+            Ok(())
+        }
     }
 }
 
