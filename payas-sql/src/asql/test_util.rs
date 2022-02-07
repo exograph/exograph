@@ -42,6 +42,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
                 PhysicalColumn {
                     table_name: "concerts".to_string(),
@@ -51,6 +52,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
             ],
         };
@@ -69,6 +71,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
                 PhysicalColumn {
                     table_name: "venues".to_string(),
@@ -78,6 +81,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
             ],
         };
@@ -96,6 +100,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
                 PhysicalColumn {
                     table_name: "concert_artists".to_string(),
@@ -105,6 +110,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
                 PhysicalColumn {
                     table_name: "concert_artists".to_string(),
@@ -114,6 +120,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
             ],
         };
@@ -137,6 +144,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
                 PhysicalColumn {
                     table_name: "artists".to_string(),
@@ -146,6 +154,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
                 PhysicalColumn {
                     table_name: "artists".to_string(),
@@ -155,6 +164,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
             ],
         };
@@ -174,6 +184,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
                 PhysicalColumn {
                     table_name: "addresses".to_string(),
@@ -183,6 +194,7 @@ impl TestSetup<'_> {
                     is_autoincrement: false,
                     is_nullable: true,
                     is_unique: false,
+                    default_value: None,
                 },
             ],
         };
