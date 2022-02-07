@@ -1,0 +1,137 @@
+---
+source: payas-parser/src/builder/resolved_builder.rs
+expression: resolved
+
+---
+types:
+  values:
+    - - ~
+      - Primitive: Boolean
+    - - ~
+      - Primitive: Int
+    - - ~
+      - Primitive: Float
+    - - ~
+      - Primitive: Decimal
+    - - ~
+      - Primitive: String
+    - - ~
+      - Primitive: LocalTime
+    - - ~
+      - Primitive: LocalDateTime
+    - - ~
+      - Primitive: LocalDate
+    - - ~
+      - Primitive: Instant
+    - - ~
+      - Primitive: Json
+    - - ~
+      - Primitive: Blob
+    - - ~
+      - Primitive: ClaytipInjected
+    - - ~
+      - Primitive:
+          Interception: Operation
+    - - ~
+      - Composite:
+          name: ConcertInfo
+          plural_name: ConcertInfos
+          fields:
+            - name: concertId
+              typ:
+                Plain: Int
+              kind:
+                Persistent:
+                  column_name: concert_id
+                  self_column: true
+                  is_pk: true
+                  type_hint: ~
+                  unique: false
+              default_value: Autoincrement
+            - name: mainTitle
+              typ:
+                Plain: String
+              kind:
+                Persistent:
+                  column_name: main_title
+                  self_column: true
+                  is_pk: false
+                  type_hint: ~
+                  unique: false
+              default_value: ~
+          kind:
+            Persistent:
+              table_name: concert_infos
+          access:
+            creation:
+              BooleanLiteral:
+                - true
+            read:
+              BooleanLiteral:
+                - true
+            update:
+              BooleanLiteral:
+                - true
+            delete:
+              BooleanLiteral:
+                - true
+    - ~
+    - ~
+  map:
+    Blob:
+      index: 10
+      generation: ~
+    Boolean:
+      index: 0
+      generation: ~
+    ClaytipInjected:
+      index: 11
+      generation: ~
+    ConcertInfo:
+      index: 13
+      generation: ~
+    Decimal:
+      index: 3
+      generation: ~
+    Float:
+      index: 2
+      generation: ~
+    Instant:
+      index: 8
+      generation: ~
+    Int:
+      index: 1
+      generation: ~
+    Json:
+      index: 9
+      generation: ~
+    LocalDate:
+      index: 7
+      generation: ~
+    LocalDateTime:
+      index: 6
+      generation: ~
+    LocalTime:
+      index: 5
+      generation: ~
+    Operation:
+      index: 12
+      generation: ~
+    String:
+      index: 4
+      generation: ~
+contexts:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+services:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+
