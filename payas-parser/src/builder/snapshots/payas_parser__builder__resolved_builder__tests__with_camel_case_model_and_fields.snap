@@ -34,70 +34,26 @@ types:
           Interception: Operation
     - - ~
       - Composite:
-          name: Entity
-          plural_name: Entitys
+          name: ConcertInfo
+          plural_name: ConcertInfos
           fields:
-            - name: _id
+            - name: concertId
               typ:
                 Plain: Int
               kind:
                 Persistent:
-                  column_name: id
+                  column_name: concert_id
                   self_column: true
                   is_pk: true
                   type_hint: ~
                   unique: false
               default_value: Autoincrement
-            - name: title_main
+            - name: mainTitle
               typ:
                 Plain: String
               kind:
                 Persistent:
-                  column_name: title_main
-                  self_column: true
-                  is_pk: false
-                  type_hint: ~
-                  unique: false
-              default_value: ~
-            - name: title_main1
-              typ:
-                Plain: String
-              kind:
-                Persistent:
-                  column_name: title_main1
-                  self_column: true
-                  is_pk: false
-                  type_hint: ~
-                  unique: false
-              default_value: ~
-            - name: public1
-              typ:
-                Plain: Boolean
-              kind:
-                Persistent:
-                  column_name: public1
-                  self_column: true
-                  is_pk: false
-                  type_hint: ~
-                  unique: false
-              default_value: ~
-            - name: PUBLIC2
-              typ:
-                Plain: Boolean
-              kind:
-                Persistent:
-                  column_name: public2
-                  self_column: true
-                  is_pk: false
-                  type_hint: ~
-                  unique: false
-              default_value: ~
-            - name: foo123
-              typ:
-                Plain: Int
-              kind:
-                Persistent:
-                  column_name: foo123
+                  column_name: main_title
                   self_column: true
                   is_pk: false
                   type_hint: ~
@@ -105,7 +61,7 @@ types:
               default_value: ~
           kind:
             Persistent:
-              table_name: entitys
+              table_name: concert_infos
           access:
             creation:
               BooleanLiteral:
@@ -131,11 +87,11 @@ types:
     ClaytipInjected:
       index: 11
       generation: ~
+    ConcertInfo:
+      index: 13
+      generation: ~
     Decimal:
       index: 3
-      generation: ~
-    Entity:
-      index: 13
       generation: ~
     Float:
       index: 2
