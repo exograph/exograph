@@ -123,7 +123,7 @@ impl ToModel for ColumnSpec {
 
         let pk_str = if self.is_pk { " @pk" } else { "" };
         let autoinc_str = if self.is_autoincrement {
-            " @autoincrement"
+            " = autoincrement()"
         } else {
             ""
         };
@@ -147,8 +147,8 @@ impl ToModel for ColumnSpec {
                 "{}: {}{}{}",
                 self.column_name,
                 data_type + &annots,
+                autoinc_str,
                 pk_str,
-                autoinc_str
             ),
             issues: Vec::new(),
         }
