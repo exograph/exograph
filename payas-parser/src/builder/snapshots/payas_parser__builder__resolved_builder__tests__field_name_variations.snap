@@ -42,7 +42,7 @@ types:
                 Plain: Int
               kind:
                 Persistent:
-                  column_name: _id
+                  column_name: id
                   self_column: true
                   is_pk: true
                   type_hint: ~
@@ -86,7 +86,7 @@ types:
                 Plain: Boolean
               kind:
                 Persistent:
-                  column_name: PUBLIC2
+                  column_name: public2
                   self_column: true
                   is_pk: false
                   type_hint: ~
