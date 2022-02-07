@@ -24,6 +24,7 @@ use crate::{
     typechecker::{PrimitiveType, Type, Typed},
     util::null_span,
 };
+use heck::SnakeCase;
 use serde::{Deserialize, Serialize};
 
 /// Consume typed-checked types and build resolved types
@@ -1051,10 +1052,16 @@ fn compute_column_info(
             .get("column")
             .map(|p| p.as_single().as_string());
 
+        let compute_column_name = |field_name: &str| {
+            user_supplied_column_name
+                .clone()
+                .unwrap_or_else(|| field_name.to_snake_case())
+        };
+
         let id_column_name = |field_name: &str| {
             user_supplied_column_name
                 .clone()
-                .unwrap_or(format!("{}_id", field_name))
+                .unwrap_or(format!("{}_id", field_name.to_snake_case()))
         };
         // we can treat Optional fields as their inner type for the purposes
         // of computing their default column name
@@ -1176,8 +1183,7 @@ fn compute_column_info(
                         if let Type::Primitive(_) = underlying_typ.deref(types) {
                             // base type is a primitive, which means this is an Array
                             Ok(ColumnInfo {
-                                name: user_supplied_column_name
-                                    .unwrap_or_else(|| field.name.clone()),
+                                name: compute_column_name(&field.name),
                                 self_column: true,
                                 unique: false,
                             })
@@ -1195,7 +1201,7 @@ fn compute_column_info(
                         }
                     }
                     _ => Ok(ColumnInfo {
-                        name: user_supplied_column_name.unwrap_or_else(|| field.name.clone()),
+                        name: compute_column_name(&field.name),
                         self_column: true,
                         unique: false,
                     }),
@@ -1586,6 +1592,23 @@ mod tests {
             }  
         "#;
 
+        let resolved = create_resolved_system(src).unwrap();
+
+        insta::with_settings!({sort_maps => true}, {
+            insta::assert_yaml_snapshot!(resolved);
+        });
+    }
+
+    #[test]
+    fn with_camel_case_model_and_fields() {
+        let src = r#"
+            model ConcertInfo {
+                concertId: Int = autoincrement() @pk 
+                mainTitle: String 
+            }
+        "#;
+
+        // Both model and fields names are camel case, but the table and column should be defaulted to snake case
         let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {

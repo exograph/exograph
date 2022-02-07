@@ -2922,6 +2922,7 @@ dependencies = [
  "cc",
  "codemap",
  "codemap-diagnostic",
+ "heck",
  "insta",
  "lazy_static",
  "payas-model",
