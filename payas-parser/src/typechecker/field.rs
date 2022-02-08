@@ -46,13 +46,13 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             .map(|default_value| default_value.pass(type_env, annotation_env, scope, errors))
             .unwrap_or(false);
 
-        let default_value_types_changed = match &self.default_value {
+        match &self.default_value {
             Some(AstFieldDefault {
                 kind: AstFieldDefaultKind::Function(fn_name, _),
                 ..
             }) => match fn_name.as_str() {
                 "now" => match self.typ.name().as_str() {
-                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => false,
+                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => {},
 
                     _ => {
                         errors.push(Diagnostic {
@@ -65,13 +65,11 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: None,
                             }],
                         });
-
-                        true
                     }
                 },
 
                 "autoincrement" => match self.typ.name().as_str() {
-                    "Int" => false,
+                    "Int" => {},
 
                     _ => {
                         errors.push(Diagnostic {
@@ -84,12 +82,10 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: None,
                             }],
                         });
-
-                        true
                     }
                 },
 
-                _ => false,
+                _ => {},
             },
 
             Some(AstFieldDefault {
@@ -113,11 +109,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: Some(format!("should be of type {}", types_allowed)),
                             }],
                         });
-
-                        true
-                    } else {
-                        false
-                    }
+                    } 
                 };
 
                 match *expr {
@@ -136,15 +128,14 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: Some("should be string, boolean, or a number".to_string()),
                             }],
                         });
-
-                        true
                     }
                 }
             }
 
-            _ => false,
+            _ => {},
         };
 
-        typ_changed || annot_changed || default_value_changed || default_value_types_changed
+        println!("!! typechecking field done");
+        typ_changed || annot_changed || default_value_changed 
     }
 }
