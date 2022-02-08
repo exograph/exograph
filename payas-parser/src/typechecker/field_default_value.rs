@@ -64,7 +64,7 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
                 let args_changed = args.iter_mut().any(check_literal);
 
                 match fn_name.as_str() {
-                    "autoincrement" | "now" => {},
+                    "autoincrement" | "now" | "generate_uuid" => {}
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
@@ -82,7 +82,7 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
                     }
                 };
 
-                args_changed 
+                args_changed
             }
             AstFieldDefaultKind::Value(expr) => check_literal(expr),
         }

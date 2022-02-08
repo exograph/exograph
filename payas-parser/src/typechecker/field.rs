@@ -52,7 +52,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                 ..
             }) => match fn_name.as_str() {
                 "now" => match self.typ.name().as_str() {
-                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => {},
+                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => {}
 
                     _ => {
                         errors.push(Diagnostic {
@@ -69,7 +69,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                 },
 
                 "autoincrement" => match self.typ.name().as_str() {
-                    "Int" => {},
+                    "Int" => {}
 
                     _ => {
                         errors.push(Diagnostic {
@@ -85,7 +85,24 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                     }
                 },
 
-                _ => {},
+                "generate_uuid" => match self.typ.name().as_str() {
+                    "Uuid" => {}
+
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: "generate_uuid() can only be used on Uuids".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: self.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                },
+
+                _ => {}
             },
 
             Some(AstFieldDefault {
@@ -109,7 +126,7 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: Some(format!("should be of type {}", types_allowed)),
                             }],
                         });
-                    } 
+                    }
                 };
 
                 match *expr {
@@ -132,10 +149,9 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                 }
             }
 
-            _ => {},
+            _ => {}
         };
 
-        println!("!! typechecking field done");
-        typ_changed || annot_changed || default_value_changed 
+        typ_changed || annot_changed || default_value_changed
     }
 }

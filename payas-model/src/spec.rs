@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use heck::CamelCase;
 
 use payas_sql::spec::{ColumnSpec, Issue, SchemaSpec, TableSpec, WithIssues};
@@ -27,7 +29,18 @@ impl FromModel<SerializableSlab<PhysicalTable>> for SchemaSpec {
             .map(|(_, table)| TableSpec::from_model(table))
             .collect();
 
-        SchemaSpec { table_specs }
+        let mut required_extensions = HashSet::new();
+        for table_spec in table_specs.iter() {
+            required_extensions = required_extensions
+                .union(&table_spec.get_required_extensions())
+                .cloned()
+                .collect();
+        }
+
+        SchemaSpec {
+            table_specs,
+            required_extensions,
+        }
     }
 }
 

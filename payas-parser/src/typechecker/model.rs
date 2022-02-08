@@ -40,23 +40,27 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             > 0;
 
         match self.kind {
-            AstModelKind::Persistent => {},
+            AstModelKind::Persistent => {}
             AstModelKind::Context
             | AstModelKind::NonPersistent
-            | AstModelKind::NonPersistentInput => self.fields.iter().map(|field| {
-                if let Some(AstFieldDefault { span, .. }) = &field.default_value {
-                    errors.push(Diagnostic {
-                        level: Level::Error,
-                        message: "Default fields can only be specified in models".to_string(),
-                        code: Some("C000".to_string()),
-                        spans: vec![SpanLabel {
-                            span: *span,
-                            style: SpanStyle::Primary,
-                            label: Some("bad default field".to_string()),
-                        }],
-                    });
-                }
-            }).collect(),
+            | AstModelKind::NonPersistentInput => self
+                .fields
+                .iter()
+                .map(|field| {
+                    if let Some(AstFieldDefault { span, .. }) = &field.default_value {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: "Default fields can only be specified in models".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: *span,
+                                style: SpanStyle::Primary,
+                                label: Some("bad default field".to_string()),
+                            }],
+                        });
+                    }
+                })
+                .collect(),
         };
 
         let annot_changed = self.annotations.pass(

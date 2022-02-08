@@ -28,6 +28,8 @@ types:
     - - ~
       - Primitive: Blob
     - - ~
+      - Primitive: Uuid
+    - - ~
       - Primitive: ClaytipInjected
     - - ~
       - Primitive:
@@ -84,7 +86,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 13
+                                      index: 14
                                       generation: ~
                               - - role
                               - Reference:
@@ -98,7 +100,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 14
+                                index: 15
                                 generation: ~
                         - - public
                         - Reference:
@@ -115,7 +117,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 13
+                                      index: 14
                                       generation: ~
                               - - role
                               - Reference:
@@ -129,7 +131,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 14
+                                index: 15
                                 generation: ~
                         - - public
                         - Reference:
@@ -146,7 +148,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 13
+                                      index: 14
                                       generation: ~
                               - - role
                               - Reference:
@@ -160,7 +162,7 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 14
+                                index: 15
                                 generation: ~
                         - - public
                         - Reference:
@@ -177,7 +179,7 @@ types:
                               - Single:
                                   - - AuthContext
                                   - Reference:
-                                      index: 13
+                                      index: 14
                                       generation: ~
                               - - role
                               - Reference:
@@ -191,14 +193,13 @@ types:
                         - Single:
                             - - self
                             - Reference:
-                                index: 14
+                                index: 15
                                 generation: ~
                         - - public
                         - Reference:
                             index: 0
                             generation: ~
                   - Primitive: Boolean
-    - ~
     - ~
   map:
     Blob:
@@ -208,10 +209,10 @@ types:
       index: 0
       generation: ~
     ClaytipInjected:
-      index: 11
+      index: 12
       generation: ~
     Concert:
-      index: 13
+      index: 14
       generation: ~
     Decimal:
       index: 3
@@ -238,10 +239,13 @@ types:
       index: 5
       generation: ~
     Operation:
-      index: 12
+      index: 13
       generation: ~
     String:
       index: 4
+      generation: ~
+    Uuid:
+      index: 11
       generation: ~
 contexts:
   values:

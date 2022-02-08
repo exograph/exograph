@@ -772,6 +772,9 @@ fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> Resolve
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
             "autoincrement" => ResolvedFieldDefault::Autoincrement,
             "now" => ResolvedFieldDefault::DatabaseFunction("NOW()".to_string()),
+            "generate_uuid" => {
+                ResolvedFieldDefault::DatabaseFunction("gen_random_uuid()".to_string())
+            }
             _ => panic!(),
         },
     }
