@@ -45,7 +45,12 @@ pub fn compute_join<'a>(
         return TableQuery::Physical(table);
     }
 
-    let mut grouped: HashMap<ColumnPathLink, Vec<Vec<ColumnPathLink>>> = HashMap::new();
+    // Use a stable hasher (FxBuildHasher) so that our test assertions work
+    // The kind of workload we're trying to model here is not sensitive to the
+    // DOS attack (we control all columns and tables), so we can use a stable hasher
+    let mut grouped: HashMap<ColumnPathLink, Vec<Vec<ColumnPathLink>>, _> =
+        HashMap::with_hasher(fxhash::FxBuildHasher::default());
+
     for mut links in links_list {
         if links.is_empty() {
             panic!("Invalid paths list")
@@ -70,10 +75,10 @@ pub fn compute_join<'a>(
         |acc, (head_link, tail_links)| {
             let join_predicate = Predicate::Eq(
                 Column::Physical(head_link.self_column.0).into(),
-                Column::Physical(head_link.linked_column.unwrap()).into(),
+                Column::Physical(head_link.linked_column.unwrap().0).into(),
             );
 
-            let join_table_query = compute_join(table, tail_links);
+            let join_table_query = compute_join(head_link.linked_column.unwrap().1, tail_links);
 
             acc.join(join_table_query, join_predicate.into())
         },
@@ -82,7 +87,45 @@ pub fn compute_join<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::asql::{column_path::ColumnPathLink, test_util::TestSetup};
+    use crate::{
+        asql::{column_path::ColumnPathLink, test_util::TestSetup},
+        sql::{Expression, ExpressionContext},
+    };
+
+    #[test]
+    fn single_level_join() {
+        TestSetup::with_setup(
+            |TestSetup {
+                 concerts_table,
+                 venues_table,
+                 concerts_venue_id_column,
+                 venues_id_column,
+                 venues_name_column,
+                 ..
+             }| {
+                // (concert.venue_id, venue.id) -> (venue.name, None)
+                let concert_venue = vec![
+                    ColumnPathLink {
+                        self_column: (concerts_venue_id_column, concerts_table),
+                        linked_column: Some((venues_id_column, venues_table)),
+                    },
+                    ColumnPathLink {
+                        self_column: (venues_name_column, venues_table),
+                        linked_column: None,
+                    },
+                ];
+
+                let join = super::compute_join(concerts_table, vec![concert_venue]);
+
+                let mut expr = ExpressionContext::default();
+                let join_binding = join.binding(&mut expr);
+                assert_binding!(
+                    join_binding,
+                    r#""concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
+                );
+            },
+        )
+    }
 
     #[test]
     fn multi_level_join() {
@@ -114,11 +157,14 @@ mod tests {
                 let concert_ca_artist = vec![
                     ColumnPathLink {
                         self_column: (concerts_id_column, concerts_table),
-                        linked_column: Some(concert_artists_concert_id_column),
+                        linked_column: Some((
+                            concert_artists_concert_id_column,
+                            concert_artists_table,
+                        )),
                     },
                     ColumnPathLink {
                         self_column: (concert_artists_artist_id_column, concert_artists_table),
-                        linked_column: Some(artists_id_column),
+                        linked_column: Some((artists_id_column, artists_table)),
                     },
                     ColumnPathLink {
                         self_column: (artists_name_column, artists_table),
@@ -130,15 +176,18 @@ mod tests {
                 let concert_ca_artist_address = vec![
                     ColumnPathLink {
                         self_column: (concerts_id_column, concerts_table),
-                        linked_column: Some(concert_artists_concert_id_column),
+                        linked_column: Some((
+                            concert_artists_concert_id_column,
+                            concert_artists_table,
+                        )),
                     },
                     ColumnPathLink {
                         self_column: (concert_artists_artist_id_column, concert_artists_table),
-                        linked_column: Some(artists_id_column),
+                        linked_column: Some((artists_id_column, artists_table)),
                     },
                     ColumnPathLink {
                         self_column: (artists_address_id_column, artists_table),
-                        linked_column: Some(addresses_id_column),
+                        linked_column: Some((addresses_id_column, addresses_table)),
                     },
                     ColumnPathLink {
                         self_column: (addresses_city_column, addresses_table),
@@ -150,7 +199,7 @@ mod tests {
                 let concert_venue = vec![
                     ColumnPathLink {
                         self_column: (concerts_venue_id_column, concerts_table),
-                        linked_column: Some(venues_id_column),
+                        linked_column: Some((venues_id_column, venues_table)),
                     },
                     ColumnPathLink {
                         self_column: (venues_name_column, venues_table),
@@ -163,7 +212,12 @@ mod tests {
                     vec![concert_ca_artist, concert_ca_artist_address, concert_venue],
                 );
 
-                println!("{:#?}", join);
+                let mut expr = ExpressionContext::default();
+                let join_binding = join.binding(&mut expr);
+                assert_binding!(
+                    join_binding,
+                    r#""concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" LEFT JOIN "concert_artists" LEFT JOIN "artists" LEFT JOIN "addresses" ON "artists"."address_id" = "addresses"."id" ON "concert_artists"."artist_id" = "artists"."id" ON "concerts"."id" = "concert_artists"."concert_id""#
+                );
             },
         )
     }

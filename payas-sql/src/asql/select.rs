@@ -9,6 +9,7 @@ use crate::{
 
 use super::{order_by::AbstractOrderBy, predicate::AbstractPredicate, selection::Selection};
 
+#[derive(Debug)]
 pub struct AbstractSelect<'a> {
     pub table: &'a PhysicalTable,
     pub selection: Selection<'a>,
@@ -19,7 +20,11 @@ pub struct AbstractSelect<'a> {
 }
 
 impl<'a> AbstractSelect<'a> {
-    pub fn to_sql(&'a self) -> Select<'a> {
+    pub fn to_sql(
+        &'a self,
+        additional_predicate: Option<Predicate<'a>>,
+        top_level: bool,
+    ) -> Select<'a> {
         fn column_path_owned<'a>(
             column_paths: Vec<&ColumnPath<'a>>,
         ) -> Vec<Vec<ColumnPathLink<'a>>> {
@@ -56,18 +61,23 @@ impl<'a> AbstractSelect<'a> {
             SelectionSQL::Seq(elems) => elems.into_iter().map(|elem| elem.into()).collect(),
         };
 
+        let predicate = Predicate::and(
+            self.predicate
+                .as_ref()
+                .map(|p| p.predicate())
+                .unwrap_or_else(|| Predicate::True),
+            additional_predicate.unwrap_or(Predicate::True),
+        )
+        .into();
+
         Select {
             underlying: join,
             columns,
-            predicate: self
-                .predicate
-                .as_ref()
-                .map(|p| p.predicate().into())
-                .unwrap_or_else(|| Predicate::True.into()),
+            predicate,
             order_by: self.order_by.as_ref().map(|ob| ob.order_by()),
             offset: self.offset.clone(),
             limit: self.limit.clone(),
-            top_level_selection: true,
+            top_level_selection: top_level,
         }
     }
 }
@@ -78,7 +88,7 @@ mod tests {
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
             predicate::AbstractPredicate,
-            selection::{Selection, SelectionElement},
+            selection::{ColumnSelection, Selection, SelectionElement, SelectionElementRelation},
             test_util::TestSetup,
         },
         sql::ExpressionContext,
@@ -97,14 +107,17 @@ mod tests {
              }| {
                 let aselect = AbstractSelect {
                     table: concerts_table,
-                    selection: Selection::Seq(vec![SelectionElement::Physical(concerts_id_column)]),
+                    selection: Selection::Seq(vec![ColumnSelection::new(
+                        "id",
+                        SelectionElement::Physical(concerts_id_column),
+                    )]),
                     predicate: None,
                     order_by: None,
                     offset: None,
                     limit: None,
                 };
 
-                let select = aselect.to_sql();
+                let select = aselect.to_sql(None, true);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(binding, r#"select "concerts"."id" from "concerts""#);
@@ -129,14 +142,17 @@ mod tests {
                 let predicate = AbstractPredicate::Eq(concert_id_path, literal);
                 let aselect = AbstractSelect {
                     table: concerts_table,
-                    selection: Selection::Seq(vec![SelectionElement::Physical(concerts_id_column)]),
+                    selection: Selection::Seq(vec![ColumnSelection::new(
+                        "id",
+                        SelectionElement::Physical(concerts_id_column),
+                    )]),
                     predicate: Some(predicate),
                     order_by: None,
                     offset: None,
                     limit: None,
                 };
 
-                let select = aselect.to_sql();
+                let select = aselect.to_sql(None, true);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -159,7 +175,10 @@ mod tests {
                 let aselect = AbstractSelect {
                     table: concerts_table,
                     selection: Selection::Json(
-                        vec![("id", SelectionElement::Physical(concerts_id_column))],
+                        vec![ColumnSelection::new(
+                            "id",
+                            SelectionElement::Physical(concerts_id_column),
+                        )],
                         true,
                     ),
                     predicate: None,
@@ -168,7 +187,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql();
+                let select = aselect.to_sql(None, true);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -180,25 +199,46 @@ mod tests {
     }
 
     #[test]
-    fn nested_json() {
+    fn nested_many_to_one_json() {
         TestSetup::with_setup(
             |TestSetup {
                  concerts_table,
+                 venues_table,
                  concerts_id_column,
                  venues_id_column,
+                 concerts_venue_id_column,
                  ..
              }| {
                 let aselect = AbstractSelect {
                     table: concerts_table,
                     selection: Selection::Json(
                         vec![
-                            ("id", SelectionElement::Physical(concerts_id_column)),
-                            (
+                            ColumnSelection::new(
+                                "id",
+                                SelectionElement::Physical(concerts_id_column),
+                            ),
+                            ColumnSelection::new(
                                 "venue",
-                                SelectionElement::Compound(Selection::Json(
-                                    vec![("id", SelectionElement::Physical(venues_id_column))],
-                                    false,
-                                )),
+                                SelectionElement::Nested(
+                                    SelectionElementRelation::new(
+                                        concerts_venue_id_column,
+                                        venues_table,
+                                    ),
+                                    AbstractSelect {
+                                        table: venues_table,
+                                        selection: Selection::Json(
+                                            vec![ColumnSelection::new(
+                                                "id",
+                                                SelectionElement::Physical(venues_id_column),
+                                            )],
+                                            false,
+                                        ),
+                                        predicate: None,
+                                        order_by: None,
+                                        offset: None,
+                                        limit: None,
+                                    },
+                                ),
                             ),
                         ],
                         true,
@@ -209,14 +249,132 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql();
+                let select = aselect.to_sql(None, true);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
                     binding,
-                    r#"select coalesce(json_agg(json_build_object('id', "concerts"."id", 'venue', (select json_build_object('id', "venues"."id") from "venues" WHERE "concerts"."venueid" = "venues"."id"))), '[]'::json)::text from "concerts""#
+                    r#"select coalesce(json_agg(json_build_object('id', "concerts"."id", 'venue', (select json_build_object('id', "venues"."id") from "venues" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text from "concerts""#
                 );
-                //select coalesce(json_agg(json_build_object('id', "concerts"."id", 'venue', json_build_object('id', "venues"."id"))), '[]'::json)::text from "concerts"
+            },
+        );
+    }
+
+    #[test]
+    fn nested_one_to_many_json() {
+        TestSetup::with_setup(
+            |TestSetup {
+                 concerts_table,
+                 venues_table,
+                 concerts_id_column,
+                 venues_id_column,
+                 concerts_venue_id_column,
+                 ..
+             }| {
+                let aselect = AbstractSelect {
+                    table: venues_table,
+                    selection: Selection::Json(
+                        vec![
+                            ColumnSelection::new(
+                                "id",
+                                SelectionElement::Physical(venues_id_column),
+                            ),
+                            ColumnSelection::new(
+                                "concerts",
+                                SelectionElement::Nested(
+                                    SelectionElementRelation::new(
+                                        concerts_venue_id_column,
+                                        venues_table,
+                                    ),
+                                    AbstractSelect {
+                                        table: concerts_table,
+                                        selection: Selection::Json(
+                                            vec![ColumnSelection::new(
+                                                "id",
+                                                SelectionElement::Physical(concerts_id_column),
+                                            )],
+                                            true,
+                                        ),
+                                        predicate: None,
+                                        order_by: None,
+                                        offset: None,
+                                        limit: None,
+                                    },
+                                ),
+                            ),
+                        ],
+                        true,
+                    ),
+                    predicate: None,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                };
+
+                let select = aselect.to_sql(None, true);
+                let mut expr = ExpressionContext::default();
+                let binding = select.binding(&mut expr);
+                assert_binding!(
+                    binding,
+                    r#"select coalesce(json_agg(json_build_object('id', "venues"."id", 'concerts', (select coalesce(json_agg(json_build_object('id', "concerts"."id")), '[]'::json) from "concerts" WHERE "concerts"."venue_id" = "venues"."id"))), '[]'::json)::text from "venues""#
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn nested_predicate() {
+        TestSetup::with_setup(
+            |TestSetup {
+                 concerts_table,
+                 concerts_id_column,
+                 concerts_venue_id_column,
+                 venues_table,
+                 venues_id_column,
+                 venues_name_column,
+                 ..
+             }| {
+                // {
+                //     concerts(where: {venue: {name: {eq: "v1"}}}) {
+                //       id
+                //     }
+                // }
+                let predicate = AbstractPredicate::Eq(
+                    ColumnPath::Physical(vec![
+                        ColumnPathLink {
+                            self_column: (concerts_venue_id_column, concerts_table),
+                            linked_column: Some((venues_id_column, venues_table)),
+                        },
+                        ColumnPathLink {
+                            self_column: (venues_name_column, venues_table),
+                            linked_column: None,
+                        },
+                    ]),
+                    ColumnPath::Literal(Box::new("v1".to_string())),
+                );
+                let aselect = AbstractSelect {
+                    table: concerts_table,
+                    selection: Selection::Json(
+                        vec![ColumnSelection::new(
+                            "id",
+                            SelectionElement::Physical(concerts_id_column),
+                        )],
+                        true,
+                    ),
+                    predicate: Some(predicate),
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                };
+
+                let select = aselect.to_sql(None, true);
+                let mut expr = ExpressionContext::default();
+                let binding = select.binding(&mut expr);
+                assert_binding!(
+                    binding,
+                    r#"select coalesce(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text from "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
+                    "v1".to_string()
+                );
             },
         );
     }

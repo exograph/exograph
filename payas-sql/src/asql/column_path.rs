@@ -3,7 +3,7 @@ use crate::sql::{column::PhysicalColumn, PhysicalTable, SQLParam};
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct ColumnPathLink<'a> {
     pub self_column: (&'a PhysicalColumn, &'a PhysicalTable), // We need to keep the table since column carries the table name and not the table itself
-    pub linked_column: Option<&'a PhysicalColumn>,
+    pub linked_column: Option<(&'a PhysicalColumn, &'a PhysicalTable)>,
 }
 
 #[derive(Debug)]

@@ -1,8 +1,27 @@
-use crate::sql::column::{Column, PhysicalColumn};
+use crate::sql::{
+    column::{Column, PhysicalColumn},
+    predicate::Predicate,
+    PhysicalTable,
+};
 
+use super::select::AbstractSelect;
+
+#[derive(Debug)]
+pub struct ColumnSelection<'a> {
+    alias: &'a str,
+    column: SelectionElement<'a>,
+}
+
+impl<'a> ColumnSelection<'a> {
+    pub fn new(alias: &'a str, column: SelectionElement<'a>) -> Self {
+        Self { alias, column }
+    }
+}
+
+#[derive(Debug)]
 pub enum Selection<'a> {
-    Seq(Vec<SelectionElement<'a>>),
-    Json(Vec<(&'a str, SelectionElement<'a>)>, bool),
+    Seq(Vec<ColumnSelection<'a>>),
+    Json(Vec<ColumnSelection<'a>>, bool),
 }
 
 pub enum SelectionSQL<'a> {
@@ -11,20 +30,28 @@ pub enum SelectionSQL<'a> {
 }
 
 impl<'a> Selection<'a> {
-    pub fn to_sql(&self) -> SelectionSQL<'a> {
+    pub fn to_sql(&'a self) -> SelectionSQL<'a> {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
-                    .map(|s| match s {
-                        SelectionElement::Physical(pc) => Column::Physical(pc),
-                        SelectionElement::Compound(_) => todo!(),
-                    })
+                    .map(
+                        |ColumnSelection {
+                             alias: _alias,
+                             column,
+                         }| match column {
+                            // TODO: Support alias (requires a change to `Select`)
+                            SelectionElement::Physical(pc) => Column::Physical(pc),
+                            SelectionElement::Nested(_, _) => todo!(),
+                        },
+                    )
                     .collect(),
             ),
             Selection::Json(seq, multi) => {
                 let object_elems = seq
                     .iter()
-                    .map(|(k, s)| (k.to_string(), s.to_sql().into()))
+                    .map(|ColumnSelection { alias, column }| {
+                        (alias.to_string(), column.to_sql().into())
+                    })
                     .collect();
 
                 let json_obj = Column::JsonObject(object_elems);
@@ -39,19 +66,40 @@ impl<'a> Selection<'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum SelectionElement<'a> {
     Physical(&'a PhysicalColumn),
-    Compound(Selection<'a>),
+    Nested(SelectionElementRelation<'a>, AbstractSelect<'a>),
+}
+
+/// Relation between two tables
+/// The `column` is the column in the one table that is joined to the other `table`('s primary key)
+/// TODO: Could this idea be consolidated with the `ColumnPath`? After all, both represent a way to link two tables
+#[derive(Debug)]
+pub struct SelectionElementRelation<'a> {
+    pub column: &'a PhysicalColumn,
+    pub table: &'a PhysicalTable,
+}
+
+impl<'a> SelectionElementRelation<'a> {
+    pub fn new(column: &'a PhysicalColumn, table: &'a PhysicalTable) -> Self {
+        Self { column, table }
+    }
 }
 
 impl<'a> SelectionElement<'a> {
-    pub fn to_sql(&self) -> Column<'a> {
+    pub fn to_sql(&'a self) -> Column<'a> {
         match self {
             SelectionElement::Physical(pc) => Column::Physical(pc),
-            SelectionElement::Compound(s) => match s.to_sql() {
-                SelectionSQL::Single(elem) => elem,
-                SelectionSQL::Seq(_) => todo!(),
-            },
+            SelectionElement::Nested(relation, select) => {
+                Column::SelectionTableWrapper(Box::new(select.to_sql(
+                    Some(Predicate::Eq(
+                        Column::Physical(relation.column).into(),
+                        Column::Physical(relation.table.get_pk_physical_column().unwrap()).into(),
+                    )),
+                    false,
+                )))
+            }
         }
     }
 }
