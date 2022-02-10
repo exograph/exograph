@@ -6,6 +6,7 @@ use payas_model::model::mapped_arena::MappedArena;
 use crate::ast::ast_types::{
     AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType, Untyped,
 };
+use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 
 use super::annotation::{AnnotationSpec, AnnotationTarget};
 use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed};
@@ -51,13 +52,16 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                 kind: AstFieldDefaultKind::Function(fn_name, _),
                 ..
             }) => match fn_name.as_str() {
-                "now" => match self.typ.name().as_str() {
+                DEFAULT_FN_CURRENT_TIME => match self.typ.name().as_str() {
                     "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => {}
 
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
-                            message: "now() can only be used for time-related types".to_string(),
+                            message: format!(
+                                "{}() can only be used for time-related types",
+                                DEFAULT_FN_CURRENT_TIME
+                            ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
                                 span: self.span,
@@ -68,13 +72,16 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                     }
                 },
 
-                "autoincrement" => match self.typ.name().as_str() {
+                DEFAULT_FN_AUTOINCREMENT => match self.typ.name().as_str() {
                     "Int" => {}
 
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
-                            message: "autoincrement() can only be used on Ints".to_string(),
+                            message: format!(
+                                "{}() can only be used on Ints",
+                                DEFAULT_FN_AUTOINCREMENT
+                            ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
                                 span: self.span,
@@ -85,13 +92,16 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                     }
                 },
 
-                "generate_uuid" => match self.typ.name().as_str() {
+                DEFAULT_FN_GENERATE_UUID => match self.typ.name().as_str() {
                     "Uuid" => {}
 
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
-                            message: "generate_uuid() can only be used on Uuids".to_string(),
+                            message: format!(
+                                "{}() can only be used on Uuids",
+                                DEFAULT_FN_GENERATE_UUID
+                            ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
                                 span: self.span,

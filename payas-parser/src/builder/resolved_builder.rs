@@ -18,6 +18,7 @@ use crate::ast::ast_types::{
 };
 use crate::builder::service_skeleton_generator;
 use crate::error::ParserError;
+use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 use crate::typechecker::AnnotationMap;
 use crate::{
     ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
@@ -770,9 +771,9 @@ fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> Resolve
             ResolvedFieldDefault::DatabaseFunction(func.to_owned())
         }
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
-            "autoincrement" => ResolvedFieldDefault::Autoincrement,
-            "now" => ResolvedFieldDefault::DatabaseFunction("NOW()".to_string()),
-            "generate_uuid" => {
+            DEFAULT_FN_AUTOINCREMENT => ResolvedFieldDefault::Autoincrement,
+            DEFAULT_FN_CURRENT_TIME => ResolvedFieldDefault::DatabaseFunction("NOW()".to_string()),
+            DEFAULT_FN_GENERATE_UUID => {
                 ResolvedFieldDefault::DatabaseFunction("gen_random_uuid()".to_string())
             }
             _ => panic!(),

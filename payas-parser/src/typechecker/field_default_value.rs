@@ -4,6 +4,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, AstFieldDefault, AstFieldDefaultKind, Untyped};
+use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 
 use super::annotation::AnnotationSpec;
 use super::{Scope, Type, TypecheckFrom, Typed};
@@ -64,7 +65,9 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
                 let args_changed = args.iter_mut().any(check_literal);
 
                 match fn_name.as_str() {
-                    "autoincrement" | "now" | "generate_uuid" => {}
+                    DEFAULT_FN_AUTOINCREMENT
+                    | DEFAULT_FN_CURRENT_TIME
+                    | DEFAULT_FN_GENERATE_UUID => {}
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
