@@ -1,6 +1,6 @@
 @table("images")
 model Image {
-    id: Int = autoincrement() @pk
+    id: Uuid = generate_uuid() @pk
     name: String
     data: Blob
 }

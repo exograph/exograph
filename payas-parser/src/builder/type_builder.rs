@@ -558,6 +558,7 @@ fn determine_column_type<'a>(
             },
             PrimitiveType::Json => PhysicalColumnType::Json,
             PrimitiveType::Blob => PhysicalColumnType::Blob,
+            PrimitiveType::Uuid => PhysicalColumnType::Uuid,
             PrimitiveType::Array(_)
             | PrimitiveType::ClaytipInjected
             | PrimitiveType::Interception(_) => {

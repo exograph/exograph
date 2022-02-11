@@ -146,6 +146,11 @@ lazy_static! {
             None
         );
 
+        supported_operators.insert(
+            "Uuid",
+            Some(vec!["eq", "neq"])
+        );
+
         supported_operators.insert("ClaytipInjected", None);
         supported_operators.insert("Operation", None); // TODO: Re-examine if this is the best way (for both injected and interception)
 

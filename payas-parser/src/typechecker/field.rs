@@ -6,6 +6,7 @@ use payas_model::model::mapped_arena::MappedArena;
 use crate::ast::ast_types::{
     AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType, Untyped,
 };
+use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 
 use super::annotation::{AnnotationSpec, AnnotationTarget};
 use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed};
@@ -46,18 +47,21 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
             .map(|default_value| default_value.pass(type_env, annotation_env, scope, errors))
             .unwrap_or(false);
 
-        let default_value_types_changed = match &self.default_value {
+        match &self.default_value {
             Some(AstFieldDefault {
                 kind: AstFieldDefaultKind::Function(fn_name, _),
                 ..
             }) => match fn_name.as_str() {
-                "now" => match self.typ.name().as_str() {
-                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => false,
+                DEFAULT_FN_CURRENT_TIME => match self.typ.name().as_str() {
+                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => {}
 
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
-                            message: "now() can only be used for time-related types".to_string(),
+                            message: format!(
+                                "{}() can only be used for time-related types",
+                                DEFAULT_FN_CURRENT_TIME
+                            ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
                                 span: self.span,
@@ -65,18 +69,19 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: None,
                             }],
                         });
-
-                        true
                     }
                 },
 
-                "autoincrement" => match self.typ.name().as_str() {
-                    "Int" => false,
+                DEFAULT_FN_AUTOINCREMENT => match self.typ.name().as_str() {
+                    "Int" => {}
 
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
-                            message: "autoincrement() can only be used on Ints".to_string(),
+                            message: format!(
+                                "{}() can only be used on Ints",
+                                DEFAULT_FN_AUTOINCREMENT
+                            ),
                             code: Some("C000".to_string()),
                             spans: vec![SpanLabel {
                                 span: self.span,
@@ -84,12 +89,30 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: None,
                             }],
                         });
-
-                        true
                     }
                 },
 
-                _ => false,
+                DEFAULT_FN_GENERATE_UUID => match self.typ.name().as_str() {
+                    "Uuid" => {}
+
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "{}() can only be used on Uuids",
+                                DEFAULT_FN_GENERATE_UUID
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: self.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                },
+
+                _ => {}
             },
 
             Some(AstFieldDefault {
@@ -113,10 +136,6 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: Some(format!("should be of type {}", types_allowed)),
                             }],
                         });
-
-                        true
-                    } else {
-                        false
                     }
                 };
 
@@ -136,15 +155,13 @@ impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
                                 label: Some("should be string, boolean, or a number".to_string()),
                             }],
                         });
-
-                        true
                     }
                 }
             }
 
-            _ => false,
+            _ => {}
         };
 
-        typ_changed || annot_changed || default_value_changed || default_value_types_changed
+        typ_changed || annot_changed || default_value_changed
     }
 }

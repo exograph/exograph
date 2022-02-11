@@ -28,6 +28,8 @@ types:
     - - ~
       - Primitive: Blob
     - - ~
+      - Primitive: Uuid
+    - - ~
       - Primitive: ClaytipInjected
     - - ~
       - Primitive:
@@ -120,7 +122,6 @@ types:
               BooleanLiteral:
                 - true
     - ~
-    - ~
   map:
     Blob:
       index: 10
@@ -129,13 +130,13 @@ types:
       index: 0
       generation: ~
     ClaytipInjected:
-      index: 11
+      index: 12
       generation: ~
     Decimal:
       index: 3
       generation: ~
     Entity:
-      index: 13
+      index: 14
       generation: ~
     Float:
       index: 2
@@ -159,10 +160,13 @@ types:
       index: 5
       generation: ~
     Operation:
-      index: 12
+      index: 13
       generation: ~
     String:
       index: 4
+      generation: ~
+    Uuid:
+      index: 11
       generation: ~
 contexts:
   values:

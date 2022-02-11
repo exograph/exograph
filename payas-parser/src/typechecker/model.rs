@@ -39,28 +39,28 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             .count()
             > 0;
 
-        let fields_default_values_changed = match self.kind {
-            AstModelKind::Persistent => false,
+        match self.kind {
+            AstModelKind::Persistent => {}
             AstModelKind::Context
             | AstModelKind::NonPersistent
-            | AstModelKind::NonPersistentInput => self.fields.iter().any(|field| {
-                if let Some(AstFieldDefault { span, .. }) = &field.default_value {
-                    errors.push(Diagnostic {
-                        level: Level::Error,
-                        message: "Default fields can only be specified in models".to_string(),
-                        code: Some("C000".to_string()),
-                        spans: vec![SpanLabel {
-                            span: *span,
-                            style: SpanStyle::Primary,
-                            label: Some("bad default field".to_string()),
-                        }],
-                    });
-
-                    true
-                } else {
-                    false
-                }
-            }),
+            | AstModelKind::NonPersistentInput => self
+                .fields
+                .iter()
+                .map(|field| {
+                    if let Some(AstFieldDefault { span, .. }) = &field.default_value {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: "Default fields can only be specified in models".to_string(),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: *span,
+                                style: SpanStyle::Primary,
+                                label: Some("bad default field".to_string()),
+                            }],
+                        });
+                    }
+                })
+                .collect(),
         };
 
         let annot_changed = self.annotations.pass(
@@ -71,6 +71,6 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             errors,
         );
 
-        fields_changed || fields_default_values_changed || annot_changed
+        fields_changed || annot_changed
     }
 }

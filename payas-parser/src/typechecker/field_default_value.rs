@@ -4,6 +4,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, AstFieldDefault, AstFieldDefaultKind, Untyped};
+use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 
 use super::annotation::AnnotationSpec;
 use super::{Scope, Type, TypecheckFrom, Typed};
@@ -54,7 +55,7 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
                         label: Some("not a literal".to_string()),
                     }],
                 });
-                true
+                false
             }
         };
 
@@ -63,8 +64,10 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
             AstFieldDefaultKind::Function(fn_name, args) => {
                 let args_changed = args.iter_mut().any(check_literal);
 
-                let fn_name_changed = match fn_name.as_str() {
-                    "autoincrement" | "now" => false,
+                match fn_name.as_str() {
+                    DEFAULT_FN_AUTOINCREMENT
+                    | DEFAULT_FN_CURRENT_TIME
+                    | DEFAULT_FN_GENERATE_UUID => {}
                     _ => {
                         errors.push(Diagnostic {
                             level: Level::Error,
@@ -79,12 +82,10 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
                                 label: Some("unknown kind".to_string()),
                             }],
                         });
-
-                        true
                     }
                 };
 
-                args_changed || fn_name_changed
+                args_changed
             }
             AstFieldDefaultKind::Value(expr) => check_literal(expr),
         }

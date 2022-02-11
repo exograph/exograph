@@ -70,6 +70,7 @@ pub enum PhysicalColumnType {
     },
     Json,
     Blob,
+    Uuid,
     Array {
         typ: Box<PhysicalColumnType>,
     },
@@ -264,6 +265,7 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::Json => ("Json".to_string(), "".to_string()),
             PhysicalColumnType::Blob => ("Blob".to_string(), "".to_string()),
+            PhysicalColumnType::Uuid => ("Uuid".to_string(), "".to_string()),
 
             PhysicalColumnType::Array { typ } => {
                 let (data_type, annotations) = typ.to_model();
@@ -391,6 +393,11 @@ impl PhysicalColumnType {
 
             PhysicalColumnType::Blob => SQLStatement {
                 statement: "BYTEA".to_owned(),
+                foreign_constraints: Vec::new(),
+            },
+
+            PhysicalColumnType::Uuid => SQLStatement {
+                statement: "uuid".to_owned(),
                 foreign_constraints: Vec::new(),
             },
 
