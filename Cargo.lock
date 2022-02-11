@@ -2965,6 +2965,7 @@ dependencies = [
  "tokio-postgres",
  "typed-arena",
  "typed-generational-arena",
+ "uuid",
 ]
 
 [[package]]
@@ -3253,6 +3254,7 @@ dependencies = [
  "postgres-protocol",
  "serde",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]

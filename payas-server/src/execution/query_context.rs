@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use anyhow::{bail, Context, Result};
 use async_graphql_parser::{
@@ -229,8 +229,6 @@ fn cast_number(
 fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Box<dyn SQLParam>> {
     let value: Box<dyn SQLParam> = match destination_type {
         PhysicalColumnType::Numeric { .. } => {
-            use std::str::FromStr;
-
             let decimal =
                 match string {
                     "NaN" => PgNumeric { n: None },
@@ -324,6 +322,11 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
         PhysicalColumnType::Blob => {
             let bytes = base64::decode(string)?;
             Box::new(SQLBytes::new(bytes))
+        }
+
+        PhysicalColumnType::Uuid => {
+            let uuid = uuid::Uuid::parse_str(string)?;
+            Box::new(uuid)
         }
 
         PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
