@@ -23,6 +23,7 @@ tokio-postgres = { version = "0.7.5", features = [
   "runtime",
   "with-chrono-0_4",
   "with-serde_json-1",
+  "with-uuid-0_8"
 ] }
 pg_bigdecimal = "0.1.4"
 chrono = "0.4.19"
@@ -31,6 +32,7 @@ typed-arena = "2.0.1"
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 maybe-owned = "0.3.4"
 thiserror = "1.0.30"
+uuid = "0.8"
 
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }

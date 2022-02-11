@@ -27,6 +27,8 @@ values:
   - - ~
     - Primitive: Blob
   - - ~
+    - Primitive: Uuid
+  - - ~
     - Primitive: ClaytipInjected
   - - ~
     - Primitive:
@@ -79,7 +81,7 @@ values:
                                   - Single:
                                       - - AuthContext
                                       - Reference:
-                                          index: 13
+                                          index: 14
                                           generation: ~
                                   - - roles
                                   - Array:
@@ -90,10 +92,9 @@ values:
             default_value: ~
         annotations:
           annotations: {}
-  - ~
 map:
   AuthContext:
-    index: 13
+    index: 14
     generation: ~
   Blob:
     index: 10
@@ -102,13 +103,13 @@ map:
     index: 0
     generation: ~
   Claytip:
-    index: 11
+    index: 12
     generation: ~
   Decimal:
     index: 3
     generation: ~
   Doc:
-    index: 14
+    index: 15
     generation: ~
   Float:
     index: 2
@@ -132,9 +133,12 @@ map:
     index: 5
     generation: ~
   Operation:
-    index: 12
+    index: 13
     generation: ~
   String:
     index: 4
+    generation: ~
+  Uuid:
+    index: 11
     generation: ~
 

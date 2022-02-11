@@ -53,6 +53,7 @@ pub struct WithIssues<T> {
 /// Specification for the overall schema.
 pub struct SchemaSpec {
     pub table_specs: Vec<TableSpec>,
+    pub required_extensions: HashSet<String>,
 }
 
 impl SchemaSpec {
@@ -64,6 +65,7 @@ impl SchemaSpec {
 
         let mut issues = Vec::new();
         let mut table_specs = Vec::new();
+        let mut required_extensions = HashSet::new();
 
         for row in client.query(QUERY, &[]).await.map_err(|e| anyhow!(e))? {
             let name: String = row.get("table_name");
@@ -72,27 +74,41 @@ impl SchemaSpec {
             table_specs.push(table.value);
         }
 
+        for table_spec in table_specs.iter() {
+            required_extensions = required_extensions
+                .union(&table_spec.get_required_extensions())
+                .cloned()
+                .collect();
+        }
+
         Ok(WithIssues {
-            value: SchemaSpec { table_specs },
+            value: SchemaSpec {
+                table_specs,
+                required_extensions,
+            },
             issues,
         })
     }
 
     /// Converts the schema specification to SQL statements.
     pub fn to_sql(&self) -> SQLStatement {
-        let mut table_stmts = Vec::new();
+        let mut stmts = Vec::new();
         let mut foreign_constraints = Vec::new();
+
+        self.required_extensions.iter().for_each(|ext| {
+            stmts.push(format!("CREATE EXTENSION \"{}\";", ext));
+        });
 
         self.table_specs
             .iter()
             .map(|t| t.to_sql())
             .for_each(|mut s| {
-                table_stmts.push(s.statement + "\n");
+                stmts.push(s.statement + "\n");
                 foreign_constraints.append(&mut s.foreign_constraints);
             });
 
         SQLStatement {
-            statement: table_stmts.join("\n"),
+            statement: stmts.join("\n"),
             foreign_constraints,
         }
     }
@@ -218,6 +234,19 @@ impl TableSpec {
             statement: format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts),
             foreign_constraints,
         }
+    }
+
+    /// Get any extensions this table may depend on.
+    pub fn get_required_extensions(&self) -> HashSet<String> {
+        let mut required_extensions = HashSet::new();
+
+        for col_spec in self.column_specs.iter() {
+            if let PhysicalColumnType::Uuid = col_spec.db_type {
+                required_extensions.insert("pgcrypto".to_string());
+            }
+        }
+
+        required_extensions
     }
 }
 

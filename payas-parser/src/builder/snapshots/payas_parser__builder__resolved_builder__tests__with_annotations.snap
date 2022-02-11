@@ -28,6 +28,8 @@ types:
     - - ~
       - Primitive: Blob
     - - ~
+      - Primitive: Uuid
+    - - ~
       - Primitive: ClaytipInjected
     - - ~
       - Primitive:
@@ -215,7 +217,6 @@ types:
             delete:
               BooleanLiteral:
                 - true
-    - ~
   map:
     Blob:
       index: 10
@@ -224,10 +225,10 @@ types:
       index: 0
       generation: ~
     ClaytipInjected:
-      index: 11
+      index: 12
       generation: ~
     Concert:
-      index: 13
+      index: 14
       generation: ~
     Decimal:
       index: 3
@@ -254,13 +255,16 @@ types:
       index: 5
       generation: ~
     Operation:
-      index: 12
+      index: 13
       generation: ~
     String:
       index: 4
       generation: ~
+    Uuid:
+      index: 11
+      generation: ~
     Venue:
-      index: 14
+      index: 15
       generation: ~
 contexts:
   values:
@@ -273,7 +277,7 @@ services:
   values:
     - - ~
       - name: Foo
-        script: "\n"
+        script: "// deno-fmt-ignore-file\n// deno-lint-ignore-file\n// This code was bundled using `deno bundle` and it's not recommended to edit it manually\n\n\n"
         script_path: bar.js
         methods:
           - name: qux
