@@ -19,11 +19,16 @@ pub struct AbstractSelect<'a> {
     pub limit: Option<Limit>,
 }
 
+pub enum SelectionLevel {
+    TopLevel,
+    SubQuery,
+}
+
 impl<'a> AbstractSelect<'a> {
     pub fn to_sql(
         &'a self,
         additional_predicate: Option<Predicate<'a>>,
-        top_level: bool,
+        selection_level: SelectionLevel,
     ) -> Select<'a> {
         fn column_path_owned<'a>(
             column_paths: Vec<&ColumnPath<'a>>,
@@ -77,7 +82,7 @@ impl<'a> AbstractSelect<'a> {
             order_by: self.order_by.as_ref().map(|ob| ob.order_by()),
             offset: self.offset.clone(),
             limit: self.limit.clone(),
-            top_level_selection: top_level,
+            top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
         }
     }
 }
@@ -88,7 +93,11 @@ mod tests {
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
             predicate::AbstractPredicate,
-            selection::{ColumnSelection, Selection, SelectionElement, SelectionElementRelation},
+            select::SelectionLevel,
+            selection::{
+                ColumnSelection, Selection, SelectionCardinality, SelectionElement,
+                SelectionElementRelation,
+            },
             test_util::TestSetup,
         },
         sql::ExpressionContext,
@@ -117,7 +126,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, true);
+                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(binding, r#"select "concerts"."id" from "concerts""#);
@@ -138,8 +147,8 @@ mod tests {
                     linked_column: None,
                 }]);
                 let literal = ColumnPath::Literal(Box::new(5));
-
                 let predicate = AbstractPredicate::Eq(concert_id_path, literal);
+
                 let aselect = AbstractSelect {
                     table: concerts_table,
                     selection: Selection::Seq(vec![ColumnSelection::new(
@@ -152,7 +161,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, true);
+                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -179,7 +188,7 @@ mod tests {
                             "id",
                             SelectionElement::Physical(concerts_id_column),
                         )],
-                        true,
+                        SelectionCardinality::Many,
                     ),
                     predicate: None,
                     order_by: None,
@@ -187,7 +196,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, true);
+                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -200,6 +209,12 @@ mod tests {
 
     #[test]
     fn nested_many_to_one_json() {
+        // {
+        //     id: 5,
+        //     venue: { // concert.venue_id = venue.id
+        //         id: 8
+        //     }
+        // }
         TestSetup::with_setup(
             |TestSetup {
                  concerts_table,
@@ -231,7 +246,7 @@ mod tests {
                                                 "id",
                                                 SelectionElement::Physical(venues_id_column),
                                             )],
-                                            false,
+                                            SelectionCardinality::One,
                                         ),
                                         predicate: None,
                                         order_by: None,
@@ -241,7 +256,7 @@ mod tests {
                                 ),
                             ),
                         ],
-                        true,
+                        SelectionCardinality::Many,
                     ),
                     predicate: None,
                     order_by: None,
@@ -249,7 +264,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, true);
+                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -293,7 +308,7 @@ mod tests {
                                                 "id",
                                                 SelectionElement::Physical(concerts_id_column),
                                             )],
-                                            true,
+                                            SelectionCardinality::Many,
                                         ),
                                         predicate: None,
                                         order_by: None,
@@ -303,7 +318,7 @@ mod tests {
                                 ),
                             ),
                         ],
-                        true,
+                        SelectionCardinality::Many,
                     ),
                     predicate: None,
                     order_by: None,
@@ -311,7 +326,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, true);
+                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -359,7 +374,7 @@ mod tests {
                             "id",
                             SelectionElement::Physical(concerts_id_column),
                         )],
-                        true,
+                        SelectionCardinality::Many,
                     ),
                     predicate: Some(predicate),
                     order_by: None,
@@ -367,7 +382,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, true);
+                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(

@@ -4,7 +4,7 @@ use crate::sql::{
     PhysicalTable,
 };
 
-use super::select::AbstractSelect;
+use super::select::{AbstractSelect, SelectionLevel};
 
 #[derive(Debug)]
 pub struct ColumnSelection<'a> {
@@ -19,9 +19,15 @@ impl<'a> ColumnSelection<'a> {
 }
 
 #[derive(Debug)]
+pub enum SelectionCardinality {
+    One,
+    Many,
+}
+
+#[derive(Debug)]
 pub enum Selection<'a> {
     Seq(Vec<ColumnSelection<'a>>),
-    Json(Vec<ColumnSelection<'a>>, bool),
+    Json(Vec<ColumnSelection<'a>>, SelectionCardinality),
 }
 
 pub enum SelectionSQL<'a> {
@@ -46,7 +52,7 @@ impl<'a> Selection<'a> {
                     )
                     .collect(),
             ),
-            Selection::Json(seq, multi) => {
+            Selection::Json(seq, cardinality) => {
                 let object_elems = seq
                     .iter()
                     .map(|ColumnSelection { alias, column }| {
@@ -56,10 +62,11 @@ impl<'a> Selection<'a> {
 
                 let json_obj = Column::JsonObject(object_elems);
 
-                if *multi {
-                    SelectionSQL::Single(Column::JsonAgg(Box::new(json_obj.into())))
-                } else {
-                    SelectionSQL::Single(json_obj)
+                match cardinality {
+                    SelectionCardinality::One => SelectionSQL::Single(json_obj),
+                    SelectionCardinality::Many => {
+                        SelectionSQL::Single(Column::JsonAgg(Box::new(json_obj.into())))
+                    }
                 }
             }
         }
@@ -87,6 +94,8 @@ impl<'a> SelectionElementRelation<'a> {
     }
 }
 
+// TODO: Make top_level and multi not boolean
+
 impl<'a> SelectionElement<'a> {
     pub fn to_sql(&'a self) -> Column<'a> {
         match self {
@@ -97,7 +106,7 @@ impl<'a> SelectionElement<'a> {
                         Column::Physical(relation.column).into(),
                         Column::Physical(relation.table.get_pk_physical_column().unwrap()).into(),
                     )),
-                    false,
+                    SelectionLevel::SubQuery,
                 )))
             }
         }
