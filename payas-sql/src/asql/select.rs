@@ -21,12 +21,12 @@ pub struct AbstractSelect<'a> {
 
 pub enum SelectionLevel {
     TopLevel,
-    SubQuery,
+    Nested,
 }
 
 impl<'a> AbstractSelect<'a> {
     pub fn to_sql(
-        &'a self,
+        self,
         additional_predicate: Option<Predicate<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a> {
@@ -68,7 +68,6 @@ impl<'a> AbstractSelect<'a> {
 
         let predicate = Predicate::and(
             self.predicate
-                .as_ref()
                 .map(|p| p.predicate())
                 .unwrap_or_else(|| Predicate::True),
             additional_predicate.unwrap_or(Predicate::True),
@@ -79,7 +78,7 @@ impl<'a> AbstractSelect<'a> {
             underlying: join,
             columns,
             predicate,
-            order_by: self.order_by.as_ref().map(|ob| ob.order_by()),
+            order_by: self.order_by.map(|ob| ob.order_by()),
             offset: self.offset.clone(),
             limit: self.limit.clone(),
             top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),

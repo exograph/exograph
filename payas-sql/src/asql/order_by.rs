@@ -6,16 +6,16 @@ use super::column_path::ColumnPath;
 pub struct AbstractOrderBy<'a>(pub Vec<(ColumnPath<'a>, Ordering)>);
 
 impl<'a> AbstractOrderBy<'a> {
-    pub fn order_by(&'a self) -> OrderBy<'a> {
+    pub fn order_by(self) -> OrderBy<'a> {
         OrderBy(
             self.0
-                .iter()
-                .map(|(path, ordering)| (path.leaf_column(), ordering.clone()))
+                .into_iter()
+                .map(|(path, ordering)| (path.leaf_column(), ordering))
                 .collect(),
         )
     }
 
-    pub fn column_paths(&'a self) -> Vec<&'a ColumnPath<'a>> {
+    pub fn column_paths(&self) -> Vec<&ColumnPath<'a>> {
         self.0.iter().map(|(path, _)| path).collect()
     }
 }

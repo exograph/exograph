@@ -42,7 +42,7 @@ pub enum AbstractPredicate<'a> {
 }
 
 impl<'a> AbstractPredicate<'a> {
-    pub fn column_paths(&'a self) -> Vec<&'a ColumnPath<'a>> {
+    pub fn column_paths(&self) -> Vec<&ColumnPath<'a>> {
         match self {
             AbstractPredicate::True | AbstractPredicate::False => vec![],
             AbstractPredicate::Eq(l, r)
@@ -69,8 +69,8 @@ impl<'a> AbstractPredicate<'a> {
         }
     }
 
-    pub fn predicate(&'a self) -> Predicate<'a> {
-        fn leaf_column<'a>(column_path: &'a ColumnPath<'a>) -> MaybeOwned<'a, Column<'a>> {
+    pub fn predicate(self) -> Predicate<'a> {
+        fn leaf_column(column_path: ColumnPath) -> MaybeOwned<Column> {
             match column_path {
                 ColumnPath::Physical(links) => {
                     Column::Physical(links.last().unwrap().self_column.0).into()
@@ -91,7 +91,7 @@ impl<'a> AbstractPredicate<'a> {
             AbstractPredicate::In(l, r) => Predicate::In(leaf_column(l), leaf_column(r)),
 
             AbstractPredicate::StringLike(l, r, cs) => {
-                Predicate::StringLike(leaf_column(l), leaf_column(r), cs.clone())
+                Predicate::StringLike(leaf_column(l), leaf_column(r), cs)
             }
             AbstractPredicate::StringStartsWith(l, r) => {
                 Predicate::StringStartsWith(leaf_column(l), leaf_column(r))

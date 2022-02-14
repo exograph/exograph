@@ -36,7 +36,7 @@ pub enum SelectionSQL<'a> {
 }
 
 impl<'a> Selection<'a> {
-    pub fn to_sql(&'a self) -> SelectionSQL<'a> {
+    pub fn to_sql(self) -> SelectionSQL<'a> {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
@@ -54,7 +54,7 @@ impl<'a> Selection<'a> {
             ),
             Selection::Json(seq, cardinality) => {
                 let object_elems = seq
-                    .iter()
+                    .into_iter()
                     .map(|ColumnSelection { alias, column }| {
                         (alias.to_string(), column.to_sql().into())
                     })
@@ -94,10 +94,8 @@ impl<'a> SelectionElementRelation<'a> {
     }
 }
 
-// TODO: Make top_level and multi not boolean
-
 impl<'a> SelectionElement<'a> {
-    pub fn to_sql(&'a self) -> Column<'a> {
+    pub fn to_sql(self) -> Column<'a> {
         match self {
             SelectionElement::Physical(pc) => Column::Physical(pc),
             SelectionElement::Nested(relation, select) => {
@@ -106,7 +104,7 @@ impl<'a> SelectionElement<'a> {
                         Column::Physical(relation.column).into(),
                         Column::Physical(relation.table.get_pk_physical_column().unwrap()).into(),
                     )),
-                    SelectionLevel::SubQuery,
+                    SelectionLevel::Nested,
                 )))
             }
         }

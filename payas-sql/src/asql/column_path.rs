@@ -13,7 +13,7 @@ pub enum ColumnPath<'a> {
 }
 
 impl<'a> ColumnPath<'a> {
-    pub fn leaf_column(&self) -> &PhysicalColumn {
+    pub fn leaf_column(&self) -> &'a PhysicalColumn {
         match self {
             ColumnPath::Physical(links) => links.last().unwrap().self_column.0,
             ColumnPath::Literal(_) => panic!("Cannot get leaf column from literal"),
