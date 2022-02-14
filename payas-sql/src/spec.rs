@@ -240,7 +240,7 @@ impl TableSpec {
                             format!("unique_{}", c.column_name)
                         };
 
-                        let entry: &mut Vec<String> = map.entry(name).or_insert(vec![]);
+                        let entry: &mut Vec<String> = map.entry(name).or_insert_with(Vec::new);
                         (*entry).push(c.column_name.clone());
                     }
                 }
@@ -249,7 +249,7 @@ impl TableSpec {
 
         for (unique_constraint_name, columns) in named_unique_constraints.iter() {
             let columns_part = columns
-                .into_iter()
+                .iter()
                 .map(|c| format!("\"{}\"", c))
                 .collect::<Vec<_>>()
                 .join(", ");
