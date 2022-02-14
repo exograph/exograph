@@ -10,7 +10,7 @@ variable: |
     {
         "username": "Alice02",
 
-        // foo@example.com
+        // alice@example.com
         "email_id": "alice",
         "email_domain": "example.com",
     }
