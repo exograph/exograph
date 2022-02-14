@@ -1,0 +1,6 @@
+model User {
+  id: Int = autoincrement() @pk
+  username: String @unique
+  email_id: String @unique("unique_email")
+  email_domain: String @unique("unique_email")
+}

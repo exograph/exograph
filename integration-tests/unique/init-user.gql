@@ -1,0 +1,16 @@
+operation: |
+    mutation($username: String!, $email_id: String!, $email_domain: String!) {
+        createUser(data: {
+            username: $username,
+            email_id: $email_id,
+            email_domain: $email_domain
+        })
+    }
+variable: |
+    {
+        "username": "Alice02",
+
+        // foo@example.com
+        "email_id": "alice",
+        "email_domain": "example.com",
+    }

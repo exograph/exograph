@@ -17,7 +17,10 @@ pub struct PhysicalColumn {
     pub is_pk: bool, // Is this column a part of the PK for the table (TODO: Generalize into constraints)
     pub is_autoincrement: bool, // temporarily keeping it here until we revamp how we represent types and column attributes
     pub is_nullable: bool,      // should this type have a NOT NULL constraint or not?
-    pub is_unique: bool,        // should this type have a UNIQUE constraint or not?
+
+    pub is_unique: bool, // should this type have a UNIQUE constraint or not?
+    pub unique_constraint_name: Option<String>, // optional name for unique constraint
+
     pub default_value: Option<String>, // the default constraint
 }
 
@@ -31,6 +34,7 @@ impl Default for PhysicalColumn {
             is_autoincrement: false,
             is_nullable: true,
             is_unique: false,
+            unique_constraint_name: None,
             default_value: None,
         }
     }
@@ -46,6 +50,7 @@ impl From<ColumnSpec> for PhysicalColumn {
             is_autoincrement: c.is_autoincrement,
             is_nullable: c.is_nullable,
             is_unique: c.is_unique,
+            unique_constraint_name: c.unique_constraint_name,
             default_value: c.default_value,
         }
     }

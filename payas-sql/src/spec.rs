@@ -230,6 +230,36 @@ impl TableSpec {
             .collect::<Vec<_>>()
             .join(",\n\t");
 
+        let named_unique_constraints =
+            self.column_specs.iter().fold(HashMap::new(), |mut map, c| {
+                {
+                    if c.is_unique {
+                        let name = if let Some(name) = &c.unique_constraint_name {
+                            name.clone()
+                        } else {
+                            format!("unique_{}", c.column_name)
+                        };
+
+                        let entry: &mut Vec<String> = map.entry(name).or_insert(vec![]);
+                        (*entry).push(c.column_name.clone());
+                    }
+                }
+                map
+            });
+
+        for (unique_constraint_name, columns) in named_unique_constraints.iter() {
+            let columns_part = columns
+                .into_iter()
+                .map(|c| format!("\"{}\"", c))
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            foreign_constraints.push(format!(
+                "ALTER TABLE \"{}\" ADD CONSTRAINT \"{}\" UNIQUE ({});",
+                self.name, unique_constraint_name, columns_part
+            ));
+        }
+
         SQLStatement {
             statement: format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts),
             foreign_constraints,
@@ -260,6 +290,7 @@ pub struct ColumnSpec {
     pub is_autoincrement: bool,
     pub is_nullable: bool,
     pub is_unique: bool,
+    pub unique_constraint_name: Option<String>,
     pub default_value: Option<String>,
 }
 
@@ -366,6 +397,7 @@ impl ColumnSpec {
                     .contains(&format!("{}_{}_seq", table_name, column_name)),
                 is_nullable: !not_null,
                 is_unique: false,
+                unique_constraint_name: None,
                 default_value,
             }),
             issues,
@@ -387,7 +419,6 @@ impl ColumnSpec {
         } else {
             ""
         };
-        let unique_str = if self.is_unique { " UNIQUE" } else { "" };
         let default_value_part = if let Some(default_value) = self.default_value.as_ref() {
             format!(" DEFAULT {}", default_value)
         } else {
@@ -396,8 +427,8 @@ impl ColumnSpec {
 
         SQLStatement {
             statement: format!(
-                "\"{}\" {}{}{}{}{}",
-                self.column_name, statement, pk_str, not_null_str, unique_str, default_value_part
+                "\"{}\" {}{}{}{}",
+                self.column_name, statement, pk_str, not_null_str, default_value_part
             ),
             foreign_constraints,
         }

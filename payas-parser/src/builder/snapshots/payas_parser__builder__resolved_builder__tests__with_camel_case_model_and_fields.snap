@@ -49,6 +49,7 @@ types:
                   is_pk: true
                   type_hint: ~
                   unique: false
+                  unique_constraint_name: ~
               default_value: Autoincrement
             - name: mainTitle
               typ:
@@ -60,6 +61,7 @@ types:
                   is_pk: false
                   type_hint: ~
                   unique: false
+                  unique_constraint_name: ~
               default_value: ~
           kind:
             Persistent:
