@@ -50,7 +50,6 @@ types:
                   type_hint:
                     Explicit:
                       dbtype: BIGINT
-                  unique: false
                   unique_constraint_name: ~
               default_value: Autoincrement
             - name: title
@@ -64,7 +63,6 @@ types:
                   type_hint:
                     String:
                       length: 12
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: venue
@@ -76,7 +74,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: reserved
@@ -93,7 +90,6 @@ types:
                       range:
                         - 0
                         - 300
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: time
@@ -107,7 +103,6 @@ types:
                   type_hint:
                     DateTime:
                       precision: 4
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: price
@@ -122,7 +117,6 @@ types:
                     Decimal:
                       precision: 10
                       scale: 2
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
           kind:
@@ -155,7 +149,6 @@ types:
                   self_column: true
                   is_pk: true
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: Autoincrement
             - name: name
@@ -167,7 +160,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: concerts
@@ -180,7 +172,6 @@ types:
                   self_column: false
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: capacity
@@ -195,7 +186,6 @@ types:
                     Int:
                       bits: 16
                       range: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: latitude
@@ -209,7 +199,6 @@ types:
                   type_hint:
                     Float:
                       bits: 24
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
           kind:

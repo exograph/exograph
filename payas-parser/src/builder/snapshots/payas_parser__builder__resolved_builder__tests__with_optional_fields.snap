@@ -48,7 +48,6 @@ types:
                   self_column: true
                   is_pk: true
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: Autoincrement
             - name: title
@@ -60,7 +59,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: venue
@@ -73,7 +71,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: icon
@@ -86,7 +83,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
           kind:
@@ -119,7 +115,6 @@ types:
                   self_column: true
                   is_pk: true
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: Autoincrement
             - name: name
@@ -131,7 +126,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: address
@@ -144,7 +138,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: concerts
@@ -158,7 +151,6 @@ types:
                   self_column: false
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
           kind:

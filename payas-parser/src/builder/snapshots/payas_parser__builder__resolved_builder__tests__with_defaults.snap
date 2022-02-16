@@ -50,7 +50,6 @@ types:
                   type_hint:
                     Explicit:
                       dbtype: BIGINT
-                  unique: false
                   unique_constraint_name: ~
               default_value: Autoincrement
             - name: title
@@ -62,7 +61,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: venue
@@ -74,7 +72,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: attending
@@ -87,7 +84,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: seating
@@ -101,7 +97,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
           kind:
@@ -136,7 +131,6 @@ types:
                   type_hint:
                     Explicit:
                       dbtype: BIGINT
-                  unique: false
                   unique_constraint_name: ~
               default_value: Autoincrement
             - name: name
@@ -148,7 +142,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: concerts
@@ -161,7 +154,6 @@ types:
                   self_column: false
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
           kind:

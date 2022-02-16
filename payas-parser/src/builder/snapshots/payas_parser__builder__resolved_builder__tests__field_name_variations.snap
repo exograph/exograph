@@ -48,7 +48,6 @@ types:
                   self_column: true
                   is_pk: true
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: Autoincrement
             - name: title_main
@@ -60,7 +59,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: title_main1
@@ -72,7 +70,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: public1
@@ -84,7 +81,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: PUBLIC2
@@ -96,7 +92,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
             - name: foo123
@@ -108,7 +103,6 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
                   unique_constraint_name: ~
               default_value: ~
           kind:
