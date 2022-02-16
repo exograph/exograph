@@ -214,7 +214,6 @@ pub enum ResolvedFieldKind {
         self_column: bool, // is the column name in the same table or does it point to a column in a different table?
         is_pk: bool,
         type_hint: Option<ResolvedTypeHint>,
-        unique: bool,
         unique_constraint_name: Option<String>,
     },
     NonPersistent,
@@ -726,14 +725,12 @@ fn build_expanded_persistent_type(
                             Ok(ColumnInfo {
                                 name: column_name,
                                 self_column,
-                                unique,
                                 unique_constraint_name,
                             }) => Some(ResolvedFieldKind::Persistent {
                                 column_name,
                                 self_column,
                                 is_pk: field.annotations.contains("pk"),
                                 type_hint: build_type_hint(field, types),
-                                unique,
                                 unique_constraint_name,
                             }),
                             Err(e) => {
@@ -1041,7 +1038,6 @@ fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
 struct ColumnInfo {
     name: String,
     self_column: bool,
-    unique: bool,
     unique_constraint_name: Option<String>,
 }
 
@@ -1060,22 +1056,22 @@ fn compute_column_info(
             .get("column")
             .map(|p| p.as_single().as_string());
 
-        let unique = field.annotations.get("unique").is_some();
-
-        let unique_constraint_name = field
-            .annotations
-            .get("unique")
-            .map(|p| match p {
-                AstAnnotationParams::Single(expr, _) => Some(expr.as_string()),
-                _ => None,
-            })
-            .flatten();
-
         let compute_column_name = |field_name: &str| {
             user_supplied_column_name
                 .clone()
                 .unwrap_or_else(|| field_name.to_snake_case())
         };
+
+        let unique_constraint_computed_name = Some(format!("unique_constraint_{}", field.name));
+        let unique_constraint_name = field
+            .annotations
+            .get("unique")
+            .map(|p| match p {
+                AstAnnotationParams::Single(expr, _) => Some(expr.as_string()),
+                AstAnnotationParams::None => unique_constraint_computed_name.clone(),
+                AstAnnotationParams::Map(_, _) => panic!(),
+            })
+            .flatten();
 
         let id_column_name = |field_name: &str| {
             user_supplied_column_name
@@ -1145,24 +1141,26 @@ fn compute_column_info(
                                     Cardinality::One => Ok(ColumnInfo {
                                         name: id_column_name(&matching_field.name),
                                         self_column: false,
-                                        unique,
                                         unique_constraint_name
                                     }),
                                     Cardinality::Unbounded => Ok(ColumnInfo {
                                         name: id_column_name(&field.name),
                                         self_column: true,
-                                        unique,
                                         unique_constraint_name
                                     }),
                                 }
                             }
                             _ => {
-                                let unique =
-                                    matches!(cardinality, Cardinality::ZeroOrOne) || unique;
+                                let unique_constraint_name =
+                                    if matches!(cardinality, Cardinality::ZeroOrOne) {
+                                        unique_constraint_computed_name
+                                    } else {
+                                        unique_constraint_name
+                                    };
+
                                 Ok(ColumnInfo {
                                     name: id_column_name(&field.name),
                                     self_column: true,
-                                    unique,
                                     unique_constraint_name,
                                 })
                             }
@@ -1181,7 +1179,6 @@ fn compute_column_info(
                             Ok(ColumnInfo {
                                 name: id_column_name(&matching_field.name),
                                 self_column: false,
-                                unique,
                                 unique_constraint_name,
                             })
                         } else {
@@ -1209,7 +1206,6 @@ fn compute_column_info(
                             Ok(ColumnInfo {
                                 name: compute_column_name(&field.name),
                                 self_column: true,
-                                unique,
                                 unique_constraint_name,
                             })
                         } else {
@@ -1228,7 +1224,6 @@ fn compute_column_info(
                     _ => Ok(ColumnInfo {
                         name: compute_column_name(&field.name),
                         self_column: true,
-                        unique,
                         unique_constraint_name,
                     }),
                 }

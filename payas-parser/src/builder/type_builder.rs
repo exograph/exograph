@@ -284,17 +284,16 @@ fn create_column(
     env: &MappedArena<ResolvedType>,
 ) -> Option<PhysicalColumn> {
     // Check that the field holds to a self column
-    let (unique, unique_constraint_name) = match &field.kind {
+    let unique_constraint_name = match &field.kind {
         ResolvedFieldKind::Persistent {
             self_column,
-            unique,
             unique_constraint_name,
             ..
         } => {
             if !self_column {
                 return None;
             }
-            (*unique, unique_constraint_name.clone())
+            unique_constraint_name.clone()
         }
         ResolvedFieldKind::NonPersistent => {
             panic!("Non-persistent fields are not supported")
@@ -341,7 +340,6 @@ fn create_column(
                         false
                     },
                     is_nullable: optional,
-                    is_unique: unique,
                     unique_constraint_name,
                     default_value,
                 }),
@@ -364,7 +362,6 @@ fn create_column(
                         is_pk: false,
                         is_autoincrement: false,
                         is_nullable: optional,
-                        is_unique: unique,
                         unique_constraint_name,
                         default_value,
                     })
@@ -408,7 +405,6 @@ fn create_column(
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: optional,
-                    is_unique: unique,
                     unique_constraint_name,
                     default_value,
                 })
