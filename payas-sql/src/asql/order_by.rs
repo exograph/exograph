@@ -1,4 +1,7 @@
-use crate::sql::order::{OrderBy, Ordering};
+use crate::sql::{
+    column::PhysicalColumn,
+    order::{OrderBy, Ordering},
+};
 
 use super::column_path::ColumnPath;
 
@@ -6,11 +9,18 @@ use super::column_path::ColumnPath;
 pub struct AbstractOrderBy<'a>(pub Vec<(ColumnPath<'a>, Ordering)>);
 
 impl<'a> AbstractOrderBy<'a> {
+    pub fn leaf_column(column_path: ColumnPath<'a>) -> &'a PhysicalColumn {
+        match column_path {
+            ColumnPath::Physical(links) => links.last().unwrap().self_column.0,
+            _ => panic!("Cannot get leaf column from literal or null"),
+        }
+    }
+
     pub fn order_by(self) -> OrderBy<'a> {
         OrderBy(
             self.0
                 .into_iter()
-                .map(|(path, ordering)| (path.leaf_column(), ordering))
+                .map(|(path, ordering)| (Self::leaf_column(path), ordering))
                 .collect(),
         )
     }

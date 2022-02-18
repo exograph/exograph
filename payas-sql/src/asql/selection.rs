@@ -48,7 +48,9 @@ impl<'a> Selection<'a> {
                             // TODO: Support alias (requires a change to `Select`)
                             SelectionElement::Physical(pc) => Column::Physical(pc),
                             SelectionElement::Constant(s) => Column::Constant(s.to_owned()),
-                            SelectionElement::Nested(_, _) => todo!(),
+                            SelectionElement::Nested(_, _) => {
+                                panic!("Nested selection not supported in Selection::Seq")
+                            }
                         },
                     )
                     .collect(),

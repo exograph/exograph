@@ -79,7 +79,7 @@ fn solve_context_selection<'a>(
 
 fn literal_column(value: Value) -> MaybeOwned<'static, ColumnPath<'static>> {
     match value {
-        Value::Null => todo!(), //ColumnPath::Null,
+        Value::Null => ColumnPath::Null,
         Value::Bool(v) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(v))),
         Value::Number(v) => {
             ColumnPath::Literal(MaybeOwned::Owned(Box::new(v.as_i64().unwrap() as i32)))

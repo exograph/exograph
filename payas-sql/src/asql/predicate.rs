@@ -49,6 +49,9 @@ impl<'a> AbstractPredicate<'a> {
                 MaybeOwned::Borrowed(ColumnPath::Literal(_)) => {
                     panic!("Unexpected borrowed literal. Literal in ColumnPath must be owned")
                 }
+                MaybeOwned::Owned(ColumnPath::Null) | MaybeOwned::Borrowed(&ColumnPath::Null) => {
+                    panic!("Unexpected column path null")
+                }
             }
         }
 

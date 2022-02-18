@@ -37,7 +37,7 @@ impl<'a> AbstractSelect<'a> {
                 .into_iter()
                 .filter_map(|path| match path {
                     ColumnPath::Physical(links) => Some(links.to_vec()),
-                    ColumnPath::Literal(_) => None,
+                    _ => None,
                 })
                 .collect()
         }
