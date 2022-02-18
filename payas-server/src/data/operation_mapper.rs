@@ -129,12 +129,12 @@ pub fn compute_service_access_predicate<'a>(
                 ServiceMethodType::Mutation(_) => &access.creation, // mutation
             };
 
-            todo!("access_solver::solve_access(access_expr, query_context.request_context, query_context.executor.system)");
-            // access_solver::solve_access(
-            //     access_expr,
-            //     query_context.request_context,
-            //     query_context.executor.system,
-            // )
+            let abstract_predicate = access_solver::solve_access(
+                access_expr,
+                query_context.request_context,
+                query_context.executor.system,
+            );
+            abstract_predicate.predicate()
         }
         _ => panic!(),
     };
@@ -149,15 +149,15 @@ pub fn compute_service_access_predicate<'a>(
         query_context.request_context,
         query_context.executor.system,
     );
+    let method_level_access = method_level_access.predicate();
 
-    // if matches!(type_level_access, Predicate::False)
-    //     || matches!(method_level_access, Predicate::False)
-    // {
-    //     &Predicate::False // deny if either access check fails
-    // } else {
-    //     &Predicate::True
-    // }
-    todo!("access_solver::solve_access(access_expr, query_context.request_context, query_context.executor.system)");
+    if matches!(type_level_access, Predicate::False)
+        || matches!(method_level_access, Predicate::False)
+    {
+        &Predicate::False // deny if either access check fails
+    } else {
+        &Predicate::True
+    }
 }
 
 impl<'a> OperationResolverResult<'a> {
