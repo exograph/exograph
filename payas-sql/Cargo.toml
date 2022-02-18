@@ -7,12 +7,7 @@ edition = "2021"
 anyhow = "1.0"
 bytes = "1"
 openssl = "0.10.30"
-tokio-postgres = { version = "0.7.5", features = [
-  "runtime",
-  "with-chrono-0_4",
-  "with-serde_json-1",
-  "with-uuid-0_8"
-] }
+tokio-postgres ="0.7.5"
 postgres-openssl = "0.5.0"
 postgres_array = "0.11.0"
 deadpool-postgres = "0.10"

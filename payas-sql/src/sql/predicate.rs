@@ -26,7 +26,6 @@ where
     And(Box<Predicate<'a, C>>, Box<Predicate<'a, C>>),
     // Prefer Predicate::or(), which simplifies the clause, to construct an Or expression
     Or(Box<Predicate<'a, C>>, Box<Predicate<'a, C>>),
-    // Prefer Predicate::not(), which simplifies the clause, to construct a Not expression
     Not(Box<Predicate<'a, C>>),
 
     // string predicates
