@@ -176,6 +176,8 @@ fn update_operation<'a>(
     select: Select<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
+    // Access control as well as predicate computation isn't working fully yet. Specifically,
+    // nested predicates aren't working.
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
@@ -193,7 +195,7 @@ fn update_operation<'a>(
     let predicate = super::compute_predicate(
         Some(predicate_param),
         field_arguments,
-        access_predicate,
+        AbstractPredicate::True,
         query_context,
     )
     .with_context(|| {
