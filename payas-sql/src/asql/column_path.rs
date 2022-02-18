@@ -21,21 +21,4 @@ impl<'a> ColumnPath<'a> {
             ColumnPath::Literal(_) => panic!("Cannot get leaf column from literal"),
         }
     }
-
-    pub fn from_column(column: &'a PhysicalColumn, table: &'a PhysicalTable) -> Self {
-        ColumnPath::Physical(vec![ColumnPathLink {
-            self_column: (column, table),
-            linked_column: None,
-        }])
-    }
-
-    pub fn from_column_path_and_column(
-        column: &'a PhysicalColumn,
-        table: &'a PhysicalTable,
-    ) -> Self {
-        ColumnPath::Physical(vec![ColumnPathLink {
-            self_column: (column, table),
-            linked_column: None,
-        }])
-    }
 }
