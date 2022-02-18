@@ -1,3 +1,5 @@
+use maybe_owned::MaybeOwned;
+
 use crate::sql::{column::PhysicalColumn, PhysicalTable, SQLParam};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -6,10 +8,10 @@ pub struct ColumnPathLink<'a> {
     pub linked_column: Option<(&'a PhysicalColumn, &'a PhysicalTable)>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ColumnPath<'a> {
     Physical(Vec<ColumnPathLink<'a>>),
-    Literal(Box<dyn SQLParam>),
+    Literal(MaybeOwned<'a, Box<dyn SQLParam>>),
 }
 
 impl<'a> ColumnPath<'a> {
@@ -18,5 +20,22 @@ impl<'a> ColumnPath<'a> {
             ColumnPath::Physical(links) => links.last().unwrap().self_column.0,
             ColumnPath::Literal(_) => panic!("Cannot get leaf column from literal"),
         }
+    }
+
+    pub fn from_column(column: &'a PhysicalColumn, table: &'a PhysicalTable) -> Self {
+        ColumnPath::Physical(vec![ColumnPathLink {
+            self_column: (column, table),
+            linked_column: None,
+        }])
+    }
+
+    pub fn from_column_path_and_column(
+        column: &'a PhysicalColumn,
+        table: &'a PhysicalTable,
+    ) -> Self {
+        ColumnPath::Physical(vec![ColumnPathLink {
+            self_column: (column, table),
+            linked_column: None,
+        }])
     }
 }

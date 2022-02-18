@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
-use payas_model::model::predicate::ColumnPath;
+use payas_sql::asql::predicate::AbstractPredicate;
 use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
 
@@ -89,11 +89,11 @@ pub fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
     query_context: &'a QueryContext<'a>,
-) -> (Predicate<'a>, Vec<ColumnPath>) {
+) -> AbstractPredicate<'a> {
     let return_type = return_type.typ(query_context.get_system());
 
     match &return_type.kind {
-        GqlTypeKind::Primitive => (Predicate::True, vec![]),
+        GqlTypeKind::Primitive => AbstractPredicate::True,
         GqlTypeKind::Composite(GqlCompositeType { access, .. }) => {
             let access_expr = match kind {
                 SQLOperationKind::Create => &access.creation,
@@ -128,12 +128,13 @@ pub fn compute_service_access_predicate<'a>(
                 ServiceMethodType::Query(_) => &access.read, // query
                 ServiceMethodType::Mutation(_) => &access.creation, // mutation
             };
-            access_solver::solve_access(
-                access_expr,
-                query_context.request_context,
-                query_context.executor.system,
-            )
-            .0
+
+            todo!("access_solver::solve_access(access_expr, query_context.request_context, query_context.executor.system)");
+            // access_solver::solve_access(
+            //     access_expr,
+            //     query_context.request_context,
+            //     query_context.executor.system,
+            // )
         }
         _ => panic!(),
     };
@@ -147,16 +148,16 @@ pub fn compute_service_access_predicate<'a>(
         method_access_expr,
         query_context.request_context,
         query_context.executor.system,
-    )
-    .0;
+    );
 
-    if matches!(type_level_access, Predicate::False)
-        || matches!(method_level_access, Predicate::False)
-    {
-        &Predicate::False // deny if either access check fails
-    } else {
-        &Predicate::True
-    }
+    // if matches!(type_level_access, Predicate::False)
+    //     || matches!(method_level_access, Predicate::False)
+    // {
+    //     &Predicate::False // deny if either access check fails
+    // } else {
+    //     &Predicate::True
+    // }
+    todo!("access_solver::solve_access(access_expr, query_context.request_context, query_context.executor.system)");
 }
 
 impl<'a> OperationResolverResult<'a> {

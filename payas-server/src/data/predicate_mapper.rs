@@ -1,160 +1,74 @@
-use std::collections::{hash_map::Entry, HashMap};
-
-use crate::{
-    execution::query_context::QueryContext,
-    sql::{column::Column, predicate::Predicate},
-};
+use crate::execution::query_context::{cast_value, QueryContext};
 use anyhow::*;
 use async_graphql_value::ConstValue;
 
-use maybe_owned::MaybeOwned;
 use payas_model::{
-    model::{predicate::*, system::ModelSystem},
-    sql::PhysicalTable,
+    model::{column_id::ColumnId, predicate::*, system::ModelSystem},
+    sql::{column::PhysicalColumn, PhysicalTable},
+};
+use payas_sql::asql::{
+    column_path::{ColumnPath, ColumnPathLink},
+    predicate::AbstractPredicate,
 };
 
 pub trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
         &'a self,
         argument_value: &'a ConstValue,
+        parent_column_path: Option<ColumnIdPath>,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<(Predicate<'a>, Vec<ColumnPath>)>;
-}
-
-#[derive(Debug)]
-pub struct TableJoin<'a> {
-    /// The base table being joined. In above example, "concerts"
-    pub table: &'a PhysicalTable,
-    /// The tables being joined. In above example, ("venue1_id", "venues") and ("venue2_id", "venues")
-    pub dependencies: Vec<(ColumnPathLink, TableJoin<'a>)>,
-}
-
-impl<'a> TableJoin<'a> {
-    /// Compute TableJoin from a list of column paths
-    /// If the following path is given:
-    /// ```no_rust
-    /// [
-    ///     (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.name, None)
-    ///     (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.address_id, address.id) -> (address.city, None)
-    ///     (concert.venue_id, venue.id) -> (venue.name, None)
-    /// ]
-    /// ```
-    /// then the result will be the join needed to access the leaf columns:
-    /// ```no_rust
-    /// TableJoin {
-    ///    table: concerts,
-    ///    dependencies: [
-    ///       ((concert.id, concert_artists.concert_id), TableJoin {
-    ///          table: concert_artists,
-    ///          dependencies: [
-    ///             ((concert_artists.artist_id, artists.id), TableJoin {
-    ///                table: artists,
-    ///                dependencies: [
-    ///                   ((artists.address_id, address.id), TableJoin {
-    ///                      table: address,
-    ///                      dependencies: []
-    ///                   }),
-    ///                ]
-    ///             }),
-    ///       ((concert.venue_id, venue.id), TableJoin {
-    ///            table: venue,
-    ///            dependencies: []
-    ///       }),
-    ///    ]
-    /// }
-    /// ```
-    pub fn from_column_path(paths_list: Vec<ColumnPath>, system: &'a ModelSystem) -> Option<Self> {
-        let tables = &system.tables;
-
-        paths_list
-            .first()
-            .and_then(|path| path.path.first().map(|dep| dep.self_column_id.table_id))
-            .map(|table_id| {
-                let table = &tables[table_id];
-
-                let mut grouped: HashMap<ColumnPathLink, Vec<Vec<ColumnPathLink>>> = HashMap::new();
-                for paths in paths_list {
-                    match &paths.path[..] {
-                        [head, tail @ ..] => {
-                            if head.linked_column_id.is_some() {
-                                let existing = grouped.entry(head.clone());
-
-                                match existing {
-                                    Entry::Occupied(mut entry) => {
-                                        entry.get_mut().push(tail.to_vec())
-                                    }
-                                    Entry::Vacant(entry) => {
-                                        entry.insert(vec![tail.to_vec()]);
-                                    }
-                                }
-                            }
-                        }
-                        _ => {
-                            panic!("Invalid paths list")
-                        }
-                    }
-                }
-
-                Self {
-                    table,
-                    dependencies: grouped
-                        .into_iter()
-                        .map(|(head, tail)| {
-                            let inner_join = Self::from_column_path(
-                                tail.into_iter().map(|path| ColumnPath { path }).collect(),
-                                system,
-                            )
-                            .unwrap();
-
-                            (head, inner_join)
-                        })
-                        .collect(),
-                }
-            })
-    }
+    ) -> Result<AbstractPredicate<'a>>;
 }
 
 impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
     fn map_to_predicate(
         &'a self,
         argument_value: &'a ConstValue,
+        parent_column_path: Option<ColumnIdPath>,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<(Predicate<'a>, Vec<ColumnPath>)> {
+    ) -> Result<AbstractPredicate<'a>> {
         let system = query_context.get_system();
         let parameter_type = &system.predicate_types[self.type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
-                let (op_key_column, op_value_column) =
-                    operands(self, argument_value, query_context);
-                Ok((Predicate::Eq(op_key_column, op_value_column.into()), vec![]))
+                let (op_key_path, op_value_path) =
+                    operands(self, argument_value, parent_column_path, query_context)?;
+
+                Ok(AbstractPredicate::Eq(
+                    op_key_path.into(),
+                    op_value_path.into(),
+                ))
             }
             PredicateParameterTypeKind::Operator(parameters) => {
-                let predicate = parameters.iter().fold(Predicate::True, |acc, parameter| {
-                    let arg = query_context.get_argument_field(argument_value, &parameter.name);
-                    let new_predicate = match arg {
-                        Some(op_value) => {
-                            let (op_key_column, op_value_column) =
-                                operands(self, op_value, query_context);
-                            Predicate::from_name(
-                                &parameter.name,
-                                op_key_column,
-                                op_value_column.into(),
-                            )
-                        }
-                        None => Predicate::True,
-                    };
+                let predicate =
+                    parameters
+                        .iter()
+                        .fold(AbstractPredicate::True, |acc, parameter| {
+                            let arg =
+                                query_context.get_argument_field(argument_value, &parameter.name);
+                            let new_predicate = match arg {
+                                Some(op_value) => {
+                                    let (op_key_column, op_value_column) = operands(
+                                        self,
+                                        op_value,
+                                        parent_column_path.clone(),
+                                        query_context,
+                                    )
+                                    .expect("Could not get operands");
+                                    AbstractPredicate::from_name(
+                                        &parameter.name,
+                                        op_key_column.into(),
+                                        op_value_column.into(),
+                                    )
+                                }
+                                None => AbstractPredicate::True,
+                            };
 
-                    Predicate::and(acc, new_predicate)
-                });
+                            AbstractPredicate::And(Box::new(acc), Box::new(new_predicate))
+                        });
 
-                let column_path = match &self.column_path_link {
-                    Some(link) => ColumnPath {
-                        path: vec![link.clone()],
-                    },
-                    None => ColumnPath { path: vec![] },
-                };
-                Ok((predicate, vec![column_path]))
+                Ok(predicate)
             }
             PredicateParameterTypeKind::Composite {
                 field_params,
@@ -203,32 +117,32 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
 
                                     // build our predicate chain from the array of arguments provided
                                     let identity_predicate = match logical_op_name {
-                                        "and" => Predicate::True,
-                                        "or" => Predicate::False,
+                                        "and" => AbstractPredicate::True,
+                                        "or" => AbstractPredicate::False,
                                         _ => todo!(),
                                     };
 
                                     let predicate_connector = match logical_op_name {
-                                        "and" => Predicate::and,
-                                        "or" => Predicate::or,
+                                        "and" => AbstractPredicate::And,
+                                        "or" => AbstractPredicate::Or,
                                         _ => todo!(),
                                     };
 
                                     let mut new_predicate = identity_predicate;
-                                    let mut column_paths: Vec<ColumnPath> = vec![];
 
                                     for argument in arguments.iter() {
-                                        let (arg_predicate, arg_column_paths) =
-                                            self.map_to_predicate(argument, query_context)?;
-                                        new_predicate =
-                                            predicate_connector(new_predicate, arg_predicate);
-                                        column_paths = column_paths
-                                            .into_iter()
-                                            .chain(arg_column_paths.into_iter())
-                                            .collect();
+                                        let arg_predicate = self.map_to_predicate(
+                                            argument,
+                                            parent_column_path.clone(),
+                                            query_context,
+                                        )?;
+                                        new_predicate = predicate_connector(
+                                            Box::new(new_predicate),
+                                            Box::new(arg_predicate),
+                                        );
                                     }
 
-                                    Ok((new_predicate, column_paths))
+                                    Ok(new_predicate)
                                 } else {
                                     bail!(
                                         "This logical operation predicate needs a list of queries"
@@ -237,13 +151,13 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                             }
 
                             "not" => {
-                                let (arg_predicate, arg_column_paths) = self
-                                    .map_to_predicate(logical_op_argument_value, query_context)?;
+                                let arg_predicate = self.map_to_predicate(
+                                    logical_op_argument_value,
+                                    parent_column_path,
+                                    query_context,
+                                )?;
 
-                                Ok((
-                                    Predicate::Not(Box::new(arg_predicate.into())),
-                                    arg_column_paths,
-                                ))
+                                Ok(AbstractPredicate::Not(Box::new(arg_predicate)))
                             }
 
                             _ => todo!(),
@@ -253,35 +167,31 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     _ => {
                         // we are dealing with field predicate arguments
                         // map field argument values into their respective predicates
-                        let mut new_predicate = Predicate::True;
-                        let mut column_paths = vec![];
+                        let mut new_predicate = AbstractPredicate::True;
 
                         for parameter in field_params.iter() {
                             let arg =
                                 query_context.get_argument_field(argument_value, &parameter.name);
 
-                            let (field_predicate, field_column_path) = match arg {
-                                Some(argument_value_component) => parameter
-                                    .map_to_predicate(argument_value_component, query_context)?,
-                                None => (Predicate::True, vec![]),
+                            let new_column_path =
+                                to_column_id_path(&parent_column_path, &self.column_path_link);
+
+                            let field_predicate = match arg {
+                                Some(argument_value_component) => parameter.map_to_predicate(
+                                    argument_value_component,
+                                    new_column_path,
+                                    query_context,
+                                )?,
+                                None => AbstractPredicate::True,
                             };
 
-                            if let Some(column_path_link) = self.column_path_link.clone() {
-                                for mut column_path in field_column_path.into_iter() {
-                                    column_path.path.insert(0, column_path_link.clone());
-                                    column_paths.push(column_path);
-                                }
-                            } else {
-                                column_paths = column_paths
-                                    .into_iter()
-                                    .chain(field_column_path.into_iter())
-                                    .collect();
-                            }
-
-                            new_predicate = Predicate::and(new_predicate, field_predicate);
+                            new_predicate = AbstractPredicate::And(
+                                Box::new(new_predicate),
+                                Box::new(field_predicate),
+                            );
                         }
 
-                        Ok((new_predicate, column_paths))
+                        Ok(new_predicate)
                     }
                 }
             }
@@ -292,8 +202,9 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
 fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
+    parent_column_path: Option<ColumnIdPath>,
     query_context: &'a QueryContext<'a>,
-) -> (MaybeOwned<'a, Column<'a>>, Column<'a>) {
+) -> Result<(ColumnPath<'a>, ColumnPath<'a>)> {
     let system = query_context.get_system();
 
     let op_physical_column = &param
@@ -302,7 +213,73 @@ fn operands<'a>(
         .expect("Could not find column path link while forming operands")
         .self_column_id
         .get_column(system);
-    let op_key_column = Column::Physical(op_physical_column).into();
-    let op_value_column = query_context.literal_column(op_value, op_physical_column);
-    (op_key_column, op_value_column.unwrap())
+    let op_value = cast_value(op_value, &op_physical_column.typ);
+
+    op_value.map(move |op_value| {
+        (
+            to_column_path(&parent_column_path, &param.column_path_link, system),
+            ColumnPath::Literal(op_value.unwrap().into()),
+        )
+    })
+}
+
+fn to_column_path_link<'a>(link: &ColumnIdPathLink, system: &'a ModelSystem) -> ColumnPathLink<'a> {
+    ColumnPathLink {
+        self_column: to_column_table(link.self_column_id.clone(), system),
+        linked_column: link
+            .linked_column_id
+            .clone()
+            .map(|linked_column_id| to_column_table(linked_column_id, system)),
+    }
+}
+
+fn to_column_table(column_id: ColumnId, system: &ModelSystem) -> (&PhysicalColumn, &PhysicalTable) {
+    let column = column_id.get_column(system);
+    let table = &system
+        .tables
+        .iter()
+        .find(|(_, table)| table.name == column.table_name)
+        .map(|(_, table)| table)
+        .unwrap_or_else(|| panic!("Table {} not found", column.table_name));
+
+    (column, table)
+}
+
+pub fn to_column_path<'a>(
+    parent_column_id_path: &Option<ColumnIdPath>,
+    next_column_id_path_link: &Option<ColumnIdPathLink>,
+    system: &'a ModelSystem,
+) -> ColumnPath<'a> {
+    let mut path: Vec<_> = match parent_column_id_path {
+        Some(parent_column_id_path) => parent_column_id_path
+            .path
+            .iter()
+            .map(|link| to_column_path_link(link, system))
+            .collect(),
+        None => vec![],
+    };
+
+    if let Some(next_column_id_path_link) = next_column_id_path_link {
+        path.push(to_column_path_link(next_column_id_path_link, system));
+    }
+
+    ColumnPath::Physical(path)
+}
+
+fn to_column_id_path(
+    parent_column_id_path: &Option<ColumnIdPath>,
+    next_column_id_path_link: &Option<ColumnIdPathLink>,
+) -> Option<ColumnIdPath> {
+    match (parent_column_id_path, next_column_id_path_link) {
+        (Some(parent_column_id_path), Some(next_column_id_path_link)) => {
+            let mut path: Vec<_> = parent_column_id_path.path.clone();
+            path.push(next_column_id_path_link.clone());
+            Some(ColumnIdPath { path })
+        }
+        (Some(parent_column_id_path), None) => Some(parent_column_id_path.clone()),
+        (None, Some(next_column_id_path_link)) => Some(ColumnIdPath {
+            path: vec![next_column_id_path_link.clone()],
+        }),
+        (None, None) => None,
+    }
 }

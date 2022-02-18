@@ -9,29 +9,75 @@ use super::column_path::ColumnPath;
 
 // For now a copied-and-modified version of sql::Predicate. The difference is use of ColumnPath instead of Column.
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum AbstractPredicate<'a> {
     True,
     False,
-    Eq(ColumnPath<'a>, ColumnPath<'a>),
-    Neq(ColumnPath<'a>, ColumnPath<'a>),
-    Lt(ColumnPath<'a>, ColumnPath<'a>),
-    Lte(ColumnPath<'a>, ColumnPath<'a>),
-    Gt(ColumnPath<'a>, ColumnPath<'a>),
-    Gte(ColumnPath<'a>, ColumnPath<'a>),
-    In(ColumnPath<'a>, ColumnPath<'a>),
+    Eq(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    Neq(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    Lt(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    Lte(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    Gt(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    Gte(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    In(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
 
     // string predicates
-    StringLike(ColumnPath<'a>, ColumnPath<'a>, CaseSensitivity),
-    StringStartsWith(ColumnPath<'a>, ColumnPath<'a>),
-    StringEndsWith(ColumnPath<'a>, ColumnPath<'a>),
+    StringLike(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+        CaseSensitivity,
+    ),
+    StringStartsWith(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    StringEndsWith(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
 
     // json predicates
-    JsonContains(ColumnPath<'a>, ColumnPath<'a>),
-    JsonContainedBy(ColumnPath<'a>, ColumnPath<'a>),
-    JsonMatchKey(ColumnPath<'a>, ColumnPath<'a>),
-    JsonMatchAnyKey(ColumnPath<'a>, ColumnPath<'a>),
-    JsonMatchAllKeys(ColumnPath<'a>, ColumnPath<'a>),
+    JsonContains(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    JsonContainedBy(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    JsonMatchKey(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    JsonMatchAnyKey(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
+    JsonMatchAllKeys(
+        MaybeOwned<'a, ColumnPath<'a>>,
+        MaybeOwned<'a, ColumnPath<'a>>,
+    ),
 
     //
     // Prefer Predicate::and(), which simplifies the clause, to construct an And expression
@@ -70,20 +116,28 @@ impl<'a> AbstractPredicate<'a> {
     }
 
     pub fn predicate(self) -> Predicate<'a> {
-        fn leaf_column(column_path: ColumnPath) -> MaybeOwned<Column> {
+        fn leaf_column<'c>(
+            column_path: MaybeOwned<'c, ColumnPath<'c>>,
+        ) -> MaybeOwned<'c, Column<'c>> {
             match column_path {
-                ColumnPath::Physical(links) => {
+                MaybeOwned::Borrowed(ColumnPath::Physical(links)) => {
                     Column::Physical(links.last().unwrap().self_column.0).into()
                 }
-                ColumnPath::Literal(l) => Column::Literal(l.into()).into(),
+                MaybeOwned::Owned(ColumnPath::Physical(links)) => {
+                    Column::Physical(links.last().unwrap().self_column.0).into()
+                }
+                MaybeOwned::Owned(ColumnPath::Literal(l)) => Column::Literal(l).into(),
+                MaybeOwned::Borrowed(ColumnPath::Literal(_)) => {
+                    panic!("Unexpected borrowed literal. Literal in ColumnPath must be owned")
+                }
             }
         }
 
         match self {
             AbstractPredicate::True => Predicate::True,
             AbstractPredicate::False => Predicate::False,
-            AbstractPredicate::Eq(l, r) => Predicate::Eq(leaf_column(l), leaf_column(r)),
-            AbstractPredicate::Neq(l, r) => Predicate::Neq(leaf_column(l), leaf_column(r)),
+            AbstractPredicate::Eq(l, r) => Predicate::eq(leaf_column(l), leaf_column(r)),
+            AbstractPredicate::Neq(l, r) => Predicate::neq(leaf_column(l), leaf_column(r)),
             AbstractPredicate::Lt(l, r) => Predicate::Lt(leaf_column(l), leaf_column(r)),
             AbstractPredicate::Lte(l, r) => Predicate::Lte(leaf_column(l), leaf_column(r)),
             AbstractPredicate::Gt(l, r) => Predicate::Gt(leaf_column(l), leaf_column(r)),
@@ -116,15 +170,99 @@ impl<'a> AbstractPredicate<'a> {
                 Predicate::JsonMatchAllKeys(leaf_column(l), leaf_column(r))
             }
 
-            AbstractPredicate::And(l, r) => Predicate::And(
-                Box::new(l.predicate().into()),
-                Box::new(r.predicate().into()),
-            ),
-            AbstractPredicate::Or(l, r) => Predicate::Or(
-                Box::new(l.predicate().into()),
-                Box::new(r.predicate().into()),
-            ),
+            AbstractPredicate::And(l, r) => Predicate::and(l.predicate(), r.predicate()),
+            AbstractPredicate::Or(l, r) => Predicate::or(l.predicate(), r.predicate()),
             AbstractPredicate::Not(p) => Predicate::Not(Box::new(p.predicate().into())),
+        }
+    }
+
+    pub fn from_name(
+        op_name: &str,
+        lhs: MaybeOwned<'a, ColumnPath<'a>>,
+        rhs: MaybeOwned<'a, ColumnPath<'a>>,
+    ) -> AbstractPredicate<'a> {
+        match op_name {
+            "eq" => AbstractPredicate::Eq(lhs, rhs),
+            "neq" => AbstractPredicate::Neq(lhs, rhs),
+            "lt" => AbstractPredicate::Lt(lhs, rhs),
+            "lte" => AbstractPredicate::Lte(lhs, rhs),
+            "gt" => AbstractPredicate::Gt(lhs, rhs),
+            "gte" => AbstractPredicate::Gte(lhs, rhs),
+            "like" => AbstractPredicate::StringLike(lhs, rhs, CaseSensitivity::Sensitive),
+            "ilike" => AbstractPredicate::StringLike(lhs, rhs, CaseSensitivity::Insensitive),
+            "startsWith" => AbstractPredicate::StringStartsWith(lhs, rhs),
+            "endsWith" => AbstractPredicate::StringEndsWith(lhs, rhs),
+            "contains" => AbstractPredicate::JsonContains(lhs, rhs),
+            "containedBy" => AbstractPredicate::JsonContainedBy(lhs, rhs),
+            "matchKey" => AbstractPredicate::JsonMatchKey(lhs, rhs),
+            "matchAnyKey" => AbstractPredicate::JsonMatchAnyKey(lhs, rhs),
+            "matchAllKeys" => AbstractPredicate::JsonMatchAllKeys(lhs, rhs),
+            _ => todo!(),
+        }
+    }
+
+    pub fn eq(lhs: MaybeOwned<'a, ColumnPath<'a>>, rhs: MaybeOwned<'a, ColumnPath<'a>>) -> Self {
+        if lhs == rhs {
+            Self::True
+        } else {
+            match (lhs.as_ref(), rhs.as_ref()) {
+                // For literal columns, we can check for Predicate::False directly
+                (ColumnPath::Literal(v1), ColumnPath::Literal(v2)) if v1 != v2 => Self::False,
+                _ => Self::Eq(lhs, rhs),
+            }
+        }
+    }
+
+    pub fn neq(lhs: MaybeOwned<'a, ColumnPath<'a>>, rhs: MaybeOwned<'a, ColumnPath<'a>>) -> Self {
+        !Self::eq(lhs, rhs)
+    }
+
+    pub fn and(lhs: Self, rhs: Self) -> Self {
+        match (lhs, rhs) {
+            (Self::True, rhs) => rhs,
+            (lhs, Self::True) => lhs,
+            (Self::False, _) => Self::False,
+            (_, Self::False) => Self::False,
+            (lhs, rhs) => Self::And(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn or(lhs: Self, rhs: Self) -> Self {
+        match (lhs, rhs) {
+            (Self::True, _) => Self::True,
+            (_, Self::True) => Self::True,
+            (Self::False, rhs) => rhs,
+            (lhs, Self::False) => lhs,
+            (lhs, rhs) => Self::Or(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+}
+
+impl From<bool> for AbstractPredicate<'static> {
+    fn from(b: bool) -> AbstractPredicate<'static> {
+        if b {
+            AbstractPredicate::True
+        } else {
+            AbstractPredicate::False
+        }
+    }
+}
+
+impl<'a> std::ops::Not for AbstractPredicate<'a> {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        match self {
+            // Reduced to a simpler form when possible, else fall back to Predicate::Not
+            Self::True => Self::False,
+            Self::False => Self::True,
+            Self::Eq(lhs, rhs) => Self::Neq(lhs, rhs),
+            Self::Neq(lhs, rhs) => Self::Eq(lhs, rhs),
+            Self::Lt(lhs, rhs) => Self::Gte(lhs, rhs),
+            Self::Lte(lhs, rhs) => Self::Gt(lhs, rhs),
+            Self::Gt(lhs, rhs) => Self::Lte(lhs, rhs),
+            Self::Gte(lhs, rhs) => Self::Lt(lhs, rhs),
+            predicate => Self::Not(Box::new(predicate)),
         }
     }
 }

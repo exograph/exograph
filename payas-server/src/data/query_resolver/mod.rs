@@ -1,19 +1,21 @@
 use crate::execution::query_context::QueryContext;
-use crate::sql::{column::Column, predicate::Predicate, SQLOperation, Select};
+use crate::sql::SQLOperation;
 
 use crate::sql::order::OrderBy;
 
 use anyhow::*;
-use maybe_owned::MaybeOwned;
-use payas_model::model::system::ModelSystem;
 use payas_model::model::{operation::*, relation::*, types::*};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
-use payas_model::sql::{Limit, Offset, TableQuery};
+use payas_model::sql::{Limit, Offset};
+use payas_sql::asql::predicate::AbstractPredicate;
+use payas_sql::asql::select::{AbstractSelect, SelectionLevel};
+use payas_sql::asql::selection::{
+    ColumnSelection, SelectionCardinality, SelectionElement, SelectionElementRelation,
+};
 
 use super::operation_mapper::{
     compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
 };
-use super::predicate_mapper::TableJoin;
 use super::{
     operation_mapper::{OperationResolver, SQLMapper},
     Arguments,
@@ -36,7 +38,9 @@ impl<'a> OperationResolver<'a> for Query {
     ) -> Result<OperationResolverResult<'a>> {
         match &self.kind {
             QueryKind::Database(_) => {
-                let select = self.operation(&field.node, Predicate::True, query_context, true)?;
+                let select = self
+                    .operation(&field.node, AbstractPredicate::True, query_context)?
+                    .to_sql(None, SelectionLevel::TopLevel);
 
                 let mut transaction_script = TransactionScript::default();
                 transaction_script.add_step(TransactionStep::Concrete(
@@ -84,15 +88,14 @@ pub trait QuerySQLOperations<'a> {
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<Column<'a>>;
+    ) -> Result<Vec<ColumnSelection<'a>>>;
 
     fn operation(
         &'a self,
         field: &'a Field,
-        additional_predicate: Predicate<'a>,
+        additional_predicate: AbstractPredicate<'a>,
         query_context: &'a QueryContext<'a>,
-        top_level_selection: bool,
-    ) -> Result<Select<'a>>;
+    ) -> Result<AbstractSelect<'a>>;
 }
 
 impl<'a> QuerySQLOperations<'a> for Query {
@@ -123,8 +126,8 @@ impl<'a> QuerySQLOperations<'a> for Query {
         &'a self,
         selection_set: &'a Positioned<SelectionSet>,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<Column<'a>> {
-        let column_specs: Result<Vec<_>> = selection_set
+    ) -> Result<Vec<ColumnSelection<'a>>> {
+        selection_set
             .node
             .items
             .iter()
@@ -134,9 +137,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     Err(err) => vec![Err(err)],
                 },
             )
-            .collect();
-
-        Ok(Column::JsonObject(column_specs?))
+            .collect()
     }
 
     fn compute_limit(
@@ -188,28 +189,27 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn operation(
         &'a self,
         field: &'a Field,
-        additional_predicate: Predicate<'a>,
+        additional_predicate: AbstractPredicate<'a>,
         query_context: &'a QueryContext<'a>,
-        top_level_selection: bool,
-    ) -> Result<Select<'a>> {
+    ) -> Result<AbstractSelect<'a>> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
                 let DatabaseQueryParameter {
                     predicate_param, ..
                 } = db_query_param.as_ref();
-                let (access_predicate, access_column_path) = compute_sql_access_predicate(
+                let access_predicate = compute_sql_access_predicate(
                     &self.return_type,
                     &SQLOperationKind::Retrieve,
                     query_context,
                 );
 
-                if access_predicate == Predicate::False {
+                if access_predicate == AbstractPredicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
                 let field_arguments = query_context.field_arguments(field)?;
 
-                let (predicate, predicate_column_paths) = super::compute_predicate(
+                let predicate = super::compute_predicate(
                     predicate_param.as_ref(),
                     field_arguments,
                     additional_predicate,
@@ -217,67 +217,42 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 )
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
-                let predicate = Predicate::and(predicate, access_predicate);
-                let column_paths: Vec<_> = access_column_path
-                    .into_iter()
-                    .chain(predicate_column_paths.into_iter())
-                    .collect();
-
-                let join = TableJoin::from_column_path(column_paths, query_context.get_system());
+                let predicate = AbstractPredicate::and(predicate, access_predicate);
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
 
                 // Apply the join logic only for top-level selections
                 let system = query_context.get_system();
-                let table = if top_level_selection {
-                    match join {
-                        Some(join) => compute_join(join, system),
-                        None => {
-                            if let GqlTypeKind::Composite(composite_root_type) =
-                                &self.return_type.typ(system).kind
-                            {
-                                let root_physical_table =
-                                    &system.tables[composite_root_type.get_table_id()];
-                                TableQuery::Physical(root_physical_table)
-                            } else {
-                                bail!("Expected a composite type");
-                            }
-                        }
-                    }
-                } else if let GqlTypeKind::Composite(composite_root_type) =
-                    &self.return_type.typ(system).kind
-                {
-                    let root_physical_table = &system.tables[composite_root_type.get_table_id()];
-                    TableQuery::Physical(root_physical_table)
-                } else {
-                    bail!("Expected a composite type");
-                };
 
                 let limit = self.compute_limit(field_arguments, query_context);
                 let offset = self.compute_offset(field_arguments, query_context);
 
-                Ok(match self.return_type.type_modifier {
-                    GqlTypeModifier::Optional | GqlTypeModifier::NonNull => table.select(
-                        vec![content_object.into()],
-                        predicate,
-                        None,
-                        offset,
-                        limit,
-                        top_level_selection,
-                    ),
-                    GqlTypeModifier::List => {
-                        let order_by = self.compute_order_by(field_arguments, query_context);
-                        let agg_column = Column::JsonAgg(Box::new(content_object.into()));
-                        table.select(
-                            vec![agg_column.into()],
-                            predicate,
-                            order_by,
-                            offset,
-                            limit,
-                            top_level_selection,
-                        )
+                let root_physical_table = if let GqlTypeKind::Composite(composite_root_type) =
+                    &self.return_type.typ(system).kind
+                {
+                    &system.tables[composite_root_type.get_table_id()]
+                } else {
+                    bail!("Expected a composite type");
+                };
+
+                let selection_cardinality = match self.return_type.type_modifier {
+                    GqlTypeModifier::Optional | GqlTypeModifier::NonNull => {
+                        SelectionCardinality::One
                     }
-                })
+                    GqlTypeModifier::List => SelectionCardinality::Many,
+                };
+                let aselect = AbstractSelect {
+                    table: root_physical_table,
+                    selection: payas_sql::asql::selection::Selection::Json(
+                        content_object,
+                        selection_cardinality,
+                    ),
+                    predicate: Some(predicate),
+                    order_by: None,
+                    offset,
+                    limit,
+                };
+                Ok(aselect)
             }
 
             QueryKind::Service { .. } => {
@@ -291,7 +266,7 @@ fn map_selection<'a>(
     query: &'a Query,
     selection: &'a Selection,
     query_context: &'a QueryContext<'a>,
-) -> Result<Vec<(String, MaybeOwned<'a, Column<'a>>)>> {
+) -> Result<Vec<ColumnSelection<'a>>> {
     match selection {
         Selection::Field(field) => Ok(vec![map_field(query, &field.node, query_context)?]),
         Selection::FragmentSpread(fragment_spread) => {
@@ -319,19 +294,19 @@ fn map_field<'a>(
     query: &'a Query,
     field: &'a Field,
     query_context: &'a QueryContext<'a>,
-) -> Result<(String, MaybeOwned<'a, Column<'a>>)> {
+) -> Result<ColumnSelection<'a>> {
     let system = query_context.get_system();
     let return_type = query.return_type.typ(system);
 
-    let column = if field.name.node == "__typename" {
-        Column::Constant(return_type.name.clone())
+    let selection_elem = if field.name.node == "__typename" {
+        SelectionElement::Constant(return_type.name.clone())
     } else {
         let model_field = return_type.model_field(&field.name.node).unwrap();
 
         match &model_field.relation {
             GqlRelation::Pk { column_id } | GqlRelation::Scalar { column_id } => {
                 let column = column_id.get_column(system);
-                Column::Physical(column)
+                SelectionElement::Physical(column)
             }
             GqlRelation::ManyToOne {
                 column_id,
@@ -339,24 +314,20 @@ fn map_field<'a>(
                 ..
             } => {
                 let other_type = &system.types[*other_type_id];
+                let other_table = &system.tables[other_type.table_id().unwrap()];
+
                 let other_table_pk_query = match &other_type.kind {
                     GqlTypeKind::Primitive => panic!(""),
                     GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
                 };
-
-                Column::SelectionTableWrapper(Box::new(
-                    other_table_pk_query.operation(
-                        field,
-                        Predicate::Eq(
-                            query_context.create_column_with_id(column_id).into(),
-                            query_context
-                                .create_column_with_id(&other_type.pk_column_id().unwrap())
-                                .into(),
-                        ),
-                        query_context,
-                        false,
-                    )?,
-                ))
+                let relation =
+                    SelectionElementRelation::new(column_id.get_column(system), other_table);
+                let nested_abstract_select = other_table_pk_query.operation(
+                    field,
+                    AbstractPredicate::True,
+                    query_context,
+                )?;
+                SelectionElement::Nested(relation, nested_abstract_select)
             }
             GqlRelation::OneToMany {
                 other_type_column_id,
@@ -377,48 +348,21 @@ fn map_field<'a>(
                         }
                     }
                 };
-
-                let other_selection_table = other_table_query.operation(
-                    field,
-                    Predicate::Eq(
-                        query_context
-                            .create_column_with_id(other_type_column_id)
-                            .into(),
-                        query_context
-                            .create_column_with_id(&return_type.pk_column_id().unwrap())
-                            .into(),
-                    ),
-                    query_context,
-                    false,
-                )?;
-
-                Column::SelectionTableWrapper(Box::new(other_selection_table))
+                let self_table = &system.tables[return_type.table_id().unwrap()];
+                let relation = SelectionElementRelation::new(
+                    other_type_column_id.get_column(system),
+                    self_table,
+                );
+                let nested_abstract_select =
+                    other_table_query.operation(field, AbstractPredicate::True, query_context)?;
+                SelectionElement::Nested(relation, nested_abstract_select)
             }
-            GqlRelation::NonPersistent => panic!(),
+
+            _ => {
+                panic!("")
+            }
         }
     };
 
-    Ok((field.output_name(), column.into()))
-}
-
-fn compute_join<'a>(join_info: TableJoin<'a>, system: &'a ModelSystem) -> TableQuery<'a> {
-    join_info.dependencies.into_iter().fold(
-        TableQuery::Physical(join_info.table),
-        |acc, (join_column_dependency, join_table)| {
-            let join_predicate = Predicate::Eq(
-                Column::Physical(join_column_dependency.self_column_id.get_column(system)).into(),
-                Column::Physical(
-                    join_column_dependency
-                        .linked_column_id
-                        .unwrap()
-                        .get_column(system),
-                )
-                .into(),
-            );
-
-            let join_table_query = compute_join(join_table, system);
-
-            acc.join(join_table_query, join_predicate.into())
-        },
-    )
+    Ok(ColumnSelection::new(field.output_name(), selection_elem))
 }

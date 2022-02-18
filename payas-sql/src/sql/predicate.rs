@@ -88,7 +88,7 @@ impl<'a> Predicate<'a> {
     }
 
     pub fn neq(lhs: MaybeOwned<'a, Column<'a>>, rhs: MaybeOwned<'a, Column<'a>>) -> Predicate<'a> {
-        !Predicate::eq(lhs, rhs)
+        !Self::eq(lhs, rhs)
     }
 
     pub fn and(lhs: Predicate<'a>, rhs: Predicate<'a>) -> Predicate<'a> {

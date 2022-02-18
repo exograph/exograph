@@ -172,7 +172,7 @@ impl<'qc> QueryContext<'qc> {
     }
 }
 
-fn cast_value(
+pub fn cast_value(
     value: &ConstValue,
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<Box<dyn SQLParam>>> {

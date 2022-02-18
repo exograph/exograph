@@ -8,12 +8,12 @@ use super::select::{AbstractSelect, SelectionLevel};
 
 #[derive(Debug)]
 pub struct ColumnSelection<'a> {
-    alias: &'a str,
+    alias: String,
     column: SelectionElement<'a>,
 }
 
 impl<'a> ColumnSelection<'a> {
-    pub fn new(alias: &'a str, column: SelectionElement<'a>) -> Self {
+    pub fn new(alias: String, column: SelectionElement<'a>) -> Self {
         Self { alias, column }
     }
 }
@@ -47,6 +47,7 @@ impl<'a> Selection<'a> {
                          }| match column {
                             // TODO: Support alias (requires a change to `Select`)
                             SelectionElement::Physical(pc) => Column::Physical(pc),
+                            SelectionElement::Constant(s) => Column::Constant(s.to_owned()),
                             SelectionElement::Nested(_, _) => todo!(),
                         },
                     )
@@ -55,9 +56,7 @@ impl<'a> Selection<'a> {
             Selection::Json(seq, cardinality) => {
                 let object_elems = seq
                     .into_iter()
-                    .map(|ColumnSelection { alias, column }| {
-                        (alias.to_string(), column.to_sql().into())
-                    })
+                    .map(|ColumnSelection { alias, column }| (alias, column.to_sql().into()))
                     .collect();
 
                 let json_obj = Column::JsonObject(object_elems);
@@ -76,6 +75,7 @@ impl<'a> Selection<'a> {
 #[derive(Debug)]
 pub enum SelectionElement<'a> {
     Physical(&'a PhysicalColumn),
+    Constant(String), // To support __typename
     Nested(SelectionElementRelation<'a>, AbstractSelect<'a>),
 }
 
@@ -98,6 +98,7 @@ impl<'a> SelectionElement<'a> {
     pub fn to_sql(self) -> Column<'a> {
         match self {
             SelectionElement::Physical(pc) => Column::Physical(pc),
+            SelectionElement::Constant(s) => Column::Constant(s),
             SelectionElement::Nested(relation, select) => {
                 Column::SelectionTableWrapper(Box::new(select.to_sql(
                     Some(Predicate::Eq(

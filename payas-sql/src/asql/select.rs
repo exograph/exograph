@@ -88,6 +88,8 @@ impl<'a> AbstractSelect<'a> {
 
 #[cfg(test)]
 mod tests {
+    use maybe_owned::MaybeOwned;
+
     use crate::{
         asql::{
             column_path::{ColumnPath, ColumnPathLink},
@@ -116,7 +118,7 @@ mod tests {
                 let aselect = AbstractSelect {
                     table: concerts_table,
                     selection: Selection::Seq(vec![ColumnSelection::new(
-                        "id",
+                        "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
                     predicate: None,
@@ -145,13 +147,13 @@ mod tests {
                     self_column: (concerts_id_column, concerts_table),
                     linked_column: None,
                 }]);
-                let literal = ColumnPath::Literal(Box::new(5));
-                let predicate = AbstractPredicate::Eq(concert_id_path, literal);
+                let literal = ColumnPath::Literal(MaybeOwned::Owned(Box::new(5)));
+                let predicate = AbstractPredicate::Eq(concert_id_path.into(), literal.into());
 
                 let aselect = AbstractSelect {
                     table: concerts_table,
                     selection: Selection::Seq(vec![ColumnSelection::new(
-                        "id",
+                        "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
                     predicate: Some(predicate),
@@ -184,7 +186,7 @@ mod tests {
                     table: concerts_table,
                     selection: Selection::Json(
                         vec![ColumnSelection::new(
-                            "id",
+                            "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )],
                         SelectionCardinality::Many,
@@ -228,11 +230,11 @@ mod tests {
                     selection: Selection::Json(
                         vec![
                             ColumnSelection::new(
-                                "id",
+                                "id".to_string(),
                                 SelectionElement::Physical(concerts_id_column),
                             ),
                             ColumnSelection::new(
-                                "venue",
+                                "venue".to_string(),
                                 SelectionElement::Nested(
                                     SelectionElementRelation::new(
                                         concerts_venue_id_column,
@@ -242,7 +244,7 @@ mod tests {
                                         table: venues_table,
                                         selection: Selection::Json(
                                             vec![ColumnSelection::new(
-                                                "id",
+                                                "id".to_string(),
                                                 SelectionElement::Physical(venues_id_column),
                                             )],
                                             SelectionCardinality::One,
@@ -290,11 +292,11 @@ mod tests {
                     selection: Selection::Json(
                         vec![
                             ColumnSelection::new(
-                                "id",
+                                "id".to_string(),
                                 SelectionElement::Physical(venues_id_column),
                             ),
                             ColumnSelection::new(
-                                "concerts",
+                                "concerts".to_string(),
                                 SelectionElement::Nested(
                                     SelectionElementRelation::new(
                                         concerts_venue_id_column,
@@ -304,7 +306,7 @@ mod tests {
                                         table: concerts_table,
                                         selection: Selection::Json(
                                             vec![ColumnSelection::new(
-                                                "id",
+                                                "id".to_string(),
                                                 SelectionElement::Physical(concerts_id_column),
                                             )],
                                             SelectionCardinality::Many,
@@ -363,14 +365,15 @@ mod tests {
                             self_column: (venues_name_column, venues_table),
                             linked_column: None,
                         },
-                    ]),
-                    ColumnPath::Literal(Box::new("v1".to_string())),
+                    ])
+                    .into(),
+                    ColumnPath::Literal(MaybeOwned::Owned(Box::new("v1".to_string()))).into(),
                 );
                 let aselect = AbstractSelect {
                     table: concerts_table,
                     selection: Selection::Json(
                         vec![ColumnSelection::new(
-                            "id",
+                            "id".to_string(),
                             SelectionElement::Physical(concerts_id_column),
                         )],
                         SelectionCardinality::Many,
