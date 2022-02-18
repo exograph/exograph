@@ -40,7 +40,7 @@ impl GqlRelation {
         match self {
             GqlRelation::Pk { column_id }
             | GqlRelation::Scalar { column_id }
-            | GqlRelation::ManyToOne { column_id, .. } => Some(column_id.clone()),
+            | GqlRelation::ManyToOne { column_id, .. } => Some(*column_id),
             _ => None,
         }
     }

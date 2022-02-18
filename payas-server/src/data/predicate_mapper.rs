@@ -225,10 +225,9 @@ fn operands<'a>(
 
 fn to_column_path_link<'a>(link: &ColumnIdPathLink, system: &'a ModelSystem) -> ColumnPathLink<'a> {
     ColumnPathLink {
-        self_column: to_column_table(link.self_column_id.clone(), system),
+        self_column: to_column_table(link.self_column_id, system),
         linked_column: link
             .linked_column_id
-            .clone()
             .map(|linked_column_id| to_column_table(linked_column_id, system)),
     }
 }

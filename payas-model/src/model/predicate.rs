@@ -25,11 +25,7 @@ pub struct ColumnIdPath {
 
 impl ColumnIdPath {
     pub fn leaf_column(&self) -> ColumnId {
-        self.path
-            .last()
-            .expect("Empty column path")
-            .self_column_id
-            .clone()
+        self.path.last().expect("Empty column path").self_column_id
     }
 }
 
