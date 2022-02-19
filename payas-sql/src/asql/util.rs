@@ -1,6 +1,6 @@
-// use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{hash_map::Entry, HashMap};
 
-use crate::sql::{PhysicalTable, TableQuery};
+use crate::sql::{column::Column, predicate::Predicate, PhysicalTable, TableQuery};
 
 use super::column_path::ColumnPathLink;
 
@@ -45,46 +45,44 @@ pub fn compute_join<'a>(
         return TableQuery::Physical(table);
     }
 
-    todo!()
+    // Use a stable hasher (FxBuildHasher) so that our test assertions work
+    // The kind of workload we're trying to model here is not sensitive to the
+    // DOS attack (we control all columns and tables), so we can use a stable hasher
+    let mut grouped: HashMap<ColumnPathLink, Vec<Vec<ColumnPathLink>>, _> =
+        HashMap::with_hasher(fxhash::FxBuildHasher::default());
 
-    // // Use a stable hasher (FxBuildHasher) so that our test assertions work
-    // // The kind of workload we're trying to model here is not sensitive to the
-    // // DOS attack (we control all columns and tables), so we can use a stable hasher
-    // let mut grouped: HashMap<ColumnPathLink, Vec<Vec<ColumnPathLink>>, _> =
-    //     HashMap::with_hasher(fxhash::FxBuildHasher::default());
+    for mut links in links_list {
+        if links.is_empty() {
+            panic!("Invalid paths list")
+        }
+        let head = links.remove(0);
+        let tail = links;
 
-    // for mut links in links_list {
-    //     if links.is_empty() {
-    //         panic!("Invalid paths list")
-    //     }
-    //     let head = links.remove(0);
-    //     let tail = links;
+        if head.linked_column.is_some() {
+            let existing = grouped.entry(head);
 
-    //     if head.linked_column.is_some() {
-    //         let existing = grouped.entry(head);
+            match existing {
+                Entry::Occupied(mut entry) => entry.get_mut().push(tail),
+                Entry::Vacant(entry) => {
+                    entry.insert(vec![tail]);
+                }
+            }
+        }
+    }
 
-    //         match existing {
-    //             Entry::Occupied(mut entry) => entry.get_mut().push(tail),
-    //             Entry::Vacant(entry) => {
-    //                 entry.insert(vec![tail]);
-    //             }
-    //         }
-    //     }
-    // }
+    grouped.into_iter().fold(
+        TableQuery::Physical(table),
+        |acc, (head_link, tail_links)| {
+            let join_predicate = Predicate::Eq(
+                Column::Physical(head_link.self_column.0).into(),
+                Column::Physical(head_link.linked_column.unwrap().0).into(),
+            );
 
-    // grouped.into_iter().fold(
-    //     TableQuery::Physical(table),
-    //     |acc, (head_link, tail_links)| {
-    //         let join_predicate = Predicate::Eq(
-    //             Column::Physical(head_link.self_column.0).into(),
-    //             Column::Physical(head_link.linked_column.unwrap().0).into(),
-    //         );
+            let join_table_query = compute_join(head_link.linked_column.unwrap().1, tail_links);
 
-    //         let join_table_query = compute_join(head_link.linked_column.unwrap().1, tail_links);
-
-    //         acc.join(join_table_query, join_predicate.into())
-    //     },
-    // )
+            acc.join(join_table_query, join_predicate.into())
+        },
+    )
 }
 
 #[cfg(test)]
