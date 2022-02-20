@@ -2972,7 +2972,6 @@ dependencies = [
  "bytes",
  "chrono",
  "deadpool-postgres",
- "fxhash",
  "maybe-owned",
  "once_cell",
  "openssl",

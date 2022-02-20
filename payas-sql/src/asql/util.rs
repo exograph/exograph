@@ -1,88 +1,37 @@
-use std::collections::{hash_map::Entry, HashMap};
+use super::table_dependency::TableDependency;
 
-use crate::sql::{column::Column, predicate::Predicate, PhysicalTable, TableQuery};
+use crate::{
+    asql::table_dependency::DependencyLink,
+    sql::{column::Column, predicate::Predicate, PhysicalTable, TableQuery},
+};
 
 use super::column_path::ColumnPathLink;
 
-/// Compute TableJoin from a list of column paths
-/// If the following path is given:
-/// ```no_rust
-/// [
-///     (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.name, None)
-///     (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.address_id, address.id) -> (address.city, None)
-///     (concert.venue_id, venue.id) -> (venue.name, None)
-/// ]
-/// ```
-/// then the result will be the join needed to access the leaf columns:
-/// ```no_rust
-/// TableJoin {
-///    table: concerts,
-///    dependencies: [
-///       ((concert.id, concert_artists.concert_id), TableJoin {
-///          table: concert_artists,
-///          dependencies: [
-///             ((concert_artists.artist_id, artists.id), TableJoin {
-///                table: artists,
-///                dependencies: [
-///                   ((artists.address_id, address.id), TableJoin {
-///                      table: address,
-///                      dependencies: []
-///                   }),
-///                ]
-///             }),
-///       ((concert.venue_id, venue.id), TableJoin {
-///            table: venue,
-///            dependencies: []
-///       }),
-///    ]
-/// }
-/// ```
 pub fn compute_join<'a>(
     table: &'a PhysicalTable,
-    links_list: Vec<Vec<ColumnPathLink<'a>>>,
+    paths_list: Vec<Vec<ColumnPathLink<'a>>>,
 ) -> TableQuery<'a> {
-    if links_list.is_empty() {
-        return TableQuery::Physical(table);
+    fn from_dependency(dependency: TableDependency) -> TableQuery {
+        dependency.dependencies.into_iter().fold(
+            TableQuery::Physical(dependency.table),
+            |acc, DependencyLink { link, dependency }| {
+                let join_predicate = Predicate::Eq(
+                    Column::Physical(link.self_column.0).into(),
+                    Column::Physical(link.linked_column.unwrap().0).into(),
+                );
+
+                let join_table_query = from_dependency(dependency);
+
+                acc.join(join_table_query, join_predicate.into())
+            },
+        )
     }
 
-    // Use a stable hasher (FxBuildHasher) so that our test assertions work
-    // The kind of workload we're trying to model here is not sensitive to the
-    // DOS attack (we control all columns and tables), so we can use a stable hasher
-    let mut grouped: HashMap<ColumnPathLink, Vec<Vec<ColumnPathLink>>, _> =
-        HashMap::with_hasher(fxhash::FxBuildHasher::default());
-
-    for mut links in links_list {
-        if links.is_empty() {
-            panic!("Invalid paths list")
-        }
-        let head = links.remove(0);
-        let tail = links;
-
-        if head.linked_column.is_some() {
-            let existing = grouped.entry(head);
-
-            match existing {
-                Entry::Occupied(mut entry) => entry.get_mut().push(tail),
-                Entry::Vacant(entry) => {
-                    entry.insert(vec![tail]);
-                }
-            }
-        }
-    }
-
-    grouped.into_iter().fold(
-        TableQuery::Physical(table),
-        |acc, (head_link, tail_links)| {
-            let join_predicate = Predicate::Eq(
-                Column::Physical(head_link.self_column.0).into(),
-                Column::Physical(head_link.linked_column.unwrap().0).into(),
-            );
-
-            let join_table_query = compute_join(head_link.linked_column.unwrap().1, tail_links);
-
-            acc.join(join_table_query, join_predicate.into())
-        },
-    )
+    let table_tree = TableDependency::from_column_path(paths_list).unwrap_or(TableDependency {
+        table,
+        dependencies: vec![],
+    });
+    from_dependency(table_tree)
 }
 
 #[cfg(test)]
@@ -216,7 +165,7 @@ mod tests {
                 let join_binding = join.binding(&mut expr);
                 assert_binding!(
                     join_binding,
-                    r#""concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" LEFT JOIN "concert_artists" LEFT JOIN "artists" LEFT JOIN "addresses" ON "artists"."address_id" = "addresses"."id" ON "concert_artists"."artist_id" = "artists"."id" ON "concerts"."id" = "concert_artists"."concert_id""#
+                    r#""concerts" LEFT JOIN "concert_artists" LEFT JOIN "artists" LEFT JOIN "addresses" ON "artists"."address_id" = "addresses"."id" ON "concert_artists"."artist_id" = "artists"."id" ON "concerts"."id" = "concert_artists"."concert_id" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
                 );
             },
         )
