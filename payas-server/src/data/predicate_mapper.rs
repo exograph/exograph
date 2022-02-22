@@ -170,19 +170,15 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                         )
                     })
                     .fold(Ok(("", None)), |acc, (name, result)| {
-                        match acc {
-                            Ok((acc_name, acc_result)) => {
-                                if acc_result.is_some() && result.is_some() {
-                                    bail!("Cannot specify more than one logical operation on the same level")
-                                } else if acc_result.is_some() && result.is_none() {
-                                    Ok((acc_name, acc_result))
-                                } else {
-                                    Ok((name, result))
-                                }
-                            },
-
-                            err@Err(_) => err
-                        }
+                        acc.and_then(|(acc_name, acc_result)| {
+                                    if acc_result.is_some() && result.is_some() {
+                                        bail!("Cannot specify more than one logical operation on the same level")
+                                    } else if acc_result.is_some() && result.is_none() {
+                                        Ok((acc_name, acc_result))
+                                    } else {
+                                        Ok((name, result))
+                                    }
+                                })
                     })?;
 
                 // do we have a match?

@@ -130,7 +130,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
             .iter()
             .flat_map(
                 |selection| match map_selection(self, &selection.node, query_context) {
-                    Ok(s) => s.into_iter().map(Ok).collect(),
+                    core::result::Result::Ok(s) => s.into_iter().map(Ok).collect(),
                     Err(err) => vec![Err(err)],
                 },
             )
@@ -303,7 +303,7 @@ fn map_selection<'a>(
                 .iter()
                 .flat_map(
                     |selection| match map_selection(query, &selection.node, query_context) {
-                        Ok(s) => s.into_iter().map(Ok).collect(),
+                        core::result::Result::Ok(s) => s.into_iter().map(Ok).collect(),
                         Err(err) => vec![Err(err)],
                     },
                 )
