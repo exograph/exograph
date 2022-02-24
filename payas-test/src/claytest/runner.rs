@@ -17,7 +17,7 @@ use std::{
 
 use crate::claytest::dbutils::{createdb_psql, dropdb_psql, run_psql};
 use crate::claytest::loader::{ParsedTestfile, TestfileOperation};
-use crate::claytest::model::*;
+use crate::claytest::model::{TestOutput, TestResult, TestfileContext};
 
 use super::{
     assertion::{self, evaluate_using_deno},

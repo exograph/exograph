@@ -4,12 +4,15 @@ use crate::{
     execution::query_context::QueryContext,
     sql::{column::Column, predicate::Predicate},
 };
-use anyhow::*;
+use anyhow::{bail, Result};
 use async_graphql_value::ConstValue;
 
 use maybe_owned::MaybeOwned;
 use payas_model::{
-    model::{predicate::*, system::ModelSystem},
+    model::{
+        predicate::{ColumnPath, ColumnPathLink, PredicateParameter, PredicateParameterTypeKind},
+        system::ModelSystem,
+    },
     sql::PhysicalTable,
 };
 

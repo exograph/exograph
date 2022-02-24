@@ -10,7 +10,9 @@ use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
     system_builder::SystemContextBuilding,
 };
-use payas_model::model::predicate::*;
+use payas_model::model::predicate::{
+    PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
+};
 
 use lazy_static::lazy_static;
 

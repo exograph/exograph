@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::Result;
 use async_graphql_value::ConstValue;
 use maybe_owned::MaybeOwned;
 

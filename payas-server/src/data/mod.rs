@@ -12,7 +12,7 @@ mod update_data_param_mapper;
 
 use predicate_mapper::PredicateParameterMapper;
 
-use anyhow::*;
+use anyhow::{Context, Result};
 use async_graphql_parser::Positioned;
 use async_graphql_value::{ConstValue, Name};
 

@@ -3,10 +3,14 @@ use crate::sql::{column::Column, predicate::Predicate, SQLOperation, Select};
 
 use crate::sql::order::OrderBy;
 
-use anyhow::*;
+use anyhow::{anyhow, bail, Context, Result};
 use maybe_owned::MaybeOwned;
 use payas_model::model::system::ModelSystem;
-use payas_model::model::{operation::*, relation::*, types::*};
+use payas_model::model::{
+    operation::{DatabaseQueryParameter, Interceptors, Query, QueryKind},
+    relation::{GqlRelation, RelationCardinality},
+    types::{GqlTypeKind, GqlTypeModifier},
+};
 use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
 use payas_model::sql::{Limit, Offset, TableQuery};
 
@@ -130,7 +134,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
             .iter()
             .flat_map(
                 |selection| match map_selection(self, &selection.node, query_context) {
-                    core::result::Result::Ok(s) => s.into_iter().map(Ok).collect(),
+                    Ok(s) => s.into_iter().map(Ok).collect(),
                     Err(err) => vec![Err(err)],
                 },
             )
@@ -303,7 +307,7 @@ fn map_selection<'a>(
                 .iter()
                 .flat_map(
                     |selection| match map_selection(query, &selection.node, query_context) {
-                        core::result::Result::Ok(s) => s.into_iter().map(Ok).collect(),
+                        Ok(s) => s.into_iter().map(Ok).collect(),
                         Err(err) => vec![Err(err)],
                     },
                 )
