@@ -1,10 +1,12 @@
-use crate::introspection::schema::*;
+use crate::introspection::schema::{
+    Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
+};
 use async_graphql_parser::{types::Field, Positioned};
 use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::execution::query_context::QueryContext;
-use crate::execution::resolver::*;
+use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
 use anyhow::{anyhow, Result};
 
 #[async_trait(?Send)]

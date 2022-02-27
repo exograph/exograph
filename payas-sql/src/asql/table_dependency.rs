@@ -62,8 +62,12 @@ impl<'a> TableDependency<'a> {
             "All paths must start from the same table"
         );
 
-        // Use BTreeMap to get a stable ordering of the dependencies (mostly for testing purpose, but also to get predictable results)
-        // Group by the ColumnPathLink to paths that start with it. Later the key (ColumnPathLink) will be used to
+        // Use `BTreeMap` to get a stable ordering of the dependencies
+        // (mostly for testing purpose, but also to get predictable results)
+        //
+        // Group by the `ColumnPathLink` to paths that start with it.
+        // Later the key (`ColumnPathLink`) and values (`Vec<ColumnPathLink>`) will
+        // be used to create `DependencyLink`s.
         let grouped = paths_list.into_iter().fold(
             BTreeMap::<ColumnPathLink, Vec<Vec<ColumnPathLink<'a>>>>::new(),
             |mut acc, paths| match &paths[..] {

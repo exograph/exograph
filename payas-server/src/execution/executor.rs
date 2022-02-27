@@ -13,7 +13,7 @@ use payas_model::{
     model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
     sql::database::Database,
 };
-use query_context::*;
+use query_context::{QueryContext, QueryResponse};
 use serde_json::{Map, Value};
 use typed_arena::Arena;
 

@@ -1,9 +1,15 @@
 use crate::execution::query_context::{cast_value, QueryContext};
-use anyhow::*;
+use anyhow::{bail, Result};
 use async_graphql_value::ConstValue;
 
 use payas_model::{
-    model::{column_id::ColumnId, predicate::*, system::ModelSystem},
+    model::{
+        column_id::ColumnId,
+        predicate::{
+            ColumnIdPath, ColumnIdPathLink, PredicateParameter, PredicateParameterTypeKind,
+        },
+        system::ModelSystem,
+    },
     sql::{column::PhysicalColumn, PhysicalTable},
 };
 use payas_sql::asql::{
@@ -84,19 +90,15 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                         )
                     })
                     .fold(Ok(("", None)), |acc, (name, result)| {
-                        match acc {
-                            Ok((acc_name, acc_result)) => {
-                                if acc_result.is_some() && result.is_some() {
-                                    bail!("Cannot specify more than one logical operation on the same level")
-                                } else if acc_result.is_some() && result.is_none() {
-                                    Ok((acc_name, acc_result))
-                                } else {
-                                    Ok((name, result))
-                                }
-                            },
-
-                            err@Err(_) => err
-                        }
+                        acc.and_then(|(acc_name, acc_result)| {
+                                    if acc_result.is_some() && result.is_some() {
+                                        bail!("Cannot specify more than one logical operation on the same level")
+                                    } else if acc_result.is_some() && result.is_none() {
+                                        Ok((acc_name, acc_result))
+                                    } else {
+                                        Ok((name, result))
+                                    }
+                                })
                     })?;
 
                 // do we have a match?

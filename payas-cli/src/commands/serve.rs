@@ -14,9 +14,7 @@ pub struct ServeCommand {
 }
 
 impl Command for ServeCommand {
-    fn run(&self, system_start_time: Option<SystemTime>) -> Result<()> {
-        super::build::build(&self.model, system_start_time)?;
-
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         let absolute_path = self
             .model
             .as_path()
@@ -27,7 +25,8 @@ impl Command for ServeCommand {
             .expect("Couldn't get parent directory");
         println!("Watching: {:?}", &parent_dir);
         let (tx, rx) = channel();
-        let mut watcher: RecommendedWatcher = Watcher::new(tx, std::time::Duration::from_secs(2))?;
+        let mut watcher: RecommendedWatcher =
+            Watcher::new(tx, std::time::Duration::from_millis(200))?;
         watcher.watch(parent_dir, RecursiveMode::Recursive)?;
 
         let mut server_binary = std::env::current_exe()?;
@@ -36,17 +35,19 @@ impl Command for ServeCommand {
         let claypot_file_name = format!("{}pot", &self.model.to_str().unwrap());
 
         let start_server = || {
-            std::process::Command::new(&server_binary)
-                .args(vec![&claypot_file_name])
-                .spawn()
-                .context("Failed to start clay-server")
+            super::build::build(&self.model, None, false).and_then(|_| {
+                std::process::Command::new(&server_binary)
+                    .args(vec![&claypot_file_name])
+                    .spawn()
+                    .context("Failed to start clay-server")
+            })
         };
 
         fn should_restart(path: &Path) -> bool {
             !matches!(path.extension().and_then(|e| e.to_str()), Some("claypot"))
         }
 
-        let mut server = start_server()?;
+        let mut server = start_server();
 
         loop {
             match rx.recv() {
@@ -55,11 +56,13 @@ impl Command for ServeCommand {
                         if should_restart(path) {
                             println!("Change detected, rebuilding and restarting...");
 
-                            if server.kill().is_err() {
-                                println!("Unable to kill server");
+                            if let Ok(mut server) = server {
+                                if server.kill().is_err() {
+                                    println!("Unable to kill server");
+                                }
                             }
-                            super::build::build(&self.model, None)?;
-                            server = start_server()?;
+
+                            server = start_server();
                         }
                     }
                     _ => {}
@@ -70,7 +73,10 @@ impl Command for ServeCommand {
                 }
             }
         }
-        server.kill()?;
+
+        if let Ok(mut server) = server {
+            server.kill()?;
+        }
         Ok(())
     }
 }

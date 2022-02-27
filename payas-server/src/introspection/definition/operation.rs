@@ -7,7 +7,7 @@ use payas_model::model::{
     },
     system::ModelSystem,
 };
-use util::*;
+use util::{default_positioned, default_positioned_name};
 
 use super::provider::{FieldDefinitionProvider, InputValueProvider};
 use crate::introspection::util;
