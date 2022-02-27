@@ -1,4 +1,4 @@
-use crate::introspection::util::*;
+use crate::introspection::util::default_positioned_name;
 use async_graphql_parser::types::InputValueDefinition;
 
 use crate::introspection::util;
@@ -7,7 +7,7 @@ use payas_model::model::{
     argument::ArgumentParameter,
     limit_offset::{LimitParameter, OffsetParameter},
     operation::{CreateDataParameter, UpdateDataParameter},
-    order::*,
+    order::OrderByParameter,
     predicate::PredicateParameter,
     types::GqlField,
     types::GqlTypeModifier,

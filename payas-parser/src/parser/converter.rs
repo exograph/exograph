@@ -5,7 +5,11 @@ use codemap::Span;
 use tree_sitter::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
-use crate::ast::ast_types::*;
+use crate::ast::ast_types::{
+    AstAnnotation, AstAnnotationParams, AstArgument, AstExpr, AstField, AstFieldDefault,
+    AstFieldDefaultKind, AstFieldType, AstInterceptor, AstMethod, AstModel, AstModelKind,
+    AstService, AstSystem, FieldSelection, Identifier, LogicalOp, RelationalOp, Untyped,
+};
 use crate::error::ParserError;
 
 pub fn parse(input: &str) -> Option<Tree> {

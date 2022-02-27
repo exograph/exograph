@@ -1,12 +1,15 @@
 use super::argument::ArgumentParameterType;
 use super::column_id::ColumnId;
 use super::mapped_arena::SerializableSlab;
-use super::order::*;
-use super::predicate::*;
+use super::order::OrderByParameterType;
+use super::predicate::PredicateParameterType;
 use super::service::Script;
 use super::service::ServiceMethod;
 use super::ContextType;
-use super::{mapped_arena::MappedArena, operation::*};
+use super::{
+    mapped_arena::MappedArena,
+    operation::{Mutation, Query},
+};
 
 use crate::sql::PhysicalTable;
 

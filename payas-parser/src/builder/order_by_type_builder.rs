@@ -1,10 +1,11 @@
 use payas_model::model::{
     column_id::ColumnId,
     mapped_arena::{MappedArena, SerializableSlabIndex},
+    order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind},
+    relation::GqlRelation,
+    types::{GqlCompositeType, GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
 };
-
-use payas_model::model::{order::*, relation::GqlRelation, types::*};
 
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
