@@ -65,6 +65,24 @@ impl<T: ToSql + Sync + Any + PartialEq> SQLParam for T {
     }
 }
 
+// impl<T: ToSql + Sync + Any + PartialEq> SQLParam for MaybeOwned<'_, T> {
+//     fn as_any(&self) -> &dyn Any {
+//         self.as_ref()
+//     }
+
+//     fn eq(&self, other: &dyn SQLParam) -> bool {
+//         if let Some(other) = other.as_any().downcast_ref::<MaybeOwned<T>>() {
+//             self.as_ref() == other.as_ref()
+//         } else {
+//             false
+//         }
+//     }
+
+//     fn as_pg(&self) -> &(dyn ToSql + Sync) {
+//         self.as_ref()
+//     }
+// }
+
 impl PartialEq for dyn SQLParam {
     fn eq(&self, other: &Self) -> bool {
         SQLParam::eq(self, other)

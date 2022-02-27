@@ -98,9 +98,9 @@ impl<'a> TemplateInsert<'a> {
                     .map(|col| match col {
                         ProxyColumn::Concrete(col) => col.as_ref().into(),
                         ProxyColumn::Template { col_index, step_id } => {
-                            MaybeOwned::Owned(Column::Literal(Box::new(
+                            MaybeOwned::Owned(Column::Literal(MaybeOwned::Owned(Box::new(
                                 transaction_context.resolve_value(*step_id, row_index, *col_index),
-                            )))
+                            ))))
                         }
                     })
                     .collect()

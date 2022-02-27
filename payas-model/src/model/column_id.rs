@@ -4,7 +4,7 @@ use crate::sql::{column::PhysicalColumn, PhysicalTable};
 
 use super::{mapped_arena::SerializableSlabIndex, system::ModelSystem};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ColumnId {
     pub table_id: SerializableSlabIndex<PhysicalTable>,
     column_index: usize,

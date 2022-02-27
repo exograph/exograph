@@ -12,6 +12,7 @@ use async_graphql_value::{ConstValue, Name, Number, Value};
 use async_trait::async_trait;
 use chrono::prelude::*;
 use chrono::DateTime;
+use maybe_owned::MaybeOwned;
 use payas_model::{
     model::{column_id::ColumnId, system::ModelSystem},
     sql::{
@@ -125,8 +126,11 @@ impl<'qc> QueryContext<'qc> {
         value: &ConstValue,
         associated_column: &PhysicalColumn,
     ) -> Result<Column<'qc>> {
-        cast_value(value, &associated_column.typ)
-            .map(|value| value.map(Column::Literal).unwrap_or(Column::Null))
+        cast_value(value, &associated_column.typ).map(|value| {
+            value
+                .map(|v| Column::Literal(MaybeOwned::Owned(v)))
+                .unwrap_or(Column::Null)
+        })
     }
 
     pub fn field_arguments(
@@ -177,7 +181,7 @@ impl<'qc> QueryContext<'qc> {
     }
 }
 
-fn cast_value(
+pub fn cast_value(
     value: &ConstValue,
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<Box<dyn SQLParam>>> {

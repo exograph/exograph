@@ -450,23 +450,13 @@ impl PhysicalColumnType {
 #[derive(Debug)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
-    Literal(Box<dyn SQLParam>),
+    Literal(MaybeOwned<'a, Box<dyn SQLParam>>),
     JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
     JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
     SelectionTableWrapper(Box<Select<'a>>),
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
-}
-
-impl Column<'_> {
-    pub fn get_value(&self) -> &dyn SQLParam {
-        match self {
-            Column::Literal(boxed) => boxed.as_ref(),
-
-            _ => panic!("Not a Literal"),
-        }
-    }
 }
 
 // Due to https://github.com/rust-lang/rust/issues/39128, we have to manually implement PartialEq.

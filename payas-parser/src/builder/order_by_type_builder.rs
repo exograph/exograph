@@ -115,7 +115,7 @@ pub fn new_field_param(
 
     let column_id = match &model_field.relation {
         GqlRelation::Pk { column_id, .. } | GqlRelation::Scalar { column_id, .. } => {
-            Some(column_id.clone())
+            Some(*column_id)
         }
         _ => None,
     };

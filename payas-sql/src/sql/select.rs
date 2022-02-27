@@ -118,7 +118,7 @@ mod tests {
         };
 
         let age_col = physical_table.get_column("age").unwrap();
-        let age_value_col = Column::Literal(Box::new(5));
+        let age_value_col = Column::Literal(MaybeOwned::Owned(Box::new(5)));
 
         let predicate = Predicate::Eq(age_col.into(), age_value_col.into());
 

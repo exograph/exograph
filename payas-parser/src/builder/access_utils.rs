@@ -3,7 +3,7 @@ use payas_model::model::{
         AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
         AccessPrimitiveExpression, AccessRelationalOp,
     },
-    predicate::{ColumnPath, ColumnPathLink},
+    predicate::{ColumnIdPath, ColumnIdPathLink},
     GqlCompositeType, GqlFieldType, GqlTypeKind,
 };
 
@@ -17,7 +17,7 @@ use crate::{
 use super::system_builder::SystemContextBuilding;
 
 enum PathSelection<'a> {
-    Column(ColumnPath, &'a GqlFieldType),
+    Column(ColumnIdPath, &'a GqlFieldType),
     Context(AccessContextSelection, &'a GqlFieldType),
 }
 
@@ -140,7 +140,7 @@ fn compute_selection<'a>(
         field_name: &str,
         self_type_info: &'a GqlCompositeType,
         building: &'a SystemContextBuilding,
-    ) -> (ColumnPathLink, &'a GqlFieldType) {
+    ) -> (ColumnIdPathLink, &'a GqlFieldType) {
         let get_field = |field_name: &str| {
             self_type_info
                 .get_field_by_name(field_name)
@@ -215,7 +215,7 @@ fn compute_selection<'a>(
         );
 
         PathSelection::Column(
-            ColumnPath {
+            ColumnIdPath {
                 path: column_path_elems,
             },
             field_type.unwrap(),

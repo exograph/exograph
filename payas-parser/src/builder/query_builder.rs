@@ -2,7 +2,7 @@ use payas_model::model::limit_offset::OffsetParameter;
 use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::naming::ToGqlQueryName;
 use payas_model::model::operation::{DatabaseQueryParameter, Interceptors, QueryKind};
-use payas_model::model::predicate::ColumnPathLink;
+use payas_model::model::predicate::ColumnIdPathLink;
 use payas_model::model::{
     limit_offset::LimitParameter,
     mapped_arena::MappedArena,
@@ -128,7 +128,7 @@ pub fn pk_predicate_param(
         column_path_link: pk_field
             .relation
             .self_column()
-            .map(|column_id| ColumnPathLink {
+            .map(|column_id| ColumnIdPathLink {
                 self_column_id: column_id,
                 linked_column_id: None,
             }),

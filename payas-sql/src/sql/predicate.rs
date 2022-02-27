@@ -9,51 +9,48 @@ pub enum CaseSensitivity {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Predicate<'a> {
+pub enum Predicate<'a, C = Column<'a>>
+where
+    C: PartialEq + LiteralEquality,
+{
     True,
     False,
-    Eq(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    Neq(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    Lt(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    Lte(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    Gt(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    Gte(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    In(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
+    Eq(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    Neq(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    Lt(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    Lte(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    Gt(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    Gte(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    In(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
     // Prefer Predicate::and(), which simplifies the clause, to construct an And expression
-    And(
-        Box<MaybeOwned<'a, Predicate<'a>>>,
-        Box<MaybeOwned<'a, Predicate<'a>>>,
-    ),
+    And(Box<Predicate<'a, C>>, Box<Predicate<'a, C>>),
     // Prefer Predicate::or(), which simplifies the clause, to construct an Or expression
-    Or(
-        Box<MaybeOwned<'a, Predicate<'a>>>,
-        Box<MaybeOwned<'a, Predicate<'a>>>,
-    ),
-    Not(Box<MaybeOwned<'a, Predicate<'a>>>),
+    Or(Box<Predicate<'a, C>>, Box<Predicate<'a, C>>),
+    // Prefer Predicate::not(), which simplifies the clause, to construct a Not expression
+    Not(Box<Predicate<'a, C>>),
 
     // string predicates
-    StringLike(
-        MaybeOwned<'a, Column<'a>>,
-        MaybeOwned<'a, Column<'a>>,
-        CaseSensitivity,
-    ),
-    StringStartsWith(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    StringEndsWith(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
+    StringLike(MaybeOwned<'a, C>, MaybeOwned<'a, C>, CaseSensitivity),
+    StringStartsWith(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    StringEndsWith(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
 
     // json predicates
-    JsonContains(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    JsonContainedBy(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    JsonMatchKey(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    JsonMatchAnyKey(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
-    JsonMatchAllKeys(MaybeOwned<'a, Column<'a>>, MaybeOwned<'a, Column<'a>>),
+    JsonContains(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    JsonContainedBy(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    JsonMatchKey(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    JsonMatchAnyKey(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
+    JsonMatchAllKeys(MaybeOwned<'a, C>, MaybeOwned<'a, C>),
 }
 
-impl<'a> Predicate<'a> {
+impl<'a, C> Predicate<'a, C>
+where
+    C: PartialEq + LiteralEquality,
+{
     pub fn from_name(
         op_name: &str,
-        lhs: MaybeOwned<'a, Column<'a>>,
-        rhs: MaybeOwned<'a, Column<'a>>,
-    ) -> Predicate<'a> {
+        lhs: MaybeOwned<'a, C>,
+        rhs: MaybeOwned<'a, C>,
+    ) -> Predicate<'a, C> {
         match op_name {
             "eq" => Predicate::Eq(lhs, rhs),
             "neq" => Predicate::Neq(lhs, rhs),
@@ -75,45 +72,48 @@ impl<'a> Predicate<'a> {
     }
 
     // The next set of methods try to minimize the expression
-    pub fn eq(lhs: MaybeOwned<'a, Column<'a>>, rhs: MaybeOwned<'a, Column<'a>>) -> Predicate<'a> {
+    pub fn eq(lhs: MaybeOwned<'a, C>, rhs: MaybeOwned<'a, C>) -> Predicate<'a, C> {
         if lhs == rhs {
             Predicate::True
         } else {
-            match (lhs.as_ref(), rhs.as_ref()) {
-                // For literal columns, we can check for Predicate::False directly
-                (Column::Literal(v1), Column::Literal(v2)) if v1 != v2 => Predicate::False,
+            // For literal columns, we can check for Predicate::False directly
+            match lhs.as_ref().literal_eq(rhs.as_ref()) {
+                Some(false) => Predicate::False,
                 _ => Predicate::Eq(lhs, rhs),
             }
         }
     }
 
-    pub fn neq(lhs: MaybeOwned<'a, Column<'a>>, rhs: MaybeOwned<'a, Column<'a>>) -> Predicate<'a> {
-        !Predicate::eq(lhs, rhs)
+    pub fn neq(lhs: MaybeOwned<'a, C>, rhs: MaybeOwned<'a, C>) -> Predicate<'a, C> {
+        !Self::eq(lhs, rhs)
     }
 
-    pub fn and(lhs: Predicate<'a>, rhs: Predicate<'a>) -> Predicate<'a> {
+    pub fn and(lhs: Predicate<'a, C>, rhs: Predicate<'a, C>) -> Predicate<'a, C> {
         match (lhs, rhs) {
             (Predicate::True, rhs) => rhs,
             (lhs, Predicate::True) => lhs,
             (Predicate::False, _) => Predicate::False,
             (_, Predicate::False) => Predicate::False,
-            (lhs, rhs) => Predicate::And(Box::new(lhs.into()), Box::new(rhs.into())),
+            (lhs, rhs) => Predicate::And(Box::new(lhs), Box::new(rhs)),
         }
     }
 
-    pub fn or(lhs: Predicate<'a>, rhs: Predicate<'a>) -> Predicate<'a> {
+    pub fn or(lhs: Predicate<'a, C>, rhs: Predicate<'a, C>) -> Predicate<'a, C> {
         match (lhs, rhs) {
             (Predicate::True, _) => Predicate::True,
             (_, Predicate::True) => Predicate::True,
             (Predicate::False, rhs) => rhs,
             (lhs, Predicate::False) => lhs,
-            (lhs, rhs) => Predicate::Or(Box::new(lhs.into()), Box::new(rhs.into())),
+            (lhs, rhs) => Predicate::Or(Box::new(lhs), Box::new(rhs)),
         }
     }
 }
 
-impl From<bool> for Predicate<'static> {
-    fn from(b: bool) -> Predicate<'static> {
+impl<C> From<bool> for Predicate<'static, C>
+where
+    C: PartialEq + LiteralEquality,
+{
+    fn from(b: bool) -> Predicate<'static, C> {
         if b {
             Predicate::True
         } else {
@@ -122,8 +122,11 @@ impl From<bool> for Predicate<'static> {
     }
 }
 
-impl<'a> std::ops::Not for Predicate<'a> {
-    type Output = Predicate<'a>;
+impl<'a, C> std::ops::Not for Predicate<'a, C>
+where
+    C: PartialEq + LiteralEquality,
+{
+    type Output = Predicate<'a, C>;
 
     fn not(self) -> Self::Output {
         match self {
@@ -136,12 +139,25 @@ impl<'a> std::ops::Not for Predicate<'a> {
             Predicate::Lte(lhs, rhs) => Predicate::Gt(lhs, rhs),
             Predicate::Gt(lhs, rhs) => Predicate::Lte(lhs, rhs),
             Predicate::Gte(lhs, rhs) => Predicate::Lt(lhs, rhs),
-            predicate => Predicate::Not(Box::new(predicate.into())),
+            predicate => Predicate::Not(Box::new(predicate)),
         }
     }
 }
 
-impl<'a> Expression for Predicate<'a> {
+pub trait LiteralEquality {
+    fn literal_eq(&self, other: &Self) -> Option<bool>;
+}
+
+impl LiteralEquality for Column<'_> {
+    fn literal_eq(&self, other: &Self) -> Option<bool> {
+        match (self, other) {
+            (Column::Literal(v1), Column::Literal(v2)) => Some(v1 == v2),
+            _ => None,
+        }
+    }
+}
+
+impl<'a> Expression for Predicate<'a, Column<'a>> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match &self {
             Predicate::True => ParameterBinding::new("true".to_string(), vec![]),
@@ -182,7 +198,7 @@ impl<'a> Expression for Predicate<'a> {
                 })
             }
             Predicate::And(predicate1, predicate2) => {
-                match (predicate1.as_ref().as_ref(), predicate2.as_ref().as_ref()) {
+                match (predicate1.as_ref(), predicate2.as_ref()) {
                     (Predicate::True, predicate) => predicate.binding(expression_context),
                     (Predicate::False, _) => Predicate::False.binding(expression_context),
                     (predicate, Predicate::True) => predicate.binding(expression_context),
@@ -196,8 +212,8 @@ impl<'a> Expression for Predicate<'a> {
                 }
             }
             Predicate::Or(predicate1, predicate2) => combine(
-                predicate1.as_ref().as_ref(),
-                predicate2.as_ref().as_ref(),
+                predicate1.as_ref(),
+                predicate2.as_ref(),
                 expression_context,
                 |stmt1, stmt2| format!("({} OR {})", stmt1, stmt2),
             ),
@@ -297,7 +313,7 @@ mod tests {
             ..Default::default()
         };
         let age_col = Column::Physical(&age_col);
-        let age_value_col = Column::Literal(Box::new(5));
+        let age_value_col = Column::Literal(MaybeOwned::Owned(Box::new(5)));
 
         let predicate = Predicate::Eq(MaybeOwned::Owned(age_col), MaybeOwned::Owned(age_value_col));
 
@@ -318,7 +334,7 @@ mod tests {
             ..Default::default()
         };
         let name_col = Column::Physical(&name_col);
-        let name_value_col = Column::Literal(Box::new("foo"));
+        let name_value_col = Column::Literal(MaybeOwned::Owned(Box::new("foo")));
 
         let age_col = PhysicalColumn {
             table_name: "people".to_string(),
@@ -327,15 +343,12 @@ mod tests {
             ..Default::default()
         };
         let age_col = Column::Physical(&age_col);
-        let age_value_col = Column::Literal(Box::new(5));
+        let age_value_col = Column::Literal(MaybeOwned::Owned(Box::new(5)));
 
         let name_predicate = Predicate::Eq(name_col.into(), name_value_col.into());
         let age_predicate = Predicate::Eq(age_col.into(), age_value_col.into());
 
-        let predicate = Predicate::And(
-            Box::new(name_predicate.into()),
-            Box::new(age_predicate.into()),
-        );
+        let predicate = Predicate::And(Box::new(name_predicate), Box::new(age_predicate));
 
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
@@ -360,7 +373,7 @@ mod tests {
             title_physical_col: &PhysicalColumn,
         ) -> (MaybeOwned<'_, Column<'_>>, MaybeOwned<'_, Column<'_>>) {
             let title_col = Column::Physical(title_physical_col).into();
-            let title_value_col = Column::Literal(Box::new("utawaku")).into();
+            let title_value_col = Column::Literal(MaybeOwned::Owned(Box::new("utawaku"))).into();
 
             (title_col, title_value_col)
         }
@@ -440,7 +453,7 @@ mod tests {
                 )
                 .unwrap(),
             );
-            let json_value_col = Column::Literal(json_value.clone()).into();
+            let json_value_col = Column::Literal(MaybeOwned::Owned(json_value.clone())).into();
 
             (json_col, json_value, json_value_col)
         }
@@ -448,7 +461,7 @@ mod tests {
         let json_key_list: Box<serde_json::Value> =
             Box::new(serde_json::from_str(r#"["a", "b"]"#).unwrap());
 
-        let json_key_col = Column::Literal(Box::new("a"));
+        let json_key_col = Column::Literal(MaybeOwned::Owned(Box::new("a")));
 
         //// Test bindings starting now
 
@@ -473,7 +486,7 @@ mod tests {
         );
 
         // matchKey
-        let json_key_list_col = Column::Literal(json_key_list.clone());
+        let json_key_list_col = Column::Literal(MaybeOwned::Owned(json_key_list.clone()));
 
         let (json_col, _, _) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();
@@ -496,7 +509,7 @@ mod tests {
         );
 
         // matchAllKeys
-        let json_key_list_col = Column::Literal(json_key_list.clone());
+        let json_key_list_col = Column::Literal(MaybeOwned::Owned(json_key_list.clone()));
 
         let (json_col, _, _) = json_test_data(&json_physical_col);
         let mut expression_context = ExpressionContext::default();

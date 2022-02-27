@@ -4,7 +4,7 @@ use crate::{
         query_resolver::QuerySQLOperations,
     },
     execution::{query_context::QueryContext, resolver::GraphQLExecutionError},
-    sql::{column::Column, predicate::Predicate, Cte, PhysicalTable, SQLOperation},
+    sql::{column::Column, Cte, PhysicalTable, SQLOperation},
 };
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -21,6 +21,7 @@ use payas_model::{
         Select,
     },
 };
+use payas_sql::asql::{predicate::AbstractPredicate, select::SelectionLevel};
 
 use super::{
     create_data_param_mapper::InsertionInfo,
@@ -46,7 +47,9 @@ impl<'a> OperationResolver<'a> for Mutation {
                     GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
                 };
 
-                selection_query.operation(&field.node, Predicate::True, query_context, true)?
+                selection_query
+                    .operation(&field.node, AbstractPredicate::True, query_context)?
+                    .to_sql(None, SelectionLevel::TopLevel)
             };
 
             Ok(OperationResolverResult::SQLOperation(match &self.kind {
@@ -97,7 +100,7 @@ fn create_operation<'a>(
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
     // TODO: https://github.com/payalabs/payas/issues/343
-    let (access_predicate, _access_column_paths) = compute_sql_access_predicate(
+    let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Create,
         query_context,
@@ -105,7 +108,7 @@ fn create_operation<'a>(
 
     // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
     // See issue #69
-    if access_predicate == Predicate::False {
+    if access_predicate == AbstractPredicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
@@ -132,18 +135,18 @@ fn delete_operation<'a>(
     let (table, _, _) = return_type_info(mutation, query_context);
 
     // TODO: https://github.com/payalabs/payas/issues/343
-    let (access_predicate, _access_column_paths) = compute_sql_access_predicate(
+    let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Delete,
         query_context,
     );
 
-    if access_predicate == Predicate::False {
+    if access_predicate == AbstractPredicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let (predicate, _column_dependencies) = super::compute_predicate(
+    let predicate = super::compute_predicate(
         Some(predicate_param),
         query_context.field_arguments(field)?,
         access_predicate,
@@ -155,6 +158,8 @@ fn delete_operation<'a>(
             predicate_param.name
         )
     })?;
+
+    let predicate = predicate.predicate();
 
     let ops = vec![(
         table_name(mutation, query_context),
@@ -177,24 +182,26 @@ fn update_operation<'a>(
     select: Select<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
+    // Access control as well as predicate computation isn't working fully yet. Specifically,
+    // nested predicates aren't working.
     // TODO: https://github.com/payalabs/payas/issues/343
-    let (access_predicate, _access_column_path) = compute_sql_access_predicate(
+    let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Update,
         query_context,
     );
 
-    if access_predicate == Predicate::False {
+    if access_predicate == AbstractPredicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
     let field_arguments = query_context.field_arguments(field)?;
     // TODO: https://github.com/payalabs/payas/issues/343
-    let (predicate, _column_paths) = super::compute_predicate(
+    let predicate = super::compute_predicate(
         Some(predicate_param),
         field_arguments,
-        Predicate::True,
+        AbstractPredicate::True,
         query_context,
     )
     .with_context(|| {
@@ -203,6 +210,8 @@ fn update_operation<'a>(
             predicate_param.name
         )
     })?;
+
+    let predicate = predicate.predicate();
 
     let argument_value = super::find_arg(field_arguments, &data_param.name);
     argument_value
