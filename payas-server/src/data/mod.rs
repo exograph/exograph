@@ -10,15 +10,16 @@ pub mod predicate_mapper;
 pub mod query_resolver;
 mod update_data_param_mapper;
 
+use payas_sql::asql::predicate::AbstractPredicate;
 use predicate_mapper::PredicateParameterMapper;
 
 use anyhow::{Context, Result};
 use async_graphql_parser::Positioned;
 use async_graphql_value::{ConstValue, Name};
 
-use crate::{execution::query_context::QueryContext, sql::predicate::Predicate};
+use crate::execution::query_context::QueryContext;
 
-use payas_model::model::predicate::{ColumnPath, PredicateParameter};
+use payas_model::model::predicate::PredicateParameter;
 
 pub type Arguments = [(Positioned<Name>, Positioned<ConstValue>)];
 
@@ -36,25 +37,25 @@ fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a ConstVal
 fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
-    additional_predicate: Predicate<'a>,
+    additional_predicate: AbstractPredicate<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<(Predicate<'a>, Vec<ColumnPath>)> {
+) -> Result<AbstractPredicate<'a>> {
     let mapped = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
             let argument_value = find_arg(arguments, &predicate_parameter.name);
             argument_value.map(|argument_value| {
-                predicate_parameter.map_to_predicate(argument_value, query_context)
+                predicate_parameter.map_to_predicate(argument_value, None, query_context)
             })
         })
         .transpose()
         .context("While mapping predicate parameters to SQL")?;
 
     let res = match mapped {
-        Some((predicate, column_path)) => {
-            (Predicate::and(predicate, additional_predicate), column_path)
+        Some(predicate) => {
+            AbstractPredicate::And(Box::new(predicate), Box::new(additional_predicate))
         }
-        None => (additional_predicate, vec![]),
+        None => additional_predicate,
     };
 
     Ok(res)

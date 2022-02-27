@@ -1,4 +1,4 @@
-use super::predicate::ColumnPath;
+use super::predicate::ColumnIdPath;
 
 use serde::{Deserialize, Serialize};
 
@@ -28,7 +28,7 @@ impl Access {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessPrimitiveExpression {
     ContextSelection(AccessContextSelection), // for example, AuthContext.role
-    Column(ColumnPath),                       // for example, self.id
+    Column(ColumnIdPath),                     // for example, self.id
     StringLiteral(String),                    // for example, "ROLE_ADMIN"
     BooleanLiteral(bool),                     // for example, true
     NumberLiteral(i64),                       // for example, integer (-13, 0, 300, etc.)
@@ -41,7 +41,7 @@ pub enum AccessPredicateExpression {
     RelationalOp(AccessRelationalOp),
     BooleanLiteral(bool),
     // This allows specifying access rule such as `self.published` instead of self.published == true`
-    BooleanColumn(ColumnPath),
+    BooleanColumn(ColumnIdPath),
     // Similarly, this allows specifying access rule such as `AuthContext.superUser` instead of `AuthContext.superUser == true`
     BooleanContextSelection(AccessContextSelection),
 }

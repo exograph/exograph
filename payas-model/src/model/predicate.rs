@@ -9,7 +9,7 @@ use super::types::GqlTypeModifier;
 /// The two columns that link one table to another
 /// These columns may be used to form a join between two tables
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct ColumnPathLink {
+pub struct ColumnIdPathLink {
     pub self_column_id: ColumnId,
     pub linked_column_id: Option<ColumnId>,
 }
@@ -19,21 +19,17 @@ pub struct ColumnPathLink {
 /// the path would be [(concert.id, concert_artist.concert_id), (concert_artists.artists_id, artist.id), (artist.name, None)]
 /// This information could be used to form a join between multiple tables
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq)]
-pub struct ColumnPath {
-    pub path: Vec<ColumnPathLink>,
+pub struct ColumnIdPath {
+    pub path: Vec<ColumnIdPathLink>,
 }
 
-impl ColumnPath {
+impl ColumnIdPath {
     pub fn leaf_column(&self) -> ColumnId {
-        self.path
-            .last()
-            .expect("Empty column path")
-            .self_column_id
-            .clone()
+        self.path.last().expect("Empty column path").self_column_id
     }
 }
 
-impl ColumnPathLink {
+impl ColumnIdPathLink {
     pub fn new(self_column_id: ColumnId, linked_column_id: Option<ColumnId>) -> Self {
         Self {
             self_column_id,
@@ -61,7 +57,7 @@ pub struct PredicateParameter {
     /// id: Some((<the venues.id column>, None))
     /// venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     /// where: None
-    pub column_path_link: Option<ColumnPathLink>,
+    pub column_path_link: Option<ColumnIdPathLink>,
 
     /// The type this parameter is filtering on. For example, for ConcertFilter, this will be (the index of) the Concert.
     pub underlying_type_id: SerializableSlabIndex<GqlType>,
