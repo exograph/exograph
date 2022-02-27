@@ -7,12 +7,15 @@ use async_graphql_parser::{
 };
 use async_graphql_value::Name;
 
-use crate::introspection::{definition::type_introspection::TypeDefinitionIntrospection, util::*};
+use crate::introspection::{
+    definition::type_introspection::TypeDefinitionIntrospection,
+    util::{default_positioned, default_positioned_name},
+};
 use payas_model::model::{
     argument::{ArgumentParameter, ArgumentParameterType},
     limit_offset::{LimitParameter, OffsetParameter},
-    order::*,
-    predicate::*,
+    order::{OrderByParameterType, OrderByParameterTypeKind},
+    predicate::{PredicateParameterType, PredicateParameterTypeKind},
     system::ModelSystem,
 };
 

@@ -2,8 +2,11 @@ use async_graphql_parser::types::{ObjectType, TypeDefinition, TypeKind};
 
 use payas_model::model::system::ModelSystem;
 
-use super::definition::{provider::*, type_introspection::TypeDefinitionIntrospection};
-use crate::introspection::util::*;
+use super::definition::{
+    provider::{FieldDefinitionProvider, TypeDefinitionProvider},
+    type_introspection::TypeDefinitionIntrospection,
+};
+use crate::introspection::util::{default_positioned, default_positioned_name};
 #[derive(Debug, Clone)]
 pub struct Schema {
     pub type_definitions: Vec<TypeDefinition>,

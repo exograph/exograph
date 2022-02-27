@@ -374,7 +374,7 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
 #[cfg(test)]
 pub mod test_support {
     use super::*;
-    use crate::parser::*;
+    use crate::parser::parse_str;
 
     pub fn build(src: &str) -> Result<MappedArena<Type>, ParserError> {
         let parsed = parse_str(src, "input.clay")?;
@@ -396,7 +396,7 @@ pub mod test_support {
 
 #[cfg(test)]
 mod tests {
-    use super::test_support::*;
+    use super::test_support::{build, parse_sorted};
 
     #[test]
     fn simple() {

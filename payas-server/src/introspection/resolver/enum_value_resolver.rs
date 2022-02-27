@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::execution::query_context::QueryContext;
-use crate::execution::resolver::*;
+use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
 use anyhow::{anyhow, Result};
 
 #[async_trait(?Send)]

@@ -4,12 +4,15 @@ use codemap::{CodeMap, Span};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use tree_sitter::Node;
 
-use crate::{ast::ast_types::*, error::ParserError};
+use crate::{
+    ast::ast_types::{AstSystem, Untyped},
+    error::ParserError,
+};
 
 mod converter;
 mod sitter_ffi;
 
-use self::converter::*;
+use self::converter::{convert_root, parse};
 
 pub(crate) const DEFAULT_FN_AUTOINCREMENT: &str = "autoincrement";
 pub(crate) const DEFAULT_FN_CURRENT_TIME: &str = "now";
