@@ -6,11 +6,11 @@ use payas_model::model::{
     operation::{DatabaseQueryParameter, QueryKind},
     relation::GqlRelation,
     system::ModelSystem,
-    types::{GqlField, GqlType, *},
+    types::{GqlCompositeType, GqlField, GqlFieldType, GqlType, GqlTypeKind, GqlTypeModifier},
 };
 
 use super::provider::{FieldDefinitionProvider, TypeDefinitionProvider};
-use crate::introspection::util::*;
+use crate::introspection::util::{default_positioned, default_positioned_name};
 
 impl TypeDefinitionProvider for GqlType {
     fn type_definition(&self, system: &ModelSystem) -> TypeDefinition {

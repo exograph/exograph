@@ -1,7 +1,7 @@
 use crate::execution::query_context::QueryContext;
 
 use super::operation_mapper::SQLMapper;
-use anyhow::*;
+use anyhow::{anyhow, Result};
 use async_graphql_value::ConstValue;
 use payas_model::{
     model::limit_offset::{LimitParameter, OffsetParameter},

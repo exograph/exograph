@@ -1,8 +1,8 @@
 use crate::spec::{ColumnSpec, SQLStatement};
 
 use super::{
-    select::*, transaction::TransactionStepId, Expression, ExpressionContext, ParameterBinding,
-    SQLParam,
+    select::Select, transaction::TransactionStepId, Expression, ExpressionContext,
+    ParameterBinding, SQLParam,
 };
 use anyhow::{bail, Result};
 use maybe_owned::MaybeOwned;

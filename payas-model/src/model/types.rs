@@ -1,7 +1,7 @@
 use super::access::Access;
 use super::mapped_arena::{SerializableSlab, SerializableSlabIndex};
 use super::{column_id::ColumnId, relation::GqlRelation};
-use crate::model::operation::*;
+use crate::model::operation::Query;
 
 use crate::sql::PhysicalTable;
 
