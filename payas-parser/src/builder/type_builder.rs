@@ -287,13 +287,13 @@ fn create_column(
     let unique_constraint_name = match &field.kind {
         ResolvedFieldKind::Persistent {
             self_column,
-            unique_constraint_name,
+            unique_constraints,
             ..
         } => {
             if !self_column {
                 return None;
             }
-            unique_constraint_name.clone()
+            unique_constraints.clone()
         }
         ResolvedFieldKind::NonPersistent => {
             panic!("Non-persistent fields are not supported")
@@ -340,7 +340,7 @@ fn create_column(
                         false
                     },
                     is_nullable: optional,
-                    unique_constraint_name,
+                    unique_constraints: unique_constraint_name,
                     default_value,
                 }),
                 ResolvedType::Composite(ct) => {
@@ -362,7 +362,7 @@ fn create_column(
                         is_pk: false,
                         is_autoincrement: false,
                         is_nullable: optional,
-                        unique_constraint_name,
+                        unique_constraints: unique_constraint_name,
                         default_value,
                     })
                 }
@@ -405,7 +405,7 @@ fn create_column(
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: optional,
-                    unique_constraint_name,
+                    unique_constraints: unique_constraint_name,
                     default_value,
                 })
             } else {

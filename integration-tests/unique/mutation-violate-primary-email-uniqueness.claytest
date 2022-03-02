@@ -2,7 +2,7 @@ operation: |
     mutation($new_username: String!, $new_email_id: String!, $new_email_domain: String!) {
         createUser(data: {
             username: $new_username,
-            email_id: $new_email_id,
+            primary_email_id: $new_email_id,
             email_domain: $new_email_domain
         }) {
             id
@@ -20,7 +20,7 @@ response: |
     {
       "errors": [
         {
-            "message": "ERROR: duplicate key value violates unique constraint unique_email; DETAIL: Key (email_id, email_domain)=(alice, example.com) already exists."
+            "message": "ERROR: duplicate key value violates unique constraint unique_email_primary; DETAIL: Key (primary_email_id, email_domain)=(alice, example.com) already exists." 
         }
       ]
     }

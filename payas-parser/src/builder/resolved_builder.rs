@@ -214,7 +214,7 @@ pub enum ResolvedFieldKind {
         self_column: bool, // is the column name in the same table or does it point to a column in a different table?
         is_pk: bool,
         type_hint: Option<ResolvedTypeHint>,
-        unique_constraint_name: Option<String>,
+        unique_constraints: Vec<String>,
     },
     NonPersistent,
 }
@@ -725,13 +725,13 @@ fn build_expanded_persistent_type(
                             Ok(ColumnInfo {
                                 name: column_name,
                                 self_column,
-                                unique_constraint_name,
+                                unique_constraints,
                             }) => Some(ResolvedFieldKind::Persistent {
                                 column_name,
                                 self_column,
                                 is_pk: field.annotations.contains("pk"),
                                 type_hint: build_type_hint(field, types),
-                                unique_constraint_name,
+                                unique_constraints,
                             }),
                             Err(e) => {
                                 errors.push(e);
@@ -1038,7 +1038,7 @@ fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
 struct ColumnInfo {
     name: String,
     self_column: bool,
-    unique_constraint_name: Option<String>,
+    unique_constraints: Vec<String>,
 }
 
 fn compute_column_info(
@@ -1062,16 +1062,20 @@ fn compute_column_info(
                 .unwrap_or_else(|| field_name.to_snake_case())
         };
 
-        let unique_constraint_computed_name = Some(format!("unique_constraint_{}", field.name));
-        let unique_constraint_name = field
+        let unique_constraint_computed_name = format!("unique_constraint_{}", field.name);
+        let unique_constraints = field
             .annotations
             .get("unique")
             .map(|p| match p {
-                AstAnnotationParams::Single(expr, _) => Some(expr.as_string()),
-                AstAnnotationParams::None => unique_constraint_computed_name.clone(),
+                AstAnnotationParams::Single(expr, _) => match expr {
+                    AstExpr::StringLiteral(string, _) => vec![string.clone()],
+                    AstExpr::StringList(string_list, _) => string_list.clone(),
+                    _ => panic!("Not a string nor a string list"),
+                },
+                AstAnnotationParams::None => vec![unique_constraint_computed_name.clone()],
                 AstAnnotationParams::Map(_, _) => panic!(),
             })
-            .flatten();
+            .unwrap_or_default();
 
         let id_column_name = |field_name: &str| {
             user_supplied_column_name
@@ -1141,27 +1145,27 @@ fn compute_column_info(
                                     Cardinality::One => Ok(ColumnInfo {
                                         name: id_column_name(&matching_field.name),
                                         self_column: false,
-                                        unique_constraint_name
+                                        unique_constraints
                                     }),
                                     Cardinality::Unbounded => Ok(ColumnInfo {
                                         name: id_column_name(&field.name),
                                         self_column: true,
-                                        unique_constraint_name
+                                        unique_constraints
                                     }),
                                 }
                             }
                             _ => {
-                                let unique_constraint_name =
+                                let unique_constraints =
                                     if matches!(cardinality, Cardinality::ZeroOrOne) {
-                                        unique_constraint_computed_name
+                                        vec![unique_constraint_computed_name]
                                     } else {
-                                        unique_constraint_name
+                                        unique_constraints
                                     };
 
                                 Ok(ColumnInfo {
                                     name: id_column_name(&field.name),
                                     self_column: true,
-                                    unique_constraint_name,
+                                    unique_constraints,
                                 })
                             }
                         }
@@ -1179,7 +1183,7 @@ fn compute_column_info(
                             Ok(ColumnInfo {
                                 name: id_column_name(&matching_field.name),
                                 self_column: false,
-                                unique_constraint_name,
+                                unique_constraints,
                             })
                         } else {
                             Err(Diagnostic {
@@ -1206,7 +1210,7 @@ fn compute_column_info(
                             Ok(ColumnInfo {
                                 name: compute_column_name(&field.name),
                                 self_column: true,
-                                unique_constraint_name,
+                                unique_constraints,
                             })
                         } else {
                             Err(Diagnostic {
@@ -1224,7 +1228,7 @@ fn compute_column_info(
                     _ => Ok(ColumnInfo {
                         name: compute_column_name(&field.name),
                         self_column: true,
-                        unique_constraint_name,
+                        unique_constraints,
                     }),
                 }
             }
@@ -1432,7 +1436,7 @@ mod tests {
         model Concert {
           id: Int = autoincrement() @dbtype("BIGINT") @pk 
           title: String 
-          venue: Venue 
+          venue: Venue @unique("unique_concert")
           attending: Array<String>
           seating: Array<Array<Boolean>>
         }
@@ -1600,7 +1604,7 @@ mod tests {
         let src = r#"
             model Concert {
                 id: Int = autoincrement() @pk 
-                title: String 
+                title: String  
                 ticket_office: Venue @column("ticket_office")
                 main: Venue @column("main")
             }

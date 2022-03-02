@@ -233,7 +233,7 @@ impl TableSpec {
         let named_unique_constraints =
             self.column_specs.iter().fold(HashMap::new(), |mut map, c| {
                 {
-                    if let Some(name) = &c.unique_constraint_name {
+                    for name in c.unique_constraints.iter() {
                         let entry: &mut Vec<String> = map.entry(name).or_insert_with(Vec::new);
                         (*entry).push(c.column_name.clone());
                     }
@@ -283,7 +283,7 @@ pub struct ColumnSpec {
     pub is_pk: bool,
     pub is_autoincrement: bool,
     pub is_nullable: bool,
-    pub unique_constraint_name: Option<String>,
+    pub unique_constraints: Vec<String>,
     pub default_value: Option<String>,
 }
 
@@ -389,7 +389,7 @@ impl ColumnSpec {
                 is_autoincrement: serial_columns
                     .contains(&format!("{}_{}_seq", table_name, column_name)),
                 is_nullable: !not_null,
-                unique_constraint_name: None,
+                unique_constraints: vec![], // TODO: transfer unique constraints from db
                 default_value,
             }),
             issues,

@@ -2,10 +2,18 @@ operation: |
     mutation($new_username: String!, $new_email_id: String!, $new_email_domain: String!) {
         createUser(data: {
             username: $new_username,
-            email_id: $new_email_id,
-            email_domain: $new_email_domain
+            primary_email_id: $new_email_id,
+            email_domain: $new_email_domain,
+            rsvps: [
+                {
+                    event: "Concert2"
+                }
+            ]
         }) {
             id
+            rsvps {
+                event
+            }
         }
     }
 variable: |
@@ -20,6 +28,11 @@ response: |
     {
       "data": {
         // user was created successfully
-        "createUser": () => true
+        "createUser": {
+            "id": () => true,
+            "rsvps": [
+                { "event": "Concert2" }
+            ]
+        }
       }
     }

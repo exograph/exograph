@@ -50,7 +50,7 @@ types:
                   type_hint:
                     Explicit:
                       dbtype: BIGINT
-                  unique_constraint_name: ~
+                  unique_constraints: []
               default_value: Autoincrement
             - name: title
               typ:
@@ -61,7 +61,7 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique_constraint_name: ~
+                  unique_constraints: []
               default_value: ~
             - name: venue
               typ:
@@ -72,7 +72,8 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique_constraint_name: ~
+                  unique_constraints:
+                    - unique_concert
               default_value: ~
             - name: attending
               typ:
@@ -84,7 +85,7 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique_constraint_name: ~
+                  unique_constraints: []
               default_value: ~
             - name: seating
               typ:
@@ -97,7 +98,7 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique_constraint_name: ~
+                  unique_constraints: []
               default_value: ~
           kind:
             Persistent:
@@ -131,7 +132,7 @@ types:
                   type_hint:
                     Explicit:
                       dbtype: BIGINT
-                  unique_constraint_name: ~
+                  unique_constraints: []
               default_value: Autoincrement
             - name: name
               typ:
@@ -142,7 +143,7 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique_constraint_name: ~
+                  unique_constraints: []
               default_value: ~
             - name: concerts
               typ:
@@ -154,7 +155,7 @@ types:
                   self_column: false
                   is_pk: false
                   type_hint: ~
-                  unique_constraint_name: ~
+                  unique_constraints: []
               default_value: ~
           kind:
             Persistent:

@@ -123,7 +123,7 @@ impl FromModel<&PhysicalColumn> for ColumnSpec {
             is_pk: column.is_pk,
             is_autoincrement: column.is_autoincrement,
             is_nullable: column.is_nullable,
-            unique_constraint_name: column.unique_constraint_name.clone(),
+            unique_constraints: column.unique_constraints.clone(),
             default_value: column.default_value.clone(),
         }
     }

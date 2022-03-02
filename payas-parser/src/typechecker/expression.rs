@@ -8,19 +8,18 @@ use crate::ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp, Un
 use super::annotation::AnnotationSpec;
 use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
 
-static STR_TYP: Type = Type::Primitive(PrimitiveType::String);
-static BOOL_TYP: Type = Type::Primitive(PrimitiveType::Boolean);
-static INT_TYP: Type = Type::Primitive(PrimitiveType::Int);
-
 impl AstExpr<Typed> {
-    pub fn typ(&self) -> &Type {
+    pub fn typ(&self) -> Type {
         match &self {
-            AstExpr::FieldSelection(select) => select.typ(),
-            AstExpr::LogicalOp(logic) => logic.typ(),
-            AstExpr::RelationalOp(relation) => relation.typ(),
-            AstExpr::StringLiteral(_, _) => &STR_TYP,
-            AstExpr::BooleanLiteral(_, _) => &BOOL_TYP,
-            AstExpr::NumberLiteral(_, _) => &INT_TYP,
+            AstExpr::FieldSelection(select) => select.typ().clone(),
+            AstExpr::LogicalOp(logic) => logic.typ().clone(),
+            AstExpr::RelationalOp(relation) => relation.typ().clone(),
+            AstExpr::StringLiteral(_, _) => Type::Primitive(PrimitiveType::String),
+            AstExpr::BooleanLiteral(_, _) => Type::Primitive(PrimitiveType::Boolean),
+            AstExpr::NumberLiteral(_, _) => Type::Primitive(PrimitiveType::Int),
+            AstExpr::StringList(_, _) => {
+                Type::Array(Box::new(Type::Primitive(PrimitiveType::String)))
+            }
         }
     }
 
@@ -52,6 +51,7 @@ impl TypecheckFrom<AstExpr<Untyped>> for AstExpr<Typed> {
             AstExpr::StringLiteral(v, s) => AstExpr::StringLiteral(v.clone(), *s),
             AstExpr::BooleanLiteral(v, s) => AstExpr::BooleanLiteral(*v, *s),
             AstExpr::NumberLiteral(v, s) => AstExpr::NumberLiteral(*v, *s),
+            AstExpr::StringList(v, s) => AstExpr::StringList(v.clone(), s.clone()),
         }
     }
 
@@ -68,7 +68,8 @@ impl TypecheckFrom<AstExpr<Untyped>> for AstExpr<Typed> {
             AstExpr::RelationalOp(relation) => {
                 relation.pass(type_env, annotation_env, scope, errors)
             }
-            AstExpr::StringLiteral(_, _)
+            AstExpr::StringList(_, _)
+            | AstExpr::StringLiteral(_, _)
             | AstExpr::BooleanLiteral(_, _)
             | AstExpr::NumberLiteral(_, _) => false,
         }

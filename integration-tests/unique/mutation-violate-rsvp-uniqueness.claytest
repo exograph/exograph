@@ -4,23 +4,24 @@ operation: |
             username: $new_username,
             primary_email_id: $new_email_id,
             email_domain: $new_email_domain
+            rsvps: [ { event: "Concert2" }, { event: "Concert2" } ]
         }) {
             id
         }
     }
 variable: |
     {
-        "new_username": "Alice02",
+        "new_username": "Bob04",
 
-        // another.alice@example.com
-        "new_email_id": "another.alice",
+        // bob@example.com
+        "new_email_id": "bob",
         "new_email_domain": "example.com"
     }
 response: |
     {
       "errors": [
         {
-            "message": "ERROR: duplicate key value violates unique constraint unique_constraint_username; DETAIL: Key (username)=(Alice02) already exists."
+            "message": "ERROR: duplicate key value violates unique constraint one_rsvp_per_user; DETAIL: Key (event, user_id)=(Concert2, 2) already exists."
         }
       ]
     }
