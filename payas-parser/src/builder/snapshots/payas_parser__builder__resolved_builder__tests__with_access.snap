@@ -48,7 +48,7 @@ types:
                   self_column: true
                   is_pk: true
                   type_hint: ~
-                  unique: false
+                  unique_constraints: []
               default_value: Autoincrement
             - name: title
               typ:
@@ -59,7 +59,7 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
+                  unique_constraints: []
               default_value: ~
             - name: public
               typ:
@@ -70,7 +70,7 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
+                  unique_constraints: []
               default_value: ~
           kind:
             Persistent:

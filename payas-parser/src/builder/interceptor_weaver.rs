@@ -124,6 +124,9 @@ fn matches(expr: &AstExpr<Typed>, operation_name: &str, operatrion_kind: &Operat
         AstExpr::NumberLiteral(_, _) => {
             panic!("NumberLiteral not supported in interceptor expression")
         }
+        AstExpr::StringList(_, _) => {
+            panic!("List not supported in interceptor expression")
+        }
     }
 }
 

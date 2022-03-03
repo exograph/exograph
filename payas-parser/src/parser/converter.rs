@@ -355,10 +355,37 @@ fn convert_annotation_params(
     let first_child = node.child(0).unwrap();
 
     match first_child.kind() {
-        "expression" => AstAnnotationParams::Single(
-            convert_expression(first_child, source, source_span),
-            span_from_node(source_span, first_child),
-        ),
+        "annotation_multiple_params" => {
+            let (exprs, spans): (Vec<_>, Vec<_>) = first_child
+                .children_by_field_name("exprs", &mut cursor)
+                .map(|node| {
+                    let expr = convert_expression(node, source, source_span);
+                    let span = span_from_node(source_span, node);
+
+                    (expr, span)
+                })
+                .unzip();
+
+            let first_child_span = span_from_node(source_span, first_child);
+
+            if exprs.len() == 1 {
+                AstAnnotationParams::Single(exprs[0].clone(), first_child_span)
+            } else {
+                // try as a string list
+                let string_list = exprs
+                    .iter()
+                    .map(|expr| match expr {
+                        AstExpr::StringLiteral(string, _) => string.clone(),
+                        _ => panic!("Only string literals are allowed in a list currently"),
+                    })
+                    .collect();
+
+                AstAnnotationParams::Single(
+                    AstExpr::StringList(string_list, spans),
+                    first_child_span,
+                )
+            }
+        }
         "annotation_map_params" => {
             let params = first_child
                 .children_by_field_name("param", &mut cursor)
