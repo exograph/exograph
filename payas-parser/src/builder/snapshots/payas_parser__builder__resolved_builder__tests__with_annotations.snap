@@ -50,7 +50,7 @@ types:
                   type_hint:
                     Explicit:
                       dbtype: BIGINT
-                  unique: false
+                  unique_constraints: []
               default_value: Autoincrement
             - name: title
               typ:
@@ -63,7 +63,7 @@ types:
                   type_hint:
                     String:
                       length: 12
-                  unique: false
+                  unique_constraints: []
               default_value: ~
             - name: venue
               typ:
@@ -74,7 +74,7 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
+                  unique_constraints: []
               default_value: ~
             - name: reserved
               typ:
@@ -90,7 +90,7 @@ types:
                       range:
                         - 0
                         - 300
-                  unique: false
+                  unique_constraints: []
               default_value: ~
             - name: time
               typ:
@@ -103,7 +103,7 @@ types:
                   type_hint:
                     DateTime:
                       precision: 4
-                  unique: false
+                  unique_constraints: []
               default_value: ~
             - name: price
               typ:
@@ -117,7 +117,7 @@ types:
                     Decimal:
                       precision: 10
                       scale: 2
-                  unique: false
+                  unique_constraints: []
               default_value: ~
           kind:
             Persistent:
@@ -149,7 +149,7 @@ types:
                   self_column: true
                   is_pk: true
                   type_hint: ~
-                  unique: false
+                  unique_constraints: []
               default_value: Autoincrement
             - name: name
               typ:
@@ -160,7 +160,7 @@ types:
                   self_column: true
                   is_pk: false
                   type_hint: ~
-                  unique: false
+                  unique_constraints: []
               default_value: ~
             - name: concerts
               typ:
@@ -172,7 +172,7 @@ types:
                   self_column: false
                   is_pk: false
                   type_hint: ~
-                  unique: false
+                  unique_constraints: []
               default_value: ~
             - name: capacity
               typ:
@@ -186,7 +186,7 @@ types:
                     Int:
                       bits: 16
                       range: ~
-                  unique: false
+                  unique_constraints: []
               default_value: ~
             - name: latitude
               typ:
@@ -199,7 +199,7 @@ types:
                   type_hint:
                     Float:
                       bits: 24
-                  unique: false
+                  unique_constraints: []
               default_value: ~
           kind:
             Persistent:

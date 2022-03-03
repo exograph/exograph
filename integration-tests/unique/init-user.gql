@@ -1,0 +1,33 @@
+operation: |
+    mutation(
+        $username: String!, 
+        $email_id: String!, 
+        $primary_email_domain: String!,
+        $secondary_email_domain: String!
+        $initial_event_rsvp: String!
+    ) {
+        createUser(data: {
+            username: $username,
+            primary_email_id: $primary_email_id,
+            secondary_email_id: $secondary_email_id,
+            email_domain: $email_domain
+            rsvps: [
+                { event: $initial_event_rsvp }
+            ]
+        }) {
+            id @bind(name: "alice_user_id")
+        }
+    }
+variable: |
+    {
+        "username": "Alice02",
+
+        // alice@example.com
+        "primary_email_id": "alice",
+
+        // alice2@example.com
+        "secondary_email_id": "alice2",
+
+        "email_domain": "example.com",
+        "initial_event_rsvp": "Concert1"
+    }
