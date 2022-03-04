@@ -30,10 +30,12 @@ pub fn convert_root(
     Ok(AstSystem {
         models: node
             .children(&mut cursor)
+            .filter(|n| n.kind() == "declaration")
             .filter_map(|c| convert_declaration_to_model(c, source, source_span))
             .collect::<Vec<_>>(),
         services: node
             .children(&mut cursor)
+            .filter(|n| n.kind() == "declaration")
             .filter_map(|c| convert_declaration_to_service(c, source, source_span, filepath))
             .collect::<Vec<_>>(),
     })
