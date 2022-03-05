@@ -7,5 +7,5 @@ pub mod select;
 pub mod selection;
 mod table_dependency;
 mod test_util;
-mod update;
+pub mod update;
 mod util;

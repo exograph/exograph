@@ -15,7 +15,7 @@ use payas_model::sql::{Limit, Offset};
 use payas_sql::asql::predicate::AbstractPredicate;
 use payas_sql::asql::select::{AbstractSelect, SelectionLevel};
 use payas_sql::asql::selection::{
-    ColumnSelection, SelectionCardinality, SelectionElement, SelectionElementRelation,
+    ColumnSelection, NestedElementRelation, SelectionCardinality, SelectionElement,
 };
 
 use super::operation_mapper::{
@@ -326,7 +326,7 @@ fn map_field<'a>(
                     GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
                 };
                 let relation =
-                    SelectionElementRelation::new(column_id.get_column(system), other_table);
+                    NestedElementRelation::new(column_id.get_column(system), other_table);
                 let nested_abstract_select = other_table_pk_query.operation(
                     field,
                     AbstractPredicate::True,
@@ -354,10 +354,8 @@ fn map_field<'a>(
                     }
                 };
                 let self_table = &system.tables[return_type.table_id().unwrap()];
-                let relation = SelectionElementRelation::new(
-                    other_type_column_id.get_column(system),
-                    self_table,
-                );
+                let relation =
+                    NestedElementRelation::new(other_type_column_id.get_column(system), self_table);
                 let nested_abstract_select =
                     other_table_query.operation(field, AbstractPredicate::True, query_context)?;
                 SelectionElement::Nested(relation, nested_abstract_select)

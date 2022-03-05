@@ -101,6 +101,7 @@ mod tests {
 
                  venues_id_column,
                  venues_name_column,
+                 ..
              }| {
                 // (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.name, None)
                 let concert_ca_artist = vec![

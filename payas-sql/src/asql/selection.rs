@@ -78,19 +78,19 @@ impl<'a> Selection<'a> {
 pub enum SelectionElement<'a> {
     Physical(&'a PhysicalColumn),
     Constant(String), // To support __typename
-    Nested(SelectionElementRelation<'a>, AbstractSelect<'a>),
+    Nested(NestedElementRelation<'a>, AbstractSelect<'a>),
 }
 
 /// Relation between two tables
 /// The `column` is the column in the one table that is joined to the other `table`('s primary key)
 /// TODO: Could this idea be consolidated with the `ColumnPath`? After all, both represent a way to link two tables
 #[derive(Debug)]
-pub struct SelectionElementRelation<'a> {
+pub struct NestedElementRelation<'a> {
     pub column: &'a PhysicalColumn,
     pub table: &'a PhysicalTable,
 }
 
-impl<'a> SelectionElementRelation<'a> {
+impl<'a> NestedElementRelation<'a> {
     pub fn new(column: &'a PhysicalColumn, table: &'a PhysicalTable) -> Self {
         Self { column, table }
     }

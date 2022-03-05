@@ -13,6 +13,7 @@ pub struct TestSetup<'a> {
     pub venues_table: &'a PhysicalTable,
 
     pub concerts_id_column: &'a PhysicalColumn,
+    pub concerts_name_column: &'a PhysicalColumn,
     pub concerts_venue_id_column: &'a PhysicalColumn,
 
     pub concert_artists_concert_id_column: &'a PhysicalColumn,
@@ -46,6 +47,16 @@ impl TestSetup<'_> {
                 },
                 PhysicalColumn {
                     table_name: "concerts".to_string(),
+                    column_name: "name".to_string(),
+                    typ: PhysicalColumnType::String { length: None },
+                    is_pk: false,
+                    is_autoincrement: false,
+                    is_nullable: true,
+                    is_unique: false,
+                    default_value: None,
+                },
+                PhysicalColumn {
+                    table_name: "concerts".to_string(),
                     column_name: "venue_id".to_string(),
                     typ: PhysicalColumnType::Int { bits: IntBits::_16 },
                     is_pk: false,
@@ -58,6 +69,7 @@ impl TestSetup<'_> {
         };
 
         let concerts_id_column = concerts_table.get_physical_column("id").unwrap();
+        let concerts_name_column = concerts_table.get_physical_column("name").unwrap();
         let concerts_venue_id_column = concerts_table.get_physical_column("venue_id").unwrap();
 
         let venues_table = &PhysicalTable {
@@ -210,6 +222,7 @@ impl TestSetup<'_> {
             venues_table,
 
             concerts_id_column,
+            concerts_name_column,
             concerts_venue_id_column,
 
             concert_artists_concert_id_column,

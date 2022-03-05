@@ -96,8 +96,8 @@ mod tests {
             predicate::AbstractPredicate,
             select::SelectionLevel,
             selection::{
-                ColumnSelection, Selection, SelectionCardinality, SelectionElement,
-                SelectionElementRelation,
+                ColumnSelection, NestedElementRelation, Selection, SelectionCardinality,
+                SelectionElement,
             },
             test_util::TestSetup,
         },
@@ -236,7 +236,7 @@ mod tests {
                             ColumnSelection::new(
                                 "venue".to_string(),
                                 SelectionElement::Nested(
-                                    SelectionElementRelation::new(
+                                    NestedElementRelation::new(
                                         concerts_venue_id_column,
                                         venues_table,
                                     ),
@@ -298,7 +298,7 @@ mod tests {
                             ColumnSelection::new(
                                 "concerts".to_string(),
                                 SelectionElement::Nested(
-                                    SelectionElementRelation::new(
+                                    NestedElementRelation::new(
                                         concerts_venue_id_column,
                                         venues_table,
                                     ),

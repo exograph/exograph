@@ -21,7 +21,10 @@ use payas_model::{
         Select,
     },
 };
-use payas_sql::asql::{predicate::AbstractPredicate, select::SelectionLevel};
+use payas_sql::asql::{
+    predicate::AbstractPredicate,
+    select::{AbstractSelect, SelectionLevel},
+};
 
 use super::{
     create_data_param_mapper::InsertionInfo,
@@ -40,23 +43,23 @@ impl<'a> OperationResolver<'a> for Mutation {
         if let MutationKind::Service { method_id, .. } = &self.kind {
             Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
         } else {
-            let select = {
+            let abs_select = {
                 let (_, pk_query, collection_query) = return_type_info(self, query_context);
                 let selection_query = match &self.return_type.type_modifier {
                     GqlTypeModifier::List => collection_query,
                     GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
                 };
 
-                selection_query
-                    .operation(&field.node, AbstractPredicate::True, query_context)?
-                    .to_sql(None, SelectionLevel::TopLevel)
+                selection_query.operation(&field.node, AbstractPredicate::True, query_context)?
             };
 
             Ok(OperationResolverResult::SQLOperation(match &self.kind {
                 MutationKind::Create(data_param) => {
+                    let select = abs_select.to_sql(None, SelectionLevel::TopLevel);
                     create_operation(self, data_param, &field.node, select, query_context)?
                 }
                 MutationKind::Delete(predicate_param) => {
+                    let select = abs_select.to_sql(None, SelectionLevel::TopLevel);
                     delete_operation(self, predicate_param, &field.node, select, query_context)?
                 }
                 MutationKind::Update {
@@ -67,7 +70,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                     data_param,
                     predicate_param,
                     &field.node,
-                    select,
+                    abs_select,
                     query_context,
                 )?,
                 MutationKind::Service { .. } => panic!(),
@@ -179,7 +182,7 @@ fn update_operation<'a>(
     data_param: &'a UpdateDataParameter,
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
-    select: Select<'a>,
+    select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
@@ -211,18 +214,10 @@ fn update_operation<'a>(
         )
     })?;
 
-    let predicate = predicate.predicate();
-
     let argument_value = super::find_arg(field_arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
-            data_param.update_script(
-                mutation,
-                predicate.into(),
-                select,
-                argument_value,
-                query_context,
-            )
+            data_param.update_script(mutation, predicate, select, argument_value, query_context)
         })
         .unwrap()
 }

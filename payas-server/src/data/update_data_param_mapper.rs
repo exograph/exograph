@@ -1,10 +1,15 @@
 use anyhow::Result;
 use async_graphql_value::ConstValue;
-use maybe_owned::MaybeOwned;
+use payas_sql::asql::{
+    column_path::{ColumnPath, ColumnPathLink},
+    predicate::AbstractPredicate,
+    select::AbstractSelect,
+    selection::Selection,
+    update::{AbstractUpdate, NestedAbstractUpdate},
+};
 
 use crate::{
-    data::mutation_resolver::{return_type_info, table_name},
-    execution::query_context::QueryContext,
+    data::mutation_resolver::return_type_info, execution::query_context::QueryContext,
     sql::column::Column,
 };
 
@@ -34,8 +39,8 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
     fn update_script(
         &'a self,
         mutation: &'a Mutation,
-        predicate: MaybeOwned<'a, Predicate<'a>>,
-        select: Select<'a>,
+        predicate: AbstractPredicate<'a>,
+        select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript<'a>> {
@@ -43,59 +48,23 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         let data_type = &system.mutation_types[self.type_id];
 
         let self_update_columns = compute_update_columns(data_type, argument, query_context);
-
         let (table, _, _) = return_type_info(mutation, query_context);
-        if !needs_transaction(data_type) {
-            let ops = vec![(
-                table_name(mutation, query_context),
-                SQLOperation::Update(table.update(
-                    self_update_columns,
-                    predicate,
-                    vec![Column::Star.into()],
-                )),
-            )];
 
-            let mut transaction_script = TransactionScript::default();
-            let _ = transaction_script.add_step(TransactionStep::Concrete(
-                ConcreteTransactionStep::new(SQLOperation::Cte(Cte { ctes: ops, select })),
-            ));
+        let nested_updates = compute_nested(
+            data_type,
+            argument,
+            mutation.return_type.typ(system),
+            query_context,
+        );
+        let abs_update = AbstractUpdate {
+            table,
+            predicate: predicate.into(),
+            column_values: self_update_columns,
+            selection: select,
+            nested_update: nested_updates,
+        };
 
-            Ok(transaction_script)
-        } else {
-            let pk_col = {
-                let pk_physical_col = table.columns.iter().find(|col| col.is_pk).unwrap();
-                Column::Physical(pk_physical_col).into()
-            };
-
-            let mut transaction_script = TransactionScript::default();
-
-            let update_op_id = transaction_script.add_step(TransactionStep::Concrete(
-                ConcreteTransactionStep::new(SQLOperation::Update(table.update(
-                    self_update_columns,
-                    predicate,
-                    vec![pk_col],
-                ))),
-            ));
-
-            let container_model_type = mutation.return_type.typ(system);
-            let nested_updates = compute_nested(
-                data_type,
-                argument,
-                update_op_id,
-                container_model_type,
-                query_context,
-            );
-
-            for step in nested_updates.into_iter() {
-                let _ = transaction_script.add_step(step);
-            }
-
-            transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-                SQLOperation::Select(select),
-            )));
-
-            Ok(transaction_script)
-        }
+        Ok(abs_update.to_sql(None))
     }
 }
 
@@ -144,15 +113,6 @@ fn compute_update_columns<'a>(
     }
 }
 
-fn needs_transaction(mutation_type: &GqlType) -> bool {
-    match &mutation_type.kind {
-        GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields
-            .iter()
-            .any(|field| matches!(&field.relation, GqlRelation::OneToMany { .. })),
-    }
-}
-
 // A bit hacky way. Ideally, the nested parameter should have the same shape as the container type. Specifically, it should have
 // the predicate parameter and the data parameter. Then we can simply use the same code that we use for the container type. That has
 // an additional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
@@ -161,59 +121,61 @@ fn needs_transaction(mutation_type: &GqlType) -> bool {
 fn compute_nested<'a>(
     data_type: &'a GqlType,
     argument: &'a ConstValue,
-    prev_step_id: TransactionStepId,
     container_model_type: &'a GqlType,
     query_context: &'a QueryContext<'a>,
-) -> Vec<TransactionStep<'a>> {
+) -> Option<Vec<NestedAbstractUpdate<'a>>> {
     let system = &query_context.get_system();
 
     match &data_type.kind {
-        GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
-            fields.iter().flat_map(|field| match &field.relation {
-                GqlRelation::OneToMany { other_type_id, .. } => {
-                    let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
-                    query_context
-                        .get_argument_field(argument, &field.name)
-                        .iter()
-                        .flat_map(|argument| {
-                            let mut ops = vec![];
+        GqlTypeKind::Primitive => None,
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => Some({
+            fields.iter().flat_map(|field| {
+                {
+                    match &field.relation {
+                        GqlRelation::OneToMany { other_type_id, .. } => {
+                            let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
+                            query_context
+                                .get_argument_field(argument, &field.name)
+                                .iter()
+                                .flat_map(|argument| {
+                                    let mut ops = vec![];
 
-                            ops.extend(compute_nested_update(
-                                field_model_type,
-                                argument,
-                                query_context,
-                                prev_step_id,
-                                container_model_type,
-                            ));
+                                    ops.extend(compute_nested_update(
+                                        field_model_type,
+                                        argument,
+                                        query_context,
+                                        container_model_type,
+                                    ));
 
-                            ops.extend(compute_nested_create(
-                                field_model_type,
-                                argument,
-                                query_context,
-                                prev_step_id,
-                                container_model_type,
-                            ));
+                                    // ops.extend(compute_nested_create(
+                                    //     field_model_type,
+                                    //     argument,
+                                    //     query_context,
+                                    //     prev_step_id,
+                                    //     container_model_type,
+                                    // ));
 
-                            ops.extend(compute_nested_delete(
-                                field_model_type,
-                                argument,
-                                query_context,
-                                prev_step_id,
-                                container_model_type,
-                            ));
-                            ops
-                        })
-                        .collect()
+                                    // ops.extend(compute_nested_delete(
+                                    //     field_model_type,
+                                    //     argument,
+                                    //     query_context,
+                                    //     prev_step_id,
+                                    //     container_model_type,
+                                    // ));
+                                    ops
+                                })
+                                .collect()
+                        }
+                        _ => vec![],
+                    }
                 }
-                _ => vec![],
             })
-        }
+        }),
     }
-    .collect()
+    .map(|c| c.collect())
 }
 
-// Which column in field_model_type coresponds to the primary column in container_model_type?
+// Which column in field_model_type corresponds to the primary column in container_model_type?
 fn compute_nested_reference_column<'a>(
     field_model_type: &'a GqlType,
     container_model_type: &'a GqlType,
@@ -250,9 +212,8 @@ fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step_id: TransactionStepId,
     container_model_type: &'a GqlType,
-) -> Vec<TransactionStep<'a>> {
+) -> Vec<NestedAbstractUpdate<'a>> {
     let system = &query_context.get_system();
 
     let nested_reference_col =
@@ -266,9 +227,8 @@ fn compute_nested_update<'a>(
                 vec![compute_nested_update_object_arg(
                     field_model_type,
                     arg,
-                    query_context,
-                    prev_step_id,
                     nested_reference_col,
+                    query_context,
                 )]
             }
             ConstValue::List(update_arg) => update_arg
@@ -277,9 +237,8 @@ fn compute_nested_update<'a>(
                     compute_nested_update_object_arg(
                         field_model_type,
                         arg,
-                        query_context,
-                        prev_step_id,
                         nested_reference_col,
+                        query_context,
                     )
                 })
                 .collect(),
@@ -293,50 +252,57 @@ fn compute_nested_update<'a>(
 fn compute_nested_update_object_arg<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a QueryContext<'a>,
-    prev_step_id: TransactionStepId,
     nested_reference_col: &'a PhysicalColumn,
-) -> TransactionStep<'a> {
+    query_context: &'a QueryContext<'a>,
+) -> NestedAbstractUpdate<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
     let system = &query_context.get_system();
+    let table = &system.tables[field_model_type.table_id().unwrap()];
 
     let nested = compute_update_columns(field_model_type, argument, query_context);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
 
     let predicate = pk_columns
         .into_iter()
-        .fold(Predicate::True, |acc, (pk_col, value)| {
-            Predicate::and(
+        .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
+            let value = match value {
+                Column::Literal(value) => ColumnPath::Literal(value),
+                _ => panic!("Expected literal"),
+            };
+            AbstractPredicate::and(
                 acc,
-                Predicate::Eq(Column::Physical(pk_col).into(), value.into()),
+                AbstractPredicate::eq(
+                    ColumnPath::Physical(vec![ColumnPathLink {
+                        self_column: (pk_col, table),
+                        linked_column: None,
+                    }])
+                    .into(),
+                    value.into(),
+                ),
             )
         });
-    let table = &system.tables[field_model_type.table_id().unwrap()];
 
-    let mut nested_proxies: Vec<_> = nested
-        .into_iter()
-        .map(|(column, value)| (column, ProxyColumn::Concrete(value.into())))
-        .collect();
-    nested_proxies.push((
-        nested_reference_col,
-        ProxyColumn::Template {
-            col_index: 0,
-            step_id: prev_step_id,
+    NestedAbstractUpdate {
+        relation: payas_sql::asql::selection::NestedElementRelation {
+            column: nested_reference_col,
+            table,
         },
-    ));
-
-    let op = TemplateSQLOperation::Update(TemplateUpdate {
-        table,
-        predicate,
-        column_values: nested_proxies,
-        returning: vec![],
-    });
-
-    TransactionStep::Template(TemplateTransactionStep {
-        operation: op,
-        prev_step_id,
-    })
+        update: AbstractUpdate {
+            table,
+            predicate: Some(predicate),
+            column_values: nested,
+            selection: AbstractSelect {
+                table,
+                selection: Selection::Seq(vec![]),
+                predicate: None,
+                order_by: None,
+                offset: None,
+                limit: None,
+            },
+            nested_update: None,
+        },
+    }
 }
 
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.

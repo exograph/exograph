@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
-use payas_sql::asql::predicate::AbstractPredicate;
+use payas_sql::asql::{predicate::AbstractPredicate, select::AbstractSelect};
 use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
 
@@ -37,8 +37,8 @@ pub trait SQLUpdateMapper<'a> {
     fn update_script(
         &'a self,
         mutation: &'a Mutation,
-        predicate: MaybeOwned<'a, Predicate<'a>>,
-        select: Select<'a>,
+        predicate: AbstractPredicate<'a>,
+        select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
     ) -> Result<TransactionScript>;
