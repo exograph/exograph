@@ -24,12 +24,8 @@ use payas_model::{
     sql::{
         column::{PhysicalColumn, PhysicalColumnType, ProxyColumn},
         predicate::Predicate,
-        transaction::{
-            ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
-            TransactionStepId,
-        },
-        Cte, SQLOperation, Select, TemplateDelete, TemplateInsert, TemplateSQLOperation,
-        TemplateUpdate,
+        transaction::{TemplateTransactionStep, TransactionStep, TransactionStepId},
+        TemplateDelete, TemplateInsert, TemplateSQLOperation,
     },
 };
 
@@ -43,7 +39,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<TransactionScript<'a>> {
+    ) -> Result<AbstractUpdate<'a>> {
         let system = &query_context.get_system();
         let data_type = &system.mutation_types[self.type_id];
 
@@ -64,7 +60,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
             nested_update: nested_updates,
         };
 
-        Ok(abs_update.to_sql(None))
+        Ok(abs_update)
     }
 }
 
@@ -263,6 +259,9 @@ fn compute_nested_update_object_arg<'a>(
     let nested = compute_update_columns(field_model_type, argument, query_context);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
 
+    // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
+    // mutation be specified. Currently (while performing abstract-sql refactoring), keeping the old behavior, but
+    // will revisit it https://github.com/payalabs/payas/issues/376
     let predicate = pk_columns
         .into_iter()
         .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
@@ -313,53 +312,54 @@ fn compute_nested_create<'a>(
     prev_step_id: TransactionStepId,
     container_model_type: &'a GqlType,
 ) -> Vec<TransactionStep<'a>> {
-    let system = &query_context.get_system();
+    // let system = &query_context.get_system();
 
-    let step = query_context
-        .get_argument_field(argument, "create")
-        .map(|create_argument| {
-            field_model_type
-                .map_to_sql(create_argument, query_context)
-                .unwrap()
-        })
-        .map(|insertion_info| {
-            let nested_reference_col =
-                compute_nested_reference_column(field_model_type, container_model_type, system)
-                    .unwrap();
-            let mut column_names = insertion_info.columns.clone();
-            column_names.push(nested_reference_col);
+    // let step = query_context
+    //     .get_argument_field(argument, "create")
+    //     .map(|create_argument| {
+    //         field_model_type
+    //             .map_to_sql(create_argument, query_context)
+    //             .unwrap()
+    //     })
+    //     .map(|insertion_info| {
+    //         let nested_reference_col =
+    //             compute_nested_reference_column(field_model_type, container_model_type, system)
+    //                 .unwrap();
+    //         let mut column_names = insertion_info.columns.clone();
+    //         column_names.push(nested_reference_col);
 
-            let column_values_seq: Vec<Vec<ProxyColumn>> = insertion_info
-                .values
-                .into_iter()
-                .map(|subvalues| {
-                    let mut proxied: Vec<_> =
-                        subvalues.into_iter().map(ProxyColumn::Concrete).collect();
-                    proxied.push(ProxyColumn::Template {
-                        col_index: 0,
-                        step_id: prev_step_id,
-                    });
-                    proxied
-                })
-                .collect();
+    //         let column_values_seq: Vec<Vec<ProxyColumn>> = insertion_info
+    //             .values
+    //             .into_iter()
+    //             .map(|subvalues| {
+    //                 let mut proxied: Vec<_> =
+    //                     subvalues.into_iter().map(ProxyColumn::Concrete).collect();
+    //                 proxied.push(ProxyColumn::Template {
+    //                     col_index: 0,
+    //                     step_id: prev_step_id,
+    //                 });
+    //                 proxied
+    //             })
+    //             .collect();
 
-            let op = TemplateSQLOperation::Insert(TemplateInsert {
-                table: insertion_info.table,
-                column_names,
-                column_values_seq,
-                returning: vec![],
-            });
+    //         let op = TemplateSQLOperation::Insert(TemplateInsert {
+    //             table: insertion_info.table,
+    //             column_names,
+    //             column_values_seq,
+    //             returning: vec![],
+    //         });
 
-            TransactionStep::Template(TemplateTransactionStep {
-                operation: op,
-                prev_step_id,
-            })
-        });
+    //         TransactionStep::Template(TemplateTransactionStep {
+    //             operation: op,
+    //             prev_step_id,
+    //         })
+    //     });
 
-    match step {
-        Some(step) => vec![step],
-        None => vec![],
-    }
+    // match step {
+    //     Some(step) => vec![step],
+    //     None => vec![],
+    // }
+    todo!()
 }
 
 fn compute_nested_delete<'a>(

@@ -1,6 +1,6 @@
 pub mod column_path;
-mod delete;
-mod insert;
+pub mod delete;
+pub mod insert;
 pub mod order_by;
 pub mod predicate;
 pub mod select;

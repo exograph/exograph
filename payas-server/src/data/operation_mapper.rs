@@ -2,9 +2,11 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
-use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
-use payas_sql::asql::{predicate::AbstractPredicate, select::AbstractSelect};
+use payas_sql::asql::{
+    insert::AbstractInsert, predicate::AbstractPredicate, select::AbstractSelect,
+    update::AbstractUpdate,
+};
 use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
 
@@ -22,7 +24,7 @@ use payas_model::{
         service::{ServiceMethod, ServiceMethodType},
         GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind,
     },
-    sql::{predicate::Predicate, transaction::TransactionScript, Select},
+    sql::{predicate::Predicate, transaction::TransactionScript},
 };
 
 pub trait SQLMapper<'a, R> {
@@ -33,6 +35,16 @@ pub trait SQLMapper<'a, R> {
     ) -> Result<R>;
 }
 
+pub trait SQLInsertMapper<'a> {
+    fn insert_script(
+        &'a self,
+        mutation: &'a Mutation,
+        select: AbstractSelect<'a>,
+        argument: &'a ConstValue,
+        query_context: &'a QueryContext<'a>,
+    ) -> Result<AbstractInsert>;
+}
+
 pub trait SQLUpdateMapper<'a> {
     fn update_script(
         &'a self,
@@ -41,7 +53,7 @@ pub trait SQLUpdateMapper<'a> {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<TransactionScript>;
+    ) -> Result<AbstractUpdate>;
 }
 
 #[async_trait(?Send)]

@@ -26,10 +26,8 @@ use payas_sql::asql::{
     select::{AbstractSelect, SelectionLevel},
 };
 
-use super::{
-    create_data_param_mapper::InsertionInfo,
-    operation_mapper::{OperationResolver, OperationResolverResult, SQLMapper, SQLUpdateMapper},
-    Arguments,
+use super::operation_mapper::{
+    OperationResolver, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
 };
 
 use async_graphql_parser::{types::Field, Positioned};
@@ -55,8 +53,7 @@ impl<'a> OperationResolver<'a> for Mutation {
 
             Ok(OperationResolverResult::SQLOperation(match &self.kind {
                 MutationKind::Create(data_param) => {
-                    let select = abs_select.to_sql(None, SelectionLevel::TopLevel);
-                    create_operation(self, data_param, &field.node, select, query_context)?
+                    create_operation(self, data_param, &field.node, abs_select, query_context)?
                 }
                 MutationKind::Delete(predicate_param) => {
                     let select = abs_select.to_sql(None, SelectionLevel::TopLevel);
@@ -99,7 +96,7 @@ fn create_operation<'a>(
     mutation: &'a Mutation,
     data_param: &'a CreateDataParameter,
     field: &'a Field,
-    select: Select<'a>,
+    select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -117,15 +114,63 @@ fn create_operation<'a>(
     }
 
     let field_arguments = query_context.field_arguments(field)?;
-    let info = insertion_info(data_param, field_arguments, query_context)?.unwrap();
-    let ops = info.operation(query_context, true);
+    let argument_value = super::find_arg(field_arguments, &data_param.name).unwrap();
 
-    let mut transaction_script = TransactionScript::default();
-    transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-        SQLOperation::Cte(Cte { ctes: ops, select }),
-    )));
+    let abs_insert = data_param.insert_script(mutation, select, argument_value, query_context);
 
-    Ok(transaction_script)
+    // let info = insertion_info(data_param, field_arguments, query_context)?.unwrap();
+
+    // let parent_pk_physical_column = info
+    //     .table
+    //     .get_pk_physical_column()
+    //     .expect("Primary key not found");
+
+    // let nested_insert = info
+    //     .nested
+    //     .into_iter()
+    //     .map(|(nested_relation, nested_insertion_info)| {
+    //         // let nested_relation = payas_sql::asql::selection::NestedElementRelation {
+    //         //     column: parent_pk_physical_column,
+    //         //     table: info.table,
+    //         // };
+    //         NestedAbstractInsert {
+    //             relation: nested_relation,
+    //             insertion: AbstractInsert {
+    //                 table: nested_insertion_info.table,
+    //                 column_names: nested_insertion_info.columns,
+    //                 column_values_seq: nested_insertion_info.values,
+    //                 selection: AbstractSelect {
+    //                     table: nested_insertion_info.table,
+    //                     selection: Selection::Seq(vec![]),
+    //                     predicate: None,
+    //                     order_by: None,
+    //                     offset: None,
+    //                     limit: None,
+    //                 },
+    //                 nested_insert: None,
+    //             },
+    //         }
+    //     })
+    //     .collect();
+
+    // let abs_insert = AbstractInsert {
+    //     table: info.table,
+    //     column_names: info.columns,
+    //     column_values_seq: info.values,
+    //     selection: select,
+    //     nested_insert: Some(nested_insert),
+    // };
+
+    Ok(abs_insert?.to_sql())
+
+    // let ops = info.operation(query_context, true);
+
+    // let mut transaction_script = TransactionScript::default();
+    // transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
+    //     SQLOperation::Cte(Cte { ctes: ops, select }),
+    // )));
+
+    // Ok(transaction_script)
 }
 
 fn delete_operation<'a>(
@@ -217,24 +262,26 @@ fn update_operation<'a>(
     let argument_value = super::find_arg(field_arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
-            data_param.update_script(mutation, predicate, select, argument_value, query_context)
+            data_param
+                .update_script(mutation, predicate, select, argument_value, query_context)
+                .map(|u| u.to_sql(None))
         })
         .unwrap()
 }
 
-fn insertion_info<'a>(
-    data_param: &'a CreateDataParameter,
-    arguments: &'a Arguments,
-    query_context: &'a QueryContext<'a>,
-) -> Result<Option<InsertionInfo<'a>>> {
-    let system = &query_context.get_system();
-    let data_type = &system.mutation_types[data_param.type_id];
+// fn insertion_info<'a>(
+//     data_param: &'a CreateDataParameter,
+//     arguments: &'a Arguments,
+//     query_context: &'a QueryContext<'a>,
+// ) -> Result<Option<InsertionInfo<'a>>> {
+//     let system = &query_context.get_system();
+//     let data_type = &system.mutation_types[data_param.type_id];
 
-    let argument_value = super::find_arg(arguments, &data_param.name);
-    argument_value
-        .map(|argument_value| data_type.map_to_sql(argument_value, query_context))
-        .transpose()
-}
+//     let argument_value = super::find_arg(arguments, &data_param.name);
+//     argument_value
+//         .map(|argument_value| data_type.map_to_sql(argument_value, query_context))
+//         .transpose()
+// }
 
 pub fn return_type_info<'a>(
     mutation: &'a Mutation,
