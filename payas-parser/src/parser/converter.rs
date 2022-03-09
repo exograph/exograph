@@ -31,14 +31,12 @@ pub fn convert_root(
         models: node
             .children(&mut cursor)
             .filter(|n| n.kind() == "declaration")
-            .map(|c| convert_declaration_to_model(c, source, source_span))
-            .flatten()
+            .filter_map(|c| convert_declaration_to_model(c, source, source_span))
             .collect::<Vec<_>>(),
         services: node
             .children(&mut cursor)
             .filter(|n| n.kind() == "declaration")
-            .map(|c| convert_declaration_to_service(c, source, source_span, filepath))
-            .flatten()
+            .filter_map(|c| convert_declaration_to_service(c, source, source_span, filepath))
             .collect::<Vec<_>>(),
     })
 }
