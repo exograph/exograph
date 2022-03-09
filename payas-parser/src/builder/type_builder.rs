@@ -305,22 +305,26 @@ fn create_column(
         _ => (&field.typ, false),
     };
 
-    let default_value = field
-        .default_value
-        .as_ref()
-        .map(|default_value| match default_value {
-            ResolvedFieldDefault::Value(val) => Some(match &**val {
-                AstExpr::StringLiteral(string, _) => format!("'{}'", string.replace("'", "''")),
-                AstExpr::BooleanLiteral(boolean, _) => format!("{}", boolean).to_ascii_uppercase(),
-                AstExpr::NumberLiteral(val, _) => {
-                    format!("{}", val)
-                }
-                _ => panic!("Invalid concrete value"),
-            }),
-            ResolvedFieldDefault::DatabaseFunction(string) => Some(string.to_string()),
-            ResolvedFieldDefault::Autoincrement => None,
-        })
-        .flatten();
+    let default_value =
+        field
+            .default_value
+            .as_ref()
+            .and_then(|default_value| match default_value {
+                ResolvedFieldDefault::Value(val) => Some(match &**val {
+                    AstExpr::StringLiteral(string, _) => {
+                        format!("'{}'", string.replace('\'', "''"))
+                    }
+                    AstExpr::BooleanLiteral(boolean, _) => {
+                        format!("{}", boolean).to_ascii_uppercase()
+                    }
+                    AstExpr::NumberLiteral(val, _) => {
+                        format!("{}", val)
+                    }
+                    _ => panic!("Invalid concrete value"),
+                }),
+                ResolvedFieldDefault::DatabaseFunction(string) => Some(string.to_string()),
+                ResolvedFieldDefault::Autoincrement => None,
+            });
 
     match typ {
         ResolvedFieldType::Plain(type_name) => {
