@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::Read;
@@ -39,7 +40,10 @@ impl ParsedTestfile {
     pub fn model_path_string(&self) -> String {
         self.model_path
             .canonicalize()
-            .expect("Failed to canonicalize model path")
+            .expect(&format!(
+                "Failed to canonicalize model path {}",
+                self.model_path.to_string_lossy()
+            ))
             .to_str()
             .expect("Failed to convert file name into Unicode")
             .to_string()
@@ -70,8 +74,9 @@ impl ParsedTestfile {
 
 // serde file formats
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct TestfileStage {
+    pub clayfile: Option<String>,
     pub operation: String,
     pub variable: Option<String>,
     pub auth: Option<String>,
@@ -80,6 +85,7 @@ pub struct TestfileStage {
 
 #[derive(Deserialize, Debug)]
 pub struct TestfileMultipleStages {
+    pub clayfile: Option<String>,
     pub stages: Vec<TestfileStage>,
 }
 
@@ -95,20 +101,18 @@ pub fn load_testfiles_from_dir(
     root_directory: &Path,
     pattern: &Option<String>,
 ) -> Result<Vec<ParsedTestfile>> {
-    load_testfiles_from_dir_(root_directory, root_directory, None, &[], pattern)
+    load_testfiles_from_dir_(root_directory, root_directory, &[], pattern)
 }
 
 fn load_testfiles_from_dir_(
     root_directory: &Path,
     directory: &Path,
-    model_path: Option<&Path>,
     init_ops: &[TestfileOperation],
     pattern: &Option<String>,
 ) -> Result<Vec<ParsedTestfile>> {
     let directory = PathBuf::from(directory);
 
     // Begin directory traversal
-    let mut new_model: Option<PathBuf> = None;
     let mut claytest_files: Vec<PathBuf> = vec![];
     let mut init_files: Vec<PathBuf> = vec![];
     let mut directories: Vec<PathBuf> = vec![];
@@ -116,19 +120,6 @@ fn load_testfiles_from_dir_(
     for dir_entry in (directory.read_dir()?).flatten() {
         if dir_entry.path().is_file() {
             if let Some(extension) = dir_entry.path().extension() {
-                // looking for a .clay file in our current directory
-                if extension == "clay" {
-                    // new .clay file found, use it as our new model
-                    if new_model.is_some() {
-                        bail!(
-                            "Only one .clay file can exist in a directory! Multiple found in {}",
-                            directory.to_str().unwrap()
-                        )
-                    }
-
-                    new_model = Some(dir_entry.path())
-                }
-
                 // looking for .claytest files in our current directory
                 if extension == "claytest" {
                     claytest_files.push(dir_entry.path());
@@ -153,29 +144,6 @@ fn load_testfiles_from_dir_(
     // sort init files lexicographically
     init_files.sort();
 
-    let model_path = if let Some(new_model) = new_model {
-        // use the .clay file we found
-        new_model
-    } else if let Some(old_model) = model_path {
-        // use the previous .clay file
-        PathBuf::from(old_model)
-    } else {
-        // no .clay file found!
-        if directories.is_empty() {
-            bail!("No model found in {}", directory.to_str().unwrap())
-        } else {
-            // recurse and try to find one
-            let mut parsed = vec![];
-            for directory in directories {
-                let parsed_testfiles =
-                    load_testfiles_from_dir_(root_directory, &directory, None, init_ops, pattern)?;
-                parsed.extend(parsed_testfiles);
-            }
-
-            return Ok(parsed);
-        }
-    };
-
     // Parse init files and populate init_ops
     let mut init_ops = init_ops.to_owned();
 
@@ -188,12 +156,7 @@ fn load_testfiles_from_dir_(
     let mut testfiles = vec![];
 
     for testfile_path in claytest_files.iter() {
-        let testfile = parse_testfile(
-            root_directory,
-            testfile_path,
-            &model_path.to_path_buf(),
-            init_ops.clone(),
-        )?;
+        let testfile = parse_testfile(root_directory, testfile_path, init_ops.clone())?;
 
         testfiles.push(testfile);
     }
@@ -201,13 +164,8 @@ fn load_testfiles_from_dir_(
     // Recursively parse test files
     for directory in directories.iter() {
         let child_init_ops = init_ops.clone();
-        let child_testfiles = load_testfiles_from_dir_(
-            root_directory,
-            directory,
-            Some(&model_path),
-            &child_init_ops,
-            pattern,
-        )?;
+        let child_testfiles =
+            load_testfiles_from_dir_(root_directory, directory, &child_init_ops, pattern)?;
         testfiles.extend(child_testfiles)
     }
 
@@ -228,7 +186,6 @@ fn load_testfiles_from_dir_(
 fn parse_testfile(
     root_directory: &Path,
     testfile_path: &Path,
-    model_path: &Path,
     init_ops: Vec<TestfileOperation>,
 ) -> Result<ParsedTestfile> {
     let mut file = File::open(testfile_path).context("Could not open test file")?;
@@ -241,10 +198,10 @@ fn parse_testfile(
     let deserialized_testfile_single_stage: Result<TestfileStage, _> =
         serde_yaml::from_str(&contents);
 
-    let stages = if let Ok(testfile) = deserialized_testfile_multiple_stages {
-        testfile.stages
+    let (stages, clayfile_path) = if let Ok(testfile) = deserialized_testfile_multiple_stages {
+        (testfile.stages, testfile.clayfile)
     } else if let Ok(stage) = deserialized_testfile_single_stage {
-        vec![stage]
+        (vec![stage.clone()], stage.clayfile)
     } else {
         let multi_stage_error = deserialized_testfile_multiple_stages.unwrap_err();
         let single_stage_error = deserialized_testfile_single_stage.unwrap_err();
@@ -260,6 +217,34 @@ Error as a multistage test: {}
             single_stage_error,
             multi_stage_error
         );
+    };
+
+    let testfile_folder = testfile_path.parent().expect("Testfile has no parent?");
+    let model_path = if let Some(path) = clayfile_path {
+        // test specifies a root clayfile, use that
+        testfile_folder.to_owned().join(path)
+    } else {
+        // see if the testfile's directory has a single clay file we can use
+        let clay_files = std::fs::read_dir(testfile_folder)?
+            .collect::<Result<Vec<_>, std::io::Error>>()?
+            .into_iter()
+            .filter(|dir| matches!(dir.path().extension().and_then(OsStr::to_str), Some("clay")))
+            .collect::<Vec<_>>();
+
+        if clay_files.len() == 1 {
+            clay_files[0].path()
+        } else if clay_files.len() > 1 {
+            bail!(
+                "Multiple .clay files found for {}, please manually specify a root model file",
+                testfile_path.to_string_lossy()
+            )
+        } else {
+            bail!(
+                "No .clay file specified nor found in {} for testfile {}",
+                testfile_folder.to_string_lossy(),
+                testfile_path.to_string_lossy()
+            )
+        }
     };
 
     // validate GraphQL
