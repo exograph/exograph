@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::cmp::Ordering;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::BufReader;
@@ -40,10 +41,12 @@ impl ParsedTestfile {
     pub fn model_path_string(&self) -> String {
         self.model_path
             .canonicalize()
-            .expect(&format!(
-                "Failed to canonicalize model path {}",
-                self.model_path.to_string_lossy()
-            ))
+            .unwrap_or_else(|_| {
+                panic!(
+                    "Failed to canonicalize model path {}",
+                    self.model_path.to_string_lossy()
+                )
+            })
             .to_str()
             .expect("Failed to convert file name into Unicode")
             .to_string()
@@ -231,19 +234,23 @@ Error as a multistage test: {}
             .filter(|dir| matches!(dir.path().extension().and_then(OsStr::to_str), Some("clay")))
             .collect::<Vec<_>>();
 
-        if clay_files.len() == 1 {
-            clay_files[0].path()
-        } else if clay_files.len() > 1 {
-            bail!(
-                "Multiple .clay files found for {}, please manually specify a root model file",
-                testfile_path.to_string_lossy()
-            )
-        } else {
-            bail!(
-                "No .clay file specified nor found in {} for testfile {}",
-                testfile_folder.to_string_lossy(),
-                testfile_path.to_string_lossy()
-            )
+        match clay_files.len().cmp(&1) {
+            Ordering::Equal => clay_files[0].path(),
+
+            Ordering::Greater => {
+                bail!(
+                    "Multiple .clay files found for {}, please manually specify a root model file",
+                    testfile_path.to_string_lossy()
+                )
+            }
+
+            Ordering::Less => {
+                bail!(
+                    "No .clay file specified nor found in {} for testfile {}",
+                    testfile_folder.to_string_lossy(),
+                    testfile_path.to_string_lossy()
+                )
+            }
         }
     };
 
@@ -265,7 +272,7 @@ Error as a multistage test: {}
 
     Ok(ParsedTestfile {
         root_directory: root_directory.to_path_buf(),
-        model_path: model_path.to_path_buf(),
+        model_path,
         testfile_path: testfile_path.to_path_buf(),
         init_operations: init_ops,
         test_operation_stages: test_operation_sequence,
