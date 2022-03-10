@@ -3,11 +3,13 @@ use crate::sql::{
     predicate::Predicate,
     transaction::{
         ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
+        TransactionStepId,
     },
-    Cte, PhysicalTable, SQLOperation, TemplateSQLOperation, TemplateUpdate,
+    Cte, PhysicalTable, SQLOperation, TemplateInsert, TemplateSQLOperation, TemplateUpdate,
 };
 
 use super::{
+    insert::AbstractInsert,
     predicate::AbstractPredicate,
     select::{AbstractSelect, SelectionLevel},
     selection::NestedElementRelation,
@@ -24,13 +26,20 @@ pub struct AbstractUpdate<'a> {
     pub predicate: Option<AbstractPredicate<'a>>,
     pub column_values: Vec<(&'a PhysicalColumn, Column<'a>)>,
     pub selection: AbstractSelect<'a>,
-    pub nested_update: Option<Vec<NestedAbstractUpdate<'a>>>,
+    pub nested_update: Vec<NestedAbstractUpdate<'a>>,
+    pub nested_insert: Vec<NestedAbstractInsert<'a>>,
 }
 
 #[derive(Debug)]
 pub struct NestedAbstractUpdate<'a> {
     pub relation: NestedElementRelation<'a>,
     pub update: AbstractUpdate<'a>,
+}
+
+#[derive(Debug)]
+pub struct NestedAbstractInsert<'a> {
+    pub relation: NestedElementRelation<'a>,
+    pub insert: AbstractInsert<'a>,
 }
 
 impl<'a> AbstractUpdate<'a> {
@@ -51,13 +60,14 @@ impl<'a> AbstractUpdate<'a> {
         // those column (and not have to specify the WHERE clause once again).
         // If there are nested updates, select only the primary key columns, so that we can use that as the proxy
         // column in the nested updates added to the transaction script.
-        let return_col = match &self.nested_update {
-            Some(nested_update) if !nested_update.is_empty() => Column::Physical(
+        let return_col = if self.nested_update.is_empty() {
+            Column::Physical(
                 self.table
                     .get_pk_physical_column()
                     .expect("No primary key column"),
-            ),
-            _ => Column::Star,
+            )
+        } else {
+            Column::Star
         };
 
         let root_update = SQLOperation::Update(self.table.update(
@@ -68,54 +78,106 @@ impl<'a> AbstractUpdate<'a> {
 
         let mut transaction_script = TransactionScript::default();
 
-        match self.nested_update {
-            Some(nested_updates) if !nested_updates.is_empty() => {
-                let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
-                    ConcreteTransactionStep::new(root_update),
-                ));
-                nested_updates.into_iter().for_each(|nested_update| {
-                    let mut column_values: Vec<_> = nested_update
-                        .update
-                        .column_values
-                        .into_iter()
-                        .map(|(col, val)| (col, ProxyColumn::Concrete(val.into())))
-                        .collect();
-                    column_values.push((
-                        nested_update.relation.column,
-                        ProxyColumn::Template {
-                            col_index: 0,
-                            step_id: root_step_id,
-                        },
-                    ));
+        if !self.nested_update.is_empty() || !self.nested_insert.is_empty() {
+            let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
+                ConcreteTransactionStep::new(root_update),
+            ));
 
-                    let _ = transaction_script.add_step(TransactionStep::Template(
-                        TemplateTransactionStep {
-                            operation: TemplateSQLOperation::Update(TemplateUpdate {
-                                table: nested_update.update.table,
-                                predicate: nested_update
-                                    .update
-                                    .predicate
-                                    .map(|p| p.predicate())
-                                    .unwrap_or(Predicate::True),
-                                column_values,
-                                returning: vec![],
-                            }),
-                            prev_step_id: root_step_id,
-                        },
-                    ));
-                });
-            }
-            _ => {
-                transaction_script.add_step(TransactionStep::Concrete(
-                    ConcreteTransactionStep::new(SQLOperation::Cte(Cte {
-                        ctes: vec![(self.table.name.clone(), root_update)],
-                        select,
-                    })),
-                ));
-            }
+            self.nested_update.into_iter().for_each(|nested_update| {
+                let update_op = TemplateTransactionStep {
+                    operation: Self::update_op(nested_update, root_step_id),
+                    prev_step_id: root_step_id,
+                };
+
+                let _ = transaction_script.add_step(TransactionStep::Template(update_op));
+            });
+
+            self.nested_insert.into_iter().for_each(|nested_insert| {
+                let insert_op = TemplateTransactionStep {
+                    operation: Self::insert_op(nested_insert, root_step_id),
+                    prev_step_id: root_step_id,
+                };
+
+                let _ = transaction_script.add_step(TransactionStep::Template(insert_op));
+            });
+        } else {
+            transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
+                SQLOperation::Cte(Cte {
+                    ctes: vec![(self.table.name.clone(), root_update)],
+                    select,
+                }),
+            )));
         }
 
         transaction_script
+    }
+
+    fn update_op(
+        nested_update: NestedAbstractUpdate,
+        parent_step_id: TransactionStepId,
+    ) -> TemplateSQLOperation {
+        let mut column_values: Vec<_> = nested_update
+            .update
+            .column_values
+            .into_iter()
+            .map(|(col, val)| (col, ProxyColumn::Concrete(val.into())))
+            .collect();
+        column_values.push((
+            nested_update.relation.column,
+            ProxyColumn::Template {
+                col_index: 0,
+                step_id: parent_step_id,
+            },
+        ));
+
+        TemplateSQLOperation::Update(TemplateUpdate {
+            table: nested_update.update.table,
+            predicate: nested_update
+                .update
+                .predicate
+                .map(|p| p.predicate())
+                .unwrap_or(Predicate::True),
+            column_values,
+            returning: vec![],
+        })
+    }
+
+    fn insert_op(
+        nested_insert: NestedAbstractInsert,
+        parent_step_id: TransactionStepId,
+    ) -> TemplateSQLOperation {
+        let rows = nested_insert.insert.rows;
+
+        // TODO: Deal with _nested_elems (i.e. a recursive use of nested insert)
+        let (self_elems, _nested_elems): (Vec<_>, Vec<_>) = rows
+            .into_iter()
+            .map(|row| row.partition_self_and_nested())
+            .unzip();
+
+        let (mut column_names, column_values_seq) = super::insert::align(self_elems);
+        column_names.push(nested_insert.relation.column);
+
+        let column_values_seq: Vec<_> = column_values_seq
+            .into_iter()
+            .map(|column_values| {
+                let mut column_values: Vec<_> = column_values
+                    .into_iter()
+                    .map(ProxyColumn::Concrete)
+                    .collect();
+                column_values.push(ProxyColumn::Template {
+                    col_index: 0,
+                    step_id: parent_step_id,
+                });
+                column_values
+            })
+            .collect();
+
+        TemplateSQLOperation::Insert(TemplateInsert {
+            table: nested_insert.insert.table,
+            column_names,
+            column_values_seq,
+            returning: vec![],
+        })
     }
 }
 
@@ -154,7 +216,8 @@ mod tests {
                         venues_name_column,
                         Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
                     )],
-                    nested_update: None,
+                    nested_update: vec![],
+                    nested_insert: vec![],
                     selection: AbstractSelect {
                         selection: Selection::Seq(vec![
                             ColumnSelection::new(
@@ -222,7 +285,8 @@ mod tests {
                             offset: None,
                             limit: None,
                         },
-                        nested_update: None,
+                        nested_update: vec![],
+                        nested_insert: vec![],
                     },
                 };
 
@@ -233,7 +297,8 @@ mod tests {
                         venues_name_column,
                         Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
                     )],
-                    nested_update: Some(vec![nested_abs_update]),
+                    nested_update: vec![nested_abs_update],
+                    nested_insert: vec![],
                     selection: AbstractSelect {
                         selection: Selection::Seq(vec![
                             ColumnSelection::new(

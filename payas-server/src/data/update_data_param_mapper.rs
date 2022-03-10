@@ -4,8 +4,8 @@ use payas_sql::asql::{
     column_path::{ColumnPath, ColumnPathLink},
     predicate::AbstractPredicate,
     select::AbstractSelect,
-    selection::Selection,
-    update::{AbstractUpdate, NestedAbstractUpdate},
+    selection::{NestedElementRelation, Selection},
+    update::{AbstractUpdate, NestedAbstractInsert, NestedAbstractUpdate},
 };
 
 use crate::{
@@ -22,14 +22,14 @@ use payas_model::{
         GqlCompositeType, GqlType,
     },
     sql::{
-        column::{PhysicalColumn, PhysicalColumnType, ProxyColumn},
+        column::{PhysicalColumn, PhysicalColumnType},
         predicate::Predicate,
         transaction::{TemplateTransactionStep, TransactionStep, TransactionStepId},
-        TemplateDelete, TemplateInsert, TemplateSQLOperation,
+        TemplateDelete, TemplateSQLOperation,
     },
 };
 
-use super::operation_mapper::{SQLMapper, SQLUpdateMapper};
+use super::operation_mapper::SQLUpdateMapper;
 
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
     fn update_script(
@@ -46,18 +46,18 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         let self_update_columns = compute_update_columns(data_type, argument, query_context);
         let (table, _, _) = return_type_info(mutation, query_context);
 
-        let nested_updates = compute_nested(
-            data_type,
-            argument,
-            mutation.return_type.typ(system),
-            query_context,
-        );
+        let container_model_type = mutation.return_type.typ(system);
+
+        let (nested_updates, nested_inserts) =
+            compute_nested_ops(data_type, argument, container_model_type, query_context);
+
         let abs_update = AbstractUpdate {
             table,
             predicate: predicate.into(),
             column_values: self_update_columns,
             selection: select,
             nested_update: nested_updates,
+            nested_insert: nested_inserts,
         };
 
         Ok(abs_update)
@@ -114,61 +114,54 @@ fn compute_update_columns<'a>(
 // an additional advantage that the predicate can be more general ("where" in addition to the currently supported "id") so multiple objects
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
-fn compute_nested<'a>(
-    data_type: &'a GqlType,
+fn compute_nested_ops<'a>(
+    field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     container_model_type: &'a GqlType,
     query_context: &'a QueryContext<'a>,
-) -> Option<Vec<NestedAbstractUpdate<'a>>> {
+) -> (Vec<NestedAbstractUpdate<'a>>, Vec<NestedAbstractInsert<'a>>) {
     let system = &query_context.get_system();
 
-    match &data_type.kind {
-        GqlTypeKind::Primitive => None,
-        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => Some({
-            fields.iter().flat_map(|field| {
-                {
-                    match &field.relation {
-                        GqlRelation::OneToMany { other_type_id, .. } => {
-                            let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
-                            query_context
-                                .get_argument_field(argument, &field.name)
-                                .iter()
-                                .flat_map(|argument| {
-                                    let mut ops = vec![];
+    let mut nested_updates = vec![];
+    let mut nested_inserts = vec![];
 
-                                    ops.extend(compute_nested_update(
-                                        field_model_type,
-                                        argument,
-                                        query_context,
-                                        container_model_type,
-                                    ));
+    match &field_model_type.kind {
+        GqlTypeKind::Primitive => {}
+        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
+            fields.iter().for_each(|field| {
+                if let GqlRelation::OneToMany { other_type_id, .. } = &field.relation {
+                    let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
 
-                                    // ops.extend(compute_nested_create(
-                                    //     field_model_type,
-                                    //     argument,
-                                    //     query_context,
-                                    //     prev_step_id,
-                                    //     container_model_type,
-                                    // ));
+                    if let Some(argument) = query_context.get_argument_field(argument, &field.name)
+                    {
+                        nested_updates.extend(compute_nested_update(
+                            field_model_type,
+                            argument,
+                            container_model_type,
+                            query_context,
+                        ));
 
-                                    // ops.extend(compute_nested_delete(
-                                    //     field_model_type,
-                                    //     argument,
-                                    //     query_context,
-                                    //     prev_step_id,
-                                    //     container_model_type,
-                                    // ));
-                                    ops
-                                })
-                                .collect()
-                        }
-                        _ => vec![],
+                        nested_inserts.extend(compute_nested_inserts(
+                            field_model_type,
+                            argument,
+                            container_model_type,
+                            query_context,
+                        ));
+
+                        // ops.extend(compute_nested_delete(
+                        //     field_model_type,
+                        //     argument,
+                        //     query_context,
+                        //     prev_step_id,
+                        //     container_model_type,
+                        // ));
                     }
                 }
             })
-        }),
+        }
     }
-    .map(|c| c.collect())
+
+    (nested_updates, nested_inserts)
 }
 
 // Which column in field_model_type corresponds to the primary column in container_model_type?
@@ -207,8 +200,8 @@ fn compute_nested_reference_column<'a>(
 fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a QueryContext<'a>,
     container_model_type: &'a GqlType,
+    query_context: &'a QueryContext<'a>,
 ) -> Vec<NestedAbstractUpdate<'a>> {
     let system = &query_context.get_system();
 
@@ -299,67 +292,84 @@ fn compute_nested_update_object_arg<'a>(
                 offset: None,
                 limit: None,
             },
-            nested_update: None,
+            nested_update: vec![],
+            nested_insert: vec![],
         },
     }
 }
 
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
-fn compute_nested_create<'a>(
+fn compute_nested_inserts<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a QueryContext<'a>,
-    prev_step_id: TransactionStepId,
     container_model_type: &'a GqlType,
-) -> Vec<TransactionStep<'a>> {
-    // let system = &query_context.get_system();
+    query_context: &'a QueryContext<'a>,
+) -> Vec<NestedAbstractInsert<'a>> {
+    fn create_nested<'a>(
+        field_model_type: &'a GqlType,
+        argument: &'a ConstValue,
+        container_model_type: &'a GqlType,
+        query_context: &'a QueryContext<'a>,
+    ) -> Result<NestedAbstractInsert<'a>> {
+        let nested_reference_col = compute_nested_reference_column(
+            field_model_type,
+            container_model_type,
+            query_context.get_system(),
+        )
+        .unwrap();
+        let system = &query_context.get_system();
 
-    // let step = query_context
-    //     .get_argument_field(argument, "create")
-    //     .map(|create_argument| {
-    //         field_model_type
-    //             .map_to_sql(create_argument, query_context)
-    //             .unwrap()
-    //     })
-    //     .map(|insertion_info| {
-    //         let nested_reference_col =
-    //             compute_nested_reference_column(field_model_type, container_model_type, system)
-    //                 .unwrap();
-    //         let mut column_names = insertion_info.columns.clone();
-    //         column_names.push(nested_reference_col);
+        let table = &system.tables[field_model_type.table_id().unwrap()];
 
-    //         let column_values_seq: Vec<Vec<ProxyColumn>> = insertion_info
-    //             .values
-    //             .into_iter()
-    //             .map(|subvalues| {
-    //                 let mut proxied: Vec<_> =
-    //                     subvalues.into_iter().map(ProxyColumn::Concrete).collect();
-    //                 proxied.push(ProxyColumn::Template {
-    //                     col_index: 0,
-    //                     step_id: prev_step_id,
-    //                 });
-    //                 proxied
-    //             })
-    //             .collect();
+        let rows = super::create_data_param_mapper::map_argument(
+            field_model_type,
+            argument,
+            query_context,
+        )?;
 
-    //         let op = TemplateSQLOperation::Insert(TemplateInsert {
-    //             table: insertion_info.table,
-    //             column_names,
-    //             column_values_seq,
-    //             returning: vec![],
-    //         });
+        Ok(NestedAbstractInsert {
+            relation: NestedElementRelation {
+                column: nested_reference_col,
+                table,
+            },
+            insert: payas_sql::asql::insert::AbstractInsert {
+                table,
+                rows,
+                selection: AbstractSelect {
+                    table,
+                    selection: Selection::Seq(vec![]),
+                    predicate: None,
+                    order_by: None,
+                    offset: None,
+                    limit: None,
+                },
+            },
+        })
+    }
 
-    //         TransactionStep::Template(TemplateTransactionStep {
-    //             operation: op,
-    //             prev_step_id,
-    //         })
-    //     });
+    let create_arg = query_context.get_argument_field(argument, "create");
+    println!("create_arg {:?}", argument);
 
-    // match step {
-    //     Some(step) => vec![step],
-    //     None => vec![],
-    // }
-    todo!()
+    match create_arg {
+        Some(create_arg) => match create_arg {
+            _arg @ ConstValue::Object(..) => vec![create_nested(
+                field_model_type,
+                create_arg,
+                container_model_type,
+                query_context,
+            )
+            .unwrap()],
+            ConstValue::List(create_arg) => create_arg
+                .iter()
+                .map(|arg| {
+                    create_nested(field_model_type, arg, container_model_type, query_context)
+                        .unwrap()
+                })
+                .collect(),
+            _ => panic!("Object or list expected"),
+        },
+        None => vec![],
+    }
 }
 
 fn compute_nested_delete<'a>(

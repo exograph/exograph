@@ -57,7 +57,7 @@ pub struct AbstractInsert<'a> {
 }
 
 impl<'a> InsertionRow<'a> {
-    fn partition_self_and_nested(
+    pub fn partition_self_and_nested(
         self,
     ) -> (Vec<InsertionColumnValuePair<'a>>, Vec<NestedInsertion<'a>>) {
         let mut self_elems = Vec::new();
@@ -176,24 +176,13 @@ impl<'a> AbstractInsert<'a> {
 
         transaction_script
     }
-
-    // fn get_self_insertion_rows(
-    //     row: Vec<InsertionElement<'a>>,
-    // ) -> Vec<InsertionColumnValuePair<'a>> {
-    //     row.into_iter()
-    //         .filter_map(|elem| match elem {
-    //             InsertionElement::SelfInsert(values) => Some(values),
-    //             _ => None,
-    //         })
-    //         .collect()
-    // }
 }
 
 /// Align multiple SingleInsertion's to account for misaligned and missing columns
 /// For example, if the input is {data: [{a: 1, b: 2}, {a: 3, c: 4}]}, we will have the 'a' key in both
 /// but only 'b' or 'c' keys in others. So we need align columns that can be supplied to an insert statement
 /// (a, b, c), [(1, 2, null), (3, null, 4)]
-fn align(
+pub fn align(
     unaligned: Vec<Vec<InsertionColumnValuePair>>,
 ) -> (Vec<&PhysicalColumn>, Vec<Vec<MaybeOwned<Column>>>) {
     let mut all_keys = HashSet::new();
@@ -221,9 +210,6 @@ fn align(
 
     let mut aligned = Vec::with_capacity(unaligned.len());
 
-    // let mut values = Vec::with_capacity(unaligned.len());
-    // let mut nested = vec![];
-
     for unaligned_row in unaligned.into_iter() {
         let mut aligned_row = Vec::with_capacity(keys_count);
 
@@ -240,28 +226,4 @@ fn align(
     }
 
     (all_keys.into_iter().collect(), aligned)
-
-    // for mut item in unaligned.into_iter() {
-    //     let mut row = Vec::with_capacity(keys_count);
-    //     for key in &all_keys {
-    //         for insertion_value in item.iter_mut() {
-    //             let value = insertion_value
-    //                 .self_row
-    //                 .remove(key)
-    //                 .map(|v| v.into())
-    //                 .unwrap_or_else(|| Column::Null.into());
-    //             row.push(value);
-    //         }
-    //     }
-
-    //     values.push(row);
-    //     nested.extend(item.nested_rows);
-    // }
-
-    // InsertionInfo {
-    //     table,
-    //     columns: all_keys.into_iter().collect(),
-    //     values,
-    //     nested,
-    // }
 }
