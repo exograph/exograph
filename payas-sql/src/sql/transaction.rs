@@ -39,7 +39,7 @@ impl<'a> TransactionScript<'a> {
     pub fn new(steps: Vec<TransactionStep<'a>>) -> Self {
         Self { steps }
     }
-    
+
     /// Returns the result of the last step
     pub async fn execute(&'a self, client: &mut Client) -> Result<TransactionStepResult> {
         println!("Starting transaction");

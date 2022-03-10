@@ -2,10 +2,11 @@ use anyhow::Result;
 use async_graphql_value::ConstValue;
 use payas_sql::asql::{
     column_path::{ColumnPath, ColumnPathLink},
+    delete::AbstractDelete,
     predicate::AbstractPredicate,
     select::AbstractSelect,
     selection::{NestedElementRelation, Selection},
-    update::{AbstractUpdate, NestedAbstractInsert, NestedAbstractUpdate},
+    update::{AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate},
 };
 
 use crate::{
@@ -21,12 +22,7 @@ use payas_model::{
         types::GqlTypeKind,
         GqlCompositeType, GqlType,
     },
-    sql::{
-        column::{PhysicalColumn, PhysicalColumnType},
-        predicate::Predicate,
-        transaction::{TemplateTransactionStep, TransactionStep, TransactionStepId},
-        TemplateDelete, TemplateSQLOperation,
-    },
+    sql::column::{PhysicalColumn, PhysicalColumnType},
 };
 
 use super::operation_mapper::SQLUpdateMapper;
@@ -48,7 +44,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 
         let container_model_type = mutation.return_type.typ(system);
 
-        let (nested_updates, nested_inserts) =
+        let (nested_updates, nested_inserts, nested_deletes) =
             compute_nested_ops(data_type, argument, container_model_type, query_context);
 
         let abs_update = AbstractUpdate {
@@ -56,8 +52,9 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
             predicate: predicate.into(),
             column_values: self_update_columns,
             selection: select,
-            nested_update: nested_updates,
-            nested_insert: nested_inserts,
+            nested_updates,
+            nested_inserts,
+            nested_deletes,
         };
 
         Ok(abs_update)
@@ -119,11 +116,16 @@ fn compute_nested_ops<'a>(
     argument: &'a ConstValue,
     container_model_type: &'a GqlType,
     query_context: &'a QueryContext<'a>,
-) -> (Vec<NestedAbstractUpdate<'a>>, Vec<NestedAbstractInsert<'a>>) {
+) -> (
+    Vec<NestedAbstractUpdate<'a>>,
+    Vec<NestedAbstractInsert<'a>>,
+    Vec<NestedAbstractDelete<'a>>,
+) {
     let system = &query_context.get_system();
 
     let mut nested_updates = vec![];
     let mut nested_inserts = vec![];
+    let mut nested_deletes = vec![];
 
     match &field_model_type.kind {
         GqlTypeKind::Primitive => {}
@@ -148,20 +150,19 @@ fn compute_nested_ops<'a>(
                             query_context,
                         ));
 
-                        // ops.extend(compute_nested_delete(
-                        //     field_model_type,
-                        //     argument,
-                        //     query_context,
-                        //     prev_step_id,
-                        //     container_model_type,
-                        // ));
+                        nested_deletes.extend(compute_nested_delete(
+                            field_model_type,
+                            argument,
+                            query_context,
+                            container_model_type,
+                        ));
                     }
                 }
             })
         }
     }
 
-    (nested_updates, nested_inserts)
+    (nested_updates, nested_inserts, nested_deletes)
 }
 
 // Which column in field_model_type corresponds to the primary column in container_model_type?
@@ -292,8 +293,9 @@ fn compute_nested_update_object_arg<'a>(
                 offset: None,
                 limit: None,
             },
-            nested_update: vec![],
-            nested_insert: vec![],
+            nested_updates: vec![],
+            nested_inserts: vec![],
+            nested_deletes: vec![],
         },
     }
 }
@@ -348,7 +350,6 @@ fn compute_nested_inserts<'a>(
     }
 
     let create_arg = query_context.get_argument_field(argument, "create");
-    println!("create_arg {:?}", argument);
 
     match create_arg {
         Some(create_arg) => match create_arg {
@@ -376,64 +377,99 @@ fn compute_nested_delete<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-    prev_step_id: TransactionStepId,
-    _container_model_type: &'a GqlType,
-) -> Vec<TransactionStep<'a>> {
+    container_model_type: &'a GqlType,
+) -> Vec<NestedAbstractDelete<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
+    let system = &query_context.get_system();
 
-    fn compute_predicate<'a>(
-        elem_value: &ConstValue,
-        field_model_type: &'a GqlType,
-        query_context: &'a QueryContext<'a>,
-    ) -> Predicate<'a> {
-        let system = &query_context.get_system();
+    let nested_reference_col =
+        compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-        let pk_field = field_model_type.pk_field().unwrap();
+    let delete_arg = query_context.get_argument_field(argument, "delete");
 
-        match elem_value {
-            ConstValue::Object(map) => {
-                let pk_value = map.get(pk_field.name.as_str()).unwrap();
-                let pk_column = field_model_type
-                    .pk_column_id()
-                    .map(|pk_column| pk_column.get_column(system))
-                    .unwrap();
-
-                Predicate::Eq(
-                    Column::Physical(pk_column).into(),
-                    query_context
-                        .literal_column(pk_value, pk_column)
-                        .unwrap()
-                        .into(),
-                )
+    match delete_arg {
+        Some(update_arg) => match update_arg {
+            arg @ ConstValue::Object(..) => {
+                vec![compute_nested_delete_object_arg(
+                    field_model_type,
+                    arg,
+                    nested_reference_col,
+                    query_context,
+                )]
             }
-            ConstValue::List(values) => {
-                let mut predicate = Predicate::False;
-                for value in values {
-                    let elem_predicate = compute_predicate(value, field_model_type, query_context);
-                    predicate = Predicate::or(predicate, elem_predicate);
-                }
-                predicate
-            }
-            _ => panic!("Expected an object or a list"),
-        }
-    }
-
-    let argument = query_context.get_argument_field(argument, "delete");
-
-    match argument {
-        Some(argument) => {
-            let predicate = compute_predicate(argument, field_model_type, query_context);
-            let system = &query_context.get_system();
-            vec![TransactionStep::Template(TemplateTransactionStep {
-                operation: TemplateSQLOperation::Delete(TemplateDelete {
-                    table: &system.tables[field_model_type.table_id().unwrap()],
-                    predicate,
-                    returning: vec![],
-                }),
-                prev_step_id,
-            })]
-        }
+            ConstValue::List(update_arg) => update_arg
+                .iter()
+                .map(|arg| {
+                    compute_nested_delete_object_arg(
+                        field_model_type,
+                        arg,
+                        nested_reference_col,
+                        query_context,
+                    )
+                })
+                .collect(),
+            _ => panic!("Object or list expected"),
+        },
         None => vec![],
+    }
+}
+
+// Compute delete step assuming that the argument is a single object (not an array)
+fn compute_nested_delete_object_arg<'a>(
+    field_model_type: &'a GqlType,
+    argument: &'a ConstValue,
+    nested_reference_col: &'a PhysicalColumn,
+    query_context: &'a QueryContext<'a>,
+) -> NestedAbstractDelete<'a> {
+    assert!(matches!(argument, ConstValue::Object(..)));
+
+    let system = &query_context.get_system();
+    let table = &system.tables[field_model_type.table_id().unwrap()];
+
+    //
+    let nested = compute_update_columns(field_model_type, argument, query_context);
+    let (pk_columns, _nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
+
+    // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
+    // mutation be specified. Currently (while performing abstract-sql refactoring), keeping the old behavior, but
+    // will revisit it https://github.com/payalabs/payas/issues/376
+    let predicate = pk_columns
+        .into_iter()
+        .fold(AbstractPredicate::True, |acc, (pk_col, value)| {
+            let value = match value {
+                Column::Literal(value) => ColumnPath::Literal(value),
+                _ => panic!("Expected literal"),
+            };
+            AbstractPredicate::and(
+                acc,
+                AbstractPredicate::eq(
+                    ColumnPath::Physical(vec![ColumnPathLink {
+                        self_column: (pk_col, table),
+                        linked_column: None,
+                    }])
+                    .into(),
+                    value.into(),
+                ),
+            )
+        });
+
+    NestedAbstractDelete {
+        relation: payas_sql::asql::selection::NestedElementRelation {
+            column: nested_reference_col,
+            table,
+        },
+        delete: AbstractDelete {
+            table,
+            predicate: Some(predicate),
+            selection: AbstractSelect {
+                table,
+                selection: Selection::Seq(vec![]),
+                predicate: None,
+                order_by: None,
+                offset: None,
+                limit: None,
+            },
+        },
     }
 }

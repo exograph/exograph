@@ -4,7 +4,7 @@ use crate::{
         query_resolver::QuerySQLOperations,
     },
     execution::{query_context::QueryContext, resolver::GraphQLExecutionError},
-    sql::{column::Column, Cte, PhysicalTable, SQLOperation},
+    sql::PhysicalTable,
 };
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -16,15 +16,10 @@ use payas_model::{
         predicate::PredicateParameter,
         types::{GqlTypeKind, GqlTypeModifier},
     },
-    sql::{
-        transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-        Select,
-    },
+    sql::transaction::TransactionScript,
 };
 use payas_sql::asql::{
-    delete::AbstractDelete,
-    predicate::AbstractPredicate,
-    select::{AbstractSelect, SelectionLevel},
+    delete::AbstractDelete, predicate::AbstractPredicate, select::AbstractSelect,
 };
 
 use super::operation_mapper::{

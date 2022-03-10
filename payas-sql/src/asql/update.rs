@@ -5,10 +5,12 @@ use crate::sql::{
         ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
         TransactionStepId,
     },
-    Cte, PhysicalTable, SQLOperation, TemplateInsert, TemplateSQLOperation, TemplateUpdate,
+    Cte, PhysicalTable, SQLOperation, TemplateDelete, TemplateInsert, TemplateSQLOperation,
+    TemplateUpdate,
 };
 
 use super::{
+    delete::AbstractDelete,
     insert::AbstractInsert,
     predicate::AbstractPredicate,
     select::{AbstractSelect, SelectionLevel},
@@ -26,8 +28,9 @@ pub struct AbstractUpdate<'a> {
     pub predicate: Option<AbstractPredicate<'a>>,
     pub column_values: Vec<(&'a PhysicalColumn, Column<'a>)>,
     pub selection: AbstractSelect<'a>,
-    pub nested_update: Vec<NestedAbstractUpdate<'a>>,
-    pub nested_insert: Vec<NestedAbstractInsert<'a>>,
+    pub nested_updates: Vec<NestedAbstractUpdate<'a>>,
+    pub nested_inserts: Vec<NestedAbstractInsert<'a>>,
+    pub nested_deletes: Vec<NestedAbstractDelete<'a>>,
 }
 
 #[derive(Debug)]
@@ -40,6 +43,12 @@ pub struct NestedAbstractUpdate<'a> {
 pub struct NestedAbstractInsert<'a> {
     pub relation: NestedElementRelation<'a>,
     pub insert: AbstractInsert<'a>,
+}
+
+#[derive(Debug)]
+pub struct NestedAbstractDelete<'a> {
+    pub relation: NestedElementRelation<'a>,
+    pub delete: AbstractDelete<'a>,
 }
 
 impl<'a> AbstractUpdate<'a> {
@@ -60,7 +69,7 @@ impl<'a> AbstractUpdate<'a> {
         // those column (and not have to specify the WHERE clause once again).
         // If there are nested updates, select only the primary key columns, so that we can use that as the proxy
         // column in the nested updates added to the transaction script.
-        let return_col = if !self.nested_update.is_empty() {
+        let return_col = if !self.nested_updates.is_empty() {
             Column::Physical(
                 self.table
                     .get_pk_physical_column()
@@ -78,12 +87,15 @@ impl<'a> AbstractUpdate<'a> {
 
         let mut transaction_script = TransactionScript::default();
 
-        if !self.nested_update.is_empty() || !self.nested_insert.is_empty() {
+        if !self.nested_updates.is_empty()
+            || !self.nested_inserts.is_empty()
+            || !self.nested_deletes.is_empty()
+        {
             let root_step_id = transaction_script.add_step(TransactionStep::Concrete(
                 ConcreteTransactionStep::new(root_update),
             ));
 
-            self.nested_update.into_iter().for_each(|nested_update| {
+            self.nested_updates.into_iter().for_each(|nested_update| {
                 let update_op = TemplateTransactionStep {
                     operation: Self::update_op(nested_update, root_step_id),
                     prev_step_id: root_step_id,
@@ -92,7 +104,7 @@ impl<'a> AbstractUpdate<'a> {
                 let _ = transaction_script.add_step(TransactionStep::Template(update_op));
             });
 
-            self.nested_insert.into_iter().for_each(|nested_insert| {
+            self.nested_inserts.into_iter().for_each(|nested_insert| {
                 let insert_op = TemplateTransactionStep {
                     operation: Self::insert_op(nested_insert, root_step_id),
                     prev_step_id: root_step_id,
@@ -100,6 +112,19 @@ impl<'a> AbstractUpdate<'a> {
 
                 let _ = transaction_script.add_step(TransactionStep::Template(insert_op));
             });
+
+            self.nested_deletes.into_iter().for_each(|nested_delete| {
+                let delete_op = TemplateTransactionStep {
+                    operation: Self::delete_op(nested_delete, root_step_id),
+                    prev_step_id: root_step_id,
+                };
+
+                let _ = transaction_script.add_step(TransactionStep::Template(delete_op));
+            });
+
+            let _ = transaction_script.add_step(TransactionStep::Concrete(
+                ConcreteTransactionStep::new(SQLOperation::Select(select)),
+            ));
         } else {
             transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
                 SQLOperation::Cte(Cte {
@@ -179,6 +204,39 @@ impl<'a> AbstractUpdate<'a> {
             returning: vec![],
         })
     }
+
+    fn delete_op(
+        nested_delete: NestedAbstractDelete,
+        _parent_step_id: TransactionStepId,
+    ) -> TemplateSQLOperation {
+        // TODO: We need TemplatePredicate here, because we need to use the proxy column in the nested delete
+        // let predicate = Predicate::and(
+        //     nested_delete
+        //         .delete
+        //         .predicate
+        //         .map(|p| p.predicate())
+        //         .unwrap_or_else(|| Predicate::True),
+        //     Predicate::Eq(
+        //         Box::new(nested_delete.relation.column.into()),
+        //         Box::new(ProxyColumn::Template {
+        //             col_index: 0,
+        //             step_id: parent_step_id,
+        //         }),
+        //     ),
+        // );
+
+        let predicate = nested_delete
+            .delete
+            .predicate
+            .map(|p| p.predicate())
+            .unwrap_or_else(|| Predicate::True);
+
+        TemplateSQLOperation::Delete(TemplateDelete {
+            table: nested_delete.delete.table,
+            predicate,
+            returning: vec![],
+        })
+    }
 }
 
 #[cfg(test)]
@@ -216,8 +274,9 @@ mod tests {
                         venues_name_column,
                         Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
                     )],
-                    nested_update: vec![],
-                    nested_insert: vec![],
+                    nested_updates: vec![],
+                    nested_inserts: vec![],
+                    nested_deletes: vec![],
                     selection: AbstractSelect {
                         selection: Selection::Seq(vec![
                             ColumnSelection::new(
@@ -285,8 +344,9 @@ mod tests {
                             offset: None,
                             limit: None,
                         },
-                        nested_update: vec![],
-                        nested_insert: vec![],
+                        nested_updates: vec![],
+                        nested_inserts: vec![],
+                        nested_deletes: vec![],
                     },
                 };
 
@@ -297,8 +357,9 @@ mod tests {
                         venues_name_column,
                         Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
                     )],
-                    nested_update: vec![nested_abs_update],
-                    nested_insert: vec![],
+                    nested_updates: vec![nested_abs_update],
+                    nested_inserts: vec![],
+                    nested_deletes: vec![],
                     selection: AbstractSelect {
                         selection: Selection::Seq(vec![
                             ColumnSelection::new(
