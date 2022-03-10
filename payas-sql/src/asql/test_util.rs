@@ -52,7 +52,7 @@ impl TestSetup<'_> {
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: true,
-                    is_unique: false,
+                    unique_constraints: vec![],
                     default_value: None,
                 },
                 PhysicalColumn {
