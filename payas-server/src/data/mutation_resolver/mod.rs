@@ -22,6 +22,7 @@ use payas_model::{
     },
 };
 use payas_sql::asql::{
+    delete::AbstractDelete,
     predicate::AbstractPredicate,
     select::{AbstractSelect, SelectionLevel},
 };
@@ -55,10 +56,13 @@ impl<'a> OperationResolver<'a> for Mutation {
                 MutationKind::Create(data_param) => {
                     create_operation(self, data_param, &field.node, abs_select, query_context)?
                 }
-                MutationKind::Delete(predicate_param) => {
-                    let select = abs_select.to_sql(None, SelectionLevel::TopLevel);
-                    delete_operation(self, predicate_param, &field.node, select, query_context)?
-                }
+                MutationKind::Delete(predicate_param) => delete_operation(
+                    self,
+                    predicate_param,
+                    &field.node,
+                    abs_select,
+                    query_context,
+                )?,
                 MutationKind::Update {
                     data_param,
                     predicate_param,
@@ -82,14 +86,6 @@ impl<'a> OperationResolver<'a> for Mutation {
     fn name(&self) -> &str {
         &self.name
     }
-}
-
-pub fn table_name(mutation: &Mutation, query_context: &QueryContext) -> String {
-    mutation
-        .return_type
-        .physical_table(query_context.get_system())
-        .name
-        .to_owned()
 }
 
 fn create_operation<'a>(
@@ -118,66 +114,14 @@ fn create_operation<'a>(
 
     let abs_insert = data_param.insert_script(mutation, select, argument_value, query_context);
 
-    // let info = insertion_info(data_param, field_arguments, query_context)?.unwrap();
-
-    // let parent_pk_physical_column = info
-    //     .table
-    //     .get_pk_physical_column()
-    //     .expect("Primary key not found");
-
-    // let nested_insert = info
-    //     .nested
-    //     .into_iter()
-    //     .map(|(nested_relation, nested_insertion_info)| {
-    //         // let nested_relation = payas_sql::asql::selection::NestedElementRelation {
-    //         //     column: parent_pk_physical_column,
-    //         //     table: info.table,
-    //         // };
-    //         NestedAbstractInsert {
-    //             relation: nested_relation,
-    //             insertion: AbstractInsert {
-    //                 table: nested_insertion_info.table,
-    //                 column_names: nested_insertion_info.columns,
-    //                 column_values_seq: nested_insertion_info.values,
-    //                 selection: AbstractSelect {
-    //                     table: nested_insertion_info.table,
-    //                     selection: Selection::Seq(vec![]),
-    //                     predicate: None,
-    //                     order_by: None,
-    //                     offset: None,
-    //                     limit: None,
-    //                 },
-    //                 nested_insert: None,
-    //             },
-    //         }
-    //     })
-    //     .collect();
-
-    // let abs_insert = AbstractInsert {
-    //     table: info.table,
-    //     column_names: info.columns,
-    //     column_values_seq: info.values,
-    //     selection: select,
-    //     nested_insert: Some(nested_insert),
-    // };
-
     Ok(abs_insert?.to_sql())
-
-    // let ops = info.operation(query_context, true);
-
-    // let mut transaction_script = TransactionScript::default();
-    // transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-    //     SQLOperation::Cte(Cte { ctes: ops, select }),
-    // )));
-
-    // Ok(transaction_script)
 }
 
 fn delete_operation<'a>(
     mutation: &'a Mutation,
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
-    select: Select<'a>,
+    select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<TransactionScript<'a>> {
     let (table, _, _) = return_type_info(mutation, query_context);
@@ -194,10 +138,12 @@ fn delete_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
+    let field_arguments = query_context.field_arguments(field)?;
+
     let predicate = super::compute_predicate(
         Some(predicate_param),
-        query_context.field_arguments(field)?,
-        access_predicate,
+        field_arguments,
+        AbstractPredicate::True,
         query_context,
     )
     .with_context(|| {
@@ -207,19 +153,13 @@ fn delete_operation<'a>(
         )
     })?;
 
-    let predicate = predicate.predicate();
+    let abs_delete = AbstractDelete {
+        table,
+        predicate: Some(predicate),
+        selection: select,
+    };
 
-    let ops = vec![(
-        table_name(mutation, query_context),
-        SQLOperation::Delete(table.delete(predicate.into(), vec![Column::Star.into()])),
-    )];
-
-    let mut transaction_script = TransactionScript::default();
-    transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-        SQLOperation::Cte(Cte { ctes: ops, select }),
-    )));
-
-    Ok(transaction_script)
+    Ok(abs_delete.to_sql(None))
 }
 
 fn update_operation<'a>(
@@ -268,20 +208,6 @@ fn update_operation<'a>(
         })
         .unwrap()
 }
-
-// fn insertion_info<'a>(
-//     data_param: &'a CreateDataParameter,
-//     arguments: &'a Arguments,
-//     query_context: &'a QueryContext<'a>,
-// ) -> Result<Option<InsertionInfo<'a>>> {
-//     let system = &query_context.get_system();
-//     let data_type = &system.mutation_types[data_param.type_id];
-
-//     let argument_value = super::find_arg(arguments, &data_param.name);
-//     argument_value
-//         .map(|argument_value| data_type.map_to_sql(argument_value, query_context))
-//         .transpose()
-// }
 
 pub fn return_type_info<'a>(
     mutation: &'a Mutation,

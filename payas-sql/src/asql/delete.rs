@@ -1,12 +1,47 @@
-use maybe_owned::MaybeOwned;
+use crate::sql::{
+    column::Column,
+    predicate::Predicate,
+    transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
+    Cte, PhysicalTable, SQLOperation,
+};
 
-use crate::sql::{column::Column, PhysicalTable};
-
-use super::predicate::AbstractPredicate;
+use super::{
+    predicate::AbstractPredicate,
+    select::{AbstractSelect, SelectionLevel},
+};
 
 #[derive(Debug)]
-pub struct Delete<'a> {
+pub struct AbstractDelete<'a> {
     pub table: &'a PhysicalTable,
     pub predicate: Option<AbstractPredicate<'a>>,
-    pub returning: Vec<MaybeOwned<'a, Column<'a>>>,
+    pub selection: AbstractSelect<'a>,
+}
+
+impl<'a> AbstractDelete<'a> {
+    pub fn to_sql(self, additional_predicate: Option<Predicate<'a>>) -> TransactionScript<'a> {
+        // TODO: Consider the "join" aspect of the predicate
+        let predicate = Predicate::and(
+            self.predicate
+                .map(|p| p.predicate())
+                .unwrap_or_else(|| Predicate::True),
+            additional_predicate.unwrap_or(Predicate::True),
+        );
+
+        let root_delete = SQLOperation::Delete(
+            self.table
+                .delete(predicate.into(), vec![Column::Star.into()]),
+        );
+        let select = self.selection.to_sql(None, SelectionLevel::TopLevel);
+
+        let mut transaction_script = TransactionScript::default();
+
+        transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
+            SQLOperation::Cte(Cte {
+                ctes: vec![(self.table.name.clone(), root_delete)],
+                select,
+            }),
+        )));
+
+        transaction_script
+    }
 }

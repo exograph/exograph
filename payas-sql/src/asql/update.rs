@@ -60,7 +60,7 @@ impl<'a> AbstractUpdate<'a> {
         // those column (and not have to specify the WHERE clause once again).
         // If there are nested updates, select only the primary key columns, so that we can use that as the proxy
         // column in the nested updates added to the transaction script.
-        let return_col = if self.nested_update.is_empty() {
+        let return_col = if !self.nested_update.is_empty() {
             Column::Physical(
                 self.table
                     .get_pk_physical_column()
