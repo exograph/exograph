@@ -284,16 +284,16 @@ fn create_column(
     env: &MappedArena<ResolvedType>,
 ) -> Option<PhysicalColumn> {
     // Check that the field holds to a self column
-    let unique = match &field.kind {
+    let unique_constraint_name = match &field.kind {
         ResolvedFieldKind::Persistent {
             self_column,
-            unique,
+            unique_constraints,
             ..
         } => {
             if !self_column {
                 return None;
             }
-            *unique
+            unique_constraints.clone()
         }
         ResolvedFieldKind::NonPersistent => {
             panic!("Non-persistent fields are not supported")
@@ -305,22 +305,26 @@ fn create_column(
         _ => (&field.typ, false),
     };
 
-    let default_value = field
-        .default_value
-        .as_ref()
-        .map(|default_value| match default_value {
-            ResolvedFieldDefault::Value(val) => Some(match &**val {
-                AstExpr::StringLiteral(string, _) => format!("'{}'", string.replace("'", "''")),
-                AstExpr::BooleanLiteral(boolean, _) => format!("{}", boolean).to_ascii_uppercase(),
-                AstExpr::NumberLiteral(val, _) => {
-                    format!("{}", val)
-                }
-                _ => panic!("Invalid concrete value"),
-            }),
-            ResolvedFieldDefault::DatabaseFunction(string) => Some(string.to_string()),
-            ResolvedFieldDefault::Autoincrement => None,
-        })
-        .flatten();
+    let default_value =
+        field
+            .default_value
+            .as_ref()
+            .and_then(|default_value| match default_value {
+                ResolvedFieldDefault::Value(val) => Some(match &**val {
+                    AstExpr::StringLiteral(string, _) => {
+                        format!("'{}'", string.replace('\'', "''"))
+                    }
+                    AstExpr::BooleanLiteral(boolean, _) => {
+                        format!("{}", boolean).to_ascii_uppercase()
+                    }
+                    AstExpr::NumberLiteral(val, _) => {
+                        format!("{}", val)
+                    }
+                    _ => panic!("Invalid concrete value"),
+                }),
+                ResolvedFieldDefault::DatabaseFunction(string) => Some(string.to_string()),
+                ResolvedFieldDefault::Autoincrement => None,
+            });
 
     match typ {
         ResolvedFieldType::Plain(type_name) => {
@@ -340,7 +344,7 @@ fn create_column(
                         false
                     },
                     is_nullable: optional,
-                    is_unique: unique,
+                    unique_constraints: unique_constraint_name,
                     default_value,
                 }),
                 ResolvedType::Composite(ct) => {
@@ -362,7 +366,7 @@ fn create_column(
                         is_pk: false,
                         is_autoincrement: false,
                         is_nullable: optional,
-                        is_unique: unique,
+                        unique_constraints: unique_constraint_name,
                         default_value,
                     })
                 }
@@ -405,7 +409,7 @@ fn create_column(
                     is_pk: false,
                     is_autoincrement: false,
                     is_nullable: optional,
-                    is_unique: unique,
+                    unique_constraints: unique_constraint_name,
                     default_value,
                 })
             } else {

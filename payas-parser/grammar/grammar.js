@@ -68,9 +68,10 @@ module.exports = grammar({
       ))
     ),
     annotation_params: $ => choice(
-      $.expression,
+      $.annotation_multiple_params,
       $.annotation_map_params
     ),
+    annotation_multiple_params: $ => commaSep(field("exprs", $.expression)),
     annotation_map_params: $ => commaSep(field("param", $.annotation_map_param)),
     annotation_map_param: $ => seq(field("name", $.term), "=", field("expr", $.expression)),
     argument: $ => seq(

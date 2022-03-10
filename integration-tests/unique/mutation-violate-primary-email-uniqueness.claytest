@@ -1,0 +1,26 @@
+operation: |
+    mutation($new_username: String!, $new_email_id: String!, $new_email_domain: String!) {
+        createUser(data: {
+            username: $new_username,
+            primary_email_id: $new_email_id,
+            email_domain: $new_email_domain
+        }) {
+            id
+        }
+    }
+variable: |
+    {
+        "new_username": "Bob04",
+
+        // alice@example.com
+        "new_email_id": "alice",
+        "new_email_domain": "example.com"
+    }
+response: |
+    {
+      "errors": [
+        {
+            "message": "ERROR: duplicate key value violates unique constraint unique_email_primary; DETAIL: Key (primary_email_id, email_domain)=(alice, example.com) already exists." 
+        }
+      ]
+    }

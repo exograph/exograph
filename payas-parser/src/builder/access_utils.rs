@@ -116,6 +116,7 @@ fn compute_primitive_expr(
         AstExpr::StringLiteral(value, _) => AccessPrimitiveExpression::StringLiteral(value.clone()),
         AstExpr::BooleanLiteral(value, _) => AccessPrimitiveExpression::BooleanLiteral(*value),
         AstExpr::NumberLiteral(value, _) => AccessPrimitiveExpression::NumberLiteral(*value),
+        AstExpr::StringList(_, _) => panic!("Access expressions do not support lists yet"),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
     }

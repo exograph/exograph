@@ -294,6 +294,15 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
                 mapped_params: None,
             },
         ),
+        (
+            "unique",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
     ];
 
     for (name, spec) in annotations {

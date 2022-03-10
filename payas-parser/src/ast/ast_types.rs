@@ -232,6 +232,12 @@ pub enum AstExpr<T: NodeTypedness> {
         #[serde(default = "default_span")]
         Span,
     ),
+    StringList(
+        Vec<String>,
+        #[serde(skip_serializing)]
+        #[serde(skip_deserializing)]
+        Vec<Span>,
+    ),
 }
 
 impl<T: NodeTypedness> AstExpr<T> {

@@ -18,7 +18,7 @@ response: |
   {
     "errors": [
       {
-        "message": "ERROR: duplicate key value violates unique constraint memberships_user_id_key; DETAIL: Key (user_id)=(3) already exists."
+        "message": "ERROR: duplicate key value violates unique constraint unique_constraint_user; DETAIL: Key (user_id)=(3) already exists."
       }
     ]
   }
