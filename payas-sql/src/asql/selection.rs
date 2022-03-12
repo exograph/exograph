@@ -1,3 +1,5 @@
+use maybe_owned::MaybeOwned;
+
 use crate::sql::{
     column::{Column, PhysicalColumn},
     predicate::Predicate,
@@ -36,7 +38,7 @@ pub enum SelectionSQL<'a> {
 }
 
 impl<'a> Selection<'a> {
-    pub fn to_sql(self) -> SelectionSQL<'a> {
+    pub fn to_sql(&'a self) -> SelectionSQL<'a> {
         match self {
             Selection::Seq(seq) => SelectionSQL::Seq(
                 seq.iter()
@@ -57,8 +59,8 @@ impl<'a> Selection<'a> {
             ),
             Selection::Json(seq, cardinality) => {
                 let object_elems = seq
-                    .into_iter()
-                    .map(|ColumnSelection { alias, column }| (alias, column.to_sql().into()))
+                    .iter()
+                    .map(|ColumnSelection { alias, column }| (alias.clone(), column.to_sql()))
                     .collect();
 
                 let json_obj = Column::JsonObject(object_elems);
@@ -97,10 +99,10 @@ impl<'a> NestedElementRelation<'a> {
 }
 
 impl<'a> SelectionElement<'a> {
-    pub fn to_sql(self) -> Column<'a> {
+    pub fn to_sql(&'a self) -> MaybeOwned<'a, Column<'a>> {
         match self {
             SelectionElement::Physical(pc) => Column::Physical(pc),
-            SelectionElement::Constant(s) => Column::Constant(s),
+            SelectionElement::Constant(s) => Column::Constant(s.clone()),
             SelectionElement::Nested(relation, select) => {
                 Column::SelectionTableWrapper(Box::new(select.to_select(
                     Some(Predicate::Eq(
@@ -111,5 +113,6 @@ impl<'a> SelectionElement<'a> {
                 )))
             }
         }
+        .into()
     }
 }

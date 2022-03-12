@@ -51,10 +51,12 @@ pub struct AbstractInsert<'a> {
 }
 
 impl<'a> InsertionRow<'a> {
-    pub fn partition_self_and_nested(self) -> (Vec<ColumnValuePair<'a>>, Vec<NestedInsertion<'a>>) {
+    pub fn partition_self_and_nested(
+        &'a self,
+    ) -> (Vec<&'a ColumnValuePair<'a>>, Vec<&'a NestedInsertion<'a>>) {
         let mut self_elems = Vec::new();
         let mut nested_elems = Vec::new();
-        for elem in self.elems {
+        for elem in &self.elems {
             match elem {
                 InsertionElement::SelfInsert(pair) => self_elems.push(pair),
                 InsertionElement::NestedInsert(nested) => nested_elems.push(nested),
@@ -65,7 +67,7 @@ impl<'a> InsertionRow<'a> {
 }
 
 impl<'a> AbstractInsert<'a> {
-    pub(crate) fn to_transaction_script(self) -> TransactionScript<'a> {
+    pub(crate) fn to_transaction_script(&'a self) -> TransactionScript<'a> {
         let AbstractInsert {
             table,
             rows,
@@ -75,7 +77,7 @@ impl<'a> AbstractInsert<'a> {
         let select = selection.to_select(None, SelectionLevel::TopLevel);
 
         let (self_elems, mut nested_elems): (Vec<_>, Vec<_>) = rows
-            .into_iter()
+            .iter()
             .map(|row| row.partition_self_and_nested())
             .unzip();
 
@@ -174,9 +176,12 @@ impl<'a> AbstractInsert<'a> {
 /// For example, if the input is {data: [{a: 1, b: 2}, {a: 3, c: 4}]}, we will have the 'a' key in both
 /// but only 'b' or 'c' keys in others. So we need align columns that can be supplied to an insert statement
 /// (a, b, c), [(1, 2, null), (3, null, 4)]
-pub fn align(
-    unaligned: Vec<Vec<ColumnValuePair>>,
-) -> (Vec<&PhysicalColumn>, Vec<Vec<MaybeOwned<Column>>>) {
+pub fn align<'a>(
+    unaligned: Vec<Vec<&'a ColumnValuePair>>,
+) -> (
+    Vec<&'a PhysicalColumn>,
+    Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
+) {
     let mut all_keys = HashSet::new();
     for row in unaligned.iter() {
         for insertion_value in row.iter() {
@@ -200,10 +205,10 @@ pub fn align(
 
     let keys_count = all_keys.len();
 
-    let mut aligned = Vec::with_capacity(unaligned.len());
+    let mut aligned: Vec<Vec<MaybeOwned<'a, Column<'a>>>> = Vec::with_capacity(unaligned.len());
 
     for unaligned_row in unaligned.into_iter() {
-        let mut aligned_row = Vec::with_capacity(keys_count);
+        let mut aligned_row: Vec<MaybeOwned<'a, Column<'a>>> = Vec::with_capacity(keys_count);
 
         for _ in 0..keys_count {
             aligned_row.push(Column::Null.into());
@@ -211,7 +216,7 @@ pub fn align(
 
         for ColumnValuePair { column, value } in unaligned_row.into_iter() {
             let col_index = key_map[&column];
-            aligned_row[col_index] = value;
+            aligned_row[col_index] = MaybeOwned::Borrowed(value);
         }
 
         aligned.push(aligned_row);

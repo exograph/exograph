@@ -174,7 +174,7 @@ impl<'a> InterceptedOperation<'a> {
 
     #[async_recursion(?Send)]
     pub async fn execute(
-        self,
+        &'a self,
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
@@ -222,16 +222,15 @@ impl<'a> InterceptedOperation<'a> {
                     Some(operation_name.to_string()),
                     Some(&|| {
                         async move {
-                            todo!()
-                            // core.execute(field, query_context).await.map(
-                            //     |response| match response {
-                            //         QueryResponse::Json(json) => json,
-                            //         QueryResponse::Raw(string) => match string {
-                            //             Some(string) => serde_json::Value::String(string),
-                            //             None => serde_json::Value::Null,
-                            //         },
-                            //     },
-                            // )
+                            core.execute(field, query_context).await.map(
+                                |response| match response {
+                                    QueryResponse::Json(json) => json,
+                                    QueryResponse::Raw(string) => match string {
+                                        Some(string) => serde_json::Value::String(string),
+                                        None => serde_json::Value::Null,
+                                    },
+                                },
+                            )
                         }
                         .boxed_local()
                     }),

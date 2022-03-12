@@ -21,12 +21,13 @@ pub struct AbstractDelete<'a> {
 
 impl<'a> AbstractDelete<'a> {
     pub(crate) fn to_transaction_script(
-        self,
+        &'a self,
         additional_predicate: Option<Predicate<'a>>,
     ) -> TransactionScript<'a> {
         // TODO: Consider the "join" aspect of the predicate
         let predicate = Predicate::and(
             self.predicate
+                .as_ref()
                 .map(|p| p.predicate())
                 .unwrap_or_else(|| Predicate::True),
             additional_predicate.unwrap_or(Predicate::True),

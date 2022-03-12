@@ -1,6 +1,8 @@
-use crate::sql::cte::Cte;
+use maybe_owned::MaybeOwned;
+
 use crate::sql::{
     column::{Column, PhysicalColumn, ProxyColumn},
+    cte::Cte,
     predicate::Predicate,
     sql_operation::SQLOperation,
     sql_operation::TemplateSQLOperation,
@@ -55,14 +57,19 @@ pub struct NestedAbstractDelete<'a> {
 
 impl<'a> AbstractUpdate<'a> {
     pub(crate) fn to_transaction_script(
-        self,
+        &'a self,
         additional_predicate: Option<Predicate<'a>>,
     ) -> TransactionScript<'a> {
-        let column_values = self.column_values;
+        let column_values: Vec<(&'a PhysicalColumn, MaybeOwned<'a, Column<'a>>)> = self
+            .column_values
+            .iter()
+            .map(|(c, v)| (*c, v.into()))
+            .collect();
 
         // TODO: Consider the "join" aspect of the predicate
         let predicate = Predicate::and(
             self.predicate
+                .as_ref()
                 .map(|p| p.predicate())
                 .unwrap_or_else(|| Predicate::True),
             additional_predicate.unwrap_or(Predicate::True),
@@ -100,7 +107,7 @@ impl<'a> AbstractUpdate<'a> {
                 ConcreteTransactionStep::new(root_update),
             ));
 
-            self.nested_updates.into_iter().for_each(|nested_update| {
+            self.nested_updates.iter().for_each(|nested_update| {
                 let update_op = TemplateTransactionStep {
                     operation: Self::update_op(nested_update, root_step_id),
                     prev_step_id: root_step_id,
@@ -109,7 +116,7 @@ impl<'a> AbstractUpdate<'a> {
                 let _ = transaction_script.add_step(TransactionStep::Template(update_op));
             });
 
-            self.nested_inserts.into_iter().for_each(|nested_insert| {
+            self.nested_inserts.iter().for_each(|nested_insert| {
                 let insert_op = TemplateTransactionStep {
                     operation: Self::insert_op(nested_insert, root_step_id),
                     prev_step_id: root_step_id,
@@ -118,7 +125,7 @@ impl<'a> AbstractUpdate<'a> {
                 let _ = transaction_script.add_step(TransactionStep::Template(insert_op));
             });
 
-            self.nested_deletes.into_iter().for_each(|nested_delete| {
+            self.nested_deletes.iter().for_each(|nested_delete| {
                 let delete_op = TemplateTransactionStep {
                     operation: Self::delete_op(nested_delete, root_step_id),
                     prev_step_id: root_step_id,
@@ -143,14 +150,14 @@ impl<'a> AbstractUpdate<'a> {
     }
 
     fn update_op(
-        nested_update: NestedAbstractUpdate,
+        nested_update: &'a NestedAbstractUpdate,
         parent_step_id: TransactionStepId,
-    ) -> TemplateSQLOperation {
-        let mut column_values: Vec<_> = nested_update
+    ) -> TemplateSQLOperation<'a> {
+        let mut column_values: Vec<(&'a PhysicalColumn, ProxyColumn<'a>)> = nested_update
             .update
             .column_values
-            .into_iter()
-            .map(|(col, val)| (col, ProxyColumn::Concrete(val.into())))
+            .iter()
+            .map(|(col, val)| (*col, ProxyColumn::Concrete(val.into())))
             .collect();
         column_values.push((
             nested_update.relation.column,
@@ -165,6 +172,7 @@ impl<'a> AbstractUpdate<'a> {
             predicate: nested_update
                 .update
                 .predicate
+                .as_ref()
                 .map(|p| p.predicate())
                 .unwrap_or(Predicate::True),
             column_values,
@@ -173,14 +181,14 @@ impl<'a> AbstractUpdate<'a> {
     }
 
     fn insert_op(
-        nested_insert: NestedAbstractInsert,
+        nested_insert: &'a NestedAbstractInsert,
         parent_step_id: TransactionStepId,
-    ) -> TemplateSQLOperation {
-        let rows = nested_insert.insert.rows;
+    ) -> TemplateSQLOperation<'a> {
+        let rows = &nested_insert.insert.rows;
 
         // TODO: Deal with _nested_elems (i.e. a recursive use of nested insert)
         let (self_elems, _nested_elems): (Vec<_>, Vec<_>) = rows
-            .into_iter()
+            .iter()
             .map(|row| row.partition_self_and_nested())
             .unzip();
 
@@ -211,9 +219,9 @@ impl<'a> AbstractUpdate<'a> {
     }
 
     fn delete_op(
-        nested_delete: NestedAbstractDelete,
+        nested_delete: &'a NestedAbstractDelete,
         _parent_step_id: TransactionStepId,
-    ) -> TemplateSQLOperation {
+    ) -> TemplateSQLOperation<'a> {
         // TODO: We need TemplatePredicate here, because we need to use the proxy column in the nested delete
         // let predicate = Predicate::and(
         //     nested_delete
@@ -233,6 +241,7 @@ impl<'a> AbstractUpdate<'a> {
         let predicate = nested_delete
             .delete
             .predicate
+            .as_ref()
             .map(|p| p.predicate())
             .unwrap_or_else(|| Predicate::True);
 

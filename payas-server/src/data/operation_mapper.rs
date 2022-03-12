@@ -141,12 +141,11 @@ pub fn compute_service_access_predicate<'a>(
                 ServiceMethodType::Mutation(_) => &access.creation, // mutation
             };
 
-            let abstract_predicate = access_solver::solve_access(
+            access_solver::solve_access(
                 access_expr,
                 query_context.request_context,
                 query_context.executor.system,
-            );
-            abstract_predicate.predicate()
+            )
         }
         _ => panic!(),
     };
@@ -163,7 +162,7 @@ pub fn compute_service_access_predicate<'a>(
     );
     let method_level_access = method_level_access.predicate();
 
-    if matches!(type_level_access, Predicate::False)
+    if matches!(type_level_access, AbstractPredicate::False)
         || matches!(method_level_access, Predicate::False)
     {
         &Predicate::False // deny if either access check fails
@@ -174,7 +173,7 @@ pub fn compute_service_access_predicate<'a>(
 
 impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
-        self,
+        &self,
         field: &Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
@@ -200,7 +199,7 @@ impl<'a> OperationResolverResult<'a> {
             }
 
             OperationResolverResult::DenoOperation(method_id) => {
-                let method = &query_context.executor.system.methods[method_id];
+                let method = &query_context.executor.system.methods[*method_id];
 
                 let access_predicate =
                     compute_service_access_predicate(&method.return_type, method, query_context);

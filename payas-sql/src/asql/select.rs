@@ -31,7 +31,7 @@ pub enum SelectionLevel {
 
 impl<'a> AbstractSelect<'a> {
     pub fn to_select(
-        self,
+        &'a self,
         additional_predicate: Option<Predicate<'a>>,
         selection_level: SelectionLevel,
     ) -> Select<'a> {
@@ -73,6 +73,7 @@ impl<'a> AbstractSelect<'a> {
 
         let predicate = Predicate::and(
             self.predicate
+                .as_ref()
                 .map(|p| p.predicate())
                 .unwrap_or_else(|| Predicate::True),
             additional_predicate.unwrap_or(Predicate::True),
@@ -83,7 +84,7 @@ impl<'a> AbstractSelect<'a> {
             underlying: join,
             columns,
             predicate,
-            order_by: self.order_by.map(|ob| ob.order_by()),
+            order_by: self.order_by.as_ref().map(|ob| ob.order_by()),
             offset: self.offset.clone(),
             limit: self.limit.clone(),
             top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
@@ -91,7 +92,7 @@ impl<'a> AbstractSelect<'a> {
     }
 
     pub(crate) fn to_transaction_script(
-        self,
+        &'a self,
         additional_predicate: Option<Predicate<'a>>,
     ) -> TransactionScript<'a> {
         let select = self.to_select(additional_predicate, SelectionLevel::TopLevel);

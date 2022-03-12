@@ -12,7 +12,7 @@ pub enum AbstractOperation<'a> {
 }
 
 impl<'a> AbstractOperation<'a> {
-    pub(crate) fn to_transaction_script(self) -> TransactionScript<'a> {
+    pub(crate) fn to_transaction_script(&'a self) -> TransactionScript<'a> {
         match self {
             AbstractOperation::Select(select) => select.to_transaction_script(None),
             AbstractOperation::Delete(delete) => delete.to_transaction_script(None),

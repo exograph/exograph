@@ -10,7 +10,7 @@ pub struct DatabaseExecutor<'a> {
 impl DatabaseExecutor<'_> {
     pub async fn execute<'a>(
         &self,
-        abstract_operation: AbstractOperation<'a>,
+        abstract_operation: &'a AbstractOperation<'a>,
     ) -> Result<TransactionStepResult> {
         let mut client = self.database.get_client().await?;
 
