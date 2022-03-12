@@ -4,7 +4,12 @@ use crate::{
         selection::SelectionSQL,
         util,
     },
-    sql::{predicate::Predicate, Limit, Offset, PhysicalTable, Select},
+    sql::{
+        predicate::Predicate,
+        sql_operation::SQLOperation,
+        transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
+        Limit, Offset, PhysicalTable, Select,
+    },
 };
 
 use super::{order_by::AbstractOrderBy, predicate::AbstractPredicate, selection::Selection};
@@ -25,7 +30,7 @@ pub enum SelectionLevel {
 }
 
 impl<'a> AbstractSelect<'a> {
-    pub fn to_sql(
+    pub fn to_select(
         self,
         additional_predicate: Option<Predicate<'a>>,
         selection_level: SelectionLevel,
@@ -84,6 +89,18 @@ impl<'a> AbstractSelect<'a> {
             top_level_selection: matches!(selection_level, SelectionLevel::TopLevel),
         }
     }
+
+    pub(crate) fn to_transaction_script(
+        self,
+        additional_predicate: Option<Predicate<'a>>,
+    ) -> TransactionScript<'a> {
+        let select = self.to_select(additional_predicate, SelectionLevel::TopLevel);
+        let mut transaction_script = TransactionScript::default();
+        transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
+            SQLOperation::Select(select),
+        )));
+        transaction_script
+    }
 }
 
 #[cfg(test)]
@@ -127,7 +144,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
+                let select = aselect.to_select(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(binding, r#"select "concerts"."id" from "concerts""#);
@@ -162,7 +179,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
+                let select = aselect.to_select(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -197,7 +214,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
+                let select = aselect.to_select(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -265,7 +282,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
+                let select = aselect.to_select(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -327,7 +344,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
+                let select = aselect.to_select(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(
@@ -384,7 +401,7 @@ mod tests {
                     limit: None,
                 };
 
-                let select = aselect.to_sql(None, SelectionLevel::TopLevel);
+                let select = aselect.to_select(None, SelectionLevel::TopLevel);
                 let mut expr = ExpressionContext::default();
                 let binding = select.binding(&mut expr);
                 assert_binding!(

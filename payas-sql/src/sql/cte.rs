@@ -5,7 +5,7 @@ use super::{
 };
 
 #[derive(Debug)]
-pub struct Cte<'a> {
+pub(crate) struct Cte<'a> {
     pub ctes: Vec<(String, SQLOperation<'a>)>,
     pub select: Select<'a>,
 }

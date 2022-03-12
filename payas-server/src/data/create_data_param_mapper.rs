@@ -1,9 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
 use async_graphql_value::ConstValue;
 use payas_sql::asql::{
-    insert::{
-        AbstractInsert, InsertionColumnValuePair, InsertionElement, InsertionRow, NestedInsertion,
-    },
+    common::ColumnValuePair,
+    insert::{AbstractInsert, InsertionElement, InsertionRow, NestedInsertion},
     select::AbstractSelect,
     selection::NestedElementRelation,
 };
@@ -133,7 +132,7 @@ fn map_self_column<'a>(
             )
         })?;
 
-    Ok(InsertionElement::SelfInsert(InsertionColumnValuePair::new(
+    Ok(InsertionElement::SelfInsert(ColumnValuePair::new(
         key_column,
         value_column.into(),
     )))

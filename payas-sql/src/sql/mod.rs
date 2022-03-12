@@ -10,14 +10,15 @@ use tokio_postgres::types::{to_sql_checked, FromSql, ToSql, Type};
 #[macro_use]
 #[cfg(test)]
 mod test_util;
+
 pub mod column;
-mod cte;
+pub(crate) mod cte;
 pub mod database;
 mod delete;
 mod insert;
 mod physical_table;
 mod select;
-mod sql_operation;
+pub(crate) mod sql_operation;
 
 pub mod array_util;
 mod join;
@@ -29,14 +30,12 @@ mod table;
 pub mod transaction;
 mod update;
 
-pub use cte::Cte;
 pub use delete::{Delete, TemplateDelete};
 pub use insert::{Insert, TemplateInsert};
 pub use limit::Limit;
 pub use offset::Offset;
 pub use physical_table::PhysicalTable;
 pub use select::Select;
-pub use sql_operation::{SQLOperation, TemplateSQLOperation};
 pub use table::TableQuery;
 pub use update::{TemplateUpdate, Update};
 

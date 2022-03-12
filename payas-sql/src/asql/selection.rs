@@ -102,7 +102,7 @@ impl<'a> SelectionElement<'a> {
             SelectionElement::Physical(pc) => Column::Physical(pc),
             SelectionElement::Constant(s) => Column::Constant(s),
             SelectionElement::Nested(relation, select) => {
-                Column::SelectionTableWrapper(Box::new(select.to_sql(
+                Column::SelectionTableWrapper(Box::new(select.to_select(
                     Some(Predicate::Eq(
                         Column::Physical(relation.column).into(),
                         Column::Physical(relation.table.get_pk_physical_column().unwrap()).into(),

@@ -6,6 +6,7 @@ use payas_deno::DenoExecutor;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
+use payas_sql::asql::executor::DatabaseExecutor;
 
 use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
@@ -39,10 +40,11 @@ pub async fn resolve(
     match auth {
         Ok(claims) => {
             let (system, schema, database, deno_execution) = system_info.as_ref();
+            let database_executor = DatabaseExecutor { database };
             let executor = Executor {
                 system,
                 schema,
-                database,
+                database_executor: &database_executor,
                 deno_execution,
             };
             let operation_name = body["operationName"].as_str();

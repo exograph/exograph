@@ -15,7 +15,7 @@ pub struct DenoActor {
 }
 
 pub enum RequestFromDenoMessage {
-    InteceptedOperationProceed {
+    InterceptedOperationProceed {
         response_sender: tokio::sync::oneshot::Sender<ResponseForDenoMessage>,
     },
     ClaytipExecute {
@@ -26,7 +26,7 @@ pub enum RequestFromDenoMessage {
 }
 
 pub enum ResponseForDenoMessage {
-    InteceptedOperationProceed(Result<Value>),
+    InterceptedOperationProceed(Result<Value>),
     ClaytipExecute(Result<Value>),
 }
 
@@ -140,14 +140,14 @@ impl DenoActor {
                                 tokio::sync::oneshot::channel();
 
                             sender
-                                .send(RequestFromDenoMessage::InteceptedOperationProceed {
+                                .send(RequestFromDenoMessage::InterceptedOperationProceed {
                                     response_sender,
                                 })
                                 .await
                                 .ok()
                                 .expect("Could not send request from op_intercepted_proceed");
 
-                            if let ResponseForDenoMessage::InteceptedOperationProceed(result) =
+                            if let ResponseForDenoMessage::InterceptedOperationProceed(result) =
                                 response_receiver
                                     .await
                                     .expect("Could not receive result in op_intercepted_proceed")

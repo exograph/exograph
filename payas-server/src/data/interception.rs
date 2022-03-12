@@ -40,7 +40,7 @@ use serde_json::{Map, Value};
 /// @after  2
 /// ```
 ///
-/// We want to execute the interceptors in the followiong order.
+/// We want to execute the interceptors in the following order.
 
 ///
 /// ```ignore
@@ -61,7 +61,7 @@ use serde_json::{Map, Value};
 ///
 /// Will translate to:
 ///
-/// ```ingore
+/// ```ignore
 /// InterceptedOperation::Intercepted (
 ///     before: [
 ///         Interception::NonProceedingInterception(before 1)
@@ -174,7 +174,7 @@ impl<'a> InterceptedOperation<'a> {
 
     #[async_recursion(?Send)]
     pub async fn execute(
-        &'a self,
+        self,
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
@@ -210,9 +210,9 @@ impl<'a> InterceptedOperation<'a> {
                 Ok(res)
             }
 
-            &InterceptedOperation::Around {
+            InterceptedOperation::Around {
                 operation_name,
-                ref core,
+                core,
                 interceptor,
             } => {
                 let res = execute_interceptor(
@@ -222,15 +222,16 @@ impl<'a> InterceptedOperation<'a> {
                     Some(operation_name.to_string()),
                     Some(&|| {
                         async move {
-                            core.execute(field, query_context).await.map(
-                                |response| match response {
-                                    QueryResponse::Json(json) => json,
-                                    QueryResponse::Raw(string) => match string {
-                                        Some(string) => serde_json::Value::String(string),
-                                        None => serde_json::Value::Null,
-                                    },
-                                },
-                            )
+                            todo!()
+                            // core.execute(field, query_context).await.map(
+                            //     |response| match response {
+                            //         QueryResponse::Json(json) => json,
+                            //         QueryResponse::Raw(string) => match string {
+                            //             Some(string) => serde_json::Value::String(string),
+                            //             None => serde_json::Value::Null,
+                            //         },
+                            //     },
+                            // )
                         }
                         .boxed_local()
                     }),

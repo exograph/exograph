@@ -1,12 +1,14 @@
+use crate::sql::cte::Cte;
 use crate::sql::{
     column::{Column, PhysicalColumn, ProxyColumn},
     predicate::Predicate,
+    sql_operation::SQLOperation,
+    sql_operation::TemplateSQLOperation,
     transaction::{
         ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
         TransactionStepId,
     },
-    Cte, PhysicalTable, SQLOperation, TemplateDelete, TemplateInsert, TemplateSQLOperation,
-    TemplateUpdate,
+    PhysicalTable, TemplateDelete, TemplateInsert, TemplateUpdate,
 };
 
 use super::{
@@ -52,7 +54,10 @@ pub struct NestedAbstractDelete<'a> {
 }
 
 impl<'a> AbstractUpdate<'a> {
-    pub fn to_sql(self, additional_predicate: Option<Predicate<'a>>) -> TransactionScript<'a> {
+    pub(crate) fn to_transaction_script(
+        self,
+        additional_predicate: Option<Predicate<'a>>,
+    ) -> TransactionScript<'a> {
         let column_values = self.column_values;
 
         // TODO: Consider the "join" aspect of the predicate
@@ -63,7 +68,7 @@ impl<'a> AbstractUpdate<'a> {
             additional_predicate.unwrap_or(Predicate::True),
         );
 
-        let select = self.selection.to_sql(None, SelectionLevel::TopLevel);
+        let select = self.selection.to_select(None, SelectionLevel::TopLevel);
 
         // If there is no nested update, select all the columns, so that the select statement will have all
         // those column (and not have to specify the WHERE clause once again).
@@ -296,7 +301,7 @@ mod tests {
                     },
                 };
 
-                let update = abs_update.to_sql(None);
+                let update = abs_update.to_transaction_script(None);
 
                 println!("{:#?}", update);
             },
@@ -379,7 +384,7 @@ mod tests {
                     },
                 };
 
-                let update = abs_update.to_sql(None);
+                let update = abs_update.to_transaction_script(None);
 
                 println!("{:#?}", update);
             },

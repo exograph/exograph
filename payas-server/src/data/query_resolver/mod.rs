@@ -1,5 +1,4 @@
 use crate::execution::query_context::QueryContext;
-use crate::sql::SQLOperation;
 
 use crate::sql::order::OrderBy;
 
@@ -10,13 +9,12 @@ use payas_model::model::{
     relation::{GqlRelation, RelationCardinality},
     types::{GqlTypeKind, GqlTypeModifier},
 };
-use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
 use payas_model::sql::{Limit, Offset};
-use payas_sql::asql::predicate::AbstractPredicate;
-use payas_sql::asql::select::{AbstractSelect, SelectionLevel};
+use payas_sql::asql::select::AbstractSelect;
 use payas_sql::asql::selection::{
     ColumnSelection, NestedElementRelation, SelectionCardinality, SelectionElement,
 };
+use payas_sql::asql::{abstract_operation::AbstractOperation, predicate::AbstractPredicate};
 
 use super::operation_mapper::{
     compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
@@ -41,24 +39,18 @@ impl<'a> OperationResolver<'a> for Query {
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
-        match &self.kind {
+        Ok(match &self.kind {
             QueryKind::Database(_) => {
-                let select = self
-                    .operation(&field.node, AbstractPredicate::True, query_context)?
-                    .to_sql(None, SelectionLevel::TopLevel);
+                let operation =
+                    self.operation(&field.node, AbstractPredicate::True, query_context)?;
 
-                let mut transaction_script = TransactionScript::default();
-                transaction_script.add_step(TransactionStep::Concrete(
-                    ConcreteTransactionStep::new(SQLOperation::Select(select)),
-                ));
-
-                Ok(OperationResolverResult::SQLOperation(transaction_script))
+                OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
             }
 
             QueryKind::Service { method_id, .. } => {
-                Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
+                OperationResolverResult::DenoOperation(method_id.unwrap())
             }
-        }
+        })
     }
 
     fn interceptors(&self) -> &Interceptors {

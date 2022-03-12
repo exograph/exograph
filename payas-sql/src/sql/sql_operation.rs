@@ -9,7 +9,7 @@ use super::{
 };
 
 #[derive(Debug)]
-pub enum SQLOperation<'a> {
+pub(crate) enum SQLOperation<'a> {
     Select(Select<'a>),
     Insert(Insert<'a>),
     Delete(Delete<'a>),
@@ -31,7 +31,7 @@ impl<'a> OperationExpression for SQLOperation<'a> {
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
-pub enum TemplateSQLOperation<'a> {
+pub(crate) enum TemplateSQLOperation<'a> {
     Insert(TemplateInsert<'a>),
     Update(TemplateUpdate<'a>),
     Delete(TemplateDelete<'a>),

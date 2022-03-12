@@ -4,27 +4,18 @@ use maybe_owned::MaybeOwned;
 
 use crate::sql::{
     column::{Column, PhysicalColumn},
+    cte::Cte,
     predicate::Predicate,
+    sql_operation::SQLOperation,
     transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-    Cte, Limit, Offset, PhysicalTable, SQLOperation, Select, TableQuery,
+    Limit, Offset, PhysicalTable, Select, TableQuery,
 };
 
 use super::{
+    common::ColumnValuePair,
     select::{AbstractSelect, SelectionLevel},
     selection::NestedElementRelation,
 };
-
-#[derive(Debug)]
-pub struct InsertionColumnValuePair<'a> {
-    column: &'a PhysicalColumn,
-    value: MaybeOwned<'a, Column<'a>>,
-}
-
-impl<'a> InsertionColumnValuePair<'a> {
-    pub fn new(column: &'a PhysicalColumn, value: MaybeOwned<'a, Column<'a>>) -> Self {
-        Self { column, value }
-    }
-}
 
 #[derive(Debug)]
 pub struct NestedInsertion<'a> {
@@ -34,16 +25,19 @@ pub struct NestedInsertion<'a> {
     pub insertions: Vec<InsertionRow<'a>>,
 }
 
-/// Logical element (of a logical row) to be inserted.
-/// Each element may be a column-value pair, or a nested insertion.
-/// For example, inserting a venue may specify a column-value pair for the venue's name,
-/// or an associated concert (whose venue_id should be set to the inserted venue's id).
+/// Logical element to be inserted. Each element could be thought of as an
+/// attribute of the logical document. For example, with Venue <-> [Concert]
+/// model, logical elements in in `Venue` includes its own columns (name,
+/// address, etc.), which would be represented as the `SelfInsert` variant. It
+/// also includes the logically nested "concerts" element, which would be
+/// represented as the `NestedInsert` variant.
 #[derive(Debug)]
 pub enum InsertionElement<'a> {
-    SelfInsert(InsertionColumnValuePair<'a>),
+    SelfInsert(ColumnValuePair<'a>),
     NestedInsert(NestedInsertion<'a>),
 }
 
+/// A logical row to be inserted (see `InsertionElement` for more details).
 #[derive(Debug)]
 pub struct InsertionRow<'a> {
     pub elems: Vec<InsertionElement<'a>>,
@@ -57,9 +51,7 @@ pub struct AbstractInsert<'a> {
 }
 
 impl<'a> InsertionRow<'a> {
-    pub fn partition_self_and_nested(
-        self,
-    ) -> (Vec<InsertionColumnValuePair<'a>>, Vec<NestedInsertion<'a>>) {
+    pub fn partition_self_and_nested(self) -> (Vec<ColumnValuePair<'a>>, Vec<NestedInsertion<'a>>) {
         let mut self_elems = Vec::new();
         let mut nested_elems = Vec::new();
         for elem in self.elems {
@@ -73,14 +65,14 @@ impl<'a> InsertionRow<'a> {
 }
 
 impl<'a> AbstractInsert<'a> {
-    pub fn to_sql(self) -> TransactionScript<'a> {
+    pub(crate) fn to_transaction_script(self) -> TransactionScript<'a> {
         let AbstractInsert {
             table,
             rows,
             selection,
         } = self;
 
-        let select = selection.to_sql(None, SelectionLevel::TopLevel);
+        let select = selection.to_select(None, SelectionLevel::TopLevel);
 
         let (self_elems, mut nested_elems): (Vec<_>, Vec<_>) = rows
             .into_iter()
@@ -183,7 +175,7 @@ impl<'a> AbstractInsert<'a> {
 /// but only 'b' or 'c' keys in others. So we need align columns that can be supplied to an insert statement
 /// (a, b, c), [(1, 2, null), (3, null, 4)]
 pub fn align(
-    unaligned: Vec<Vec<InsertionColumnValuePair>>,
+    unaligned: Vec<Vec<ColumnValuePair>>,
 ) -> (Vec<&PhysicalColumn>, Vec<Vec<MaybeOwned<Column>>>) {
     let mut all_keys = HashSet::new();
     for row in unaligned.iter() {
@@ -217,7 +209,7 @@ pub fn align(
             aligned_row.push(Column::Null.into());
         }
 
-        for InsertionColumnValuePair { column, value } in unaligned_row.into_iter() {
+        for ColumnValuePair { column, value } in unaligned_row.into_iter() {
             let col_index = key_map[&column];
             aligned_row[col_index] = value;
         }

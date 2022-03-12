@@ -1,8 +1,10 @@
 use crate::sql::{
     column::Column,
+    cte::Cte,
     predicate::Predicate,
+    sql_operation::SQLOperation,
     transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-    Cte, PhysicalTable, SQLOperation,
+    PhysicalTable,
 };
 
 use super::{
@@ -18,7 +20,10 @@ pub struct AbstractDelete<'a> {
 }
 
 impl<'a> AbstractDelete<'a> {
-    pub fn to_sql(self, additional_predicate: Option<Predicate<'a>>) -> TransactionScript<'a> {
+    pub(crate) fn to_transaction_script(
+        self,
+        additional_predicate: Option<Predicate<'a>>,
+    ) -> TransactionScript<'a> {
         // TODO: Consider the "join" aspect of the predicate
         let predicate = Predicate::and(
             self.predicate
@@ -31,7 +36,7 @@ impl<'a> AbstractDelete<'a> {
             self.table
                 .delete(predicate.into(), vec![Column::Star.into()]),
         );
-        let select = self.selection.to_sql(None, SelectionLevel::TopLevel);
+        let select = self.selection.to_select(None, SelectionLevel::TopLevel);
 
         let mut transaction_script = TransactionScript::default();
 

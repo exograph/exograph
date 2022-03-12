@@ -3,12 +3,14 @@ use tokio_postgres::{types::ToSql, Client, GenericClient, Row};
 
 use crate::sql::ExpressionContext;
 
-use super::{sql_operation::TemplateSQLOperation, OperationExpression, SQLOperation, SQLValue};
+use super::{
+    sql_operation::SQLOperation, sql_operation::TemplateSQLOperation, OperationExpression, SQLValue,
+};
 
-type TransactionStepResult = Vec<Row>;
+pub type TransactionStepResult = Vec<Row>;
 
 #[derive(Default, Debug)]
-pub struct TransactionScript<'a> {
+pub(crate) struct TransactionScript<'a> {
     steps: Vec<TransactionStep<'a>>,
 }
 
@@ -36,10 +38,6 @@ impl TransactionContext {
 }
 
 impl<'a> TransactionScript<'a> {
-    pub fn new(steps: Vec<TransactionStep<'a>>) -> Self {
-        Self { steps }
-    }
-
     /// Returns the result of the last step
     pub async fn execute(&'a self, client: &mut Client) -> Result<TransactionStepResult> {
         println!("Starting transaction");
@@ -70,7 +68,7 @@ impl<'a> TransactionScript<'a> {
 }
 
 #[derive(Debug)]
-pub enum TransactionStep<'a> {
+pub(crate) enum TransactionStep<'a> {
     Concrete(ConcreteTransactionStep<'a>),
     Template(TemplateTransactionStep<'a>),
 }
@@ -101,7 +99,7 @@ impl<'a> TransactionStep<'a> {
 }
 
 #[derive(Debug)]
-pub struct ConcreteTransactionStep<'a> {
+pub(crate) struct ConcreteTransactionStep<'a> {
     pub operation: SQLOperation<'a>,
 }
 
@@ -134,7 +132,7 @@ impl<'a> ConcreteTransactionStep<'a> {
 }
 
 #[derive(Debug)]
-pub struct TemplateTransactionStep<'a> {
+pub(crate) struct TemplateTransactionStep<'a> {
     pub operation: TemplateSQLOperation<'a>,
     pub prev_step_id: TransactionStepId,
 }

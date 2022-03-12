@@ -8,18 +8,16 @@ use crate::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
-use payas_model::{
-    model::{
-        operation::{
-            CreateDataParameter, Interceptors, Mutation, MutationKind, Query, UpdateDataParameter,
-        },
-        predicate::PredicateParameter,
-        types::{GqlTypeKind, GqlTypeModifier},
+use payas_model::model::{
+    operation::{
+        CreateDataParameter, Interceptors, Mutation, MutationKind, Query, UpdateDataParameter,
     },
-    sql::transaction::TransactionScript,
+    predicate::PredicateParameter,
+    types::{GqlTypeKind, GqlTypeModifier},
 };
 use payas_sql::asql::{
-    delete::AbstractDelete, predicate::AbstractPredicate, select::AbstractSelect,
+    abstract_operation::AbstractOperation, delete::AbstractDelete, insert::AbstractInsert,
+    predicate::AbstractPredicate, select::AbstractSelect, update::AbstractUpdate,
 };
 
 use super::operation_mapper::{
@@ -48,27 +46,33 @@ impl<'a> OperationResolver<'a> for Mutation {
             };
 
             Ok(OperationResolverResult::SQLOperation(match &self.kind {
-                MutationKind::Create(data_param) => {
-                    create_operation(self, data_param, &field.node, abs_select, query_context)?
-                }
-                MutationKind::Delete(predicate_param) => delete_operation(
+                MutationKind::Create(data_param) => AbstractOperation::Insert(create_operation(
                     self,
-                    predicate_param,
+                    data_param,
                     &field.node,
                     abs_select,
                     query_context,
-                )?,
+                )?),
+                MutationKind::Delete(predicate_param) => {
+                    AbstractOperation::Delete(delete_operation(
+                        self,
+                        predicate_param,
+                        &field.node,
+                        abs_select,
+                        query_context,
+                    )?)
+                }
                 MutationKind::Update {
                     data_param,
                     predicate_param,
-                } => update_operation(
+                } => AbstractOperation::Update(update_operation(
                     self,
                     data_param,
                     predicate_param,
                     &field.node,
                     abs_select,
                     query_context,
-                )?,
+                )?),
                 MutationKind::Service { .. } => panic!(),
             }))
         }
@@ -89,7 +93,7 @@ fn create_operation<'a>(
     field: &'a Field,
     select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<TransactionScript<'a>> {
+) -> Result<AbstractInsert<'a>> {
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
@@ -107,9 +111,7 @@ fn create_operation<'a>(
     let field_arguments = query_context.field_arguments(field)?;
     let argument_value = super::find_arg(field_arguments, &data_param.name).unwrap();
 
-    let abs_insert = data_param.insert_script(mutation, select, argument_value, query_context);
-
-    Ok(abs_insert?.to_sql())
+    data_param.insert_script(mutation, select, argument_value, query_context)
 }
 
 fn delete_operation<'a>(
@@ -118,7 +120,7 @@ fn delete_operation<'a>(
     field: &'a Field,
     select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<TransactionScript<'a>> {
+) -> Result<AbstractDelete<'a>> {
     let (table, _, _) = return_type_info(mutation, query_context);
 
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -154,7 +156,7 @@ fn delete_operation<'a>(
         selection: select,
     };
 
-    Ok(abs_delete.to_sql(None))
+    Ok(abs_delete)
 }
 
 fn update_operation<'a>(
@@ -164,7 +166,7 @@ fn update_operation<'a>(
     field: &'a Field,
     select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<TransactionScript<'a>> {
+) -> Result<AbstractUpdate<'a>> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
     // nested predicates aren't working.
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -197,9 +199,7 @@ fn update_operation<'a>(
     let argument_value = super::find_arg(field_arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
-            data_param
-                .update_script(mutation, predicate, select, argument_value, query_context)
-                .map(|u| u.to_sql(None))
+            data_param.update_script(mutation, predicate, select, argument_value, query_context)
         })
         .unwrap()
 }

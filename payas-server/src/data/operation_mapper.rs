@@ -4,8 +4,8 @@ use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use payas_deno::Arg;
 use payas_sql::asql::{
-    insert::AbstractInsert, predicate::AbstractPredicate, select::AbstractSelect,
-    update::AbstractUpdate,
+    abstract_operation::AbstractOperation, insert::AbstractInsert, predicate::AbstractPredicate,
+    select::AbstractSelect, update::AbstractUpdate,
 };
 use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
@@ -24,7 +24,7 @@ use payas_model::{
         service::{ServiceMethod, ServiceMethodType},
         GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind,
     },
-    sql::{predicate::Predicate, transaction::TransactionScript},
+    sql::predicate::Predicate,
 };
 
 pub trait SQLMapper<'a, R> {
@@ -86,7 +86,7 @@ pub trait OperationResolver<'a> {
 
 #[allow(clippy::large_enum_variant)]
 pub enum OperationResolverResult<'a> {
-    SQLOperation(TransactionScript<'a>),
+    SQLOperation(AbstractOperation<'a>),
     DenoOperation(SerializableSlabIndex<ServiceMethod>),
 }
 
@@ -174,14 +174,17 @@ pub fn compute_service_access_predicate<'a>(
 
 impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
-        &self,
+        self,
         field: &Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
-            OperationResolverResult::SQLOperation(transaction_script) => {
-                let mut client = query_context.executor.database.get_client().await?;
-                let mut result = transaction_script.execute(&mut client).await?;
+            OperationResolverResult::SQLOperation(abstract_operation) => {
+                let mut result = query_context
+                    .executor
+                    .database_executor
+                    .execute(abstract_operation)
+                    .await?;
 
                 if result.len() == 1 {
                     let string_result = extractor(result.swap_remove(0))?;
@@ -197,7 +200,7 @@ impl<'a> OperationResolverResult<'a> {
             }
 
             OperationResolverResult::DenoOperation(method_id) => {
-                let method = &query_context.executor.system.methods[*method_id];
+                let method = &query_context.executor.system.methods[method_id];
 
                 let access_predicate =
                     compute_service_access_predicate(&method.return_type, method, query_context);
