@@ -118,7 +118,7 @@ impl<'a> AbstractInsert<'a> {
                      insertions,
                  }| {
                     let self_insertion_elems = insertions
-                        .into_iter()
+                        .iter()
                         .map(|insertion| insertion.partition_self_and_nested().0)
                         .collect();
                     let (mut column_names, mut column_values_seq) = align(self_insertion_elems);

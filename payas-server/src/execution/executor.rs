@@ -9,8 +9,8 @@ use anyhow::Result;
 
 use futures::future::join_all;
 use payas_deno::DenoExecutor;
-use payas_model::{
-    model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
+use payas_model::model::{
+    mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType,
 };
 use payas_sql::asql::executor::DatabaseExecutor;
 use query_context::{QueryContext, QueryResponse};
