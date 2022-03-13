@@ -4,8 +4,8 @@ use crate::{
         query_resolver::QuerySQLOperations,
     },
     execution::{query_context::QueryContext, resolver::GraphQLExecutionError},
-    sql::PhysicalTable,
 };
+use payas_sql::PhysicalTable;
 
 use anyhow::{anyhow, bail, Context, Result};
 use payas_model::model::{
@@ -15,9 +15,9 @@ use payas_model::model::{
     predicate::PredicateParameter,
     types::{GqlTypeKind, GqlTypeModifier},
 };
-use payas_sql::asql::{
-    abstract_operation::AbstractOperation, delete::AbstractDelete, insert::AbstractInsert,
-    predicate::AbstractPredicate, select::AbstractSelect, update::AbstractUpdate,
+use payas_sql::{
+    AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
+    AbstractUpdate,
 };
 
 use super::operation_mapper::{

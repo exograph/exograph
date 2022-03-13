@@ -11,10 +11,10 @@ use super::{
     operation::{Mutation, Query},
 };
 
-use crate::sql::PhysicalTable;
+use payas_sql::PhysicalTable;
 
 use super::types::GqlType;
-use payas_sql::sql::column::Column;
+use payas_sql::Column;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]

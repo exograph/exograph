@@ -2,7 +2,10 @@ use std::cmp::Ordering;
 
 use maybe_owned::MaybeOwned;
 
-use crate::sql::{column::PhysicalColumn, predicate::LiteralEquality, PhysicalTable, SQLParam};
+use crate::{
+    sql::{column::PhysicalColumn, predicate::LiteralEquality, SQLParam},
+    PhysicalTable,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ColumnPathLink<'a> {

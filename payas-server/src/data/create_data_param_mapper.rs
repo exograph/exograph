@@ -1,10 +1,8 @@
 use anyhow::{anyhow, bail, Context, Result};
 use async_graphql_value::ConstValue;
-use payas_sql::asql::{
-    common::ColumnValuePair,
-    insert::{AbstractInsert, InsertionElement, InsertionRow, NestedInsertion},
-    select::AbstractSelect,
-    selection::NestedElementRelation,
+use payas_sql::{
+    AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
+    NestedElementRelation, NestedInsertion,
 };
 
 use crate::execution::query_context::QueryContext;
@@ -183,7 +181,7 @@ fn map_foreign<'a>(
         .iter()
         .find(|self_field| match self_field.relation.self_column() {
             Some(column_id) => match &column_id.get_column(system).typ {
-                payas_model::sql::column::PhysicalColumnType::ColumnReference {
+                payas_sql::PhysicalColumnType::ColumnReference {
                     ref_table_name,
                     ref_column_name,
                     ..

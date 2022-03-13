@@ -1,7 +1,7 @@
 #![cfg(test)]
 
-use crate::sql::{
-    column::{IntBits, PhysicalColumn, PhysicalColumnType},
+use crate::{
+    sql::column::{IntBits, PhysicalColumn, PhysicalColumnType},
     PhysicalTable,
 };
 

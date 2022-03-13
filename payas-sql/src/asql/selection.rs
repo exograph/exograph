@@ -1,6 +1,5 @@
-
-use crate::sql::{
-    column::{Column, PhysicalColumn},
+use crate::{
+    sql::column::{Column, PhysicalColumn},
     PhysicalTable,
 };
 

@@ -1,6 +1,7 @@
+use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-use crate::sql::{column::PhysicalColumn, PhysicalTable};
+use payas_sql::PhysicalColumn;
 
 use super::{mapped_arena::SerializableSlabIndex, system::ModelSystem};
 

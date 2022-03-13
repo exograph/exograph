@@ -1,4 +1,4 @@
-use crate::sql::PhysicalTable;
+use crate::PhysicalTable;
 
 use super::{predicate::AbstractPredicate, select::AbstractSelect};
 

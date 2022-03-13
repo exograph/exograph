@@ -2878,6 +2878,7 @@ dependencies = [
  "insta",
  "lazy_static",
  "payas-model",
+ "payas-sql",
  "serde",
  "serde_json",
  "thiserror",

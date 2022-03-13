@@ -1,4 +1,4 @@
-use crate::sql::PhysicalTable;
+use crate::PhysicalTable;
 
 use super::{common::ColumnValuePair, select::AbstractSelect, selection::NestedElementRelation};
 

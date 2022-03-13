@@ -1,7 +1,8 @@
 use crate::{
     asql::column_path::ColumnPathLink,
-    sql::{column::Column, predicate::Predicate, table::TableQuery, PhysicalTable},
+    sql::{column::Column, predicate::Predicate, table::TableQuery},
     transform::table_dependency::{DependencyLink, TableDependency},
+    PhysicalTable,
 };
 
 pub fn compute_join<'a>(

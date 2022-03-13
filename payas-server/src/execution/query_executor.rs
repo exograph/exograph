@@ -12,7 +12,7 @@ use payas_deno::DenoExecutor;
 use payas_model::model::{
     mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType,
 };
-use payas_sql::asql::database_executor::DatabaseExecutor;
+use payas_sql::DatabaseExecutor;
 use query_context::{QueryContext, QueryResponse};
 use serde_json::{Map, Value};
 use typed_arena::Arena;

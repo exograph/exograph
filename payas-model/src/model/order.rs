@@ -1,4 +1,5 @@
-use super::{column_id::ColumnId, mapped_arena::SerializableSlabIndex};
+use super::predicate::ColumnIdPathLink;
+use super::{mapped_arena::SerializableSlabIndex};
 
 use super::types::GqlTypeModifier;
 
@@ -10,7 +11,14 @@ pub struct OrderByParameter {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<OrderByParameterType>,
     pub type_modifier: GqlTypeModifier,
-    pub column_id: Option<ColumnId>,
+
+    /// How does this parameter relates with the parent parameter?
+    /// For example for parameter used as {order_by: {venue1: {id: Desc}}}, we will have following column links:
+    /// eq: None
+    /// id: Some((<the venues.id column>, None))
+    /// venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
+    /// order_by: None
+    pub column_path_link: Option<ColumnIdPathLink>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -1,7 +1,5 @@
 use crate::execution::query_context::QueryContext;
 
-use crate::sql::order::OrderBy;
-
 use anyhow::{anyhow, bail, Context, Result};
 
 use payas_model::model::{
@@ -9,15 +7,14 @@ use payas_model::model::{
     relation::{GqlRelation, RelationCardinality},
     types::{GqlTypeKind, GqlTypeModifier},
 };
-use payas_model::sql::{Limit, Offset};
-use payas_sql::asql::select::AbstractSelect;
-use payas_sql::asql::selection::{
-    ColumnSelection, NestedElementRelation, SelectionCardinality, SelectionElement,
-};
-use payas_sql::asql::{abstract_operation::AbstractOperation, predicate::AbstractPredicate};
+use payas_sql::{AbstractOperation, AbstractPredicate};
+use payas_sql::{AbstractOrderBy, AbstractSelect};
+use payas_sql::{ColumnSelection, NestedElementRelation, SelectionCardinality, SelectionElement};
+use payas_sql::{Limit, Offset};
 
-use super::operation_mapper::{
-    compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
+use super::{
+    operation_mapper::{compute_sql_access_predicate, OperationResolverResult, SQLOperationKind},
+    order_by_mapper::OrderByParameterMapper,
 };
 use super::{
     operation_mapper::{OperationResolver, SQLMapper},
@@ -67,7 +64,7 @@ pub trait QuerySQLOperations<'a> {
         &'a self,
         arguments: &'a Arguments,
         query_context: &'a QueryContext<'a>,
-    ) -> Option<OrderBy<'a>>;
+    ) -> Option<AbstractOrderBy<'a>>;
 
     fn compute_limit(
         &'a self,
@@ -100,7 +97,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         &'a self,
         arguments: &'a Arguments,
         query_context: &'a QueryContext<'a>,
-    ) -> Option<OrderBy<'a>> {
+    ) -> Option<AbstractOrderBy<'a>> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
                 let DatabaseQueryParameter { order_by_param, .. } = db_query_param.as_ref();
@@ -109,7 +106,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     .and_then(|order_by_param| {
                         let argument_value = super::find_arg(arguments, &order_by_param.name);
                         argument_value.map(|argument_value| {
-                            order_by_param.map_to_sql(argument_value, query_context)
+                            order_by_param.map_to_order_by(argument_value, &None, query_context)
                         })
                     })
                     .transpose()
@@ -214,6 +211,8 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 )
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
+                let order_by = self.compute_order_by(field_arguments, query_context);
+
                 let predicate = AbstractPredicate::and(predicate, access_predicate);
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
@@ -240,12 +239,9 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 };
                 let aselect = AbstractSelect {
                     table: root_physical_table,
-                    selection: payas_sql::asql::selection::Selection::Json(
-                        content_object,
-                        selection_cardinality,
-                    ),
+                    selection: payas_sql::Selection::Json(content_object, selection_cardinality),
                     predicate: Some(predicate),
-                    order_by: None,
+                    order_by,
                     offset,
                     limit,
                 };

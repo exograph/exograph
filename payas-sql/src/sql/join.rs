@@ -46,9 +46,12 @@ impl Expression for Join<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::sql::{
-        column::{IntBits, PhysicalColumn, PhysicalColumnType},
-        ExpressionContext, PhysicalTable,
+    use crate::{
+        sql::{
+            column::{IntBits, PhysicalColumn, PhysicalColumnType},
+            ExpressionContext,
+        },
+        PhysicalTable,
     };
 
     use super::*;

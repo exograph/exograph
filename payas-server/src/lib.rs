@@ -6,12 +6,13 @@ use payas_deno::DenoExecutor;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
-use payas_sql::asql::database_executor::DatabaseExecutor;
+use payas_sql::DatabaseExecutor;
+use payas_sql::Database;
 
 use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
 
-use payas_model::{model::system::ModelSystem, sql::database::Database};
+use payas_model::model::system::ModelSystem;
 use serde_json::Value;
 
 pub mod authentication;
@@ -19,8 +20,6 @@ mod data;
 mod error;
 pub mod execution;
 mod introspection;
-
-pub use payas_sql::sql;
 
 use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 

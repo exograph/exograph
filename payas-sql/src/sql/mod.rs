@@ -16,23 +16,19 @@ pub(crate) mod cte;
 pub mod database;
 pub(crate) mod delete;
 pub(crate) mod insert;
-mod physical_table;
+pub(crate) mod physical_table;
 pub(crate) mod select;
 pub(crate) mod sql_operation;
 
 pub mod array_util;
 mod join;
-mod limit;
-mod offset;
+pub(crate) mod limit;
+pub(crate) mod offset;
 pub mod order;
 pub mod predicate;
 pub(crate) mod table;
 pub(crate) mod transaction;
 pub(crate) mod update;
-
-pub use limit::Limit;
-pub use offset::Offset;
-pub use physical_table::PhysicalTable;
 
 pub trait SQLParam: ToSql + Sync {
     fn as_any(&self) -> &dyn Any;
@@ -256,8 +252,4 @@ impl ExpressionContext {
         self.plain = cur_plain;
         ret
     }
-}
-
-pub fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
 }

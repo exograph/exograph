@@ -1,42 +1,51 @@
 use crate::execution::query_context::QueryContext;
-use crate::sql::order::{OrderBy, Ordering};
 use anyhow::{bail, Context, Result};
 use async_graphql_value::ConstValue;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
-use payas_model::sql::column::PhysicalColumn;
+use payas_model::model::predicate::ColumnIdPath;
+use payas_sql::{ColumnPath, AbstractOrderBy, Ordering};
 
-use super::operation_mapper::SQLMapper;
+use super::to_column_path;
 
-impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameter {
-    fn map_to_sql(
-        &self,
-        argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
-    ) -> Result<OrderBy<'a>> {
-        let parameter_type = &query_context.get_system().order_by_types[self.type_id];
-        parameter_type.map_to_sql(argument, query_context)
-    }
-}
-
-impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
-    fn map_to_sql(
+pub trait OrderByParameterMapper<'a> {
+    fn map_to_order_by(
         &'a self,
         argument: &'a ConstValue,
+        parent_column_path: &'a Option<ColumnIdPath>,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<OrderBy<'a>> {
+    ) -> Result<AbstractOrderBy<'a>>;
+}
+
+impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
+    fn map_to_order_by(
+        &'a self,
+        argument: &'a ConstValue,
+        parent_column_path: &'a Option<ColumnIdPath>,
+        query_context: &'a QueryContext<'a>,
+    ) -> Result<AbstractOrderBy<'a>> {
+        let parameter_type = &query_context.get_system().order_by_types[self.type_id];
+
         match argument {
             ConstValue::Object(elems) => {
                 // TODO: Reject elements with multiple elements (see the comment in query.rs)
                 let mapped: Vec<_> = elems
                     .iter()
-                    .map(|elem| order_by_pair(self, elem.0, elem.1, query_context))
+                    .map(|elem| {
+                        order_by_pair(
+                            parameter_type,
+                            elem.0,
+                            elem.1,
+                            parent_column_path,
+                            query_context,
+                        )
+                    })
                     .collect::<Result<Vec<_>>>()?;
-                Ok(OrderBy(mapped))
+                Ok(AbstractOrderBy(mapped))
             }
             ConstValue::List(elems) => {
                 let mapped: Vec<_> = elems
                     .iter()
-                    .map(|elem| self.map_to_sql(elem, query_context))
+                    .map(|elem| self.map_to_order_by(elem, parent_column_path, query_context))
                     .collect::<Result<Vec<_>>>()
                     .with_context(|| {
                         format!(
@@ -47,7 +56,7 @@ impl<'a> SQLMapper<'a, OrderBy<'a>> for OrderByParameterType {
                     .into_iter()
                     .flat_map(|elem| elem.0)
                     .collect();
-                Ok(OrderBy(mapped))
+                Ok(AbstractOrderBy(mapped))
             }
 
             _ => todo!(), // Invalid
@@ -59,8 +68,9 @@ fn order_by_pair<'a>(
     typ: &'a OrderByParameterType,
     parameter_name: &str,
     parameter_value: &ConstValue,
+    parent_column_path: &Option<ColumnIdPath>,
     query_context: &'a QueryContext<'a>,
-) -> Result<(&'a PhysicalColumn, Ordering)> {
+) -> Result<(ColumnPath<'a>, Ordering)> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
             parameters.iter().find(|p| p.name == parameter_name)
@@ -68,11 +78,16 @@ fn order_by_pair<'a>(
         _ => None,
     };
 
-    let column_id = parameter.as_ref().and_then(|p| p.column_id.as_ref());
+    let next_column_id_path_link =
+        parameter.and_then(|parameter| parameter.column_path_link.clone());
 
-    let column = column_id.unwrap().get_column(query_context.get_system());
+    let new_column_path = to_column_path(
+        parent_column_path,
+        &next_column_id_path_link,
+        query_context.get_system(),
+    );
 
-    ordering(parameter_value).map(|ordering| (column, ordering))
+    ordering(parameter_value).map(|ordering| (new_column_path, ordering))
 }
 
 fn ordering(argument: &ConstValue) -> Result<Ordering> {

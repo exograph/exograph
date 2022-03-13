@@ -1,4 +1,4 @@
-use crate::sql::{Limit, Offset, PhysicalTable};
+use crate::{Limit, Offset, PhysicalTable};
 
 use super::{order_by::AbstractOrderBy, predicate::AbstractPredicate, selection::Selection};
 

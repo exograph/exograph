@@ -16,9 +16,9 @@ use crate::{
         sql_operation::SQLOperation,
         table::TableQuery,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-        Limit, Offset,
     },
     transform::transformer::{InsertTransformer, SelectTransformer},
+    Limit, Offset,
 };
 
 use super::Postgres;

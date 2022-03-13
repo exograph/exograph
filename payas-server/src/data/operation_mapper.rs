@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use payas_deno::Arg;
-use payas_sql::asql::{
-    abstract_operation::AbstractOperation, insert::AbstractInsert, predicate::AbstractPredicate,
-    select::AbstractSelect, update::AbstractUpdate,
+use payas_sql::{
+    AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect, AbstractUpdate,
 };
 use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
@@ -17,15 +16,13 @@ use super::interception::InterceptedOperation;
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
 use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::ConstValue;
-use payas_model::{
-    model::{
-        mapped_arena::SerializableSlabIndex,
-        operation::{Interceptors, Mutation, OperationReturnType},
-        service::{ServiceMethod, ServiceMethodType},
-        GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind,
-    },
-    sql::predicate::Predicate,
+use payas_model::model::{
+    mapped_arena::SerializableSlabIndex,
+    operation::{Interceptors, Mutation, OperationReturnType},
+    service::{ServiceMethod, ServiceMethodType},
+    GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind,
 };
+use payas_sql::Predicate;
 
 pub trait SQLMapper<'a, R> {
     fn map_to_sql(

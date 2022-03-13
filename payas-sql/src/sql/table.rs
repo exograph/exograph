@@ -1,6 +1,8 @@
+use crate::{Limit, Offset, PhysicalTable};
+
 use super::{
     column::Column, join::Join, order::OrderBy, predicate::Predicate, select::Select, Expression,
-    ExpressionContext, Limit, Offset, ParameterBinding, PhysicalTable,
+    ExpressionContext, ParameterBinding,
 };
 use maybe_owned::MaybeOwned;
 

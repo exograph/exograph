@@ -1,29 +1,22 @@
 use anyhow::Result;
 use async_graphql_value::ConstValue;
-use payas_sql::asql::{
-    column_path::{ColumnPath, ColumnPathLink},
-    delete::AbstractDelete,
-    predicate::AbstractPredicate,
-    select::AbstractSelect,
-    selection::{NestedElementRelation, Selection},
-    update::{AbstractUpdate, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate},
+use payas_sql::{
+    AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, ColumnPath, ColumnPathLink,
+    NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate, NestedElementRelation,
+    Selection,
 };
 
-use crate::{
-    data::mutation_resolver::return_type_info, execution::query_context::QueryContext,
-    sql::column::Column,
+use crate::{data::mutation_resolver::return_type_info, execution::query_context::QueryContext};
+
+use payas_model::model::{
+    operation::{Mutation, UpdateDataParameter},
+    relation::GqlRelation,
+    system::ModelSystem,
+    types::GqlTypeKind,
+    GqlCompositeType, GqlType,
 };
 
-use payas_model::{
-    model::{
-        operation::{Mutation, UpdateDataParameter},
-        relation::GqlRelation,
-        system::ModelSystem,
-        types::GqlTypeKind,
-        GqlCompositeType, GqlType,
-    },
-    sql::column::{PhysicalColumn, PhysicalColumnType},
-};
+use payas_sql::{Column, PhysicalColumn, PhysicalColumnType};
 
 use super::operation_mapper::SQLUpdateMapper;
 
@@ -277,7 +270,7 @@ fn compute_nested_update_object_arg<'a>(
         });
 
     NestedAbstractUpdate {
-        relation: payas_sql::asql::selection::NestedElementRelation {
+        relation: payas_sql::NestedElementRelation {
             column: nested_reference_col,
             table,
         },
@@ -334,7 +327,7 @@ fn compute_nested_inserts<'a>(
                 column: nested_reference_col,
                 table,
             },
-            insert: payas_sql::asql::insert::AbstractInsert {
+            insert: payas_sql::AbstractInsert {
                 table,
                 rows,
                 selection: AbstractSelect {
@@ -455,7 +448,7 @@ fn compute_nested_delete_object_arg<'a>(
         });
 
     NestedAbstractDelete {
-        relation: payas_sql::asql::selection::NestedElementRelation {
+        relation: NestedElementRelation {
             column: nested_reference_col,
             table,
         },

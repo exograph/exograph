@@ -13,13 +13,10 @@ use async_trait::async_trait;
 use chrono::prelude::*;
 use chrono::DateTime;
 use maybe_owned::MaybeOwned;
-use payas_model::{
-    model::{column_id::ColumnId, system::ModelSystem},
-    sql::{
-        array_util::{self, ArrayEntry},
-        column::{Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
-        SQLBytes, SQLParam,
-    },
+use payas_model::model::{column_id::ColumnId, system::ModelSystem};
+use payas_sql::{
+    array_util::{self, ArrayEntry},
+    Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParam,
 };
 use pg_bigdecimal::{BigDecimal, PgNumeric};
 use serde_json::{Map, Value as JsonValue};

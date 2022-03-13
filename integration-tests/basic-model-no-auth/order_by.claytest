@@ -1,0 +1,100 @@
+operation: |
+    fragment IdAndTitle on Concert {
+      id
+      title
+    }
+
+    query {
+      concerts_by_id_asc: concerts(orderBy: {id: ASC}) {
+        ...IdAndTitle
+      }
+      concerts_by_id_desc: concerts(orderBy: {id: DESC}) {
+        ...IdAndTitle
+      }
+      concert_by_title_asc_id_desc: concerts(orderBy: [{title: ASC}, {id: DESC}]) {
+        ...IdAndTitle
+      }
+      concert_by_title_desc_id_asc: concerts(orderBy: [{title: DESC}, {id: ASC}]) {
+        ...IdAndTitle
+      }                
+    }
+response: |
+    {
+      "data": {
+        "concerts_by_id_asc": [
+          {
+            "id": 1,
+            "title": "Concert1"
+          },
+          {
+            "id": 2,
+            "title": "Concert2"
+          },
+          {
+            "id": 3,
+            "title": "Concert3"
+          },
+          {
+            "id": 4,
+            "title": "Concert4"
+          }
+        ],
+        "concerts_by_id_desc": [
+          {
+            "id": 4,
+            "title": "Concert4"
+          },
+          {
+            "id": 3,
+            "title": "Concert3"
+          },
+          {
+            "id": 2,
+            "title": "Concert2"
+          },
+          {
+            "id": 1,
+            "title": "Concert1"
+          }
+        ],
+        "concert_by_title_asc_id_desc": [
+          {
+            "id": 1,
+            "title": "Concert1"
+          },
+          {
+            "id": 2,
+            "title": "Concert2"
+          },
+          {
+            "id": 3,
+            "title": "Concert3"
+          },
+          {
+            "id": 4,
+            "title": "Concert4"
+          }
+        ],
+        "concert_by_title_desc_id_asc": [
+          {
+            "id": 4,
+            "title": "Concert4"
+          },
+          {
+            "id": 3,
+            "title": "Concert3"
+          },
+          {
+            "id": 2,
+            "title": "Concert2"
+          },
+          {
+            "id": 1,
+            "title": "Concert1"
+          }
+        ]
+      }
+    }
+
+
+    

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{asql::column_path::ColumnPathLink, sql::PhysicalTable};
+use crate::{asql::column_path::ColumnPathLink, PhysicalTable};
 
 #[derive(Debug)]
 pub struct TableDependency<'a> {
