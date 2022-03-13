@@ -6,9 +6,11 @@ use crate::sql::{
     column::{Column, PhysicalColumn},
     cte::Cte,
     predicate::Predicate,
+    select::Select,
     sql_operation::SQLOperation,
+    table::TableQuery,
     transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-    Limit, Offset, PhysicalTable, Select, TableQuery,
+    Limit, Offset, PhysicalTable,
 };
 
 use super::{

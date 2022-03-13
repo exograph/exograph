@@ -26,7 +26,7 @@ use serde_json::{Map, Value as JsonValue};
 use typed_arena::Arena;
 
 use super::{
-    executor::Executor,
+    query_executor::QueryExecutor,
     resolver::{FieldResolver, Resolver},
 };
 
@@ -45,7 +45,7 @@ pub struct QueryContext<'a> {
     pub operation_name: Option<&'a str>,
     pub fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
     pub variables: &'a Option<&'a Map<String, JsonValue>>,
-    pub executor: &'a Executor<'a>,
+    pub executor: &'a QueryExecutor<'a>,
     pub request_context: &'a serde_json::Value,
     pub field_arguments: Arena<Vec<(Positioned<Name>, Positioned<ConstValue>)>>,
 }

@@ -10,7 +10,7 @@ use super::{
 pub type TransactionStepResult = Vec<Row>;
 
 #[derive(Default, Debug)]
-pub(crate) struct TransactionScript<'a> {
+pub struct TransactionScript<'a> {
     steps: Vec<TransactionStep<'a>>,
 }
 
@@ -68,7 +68,7 @@ impl<'a> TransactionScript<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) enum TransactionStep<'a> {
+pub enum TransactionStep<'a> {
     Concrete(ConcreteTransactionStep<'a>),
     Template(TemplateTransactionStep<'a>),
 }
@@ -99,7 +99,7 @@ impl<'a> TransactionStep<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) struct ConcreteTransactionStep<'a> {
+pub struct ConcreteTransactionStep<'a> {
     pub operation: SQLOperation<'a>,
 }
 
@@ -132,7 +132,7 @@ impl<'a> ConcreteTransactionStep<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) struct TemplateTransactionStep<'a> {
+pub struct TemplateTransactionStep<'a> {
     pub operation: TemplateSQLOperation<'a>,
     pub prev_step_id: TransactionStepId,
 }

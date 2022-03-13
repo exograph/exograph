@@ -2,7 +2,7 @@ use super::table_dependency::TableDependency;
 
 use crate::{
     asql::table_dependency::DependencyLink,
-    sql::{column::Column, predicate::Predicate, PhysicalTable, TableQuery},
+    sql::{column::Column, predicate::Predicate, table::TableQuery, PhysicalTable},
 };
 
 use super::column_path::ColumnPathLink;

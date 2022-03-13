@@ -1,15 +1,16 @@
 use super::{
     cte::Cte,
+    delete::Delete,
     delete::TemplateDelete,
     insert::{Insert, TemplateInsert},
     select::Select,
     transaction::{TransactionContext, TransactionStepId},
     update::{TemplateUpdate, Update},
-    Delete, Expression, ExpressionContext, OperationExpression, ParameterBinding,
+    Expression, ExpressionContext, OperationExpression, ParameterBinding,
 };
 
 #[derive(Debug)]
-pub(crate) enum SQLOperation<'a> {
+pub enum SQLOperation<'a> {
     Select(Select<'a>),
     Insert(Insert<'a>),
     Delete(Delete<'a>),
@@ -31,7 +32,7 @@ impl<'a> OperationExpression for SQLOperation<'a> {
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
-pub(crate) enum TemplateSQLOperation<'a> {
+pub enum TemplateSQLOperation<'a> {
     Insert(TemplateInsert<'a>),
     Update(TemplateUpdate<'a>),
     Delete(TemplateDelete<'a>),

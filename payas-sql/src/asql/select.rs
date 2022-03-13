@@ -6,9 +6,10 @@ use crate::{
     },
     sql::{
         predicate::Predicate,
+        select::Select,
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-        Limit, Offset, PhysicalTable, Select,
+        Limit, Offset, PhysicalTable,
     },
 };
 

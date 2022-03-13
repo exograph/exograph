@@ -1,6 +1,6 @@
 use super::{
-    column::Column, join::Join, order::OrderBy, predicate::Predicate, Expression,
-    ExpressionContext, Limit, Offset, ParameterBinding, PhysicalTable, Select,
+    column::Column, join::Join, order::OrderBy, predicate::Predicate, select::Select, Expression,
+    ExpressionContext, Limit, Offset, ParameterBinding, PhysicalTable,
 };
 use maybe_owned::MaybeOwned;
 

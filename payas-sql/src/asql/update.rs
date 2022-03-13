@@ -3,6 +3,8 @@ use maybe_owned::MaybeOwned;
 use crate::sql::{
     column::{Column, PhysicalColumn, ProxyColumn},
     cte::Cte,
+    delete::TemplateDelete,
+    insert::TemplateInsert,
     predicate::Predicate,
     sql_operation::SQLOperation,
     sql_operation::TemplateSQLOperation,
@@ -10,7 +12,8 @@ use crate::sql::{
         ConcreteTransactionStep, TemplateTransactionStep, TransactionScript, TransactionStep,
         TransactionStepId,
     },
-    PhysicalTable, TemplateDelete, TemplateInsert, TemplateUpdate,
+    update::TemplateUpdate,
+    PhysicalTable,
 };
 
 use super::{

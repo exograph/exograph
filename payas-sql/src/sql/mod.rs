@@ -14,10 +14,10 @@ mod test_util;
 pub mod column;
 pub(crate) mod cte;
 pub mod database;
-mod delete;
-mod insert;
+pub(crate) mod delete;
+pub(crate) mod insert;
 mod physical_table;
-mod select;
+pub(crate) mod select;
 pub(crate) mod sql_operation;
 
 pub mod array_util;
@@ -26,18 +26,13 @@ mod limit;
 mod offset;
 pub mod order;
 pub mod predicate;
-mod table;
-pub mod transaction;
-mod update;
+pub(crate) mod table;
+pub(crate) mod transaction;
+pub(crate) mod update;
 
-pub use delete::{Delete, TemplateDelete};
-pub use insert::{Insert, TemplateInsert};
 pub use limit::Limit;
 pub use offset::Offset;
 pub use physical_table::PhysicalTable;
-pub use select::Select;
-pub use table::TableQuery;
-pub use update::{TemplateUpdate, Update};
 
 pub trait SQLParam: ToSql + Sync {
     fn as_any(&self) -> &dyn Any;

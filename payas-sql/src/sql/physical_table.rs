@@ -2,8 +2,11 @@ use crate::spec::TableSpec;
 
 use super::{
     column::{Column, PhysicalColumn},
+    delete::Delete,
+    insert::Insert,
     predicate::Predicate,
-    Delete, Expression, ExpressionContext, Insert, ParameterBinding, Update,
+    update::Update,
+    Expression, ExpressionContext, ParameterBinding,
 };
 
 use maybe_owned::MaybeOwned;

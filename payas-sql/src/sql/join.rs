@@ -1,6 +1,6 @@
 use maybe_owned::MaybeOwned;
 
-use super::{predicate::Predicate, Expression, ParameterBinding, TableQuery};
+use super::{predicate::Predicate, table::TableQuery, Expression, ParameterBinding};
 
 /// Represents a join between two tables. Currently, supports only left join.
 #[derive(Debug, PartialEq)]

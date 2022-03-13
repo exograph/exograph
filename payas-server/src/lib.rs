@@ -1,12 +1,12 @@
 use async_stream::{try_stream, AsyncStream};
-use execution::executor::Executor;
+use execution::query_executor::QueryExecutor;
 use introspection::schema::Schema;
 use payas_deno::DenoExecutor;
 
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
-use payas_sql::asql::executor::DatabaseExecutor;
+use payas_sql::asql::database_executor::DatabaseExecutor;
 
 use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
@@ -41,7 +41,7 @@ pub async fn resolve(
         Ok(claims) => {
             let (system, schema, database, deno_execution) = system_info.as_ref();
             let database_executor = DatabaseExecutor { database };
-            let executor = Executor {
+            let executor = QueryExecutor {
                 system,
                 schema,
                 database_executor: &database_executor,
