@@ -1,11 +1,8 @@
-use super::table_dependency::TableDependency;
-
 use crate::{
-    asql::table_dependency::DependencyLink,
+    asql::column_path::ColumnPathLink,
     sql::{column::Column, predicate::Predicate, table::TableQuery, PhysicalTable},
+    transform::table_dependency::{DependencyLink, TableDependency},
 };
-
-use super::column_path::ColumnPathLink;
 
 pub fn compute_join<'a>(
     table: &'a PhysicalTable,
@@ -37,8 +34,9 @@ pub fn compute_join<'a>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::{column_path::ColumnPathLink, test_util::TestSetup},
+        asql::column_path::ColumnPathLink,
         sql::{Expression, ExpressionContext},
+        transform::test_util::TestSetup,
     };
 
     #[test]

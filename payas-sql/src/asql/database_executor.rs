@@ -1,4 +1,7 @@
-use crate::sql::{database::Database, transaction::TransactionStepResult};
+use crate::{
+    sql::{database::Database, transaction::TransactionStepResult},
+    transform::{pg::Postgres, transformer::Transformer},
+};
 use anyhow::Result;
 
 use super::abstract_operation::AbstractOperation;
@@ -14,7 +17,10 @@ impl DatabaseExecutor<'_> {
     ) -> Result<TransactionStepResult> {
         let mut client = self.database.get_client().await?;
 
-        let transaction_script = abstract_operation.to_transaction_script();
+        let database_kind = Postgres {};
+
+        let transaction_script =
+            Transformer::to_transaction_script(&database_kind, abstract_operation);
         transaction_script.execute(&mut client).await
     }
 }
