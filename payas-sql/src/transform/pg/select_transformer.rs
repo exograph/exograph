@@ -15,7 +15,7 @@ use crate::{
         sql_operation::SQLOperation,
         transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
     },
-    transform::{transformer::SelectTransformer, util},
+    transform::{join_util, transformer::SelectTransformer},
 };
 
 use super::Postgres;
@@ -56,7 +56,7 @@ impl SelectTransformer for Postgres {
             .chain(order_by_column_paths.into_iter())
             .collect();
 
-        let join = util::compute_join(abstract_select.table, columns_paths);
+        let join = join_util::compute_join(abstract_select.table, columns_paths);
 
         let columns = match abstract_select.selection.to_sql(self) {
             SelectionSQL::Single(elem) => vec![elem.into()],

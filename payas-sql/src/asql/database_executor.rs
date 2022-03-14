@@ -11,16 +11,18 @@ pub struct DatabaseExecutor<'a> {
 }
 
 impl DatabaseExecutor<'_> {
+    /// Execute an operation on a database.
+    ///
+    /// Currently makes a hard assumption on Postgres implementation, but this could be made more generic.
     pub async fn execute<'a>(
         &self,
-        abstract_operation: &'a AbstractOperation<'a>,
+        operation: &'a AbstractOperation<'a>,
     ) -> Result<TransactionStepResult> {
         let mut client = self.database.get_client().await?;
 
         let database_kind = Postgres {};
 
-        let transaction_script =
-            Transformer::to_transaction_script(&database_kind, abstract_operation);
+        let transaction_script = Transformer::to_transaction_script(&database_kind, operation);
         transaction_script.execute(&mut client).await
     }
 }

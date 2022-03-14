@@ -41,9 +41,9 @@ impl<'a> Ord for ColumnPathLink<'a> {
             link: &'a ColumnPathLink,
         ) -> (&'a str, &'a str, Option<&'a str>, Option<&'a str>) {
             (
-                &link.self_column.0.table_name,
+                &link.self_column.0.column_name,
                 &link.self_column.1.name,
-                link.linked_column.map(|ref c| c.0.table_name.as_str()),
+                link.linked_column.map(|ref c| c.0.column_name.as_str()),
                 link.linked_column.map(|ref c| c.1.name.as_str()),
             )
         }
