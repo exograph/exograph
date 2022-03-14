@@ -301,6 +301,7 @@ mod tests {
                 let update =
                     UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update, None);
 
+                // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{:#?}", update);
             },
         )
@@ -385,6 +386,7 @@ mod tests {
                 let update =
                     UpdateTransformer::to_transaction_script(&Postgres {}, &abs_update, None);
 
+                // TODO: Add a proper assertion here (ideally, we can get a digest of the transaction script and assert on it)
                 println!("{:#?}", update);
             },
         )
