@@ -6,8 +6,8 @@ use payas_deno::DenoExecutor;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
-use payas_sql::DatabaseExecutor;
 use payas_sql::Database;
+use payas_sql::DatabaseExecutor;
 
 use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;

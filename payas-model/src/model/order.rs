@@ -1,5 +1,5 @@
+use super::mapped_arena::SerializableSlabIndex;
 use super::predicate::ColumnIdPathLink;
-use super::{mapped_arena::SerializableSlabIndex};
 
 use super::types::GqlTypeModifier;
 

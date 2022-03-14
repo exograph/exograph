@@ -3,7 +3,7 @@ use anyhow::{bail, Context, Result};
 use async_graphql_value::ConstValue;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
 use payas_model::model::predicate::ColumnIdPath;
-use payas_sql::{ColumnPath, AbstractOrderBy, Ordering};
+use payas_sql::{AbstractOrderBy, ColumnPath, Ordering};
 
 use super::to_column_path;
 
