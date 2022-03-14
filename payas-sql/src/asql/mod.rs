@@ -1,6 +1,5 @@
 pub mod abstract_operation;
 pub mod column_path;
-pub mod common;
 pub mod database_executor;
 pub mod delete;
 pub mod insert;

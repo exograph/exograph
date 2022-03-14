@@ -152,8 +152,8 @@ impl<'a> SelectionElement<'a> {
                 Column::SelectionTableWrapper(Box::new(database_kind.to_select(
                     select,
                     Some(Predicate::Eq(
-                        Column::Physical(relation.column).into(),
-                        Column::Physical(relation.table.get_pk_physical_column().unwrap()).into(),
+                        Column::Physical(relation.self_column.0).into(),
+                        Column::Physical(relation.linked_column.unwrap().0).into(),
                     )),
                     SelectionLevel::Nested,
                 )))
@@ -172,10 +172,7 @@ mod tests {
             column_path::{ColumnPath, ColumnPathLink},
             predicate::AbstractPredicate,
             select::SelectionLevel,
-            selection::{
-                ColumnSelection, NestedElementRelation, Selection, SelectionCardinality,
-                SelectionElement,
-            },
+            selection::{ColumnSelection, Selection, SelectionCardinality, SelectionElement},
         },
         sql::ExpressionContext,
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
@@ -313,10 +310,10 @@ mod tests {
                             ColumnSelection::new(
                                 "venue".to_string(),
                                 SelectionElement::Nested(
-                                    NestedElementRelation::new(
-                                        concerts_venue_id_column,
-                                        venues_table,
-                                    ),
+                                    ColumnPathLink {
+                                        self_column: (concerts_venue_id_column, concerts_table),
+                                        linked_column: Some((venues_id_column, venues_table)),
+                                    },
                                     AbstractSelect {
                                         table: venues_table,
                                         selection: Selection::Json(
@@ -375,10 +372,10 @@ mod tests {
                             ColumnSelection::new(
                                 "concerts".to_string(),
                                 SelectionElement::Nested(
-                                    NestedElementRelation::new(
-                                        concerts_venue_id_column,
-                                        venues_table,
-                                    ),
+                                    ColumnPathLink {
+                                        self_column: (concerts_venue_id_column, concerts_table),
+                                        linked_column: Some((venues_id_column, venues_table)),
+                                    },
                                     AbstractSelect {
                                         table: concerts_table,
                                         selection: Selection::Json(

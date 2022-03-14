@@ -7,9 +7,9 @@ use payas_model::model::{
     relation::{GqlRelation, RelationCardinality},
     types::{GqlTypeKind, GqlTypeModifier},
 };
-use payas_sql::{AbstractOperation, AbstractPredicate};
+use payas_sql::{AbstractOperation, AbstractPredicate, ColumnPathLink};
 use payas_sql::{AbstractOrderBy, AbstractSelect};
-use payas_sql::{ColumnSelection, NestedElementRelation, SelectionCardinality, SelectionElement};
+use payas_sql::{ColumnSelection, SelectionCardinality, SelectionElement};
 use payas_sql::{Limit, Offset};
 
 use super::{
@@ -313,14 +313,25 @@ fn map_field<'a>(
                     GqlTypeKind::Primitive => panic!(""),
                     GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
                 };
-                let relation =
-                    NestedElementRelation::new(column_id.get_column(system), other_table);
+                let self_table = &system.tables[return_type
+                    .table_id()
+                    .expect("No table for a composite type")];
+                let relation_link = ColumnPathLink {
+                    self_column: (column_id.get_column(system), self_table),
+                    linked_column: Some((
+                        other_table
+                            .get_pk_physical_column()
+                            .expect("No primary key column found"),
+                        other_table,
+                    )),
+                };
+
                 let nested_abstract_select = other_table_pk_query.operation(
                     field,
                     AbstractPredicate::True,
                     query_context,
                 )?;
-                SelectionElement::Nested(relation, nested_abstract_select)
+                SelectionElement::Nested(relation_link, nested_abstract_select)
             }
             GqlRelation::OneToMany {
                 other_type_column_id,
@@ -342,11 +353,19 @@ fn map_field<'a>(
                     }
                 };
                 let self_table = &system.tables[return_type.table_id().unwrap()];
-                let relation =
-                    NestedElementRelation::new(other_type_column_id.get_column(system), self_table);
+                let self_table_pk_column = self_table
+                    .get_pk_physical_column()
+                    .expect("No primary key column found");
+                let relation_link = ColumnPathLink {
+                    self_column: (self_table_pk_column, self_table),
+                    linked_column: Some((
+                        other_type_column_id.get_column(system),
+                        &system.tables[other_type.table_id().unwrap()],
+                    )),
+                };
                 let nested_abstract_select =
                     other_table_query.operation(field, AbstractPredicate::True, query_context)?;
-                SelectionElement::Nested(relation, nested_abstract_select)
+                SelectionElement::Nested(relation_link, nested_abstract_select)
             }
 
             _ => {

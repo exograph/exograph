@@ -1,6 +1,6 @@
 use crate::{
     sql::column::{Column, PhysicalColumn},
-    PhysicalTable,
+    ColumnPathLink, PhysicalTable,
 };
 
 use super::select::AbstractSelect;
@@ -38,7 +38,7 @@ pub enum SelectionSQL<'a> {
 pub enum SelectionElement<'a> {
     Physical(&'a PhysicalColumn),
     Constant(String), // To support __typename
-    Nested(NestedElementRelation<'a>, AbstractSelect<'a>),
+    Nested(ColumnPathLink<'a>, AbstractSelect<'a>),
 }
 
 /// Relation between two tables

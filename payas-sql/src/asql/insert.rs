@@ -1,6 +1,9 @@
-use crate::PhysicalTable;
+use maybe_owned::MaybeOwned;
 
-use super::{common::ColumnValuePair, select::AbstractSelect, selection::NestedElementRelation};
+use super::select::AbstractSelect;
+use super::selection::NestedElementRelation;
+use crate::sql::column::{Column, PhysicalColumn};
+use crate::PhysicalTable;
 
 #[derive(Debug)]
 pub struct NestedInsertion<'a> {
@@ -8,6 +11,18 @@ pub struct NestedInsertion<'a> {
     pub self_table: &'a PhysicalTable,
     pub parent_table: &'a PhysicalTable,
     pub insertions: Vec<InsertionRow<'a>>,
+}
+
+#[derive(Debug)]
+pub struct ColumnValuePair<'a> {
+    pub column: &'a PhysicalColumn,
+    pub value: MaybeOwned<'a, Column<'a>>,
+}
+
+impl<'a> ColumnValuePair<'a> {
+    pub fn new(column: &'a PhysicalColumn, value: MaybeOwned<'a, Column<'a>>) -> Self {
+        Self { column, value }
+    }
 }
 
 /// Logical element to be inserted. Each element could be thought of as an

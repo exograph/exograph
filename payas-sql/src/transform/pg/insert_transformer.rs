@@ -4,7 +4,7 @@ use maybe_owned::MaybeOwned;
 
 use crate::{
     asql::{
-        common::ColumnValuePair,
+        insert::ColumnValuePair,
         insert::{AbstractInsert, NestedInsertion},
         select::SelectionLevel,
     },

@@ -4,13 +4,13 @@ mod sql;
 mod asql;
 mod transform;
 
+/// Public types at the root level of this crate
 pub use asql::{
     abstract_operation::AbstractOperation,
     column_path::{ColumnPath, ColumnPathLink},
-    common::ColumnValuePair,
     database_executor::DatabaseExecutor,
     delete::AbstractDelete,
-    insert::{AbstractInsert, InsertionElement, InsertionRow, NestedInsertion},
+    insert::{AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion},
     order_by::AbstractOrderBy,
     predicate::AbstractPredicate,
     select::AbstractSelect,
