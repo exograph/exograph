@@ -1,4 +1,7 @@
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use codemap::{CodeMap, Span};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -23,13 +26,38 @@ fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
 }
 
 pub fn parse_file<P: AsRef<Path>>(input_file: P) -> Result<AstSystem<Untyped>, ParserError> {
-    if !Path::new(input_file.as_ref()).exists() {
+    let mut already_parsed = vec![];
+    _parse_file(input_file, &mut already_parsed)
+}
+
+fn _parse_file<P: AsRef<Path>>(
+    input_file: P,
+    already_parsed: &mut Vec<PathBuf>,
+) -> Result<AstSystem<Untyped>, ParserError> {
+    let input_file_path = Path::new(input_file.as_ref());
+    if !input_file_path.exists() {
         return Err(ParserError::FileNotFound(
             input_file.as_ref().display().to_string(),
         ));
     }
     let source = fs::read_to_string(input_file.as_ref())?;
-    parse_str(&source, input_file)
+    let mut system = parse_str(&source, input_file_path)?;
+
+    // add to already parsed list since we're parsing it currently
+    already_parsed.push(input_file_path.to_path_buf().canonicalize()?);
+
+    for import in system.imports.iter() {
+        if !already_parsed.contains(import) {
+            // parse import
+            let mut imported_system = _parse_file(import, already_parsed)?;
+
+            // merge import into system
+            system.models.append(&mut imported_system.models);
+            system.services.append(&mut imported_system.services);
+        }
+    }
+
+    Ok(system)
 }
 
 pub fn parse_str<P: AsRef<Path>>(

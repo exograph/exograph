@@ -44,6 +44,7 @@ impl NodeTypedness for Untyped {
 pub struct AstSystem<T: NodeTypedness> {
     pub models: Vec<AstModel<T>>,
     pub services: Vec<AstService<T>>,
+    pub imports: Vec<PathBuf>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
