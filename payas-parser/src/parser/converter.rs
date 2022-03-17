@@ -57,10 +57,9 @@ pub fn convert_root(
                     import_path.pop();
                     import_path.push(path_str);
 
-                    let canonicalized = import_path.canonicalize().unwrap_or_else(|_| panic!(
-                        "While canonicalizing {}",
-                        import_path.to_string_lossy()
-                    ));
+                    let canonicalized = import_path.canonicalize().unwrap_or_else(|_| {
+                        panic!("While canonicalizing {}", import_path.to_string_lossy())
+                    });
                     Some(canonicalized)
                 } else {
                     None
