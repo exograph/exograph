@@ -2,13 +2,13 @@ use crate::execution::{
     query_context::{QueryContext, QueryResponse},
     resolver::FieldResolver,
 };
+use anyhow::Context;
 use anyhow::{anyhow, Result};
 use async_graphql_parser::{
     types::{Field, OperationType},
     Positioned,
 };
 use async_trait::async_trait;
-use anyhow::Context;
 
 use payas_model::model::system::ModelSystem;
 use serde_json::Value;
@@ -59,12 +59,16 @@ impl DataResolver for ModelSystem {
 
         match operation_type {
             OperationType::Query => {
-                let operation = self.queries.get_by_key(name)
+                let operation = self
+                    .queries
+                    .get_by_key(name)
                     .with_context(|| format!("No such query {}", name))?;
                 operation.execute(field, query_context).await
             }
             OperationType::Mutation => {
-                let operation = self.mutations.get_by_key(name)
+                let operation = self
+                    .mutations
+                    .get_by_key(name)
                     .with_context(|| format!("No such mutation {}", name))?;
                 operation.execute(field, query_context).await
             }

@@ -415,8 +415,8 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
                         OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
                     };
                     Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
-                },
-                _ => bail!("No such introspection field {}", name)
+                }
+                _ => bail!("No such introspection field {}", name),
             }
         } else {
             query_context
