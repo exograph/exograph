@@ -35,7 +35,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         if let MutationKind::Service { method_id, .. } = &self.kind {
             Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
         } else {
-            let abs_select = {
+            let abstract_select = {
                 let (_, pk_query, collection_query) = return_type_info(self, query_context);
                 let selection_query = match &self.return_type.type_modifier {
                     GqlTypeModifier::List => collection_query,
@@ -50,7 +50,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                     self,
                     data_param,
                     &field.node,
-                    abs_select,
+                    abstract_select,
                     query_context,
                 )?),
                 MutationKind::Delete(predicate_param) => {
@@ -58,7 +58,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                         self,
                         predicate_param,
                         &field.node,
-                        abs_select,
+                        abstract_select,
                         query_context,
                     )?)
                 }
@@ -70,7 +70,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                     data_param,
                     predicate_param,
                     &field.node,
-                    abs_select,
+                    abstract_select,
                     query_context,
                 )?),
                 MutationKind::Service { .. } => panic!(),
@@ -111,7 +111,7 @@ fn create_operation<'a>(
     let field_arguments = query_context.field_arguments(field)?;
     let argument_value = super::find_arg(field_arguments, &data_param.name).unwrap();
 
-    data_param.insert_script(mutation, select, argument_value, query_context)
+    data_param.insert_operation(mutation, select, argument_value, query_context)
 }
 
 fn delete_operation<'a>(
@@ -150,13 +150,11 @@ fn delete_operation<'a>(
         )
     })?;
 
-    let abs_delete = AbstractDelete {
+    Ok(AbstractDelete {
         table,
         predicate: Some(predicate),
         selection: select,
-    };
-
-    Ok(abs_delete)
+    })
 }
 
 fn update_operation<'a>(
@@ -199,7 +197,7 @@ fn update_operation<'a>(
     let argument_value = super::find_arg(field_arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
-            data_param.update_script(mutation, predicate, select, argument_value, query_context)
+            data_param.update_operation(mutation, predicate, select, argument_value, query_context)
         })
         .unwrap()
 }

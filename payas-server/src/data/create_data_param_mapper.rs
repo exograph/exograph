@@ -19,7 +19,7 @@ use payas_model::model::{
 use super::operation_mapper::SQLInsertMapper;
 
 impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
-    fn insert_script(
+    fn insert_operation(
         &'a self,
         mutation: &'a Mutation,
         select: AbstractSelect<'a>,

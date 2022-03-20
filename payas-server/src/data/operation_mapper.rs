@@ -33,7 +33,7 @@ pub trait SQLMapper<'a, R> {
 }
 
 pub trait SQLInsertMapper<'a> {
-    fn insert_script(
+    fn insert_operation(
         &'a self,
         mutation: &'a Mutation,
         select: AbstractSelect<'a>,
@@ -43,7 +43,7 @@ pub trait SQLInsertMapper<'a> {
 }
 
 pub trait SQLUpdateMapper<'a> {
-    fn update_script(
+    fn update_operation(
         &'a self,
         mutation: &'a Mutation,
         predicate: AbstractPredicate<'a>,

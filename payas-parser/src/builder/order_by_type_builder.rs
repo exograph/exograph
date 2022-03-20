@@ -114,13 +114,6 @@ pub fn new_field_param(
 ) -> OrderByParameter {
     let field_model_type = &building.types[model_field.typ.type_id().to_owned()];
 
-    // let column_id = match &model_field.relation {
-    //     GqlRelation::Pk { column_id, .. } | GqlRelation::Scalar { column_id, .. } => {
-    //         Some(*column_id)
-    //     }
-    //     _ => None,
-    // };
-
     let column_path_link = Some(column_path_utils::column_path_link(
         composite_type,
         model_field,

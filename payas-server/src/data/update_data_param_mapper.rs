@@ -21,7 +21,7 @@ use payas_sql::{Column, PhysicalColumn, PhysicalColumnType};
 use super::operation_mapper::SQLUpdateMapper;
 
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
-    fn update_script(
+    fn update_operation(
         &'a self,
         mutation: &'a Mutation,
         predicate: AbstractPredicate<'a>,
