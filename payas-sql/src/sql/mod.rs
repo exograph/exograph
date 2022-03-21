@@ -10,35 +10,25 @@ use tokio_postgres::types::{to_sql_checked, FromSql, ToSql, Type};
 #[macro_use]
 #[cfg(test)]
 mod test_util;
+
 pub mod column;
-mod cte;
+pub(crate) mod cte;
 pub mod database;
-mod delete;
-mod insert;
-mod physical_table;
-mod select;
-mod sql_operation;
+pub(crate) mod delete;
+pub(crate) mod insert;
+pub(crate) mod physical_table;
+pub(crate) mod select;
+pub(crate) mod sql_operation;
 
 pub mod array_util;
 mod join;
-mod limit;
-mod offset;
+pub(crate) mod limit;
+pub(crate) mod offset;
 pub mod order;
 pub mod predicate;
-mod table;
-pub mod transaction;
-mod update;
-
-pub use cte::Cte;
-pub use delete::{Delete, TemplateDelete};
-pub use insert::{Insert, TemplateInsert};
-pub use limit::Limit;
-pub use offset::Offset;
-pub use physical_table::PhysicalTable;
-pub use select::Select;
-pub use sql_operation::{SQLOperation, TemplateSQLOperation};
-pub use table::TableQuery;
-pub use update::{TemplateUpdate, Update};
+pub(crate) mod table;
+pub(crate) mod transaction;
+pub(crate) mod update;
 
 pub trait SQLParam: ToSql + Sync {
     fn as_any(&self) -> &dyn Any;
@@ -262,8 +252,4 @@ impl ExpressionContext {
         self.plain = cur_plain;
         ret
     }
-}
-
-pub fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
 }

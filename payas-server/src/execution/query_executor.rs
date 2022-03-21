@@ -9,22 +9,22 @@ use anyhow::Result;
 
 use futures::future::join_all;
 use payas_deno::DenoExecutor;
-use payas_model::{
-    model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType},
-    sql::database::Database,
+use payas_model::model::{
+    mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType,
 };
+use payas_sql::DatabaseExecutor;
 use query_context::{QueryContext, QueryResponse};
 use serde_json::{Map, Value};
 use typed_arena::Arena;
 
-pub struct Executor<'a> {
+pub struct QueryExecutor<'a> {
     pub system: &'a ModelSystem,
     pub schema: &'a Schema,
-    pub database: &'a Database,
+    pub database_executor: &'a DatabaseExecutor<'a>,
     pub deno_execution: &'a DenoExecutor,
 }
 
-impl<'a> Executor<'a> {
+impl<'a> QueryExecutor<'a> {
     pub async fn execute(
         &'a self,
         operation_name: Option<&'a str>,

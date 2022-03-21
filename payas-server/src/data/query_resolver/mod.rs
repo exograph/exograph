@@ -1,7 +1,4 @@
 use crate::execution::query_context::QueryContext;
-use crate::sql::SQLOperation;
-
-use crate::sql::order::OrderBy;
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -10,16 +7,14 @@ use payas_model::model::{
     relation::{GqlRelation, RelationCardinality},
     types::{GqlTypeKind, GqlTypeModifier},
 };
-use payas_model::sql::transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep};
-use payas_model::sql::{Limit, Offset};
-use payas_sql::asql::predicate::AbstractPredicate;
-use payas_sql::asql::select::{AbstractSelect, SelectionLevel};
-use payas_sql::asql::selection::{
-    ColumnSelection, SelectionCardinality, SelectionElement, SelectionElementRelation,
-};
+use payas_sql::{AbstractOperation, AbstractPredicate, ColumnPathLink};
+use payas_sql::{AbstractOrderBy, AbstractSelect};
+use payas_sql::{ColumnSelection, SelectionCardinality, SelectionElement};
+use payas_sql::{Limit, Offset};
 
-use super::operation_mapper::{
-    compute_sql_access_predicate, OperationResolverResult, SQLOperationKind,
+use super::{
+    operation_mapper::{compute_sql_access_predicate, OperationResolverResult, SQLOperationKind},
+    order_by_mapper::OrderByParameterMapper,
 };
 use super::{
     operation_mapper::{OperationResolver, SQLMapper},
@@ -41,24 +36,18 @@ impl<'a> OperationResolver<'a> for Query {
         field: &'a Positioned<Field>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
-        match &self.kind {
+        Ok(match &self.kind {
             QueryKind::Database(_) => {
-                let select = self
-                    .operation(&field.node, AbstractPredicate::True, query_context)?
-                    .to_sql(None, SelectionLevel::TopLevel);
+                let operation =
+                    self.operation(&field.node, AbstractPredicate::True, query_context)?;
 
-                let mut transaction_script = TransactionScript::default();
-                transaction_script.add_step(TransactionStep::Concrete(
-                    ConcreteTransactionStep::new(SQLOperation::Select(select)),
-                ));
-
-                Ok(OperationResolverResult::SQLOperation(transaction_script))
+                OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
             }
 
             QueryKind::Service { method_id, .. } => {
-                Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
+                OperationResolverResult::DenoOperation(method_id.unwrap())
             }
-        }
+        })
     }
 
     fn interceptors(&self) -> &Interceptors {
@@ -75,7 +64,7 @@ pub trait QuerySQLOperations<'a> {
         &'a self,
         arguments: &'a Arguments,
         query_context: &'a QueryContext<'a>,
-    ) -> Option<OrderBy<'a>>;
+    ) -> Option<AbstractOrderBy<'a>>;
 
     fn compute_limit(
         &'a self,
@@ -108,7 +97,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         &'a self,
         arguments: &'a Arguments,
         query_context: &'a QueryContext<'a>,
-    ) -> Option<OrderBy<'a>> {
+    ) -> Option<AbstractOrderBy<'a>> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
                 let DatabaseQueryParameter { order_by_param, .. } = db_query_param.as_ref();
@@ -117,7 +106,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     .and_then(|order_by_param| {
                         let argument_value = super::find_arg(arguments, &order_by_param.name);
                         argument_value.map(|argument_value| {
-                            order_by_param.map_to_sql(argument_value, query_context)
+                            order_by_param.map_to_order_by(argument_value, &None, query_context)
                         })
                     })
                     .transpose()
@@ -222,6 +211,8 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 )
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
+                let order_by = self.compute_order_by(field_arguments, query_context);
+
                 let predicate = AbstractPredicate::and(predicate, access_predicate);
 
                 let content_object = self.content_select(&field.selection_set, query_context)?;
@@ -248,12 +239,9 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 };
                 let aselect = AbstractSelect {
                     table: root_physical_table,
-                    selection: payas_sql::asql::selection::Selection::Json(
-                        content_object,
-                        selection_cardinality,
-                    ),
+                    selection: payas_sql::Selection::Json(content_object, selection_cardinality),
                     predicate: Some(predicate),
-                    order_by: None,
+                    order_by,
                     offset,
                     limit,
                 };
@@ -325,14 +313,25 @@ fn map_field<'a>(
                     GqlTypeKind::Primitive => panic!(""),
                     GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
                 };
-                let relation =
-                    SelectionElementRelation::new(column_id.get_column(system), other_table);
+                let self_table = &system.tables[return_type
+                    .table_id()
+                    .expect("No table for a composite type")];
+                let relation_link = ColumnPathLink {
+                    self_column: (column_id.get_column(system), self_table),
+                    linked_column: Some((
+                        other_table
+                            .get_pk_physical_column()
+                            .expect("No primary key column found"),
+                        other_table,
+                    )),
+                };
+
                 let nested_abstract_select = other_table_pk_query.operation(
                     field,
                     AbstractPredicate::True,
                     query_context,
                 )?;
-                SelectionElement::Nested(relation, nested_abstract_select)
+                SelectionElement::Nested(relation_link, nested_abstract_select)
             }
             GqlRelation::OneToMany {
                 other_type_column_id,
@@ -354,13 +353,19 @@ fn map_field<'a>(
                     }
                 };
                 let self_table = &system.tables[return_type.table_id().unwrap()];
-                let relation = SelectionElementRelation::new(
-                    other_type_column_id.get_column(system),
-                    self_table,
-                );
+                let self_table_pk_column = self_table
+                    .get_pk_physical_column()
+                    .expect("No primary key column found");
+                let relation_link = ColumnPathLink {
+                    self_column: (self_table_pk_column, self_table),
+                    linked_column: Some((
+                        other_type_column_id.get_column(system),
+                        &system.tables[other_type.table_id().unwrap()],
+                    )),
+                };
                 let nested_abstract_select =
                     other_table_query.operation(field, AbstractPredicate::True, query_context)?;
-                SelectionElement::Nested(relation, nested_abstract_select)
+                SelectionElement::Nested(relation_link, nested_abstract_select)
             }
 
             _ => {

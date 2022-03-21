@@ -1,5 +1,5 @@
 use super::{column::PhysicalColumn, Expression, ParameterBinding};
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Ordering {
     Asc,
     Desc,

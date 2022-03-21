@@ -1,9 +1,11 @@
 use maybe_owned::MaybeOwned;
 
+use crate::PhysicalTable;
+
 use super::{
     column::{Column, PhysicalColumn, ProxyColumn},
     transaction::{TransactionContext, TransactionStepId},
-    Expression, ExpressionContext, ParameterBinding, PhysicalTable,
+    Expression, ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug)]

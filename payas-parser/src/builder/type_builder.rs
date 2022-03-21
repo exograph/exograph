@@ -1,17 +1,12 @@
-use payas_model::{
-    model::{
-        access::Access,
-        column_id::ColumnId,
-        mapped_arena::{MappedArena, SerializableSlabIndex},
-        naming::ToGqlQueryName,
-        relation::{GqlRelation, RelationCardinality},
-        GqlCompositeType, GqlCompositeTypeKind, GqlFieldType,
-    },
-    sql::{
-        column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
-        PhysicalTable,
-    },
+use payas_model::model::{
+    access::Access,
+    column_id::ColumnId,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+    naming::ToGqlQueryName,
+    relation::{GqlRelation, RelationCardinality},
+    GqlCompositeType, GqlCompositeTypeKind, GqlFieldType,
 };
+use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
 use super::{
     access_utils,

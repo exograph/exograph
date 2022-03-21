@@ -15,6 +15,7 @@ typed-generational-arena = { version = "0.2", features = ["serde"] }
 wildmatch = "2.1.0"
 thiserror = "1.0.30"
 payas-model = { path = "../payas-model" }
+payas-sql = { path = "../payas-sql" }
 
 [build-dependencies]
 cc = "*"

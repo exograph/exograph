@@ -3,7 +3,7 @@ use super::mapped_arena::{SerializableSlab, SerializableSlabIndex};
 use super::{column_id::ColumnId, relation::GqlRelation};
 use crate::model::operation::Query;
 
-use crate::sql::PhysicalTable;
+use payas_sql::PhysicalTable;
 
 use serde::{Deserialize, Serialize};
 

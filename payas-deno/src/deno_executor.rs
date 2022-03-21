@@ -190,11 +190,11 @@ impl<'a> DenoExecutor {
                 msg = on_recv_request => {
                     // handle requests from Deno for data
                     match msg.expect("Channel was dropped before operation completion") {
-                        RequestFromDenoMessage::InteceptedOperationProceed {
+                        RequestFromDenoMessage::InterceptedOperationProceed {
                             response_sender
                         } => {
                             let proceed_result = claytip_proceed.unwrap()().await;
-                            response_sender.send(ResponseForDenoMessage::InteceptedOperationProceed(proceed_result)).ok().unwrap();
+                            response_sender.send(ResponseForDenoMessage::InterceptedOperationProceed(proceed_result)).ok().unwrap();
                         },
                         RequestFromDenoMessage::ClaytipExecute { query_string, variables, response_sender } => {
                             let query_result = claytip_execute_query.unwrap()(query_string, variables).await;

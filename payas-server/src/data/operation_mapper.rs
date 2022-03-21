@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
-use maybe_owned::MaybeOwned;
 use payas_deno::Arg;
-use payas_sql::asql::predicate::AbstractPredicate;
+use payas_sql::{
+    AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect, AbstractUpdate,
+};
 use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
 
@@ -15,15 +16,13 @@ use super::interception::InterceptedOperation;
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
 use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::ConstValue;
-use payas_model::{
-    model::{
-        mapped_arena::SerializableSlabIndex,
-        operation::{Interceptors, Mutation, OperationReturnType},
-        service::{ServiceMethod, ServiceMethodType},
-        GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind,
-    },
-    sql::{predicate::Predicate, transaction::TransactionScript, Select},
+use payas_model::model::{
+    mapped_arena::SerializableSlabIndex,
+    operation::{Interceptors, Mutation, OperationReturnType},
+    service::{ServiceMethod, ServiceMethodType},
+    GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind,
 };
+use payas_sql::Predicate;
 
 pub trait SQLMapper<'a, R> {
     fn map_to_sql(
@@ -33,15 +32,25 @@ pub trait SQLMapper<'a, R> {
     ) -> Result<R>;
 }
 
-pub trait SQLUpdateMapper<'a> {
-    fn update_script(
+pub trait SQLInsertMapper<'a> {
+    fn insert_operation(
         &'a self,
         mutation: &'a Mutation,
-        predicate: MaybeOwned<'a, Predicate<'a>>,
-        select: Select<'a>,
+        select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<TransactionScript>;
+    ) -> Result<AbstractInsert>;
+}
+
+pub trait SQLUpdateMapper<'a> {
+    fn update_operation(
+        &'a self,
+        mutation: &'a Mutation,
+        predicate: AbstractPredicate<'a>,
+        select: AbstractSelect<'a>,
+        argument: &'a ConstValue,
+        query_context: &'a QueryContext<'a>,
+    ) -> Result<AbstractUpdate>;
 }
 
 #[async_trait(?Send)]
@@ -74,7 +83,7 @@ pub trait OperationResolver<'a> {
 
 #[allow(clippy::large_enum_variant)]
 pub enum OperationResolverResult<'a> {
-    SQLOperation(TransactionScript<'a>),
+    SQLOperation(AbstractOperation<'a>),
     DenoOperation(SerializableSlabIndex<ServiceMethod>),
 }
 
@@ -129,12 +138,11 @@ pub fn compute_service_access_predicate<'a>(
                 ServiceMethodType::Mutation(_) => &access.creation, // mutation
             };
 
-            let abstract_predicate = access_solver::solve_access(
+            access_solver::solve_access(
                 access_expr,
                 query_context.request_context,
                 query_context.executor.system,
-            );
-            abstract_predicate.predicate()
+            )
         }
         _ => panic!(),
     };
@@ -151,7 +159,7 @@ pub fn compute_service_access_predicate<'a>(
     );
     let method_level_access = method_level_access.predicate();
 
-    if matches!(type_level_access, Predicate::False)
+    if matches!(type_level_access, AbstractPredicate::False)
         || matches!(method_level_access, Predicate::False)
     {
         &Predicate::False // deny if either access check fails
@@ -167,9 +175,12 @@ impl<'a> OperationResolverResult<'a> {
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
-            OperationResolverResult::SQLOperation(transaction_script) => {
-                let mut client = query_context.executor.database.get_client().await?;
-                let mut result = transaction_script.execute(&mut client).await?;
+            OperationResolverResult::SQLOperation(abstract_operation) => {
+                let mut result = query_context
+                    .executor
+                    .database_executor
+                    .execute(abstract_operation)
+                    .await?;
 
                 if result.len() == 1 {
                     let string_result = extractor(result.swap_remove(0))?;
