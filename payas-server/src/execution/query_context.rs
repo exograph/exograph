@@ -389,32 +389,41 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
         query_context: &'e QueryContext<'e>,
         field: &'e Positioned<Field>,
     ) -> Result<QueryResponse> {
-        match field.node.name.node.as_str() {
-            "__type" => Ok(QueryResponse::Json(
-                query_context.resolve_type(&field.node).await?,
-            )),
-            "__schema" => Ok(QueryResponse::Json(
-                query_context
-                    .executor
-                    .schema
-                    .resolve_value(query_context, &field.node.selection_set)
-                    .await?,
-            )),
-            "__typename" => {
-                let typename = match self.ty {
-                    OperationType::Query => QUERY_ROOT_TYPENAME,
-                    OperationType::Mutation => MUTATION_ROOT_TYPENAME,
-                    OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
-                };
-                Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
+        let name = field.node.name.node.as_str();
+        let allow_introspection = if let Ok(setting) = std::env::var("CLAY_INTROSPECTION") {
+            setting == "1"
+        } else {
+            false
+        };
+
+        if name.starts_with("__") && allow_introspection {
+            match name {
+                "__type" => Ok(QueryResponse::Json(
+                    query_context.resolve_type(&field.node).await?,
+                )),
+                "__schema" => Ok(QueryResponse::Json(
+                    query_context
+                        .executor
+                        .schema
+                        .resolve_value(query_context, &field.node.selection_set)
+                        .await?,
+                )),
+                "__typename" => {
+                    let typename = match self.ty {
+                        OperationType::Query => QUERY_ROOT_TYPENAME,
+                        OperationType::Mutation => MUTATION_ROOT_TYPENAME,
+                        OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
+                    };
+                    Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
+                }
+                _ => bail!("No such introspection field {}", name),
             }
-            _ => {
-                query_context
-                    .executor
-                    .system
-                    .resolve(field, &self.ty, query_context)
-                    .await
-            }
+        } else {
+            query_context
+                .executor
+                .system
+                .resolve(field, &self.ty, query_context)
+                .await
         }
     }
 }
