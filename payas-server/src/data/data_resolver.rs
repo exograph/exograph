@@ -2,6 +2,7 @@ use crate::execution::{
     query_context::{QueryContext, QueryResponse},
     resolver::FieldResolver,
 };
+use anyhow::Context;
 use anyhow::{anyhow, Result};
 use async_graphql_parser::{
     types::{Field, OperationType},
@@ -54,13 +55,21 @@ impl DataResolver for ModelSystem {
         operation_type: &'e OperationType,
         query_context: &'e QueryContext<'e>,
     ) -> Result<QueryResponse> {
+        let name = &field.node.name.node;
+
         match operation_type {
             OperationType::Query => {
-                let operation = self.queries.get_by_key(&field.node.name.node).unwrap();
+                let operation = self
+                    .queries
+                    .get_by_key(name)
+                    .with_context(|| format!("No such query {}", name))?;
                 operation.execute(field, query_context).await
             }
             OperationType::Mutation => {
-                let operation = self.mutations.get_by_key(&field.node.name.node).unwrap();
+                let operation = self
+                    .mutations
+                    .get_by_key(name)
+                    .with_context(|| format!("No such mutation {}", name))?;
                 operation.execute(field, query_context).await
             }
             OperationType::Subscription => {
