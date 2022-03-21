@@ -3,10 +3,8 @@ use crate::execution::query_context::QueryContext;
 use super::operation_mapper::SQLMapper;
 use anyhow::{anyhow, Result};
 use async_graphql_value::ConstValue;
-use payas_model::{
-    model::limit_offset::{LimitParameter, OffsetParameter},
-    sql::{Limit, Offset},
-};
+use payas_model::model::limit_offset::{LimitParameter, OffsetParameter};
+use payas_sql::{Limit, Offset};
 
 fn cast_to_i64(argument: &ConstValue) -> Result<i64> {
     match argument {

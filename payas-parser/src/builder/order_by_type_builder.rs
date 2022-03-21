@@ -1,13 +1,13 @@
 use payas_model::model::{
-    column_id::ColumnId,
     mapped_arena::{MappedArena, SerializableSlabIndex},
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind},
-    relation::GqlRelation,
+    predicate::ColumnIdPathLink,
     types::{GqlCompositeType, GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
 };
 
 use super::{
+    column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
     system_builder::SystemContextBuilding,
 };
@@ -67,10 +67,10 @@ fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
 fn expand_type(model_type: &GqlType, building: &SystemContextBuilding) -> OrderByParameterTypeKind {
     match &model_type.kind {
         GqlTypeKind::Primitive => OrderByParameterTypeKind::Primitive,
-        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
+        GqlTypeKind::Composite(composite_type @ GqlCompositeType { fields, .. }) => {
             let parameters = fields
                 .iter()
-                .map(|field| new_field_param(field, building))
+                .map(|field| new_field_param(field, composite_type, building))
                 .collect();
 
             OrderByParameterTypeKind::Composite { parameters }
@@ -82,7 +82,7 @@ fn new_param(
     name: &str,
     model_type_name: &str,
     is_primitive: bool,
-    column_id: Option<ColumnId>,
+    column_path_link: Option<ColumnIdPathLink>,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
     let (param_type_name, param_type_id) =
@@ -103,28 +103,28 @@ fn new_param(
         // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
         // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
         type_modifier: GqlTypeModifier::List,
-        column_id,
+        column_path_link,
     }
 }
 
 pub fn new_field_param(
     model_field: &GqlField,
+    composite_type: &GqlCompositeType,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
     let field_model_type = &building.types[model_field.typ.type_id().to_owned()];
 
-    let column_id = match &model_field.relation {
-        GqlRelation::Pk { column_id, .. } | GqlRelation::Scalar { column_id, .. } => {
-            Some(*column_id)
-        }
-        _ => None,
-    };
+    let column_path_link = Some(column_path_utils::column_path_link(
+        composite_type,
+        model_field,
+        building,
+    ));
 
     new_param(
         &model_field.name,
         &field_model_type.name,
         field_model_type.is_primitive(),
-        column_id,
+        column_path_link,
         building,
     )
 }

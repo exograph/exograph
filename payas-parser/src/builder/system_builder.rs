@@ -1,20 +1,18 @@
-use payas_model::{
-    model::{
-        argument::ArgumentParameterType,
-        interceptor::Interceptor,
-        mapped_arena::MappedArena,
-        operation::{Mutation, Query},
-        order::OrderByParameterType,
-        predicate::PredicateParameterType,
-        service::{Script, ServiceMethod},
-        system::ModelSystem,
-        types::GqlType,
-        ContextType,
-    },
-    sql::PhysicalTable,
+use payas_model::model::{
+    argument::ArgumentParameterType,
+    interceptor::Interceptor,
+    mapped_arena::MappedArena,
+    operation::{Mutation, Query},
+    order::OrderByParameterType,
+    predicate::PredicateParameterType,
+    service::{Script, ServiceMethod},
+    system::ModelSystem,
+    types::GqlType,
+    ContextType,
 };
 
 use crate::ast::ast_types::{AstSystem, Untyped};
+use payas_sql::PhysicalTable;
 
 use super::{
     argument_builder, context_builder, interceptor_weaver, mutation_builder, order_by_type_builder,
@@ -142,10 +140,8 @@ pub struct SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
-    use payas_model::{
-        model::mapped_arena::SerializableSlab,
-        sql::column::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType},
-    };
+    use payas_model::model::mapped_arena::SerializableSlab;
+    use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;
     use crate::parser;

@@ -3,9 +3,11 @@ use tokio_postgres::{types::ToSql, Client, GenericClient, Row};
 
 use crate::sql::ExpressionContext;
 
-use super::{sql_operation::TemplateSQLOperation, OperationExpression, SQLOperation, SQLValue};
+use super::{
+    sql_operation::SQLOperation, sql_operation::TemplateSQLOperation, OperationExpression, SQLValue,
+};
 
-type TransactionStepResult = Vec<Row>;
+pub type TransactionStepResult = Vec<Row>;
 
 #[derive(Default, Debug)]
 pub struct TransactionScript<'a> {

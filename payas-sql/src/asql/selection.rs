@@ -1,15 +1,14 @@
-use crate::sql::{
-    column::{Column, PhysicalColumn},
-    predicate::Predicate,
-    PhysicalTable,
+use crate::{
+    sql::column::{Column, PhysicalColumn},
+    ColumnPathLink, PhysicalTable,
 };
 
-use super::select::{AbstractSelect, SelectionLevel};
+use super::select::AbstractSelect;
 
 #[derive(Debug)]
 pub struct ColumnSelection<'a> {
-    alias: String,
-    column: SelectionElement<'a>,
+    pub(crate) alias: String,
+    pub(crate) column: SelectionElement<'a>,
 }
 
 impl<'a> ColumnSelection<'a> {
@@ -35,81 +34,24 @@ pub enum SelectionSQL<'a> {
     Seq(Vec<Column<'a>>),
 }
 
-impl<'a> Selection<'a> {
-    pub fn to_sql(self) -> SelectionSQL<'a> {
-        match self {
-            Selection::Seq(seq) => SelectionSQL::Seq(
-                seq.iter()
-                    .map(
-                        |ColumnSelection {
-                             alias: _alias,
-                             column,
-                         }| match column {
-                            // TODO: Support alias (requires a change to `Select`)
-                            SelectionElement::Physical(pc) => Column::Physical(pc),
-                            SelectionElement::Constant(s) => Column::Constant(s.to_owned()),
-                            SelectionElement::Nested(_, _) => {
-                                panic!("Nested selection not supported in Selection::Seq")
-                            }
-                        },
-                    )
-                    .collect(),
-            ),
-            Selection::Json(seq, cardinality) => {
-                let object_elems = seq
-                    .into_iter()
-                    .map(|ColumnSelection { alias, column }| (alias, column.to_sql().into()))
-                    .collect();
-
-                let json_obj = Column::JsonObject(object_elems);
-
-                match cardinality {
-                    SelectionCardinality::One => SelectionSQL::Single(json_obj),
-                    SelectionCardinality::Many => {
-                        SelectionSQL::Single(Column::JsonAgg(Box::new(json_obj.into())))
-                    }
-                }
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum SelectionElement<'a> {
     Physical(&'a PhysicalColumn),
     Constant(String), // To support __typename
-    Nested(SelectionElementRelation<'a>, AbstractSelect<'a>),
+    Nested(ColumnPathLink<'a>, AbstractSelect<'a>),
 }
 
 /// Relation between two tables
 /// The `column` is the column in the one table that is joined to the other `table`('s primary key)
 /// TODO: Could this idea be consolidated with the `ColumnPath`? After all, both represent a way to link two tables
 #[derive(Debug)]
-pub struct SelectionElementRelation<'a> {
+pub struct NestedElementRelation<'a> {
     pub column: &'a PhysicalColumn,
     pub table: &'a PhysicalTable,
 }
 
-impl<'a> SelectionElementRelation<'a> {
+impl<'a> NestedElementRelation<'a> {
     pub fn new(column: &'a PhysicalColumn, table: &'a PhysicalTable) -> Self {
         Self { column, table }
-    }
-}
-
-impl<'a> SelectionElement<'a> {
-    pub fn to_sql(self) -> Column<'a> {
-        match self {
-            SelectionElement::Physical(pc) => Column::Physical(pc),
-            SelectionElement::Constant(s) => Column::Constant(s),
-            SelectionElement::Nested(relation, select) => {
-                Column::SelectionTableWrapper(Box::new(select.to_sql(
-                    Some(Predicate::Eq(
-                        Column::Physical(relation.column).into(),
-                        Column::Physical(relation.table.get_pk_physical_column().unwrap()).into(),
-                    )),
-                    SelectionLevel::Nested,
-                )))
-            }
-        }
     }
 }

@@ -7,13 +7,13 @@ use payas_model::model::{
     predicate::ColumnIdPath,
     system::ModelSystem,
 };
-use payas_sql::asql::{column_path::ColumnPath, predicate::AbstractPredicate};
+use payas_sql::{AbstractPredicate, ColumnPath};
 use serde_json::Value;
 
 use std::ops::Not;
 
 pub fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelSystem) -> ColumnPath<'a> {
-    super::predicate_mapper::to_column_path(&Some(column_id.clone()), &None, system)
+    super::to_column_path(&Some(column_id.clone()), &None, system)
 }
 
 /// Solve access control logic.
@@ -260,13 +260,10 @@ fn solve_logical_op<'a>(
 
 #[cfg(test)]
 mod tests {
-    use payas_model::{
-        model::{column_id::ColumnId, predicate::ColumnIdPathLink, system::ModelSystem},
-        sql::{
-            column::{IntBits, PhysicalColumn, PhysicalColumnType},
-            PhysicalTable,
-        },
+    use payas_model::model::{
+        column_id::ColumnId, predicate::ColumnIdPathLink, system::ModelSystem,
     };
+    use payas_sql::{IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
     use serde_json::json;
 
     use super::*;

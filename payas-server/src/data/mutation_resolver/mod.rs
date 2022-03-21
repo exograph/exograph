@@ -4,29 +4,24 @@ use crate::{
         query_resolver::QuerySQLOperations,
     },
     execution::{query_context::QueryContext, resolver::GraphQLExecutionError},
-    sql::{column::Column, Cte, PhysicalTable, SQLOperation},
 };
+use payas_sql::PhysicalTable;
 
 use anyhow::{anyhow, bail, Context, Result};
-use payas_model::{
-    model::{
-        operation::{
-            CreateDataParameter, Interceptors, Mutation, MutationKind, Query, UpdateDataParameter,
-        },
-        predicate::PredicateParameter,
-        types::{GqlTypeKind, GqlTypeModifier},
+use payas_model::model::{
+    operation::{
+        CreateDataParameter, Interceptors, Mutation, MutationKind, Query, UpdateDataParameter,
     },
-    sql::{
-        transaction::{ConcreteTransactionStep, TransactionScript, TransactionStep},
-        Select,
-    },
+    predicate::PredicateParameter,
+    types::{GqlTypeKind, GqlTypeModifier},
 };
-use payas_sql::asql::{predicate::AbstractPredicate, select::SelectionLevel};
+use payas_sql::{
+    AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
+    AbstractUpdate,
+};
 
-use super::{
-    create_data_param_mapper::InsertionInfo,
-    operation_mapper::{OperationResolver, OperationResolverResult, SQLMapper, SQLUpdateMapper},
-    Arguments,
+use super::operation_mapper::{
+    OperationResolver, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
 };
 
 use async_graphql_parser::{types::Field, Positioned};
@@ -40,36 +35,44 @@ impl<'a> OperationResolver<'a> for Mutation {
         if let MutationKind::Service { method_id, .. } = &self.kind {
             Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
         } else {
-            let select = {
+            let abstract_select = {
                 let (_, pk_query, collection_query) = return_type_info(self, query_context);
                 let selection_query = match &self.return_type.type_modifier {
                     GqlTypeModifier::List => collection_query,
                     GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
                 };
 
-                selection_query
-                    .operation(&field.node, AbstractPredicate::True, query_context)?
-                    .to_sql(None, SelectionLevel::TopLevel)
+                selection_query.operation(&field.node, AbstractPredicate::True, query_context)?
             };
 
             Ok(OperationResolverResult::SQLOperation(match &self.kind {
-                MutationKind::Create(data_param) => {
-                    create_operation(self, data_param, &field.node, select, query_context)?
-                }
+                MutationKind::Create(data_param) => AbstractOperation::Insert(create_operation(
+                    self,
+                    data_param,
+                    &field.node,
+                    abstract_select,
+                    query_context,
+                )?),
                 MutationKind::Delete(predicate_param) => {
-                    delete_operation(self, predicate_param, &field.node, select, query_context)?
+                    AbstractOperation::Delete(delete_operation(
+                        self,
+                        predicate_param,
+                        &field.node,
+                        abstract_select,
+                        query_context,
+                    )?)
                 }
                 MutationKind::Update {
                     data_param,
                     predicate_param,
-                } => update_operation(
+                } => AbstractOperation::Update(update_operation(
                     self,
                     data_param,
                     predicate_param,
                     &field.node,
-                    select,
+                    abstract_select,
                     query_context,
-                )?,
+                )?),
                 MutationKind::Service { .. } => panic!(),
             }))
         }
@@ -84,21 +87,13 @@ impl<'a> OperationResolver<'a> for Mutation {
     }
 }
 
-pub fn table_name(mutation: &Mutation, query_context: &QueryContext) -> String {
-    mutation
-        .return_type
-        .physical_table(query_context.get_system())
-        .name
-        .to_owned()
-}
-
 fn create_operation<'a>(
     mutation: &'a Mutation,
     data_param: &'a CreateDataParameter,
     field: &'a Field,
-    select: Select<'a>,
+    select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<TransactionScript<'a>> {
+) -> Result<AbstractInsert<'a>> {
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
@@ -114,24 +109,18 @@ fn create_operation<'a>(
     }
 
     let field_arguments = query_context.field_arguments(field)?;
-    let info = insertion_info(data_param, field_arguments, query_context)?.unwrap();
-    let ops = info.operation(query_context, true);
+    let argument_value = super::find_arg(field_arguments, &data_param.name).unwrap();
 
-    let mut transaction_script = TransactionScript::default();
-    transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-        SQLOperation::Cte(Cte { ctes: ops, select }),
-    )));
-
-    Ok(transaction_script)
+    data_param.insert_operation(mutation, select, argument_value, query_context)
 }
 
 fn delete_operation<'a>(
     mutation: &'a Mutation,
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
-    select: Select<'a>,
+    select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<TransactionScript<'a>> {
+) -> Result<AbstractDelete<'a>> {
     let (table, _, _) = return_type_info(mutation, query_context);
 
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -146,10 +135,12 @@ fn delete_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
+    let field_arguments = query_context.field_arguments(field)?;
+
     let predicate = super::compute_predicate(
         Some(predicate_param),
-        query_context.field_arguments(field)?,
-        access_predicate,
+        field_arguments,
+        AbstractPredicate::True,
         query_context,
     )
     .with_context(|| {
@@ -159,19 +150,11 @@ fn delete_operation<'a>(
         )
     })?;
 
-    let predicate = predicate.predicate();
-
-    let ops = vec![(
-        table_name(mutation, query_context),
-        SQLOperation::Delete(table.delete(predicate.into(), vec![Column::Star.into()])),
-    )];
-
-    let mut transaction_script = TransactionScript::default();
-    transaction_script.add_step(TransactionStep::Concrete(ConcreteTransactionStep::new(
-        SQLOperation::Cte(Cte { ctes: ops, select }),
-    )));
-
-    Ok(transaction_script)
+    Ok(AbstractDelete {
+        table,
+        predicate: Some(predicate),
+        selection: select,
+    })
 }
 
 fn update_operation<'a>(
@@ -179,9 +162,9 @@ fn update_operation<'a>(
     data_param: &'a UpdateDataParameter,
     predicate_param: &'a PredicateParameter,
     field: &'a Field,
-    select: Select<'a>,
+    select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
-) -> Result<TransactionScript<'a>> {
+) -> Result<AbstractUpdate<'a>> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
     // nested predicates aren't working.
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -211,34 +194,12 @@ fn update_operation<'a>(
         )
     })?;
 
-    let predicate = predicate.predicate();
-
     let argument_value = super::find_arg(field_arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
-            data_param.update_script(
-                mutation,
-                predicate.into(),
-                select,
-                argument_value,
-                query_context,
-            )
+            data_param.update_operation(mutation, predicate, select, argument_value, query_context)
         })
         .unwrap()
-}
-
-fn insertion_info<'a>(
-    data_param: &'a CreateDataParameter,
-    arguments: &'a Arguments,
-    query_context: &'a QueryContext<'a>,
-) -> Result<Option<InsertionInfo<'a>>> {
-    let system = &query_context.get_system();
-    let data_type = &system.mutation_types[data_param.type_id];
-
-    let argument_value = super::find_arg(arguments, &data_param.name);
-    argument_value
-        .map(|argument_value| data_type.map_to_sql(argument_value, query_context))
-        .transpose()
 }
 
 pub fn return_type_info<'a>(

@@ -1,11 +1,9 @@
-use super::table_dependency::TableDependency;
-
 use crate::{
-    asql::table_dependency::DependencyLink,
-    sql::{column::Column, predicate::Predicate, PhysicalTable, TableQuery},
+    asql::column_path::ColumnPathLink,
+    sql::{column::Column, predicate::Predicate, table::TableQuery},
+    transform::table_dependency::{DependencyLink, TableDependency},
+    PhysicalTable,
 };
-
-use super::column_path::ColumnPathLink;
 
 pub fn compute_join<'a>(
     table: &'a PhysicalTable,
@@ -37,8 +35,9 @@ pub fn compute_join<'a>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        asql::{column_path::ColumnPathLink, test_util::TestSetup},
+        asql::column_path::ColumnPathLink,
         sql::{Expression, ExpressionContext},
+        transform::test_util::TestSetup,
     };
 
     #[test]
@@ -101,6 +100,7 @@ mod tests {
 
                  venues_id_column,
                  venues_name_column,
+                 ..
              }| {
                 // (concert.id, concert_artists.concert_id) -> (concert_artists.artist_id, artists.id) -> (artists.name, None)
                 let concert_ca_artist = vec![

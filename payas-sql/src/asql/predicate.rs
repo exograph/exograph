@@ -34,7 +34,7 @@ impl<'a> AbstractPredicate<'a> {
         }
     }
 
-    pub fn predicate(self) -> Predicate<'a> {
+    pub fn predicate(&'a self) -> Predicate<'a> {
         fn leaf_column<'c>(
             column_path: MaybeOwned<'c, ColumnPath<'c>>,
         ) -> MaybeOwned<'c, Column<'c>> {
@@ -46,8 +46,8 @@ impl<'a> AbstractPredicate<'a> {
                     Column::Physical(links.last().unwrap().self_column.0).into()
                 }
                 MaybeOwned::Owned(ColumnPath::Literal(l)) => Column::Literal(l).into(),
-                MaybeOwned::Borrowed(ColumnPath::Literal(_)) => {
-                    panic!("Unexpected borrowed literal. Literal in ColumnPath must be owned")
+                MaybeOwned::Borrowed(ColumnPath::Literal(l)) => {
+                    Column::Literal(MaybeOwned::Borrowed(l)).into()
                 }
                 MaybeOwned::Owned(ColumnPath::Null) | MaybeOwned::Borrowed(&ColumnPath::Null) => {
                     panic!("Unexpected column path null")
@@ -58,39 +58,69 @@ impl<'a> AbstractPredicate<'a> {
         match self {
             AbstractPredicate::True => Predicate::True,
             AbstractPredicate::False => Predicate::False,
-            AbstractPredicate::Eq(l, r) => Predicate::eq(leaf_column(l), leaf_column(r)),
-            AbstractPredicate::Neq(l, r) => Predicate::neq(leaf_column(l), leaf_column(r)),
-            AbstractPredicate::Lt(l, r) => Predicate::Lt(leaf_column(l), leaf_column(r)),
-            AbstractPredicate::Lte(l, r) => Predicate::Lte(leaf_column(l), leaf_column(r)),
-            AbstractPredicate::Gt(l, r) => Predicate::Gt(leaf_column(l), leaf_column(r)),
-            AbstractPredicate::Gte(l, r) => Predicate::Gte(leaf_column(l), leaf_column(r)),
-            AbstractPredicate::In(l, r) => Predicate::In(leaf_column(l), leaf_column(r)),
+            AbstractPredicate::Eq(l, r) => Predicate::eq(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::Neq(l, r) => Predicate::neq(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::Lt(l, r) => Predicate::Lt(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::Lte(l, r) => Predicate::Lte(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::Gt(l, r) => Predicate::Gt(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::Gte(l, r) => Predicate::Gte(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::In(l, r) => Predicate::In(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
 
-            AbstractPredicate::StringLike(l, r, cs) => {
-                Predicate::StringLike(leaf_column(l), leaf_column(r), cs)
-            }
-            AbstractPredicate::StringStartsWith(l, r) => {
-                Predicate::StringStartsWith(leaf_column(l), leaf_column(r))
-            }
-            AbstractPredicate::StringEndsWith(l, r) => {
-                Predicate::StringEndsWith(leaf_column(l), leaf_column(r))
-            }
+            AbstractPredicate::StringLike(l, r, cs) => Predicate::StringLike(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+                *cs,
+            ),
+            AbstractPredicate::StringStartsWith(l, r) => Predicate::StringStartsWith(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::StringEndsWith(l, r) => Predicate::StringEndsWith(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
 
-            AbstractPredicate::JsonContains(l, r) => {
-                Predicate::JsonContains(leaf_column(l), leaf_column(r))
-            }
-            AbstractPredicate::JsonContainedBy(l, r) => {
-                Predicate::JsonContainedBy(leaf_column(l), leaf_column(r))
-            }
-            AbstractPredicate::JsonMatchKey(l, r) => {
-                Predicate::JsonMatchKey(leaf_column(l), leaf_column(r))
-            }
-            AbstractPredicate::JsonMatchAnyKey(l, r) => {
-                Predicate::JsonMatchAnyKey(leaf_column(l), leaf_column(r))
-            }
-            AbstractPredicate::JsonMatchAllKeys(l, r) => {
-                Predicate::JsonMatchAllKeys(leaf_column(l), leaf_column(r))
-            }
+            AbstractPredicate::JsonContains(l, r) => Predicate::JsonContains(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::JsonContainedBy(l, r) => Predicate::JsonContainedBy(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::JsonMatchKey(l, r) => Predicate::JsonMatchKey(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::JsonMatchAnyKey(l, r) => Predicate::JsonMatchAnyKey(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
+            AbstractPredicate::JsonMatchAllKeys(l, r) => Predicate::JsonMatchAllKeys(
+                leaf_column(MaybeOwned::Borrowed(l)),
+                leaf_column(MaybeOwned::Borrowed(r)),
+            ),
 
             AbstractPredicate::And(l, r) => Predicate::and(l.predicate(), r.predicate()),
             AbstractPredicate::Or(l, r) => Predicate::or(l.predicate(), r.predicate()),

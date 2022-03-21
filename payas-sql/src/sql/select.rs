@@ -1,8 +1,10 @@
 use maybe_owned::MaybeOwned;
 
+use crate::{Limit, Offset};
+
 use super::{
-    column::Column, limit::Limit, offset::Offset, order::OrderBy, predicate::Predicate,
-    table::TableQuery, Expression, ExpressionContext, ParameterBinding,
+    column::Column, order::OrderBy, predicate::Predicate, table::TableQuery, Expression,
+    ExpressionContext, ParameterBinding,
 };
 
 #[derive(Debug, PartialEq)]
@@ -98,8 +100,8 @@ impl<'a> Expression for Select<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::sql::{
-        column::{IntBits, PhysicalColumn, PhysicalColumnType},
+    use crate::{
+        sql::column::{IntBits, PhysicalColumn, PhysicalColumnType},
         PhysicalTable,
     };
 

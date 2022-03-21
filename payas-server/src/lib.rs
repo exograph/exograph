@@ -1,16 +1,18 @@
 use async_stream::{try_stream, AsyncStream};
-use execution::executor::Executor;
+use execution::query_executor::QueryExecutor;
 use introspection::schema::Schema;
 use payas_deno::DenoExecutor;
 
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
+use payas_sql::Database;
+use payas_sql::DatabaseExecutor;
 
 use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
 
-use payas_model::{model::system::ModelSystem, sql::database::Database};
+use payas_model::model::system::ModelSystem;
 use serde_json::Value;
 
 pub mod authentication;
@@ -18,8 +20,6 @@ mod data;
 mod error;
 pub mod execution;
 mod introspection;
-
-pub use payas_sql::sql;
 
 use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 
@@ -39,10 +39,11 @@ pub async fn resolve(
     match auth {
         Ok(claims) => {
             let (system, schema, database, deno_execution) = system_info.as_ref();
-            let executor = Executor {
+            let database_executor = DatabaseExecutor { database };
+            let executor = QueryExecutor {
                 system,
                 schema,
-                database,
+                database_executor: &database_executor,
                 deno_execution,
             };
             let operation_name = body["operationName"].as_str();

@@ -1,4 +1,4 @@
-use payas_sql::sql::PhysicalTable;
+use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
 use crate::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};

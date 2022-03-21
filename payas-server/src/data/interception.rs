@@ -40,7 +40,7 @@ use serde_json::{Map, Value};
 /// @after  2
 /// ```
 ///
-/// We want to execute the interceptors in the followiong order.
+/// We want to execute the interceptors in the following order.
 
 ///
 /// ```ignore
@@ -61,7 +61,7 @@ use serde_json::{Map, Value};
 ///
 /// Will translate to:
 ///
-/// ```ingore
+/// ```ignore
 /// InterceptedOperation::Intercepted (
 ///     before: [
 ///         Interception::NonProceedingInterception(before 1)
@@ -210,9 +210,9 @@ impl<'a> InterceptedOperation<'a> {
                 Ok(res)
             }
 
-            &InterceptedOperation::Around {
+            InterceptedOperation::Around {
                 operation_name,
-                ref core,
+                core,
                 interceptor,
             } => {
                 let res = execute_interceptor(

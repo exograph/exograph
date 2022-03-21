@@ -1,196 +1,93 @@
-use std::collections::{HashMap, HashSet};
-
 use anyhow::{anyhow, bail, Context, Result};
 use async_graphql_value::ConstValue;
-use maybe_owned::MaybeOwned;
-
-use crate::{execution::query_context::QueryContext, sql::column::Column};
-
-use payas_model::{
-    model::{
-        column_id::ColumnId, relation::GqlRelation, system::ModelSystem, types::GqlTypeKind,
-        GqlCompositeType, GqlField, GqlType,
-    },
-    sql::{
-        column::PhysicalColumn, predicate::Predicate, Limit, Offset, PhysicalTable, SQLOperation,
-        TableQuery,
-    },
+use payas_sql::{
+    AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
+    NestedElementRelation, NestedInsertion,
 };
 
-use super::operation_mapper::SQLMapper;
+use crate::execution::query_context::QueryContext;
 
-#[derive(Debug)]
-struct SingleInsertion<'a> {
-    pub self_row: HashMap<&'a PhysicalColumn, Column<'a>>,
-    pub nested_rows: Vec<InsertionInfo<'a>>,
-}
+use payas_model::model::{
+    column_id::ColumnId,
+    operation::{CreateDataParameter, Mutation},
+    relation::GqlRelation,
+    system::ModelSystem,
+    types::GqlTypeKind,
+    GqlCompositeType, GqlField, GqlType,
+};
 
-#[derive(Debug)]
-pub struct InsertionInfo<'a> {
-    pub table: &'a PhysicalTable,
-    pub columns: Vec<&'a PhysicalColumn>,
-    pub values: Vec<Vec<MaybeOwned<'a, Column<'a>>>>,
-    pub nested: Vec<InsertionInfo<'a>>,
-}
+use super::operation_mapper::SQLInsertMapper;
 
-impl<'a> InsertionInfo<'a> {
-    /// Compute a combined set of operations considering nested insertions
-    pub fn operation(
-        self,
-        query_context: &'a QueryContext<'a>,
-        return_data: bool,
-    ) -> Vec<(String, SQLOperation<'a>)> {
-        let InsertionInfo {
-            table,
-            columns,
-            values,
-            nested,
-        } = self;
-
-        let returning = if return_data {
-            vec![Column::Star.into()]
-        } else {
-            vec![]
-        };
-        let main_insertion = (
-            table.name.clone(),
-            SQLOperation::Insert(table.insert(columns, values, returning)),
-        );
-
-        let mut ops = Vec::with_capacity(&nested.len() + 1);
-        ops.push(main_insertion);
-
-        let nested_insertions = nested
-            .into_iter()
-            .flat_map(|item| item.operation(query_context, return_data));
-
-        ops.extend(nested_insertions);
-        ops
-    }
-}
-
-impl<'a> SQLMapper<'a, InsertionInfo<'a>> for GqlType {
-    fn map_to_sql(
+impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
+    fn insert_operation(
         &'a self,
+        mutation: &'a Mutation,
+        select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         query_context: &'a QueryContext<'a>,
-    ) -> Result<InsertionInfo<'a>> {
-        let table = self
-            .table_id()
-            .map(|table_id| &query_context.get_system().tables[table_id])
-            .unwrap();
+    ) -> Result<AbstractInsert> {
+        let system = &query_context.get_system();
 
-        match argument {
-            ConstValue::List(elems) => {
-                let unaligned = elems
-                    .iter()
-                    .enumerate()
-                    .map(|(index, elem)| map_single(self, elem, Some(index), query_context))
-                    .collect::<Result<Vec<_>>>()?;
+        let table = mutation.return_type.physical_table(system);
 
-                Ok(align(unaligned, table))
-            }
-            _ => {
-                let raw = map_single(self, argument, None, query_context)?;
-                let (columns, values) =
-                    raw.self_row.into_iter().map(|(c, v)| (c, v.into())).unzip();
-                Ok(InsertionInfo {
-                    table,
-                    columns,
-                    values: vec![values],
-                    nested: raw.nested_rows,
-                })
-            }
-        }
+        let data_type = &system.mutation_types[self.type_id];
+
+        let rows = map_argument(data_type, argument, query_context)?;
+
+        let abs_insert = AbstractInsert {
+            table,
+            rows,
+            selection: select,
+        };
+
+        Ok(abs_insert)
     }
 }
 
-/// Align multiple SingleInsertion's to account for misaligned and missing columns
-/// For example, if the input is {data: [{a: 1, b: 2}, {a: 3, c: 4}]}, we will have the 'a' key in both
-/// but only 'b' or 'c' keys in others. So we need align columns that can be supplied to an insert statement
-/// (a, b, c), [(1, 2, null), (3, null, 4)]
-fn align<'a>(unaligned: Vec<SingleInsertion<'a>>, table: &'a PhysicalTable) -> InsertionInfo<'a> {
-    let mut all_keys = HashSet::new();
-    for item in unaligned.iter() {
-        all_keys.extend(item.self_row.keys())
-    }
-
-    let keys_count = all_keys.len();
-
-    let mut values = Vec::with_capacity(unaligned.len());
-    let mut nested = vec![];
-
-    for mut item in unaligned.into_iter() {
-        let mut row = Vec::with_capacity(keys_count);
-        for key in &all_keys {
-            let value = item
-                .self_row
-                .remove(key)
-                .map(|v| v.into())
-                .unwrap_or_else(|| Column::Null.into());
-            row.push(value);
-        }
-
-        values.push(row);
-        nested.extend(item.nested_rows);
-    }
-
-    InsertionInfo {
-        table,
-        columns: all_keys.into_iter().collect(),
-        values,
-        nested,
+pub fn map_argument<'a>(
+    input_data_type: &'a GqlType,
+    argument: &'a ConstValue,
+    query_context: &'a QueryContext<'a>,
+) -> Result<Vec<InsertionRow<'a>>> {
+    match argument {
+        ConstValue::List(arguments) => arguments
+            .iter()
+            .map(|argument| map_single(input_data_type, argument, query_context))
+            .collect::<Result<Vec<_>>>(),
+        _ => vec![map_single(input_data_type, argument, query_context)]
+            .into_iter()
+            .collect(),
     }
 }
 
 /// Map a single item from the data parameter
-/// Specifically, either the whole of a single insert one of the element of multiple inserts
 fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
-    index: Option<usize>, // Index if the multiple entries are being inserted (such as createVenues (note the plural form))
     query_context: &'a QueryContext<'a>,
-) -> Result<SingleInsertion<'a>> {
+) -> Result<InsertionRow<'a>> {
     let fields = match &input_data_type.kind {
         GqlTypeKind::Primitive => bail!("Query attempted on a primitive type"),
         GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields,
     };
 
-    let mut self_row = HashMap::new();
-    let mut nested_rows_results = Vec::new();
+    let row: Result<Vec<_>> = fields
+        .iter()
+        .flat_map(|field| {
+            // Process fields that map to a column in the current table
+            let field_self_column = field.relation.self_column();
+            let field_arg = query_context.get_argument_field(argument, &field.name);
 
-    for field in fields.iter() {
-        // Process fields that map to a column in the current table
-        let field_self_column = field.relation.self_column();
-        let field_arg = query_context.get_argument_field(argument, &field.name);
-
-        if let Some(field_arg) = field_arg {
-            match field_self_column {
+            field_arg.map(|field_arg| match field_self_column {
                 Some(field_self_column) => {
-                    let (col, value) =
-                        map_self_column(field_self_column, field, field_arg, query_context)?;
-                    self_row.insert(col, value);
+                    map_self_column(field_self_column, field, field_arg, query_context)
                 }
-                None => nested_rows_results.push(map_foreign(
-                    field,
-                    field_arg,
-                    index,
-                    input_data_type,
-                    query_context,
-                )),
-            } // TODO: Report an error if the field is non-optional and the if-let doesn't match
-        }
-    }
+                None => map_foreign(field, field_arg, input_data_type, query_context),
+            })
+        })
+        .collect();
 
-    let nested_rows = nested_rows_results
-        .into_iter()
-        .collect::<Result<Vec<_>>>()
-        .context("While mapping foreign elements as nested rows")?;
-
-    Ok(SingleInsertion {
-        self_row,
-        nested_rows,
-    })
+    Ok(InsertionRow { elems: row? })
 }
 
 fn map_self_column<'a>(
@@ -198,7 +95,7 @@ fn map_self_column<'a>(
     field: &'a GqlField,
     argument: &'a ConstValue,
     query_context: &'a QueryContext<'a>,
-) -> Result<(&'a PhysicalColumn, Column<'a>)> {
+) -> Result<InsertionElement<'a>> {
     let system = query_context.get_system();
 
     let key_column = key_column_id.get_column(system);
@@ -233,7 +130,10 @@ fn map_self_column<'a>(
             )
         })?;
 
-    Ok((key_column, value_column))
+    Ok(InsertionElement::SelfInsert(ColumnValuePair::new(
+        key_column,
+        value_column.into(),
+    )))
 }
 
 /// Map foreign elements of a data parameter
@@ -242,10 +142,9 @@ fn map_self_column<'a>(
 fn map_foreign<'a>(
     field: &'a GqlField,
     argument: &'a ConstValue,
-    parent_index: Option<usize>,
     parent_data_type: &'a GqlType,
     query_context: &'a QueryContext<'a>,
-) -> Result<InsertionInfo<'a>> {
+) -> Result<InsertionElement<'a>> {
     let system = query_context.get_system();
 
     fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
@@ -269,33 +168,20 @@ fn map_foreign<'a>(
     // we need to create a column that evaluates to `select "venues"."id" from "venues"`
 
     let parent_type = underlying_type(parent_data_type, system);
-    let parent_physical_table = &system.tables[parent_type.table_id().unwrap()];
-    let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(system);
+    let parent_table = &system.tables[parent_type.table_id().unwrap()];
 
-    fn create_select<'a>(
-        parent_table: TableQuery<'a>,
-        parent_pk_physical_column: &'a PhysicalColumn,
-        parent_index: Option<usize>,
-    ) -> Column<'a> {
-        Column::SelectionTableWrapper(Box::new(parent_table.select(
-            vec![Column::Physical(parent_pk_physical_column).into()],
-            Predicate::True,
-            None,
-            parent_index.map(|index| Offset(index as i64)),
-            parent_index.map(|_| Limit(1)),
-            false,
-        )))
-    }
+    let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(system);
 
     // Find the column that the current entity refers to in the parent entity
     // In the above example, this would be "venue_id"
     let self_type = underlying_type(field_type, system);
+    let self_table = &system.tables[self_type.table_id().unwrap()];
     let self_reference_column = self_type
         .model_fields()
         .iter()
         .find(|self_field| match self_field.relation.self_column() {
             Some(column_id) => match &column_id.get_column(system).typ {
-                payas_model::sql::column::PhysicalColumnType::ColumnReference {
+                payas_sql::PhysicalColumnType::ColumnReference {
                     ref_table_name,
                     ref_column_name,
                     ..
@@ -313,26 +199,15 @@ fn map_foreign<'a>(
         .unwrap()
         .get_column(system);
 
-    // First map the user-specified information (arguments)
-    let InsertionInfo {
-        table,
-        mut columns,
-        mut values,
-        nested,
-    } = field_type.map_to_sql(argument, query_context)?;
+    let insertion = map_argument(field_type, argument, query_context)?;
 
-    // Then, push the information to have the nested entity refer to the parent entity
-    columns.push(self_reference_column);
-
-    values.iter_mut().for_each(|value| {
-        let parent_table = TableQuery::Physical(parent_physical_table);
-        value.push(create_select(parent_table, parent_pk_physical_column, parent_index).into())
-    });
-
-    Ok(InsertionInfo {
-        table,
-        columns,
-        values,
-        nested,
-    })
+    Ok(InsertionElement::NestedInsert(NestedInsertion {
+        relation: NestedElementRelation {
+            column: self_reference_column,
+            table: self_table,
+        },
+        self_table,
+        parent_table,
+        insertions: insertion,
+    }))
 }
