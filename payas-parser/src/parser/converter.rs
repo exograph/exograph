@@ -38,6 +38,34 @@ pub fn convert_root(
             .filter(|n| n.kind() == "declaration")
             .filter_map(|c| convert_declaration_to_service(c, source, source_span, filepath))
             .collect::<Vec<_>>(),
+        imports: node
+            .children(&mut cursor)
+            .filter(|n| n.kind() == "declaration")
+            .filter_map(|c| {
+                let first_child = c.child(0).unwrap();
+
+                if first_child.kind() == "import" {
+                    let path_str = first_child
+                        .child_by_field_name("path")
+                        .unwrap()
+                        .child_by_field_name("value")
+                        .unwrap()
+                        .utf8_text(source)
+                        .unwrap();
+
+                    let mut import_path = filepath.to_owned();
+                    import_path.pop();
+                    import_path.push(path_str);
+
+                    let canonicalized = import_path.canonicalize().unwrap_or_else(|_| {
+                        panic!("While canonicalizing {}", import_path.to_string_lossy())
+                    });
+                    Some(canonicalized)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>(),
     })
 }
 

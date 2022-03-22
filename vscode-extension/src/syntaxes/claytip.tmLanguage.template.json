@@ -13,9 +13,23 @@
     },
     {
       "include": "#comments"
+    },
+    {
+      "include": "#imports"
     }
   ],
   "repository": {
+    "imports": {
+      "patterns": [
+        {
+          "name": "keyword.type.claytip",
+          "match": "(import)"
+        },
+        {
+          "include": "#constants"
+        }
+      ]
+    },
     "comments": {
       "patterns": [
         {

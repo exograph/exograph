@@ -14,7 +14,12 @@ module.exports = grammar({
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
       $.model,
-      $.service
+      $.service,
+      $.import
+    ),
+    import: $ => seq(
+      "import",
+      field("path", $.literal_str)
     ),
     service: $ => seq(
       repeat(field("annotation", $.annotation)),
