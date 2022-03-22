@@ -1,0 +1,17 @@
+clayfile: "root.clay"
+operation: |
+    mutation () {
+        createMailingList(data: {
+            email_address: "no-reply+list1@example.com"
+        }) {
+            email_address
+        }
+    }
+response: |
+    {
+      "data": {
+        "createMailingList": {
+          "email_address": "no-reply+list1@example.com"
+        }
+      }
+    }
