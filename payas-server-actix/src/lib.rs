@@ -1,24 +1,18 @@
 use async_stream::{try_stream, AsyncStream};
-use payas_deno::DenoExecutor;
-use payas_server::introspection::schema::Schema;
 
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
-use payas_sql::Database;
-use payas_sql::DatabaseExecutor;
+use payas_server::SystemInfo;
 
-use payas_server::error::ExecutionError;
-use payas_server::execution::{query_context::QueryResponse, query_executor::QueryExecutor};
+use payas_server::ExecutionError;
+use payas_server::QueryResponse;
 
-use payas_model::model::system::ModelSystem;
 use serde_json::Value;
 
 pub mod authentication;
 
 use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
-
-pub type SystemInfo = (ModelSystem, Schema, Database, DenoExecutor);
 
 pub async fn resolve(
     req: HttpRequest,
@@ -33,20 +27,13 @@ pub async fn resolve(
 
     match auth {
         Ok(claims) => {
-            let (system, schema, database, deno_execution) = system_info.as_ref();
-            let database_executor = DatabaseExecutor { database };
-            let executor = QueryExecutor {
-                system,
-                schema,
-                database_executor: &database_executor,
-                deno_execution,
-            };
+            let system_info = system_info.as_ref();
+
             let operation_name = body["operationName"].as_str();
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            match executor
-                .execute(operation_name, query_str, variables, claims)
+            match payas_server::resolve(system_info, operation_name, query_str, variables, claims)
                 .await
             {
                 Ok(parts) => {
@@ -124,13 +111,4 @@ pub async fn resolve(
                 .streaming(Box::pin(error_stream))
         }
     }
-}
-
-/// Creates the data required by the actix endpoint.
-///
-/// This should be added to the server as actix `app_data`.
-pub fn create_system_info(system: ModelSystem, database: Database) -> SystemInfo {
-    let schema = Schema::new(&system);
-    let deno_executor = DenoExecutor::default();
-    (system, schema, database, deno_executor)
 }
