@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::BufReader;
@@ -24,6 +25,7 @@ pub enum TestfileOperation {
         variables: Option<String>,        // stringified
         expected_payload: Option<String>, // stringified
         auth: Option<serde_json::Value>,
+        headers: Option<String>, // stringified
     },
 }
 
@@ -32,7 +34,7 @@ pub struct ParsedTestfile {
     root_directory: PathBuf, // Root directory specified when invoking `clay test <root_directory>
     model_path: PathBuf,
     testfile_path: PathBuf,
-
+    pub extra_envs: HashMap<String, String>, // extra envvars to set for the entire testfile
     pub init_operations: Vec<TestfileOperation>,
     pub test_operation_stages: Vec<TestfileOperation>,
 }
@@ -80,6 +82,7 @@ impl ParsedTestfile {
 #[derive(Deserialize, Debug, Clone)]
 pub struct TestfileStage {
     pub clayfile: Option<String>,
+    pub headers: Option<String>,
     pub operation: String,
     pub variable: Option<String>,
     pub auth: Option<String>,
@@ -87,8 +90,23 @@ pub struct TestfileStage {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct TestfileMultipleStages {
+pub struct TestfileCommon {
     pub clayfile: Option<String>,
+    pub envs: Option<HashMap<String, String>>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TestfileSingleStage {
+    #[serde(flatten)]
+    pub common: TestfileCommon,
+    #[serde(flatten)]
+    pub stage: TestfileStage,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TestfileMultipleStages {
+    #[serde(flatten)]
+    pub common: TestfileCommon,
     pub stages: Vec<TestfileStage>,
 }
 
@@ -198,13 +216,13 @@ fn parse_testfile(
 
     let deserialized_testfile_multiple_stages: Result<TestfileMultipleStages, _> =
         serde_yaml::from_str(&contents);
-    let deserialized_testfile_single_stage: Result<TestfileStage, _> =
+    let deserialized_testfile_single_stage: Result<TestfileSingleStage, _> =
         serde_yaml::from_str(&contents);
 
-    let (stages, clayfile_path) = if let Ok(testfile) = deserialized_testfile_multiple_stages {
-        (testfile.stages, testfile.clayfile)
-    } else if let Ok(stage) = deserialized_testfile_single_stage {
-        (vec![stage.clone()], stage.clayfile)
+    let (stages, common) = if let Ok(testfile) = deserialized_testfile_multiple_stages {
+        (testfile.stages, testfile.common)
+    } else if let Ok(testfile) = deserialized_testfile_single_stage {
+        (vec![testfile.stage.clone()], testfile.common)
     } else {
         let multi_stage_error = deserialized_testfile_multiple_stages.unwrap_err();
         let single_stage_error = deserialized_testfile_single_stage.unwrap_err();
@@ -223,7 +241,7 @@ Error as a multistage test: {}
     };
 
     let testfile_folder = testfile_path.parent().expect("Testfile has no parent?");
-    let model_path = if let Some(path) = clayfile_path {
+    let model_path = if let Some(path) = common.clayfile {
         // test specifies a root clayfile, use that
         testfile_folder.to_owned().join(path)
     } else {
@@ -266,6 +284,7 @@ Error as a multistage test: {}
                 auth: stage.auth.map(from_json).transpose()?,
                 variables: stage.variable,
                 expected_payload: stage.response,
+                headers: stage.headers,
             })
         })
         .collect::<Result<Vec<_>>>()?;
@@ -274,6 +293,7 @@ Error as a multistage test: {}
         root_directory: root_directory.to_path_buf(),
         model_path,
         testfile_path: testfile_path.to_path_buf(),
+        extra_envs: common.envs.unwrap_or_default(),
         init_operations: init_ops,
         test_operation_stages: test_operation_sequence,
     })
@@ -301,6 +321,7 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
                 testvariable_bindings: build_testvariable_bindings(&gql_document),
                 auth: deserialized_initfile.auth.map(from_json).transpose()?,
                 variables: deserialized_initfile.variable,
+                headers: Default::default(),
                 expected_payload: None,
             })
         }
