@@ -1,5 +1,5 @@
 use super::query_context;
-use crate::introspection::schema::Schema;
+use crate::{introspection::schema::Schema, request_context::RequestContext};
 use async_graphql_parser::{
     parse_query,
     types::{DocumentOperations, OperationType},
@@ -9,9 +9,7 @@ use anyhow::Result;
 
 use futures::future::join_all;
 use payas_deno::DenoExecutor;
-use payas_model::model::{
-    mapped_arena::SerializableSlab, system::ModelSystem, ContextSource, ContextType,
-};
+use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextType};
 use payas_sql::DatabaseExecutor;
 use query_context::{QueryContext, QueryResponse};
 use serde_json::{Map, Value};
@@ -30,9 +28,9 @@ impl<'a> QueryExecutor<'a> {
         operation_name: Option<&'a str>,
         query_str: &'a str,
         variables: Option<&'a Map<String, Value>>,
-        jwt_claims: Option<Value>,
+        request_context: RequestContext,
     ) -> Result<Vec<(String, QueryResponse)>> {
-        let request_context = create_request_contexts(&self.system.contexts, jwt_claims);
+        let request_context = create_mapped_context(&self.system.contexts, &request_context);
 
         self.execute_with_request_context(operation_name, query_str, variables, request_context)
             .await
@@ -104,35 +102,19 @@ impl<'a> QueryExecutor<'a> {
     }
 }
 
-// TODO: Generalize to handle other context types and sources
-fn create_request_contexts(
+fn create_mapped_context(
     contexts: &SerializableSlab<ContextType>,
-    jwt_claims: Option<Value>,
+    request_context: &RequestContext,
 ) -> Value {
     let mapped_contexts = contexts
         .iter()
-        .flat_map(|(_, context)| {
-            create_request_context(context, jwt_claims.clone())
-                .map(|value| (context.name.clone(), value))
+        .map(|(_, context)| {
+            (
+                context.name.clone(),
+                request_context.to_json_context(context).unwrap(),
+            )
         })
         .collect();
 
     Value::Object(mapped_contexts)
-}
-
-fn create_request_context(context: &ContextType, jwt_claims: Option<Value>) -> Option<Value> {
-    jwt_claims.map(|jwt_claims| {
-        let json_fields: Map<String, Value> = context
-            .fields
-            .iter()
-            .map(|field| match &field.source {
-                ContextSource::Jwt { claim } => {
-                    (field.name.clone(), jwt_claims.get(claim).unwrap().clone())
-                    // TODO: handle missing claims
-                }
-            })
-            .collect();
-
-        Value::Object(json_fields)
-    })
 }

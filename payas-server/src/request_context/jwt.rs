@@ -43,9 +43,9 @@ impl JwtAuthenticator {
     /// to the declared user context model
     pub fn extract_authentication(
         &self,
-        req: HttpRequest,
+        req: &HttpRequest,
     ) -> Result<Option<Value>, JwtAuthenticationError> {
-        match Authorization::<Bearer>::parse(&req) {
+        match Authorization::<Bearer>::parse(req) {
             Ok(auth) => {
                 let scheme = auth.into_scheme();
                 let token = scheme.token().as_ref();

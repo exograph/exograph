@@ -8,6 +8,8 @@ use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 use payas_sql::Database;
 use payas_sql::DatabaseExecutor;
+use request_context::jwt::JwtAuthenticationError;
+use request_context::{ContextProcessor, ContextProcessorError};
 
 use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
@@ -15,13 +17,11 @@ use crate::execution::query_context::QueryResponse;
 use payas_model::model::system::ModelSystem;
 use serde_json::Value;
 
-pub mod authentication;
 mod data;
 mod error;
 pub mod execution;
 mod introspection;
-
-use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
+pub mod request_context;
 
 pub type SystemInfo = (ModelSystem, Schema, Database, DenoExecutor);
 
@@ -29,15 +29,13 @@ pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
     system_info: web::Data<SystemInfo>,
-    authenticator: web::Data<JwtAuthenticator>,
+    context_processor: web::Data<ContextProcessor>,
 ) -> impl Responder {
-    let auth = authenticator.extract_authentication(req);
-
     // let to_bytes = Bytes::from;
     let to_bytes_static = |s: &'static str| Bytes::from_static(s.as_bytes());
 
-    match auth {
-        Ok(claims) => {
+    match context_processor.generate_request_context(&req) {
+        Ok(request_context) => {
             let (system, schema, database, deno_execution) = system_info.as_ref();
             let database_executor = DatabaseExecutor { database };
             let executor = QueryExecutor {
@@ -51,7 +49,7 @@ pub async fn resolve(
             let variables = body["variables"].as_object();
 
             match executor
-                .execute(operation_name, query_str, variables, claims)
+                .execute(operation_name, query_str, variables, request_context)
                 .await
             {
                 Ok(parts) => {
@@ -108,14 +106,20 @@ pub async fn resolve(
         }
         Err(err) => {
             let (message, mut base_response) = match err {
-                JwtAuthenticationError::ExpiredToken => {
-                    ("Expired JWT token", HttpResponse::Unauthorized())
-                }
-                JwtAuthenticationError::TamperedToken => {
-                    // No need to reveal more info for a tampered token, so mark is as a generic bad request
-                    ("Unexpected error", HttpResponse::BadRequest())
-                }
-                JwtAuthenticationError::Unknown => ("Unknown error", HttpResponse::Unauthorized()),
+                ContextProcessorError::Jwt(jwt_err) => match jwt_err {
+                    JwtAuthenticationError::ExpiredToken => {
+                        ("Expired JWT token", HttpResponse::Unauthorized())
+                    }
+                    JwtAuthenticationError::TamperedToken => {
+                        // No need to reveal more info for a tampered token, so mark is as a generic bad request
+                        ("Unexpected error", HttpResponse::BadRequest())
+                    }
+                    JwtAuthenticationError::Unknown => {
+                        ("Unknown error", HttpResponse::Unauthorized())
+                    }
+                },
+
+                ContextProcessorError::Unknown => ("Unknown error", HttpResponse::Unauthorized()),
             };
 
             let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
