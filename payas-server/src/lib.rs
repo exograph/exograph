@@ -1,7 +1,10 @@
 use anyhow::Result;
-pub use error::ExecutionError;
-pub use execution::query_context::QueryResponse;
+use async_stream::try_stream;
+use bytes::Bytes;
+use error::ExecutionError;
+use execution::query_context::QueryResponse;
 use execution::query_executor::QueryExecutor;
+use futures::Stream;
 use introspection::schema::Schema;
 use payas_deno::DenoExecutor;
 use payas_model::model::system::ModelSystem;
@@ -29,13 +32,13 @@ pub fn create_system_info(system: ModelSystem, database: Database) -> SystemInfo
     SystemInfo(system, schema, database, deno_executor)
 }
 
-pub async fn resolve(
+pub async fn resolve<E>(
     system_info: &SystemInfo,
     operation_name: Option<&str>,
     query_str: &str,
     variables: Option<&Map<String, Value>>,
     claims: Option<Value>,
-) -> Result<Vec<(String, execution::query_context::QueryResponse)>> {
+) -> impl Stream<Item = Result<Bytes, E>> {
     let SystemInfo(system, schema, database, deno_execution) = system_info;
 
     let database_executor = DatabaseExecutor { database };
@@ -46,7 +49,50 @@ pub async fn resolve(
         deno_execution,
     };
 
-    executor
+    let response = executor
         .execute(operation_name, query_str, variables, claims)
-        .await
+        .await;
+
+    try_stream! {
+        match response {
+            Ok(parts) => {
+                let parts_len = parts.len();
+                yield Bytes::from_static(br#"{"data": {"#);
+                for (index, part) in parts.into_iter().enumerate() {
+                    yield Bytes::from_static(b"\"");
+                    yield Bytes::from(part.0);
+                    yield Bytes::from_static(br#"":"#);
+                    match part.1 {
+                        QueryResponse::Json(value) => yield Bytes::from(value.to_string()),
+                        QueryResponse::Raw(Some(value)) => yield Bytes::from(value),
+                        QueryResponse::Raw(None) => yield Bytes::from_static(b"null"),
+                    };
+                    if index != parts_len - 1 {
+                        yield Bytes::from_static(b", ");
+                    }
+                };
+                yield Bytes::from_static(b"}}");
+            },
+            Err(err) => {
+                yield Bytes::from_static(br#"{"errors": [{"message":""#);
+                yield Bytes::from(
+                    // TODO: escape PostgreSQL errors properly here
+                    format!("{}", err.chain().last().unwrap())
+                        .replace("\"", "")
+                        .replace("\n", "; ")
+                );
+                yield Bytes::from_static(br#"""#);
+                eprintln!("{:?}", err);
+                if let Some(err) = err.downcast_ref::<ExecutionError>() {
+                    yield Bytes::from_static(br#", "locations": [{"line": "#);
+                    yield Bytes::from(err.position().line.to_string());
+                    yield Bytes::from_static(br#", "column": "#);
+                    yield Bytes::from(err.position().column.to_string());
+                    yield Bytes::from_static(br#"}]"#);
+                };
+                yield Bytes::from_static(br#"}"#);
+                yield Bytes::from_static(b"]}");
+            },
+        }
+    }
 }

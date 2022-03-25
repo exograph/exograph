@@ -1,18 +1,19 @@
-use async_stream::{try_stream, AsyncStream};
-
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
-use anyhow::Result;
-use payas_server::SystemInfo;
 
-use payas_server::ExecutionError;
-use payas_server::QueryResponse;
+use payas_server::SystemInfo;
 
 use serde_json::Value;
 
 pub mod authentication;
 
 use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
+
+macro_rules! error_msg {
+    ($msg:literal) => {
+        concat!("{\"errors\": [{\"message\":\"", $msg, "\"}]}").as_bytes()
+    };
+}
 
 pub async fn resolve(
     req: HttpRequest,
@@ -22,9 +23,6 @@ pub async fn resolve(
 ) -> impl Responder {
     let auth = authenticator.extract_authentication(req);
 
-    // let to_bytes = Bytes::from;
-    let to_bytes_static = |s: &'static str| Bytes::from_static(s.as_bytes());
-
     match auth {
         Ok(claims) => {
             let system_info = system_info.as_ref();
@@ -33,82 +31,38 @@ pub async fn resolve(
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            match payas_server::resolve(system_info, operation_name, query_str, variables, claims)
-                .await
-            {
-                Ok(parts) => {
-                    let response_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
-                        let parts_len = parts.len();
-                        yield to_bytes_static(r#"{"data": {"#);
-                        for (index, part) in parts.into_iter().enumerate() {
-                            yield to_bytes_static("\"");
-                            yield Bytes::from(part.0);
-                            yield to_bytes_static(r#"":"#);
-                            match part.1 {
-                                QueryResponse::Json(value) => yield Bytes::from(value.to_string()),
-                                QueryResponse::Raw(Some(value)) => yield Bytes::from(value),
-                                QueryResponse::Raw(None) => yield to_bytes_static("null"),
-                            };
-                            if index != parts_len - 1 {
-                                yield to_bytes_static(", ");
-                            }
-                        };
-                        yield to_bytes_static("}}");
-                    };
-
-                    HttpResponse::Ok()
-                        .content_type("application/json")
-                        .streaming(Box::pin(response_stream))
-                }
-                Err(err) => {
-                    let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
-                        yield to_bytes_static(r#"{"errors": [{"message":""#);
-                        yield Bytes::from(
-                            // TODO: escape PostgreSQL errors properly here
-                            format!("{}", err.chain().last().unwrap())
-                                .replace("\"", "")
-                                .replace("\n", "; ")
-                        );
-                        yield to_bytes_static(r#"""#);
-                        eprintln!("{:?}", err);
-                        if let Some(err) = err.downcast_ref::<ExecutionError>() {
-                            yield to_bytes_static(r#", "locations": [{"line": "#);
-                            yield Bytes::from(err.position().line.to_string());
-                            yield to_bytes_static(r#", "column": "#);
-                            yield Bytes::from(err.position().column.to_string());
-                            yield to_bytes_static(r#"}]"#);
-                        };
-                        yield to_bytes_static(r#"}"#);
-                        yield to_bytes_static("]}");
-                    };
-
-                    HttpResponse::Ok()
-                        .content_type("application/json")
-                        .streaming(Box::pin(error_stream))
-                }
-            }
+            let stream = payas_server::resolve::<Error>(
+                system_info,
+                operation_name,
+                query_str,
+                variables,
+                claims,
+            )
+            .await;
+            HttpResponse::Ok()
+                .content_type("application/json")
+                .streaming(Box::pin(stream))
         }
         Err(err) => {
             let (message, mut base_response) = match err {
-                JwtAuthenticationError::ExpiredToken => {
-                    ("Expired JWT token", HttpResponse::Unauthorized())
-                }
+                JwtAuthenticationError::ExpiredToken => (
+                    error_msg!("Expired JWT token"),
+                    HttpResponse::Unauthorized(),
+                ),
                 JwtAuthenticationError::TamperedToken => {
                     // No need to reveal more info for a tampered token, so mark is as a generic bad request
-                    ("Unexpected error", HttpResponse::BadRequest())
+                    (error_msg!("Unexpected error"), HttpResponse::BadRequest())
                 }
-                JwtAuthenticationError::Unknown => ("Unknown error", HttpResponse::Unauthorized()),
+                JwtAuthenticationError::Unknown => {
+                    (error_msg!("Unknown error"), HttpResponse::Unauthorized())
+                }
             };
 
-            let error_stream: AsyncStream<Result<Bytes, Error>, _> = try_stream! {
-                yield to_bytes_static(r#"{"errors": [{"message":""#);
-                yield to_bytes_static(message);
-                yield to_bytes_static(r#""}]}"#);
-            };
+            let error_message: Result<Bytes, Error> = Ok(Bytes::from_static(message));
 
             base_response
                 .content_type("application/json")
-                .streaming(Box::pin(error_stream))
+                .streaming(Box::pin(futures::stream::once(async { error_message })))
         }
     }
 }

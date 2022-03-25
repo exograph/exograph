@@ -8,8 +8,10 @@ anyhow = "1.0"
 async-recursion = "0.3.2"
 async-graphql-parser = "3.0.19"
 async-graphql-value = "3.0.19"
+async-stream = "0.3.2"
 async-trait = "0.1.52"
 base64 = "0.13"
+bytes = "1"
 futures = "0.3"
 futures-util = "0.3"
 serde_json = { version = "1.0", features = ["preserve_order"] }
@@ -24,7 +26,6 @@ thiserror = "1.0.30"
 uuid = "0.8"
 
 payas-sql = { path = "../payas-sql" }
-payas-parser = { path = "../payas-parser" }
 payas-model = { path = "../payas-model" }
 payas-deno = { path = "../payas-deno" }
 
