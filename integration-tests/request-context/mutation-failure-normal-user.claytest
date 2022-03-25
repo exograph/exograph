@@ -1,0 +1,14 @@
+operation: | 
+    mutation {
+        createJournalEntry(data: {
+            text: "Entry made by unprivileged user."
+        }) 
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Not authorized"
+        }
+      ]
+    }
