@@ -1,5 +1,7 @@
 pub mod jwt;
 
+use std::collections::HashMap;
+
 use actix_web::HttpRequest;
 use anyhow::Context;
 use payas_model::model::{ContextSource, ContextType};
@@ -13,12 +15,14 @@ pub struct ContextProcessor {
 
 pub enum ContextProcessorError {
     Jwt(JwtAuthenticationError),
+    MalformedHeader,
     Unknown,
 }
 
 /// Represent a request context for a particular request
 pub struct RequestContext {
     jwt_claims: Option<Value>,
+    headers: HashMap<String, String>,
 }
 
 impl ContextProcessor {
@@ -41,7 +45,23 @@ impl ContextProcessor {
             .extract_authentication(req)
             .map_err(ContextProcessorError::Jwt)?;
 
-        Ok(RequestContext { jwt_claims })
+        let headers: Result<HashMap<String, String>, ContextProcessorError> = req
+            .headers()
+            .iter()
+            .map(|(header_name, header_value)| {
+                let name = header_name.to_string().to_ascii_lowercase();
+                let value = header_value
+                    .to_str()
+                    .map_err(|_| ContextProcessorError::MalformedHeader)?
+                    .to_string();
+                Ok((name, value))
+            })
+            .collect();
+
+        Ok(RequestContext {
+            jwt_claims,
+            headers: headers?,
+        })
     }
 }
 
@@ -57,10 +77,21 @@ impl RequestContext {
                         field.name.clone(),
                         jwt_claims
                             .get(claim)
-                            .with_context(|| format!("{} not found in JWT token", claim))?
+                            .with_context(|| format!("Claim `{}` not found in JWT token", claim))?
                             .clone(),
                     ))
                 }),
+
+                ContextSource::Header { header } => self
+                    .headers
+                    .get(&header.to_ascii_lowercase()) // headers are case insensitive
+                    .map(|header_value| {
+                        Ok((field.name.clone(), Value::String(header_value.to_string())))
+                    }),
+
+                ContextSource::EnvironmentVariable { envvar } => std::env::var(envvar)
+                    .ok()
+                    .map(|envvar| Ok((field.name.clone(), Value::String(envvar.to_string())))),
             })
             .collect();
 

@@ -23,6 +23,8 @@ pub struct ContextField {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ContextSource {
     Jwt { claim: String },
+    Header { header: String },
+    EnvironmentVariable { envvar: String },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

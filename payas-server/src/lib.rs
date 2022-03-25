@@ -118,7 +118,9 @@ pub async fn resolve(
                         ("Unknown error", HttpResponse::Unauthorized())
                     }
                 },
-
+                ContextProcessorError::MalformedHeader => {
+                    ("Malformed header", HttpResponse::BadRequest())
+                }
                 ContextProcessorError::Unknown => ("Unknown error", HttpResponse::Unauthorized()),
             };
 

@@ -229,6 +229,8 @@ pub struct ResolvedContextField {
 // For now, ResolvedContextSource and ContextSource have the same structure
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedContextSource {
+    EnvironmentVariable { envvar: String },
+    Header { header: String },
     Jwt { claim: String },
 }
 
@@ -1018,21 +1020,30 @@ fn build_expanded_context_type(
 }
 
 fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
-    let claim = field
-        .annotations
-        .get("jwt")
-        .map(|p| match p {
+    let extract_text = |annotation_name: &str| -> Option<String> {
+        field.annotations.get(annotation_name).map(|p| match p {
             AstAnnotationParams::Single(AstExpr::FieldSelection(selection), _) => match selection {
                 FieldSelection::Single(claim, _) => claim.0.clone(),
-                _ => panic!("Only simple jwt claim supported"),
+                _ => panic!("Only single param supported for @{}", annotation_name),
             },
             AstAnnotationParams::Single(AstExpr::StringLiteral(name, _), _) => name.clone(),
             AstAnnotationParams::None => field.name.clone(),
-            _ => panic!("Expression type other than selection unsupported"),
+            _ => panic!(
+                "Expression type other than selection unsupported for @{}",
+                annotation_name
+            ),
         })
-        .unwrap();
+    };
 
-    ResolvedContextSource::Jwt { claim }
+    if let Some(claim) = extract_text("jwt") {
+        ResolvedContextSource::Jwt { claim }
+    } else if let Some(header) = extract_text("header") {
+        ResolvedContextSource::Header { header }
+    } else if let Some(envvar) = extract_text("env") {
+        ResolvedContextSource::EnvironmentVariable { envvar }
+    } else {
+        panic!("No context source specified for field {}", field.name)
+    }
 }
 
 struct ColumnInfo {
