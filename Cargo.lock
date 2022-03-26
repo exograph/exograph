@@ -2832,7 +2832,7 @@ dependencies = [
  "notify 4.0.17",
  "payas-model",
  "payas-parser",
- "payas-server",
+ "payas-server-core",
  "payas-sql",
  "payas-test",
  "serde",
@@ -2888,12 +2888,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "payas-server"
+name = "payas-server-actix"
 version = "0.1.0"
 dependencies = [
  "actix-cors",
  "actix-web",
  "actix-web-httpauth",
+ "anyhow",
+ "bincode",
+ "futures",
+ "jsonwebtoken",
+ "payas-model",
+ "payas-server-core",
+ "payas-sql",
+ "serde_json",
+]
+
+[[package]]
+name = "payas-server-core"
+version = "0.1.0"
+dependencies = [
  "anyhow",
  "async-graphql-parser",
  "async-graphql-value",
@@ -2901,15 +2915,13 @@ dependencies = [
  "async-stream",
  "async-trait",
  "base64 0.13.0",
- "bincode",
+ "bytes",
  "chrono",
  "futures",
  "futures-util",
- "jsonwebtoken",
  "maybe-owned",
  "payas-deno",
  "payas-model",
- "payas-parser",
  "payas-sql",
  "pg_bigdecimal",
  "postgres-types",

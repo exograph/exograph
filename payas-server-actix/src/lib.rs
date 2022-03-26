@@ -1,7 +1,7 @@
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use payas_server::SystemInfo;
+use payas_server_core::SystemInfo;
 
 use serde_json::Value;
 
@@ -31,7 +31,7 @@ pub async fn resolve(
             let query_str = body["query"].as_str().unwrap();
             let variables = body["variables"].as_object();
 
-            let stream = payas_server::resolve::<Error>(
+            let stream = payas_server_core::resolve::<Error>(
                 system_info,
                 operation_name,
                 query_str,
