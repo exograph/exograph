@@ -1,3 +1,8 @@
+/// Provides core functionality for handling incoming queries without depending
+/// on any specific web framework.
+///
+/// The `resolve` function is responsible for doing the work, using information
+/// extracted from an incoing request, and returning the response as a stream.
 use anyhow::Result;
 use async_stream::try_stream;
 use bytes::Bytes;
@@ -26,12 +31,19 @@ mod introspection;
 pub struct SystemInfo(ModelSystem, Schema, Database, DenoExecutor);
 
 /// Creates the data required by the server endpoint.
+///
+/// It's assumed that the server has already loaded a claypot file to obtain
+/// a `ModelSystem` instance. It also provides the `Database` instance which
+/// it wishes to use for storage.
 pub fn create_system_info(system: ModelSystem, database: Database) -> SystemInfo {
     let schema = Schema::new(&system);
     let deno_executor = DenoExecutor::default();
     SystemInfo(system, schema, database, deno_executor)
 }
 
+/// Resolves an incoming query, returning a response stream which containing JSON
+/// which can either be the data returned by the query, or a list of errors if
+/// something went wrong.
 pub async fn resolve<E>(
     system_info: &SystemInfo,
     operation_name: Option<&str>,
