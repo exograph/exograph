@@ -25,6 +25,12 @@ pub struct RequestContext {
     headers: HashMap<String, String>,
 }
 
+impl Default for ContextProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextProcessor {
     pub fn new() -> ContextProcessor {
         ContextProcessor {
@@ -91,7 +97,7 @@ impl RequestContext {
 
                 ContextSource::EnvironmentVariable { envvar } => std::env::var(envvar)
                     .ok()
-                    .map(|envvar| Ok((field.name.clone(), Value::String(envvar.to_string())))),
+                    .map(|envvar| Ok((field.name.clone(), Value::String(envvar)))),
             })
             .collect();
 
