@@ -76,7 +76,7 @@ impl<'a> OperationValidator<'a> {
 
         Ok(ValidatedOperationDefinition {
             name: operation_name.map(|name| name.to_string()),
-            ty: operation.node.ty,
+            typ: operation.node.ty,
             fields,
         })
     }

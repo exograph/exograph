@@ -1,4 +1,4 @@
-use async_graphql_parser::types::ExecutableDocument;
+use async_graphql_parser::types::{ExecutableDocument, OperationType};
 use serde_json::{Map, Value};
 
 use crate::{error::ExecutionError, introspection::schema::Schema};
@@ -10,11 +10,17 @@ pub struct DocumentValidator<'a> {
     variables: Option<&'a Map<String, Value>>,
 }
 
+#[derive(Debug)]
+pub struct ValidatedDocument {
+    pub operations: Vec<ValidatedOperationDefinition>,
+    pub operation_typ: OperationType,
+}
+
 impl<'a> DocumentValidator<'a> {
     pub fn validate(
         &self,
         document: ExecutableDocument,
-    ) -> Result<Vec<ValidatedOperationDefinition>, ExecutionError> {
+    ) -> Result<ValidatedDocument, ExecutionError> {
         let operation_validator = OperationValidator::new(
             self.schema,
             self.operation_name,
@@ -22,11 +28,28 @@ impl<'a> DocumentValidator<'a> {
             document.fragments,
         );
 
-        document
+        let operations = document
             .operations
             .iter()
             .map(|operation| operation_validator.validate_operation(operation))
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let operation_typ = match &operations.first() {
+            Some(operation) => {
+                let same_operation_type = operations.iter().all(|op| op.typ == operation.typ);
+                if same_operation_type {
+                    Ok(operation.typ)
+                } else {
+                    Err(ExecutionError::DifferentOperationTypes)
+                }
+            }
+            None => Err(ExecutionError::NoOperationFound),
+        }?;
+
+        Ok(ValidatedDocument {
+            operations,
+            operation_typ,
+        })
     }
 }
 

@@ -9,7 +9,7 @@ use super::field::ValidatedField;
 pub struct ValidatedOperationDefinition {
     pub name: Option<String>,
     /// The type of operation.
-    pub ty: OperationType,
+    pub typ: OperationType,
     /// The operation's fields.
     pub fields: Vec<ValidatedField>,
 }

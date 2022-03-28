@@ -29,6 +29,12 @@ pub enum ExecutionError {
 
     #[error("Argument(s) '{0:?}' invalid for this operation")]
     StrayArguments(Vec<String>, Pos),
+
+    #[error("No operation found")]
+    NoOperationFound,
+
+    #[error("Query and mutation may not be specified in the same document")]
+    DifferentOperationTypes,
 }
 
 impl ExecutionError {
@@ -43,6 +49,8 @@ impl ExecutionError {
             ExecutionError::InvalidField(_, pos) => *pos,
             ExecutionError::RequiredArgumentNotFound(_, pos) => *pos,
             ExecutionError::StrayArguments(_, pos) => *pos,
+            ExecutionError::NoOperationFound => Pos::default(),
+            ExecutionError::DifferentOperationTypes => Pos::default(),
         }
     }
 }

@@ -3,80 +3,83 @@ source: payas-server/src/validation/document_validator.rs
 expression: validator.validate(create_query_document(query))
 ---
 Ok(
-    [
-        ValidatedOperationDefinition {
-            name: None,
-            ty: Query,
-            fields: [
-                ValidatedField {
-                    alias: None,
-                    name: Name(
-                        "concert",
-                    ),
-                    arguments: [
-                        (
-                            "id",
-                            Number(
+    ValidatedDocument {
+        operations: [
+            ValidatedOperationDefinition {
+                name: None,
+                typ: Query,
+                fields: [
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "concert",
+                        ),
+                        arguments: [
+                            (
+                                "id",
                                 Number(
-                                    1,
+                                    Number(
+                                        1,
+                                    ),
                                 ),
                             ),
+                        ],
+                        subfields: [
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "id",
+                                ),
+                                arguments: [],
+                                subfields: [],
+                            },
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "title",
+                                ),
+                                arguments: [],
+                                subfields: [],
+                            },
+                        ],
+                    },
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "venue",
                         ),
-                    ],
-                    subfields: [
-                        ValidatedField {
-                            alias: None,
-                            name: Name(
+                        arguments: [
+                            (
                                 "id",
-                            ),
-                            arguments: [],
-                            subfields: [],
-                        },
-                        ValidatedField {
-                            alias: None,
-                            name: Name(
-                                "title",
-                            ),
-                            arguments: [],
-                            subfields: [],
-                        },
-                    ],
-                },
-                ValidatedField {
-                    alias: None,
-                    name: Name(
-                        "venue",
-                    ),
-                    arguments: [
-                        (
-                            "id",
-                            Number(
                                 Number(
-                                    2,
+                                    Number(
+                                        2,
+                                    ),
                                 ),
                             ),
-                        ),
-                    ],
-                    subfields: [
-                        ValidatedField {
-                            alias: None,
-                            name: Name(
-                                "id",
-                            ),
-                            arguments: [],
-                            subfields: [],
-                        },
-                        ValidatedField {
-                            alias: None,
-                            name: Name(
-                                "name",
-                            ),
-                            arguments: [],
-                            subfields: [],
-                        },
-                    ],
-                },
-            ],
-        },
-    ],
+                        ],
+                        subfields: [
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "id",
+                                ),
+                                arguments: [],
+                                subfields: [],
+                            },
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "name",
+                                ),
+                                arguments: [],
+                                subfields: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+        operation_typ: Query,
+    },
 )
