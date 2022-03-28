@@ -20,6 +20,7 @@ mod data;
 mod error;
 pub mod execution;
 mod introspection;
+mod validation;
 
 use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 
