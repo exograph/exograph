@@ -1,4 +1,4 @@
-use crate::execution::query_context::QueryContext;
+use crate::{execution::query_context::QueryContext, validation::field::ValidatedField};
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -21,25 +21,19 @@ use super::{
     Arguments,
 };
 
-use async_graphql_parser::{
-    types::{Field, Selection, SelectionSet},
-    Positioned,
-};
-
-use crate::execution::resolver::{GraphQLExecutionError, OutputName};
+use crate::execution::resolver::GraphQLExecutionError;
 
 // TODO: deal with panics at the type level
 
 impl<'a> OperationResolver<'a> for Query {
     fn resolve_operation(
         &'a self,
-        field: &'a Positioned<Field>,
+        field: &'a ValidatedField,
         query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         Ok(match &self.kind {
             QueryKind::Database(_) => {
-                let operation =
-                    self.operation(&field.node, AbstractPredicate::True, query_context)?;
+                let operation = self.operation(field, AbstractPredicate::True, query_context)?;
 
                 OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
             }
@@ -80,13 +74,13 @@ pub trait QuerySQLOperations<'a> {
 
     fn content_select(
         &'a self,
-        selection_set: &'a Positioned<SelectionSet>,
+        fields: &'a [ValidatedField],
         query_context: &'a QueryContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>>;
 
     fn operation(
         &'a self,
-        field: &'a Field,
+        field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<AbstractSelect<'a>>;
@@ -118,19 +112,12 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
     fn content_select(
         &'a self,
-        selection_set: &'a Positioned<SelectionSet>,
+        fields: &'a [ValidatedField],
         query_context: &'a QueryContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>> {
-        selection_set
-            .node
-            .items
+        fields
             .iter()
-            .flat_map(
-                |selection| match map_selection(self, &selection.node, query_context) {
-                    Ok(s) => s.into_iter().map(Ok).collect(),
-                    Err(err) => vec![Err(err)],
-                },
-            )
+            .map(|field| map_field(self, field, query_context))
             .collect()
     }
 
@@ -182,7 +169,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
     fn operation(
         &'a self,
-        field: &'a Field,
+        field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
         query_context: &'a QueryContext<'a>,
     ) -> Result<AbstractSelect<'a>> {
@@ -201,27 +188,25 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
-                let field_arguments = query_context.field_arguments(field)?;
-
                 let predicate = super::compute_predicate(
                     predicate_param.as_ref(),
-                    field_arguments,
+                    &field.arguments,
                     additional_predicate,
                     query_context,
                 )
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
-                let order_by = self.compute_order_by(field_arguments, query_context);
+                let order_by = self.compute_order_by(&field.arguments, query_context);
 
                 let predicate = AbstractPredicate::and(predicate, access_predicate);
 
-                let content_object = self.content_select(&field.selection_set, query_context)?;
+                let content_object = self.content_select(&field.subfields, query_context)?;
 
                 // Apply the join logic only for top-level selections
                 let system = query_context.get_system();
 
-                let limit = self.compute_limit(field_arguments, query_context);
-                let offset = self.compute_offset(field_arguments, query_context);
+                let limit = self.compute_limit(&field.arguments, query_context);
+                let offset = self.compute_offset(&field.arguments, query_context);
 
                 let root_physical_table = if let GqlTypeKind::Composite(composite_root_type) =
                     &self.return_type.typ(system).kind
@@ -255,46 +240,18 @@ impl<'a> QuerySQLOperations<'a> for Query {
     }
 }
 
-fn map_selection<'a>(
-    query: &'a Query,
-    selection: &'a Selection,
-    query_context: &'a QueryContext<'a>,
-) -> Result<Vec<ColumnSelection<'a>>> {
-    match selection {
-        Selection::Field(field) => Ok(vec![map_field(query, &field.node, query_context)?]),
-        Selection::FragmentSpread(fragment_spread) => {
-            let fragment_definition = query_context.fragment_definition(fragment_spread)?;
-            fragment_definition
-                .selection_set
-                .node
-                .items
-                .iter()
-                .flat_map(
-                    |selection| match map_selection(query, &selection.node, query_context) {
-                        Ok(s) => s.into_iter().map(Ok).collect(),
-                        Err(err) => vec![Err(err)],
-                    },
-                )
-                .collect()
-        }
-        Selection::InlineFragment(_inline_fragment) => {
-            Ok(vec![]) // TODO
-        }
-    }
-}
-
 fn map_field<'a>(
     query: &'a Query,
-    field: &'a Field,
+    field: &'a ValidatedField,
     query_context: &'a QueryContext<'a>,
 ) -> Result<ColumnSelection<'a>> {
     let system = query_context.get_system();
     let return_type = query.return_type.typ(system);
 
-    let selection_elem = if field.name.node == "__typename" {
+    let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.clone())
     } else {
-        let model_field = return_type.model_field(&field.name.node).unwrap();
+        let model_field = return_type.model_field(&field.name).unwrap();
 
         match &model_field.relation {
             GqlRelation::Pk { column_id } | GqlRelation::Scalar { column_id } => {

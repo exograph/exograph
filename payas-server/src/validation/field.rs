@@ -12,3 +12,9 @@ pub struct ValidatedField {
     /// being selected.
     pub subfields: Vec<ValidatedField>,
 }
+
+impl ValidatedField {
+    pub fn output_name(&self) -> String {
+        self.alias.as_ref().unwrap_or(&self.name).to_string()
+    }
+}

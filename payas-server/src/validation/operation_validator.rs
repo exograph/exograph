@@ -12,9 +12,7 @@ use crate::{
     introspection::schema::{Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME},
 };
 
-use super::{
-    operation::ValidatedOperationDefinition, selection_set_validator::SelectionSetValidator,
-};
+use super::{operation::ValidatedOperation, selection_set_validator::SelectionSetValidator};
 
 pub struct OperationValidator<'a> {
     schema: &'a Schema,
@@ -46,7 +44,7 @@ impl<'a> OperationValidator<'a> {
     pub(super) fn validate_operation(
         &self,
         (operation_name, operation): (Option<&Name>, &Positioned<OperationDefinition>),
-    ) -> Result<ValidatedOperationDefinition, ExecutionError> {
+    ) -> Result<ValidatedOperation, ExecutionError> {
         let operation_type_name = match operation.node.ty {
             OperationType::Query => QUERY_ROOT_TYPENAME,
             OperationType::Mutation => MUTATION_ROOT_TYPENAME,
@@ -74,7 +72,7 @@ impl<'a> OperationValidator<'a> {
 
         let fields = selection_set_validator.validate(&operation.node.selection_set)?;
 
-        Ok(ValidatedOperationDefinition {
+        Ok(ValidatedOperation {
             name: operation_name.map(|name| name.to_string()),
             typ: operation.node.ty,
             fields,

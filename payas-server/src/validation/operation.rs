@@ -6,7 +6,7 @@ use super::field::ValidatedField;
 // Validations performed:
 // - Validate that each variables in [OperationDefinition.variable_definitions] is available
 #[derive(Debug)]
-pub struct ValidatedOperationDefinition {
+pub struct ValidatedOperation {
     pub name: Option<String>,
     /// The type of operation.
     pub typ: OperationType,

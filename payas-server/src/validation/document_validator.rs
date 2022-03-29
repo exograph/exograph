@@ -3,7 +3,7 @@ use serde_json::{Map, Value};
 
 use crate::{error::ExecutionError, introspection::schema::Schema};
 
-use super::{operation::ValidatedOperationDefinition, operation_validator::OperationValidator};
+use super::{operation::ValidatedOperation, operation_validator::OperationValidator};
 pub struct DocumentValidator<'a> {
     schema: &'a Schema,
     operation_name: Option<&'a str>,
@@ -12,11 +12,23 @@ pub struct DocumentValidator<'a> {
 
 #[derive(Debug)]
 pub struct ValidatedDocument {
-    pub operations: Vec<ValidatedOperationDefinition>,
+    pub operations: Vec<ValidatedOperation>,
     pub operation_typ: OperationType,
 }
 
 impl<'a> DocumentValidator<'a> {
+    pub fn new(
+        schema: &'a Schema,
+        operation_name: Option<&'a str>,
+        variables: Option<&'a Map<String, Value>>,
+    ) -> Self {
+        Self {
+            schema,
+            operation_name,
+            variables,
+        }
+    }
+
     pub fn validate(
         &self,
         document: ExecutableDocument,

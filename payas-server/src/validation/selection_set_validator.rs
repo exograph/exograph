@@ -16,6 +16,7 @@ use crate::{
 
 use super::field::ValidatedField;
 
+#[derive(Debug)]
 pub struct SelectionSetValidator<'a> {
     schema: &'a Schema,
     operation_name: Option<&'a str>,

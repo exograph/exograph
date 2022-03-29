@@ -1,13 +1,10 @@
-use async_graphql_parser::{
-    types::{BaseType, Field, Type, TypeDefinition},
-    Positioned,
-};
+use async_graphql_parser::types::{BaseType, Type, TypeDefinition};
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::execution::query_context::QueryContext;
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
 use crate::introspection::definition::type_introspection::TypeDefinitionIntrospection;
+use crate::{execution::query_context::QueryContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
@@ -21,27 +18,27 @@ impl FieldResolver<Value> for TypeDefinition {
     async fn resolve_field<'e>(
         &'e self,
         query_context: &'e QueryContext<'e>,
-        field: &'e Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<Value> {
-        match field.node.name.node.as_str() {
+        match field.name.as_str() {
             "name" => Ok(Value::String(self.name())),
             "kind" => Ok(Value::String(self.kind())),
             "description" => Ok(self.description().map(Value::String).unwrap_or(Value::Null)),
             "fields" => {
                 self.fields()
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
             "interfaces" => Ok(Value::Array(vec![])), // TODO
             "possibleTypes" => Ok(Value::Null),       // TODO
             "enumValues" => {
                 self.enum_values()
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
             "inputFields" => {
                 self.input_fields()
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
             "ofType" => Ok(Value::Null),
@@ -60,7 +57,7 @@ impl FieldResolver<Value> for Type {
     async fn resolve_field<'e>(
         &'e self,
         query_context: &'e QueryContext<'e>,
-        field: &'e Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<Value> {
         let base_type = &self.base;
 
@@ -104,13 +101,13 @@ impl<'a> FieldResolver<Value> for BoxedType<'a> {
     async fn resolve_field<'e>(
         &'e self,
         query_context: &'e QueryContext<'e>,
-        field: &'e Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<Value> {
-        match field.node.name.node.as_str() {
+        match field.name.as_str() {
             "kind" => Ok(Value::String(self.type_kind.to_owned())),
             "ofType" => {
                 self.tpe
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"

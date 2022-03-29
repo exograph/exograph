@@ -1,12 +1,9 @@
-use async_graphql_parser::{
-    types::{EnumValueDefinition, Field},
-    Positioned,
-};
+use async_graphql_parser::types::EnumValueDefinition;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::execution::query_context::QueryContext;
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
+use crate::{execution::query_context::QueryContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
 #[async_trait(?Send)]
@@ -14,9 +11,9 @@ impl FieldResolver<Value> for EnumValueDefinition {
     async fn resolve_field<'e>(
         &'e self,
         _query_context: &'e QueryContext<'e>,
-        field: &'e Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<Value> {
-        match field.node.name.node.as_str() {
+        match field.name.as_str() {
             "name" => Ok(Value::String(self.value.node.as_str().to_owned())),
             "description" => Ok(self
                 .description
