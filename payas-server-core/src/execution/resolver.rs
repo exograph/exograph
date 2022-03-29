@@ -1,4 +1,4 @@
-use std::{collections::HashSet, iter::FromIterator};
+use std::iter::FromIterator;
 
 use anyhow::Result;
 use async_graphql_parser::{
@@ -103,7 +103,6 @@ where
 
 #[derive(Debug)]
 pub enum GraphQLExecutionError {
-    DuplicateKeys(HashSet<String>),
     InvalidField(String, &'static str), // (field name, container type)
     Authorization,
 }
@@ -117,15 +116,6 @@ impl std::error::Error for GraphQLExecutionError {
 impl std::fmt::Display for GraphQLExecutionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GraphQLExecutionError::DuplicateKeys(duplicates) => {
-                // TODO: track lexical positions and sort by those
-                let mut keys = duplicates
-                    .iter()
-                    .map(|u| u.to_string())
-                    .collect::<Vec<String>>();
-                keys.sort();
-                write!(f, "Duplicate keys ({}) in query", keys.join(", "))
-            }
             GraphQLExecutionError::InvalidField(field_name, container_name) => {
                 write!(f, "Invalid field {} for {}", field_name, container_name)
             }
