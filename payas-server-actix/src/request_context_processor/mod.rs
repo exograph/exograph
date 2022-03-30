@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use actix_web::HttpRequest;
 use payas_server_core::request_context::RequestContext;
-use serde_json::{Value, Map};
+use serde_json::{Map, Value};
 
 use self::{environment::EnvironmentProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
 
