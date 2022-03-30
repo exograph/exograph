@@ -30,7 +30,7 @@ impl<'a> QueryExecutor<'a> {
         variables: Option<&'a Map<String, Value>>,
         request_context: RequestContext,
     ) -> Result<Vec<(String, QueryResponse)>> {
-        let request_context = create_mapped_context(&self.system.contexts, &request_context);
+        let request_context = create_mapped_context(&self.system.contexts, &request_context)?;
 
         self.execute_with_request_context(operation_name, query_str, variables, request_context)
             .await
@@ -105,16 +105,16 @@ impl<'a> QueryExecutor<'a> {
 fn create_mapped_context(
     contexts: &SerializableSlab<ContextType>,
     request_context: &RequestContext,
-) -> Value {
+) -> Result<Value> {
     let mapped_contexts = contexts
         .iter()
         .map(|(_, context)| {
-            (
+            Ok((
                 context.name.clone(),
-                request_context.to_json_context(context).unwrap(),
-            )
+                request_context.generate_context_subset(context)?,
+            ))
         })
-        .collect();
+        .collect::<Result<_>>()?;
 
-    Value::Object(mapped_contexts)
+    Ok(Value::Object(mapped_contexts))
 }

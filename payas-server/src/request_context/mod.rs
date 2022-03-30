@@ -1,106 +1,100 @@
+pub mod environment;
+pub mod header;
 pub mod jwt;
 
 use std::collections::HashMap;
 
 use actix_web::HttpRequest;
-use anyhow::Context;
-use payas_model::model::{ContextSource, ContextType};
+use anyhow::{anyhow, Result};
+use payas_model::model::ContextType;
 use serde_json::{Map, Value};
 
-use self::jwt::{JwtAuthenticationError, JwtAuthenticator};
+use self::{environment::EnvironmentProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
 
-pub struct ContextProcessor {
-    jwt_authenticator: JwtAuthenticator,
+pub trait ContextProcessor {
+    fn annotation(&self) -> &str;
+    fn process(&self, request: &HttpRequest)
+        -> Result<Vec<(String, Value)>, ContextProcessorError>;
 }
-
 pub enum ContextProcessorError {
-    Jwt(JwtAuthenticationError),
-    MalformedHeader,
+    Unauthorized,
+    Malformed,
     Unknown,
 }
 
-/// Represent a request context for a particular request
-pub struct RequestContext {
-    jwt_claims: Option<Value>,
-    headers: HashMap<String, String>,
+pub struct RequestContextProcessor {
+    processors: Vec<Box<dyn ContextProcessor + Send + Sync>>,
 }
 
-impl Default for ContextProcessor {
+impl RequestContextProcessor {
+    pub fn new() -> RequestContextProcessor {
+        RequestContextProcessor {
+            processors: vec![
+                Box::new(JwtAuthenticator::new_from_env()),
+                Box::new(HeaderProcessor),
+                Box::new(EnvironmentProcessor),
+            ],
+        }
+    }
+
+    /// Generates request context
+    pub fn generate_request_context(
+        &self,
+        request: &HttpRequest,
+    ) -> Result<RequestContext, ContextProcessorError> {
+        let source_context_map = self
+            .processors
+            .iter()
+            .map(|processor| {
+                // process the claims
+                Ok((
+                    processor.annotation().to_string(),
+                    processor
+                        .process(request)?
+                        .into_iter()
+                        .collect::<Map<_, _>>(),
+                ))
+            })
+            .collect::<Result<Vec<_>, ContextProcessorError>>()? // emit errors if we encounter any while gathering context
+            .into_iter()
+            .collect::<HashMap<_, _>>();
+
+        Ok(RequestContext { source_context_map })
+    }
+}
+
+impl Default for RequestContextProcessor {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ContextProcessor {
-    pub fn new() -> ContextProcessor {
-        ContextProcessor {
-            jwt_authenticator: JwtAuthenticator::new_from_env(),
-        }
-    }
-
-    /// Gathers and generates context information for requests (for example, JWT tokens, headers, envvars)
-    ///
-    /// The processor will authenticate information whenever possible (like the validity of JWT tokens)
-    /// and throw an appropriate error on failure
-    pub fn generate_request_context(
-        &self,
-        req: &HttpRequest,
-    ) -> Result<RequestContext, ContextProcessorError> {
-        let jwt_claims = self
-            .jwt_authenticator
-            .extract_authentication(req)
-            .map_err(ContextProcessorError::Jwt)?;
-
-        let headers: Result<HashMap<String, String>, ContextProcessorError> = req
-            .headers()
-            .iter()
-            .map(|(header_name, header_value)| {
-                let name = header_name.to_string().to_ascii_lowercase();
-                let value = header_value
-                    .to_str()
-                    .map_err(|_| ContextProcessorError::MalformedHeader)?
-                    .to_string();
-                Ok((name, value))
-            })
-            .collect();
-
-        Ok(RequestContext {
-            jwt_claims,
-            headers: headers?,
-        })
-    }
+/// Represent a request context for a particular request
+pub struct RequestContext {
+    source_context_map: HashMap<String, Map<String, Value>>,
 }
 
 impl RequestContext {
-    /// Generates claims for a given ContextType in JSON form
-    pub fn to_json_context(&self, context: &ContextType) -> anyhow::Result<Value> {
-        let json_fields: anyhow::Result<Map<String, Value>> = context
-            .fields
-            .iter()
-            .flat_map(|field| match &field.source {
-                ContextSource::Jwt { claim } => self.jwt_claims.as_ref().map(|jwt_claims| {
-                    Ok((
-                        field.name.clone(),
-                        jwt_claims
-                            .get(claim)
-                            .with_context(|| format!("Claim `{}` not found in JWT token", claim))?
-                            .clone(),
-                    ))
-                }),
-
-                ContextSource::Header { header } => self
-                    .headers
-                    .get(&header.to_ascii_lowercase()) // headers are case insensitive
-                    .map(|header_value| {
-                        Ok((field.name.clone(), Value::String(header_value.to_string())))
-                    }),
-
-                ContextSource::EnvironmentVariable { envvar } => std::env::var(envvar)
-                    .ok()
-                    .map(|envvar| Ok((field.name.clone(), Value::String(envvar)))),
-            })
-            .collect();
-
-        Ok(Value::Object(json_fields?))
+    // Generate a more specific request context using the ContextType by picking fields from RequestContext
+    pub fn generate_context_subset(&self, context: &ContextType) -> Result<Value> {
+        Ok(Value::Object(
+            context
+                .fields
+                .iter()
+                .map(|field| {
+                    Ok(self
+                        .source_context_map
+                        .get(&field.source.annotation)
+                        .ok_or_else(|| {
+                            anyhow!("No such annotation named {}", field.source.annotation)
+                        })?
+                        .get(&field.source.claim)
+                        .map(|v| (field.name.clone(), v.clone())))
+                })
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect(),
+        ))
     }
 }

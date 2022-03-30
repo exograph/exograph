@@ -6,7 +6,11 @@ use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Bearer;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
+use serde_json::json;
 use serde_json::Value;
+
+use super::ContextProcessor;
+use super::ContextProcessorError;
 
 pub enum JwtAuthenticationError {
     ExpiredToken,
@@ -64,5 +68,33 @@ impl JwtAuthenticator {
                 Ok(None)
             }
         }
+    }
+}
+
+impl ContextProcessor for JwtAuthenticator {
+    fn annotation(&self) -> &str {
+        "jwt"
+    }
+
+    fn process(
+        &self,
+        request: &HttpRequest,
+    ) -> Result<Vec<(String, Value)>, ContextProcessorError> {
+        let jwt_claims =
+            self.extract_authentication(request)
+                .map_err(|e| match e {
+                    JwtAuthenticationError::ExpiredToken
+                    | JwtAuthenticationError::TamperedToken => ContextProcessorError::Unauthorized,
+
+                    JwtAuthenticationError::Unknown => ContextProcessorError::Malformed,
+                })?
+                .unwrap_or_else(|| json!({}));
+
+        Ok(jwt_claims
+            .as_object()
+            .unwrap()
+            .clone()
+            .into_iter()
+            .collect())
     }
 }

@@ -8,8 +8,7 @@ use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use anyhow::Result;
 use payas_sql::Database;
 use payas_sql::DatabaseExecutor;
-use request_context::jwt::JwtAuthenticationError;
-use request_context::{ContextProcessor, ContextProcessorError};
+use request_context::{ContextProcessorError, RequestContextProcessor};
 
 use crate::error::ExecutionError;
 use crate::execution::query_context::QueryResponse;
@@ -29,7 +28,7 @@ pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
     system_info: web::Data<SystemInfo>,
-    context_processor: web::Data<ContextProcessor>,
+    context_processor: web::Data<RequestContextProcessor>,
 ) -> impl Responder {
     // let to_bytes = Bytes::from;
     let to_bytes_static = |s: &'static str| Bytes::from_static(s.as_bytes());
@@ -106,19 +105,10 @@ pub async fn resolve(
         }
         Err(err) => {
             let (message, mut base_response) = match err {
-                ContextProcessorError::Jwt(jwt_err) => match jwt_err {
-                    JwtAuthenticationError::ExpiredToken => {
-                        ("Expired JWT token", HttpResponse::Unauthorized())
-                    }
-                    JwtAuthenticationError::TamperedToken => {
-                        // No need to reveal more info for a tampered token, so mark is as a generic bad request
-                        ("Unexpected error", HttpResponse::BadRequest())
-                    }
-                    JwtAuthenticationError::Unknown => {
-                        ("Unknown error", HttpResponse::Unauthorized())
-                    }
-                },
-                ContextProcessorError::MalformedHeader => {
+                ContextProcessorError::Unauthorized => {
+                    ("Unauthorized", HttpResponse::Unauthorized())
+                }
+                ContextProcessorError::Malformed => {
                     ("Malformed header", HttpResponse::BadRequest())
                 }
                 ContextProcessorError::Unknown => ("Unknown error", HttpResponse::Unauthorized()),

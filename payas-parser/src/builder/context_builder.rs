@@ -47,18 +47,9 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
         .map(|field| ContextField {
             name: field.name.clone(),
             typ: create_context_field_type(&field.typ, building),
-            source: match &field.source {
-                ResolvedContextSource::Jwt { claim } => ContextSource::Jwt {
-                    claim: claim.clone(),
-                },
-                ResolvedContextSource::Header { header } => ContextSource::Header {
-                    header: header.clone(),
-                },
-                ResolvedContextSource::EnvironmentVariable { envvar } => {
-                    ContextSource::EnvironmentVariable {
-                        envvar: envvar.clone(),
-                    }
-                }
+            source: {
+                let ResolvedContextSource { annotation, claim } = field.source.clone();
+                ContextSource { annotation, claim }
             },
         })
         .collect();

@@ -21,7 +21,7 @@ use crate::error::ParserError;
 use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 use crate::typechecker::AnnotationMap;
 use crate::{
-    ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind, FieldSelection},
+    ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind},
     typechecker::{PrimitiveType, Type, Typed},
     util::null_span,
 };
@@ -228,10 +228,9 @@ pub struct ResolvedContextField {
 
 // For now, ResolvedContextSource and ContextSource have the same structure
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub enum ResolvedContextSource {
-    EnvironmentVariable { envvar: String },
-    Header { header: String },
-    Jwt { claim: String },
+pub struct ResolvedContextSource {
+    pub annotation: String,
+    pub claim: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -1020,29 +1019,32 @@ fn build_expanded_context_type(
 }
 
 fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
-    let extract_text = |annotation_name: &str| -> Option<String> {
-        field.annotations.get(annotation_name).map(|p| match p {
-            AstAnnotationParams::Single(AstExpr::FieldSelection(selection), _) => match selection {
-                FieldSelection::Single(claim, _) => claim.0.clone(),
-                _ => panic!("Only single param supported for @{}", annotation_name),
-            },
-            AstAnnotationParams::Single(AstExpr::StringLiteral(name, _), _) => name.clone(),
-            AstAnnotationParams::None => field.name.clone(),
-            _ => panic!(
-                "Expression type other than selection unsupported for @{}",
-                annotation_name
-            ),
-        })
-    };
+    match field.annotations.iter().len() {
+        0 => {
+            panic!("No source for context field `{}`", field.name)
+        }
+        1 => {
+            let annotation = field.annotations.iter().last().unwrap().1;
 
-    if let Some(claim) = extract_text("jwt") {
-        ResolvedContextSource::Jwt { claim }
-    } else if let Some(header) = extract_text("header") {
-        ResolvedContextSource::Header { header }
-    } else if let Some(envvar) = extract_text("env") {
-        ResolvedContextSource::EnvironmentVariable { envvar }
-    } else {
-        panic!("No context source specified for field {}", field.name)
+            match &annotation.params {
+                AstAnnotationParams::Single(AstExpr::StringLiteral(string, _), _) => {
+                    ResolvedContextSource {
+                        annotation: annotation.name.clone(),
+                        claim: string.clone(),
+                    }
+                }
+                _ => panic!(
+                    "Expression type other than literal unsupported for @{}",
+                    annotation.name
+                ),
+            }
+        }
+        _ => {
+            panic!(
+                "Cannot have more than one source for context field `{}`",
+                field.name
+            )
+        }
     }
 }
 

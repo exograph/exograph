@@ -3,7 +3,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::{Context, Result};
 use bincode::deserialize_from;
 use payas_model::model::system::ModelSystem;
-use payas_server::request_context::ContextProcessor;
+use payas_server::request_context::RequestContextProcessor;
 use payas_server::{create_system_info, resolve};
 use payas_sql::Database;
 use std::fs::File;
@@ -46,7 +46,7 @@ async fn main() -> std::io::Result<()> {
 
     let database = Database::from_env(None).expect("Failed to create database"); // TODO: error handling here
     let system_info = web::Data::new(create_system_info(model_system, database));
-    let request_context_processor = web::Data::new(ContextProcessor::new());
+    let request_context_processor = web::Data::new(RequestContextProcessor::new());
     let server_port = env::var("CLAY_SERVER_PORT")
         .map(|port_str| {
             port_str

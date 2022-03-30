@@ -256,8 +256,8 @@ contexts:
             typ:
               Plain: String
             source:
-              Jwt:
-                claim: role
+              annotation: jwt
+              claim: role
     - ~
     - ~
     - ~
