@@ -1026,17 +1026,20 @@ fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
         1 => {
             let annotation = field.annotations.iter().last().unwrap().1;
 
-            match &annotation.params {
-                AstAnnotationParams::Single(AstExpr::StringLiteral(string, _), _) => {
-                    ResolvedContextSource {
-                        annotation: annotation.name.clone(),
-                        claim: string.clone(),
-                    }
-                }
+            let claim = match &annotation.params {
+                AstAnnotationParams::Single(AstExpr::StringLiteral(string, _), _) => string.clone(),
+
+                AstAnnotationParams::None => field.name.clone(),
+
                 _ => panic!(
-                    "Expression type other than literal unsupported for @{}",
+                    "Annotation parameters other than single literal and none unsupported for @{}",
                     annotation.name
                 ),
+            };
+
+            ResolvedContextSource {
+                annotation: annotation.name.clone(),
+                claim,
             }
         }
         _ => {
