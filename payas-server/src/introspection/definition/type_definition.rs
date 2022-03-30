@@ -1,7 +1,8 @@
 use crate::introspection::{definition::provider::InputValueProvider, util};
 use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
+    BaseType, FieldDefinition, InputObjectType, ObjectType, Type, TypeDefinition, TypeKind,
 };
+use async_graphql_value::Name;
 use payas_model::model::{
     operation::{DatabaseQueryParameter, QueryKind},
     relation::GqlRelation,
@@ -33,10 +34,21 @@ impl TypeDefinitionProvider for GqlType {
                         .collect();
                     TypeKind::InputObject(InputObjectType { fields })
                 } else {
-                    let fields = model_fields
+                    let mut fields: Vec<_> = model_fields
                         .iter()
                         .map(|model_field| default_positioned(model_field.field_definition(system)))
                         .collect();
+                    // In addition to the fields derived from the model, we also need to support the __typename field.
+                    fields.push(default_positioned(FieldDefinition {
+                        name: default_positioned_name("__typename"),
+                        description: None,
+                        arguments: vec![],
+                        ty: default_positioned(Type {
+                            base: BaseType::Named(Name::new("String")),
+                            nullable: false,
+                        }),
+                        directives: vec![],
+                    }));
                     TypeKind::Object(ObjectType {
                         implements: vec![],
                         fields,
