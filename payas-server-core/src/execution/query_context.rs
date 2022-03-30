@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use chrono::prelude::*;
 use chrono::DateTime;
 use maybe_owned::MaybeOwned;
-use payas_model::model::{column_id::ColumnId, system::ModelSystem};
+use payas_model::model::system::ModelSystem;
 use payas_sql::{
     array_util::{self, ArrayEntry},
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParam,
@@ -112,10 +112,6 @@ impl<'qc> QueryContext<'qc> {
         } else {
             Ok(JsonValue::Null)
         }
-    }
-
-    pub fn create_column_with_id(&self, column_id: &ColumnId) -> Column<'qc> {
-        self.executor.system.create_column_with_id(column_id)
     }
 
     pub fn literal_column(
