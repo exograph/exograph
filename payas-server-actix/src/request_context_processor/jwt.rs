@@ -101,7 +101,7 @@ impl ParsedContextExtractor for ParsedJwtContext {
         "jwt"
     }
 
-    fn extract_value(&self, key: &str) -> Option<Value> {
+    fn extract_context_field(&self, key: &str) -> Option<Value> {
         self.jwt_claims.get(key).cloned()
     }
 }

@@ -125,7 +125,7 @@ fn extract_context(request_context: &RequestContext, context: &ContextType) -> R
             .fields
             .iter()
             .map(|field| {
-                let field_value = request_context.extract_value_from_source(
+                let field_value = request_context.extract_context_field_from_source(
                     &field.source.annotation_name,
                     &field.source.value,
                 )?;

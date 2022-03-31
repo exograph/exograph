@@ -44,7 +44,7 @@ impl RequestContextProcessor {
             .iter()
             .map(|processor| {
                 // process values
-                Ok(processor.parse_context(request)?)
+                processor.parse_context(request)
             })
             .collect::<Result<Vec<_>, ContextProcessorError>>()?; // emit errors if we encounter any while gathering context
 

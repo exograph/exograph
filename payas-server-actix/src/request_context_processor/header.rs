@@ -22,8 +22,7 @@ impl ContextProcessor for HeaderProcessor {
                     header_value
                         .to_str()
                         .map_err(|_| ContextProcessorError::Malformed)?
-                        .to_string()
-                        .into(),
+                        .to_string(),
                 ))
             })
             .collect::<Result<HashMap<_, _>, ContextProcessorError>>()?;
@@ -41,7 +40,7 @@ impl ParsedContextExtractor for ParsedHeaderContext {
         "header"
     }
 
-    fn extract_value(&self, key: &str) -> Option<Value> {
+    fn extract_context_field(&self, key: &str) -> Option<Value> {
         self.headers
             .get(&key.to_ascii_lowercase())
             .map(|v| v.clone().into())

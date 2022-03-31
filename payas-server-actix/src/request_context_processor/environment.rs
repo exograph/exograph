@@ -21,7 +21,7 @@ impl ParsedContextExtractor for EnvironmentContextExtractor {
         "env"
     }
 
-    fn extract_value(&self, key: &str) -> Option<Value> {
+    fn extract_context_field(&self, key: &str) -> Option<Value> {
         std::env::var(&key).ok().map(|v| v.into())
     }
 }
