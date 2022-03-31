@@ -1,5 +1,5 @@
 [package]
-name = "payas-server"
+name = "payas-server-core"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,15 +10,11 @@ async-graphql-parser = "3.0.19"
 async-graphql-value = "3.0.19"
 async-stream = "0.3.2"
 async-trait = "0.1.52"
-actix-web = { version = "4.0.1", default-features = false, features = ["macros"] }
-actix-cors = "0.6.1"
-actix-web-httpauth = "0.6.0"
 base64 = "0.13"
+bytes = "1"
 futures = "0.3"
 futures-util = "0.3"
-jsonwebtoken = "7.2.0"
 serde_json = { version = "1.0", features = ["preserve_order"] }
-bincode = "1.2.1"
 tokio-postgres = { version = "0.7.5"}
 pg_bigdecimal = "0.1.4"
 chrono = "0.4.19"
@@ -31,10 +27,7 @@ uuid = "0.8"
 insta = "1.14.0"
 
 payas-sql = { path = "../payas-sql" }
-payas-parser = { path = "../payas-parser" }
 payas-model = { path = "../payas-model" }
 payas-deno = { path = "../payas-deno" }
+payas-parser = { path = "../payas-parser" }
 
-[[bin]]
-name = "clay-server"
-path = "src/main.rs"
