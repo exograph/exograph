@@ -3,7 +3,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::{Context, Result};
 use bincode::deserialize_from;
 use payas_model::model::system::ModelSystem;
-use payas_server_actix::authentication::JwtAuthenticator;
+use payas_server_actix::request_context::ActixRequestContextProducer;
 use payas_server_actix::resolve;
 use payas_server_core::create_system_info;
 use payas_sql::Database;
@@ -47,7 +47,7 @@ async fn main() -> std::io::Result<()> {
 
     let database = Database::from_env(None).expect("Failed to create database"); // TODO: error handling here
     let system_info = web::Data::new(create_system_info(model_system, database));
-    let authenticator = web::Data::new(JwtAuthenticator::new_from_env());
+    let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
     let server_port = env::var("CLAY_SERVER_PORT")
         .map(|port_str| {
             port_str
@@ -63,7 +63,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .app_data(system_info.clone())
-            .app_data(authenticator.clone())
+            .app_data(request_context_processor.clone())
             .route("/", web::get().to(playground))
             .route("/", web::post().to(resolve))
     })

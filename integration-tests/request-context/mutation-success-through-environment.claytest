@@ -1,0 +1,14 @@
+envs: 
+    __DEV_MODE: "1"
+operation: | 
+    mutation {
+        createJournalEntry(data: {
+            text: "Entry made possible through environment variable."
+        }) 
+    }
+response: |
+    {
+      "data": {
+        "createJournalEntry": {}
+      }
+    }

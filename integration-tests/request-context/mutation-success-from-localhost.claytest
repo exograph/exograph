@@ -1,0 +1,16 @@
+headers: |
+    {
+        "X-Connecting-IP": "127.0.0.1"
+    }
+operation: | 
+    mutation {
+        createJournalEntry(data: {
+            text: "Entry made by localhost."
+        }) 
+    }
+response: |
+    {
+      "data": {
+        "createJournalEntry": {}
+      }
+    }

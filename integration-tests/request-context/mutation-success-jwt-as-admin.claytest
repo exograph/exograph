@@ -1,0 +1,16 @@
+auth: |
+    {
+        "role": "ADMIN"
+    }
+operation: | 
+    mutation {
+        createJournalEntry(data: {
+            text: "Entry made by admin."
+        }) 
+    }
+response: |
+    {
+      "data": {
+        "createJournalEntry": {}
+      }
+    }

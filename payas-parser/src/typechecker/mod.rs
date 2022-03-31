@@ -160,6 +160,15 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             },
         ),
         (
+            "env",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
             "external",
             AnnotationSpec {
                 targets: &[AnnotationTarget::Service],
@@ -191,6 +200,15 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             AnnotationSpec {
                 targets: &[AnnotationTarget::Interceptor],
                 no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
+            "header",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
                 single_params: true,
                 mapped_params: None,
             },

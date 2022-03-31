@@ -1,0 +1,16 @@
+context AuthContext {
+    role: String @jwt("role")
+    connectingIp: String @header("X-Connecting-IP")
+    devMode: String @env("__DEV_MODE")
+}
+
+@access(
+    query=true,
+    mutation=AuthContext.role == "ADMIN" ||
+             AuthContext.connectingIp == "127.0.0.1" ||
+             AuthContext.devMode == "1"
+)
+model JournalEntry {
+    id: Int = autoincrement() @pk
+    text: String
+} 

@@ -14,12 +14,14 @@ use introspection::schema::Schema;
 use payas_deno::DenoExecutor;
 use payas_model::model::system::ModelSystem;
 use payas_sql::{Database, DatabaseExecutor};
+use request_context::RequestContext;
 use serde_json::{Map, Value};
 
 mod data;
 mod error;
 mod execution;
 mod introspection;
+pub mod request_context;
 mod validation;
 
 /// Opaque type encapsulating the information required by the `resolve`
@@ -50,7 +52,7 @@ pub async fn resolve<E>(
     operation_name: Option<&str>,
     query_str: &str,
     variables: Option<&Map<String, Value>>,
-    claims: Option<Value>,
+    request_context: RequestContext,
 ) -> impl Stream<Item = Result<Bytes, E>> {
     let SystemInfo(system, schema, database, deno_execution) = system_info;
 
@@ -63,7 +65,7 @@ pub async fn resolve<E>(
     };
 
     let response = executor
-        .execute(operation_name, query_str, variables, claims)
+        .execute(operation_name, query_str, variables, request_context)
         .await;
 
     try_stream! {
