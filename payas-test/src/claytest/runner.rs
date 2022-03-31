@@ -84,6 +84,7 @@ pub(crate) fn run_testfile(
             .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
             .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
             .env("CLAY_INTROSPECTION", "1")
+            .envs(testfile.extra_envs.iter()) // add extra envs specified in testfile
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
@@ -254,6 +255,7 @@ fn run_operation(
             variables,
             expected_payload,
             auth,
+            headers,
         } => {
             let mut req = Request::post(url);
 
@@ -269,7 +271,7 @@ fn run_operation(
                 .replace_all(document, "")
                 .to_string();
 
-            // add JWT token if specified
+            // add JWT token if specified in testfile
             if let Some(auth) = auth {
                 let mut auth = auth.clone();
                 let auth_ref = auth.as_object_mut().unwrap();
@@ -287,6 +289,21 @@ fn run_operation(
                 .unwrap();
                 req = req.header("Authorization", format!("Bearer {}", token));
             };
+
+            // add extra headers from testfile
+            let headers = headers
+                .as_ref()
+                .map(|headers| evaluate_using_deno(headers, testvariables))
+                .transpose()?;
+
+            if let Some(Value::Object(map)) = headers {
+                for (header, value) in map.iter() {
+                    req = req.header(
+                        header,
+                        value.as_str().expect("expected string for header value"),
+                    )
+                }
+            }
 
             // run the operation
             let req =

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{hash_map, BTreeMap, HashMap};
 use std::fmt::Debug;
 
 use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
@@ -55,6 +55,10 @@ impl AnnotationMap {
 
     pub fn get(&self, name: &str) -> Option<&AstAnnotationParams<Typed>> {
         self.annotations.get(name).map(|a| &a.params)
+    }
+
+    pub fn iter(&self) -> hash_map::Iter<String, AstAnnotation<Typed>> {
+        self.annotations.iter()
     }
 
     pub fn pass(

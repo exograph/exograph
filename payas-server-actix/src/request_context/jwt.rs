@@ -6,7 +6,13 @@ use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Bearer;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
+use payas_server_core::request_context::BoxedParsedContext;
+use payas_server_core::request_context::ParsedContext;
+use serde_json::json;
 use serde_json::Value;
+
+use super::ActixContextProducer;
+use super::ContextProducerError;
 
 pub enum JwtAuthenticationError {
     ExpiredToken,
@@ -43,9 +49,9 @@ impl JwtAuthenticator {
     /// to the declared user context model
     pub fn extract_authentication(
         &self,
-        req: HttpRequest,
+        req: &HttpRequest,
     ) -> Result<Option<Value>, JwtAuthenticationError> {
-        match Authorization::<Bearer>::parse(&req) {
+        match Authorization::<Bearer>::parse(req) {
             Ok(auth) => {
                 let scheme = auth.into_scheme();
                 let token = scheme.token().as_ref();
@@ -64,5 +70,38 @@ impl JwtAuthenticator {
                 Ok(None)
             }
         }
+    }
+}
+
+impl ActixContextProducer for JwtAuthenticator {
+    fn parse_context(
+        &self,
+        request: &HttpRequest,
+    ) -> Result<BoxedParsedContext, ContextProducerError> {
+        let jwt_claims =
+            self.extract_authentication(request)
+                .map_err(|e| match e {
+                    JwtAuthenticationError::ExpiredToken
+                    | JwtAuthenticationError::TamperedToken => ContextProducerError::Unauthorized,
+
+                    JwtAuthenticationError::Unknown => ContextProducerError::Malformed,
+                })?
+                .unwrap_or_else(|| json!({}));
+
+        Ok(Box::new(ParsedJwtContext { jwt_claims }))
+    }
+}
+
+struct ParsedJwtContext {
+    jwt_claims: Value,
+}
+
+impl ParsedContext for ParsedJwtContext {
+    fn annotation_name(&self) -> &str {
+        "jwt"
+    }
+
+    fn extract_context_field(&self, key: &str) -> Option<Value> {
+        self.jwt_claims.get(key).cloned()
     }
 }

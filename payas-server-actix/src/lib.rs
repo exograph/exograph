@@ -1,13 +1,12 @@
+pub mod request_context;
+
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
 use payas_server_core::SystemInfo;
 
+use request_context::{ActixRequestContextProducer, ContextProducerError};
 use serde_json::Value;
-
-pub mod authentication;
-
-use crate::authentication::{JwtAuthenticationError, JwtAuthenticator};
 
 macro_rules! error_msg {
     ($msg:literal) => {
@@ -19,12 +18,12 @@ pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
     system_info: web::Data<SystemInfo>,
-    authenticator: web::Data<JwtAuthenticator>,
+    context_processor: web::Data<ActixRequestContextProducer>,
 ) -> impl Responder {
-    let auth = authenticator.extract_authentication(req);
+    let request_context = context_processor.generate_request_context(&req);
 
-    match auth {
-        Ok(claims) => {
+    match request_context {
+        Ok(request_context) => {
             let system_info = system_info.as_ref();
 
             let operation_name = body["operationName"].as_str();
@@ -36,24 +35,23 @@ pub async fn resolve(
                 operation_name,
                 query_str,
                 variables,
-                claims,
+                request_context,
             )
             .await;
             HttpResponse::Ok()
                 .content_type("application/json")
                 .streaming(Box::pin(stream))
         }
+
         Err(err) => {
             let (message, mut base_response) = match err {
-                JwtAuthenticationError::ExpiredToken => (
-                    error_msg!("Expired JWT token"),
-                    HttpResponse::Unauthorized(),
-                ),
-                JwtAuthenticationError::TamperedToken => {
-                    // No need to reveal more info for a tampered token, so mark is as a generic bad request
-                    (error_msg!("Unexpected error"), HttpResponse::BadRequest())
+                ContextProducerError::Unauthorized => {
+                    (error_msg!("Unauthorized"), HttpResponse::Unauthorized())
                 }
-                JwtAuthenticationError::Unknown => {
+                ContextProducerError::Malformed => {
+                    (error_msg!("Malformed header"), HttpResponse::BadRequest())
+                }
+                ContextProducerError::Unknown => {
                     (error_msg!("Unknown error"), HttpResponse::Unauthorized())
                 }
             };
