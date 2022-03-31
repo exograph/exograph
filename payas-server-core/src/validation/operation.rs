@@ -2,9 +2,7 @@ use async_graphql_parser::types::OperationType;
 
 use super::field::ValidatedField;
 
-// Validated operation
-// Validations performed:
-// - Validate that each variables in [OperationDefinition.variable_definitions] is available
+// Validated operation.
 #[derive(Debug)]
 pub struct ValidatedOperation {
     pub name: Option<String>,

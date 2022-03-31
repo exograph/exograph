@@ -19,10 +19,12 @@ use crate::{
 
 use super::field::ValidatedField;
 
+/// Context for validating a selection set.
 #[derive(Debug)]
 pub struct SelectionSetValidator<'a> {
     schema: &'a Schema,
     operation_name: Option<&'a str>,
+    /// The parent type of this field.
     container_type: &'a TypeDefinition,
     variables: &'a HashMap<&'a Name, ConstValue>,
     fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
@@ -46,6 +48,15 @@ impl<'a> SelectionSetValidator<'a> {
         }
     }
 
+    /// Validate selection set.
+    ///
+    /// Validations performed:
+    /// - Each field is defined in the `container_type`
+    /// - Each fragment referred is defined
+    /// - Arguments to each field are valid (see [validate_arguments] for more details)
+    ///
+    /// # Returns
+    ///   A vector of validated fields (any fragment is resolved and inlined, thus normalizing the fields)
     pub(super) fn validate(
         &self,
         selection_set: &Positioned<SelectionSet>,

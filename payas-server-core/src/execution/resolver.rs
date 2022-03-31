@@ -15,7 +15,7 @@ pub trait Resolver<R> {
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e [ValidatedField],
+        fields: &'e [ValidatedField],
     ) -> Result<R>;
 }
 
@@ -98,10 +98,10 @@ where
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e [ValidatedField],
+        fields: &'e [ValidatedField],
     ) -> Result<Value> {
         Ok(Value::Object(FromIterator::from_iter(
-            self.resolve_fields(query_context, selection_set).await?,
+            self.resolve_fields(query_context, fields).await?,
         )))
     }
 }
@@ -114,10 +114,10 @@ where
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e [ValidatedField],
+        fields: &'e [ValidatedField],
     ) -> Result<Value> {
         match self {
-            Some(elem) => elem.resolve_value(query_context, selection_set).await,
+            Some(elem) => elem.resolve_value(query_context, fields).await,
             None => Ok(Value::Null),
         }
     }
@@ -131,9 +131,9 @@ where
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e [ValidatedField],
+        fields: &'e [ValidatedField],
     ) -> Result<Value> {
-        self.node.resolve_value(query_context, selection_set).await
+        self.node.resolve_value(query_context, fields).await
     }
 }
 
@@ -145,10 +145,10 @@ where
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e [ValidatedField],
+        fields: &'e [ValidatedField],
     ) -> Result<Value> {
         let resolved: Vec<_> = futures::stream::iter(self.iter())
-            .then(|elem| elem.resolve_value(query_context, selection_set))
+            .then(|elem| elem.resolve_value(query_context, fields))
             .collect()
             .await;
 

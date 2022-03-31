@@ -14,6 +14,7 @@ use crate::{
 
 use super::{operation::ValidatedOperation, selection_set_validator::SelectionSetValidator};
 
+/// Context for validating an operation.
 pub struct OperationValidator<'a> {
     schema: &'a Schema,
     operation_name: Option<&'a str>,
@@ -37,10 +38,24 @@ impl<'a> OperationValidator<'a> {
         }
     }
 
-    /// Validate operation.
-    /// Operation defines a GraphQL top-level operation such as `mutation create($name: String!) { createName(name: $name) { id } }`
+    /// Validate operation. Operation defines a GraphQL top-level operation such
+    /// as
+    /// ```graphql
+    ///    mutation create($name: String!) {
+    ///       createName(name: $name) {
+    ///          id
+    ///       }
+    ///    }
+    /// ```
+    ///
     /// Validations performed:
-    /// - Validate that each variables in [OperationDefinition.variable_definitions] is available
+    /// - The operation actually exists
+    /// - Each variables in [OperationDefinition.variable_definitions] is
+    ///   available (see [`validate_variables`] for details)
+    /// - The selected fields are valid (see [SelectionSetValidator] for details)])
+    ///
+    /// # Returns
+    ///   A validated operation with all variables and fields resolved and normalized.
     pub(super) fn validate_operation(
         &self,
         (operation_name, operation): (Option<&Name>, &Positioned<OperationDefinition>),
@@ -79,6 +94,18 @@ impl<'a> OperationValidator<'a> {
         })
     }
 
+    /// Validate variables.
+    ///
+    /// Validations performed:
+    /// - All variables in [OperationDefinition.variable_definitions] are
+    ///   available
+    /// - (TODO) All variables are of the correct type. This is currently not
+    ///   possible because we don't have enough information (such as the
+    ///   `DateTime` type or the range of values for `Int`) in the schema yet.
+    ///
+    /// # Returns
+    ///   Resolved variables (note the output type uses `ConstValue` instead of
+    ///   `Value` to indicate that the value has been resolved)
     fn validate_variables(
         &'a self,
         operation: &'a Positioned<OperationDefinition>,

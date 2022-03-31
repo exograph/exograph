@@ -4,12 +4,15 @@ use serde_json::{Map, Value};
 use crate::{error::ExecutionError, introspection::schema::Schema};
 
 use super::{operation::ValidatedOperation, operation_validator::OperationValidator};
+
+/// Context for validating a document.
 pub struct DocumentValidator<'a> {
     schema: &'a Schema,
     operation_name: Option<&'a str>,
     variables: Option<&'a Map<String, Value>>,
 }
 
+/// The validated query document.
 #[derive(Debug)]
 pub struct ValidatedDocument {
     pub operations: Vec<ValidatedOperation>,
@@ -29,6 +32,11 @@ impl<'a> DocumentValidator<'a> {
         }
     }
 
+    /// Validate the query payload.
+    /// Validations performed:
+    /// - Validate that all operations are of the same type (queries or mutations)
+    /// - Validate that there is at least one operation
+    /// - Other validations are delegated to the operation validator
     pub fn validate(
         &self,
         document: ExecutableDocument,
