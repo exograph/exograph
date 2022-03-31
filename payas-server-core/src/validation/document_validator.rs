@@ -1,22 +1,15 @@
-use async_graphql_parser::types::{ExecutableDocument, OperationType};
+use async_graphql_parser::types::ExecutableDocument;
 use serde_json::{Map, Value};
 
 use crate::{error::ExecutionError, introspection::schema::Schema};
 
-use super::{operation::ValidatedOperation, operation_validator::OperationValidator};
+use super::{document::ValidatedDocument, operation_validator::OperationValidator};
 
 /// Context for validating a document.
 pub struct DocumentValidator<'a> {
     schema: &'a Schema,
     operation_name: Option<&'a str>,
     variables: Option<&'a Map<String, Value>>,
-}
-
-/// The validated query document.
-#[derive(Debug)]
-pub struct ValidatedDocument {
-    pub operations: Vec<ValidatedOperation>,
-    pub operation_typ: OperationType,
 }
 
 impl<'a> DocumentValidator<'a> {

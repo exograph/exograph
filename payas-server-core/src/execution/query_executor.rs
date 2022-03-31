@@ -2,7 +2,7 @@ use super::query_context;
 use crate::{
     error::ExecutionError,
     introspection::schema::Schema,
-    validation::document_validator::{DocumentValidator, ValidatedDocument},
+    validation::{document::ValidatedDocument, document_validator::DocumentValidator},
 };
 use async_graphql_parser::{parse_query, types::OperationType};
 
