@@ -45,7 +45,7 @@ impl RequestContextProcessor {
             .processors
             .iter()
             .map(|processor| {
-                // process the claims
+                // process values
                 Ok((
                     processor.annotation().to_string(),
                     processor

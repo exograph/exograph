@@ -19,11 +19,11 @@ impl RequestContext {
                 .map(|field| {
                     Ok(self
                         .source_context_map
-                        .get(&field.source.annotation)
+                        .get(&field.value.annotation)
                         .ok_or_else(|| {
-                            anyhow!("No such annotation named {}", field.source.annotation)
+                            anyhow!("No such annotation named {}", field.value.annotation)
                         })?
-                        .get(&field.source.claim)
+                        .get(&field.value.value)
                         .map(|v| (field.name.clone(), v.clone())))
                 })
                 .collect::<Result<Vec<_>>>()?

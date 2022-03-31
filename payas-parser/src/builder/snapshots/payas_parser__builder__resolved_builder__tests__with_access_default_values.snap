@@ -257,7 +257,7 @@ contexts:
               Plain: String
             source:
               annotation: jwt
-              claim: role
+              value: role
     - ~
     - ~
     - ~

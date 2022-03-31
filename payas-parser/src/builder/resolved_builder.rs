@@ -230,7 +230,7 @@ pub struct ResolvedContextField {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedContextSource {
     pub annotation: String,
-    pub claim: String,
+    pub value: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -616,7 +616,7 @@ fn build_expanded(
             {
                 build_expanded_persistent_type(ct, &types, resolved_system, errors);
             } else if ct.kind == AstModelKind::Context {
-                build_expanded_context_type(ct, &types, resolved_system);
+                build_expanded_context_type(ct, &types, resolved_system, errors);
             } else {
                 todo!()
             }
@@ -995,6 +995,7 @@ fn build_expanded_context_type(
     ct: &AstModel<Typed>,
     types: &MappedArena<Type>,
     resolved_system: &mut ResolvedSystem,
+    errors: &mut Vec<Diagnostic>,
 ) {
     let resolved_contexts = &mut resolved_system.contexts;
     let resolved_types = &mut resolved_system.types;
@@ -1004,10 +1005,12 @@ fn build_expanded_context_type(
     let resolved_fields = ct
         .fields
         .iter()
-        .map(|field| ResolvedContextField {
-            name: field.name.clone(),
-            typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
-            source: extract_context_source(field),
+        .flat_map(|field| {
+            Some(ResolvedContextField {
+                name: field.name.clone(),
+                typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
+                source: extract_context_source(field, errors)?,
+            })
         })
         .collect();
 
@@ -1018,15 +1021,36 @@ fn build_expanded_context_type(
     resolved_contexts[existing_type_id] = expanded;
 }
 
-fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
+fn extract_context_source(
+    field: &AstField<Typed>,
+    errors: &mut Vec<Diagnostic>,
+) -> Option<ResolvedContextSource> {
+    // to determine the source for this context field, extract a single annotation from it
+    //
+    // context source annotations are not resolved fully here in ResolvedBuilder
+    // instead we extract the annotation name and value here and resolve it dynamically later
     match field.annotations.iter().len() {
         0 => {
-            panic!("No source for context field `{}`", field.name)
+            // found no annotations! contexts need at least one
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!("No source for context field `{}`", field.name),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            });
+            None
         }
         1 => {
+            // found exactly one annotation
+            // extract it
             let annotation = field.annotations.iter().last().unwrap().1;
 
-            let claim = match &annotation.params {
+            // extract the value from the annotation
+            let value = match &annotation.params {
                 AstAnnotationParams::Single(AstExpr::StringLiteral(string, _), _) => string.clone(),
 
                 AstAnnotationParams::None => field.name.clone(),
@@ -1037,16 +1061,28 @@ fn extract_context_source(field: &AstField<Typed>) -> ResolvedContextSource {
                 ),
             };
 
-            ResolvedContextSource {
+            // return context source
+            Some(ResolvedContextSource {
                 annotation: annotation.name.clone(),
-                claim,
-            }
+                value,
+            })
         }
         _ => {
-            panic!(
-                "Cannot have more than one source for context field `{}`",
-                field.name
-            )
+            // found more than one annotation! we cannot populate a context field from two sources
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Cannot have more than one source for context field `{}`",
+                    field.name
+                ),
+                code: Some("C000".to_string()),
+                spans: vec![SpanLabel {
+                    span: field.span,
+                    style: SpanStyle::Primary,
+                    label: None,
+                }],
+            });
+            None
         }
     }
 }
