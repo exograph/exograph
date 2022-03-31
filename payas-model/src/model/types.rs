@@ -17,12 +17,12 @@ pub struct ContextType {
 pub struct ContextField {
     pub name: String,
     pub typ: GqlFieldType,
-    pub value: ContextSource,
+    pub source: ContextSource,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ContextSource {
-    pub annotation: String,
+    pub annotation_name: String,
     pub value: String,
 }
 

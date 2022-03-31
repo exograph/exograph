@@ -6,6 +6,8 @@ use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Bearer;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
+use payas_server_core::request_context::BoxedParsedContext;
+use payas_server_core::request_context::ParsedContextExtractor;
 use serde_json::json;
 use serde_json::Value;
 
@@ -72,14 +74,10 @@ impl JwtAuthenticator {
 }
 
 impl ContextProcessor for JwtAuthenticator {
-    fn annotation(&self) -> &str {
-        "jwt"
-    }
-
-    fn process(
+    fn parse_context(
         &self,
         request: &HttpRequest,
-    ) -> Result<Vec<(String, Value)>, ContextProcessorError> {
+    ) -> Result<BoxedParsedContext, ContextProcessorError> {
         let jwt_claims =
             self.extract_authentication(request)
                 .map_err(|e| match e {
@@ -90,11 +88,20 @@ impl ContextProcessor for JwtAuthenticator {
                 })?
                 .unwrap_or_else(|| json!({}));
 
-        Ok(jwt_claims
-            .as_object()
-            .unwrap()
-            .clone()
-            .into_iter()
-            .collect())
+        Ok(Box::new(ParsedJwtContext { jwt_claims }))
+    }
+}
+
+struct ParsedJwtContext {
+    jwt_claims: Value,
+}
+
+impl ParsedContextExtractor for ParsedJwtContext {
+    fn annotation_name(&self) -> &str {
+        "jwt"
+    }
+
+    fn extract_value(&self, key: &str) -> Option<Value> {
+        self.jwt_claims.get(key).cloned()
     }
 }

@@ -47,9 +47,12 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
         .map(|field| ContextField {
             name: field.name.clone(),
             typ: create_context_field_type(&field.typ, building),
-            value: {
+            source: {
                 let ResolvedContextSource { annotation, value } = field.source.clone();
-                ContextSource { annotation, value }
+                ContextSource {
+                    annotation_name: annotation,
+                    value,
+                }
             },
         })
         .collect();

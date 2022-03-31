@@ -1,35 +1,40 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
-use payas_model::model::ContextType;
-use serde_json::{Map, Value};
+use anyhow::anyhow;
+use serde_json::Value;
+
+pub type BoxedParsedContext = Box<dyn ParsedContextExtractor + Send + Sync>;
 
 /// Represent a request context for a particular request
 pub struct RequestContext {
-    pub source_context_map: HashMap<String, Map<String, Value>>,
+    parsed_context_map: HashMap<String, BoxedParsedContext>,
 }
 
 impl RequestContext {
-    // Generate a more specific request context using the ContextType by picking fields from RequestContext
-    pub fn generate_context_subset(&self, context: &ContextType) -> Result<Value> {
-        Ok(Value::Object(
-            context
-                .fields
-                .iter()
-                .map(|field| {
-                    Ok(self
-                        .source_context_map
-                        .get(&field.value.annotation)
-                        .ok_or_else(|| {
-                            anyhow!("No such annotation named {}", field.value.annotation)
-                        })?
-                        .get(&field.value.value)
-                        .map(|v| (field.name.clone(), v.clone())))
-                })
-                .collect::<Result<Vec<_>>>()?
+    pub fn from_parsed_contexts(contexts: Vec<BoxedParsedContext>) -> RequestContext {
+        RequestContext {
+            parsed_context_map: contexts
                 .into_iter()
-                .flatten()
+                .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
-        ))
+        }
     }
+
+    pub fn extract_value_from_source(
+        &self,
+        annotation_name: &str,
+        key: &str,
+    ) -> anyhow::Result<Option<Value>> {
+        let parsed_context = self
+            .parsed_context_map
+            .get(annotation_name)
+            .ok_or(anyhow!("Could not find source `{}`", annotation_name))?;
+
+        Ok(parsed_context.extract_value(key))
+    }
+}
+
+pub trait ParsedContextExtractor {
+    fn annotation_name(&self) -> &str;
+    fn extract_value(&self, key: &str) -> Option<Value>;
 }

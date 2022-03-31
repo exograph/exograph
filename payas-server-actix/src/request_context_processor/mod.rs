@@ -2,18 +2,16 @@ pub mod environment;
 pub mod header;
 pub mod jwt;
 
-use std::collections::HashMap;
-
 use actix_web::HttpRequest;
-use payas_server_core::request_context::RequestContext;
-use serde_json::{Map, Value};
+use payas_server_core::request_context::{BoxedParsedContext, RequestContext};
 
 use self::{environment::EnvironmentProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
 
 pub trait ContextProcessor {
-    fn annotation(&self) -> &str;
-    fn process(&self, request: &HttpRequest)
-        -> Result<Vec<(String, Value)>, ContextProcessorError>;
+    fn parse_context(
+        &self,
+        request: &HttpRequest,
+    ) -> Result<BoxedParsedContext, ContextProcessorError>;
 }
 pub enum ContextProcessorError {
     Unauthorized,
@@ -41,24 +39,16 @@ impl RequestContextProcessor {
         &self,
         request: &HttpRequest,
     ) -> Result<RequestContext, ContextProcessorError> {
-        let source_context_map = self
+        let parsed_contexts = self
             .processors
             .iter()
             .map(|processor| {
                 // process values
-                Ok((
-                    processor.annotation().to_string(),
-                    processor
-                        .process(request)?
-                        .into_iter()
-                        .collect::<Map<_, _>>(),
-                ))
+                Ok(processor.parse_context(request)?)
             })
-            .collect::<Result<Vec<_>, ContextProcessorError>>()? // emit errors if we encounter any while gathering context
-            .into_iter()
-            .collect::<HashMap<_, _>>();
+            .collect::<Result<Vec<_>, ContextProcessorError>>()?; // emit errors if we encounter any while gathering context
 
-        Ok(RequestContext { source_context_map })
+        Ok(RequestContext::from_parsed_contexts(parsed_contexts))
     }
 }
 

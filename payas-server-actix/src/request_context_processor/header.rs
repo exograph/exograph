@@ -1,17 +1,19 @@
+use std::collections::HashMap;
+
+use anyhow::Result;
+use payas_server_core::request_context::{BoxedParsedContext, ParsedContextExtractor};
+use serde_json::Value;
+
 use super::{ContextProcessor, ContextProcessorError};
 
 pub struct HeaderProcessor;
 
 impl ContextProcessor for HeaderProcessor {
-    fn annotation(&self) -> &str {
-        "header"
-    }
-
-    fn process(
+    fn parse_context(
         &self,
         request: &actix_web::HttpRequest,
-    ) -> Result<Vec<(String, serde_json::Value)>, super::ContextProcessorError> {
-        request
+    ) -> Result<BoxedParsedContext, super::ContextProcessorError> {
+        let headers = request
             .headers()
             .iter()
             .map(|(header_name, header_value)| {
@@ -24,6 +26,24 @@ impl ContextProcessor for HeaderProcessor {
                         .into(),
                 ))
             })
-            .collect::<Result<Vec<_>, ContextProcessorError>>()
+            .collect::<Result<HashMap<_, _>, ContextProcessorError>>()?;
+
+        Ok(Box::new(ParsedHeaderContext { headers }))
+    }
+}
+
+struct ParsedHeaderContext {
+    headers: HashMap<String, String>,
+}
+
+impl ParsedContextExtractor for ParsedHeaderContext {
+    fn annotation_name(&self) -> &str {
+        "header"
+    }
+
+    fn extract_value(&self, key: &str) -> Option<Value> {
+        self.headers
+            .get(&key.to_ascii_lowercase())
+            .map(|v| v.clone().into())
     }
 }

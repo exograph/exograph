@@ -1,6 +1,6 @@
 context AuthContext {
     role: String @jwt("role")
-    connectingIp: String @header("x-connecting-ip")
+    connectingIp: String @header("X-Connecting-IP")
     devMode: String @env("__DEV_MODE")
 }
 

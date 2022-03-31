@@ -111,10 +111,29 @@ fn create_mapped_context(
         .map(|(_, context)| {
             Ok((
                 context.name.clone(),
-                request_context.generate_context_subset(context)?,
+                extract_context(request_context, context)?,
             ))
         })
         .collect::<Result<_>>()?;
 
     Ok(Value::Object(mapped_contexts))
+}
+
+fn extract_context(request_context: &RequestContext, context: &ContextType) -> Result<Value> {
+    Ok(Value::Object(
+        context
+            .fields
+            .iter()
+            .map(|field| {
+                let field_value = request_context.extract_value_from_source(
+                    &field.source.annotation_name,
+                    &field.source.value,
+                )?;
+                Ok(field_value.map(|value| (field.name.clone(), value)))
+            })
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten()
+            .collect(),
+    ))
 }
