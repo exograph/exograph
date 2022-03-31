@@ -95,7 +95,6 @@ impl<'a> OperationValidator<'a> {
             .collect()
     }
 
-    // TODO: Remove var_value() from query_context.rs
     fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ExecutionError> {
         let resolved = self
             .variables

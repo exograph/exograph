@@ -1,9 +1,9 @@
 operation: |
     mutation(
         $username: String!, 
-        $email_id: String!, 
-        $primary_email_domain: String!,
-        $secondary_email_domain: String!
+        $primary_email_id: String!,
+        $secondary_email_id: String!
+        $email_domain: String!,
         $initial_event_rsvp: String!
     ) {
         createUser(data: {

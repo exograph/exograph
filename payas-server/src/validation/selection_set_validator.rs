@@ -11,7 +11,10 @@ use async_graphql_value::{ConstValue, Name};
 
 use crate::{
     error::ExecutionError,
-    introspection::{definition::type_introspection::TypeDefinitionIntrospection, schema::Schema},
+    introspection::{
+        definition::type_introspection::TypeDefinitionIntrospection,
+        schema::{Schema, QUERY_ROOT_TYPENAME},
+    },
 };
 
 use super::field::ValidatedField;
@@ -72,28 +75,70 @@ impl<'a> SelectionSetValidator<'a> {
     }
 
     fn validate_field(&self, field: &Positioned<Field>) -> Result<ValidatedField, ExecutionError> {
-        let field_definition = self.get_field_definition(field)?;
+        // Special treatment for the __typename field, since we are not supposed to expose it as
+        // a normal field (for example, we should not declare that the "Concert" type has a __typename field")
+        if field.node.name.node.as_str() == "__typename" {
+            if !field.node.arguments.is_empty() {
+                Err(ExecutionError::StrayArguments(
+                    field
+                        .node
+                        .arguments
+                        .iter()
+                        .map(|arg| arg.0.node.to_string())
+                        .collect(),
+                    field.node.name.to_string(),
+                    field.pos,
+                ))
+            } else if !field.node.selection_set.node.items.is_empty() {
+                Err(ExecutionError::ScalarWithField(
+                    field.node.name.to_string(),
+                    field.pos,
+                ))
+            } else {
+                Ok(ValidatedField {
+                    alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
+                    name: field.node.name.node.clone(),
+                    arguments: vec![],
+                    subfields: vec![],
+                })
+            }
+        } else {
+            let field_definition = if self.container_type.name.node.as_str() == QUERY_ROOT_TYPENAME
+            {
+                // We have to treat the query root type specially, since its __schema and __type fields are not
+                // "ordinary" fields, but are instead special-cased in the introspection query (much the same way
+                // as the __typename field).
+                if field.node.name.node.as_str() == "__schema" {
+                    &self.schema.schema_field_definition
+                } else if field.node.name.node.as_str() == "__type" {
+                    &self.schema.type_field_definition
+                } else {
+                    self.get_field_definition(field)?
+                }
+            } else {
+                self.get_field_definition(field)?
+            };
 
-        let field_type_definition = self.get_type_definition(&field_definition.ty, field)?;
+            let field_type_definition = self.get_type_definition(&field_definition.ty, field)?;
 
-        let arguments = self.validate_arguments(&field_definition.arguments, field)?;
+            let subfield_validator = SelectionSetValidator::new(
+                self.schema,
+                self.operation_name,
+                field_type_definition,
+                self.variables,
+                self.fragment_definitions,
+            );
 
-        let subfield_validator = SelectionSetValidator::new(
-            self.schema,
-            self.operation_name,
-            field_type_definition,
-            self.variables,
-            self.fragment_definitions,
-        );
+            let subfields = subfield_validator.validate(&field.node.selection_set)?;
+            let arguments = self.validate_arguments(&field_definition.arguments, field)?;
 
-        let subfields = subfield_validator.validate(&field.node.selection_set)?;
-
-        Ok(ValidatedField {
-            alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
-            name: field.node.name.node.clone(),
-            arguments,
-            subfields,
-        })
+            Ok(ValidatedField {
+                alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
+                name: field.node.name.node.clone(),
+                arguments,
+                subfields,
+            })
+        }
     }
 
     ///
@@ -158,13 +203,16 @@ impl<'a> SelectionSetValidator<'a> {
                 .map(|name| name.to_string())
                 .collect::<Vec<_>>();
 
-            Err(ExecutionError::StrayArguments(stray_arguments, field.pos))
+            Err(ExecutionError::StrayArguments(
+                stray_arguments,
+                field.node.name.to_string(),
+                field.pos,
+            ))
         } else {
             validated_arguments
         }
     }
 
-    // TODO: Remove validate_fragment_spread() from query_context.rs
     pub fn fragment_definition(
         &self,
         fragment: &Positioned<FragmentSpread>,
@@ -191,8 +239,8 @@ impl<'a> SelectionSetValidator<'a> {
             .get_type_definition(field_underlying_type_name.as_str());
 
         match field_underlying_type {
-            None => Err(ExecutionError::InvalidField(
-                field.node.name.node.as_str().to_string(),
+            None => Err(ExecutionError::InvalidFieldType(
+                field_underlying_type_name.as_str().to_string(),
                 field.pos,
             )),
             Some(field_underlying_type) => Ok(field_underlying_type),
@@ -215,6 +263,7 @@ impl<'a> SelectionSetValidator<'a> {
         match field_definition {
             None => Err(ExecutionError::InvalidField(
                 field.node.name.node.as_str().to_string(),
+                self.container_type.name.node.to_string(),
                 field.pos,
             )),
             Some(field_definition) => Ok(field_definition),

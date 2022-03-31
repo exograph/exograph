@@ -41,7 +41,8 @@ impl FieldResolver<Value> for Schema {
                     .resolve_value(query_context, &field.subfields)
                     .await
             }
-            "directives" => Ok(Value::Null), // TODO
+            "directives" => Ok(Value::Array(vec![])), // TODO
+            "description" => Ok(Value::String("Top-level schema".to_string())),
             "__typename" => Ok(Value::String("__Schema".to_string())),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
                 field_name.to_owned(),

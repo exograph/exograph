@@ -2,7 +2,7 @@ use std::{collections::HashMap, str::FromStr};
 
 use anyhow::{bail, Context, Result};
 use async_graphql_parser::{
-    types::{BaseType, FragmentDefinition, FragmentSpread, OperationType, Type},
+    types::{BaseType, FragmentDefinition, OperationType, Type},
     Positioned,
 };
 use async_graphql_value::{ConstValue, Name, Number};
@@ -26,7 +26,6 @@ use super::{
 
 use crate::{
     data::data_resolver::DataResolver,
-    error::ExecutionError,
     introspection::schema::{
         MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
     },
@@ -72,21 +71,6 @@ impl<'qc> QueryContext<'qc> {
         operation: ValidatedOperation,
     ) -> Result<Vec<(String, QueryResponse)>> {
         operation.resolve_fields(self, &operation.fields).await
-    }
-
-    pub fn fragment_definition(
-        &self,
-        fragment: &Positioned<FragmentSpread>,
-    ) -> Result<&FragmentDefinition, ExecutionError> {
-        self.fragment_definitions
-            .get(&fragment.node.fragment_name.node)
-            .map(|v| &v.node)
-            .ok_or_else(|| {
-                ExecutionError::FragmentDefinitionNotFound(
-                    fragment.node.fragment_name.node.as_str().to_string(),
-                    fragment.pos,
-                )
-            })
     }
 
     async fn resolve_type(&self, field: &ValidatedField) -> Result<JsonValue> {

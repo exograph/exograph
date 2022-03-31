@@ -94,8 +94,9 @@ impl FieldResolver<Value> for Type {
     }
 }
 
-// Resolver for boxed (non-null or list type). Since the underlying type determines the `ofType` value and the type_kind determines the `kind`,
-// all other fields evaluates to null
+/// Resolver for a boxed (non-null or list type). Since the underlying type
+/// determines the `ofType` value and the type_kind determines the `kind`, all
+/// other fields evaluate to null
 #[async_trait(?Send)]
 impl<'a> FieldResolver<Value> for BoxedType<'a> {
     async fn resolve_field<'e>(

@@ -18,17 +18,20 @@ pub enum ExecutionError {
     #[error("No such operation '{0}'")]
     OperationNotFound(String, Pos),
 
-    #[error("Scalar '{0}' must not specify subfields")]
-    ScalarMustNotHaveSubfields(String, Pos),
+    #[error("Field '{0}' is not valid for type '{1}'")]
+    InvalidField(String, String, Pos),
 
-    #[error("Field '{0}' is not valid")]
-    InvalidField(String, Pos),
+    #[error("Field '{0}' is of a scalar type, which should not specify fields")]
+    ScalarWithField(String, Pos),
+
+    #[error("Field type '{0}' is not valid")]
+    InvalidFieldType(String, Pos),
 
     #[error("Required argument '{0}' not found")]
     RequiredArgumentNotFound(String, Pos),
 
-    #[error("Argument(s) '{0:?}' invalid for this operation")]
-    StrayArguments(Vec<String>, Pos),
+    #[error("Argument(s) '{0:?}' invalid for '{1}'")]
+    StrayArguments(Vec<String>, String, Pos),
 
     #[error("No operation found")]
     NoOperationFound,
@@ -45,10 +48,11 @@ impl ExecutionError {
             ExecutionError::FragmentDefinitionNotFound(_, pos) => *pos,
             ExecutionError::InlineFragmentNotSupported(pos) => *pos,
             ExecutionError::OperationNotFound(_, pos) => *pos,
-            ExecutionError::ScalarMustNotHaveSubfields(_, pos) => *pos,
-            ExecutionError::InvalidField(_, pos) => *pos,
+            ExecutionError::InvalidField(_, _, pos) => *pos,
+            ExecutionError::InvalidFieldType(_, pos) => *pos,
+            ExecutionError::ScalarWithField(_, pos) => *pos,
             ExecutionError::RequiredArgumentNotFound(_, pos) => *pos,
-            ExecutionError::StrayArguments(_, pos) => *pos,
+            ExecutionError::StrayArguments(_, _, pos) => *pos,
             ExecutionError::NoOperationFound => Pos::default(),
             ExecutionError::DifferentOperationTypes => Pos::default(),
         }
