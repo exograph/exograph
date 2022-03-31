@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use payas_server_core::request_context::{BoxedParsedContext, ParsedContextExtractor};
+use payas_server_core::request_context::{BoxedParsedContext, ParsedContext};
 use serde_json::Value;
 
-use super::{ContextProcessor, ContextProcessorError};
+use super::{ContextProcessor, ContextProducerError};
 
 pub struct HeaderProcessor;
 
@@ -12,7 +12,7 @@ impl ContextProcessor for HeaderProcessor {
     fn parse_context(
         &self,
         request: &actix_web::HttpRequest,
-    ) -> Result<BoxedParsedContext, super::ContextProcessorError> {
+    ) -> Result<BoxedParsedContext, super::ContextProducerError> {
         let headers = request
             .headers()
             .iter()
@@ -21,11 +21,11 @@ impl ContextProcessor for HeaderProcessor {
                     header_name.to_string().to_ascii_lowercase(),
                     header_value
                         .to_str()
-                        .map_err(|_| ContextProcessorError::Malformed)?
+                        .map_err(|_| ContextProducerError::Malformed)?
                         .to_string(),
                 ))
             })
-            .collect::<Result<HashMap<_, _>, ContextProcessorError>>()?;
+            .collect::<Result<HashMap<_, _>, ContextProducerError>>()?;
 
         Ok(Box::new(ParsedHeaderContext { headers }))
     }
@@ -35,7 +35,7 @@ struct ParsedHeaderContext {
     headers: HashMap<String, String>,
 }
 
-impl ParsedContextExtractor for ParsedHeaderContext {
+impl ParsedContext for ParsedHeaderContext {
     fn annotation_name(&self) -> &str {
         "header"
     }

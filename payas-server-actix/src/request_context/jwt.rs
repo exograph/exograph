@@ -7,12 +7,12 @@ use actix_web_httpauth::headers::authorization::Bearer;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use payas_server_core::request_context::BoxedParsedContext;
-use payas_server_core::request_context::ParsedContextExtractor;
+use payas_server_core::request_context::ParsedContext;
 use serde_json::json;
 use serde_json::Value;
 
 use super::ContextProcessor;
-use super::ContextProcessorError;
+use super::ContextProducerError;
 
 pub enum JwtAuthenticationError {
     ExpiredToken,
@@ -77,14 +77,14 @@ impl ContextProcessor for JwtAuthenticator {
     fn parse_context(
         &self,
         request: &HttpRequest,
-    ) -> Result<BoxedParsedContext, ContextProcessorError> {
+    ) -> Result<BoxedParsedContext, ContextProducerError> {
         let jwt_claims =
             self.extract_authentication(request)
                 .map_err(|e| match e {
                     JwtAuthenticationError::ExpiredToken
-                    | JwtAuthenticationError::TamperedToken => ContextProcessorError::Unauthorized,
+                    | JwtAuthenticationError::TamperedToken => ContextProducerError::Unauthorized,
 
-                    JwtAuthenticationError::Unknown => ContextProcessorError::Malformed,
+                    JwtAuthenticationError::Unknown => ContextProducerError::Malformed,
                 })?
                 .unwrap_or_else(|| json!({}));
 
@@ -96,7 +96,7 @@ struct ParsedJwtContext {
     jwt_claims: Value,
 }
 
-impl ParsedContextExtractor for ParsedJwtContext {
+impl ParsedContext for ParsedJwtContext {
     fn annotation_name(&self) -> &str {
         "jwt"
     }

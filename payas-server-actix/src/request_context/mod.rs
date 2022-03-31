@@ -11,21 +11,21 @@ pub trait ContextProcessor {
     fn parse_context(
         &self,
         request: &HttpRequest,
-    ) -> Result<BoxedParsedContext, ContextProcessorError>;
+    ) -> Result<BoxedParsedContext, ContextProducerError>;
 }
-pub enum ContextProcessorError {
+pub enum ContextProducerError {
     Unauthorized,
     Malformed,
     Unknown,
 }
 
-pub struct RequestContextProcessor {
+pub struct ActixRequestContextProducer {
     processors: Vec<Box<dyn ContextProcessor + Send + Sync>>,
 }
 
-impl RequestContextProcessor {
-    pub fn new() -> RequestContextProcessor {
-        RequestContextProcessor {
+impl ActixRequestContextProducer {
+    pub fn new() -> ActixRequestContextProducer {
+        ActixRequestContextProducer {
             processors: vec![
                 Box::new(JwtAuthenticator::new_from_env()),
                 Box::new(HeaderProcessor),
@@ -38,7 +38,7 @@ impl RequestContextProcessor {
     pub fn generate_request_context(
         &self,
         request: &HttpRequest,
-    ) -> Result<RequestContext, ContextProcessorError> {
+    ) -> Result<RequestContext, ContextProducerError> {
         let parsed_contexts = self
             .processors
             .iter()
@@ -46,13 +46,13 @@ impl RequestContextProcessor {
                 // process values
                 processor.parse_context(request)
             })
-            .collect::<Result<Vec<_>, ContextProcessorError>>()?; // emit errors if we encounter any while gathering context
+            .collect::<Result<Vec<_>, ContextProducerError>>()?; // emit errors if we encounter any while gathering context
 
         Ok(RequestContext::from_parsed_contexts(parsed_contexts))
     }
 }
 
-impl Default for RequestContextProcessor {
+impl Default for ActixRequestContextProducer {
     fn default() -> Self {
         Self::new()
     }

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use serde_json::Value;
 
-pub type BoxedParsedContext = Box<dyn ParsedContextExtractor + Send + Sync>;
+pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
 /// Represent a request context for a particular request
 pub struct RequestContext {
@@ -38,9 +38,11 @@ impl RequestContext {
     }
 }
 
+// Represents a parsed context
+//
 // Provides methods to extract context fields out of a given struct
 // This trait should be implemented on objects that represent a particular source of parsed context fields
-pub trait ParsedContextExtractor {
+pub trait ParsedContext {
     // what annotation does this extractor provide values for?
     // e.g. "jwt", "header", etc.
     fn annotation_name(&self) -> &str;
