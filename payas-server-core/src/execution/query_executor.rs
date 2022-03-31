@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::query_context;
 use crate::{
     error::ExecutionError,
@@ -18,7 +16,6 @@ use payas_model::model::{
 use payas_sql::DatabaseExecutor;
 use query_context::{QueryContext, QueryResponse};
 use serde_json::{Map, Value};
-use typed_arena::Arena;
 
 pub struct QueryExecutor<'a> {
     pub system: &'a ModelSystem,
@@ -99,12 +96,8 @@ impl<'a> QueryExecutor<'a> {
             (
                 validated,
                 QueryContext {
-                    operation_name,
-                    fragment_definitions: HashMap::new(),
-                    variables: &None,
                     executor: self,
                     request_context,
-                    field_arguments: Arena::new(),
                 },
             )
         })

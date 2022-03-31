@@ -407,6 +407,16 @@ pub mod test_support {
 mod tests {
     use super::test_support::{build, parse_sorted};
 
+    // Due to a change in insta version 1.12, test names (hence the snapshot names) get derived
+    // from the surrounding method, so we must use a macro instead of a helper function.
+    macro_rules! assert_typechecking {
+        ($src:expr) => {
+            insta::with_settings!({sort_maps => true}, {
+                insta::assert_yaml_snapshot!(build($src).unwrap())
+            });
+        };
+    }
+
     #[test]
     fn simple() {
         let src = r#"
@@ -420,7 +430,7 @@ mod tests {
         }
         "#;
 
-        assert_typechecking(src);
+        assert_typechecking!(src);
     }
 
     #[test]
@@ -436,7 +446,7 @@ mod tests {
         }
         "#;
 
-        assert_typechecking(src);
+        assert_typechecking!(src);
     }
 
     #[test]
@@ -451,7 +461,7 @@ mod tests {
         }
         "#;
 
-        assert_typechecking(src);
+        assert_typechecking!(src);
     }
 
     #[test]
@@ -468,7 +478,7 @@ mod tests {
         }
         "#;
 
-        assert_typechecking(src);
+        assert_typechecking!(src);
     }
 
     #[test]
@@ -586,12 +596,6 @@ mod tests {
 
         assert_err(model);
         assert_err(field);
-    }
-
-    fn assert_typechecking(src: &str) {
-        insta::with_settings!({sort_maps => true}, {
-            insta::assert_yaml_snapshot!(build(src).unwrap())
-        });
     }
 
     fn assert_err(src: &str) {

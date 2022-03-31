@@ -621,70 +621,74 @@ mod tests {
 
     use super::*;
 
-    fn parsing_test(src: &str) {
-        let mut codemap = CodeMap::new();
-        let file_span = codemap
-            .add_file("input.payas".to_string(), src.to_string())
-            .span;
-        let parsed = parse(src).unwrap();
-        insta::assert_yaml_snapshot!(convert_root(
-            parsed.root_node(),
-            src.as_bytes(),
-            file_span,
-            Path::new("input.payas")
-        )
-        .unwrap());
+    // Due to a change in insta version 1.12, test names (hence the snapshot names) get derived
+    // from the surrounding method, so we must use a macro instead of a helper function.
+    macro_rules! parsing_test {
+        ($src:literal) => {
+            let mut codemap = CodeMap::new();
+            let file_span = codemap
+                .add_file("input.payas".to_string(), $src.to_string())
+                .span;
+            let parsed = parse($src).unwrap();
+            insta::assert_yaml_snapshot!(convert_root(
+                parsed.root_node(),
+                $src.as_bytes(),
+                file_span,
+                Path::new("input.payas")
+            )
+            .unwrap());
+        };
     }
 
     #[test]
     fn expression_precedence() {
-        parsing_test(
+        parsing_test!(
             r#"
-        model Foo {
-            bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
-        }
-        "#,
+            model Foo {
+                bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
+            }
+        "#
         );
     }
 
     #[test]
     fn bb_schema() {
-        parsing_test(
+        parsing_test!(
             r#"
-        // a short comment
-        @table("concerts")
-        model Concert {
-          id: Int = autoincrement() @pk
-          title: String // a comment
-          // another comment
-          venue: Venue @column("venueid")
-          /*
-          not_a_field: Int
-          */
-        }
+            // a short comment
+            @table("concerts")
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String // a comment
+                // another comment
+                venue: Venue @column("venueid")
+                /*
+                not_a_field: Int
+                */
+            }
 
-        /*
-        a multiline comment
-        */
-        @table("venues")
-        model Venue {
-          id: Int = autoincrement() @pk
-          name: String
-          concerts: Set<Concert /* here too! */> @column("venueid")
-        }
-        "#,
+            /*
+            a multiline comment
+            */
+            @table("venues")
+            model Venue {
+                id: Int = autoincrement() @pk
+                name: String
+                concerts: Set<Concert /* here too! */> @column("venueid")
+            }
+        "#
         );
     }
 
     #[test]
     fn context_schema() {
-        parsing_test(
+        parsing_test!(
             r#"
-        context AuthUser {
-            id: Int @jwt("sub")
-            roles: Array<String> @jwt
-         }
-        "#,
+            context AuthUser {
+                id: Int @jwt("sub")
+                roles: Array<String> @jwt
+            }
+        "#
         );
     }
 }

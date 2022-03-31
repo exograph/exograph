@@ -1,10 +1,7 @@
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
-use async_graphql_parser::{
-    types::{BaseType, FragmentDefinition, OperationType, Type},
-    Positioned,
-};
+use async_graphql_parser::types::{BaseType, OperationType, Type};
 use async_graphql_value::{ConstValue, Name, Number};
 use async_trait::async_trait;
 use chrono::prelude::*;
@@ -16,8 +13,7 @@ use payas_sql::{
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParam,
 };
 use pg_bigdecimal::{BigDecimal, PgNumeric};
-use serde_json::{Map, Value as JsonValue};
-use typed_arena::Arena;
+use serde_json::Value as JsonValue;
 
 use super::{
     query_executor::QueryExecutor,
@@ -36,12 +32,8 @@ const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
 pub struct QueryContext<'a> {
-    pub operation_name: Option<&'a str>,
-    pub fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
-    pub variables: &'a Option<&'a Map<String, JsonValue>>,
     pub executor: &'a QueryExecutor<'a>,
     pub request_context: &'a serde_json::Value,
-    pub field_arguments: Arena<Vec<(Positioned<Name>, Positioned<ConstValue>)>>,
 }
 
 #[derive(Debug, Clone)]
