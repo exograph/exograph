@@ -20,13 +20,13 @@ pub enum ContextProducerError {
 }
 
 pub struct ActixRequestContextProducer {
-    processors: Vec<Box<dyn ActixContextProducer + Send + Sync>>,
+    producers: Vec<Box<dyn ActixContextProducer + Send + Sync>>,
 }
 
 impl ActixRequestContextProducer {
     pub fn new() -> ActixRequestContextProducer {
         ActixRequestContextProducer {
-            processors: vec![
+            producers: vec![
                 Box::new(JwtAuthenticator::new_from_env()),
                 Box::new(HeaderProcessor),
                 Box::new(EnvironmentProcessor),
@@ -40,11 +40,11 @@ impl ActixRequestContextProducer {
         request: &HttpRequest,
     ) -> Result<RequestContext, ContextProducerError> {
         let parsed_contexts = self
-            .processors
+            .producers
             .iter()
-            .map(|processor| {
-                // process values
-                processor.parse_context(request)
+            .map(|producer| {
+                // create parsed context
+                producer.parse_context(request)
             })
             .collect::<Result<Vec<_>, ContextProducerError>>()?; // emit errors if we encounter any while gathering context
 
