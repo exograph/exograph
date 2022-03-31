@@ -11,7 +11,7 @@ use payas_server_core::request_context::ParsedContext;
 use serde_json::json;
 use serde_json::Value;
 
-use super::ContextProcessor;
+use super::ActixContextProducer;
 use super::ContextProducerError;
 
 pub enum JwtAuthenticationError {
@@ -73,7 +73,7 @@ impl JwtAuthenticator {
     }
 }
 
-impl ContextProcessor for JwtAuthenticator {
+impl ActixContextProducer for JwtAuthenticator {
     fn parse_context(
         &self,
         request: &HttpRequest,

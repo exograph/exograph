@@ -1,11 +1,11 @@
 use payas_server_core::request_context::{BoxedParsedContext, ParsedContext};
 use serde_json::Value;
 
-use super::{ContextProcessor, ContextProducerError};
+use super::{ActixContextProducer, ContextProducerError};
 
 pub struct EnvironmentProcessor;
 
-impl ContextProcessor for EnvironmentProcessor {
+impl ActixContextProducer for EnvironmentProcessor {
     fn parse_context(
         &self,
         _request: &actix_web::HttpRequest,

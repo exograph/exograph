@@ -7,7 +7,7 @@ use payas_server_core::request_context::{BoxedParsedContext, RequestContext};
 
 use self::{environment::EnvironmentProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
 
-pub trait ContextProcessor {
+pub trait ActixContextProducer {
     fn parse_context(
         &self,
         request: &HttpRequest,
@@ -20,7 +20,7 @@ pub enum ContextProducerError {
 }
 
 pub struct ActixRequestContextProducer {
-    processors: Vec<Box<dyn ContextProcessor + Send + Sync>>,
+    processors: Vec<Box<dyn ActixContextProducer + Send + Sync>>,
 }
 
 impl ActixRequestContextProducer {

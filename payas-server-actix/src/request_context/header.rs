@@ -4,11 +4,11 @@ use anyhow::Result;
 use payas_server_core::request_context::{BoxedParsedContext, ParsedContext};
 use serde_json::Value;
 
-use super::{ContextProcessor, ContextProducerError};
+use super::{ActixContextProducer, ContextProducerError};
 
 pub struct HeaderProcessor;
 
-impl ContextProcessor for HeaderProcessor {
+impl ActixContextProducer for HeaderProcessor {
     fn parse_context(
         &self,
         request: &actix_web::HttpRequest,
