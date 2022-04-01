@@ -254,17 +254,16 @@ impl<'a> InterceptedOperation<'a> {
 async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
     query_context: &'a QueryContext<'a>,
-
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     claytip_get_interceptor: Option<String>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<serde_json::Value> {
-    let script = &query_context.executor.system.deno_scripts[interceptor.script];
+    let script = &query_context.system.deno_scripts[interceptor.script];
     let arg_sequence = interceptor
         .arguments
         .iter()
         .map(|arg| {
-            let arg_type = &query_context.executor.system.types[arg.type_id];
+            let arg_type = &query_context.system.types[arg.type_id];
 
             if arg_type.name == "Operation" || arg_type.name == "ClaytipInjected" {
                 // TODO: Change this to supply a shim if the arg_type is one of the shimmable types

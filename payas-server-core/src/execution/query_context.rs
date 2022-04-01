@@ -20,6 +20,7 @@ use super::{
     resolver::{FieldResolver, Resolver},
 };
 
+use crate::introspection::schema::Schema;
 use crate::{
     data::data_resolver::DataResolver,
     introspection::schema::{
@@ -32,7 +33,9 @@ const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
 pub struct QueryContext<'a> {
-    pub executor: &'a QueryExecutor<'a>,
+    pub executor: &'a QueryExecutor,
+    pub system: &'a ModelSystem,
+    pub schema: &'a Schema,
     pub request_context: &'a serde_json::Value,
 }
 
@@ -108,7 +111,7 @@ impl<'qc> QueryContext<'qc> {
     }
 
     pub fn get_system(&self) -> &ModelSystem {
-        self.executor.system
+        self.system
     }
 }
 
@@ -334,7 +337,6 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
                 )),
                 "__schema" => Ok(QueryResponse::Json(
                     query_context
-                        .executor
                         .schema
                         .resolve_value(query_context, &field.subfields)
                         .await?,
@@ -351,7 +353,6 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
             }
         } else {
             query_context
-                .executor
                 .system
                 .resolve(field, &self.typ, query_context)
                 .await

@@ -76,7 +76,7 @@ impl FieldResolver<Value> for Type {
                 BaseType::Named(name) => {
                     // See commented out derivation of FieldResolver for Option<T>
                     //query_context.schema.get_type_definition(name).resolve_field(query_context, field)
-                    let tpe = query_context.executor.schema.get_type_definition(name);
+                    let tpe = query_context.schema.get_type_definition(name);
                     match tpe {
                         Some(tpe) => tpe.resolve_field(query_context, field).await,
                         None => Ok(Value::Null),

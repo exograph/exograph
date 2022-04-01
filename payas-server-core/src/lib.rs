@@ -1,14 +1,17 @@
+use std::{fs::File, io::BufReader, path::Path};
+
 /// Provides core functionality for handling incoming queries without depending
 /// on any specific web framework.
 ///
 /// The `resolve` function is responsible for doing the work, using information
-/// extracted from an incoing request, and returning the response as a stream.
-use anyhow::Result;
+/// extracted from an incoming request, and returning the response as a stream.
+use anyhow::{Context, Result};
 use async_stream::try_stream;
+use bincode::deserialize_from;
 use bytes::Bytes;
 use error::ExecutionError;
 use execution::query_context::QueryResponse;
-use execution::query_executor::QueryExecutor;
+pub use execution::query_executor::QueryExecutor;
 use futures::Stream;
 use introspection::schema::Schema;
 use payas_deno::DenoExecutor;
@@ -24,46 +27,50 @@ mod introspection;
 pub mod request_context;
 mod validation;
 
-/// Opaque type encapsulating the information required by the `resolve`
-/// function.
-///
-/// A server implmentation should call `create_system_info` and store the
-/// returned value, passing a reference to it each time it calls `resolve`.
-///
-/// For example, in actix, this should be added to the server using `app_data`.
-pub struct SystemInfo(ModelSystem, Schema, Database, DenoExecutor);
+pub fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
+    if !Path::new(&claypot_file).exists() {
+        anyhow::bail!("File '{}' not found", claypot_file);
+    }
+    match File::open(&claypot_file) {
+        Ok(file) => {
+            let claypot_file_buffer = BufReader::new(file);
+            let in_file = BufReader::new(claypot_file_buffer);
+            deserialize_from(in_file)
+                .with_context(|| format!("Failed to read claypot file {}", claypot_file))
+        }
+        Err(e) => {
+            anyhow::bail!("Failed to open claypot file {}: {}", claypot_file, e)
+        }
+    }
+}
 
-/// Creates the data required by the server endpoint.
-///
-/// It's assumed that the server has already loaded a claypot file to obtain
-/// a `ModelSystem` instance. It also provides the `Database` instance which
-/// it wishes to use for storage.
-pub fn create_system_info(system: ModelSystem, database: Database) -> SystemInfo {
+pub fn create_query_executor(claypot_file: &str, database: Database) -> Result<QueryExecutor> {
+    let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
     let deno_executor = DenoExecutor::default();
-    SystemInfo(system, schema, database, deno_executor)
+
+    let database_executor = DatabaseExecutor { database };
+
+    let executor = QueryExecutor {
+        database_executor,
+        deno_execution: deno_executor,
+        system,
+        schema,
+    };
+
+    Ok(executor)
 }
 
 /// Resolves an incoming query, returning a response stream which containing JSON
 /// which can either be the data returned by the query, or a list of errors if
 /// something went wrong.
 pub async fn resolve<E>(
-    system_info: &SystemInfo,
+    executor: &QueryExecutor,
     operation_name: Option<&str>,
     query_str: &str,
     variables: Option<&Map<String, Value>>,
     request_context: RequestContext,
 ) -> impl Stream<Item = Result<Bytes, E>> {
-    let SystemInfo(system, schema, database, deno_execution) = system_info;
-
-    let database_executor = DatabaseExecutor { database };
-    let executor = QueryExecutor {
-        system,
-        schema,
-        database_executor: &database_executor,
-        deno_execution,
-    };
-
     let response = executor
         .execute(operation_name, query_str, variables, request_context)
         .await;

@@ -115,7 +115,7 @@ pub fn compute_sql_access_predicate<'a>(
             access_solver::solve_access(
                 access_expr,
                 query_context.request_context,
-                query_context.executor.system,
+                query_context.system,
             )
         }
     }
@@ -143,7 +143,7 @@ pub fn compute_service_access_predicate<'a>(
             access_solver::solve_access(
                 access_expr,
                 query_context.request_context,
-                query_context.executor.system,
+                query_context.system,
             )
         }
         _ => panic!(),
@@ -157,7 +157,7 @@ pub fn compute_service_access_predicate<'a>(
     let method_level_access = access_solver::solve_access(
         method_access_expr,
         query_context.request_context,
-        query_context.executor.system,
+        query_context.system,
     );
     let method_level_access = method_level_access.predicate();
 
@@ -198,7 +198,7 @@ impl<'a> OperationResolverResult<'a> {
             }
 
             OperationResolverResult::DenoOperation(method_id) => {
-                let method = &query_context.executor.system.methods[*method_id];
+                let method = &query_context.system.methods[*method_id];
 
                 let access_predicate =
                     compute_service_access_predicate(&method.return_type, method, query_context);
@@ -220,7 +220,7 @@ async fn resolve_deno(
     field: &ValidatedField,
     query_context: &QueryContext<'_>,
 ) -> Result<serde_json::Value> {
-    let script = &query_context.executor.system.deno_scripts[method.script];
+    let script = &query_context.system.deno_scripts[method.script];
 
     let mapped_args = field
         .arguments
@@ -237,7 +237,7 @@ async fn resolve_deno(
         .arguments
         .iter()
         .map(|arg| {
-            let arg_type = &query_context.executor.system.types[arg.type_id];
+            let arg_type = &query_context.system.types[arg.type_id];
 
             if arg.is_injected {
                 Ok(Arg::Shim(arg_type.name.clone()))
