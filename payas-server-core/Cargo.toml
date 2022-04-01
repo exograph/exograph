@@ -32,3 +32,5 @@ payas-model = { path = "../payas-model" }
 payas-deno = { path = "../payas-deno" }
 payas-parser = { path = "../payas-parser" }
 
+[dev-dependencies]
+insta = "1.14.0"
