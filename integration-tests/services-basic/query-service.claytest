@@ -1,5 +1,5 @@
 operation: |
-    query Foo {
+    query Foo($factor_a: Int!, $factor_b: Int!, $dividend: Int!, $divisor: Int!) {
       addDirect: add(x: 1, y: 2)
 
       addVariables: add(x: $factor_a, y: $factor_b)

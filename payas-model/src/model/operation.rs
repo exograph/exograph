@@ -15,6 +15,14 @@ use super::{
     types::{GqlType, GqlTypeModifier},
 };
 
+pub trait GraphQLOperation {
+    fn name(&self) -> &str;
+
+    fn interceptors(&self) -> &Interceptors;
+
+    fn return_type(&self) -> &OperationReturnType;
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Query {
     pub name: String,
@@ -38,6 +46,20 @@ pub struct DatabaseQueryParameter {
     pub order_by_param: Option<OrderByParameter>,
     pub limit_param: Option<LimitParameter>,
     pub offset_param: Option<OffsetParameter>,
+}
+
+impl GraphQLOperation for Query {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn interceptors(&self) -> &Interceptors {
+        &self.interceptors
+    }
+
+    fn return_type(&self) -> &OperationReturnType {
+        &self.return_type
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -100,6 +122,20 @@ pub struct UpdateDataParameter {
     pub name: String,
     pub type_name: String,
     pub type_id: SerializableSlabIndex<GqlType>,
+}
+
+impl GraphQLOperation for Mutation {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn interceptors(&self) -> &Interceptors {
+        &self.interceptors
+    }
+
+    fn return_type(&self) -> &OperationReturnType {
+        &self.return_type
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

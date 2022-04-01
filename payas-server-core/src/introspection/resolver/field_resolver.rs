@@ -1,12 +1,9 @@
-use async_graphql_parser::{
-    types::{Field, FieldDefinition},
-    Positioned,
-};
+use async_graphql_parser::types::FieldDefinition;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::execution::query_context::QueryContext;
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
+use crate::{execution::query_context::QueryContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
 #[async_trait(?Send)]
@@ -14,23 +11,19 @@ impl FieldResolver<Value> for FieldDefinition {
     async fn resolve_field<'e>(
         &'e self,
         query_context: &'e QueryContext<'e>,
-        field: &'e Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<Value> {
-        match field.node.name.node.as_str() {
+        match field.name.as_str() {
             "name" => Ok(Value::String(self.name.node.as_str().to_owned())),
             "description" => Ok(self
                 .description
                 .clone()
                 .map(|v| Value::String(v.node))
                 .unwrap_or(Value::Null)),
-            "type" => {
-                self.ty
-                    .resolve_value(query_context, &field.node.selection_set)
-                    .await
-            }
+            "type" => self.ty.resolve_value(query_context, &field.subfields).await,
             "args" => {
                 self.arguments
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
             "isDeprecated" => Ok(Value::Bool(false)), // TODO

@@ -1,0 +1,10 @@
+---
+source: payas-server/src/validation/document_validator.rs
+expression: validator.validate(create_query_document(query))
+---
+Err(
+    InvalidField(
+        "foobar",
+        Pos(6:21),
+    ),
+)

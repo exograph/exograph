@@ -9,12 +9,14 @@ use payas_sql::{
 use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
 
-use crate::execution::query_context::{QueryContext, QueryResponse};
+use crate::{
+    execution::query_context::{QueryContext, QueryResponse},
+    validation::field::ValidatedField,
+};
 
 use super::access_solver;
 use super::interception::InterceptedOperation;
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
-use async_graphql_parser::{types::Field, Positioned};
 use async_graphql_value::ConstValue;
 use payas_model::model::{
     mapped_arena::SerializableSlabIndex,
@@ -57,13 +59,13 @@ pub trait SQLUpdateMapper<'a> {
 pub trait OperationResolver<'a> {
     fn resolve_operation(
         &'a self,
-        field: &'a Positioned<Field>,
+        field: &'a ValidatedField,
         query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>>;
 
     async fn execute(
         &'a self,
-        field: &'a Positioned<Field>,
+        field: &'a ValidatedField,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
         let resolver_result = self.resolve_operation(field, query_context)?;
@@ -171,7 +173,7 @@ pub fn compute_service_access_predicate<'a>(
 impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
         &self,
-        field: &Positioned<Field>,
+        field: &'a ValidatedField,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
@@ -215,18 +217,18 @@ impl<'a> OperationResolverResult<'a> {
 
 async fn resolve_deno(
     method: &ServiceMethod,
-    field: &Positioned<Field>,
+    field: &ValidatedField,
     query_context: &QueryContext<'_>,
 ) -> Result<serde_json::Value> {
     let script = &query_context.executor.system.deno_scripts[method.script];
 
-    let mapped_args = query_context
-        .field_arguments(&field.node)?
+    let mapped_args = field
+        .arguments
         .iter()
         .map(|(gql_name, gql_value)| {
             (
-                gql_name.node.as_str().to_owned(),
-                gql_value.node.clone().into_json().unwrap(),
+                gql_name.as_str().to_owned(),
+                gql_value.clone().into_json().unwrap(),
             )
         })
         .collect::<HashMap<_, _>>();
@@ -288,7 +290,7 @@ async fn resolve_deno(
 
     let result = if let serde_json::Value::Object(_) = function_result {
         let resolved_set = function_result
-            .resolve_selection_set(query_context, &field.node.selection_set)
+            .resolve_fields(query_context, &field.subfields)
             .await?;
         serde_json::Value::Object(resolved_set.into_iter().collect())
     } else {

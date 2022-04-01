@@ -54,4 +54,12 @@ impl ModelSystem {
     pub fn create_column_with_id<'a>(&'a self, column_id: &ColumnId) -> Column<'a> {
         Column::Physical(column_id.get_column(self))
     }
+
+    pub fn query_by_name(&self, name: &str) -> Option<&Query> {
+        self.queries.get_by_key(name)
+    }
+
+    pub fn mutation_by_name(&self, name: &str) -> Option<&Mutation> {
+        self.mutations.get_by_key(name)
+    }
 }

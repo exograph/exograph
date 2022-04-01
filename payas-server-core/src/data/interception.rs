@@ -1,10 +1,12 @@
-use async_graphql_parser::{types::Field, Positioned};
 use async_recursion::async_recursion;
 use futures::FutureExt;
 use payas_deno::{Arg, FnClaytipExecuteQuery, FnClaytipInterceptorProceed};
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
-use crate::execution::query_context::{QueryContext, QueryResponse};
+use crate::{
+    execution::query_context::{QueryContext, QueryResponse},
+    validation::field::ValidatedField,
+};
 use anyhow::{bail, Result};
 use serde_json::{Map, Value};
 
@@ -175,7 +177,7 @@ impl<'a> InterceptedOperation<'a> {
     #[async_recursion(?Send)]
     pub async fn execute(
         &'a self,
-        field: &'a Positioned<Field>,
+        field: &'a ValidatedField,
         query_context: &'a QueryContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
