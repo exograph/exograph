@@ -1,5 +1,6 @@
 use super::query_context;
 use crate::request_context::RequestContext;
+use crate::QueryPayload;
 use crate::{
     error::ExecutionError,
     introspection::schema::Schema,
@@ -14,7 +15,7 @@ use payas_deno::DenoExecutor;
 use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextType};
 use payas_sql::DatabaseExecutor;
 use query_context::{QueryContext, QueryResponse};
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 /// Opaque type encapsulating the information required by the [crate::resolve]
 /// function.
@@ -33,32 +34,27 @@ pub struct QueryExecutor {
 impl QueryExecutor {
     pub async fn execute(
         &self,
-        operation_name: Option<&str>,
-        query_str: &str,
-        variables: Option<&Map<String, Value>>,
+        query_payload: QueryPayload,
         request_context: RequestContext,
     ) -> Result<Vec<(String, QueryResponse)>> {
         let request_context = create_mapped_context(&self.system.contexts, &request_context)?;
 
-        self.execute_with_request_context(operation_name, query_str, variables, request_context)
+        self.execute_with_request_context(query_payload, request_context)
             .await
     }
 
     // A version of execute that is suitable to be exposed through a shim to services
     pub async fn execute_with_request_context(
         &self,
-        operation_name: Option<&str>,
-        query_str: &str,
-        variables: Option<&Map<String, Value>>,
+        query_payload: QueryPayload,
         request_context: Value,
     ) -> Result<Vec<(String, QueryResponse)>> {
         let (document, query_context) =
-            self.create_query_context(operation_name, query_str, variables, &request_context)?;
+            self.create_query_context(query_payload, &request_context)?;
 
         let resolutions = match document.operation_typ {
             OperationType::Query => {
                 // process queries concurrently
-
                 let query_resolution_futures: Vec<_> = document
                     .operations
                     .into_iter()
@@ -89,14 +85,16 @@ impl QueryExecutor {
 
     fn create_query_context<'a>(
         &'a self,
-        operation_name: Option<&str>,
-        query_str: &str,
-        variables: Option<&Map<String, Value>>,
+        query_payload: QueryPayload,
         request_context: &'a serde_json::Value,
     ) -> Result<(ValidatedDocument, QueryContext<'a>), ExecutionError> {
-        let document = parse_query(query_str).unwrap();
+        let document = parse_query(query_payload.query).unwrap();
 
-        let document_validator = DocumentValidator::new(&self.schema, operation_name, variables);
+        let document_validator = DocumentValidator::new(
+            &self.schema,
+            query_payload.operation_name,
+            query_payload.variables,
+        );
 
         document_validator.validate(document).map(|validated| {
             (

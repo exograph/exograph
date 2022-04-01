@@ -3,7 +3,7 @@ pub mod request_context;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use payas_server_core::QueryExecutor;
+use payas_server_core::{QueryExecutor, QueryPayload};
 
 use request_context::{ActixRequestContextProducer, ContextProducerError};
 use serde_json::Value;
@@ -24,23 +24,25 @@ pub async fn resolve(
 
     match request_context {
         Ok(request_context) => {
-            let executor = executor.as_ref();
+            let query_payload: Result<QueryPayload, _> = serde_json::from_value(body.into_inner());
 
-            let operation_name = body["operationName"].as_str();
-            let query_str = body["query"].as_str().unwrap();
-            let variables = body["variables"].as_object();
+            match query_payload {
+                Ok(query_payload) => {
+                    let stream = payas_server_core::resolve::<Error>(
+                        executor.as_ref(),
+                        query_payload,
+                        request_context,
+                    )
+                    .await;
 
-            let stream = payas_server_core::resolve::<Error>(
-                executor,
-                operation_name,
-                query_str,
-                variables,
-                request_context,
-            )
-            .await;
-            HttpResponse::Ok()
-                .content_type("application/json")
-                .streaming(Box::pin(stream))
+                    HttpResponse::Ok()
+                        .content_type("application/json")
+                        .streaming(Box::pin(stream))
+                }
+                Err(_) => {
+                    return HttpResponse::BadRequest().body(error_msg!("Invalid query payload"));
+                }
+            }
         }
 
         Err(err) => {

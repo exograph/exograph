@@ -8,15 +8,15 @@ use super::{document::ValidatedDocument, operation_validator::OperationValidator
 /// Context for validating a document.
 pub struct DocumentValidator<'a> {
     schema: &'a Schema,
-    operation_name: Option<&'a str>,
-    variables: Option<&'a Map<String, Value>>,
+    operation_name: Option<String>,
+    variables: Option<Map<String, Value>>,
 }
 
 impl<'a> DocumentValidator<'a> {
     pub fn new(
         schema: &'a Schema,
-        operation_name: Option<&'a str>,
-        variables: Option<&'a Map<String, Value>>,
+        operation_name: Option<String>,
+        variables: Option<Map<String, Value>>,
     ) -> Self {
         Self {
             schema,
@@ -31,7 +31,7 @@ impl<'a> DocumentValidator<'a> {
     /// - Validate that there is at least one operation
     /// - Other validations are delegated to the operation validator
     pub fn validate(
-        &self,
+        self,
         document: ExecutableDocument,
     ) -> Result<ValidatedDocument, ExecutionError> {
         let operation_validator = OperationValidator::new(
@@ -190,7 +190,7 @@ mod tests {
         let validator = DocumentValidator {
             schema: &schema,
             operation_name: None,
-            variables: Some(&variables),
+            variables: Some(variables),
         };
 
         let query = r#"
@@ -217,7 +217,7 @@ mod tests {
         let validator = DocumentValidator {
             schema: &schema,
             operation_name: None,
-            variables: Some(&variables),
+            variables: Some(variables),
         };
 
         let query = r#"

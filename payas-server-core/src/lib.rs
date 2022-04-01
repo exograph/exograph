@@ -18,6 +18,7 @@ use payas_deno::DenoExecutor;
 use payas_model::model::system::ModelSystem;
 use payas_sql::{Database, DatabaseExecutor};
 use request_context::RequestContext;
+use serde::Deserialize;
 use serde_json::{Map, Value};
 
 mod data;
@@ -27,7 +28,7 @@ mod introspection;
 pub mod request_context;
 mod validation;
 
-pub fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
+fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
     if !Path::new(&claypot_file).exists() {
         anyhow::bail!("File '{}' not found", claypot_file);
     }
@@ -61,19 +62,26 @@ pub fn create_query_executor(claypot_file: &str, database: Database) -> Result<Q
     Ok(executor)
 }
 
-/// Resolves an incoming query, returning a response stream which containing JSON
-/// which can either be the data returned by the query, or a list of errors if
-/// something went wrong.
+#[derive(Debug, Deserialize)]
+pub struct QueryPayload {
+    operation_name: Option<String>,
+    query: String,
+    variables: Option<Map<String, Value>>,
+}
+
+/// Resolves an incoming query, returning a response stream which containing
+/// JSON which can either be the data returned by the query, or a list of errors
+/// if something went wrong.
+///
+/// In a typical use case (for example payas-server-actix), the caller will
+/// first call `create_query_executor` to create a `QueryExecutor` object, and
+/// then call `resolve` with that object.
 pub async fn resolve<E>(
     executor: &QueryExecutor,
-    operation_name: Option<&str>,
-    query_str: &str,
-    variables: Option<&Map<String, Value>>,
+    query_payload: QueryPayload,
     request_context: RequestContext,
 ) -> impl Stream<Item = Result<Bytes, E>> {
-    let response = executor
-        .execute(operation_name, query_str, variables, request_context)
-        .await;
+    let response = executor.execute(query_payload, request_context).await;
 
     try_stream! {
         match response {

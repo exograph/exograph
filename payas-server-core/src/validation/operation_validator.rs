@@ -17,8 +17,8 @@ use super::{operation::ValidatedOperation, selection_set_validator::SelectionSet
 /// Context for validating an operation.
 pub struct OperationValidator<'a> {
     schema: &'a Schema,
-    operation_name: Option<&'a str>,
-    variables: Option<&'a Map<String, Value>>,
+    operation_name: Option<String>,
+    variables: Option<Map<String, Value>>,
     fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
 }
 
@@ -26,8 +26,8 @@ impl<'a> OperationValidator<'a> {
     #[must_use]
     pub fn new(
         schema: &'a Schema,
-        operation_name: Option<&'a str>,
-        variables: Option<&'a Map<String, Value>>,
+        operation_name: Option<String>,
+        variables: Option<Map<String, Value>>,
         fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
     ) -> Self {
         Self {
@@ -79,7 +79,7 @@ impl<'a> OperationValidator<'a> {
         let variables = self.validate_variables(operation)?;
         let selection_set_validator = SelectionSetValidator::new(
             self.schema,
-            self.operation_name,
+            self.operation_name.as_deref(),
             container_type,
             &variables,
             &self.fragment_definitions,
@@ -125,6 +125,7 @@ impl<'a> OperationValidator<'a> {
     fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ExecutionError> {
         let resolved = self
             .variables
+            .as_ref()
             .and_then(|variables| variables.get(name.node.as_str()))
             .ok_or_else(|| {
                 ExecutionError::VariableNotFound(name.node.as_str().to_string(), name.pos)

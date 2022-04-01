@@ -2926,6 +2926,7 @@ dependencies = [
  "payas-sql",
  "pg_bigdecimal",
  "postgres-types",
+ "serde",
  "serde_json",
  "thiserror",
  "tokio-postgres",
