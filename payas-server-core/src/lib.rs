@@ -22,6 +22,7 @@ mod error;
 mod execution;
 mod introspection;
 pub mod request_context;
+mod validation;
 
 /// Opaque type encapsulating the information required by the `resolve`
 /// function.

@@ -1,7 +1,7 @@
 use crate::introspection::schema::{
     Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
 };
-use async_graphql_parser::{types::Field, Positioned};
+use crate::validation::field::ValidatedField;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -14,34 +14,35 @@ impl FieldResolver<Value> for Schema {
     async fn resolve_field<'e>(
         &'e self,
         query_context: &'e QueryContext<'e>,
-        field: &'e Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<Value> {
         let schema = query_context.executor.schema;
-        match field.node.name.node.as_str() {
+        match field.name.as_str() {
             "types" => {
                 self.type_definitions
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
             "queryType" => {
                 schema
                     .get_type_definition(QUERY_ROOT_TYPENAME)
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
             "mutationType" => {
                 schema
                     .get_type_definition(MUTATION_ROOT_TYPENAME)
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
             "subscriptionType" => {
                 schema
                     .get_type_definition(SUBSCRIPTION_ROOT_TYPENAME)
-                    .resolve_value(query_context, &field.node.selection_set)
+                    .resolve_value(query_context, &field.subfields)
                     .await
             }
-            "directives" => Ok(Value::Null), // TODO
+            "directives" => Ok(Value::Array(vec![])), // TODO
+            "description" => Ok(Value::String("Top-level schema".to_string())),
             "__typename" => Ok(Value::String("__Schema".to_string())),
             field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
                 field_name.to_owned(),

@@ -33,10 +33,11 @@ impl TypeDefinitionProvider for GqlType {
                         .collect();
                     TypeKind::InputObject(InputObjectType { fields })
                 } else {
-                    let fields = model_fields
+                    let fields: Vec<_> = model_fields
                         .iter()
                         .map(|model_field| default_positioned(model_field.field_definition(system)))
                         .collect();
+
                     TypeKind::Object(ObjectType {
                         implements: vec![],
                         fields,

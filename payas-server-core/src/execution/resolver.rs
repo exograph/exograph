@@ -1,46 +1,21 @@
 use std::iter::FromIterator;
 
 use anyhow::Result;
-use async_graphql_parser::{
-    types::{Field, Selection, SelectionSet},
-    Positioned,
-};
+use async_graphql_parser::Positioned;
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::Value;
 
+use crate::validation::field::ValidatedField;
+
 use super::query_context::QueryContext;
-
-pub trait OutputName {
-    fn output_name(&self) -> String;
-}
-
-impl OutputName for Field {
-    fn output_name(&self) -> String {
-        (&self
-            .alias
-            .as_ref()
-            .map(|alias| alias.node.to_string())
-            .unwrap_or_else(|| self.name.node.to_string()))
-            .to_string()
-    }
-}
-
-impl<T> OutputName for Positioned<T>
-where
-    T: OutputName,
-{
-    fn output_name(&self) -> String {
-        self.node.output_name()
-    }
-}
 
 #[async_trait(?Send)]
 pub trait Resolver<R> {
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e Positioned<SelectionSet>,
+        fields: &'e [ValidatedField],
     ) -> Result<R>;
 }
 
@@ -56,47 +31,23 @@ where
     async fn resolve_field<'e>(
         &'e self,
         query_context: &'e QueryContext<'e>,
-        field: &'e Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<R>;
 
-    // TODO: Move out of the trait to avoid it being overriden?
-    async fn resolve_selection(
+    async fn resolve_fields(
         &self,
         query_context: &QueryContext<'_>,
-        selection: &Positioned<Selection>,
+        fields: &[ValidatedField],
     ) -> Result<Vec<(String, R)>> {
-        match &selection.node {
-            Selection::Field(field) => Ok(vec![(
-                field.output_name(),
-                self.resolve_field(query_context, field).await?,
-            )]),
-            Selection::FragmentSpread(fragment_spread) => {
-                let fragment_definition = query_context.fragment_definition(fragment_spread)?;
-                self.resolve_selection_set(query_context, &fragment_definition.selection_set)
+        futures::stream::iter(fields.iter())
+            .then(|field| async {
+                self.resolve_field(query_context, field)
                     .await
-            }
-            Selection::InlineFragment(_inline_fragment) => {
-                Ok(vec![]) // TODO
-            }
-        }
-    }
-
-    async fn resolve_selection_set(
-        &self,
-        query_context: &QueryContext<'_>,
-        selection_set: &Positioned<SelectionSet>,
-    ) -> Result<Vec<(String, R)>> {
-        let selections: Vec<_> = futures::stream::iter(selection_set.node.items.iter())
-            .then(|selection| self.resolve_selection(query_context, selection))
-            .collect()
-            .await;
-
-        selections
-            .into_iter()
-            .flat_map(|selection| match selection {
-                Ok(s) => s.into_iter().map(Ok).collect(),
-                Err(err) => vec![Err(err)],
+                    .map(|value| (field.output_name(), value))
             })
+            .collect::<Vec<Result<_>>>()
+            .await
+            .into_iter()
             .collect()
     }
 }
@@ -147,11 +98,10 @@ where
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e Positioned<SelectionSet>,
+        fields: &'e [ValidatedField],
     ) -> Result<Value> {
         Ok(Value::Object(FromIterator::from_iter(
-            self.resolve_selection_set(query_context, selection_set)
-                .await?,
+            self.resolve_fields(query_context, fields).await?,
         )))
     }
 }
@@ -164,10 +114,10 @@ where
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e Positioned<SelectionSet>,
+        fields: &'e [ValidatedField],
     ) -> Result<Value> {
         match self {
-            Some(elem) => elem.resolve_value(query_context, selection_set).await,
+            Some(elem) => elem.resolve_value(query_context, fields).await,
             None => Ok(Value::Null),
         }
     }
@@ -181,9 +131,9 @@ where
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e Positioned<SelectionSet>,
+        fields: &'e [ValidatedField],
     ) -> Result<Value> {
-        self.node.resolve_value(query_context, selection_set).await
+        self.node.resolve_value(query_context, fields).await
     }
 }
 
@@ -195,10 +145,10 @@ where
     async fn resolve_value<'e>(
         &self,
         query_context: &'e QueryContext<'e>,
-        selection_set: &'e Positioned<SelectionSet>,
+        fields: &'e [ValidatedField],
     ) -> Result<Value> {
         let resolved: Vec<_> = futures::stream::iter(self.iter())
-            .then(|elem| elem.resolve_value(query_context, selection_set))
+            .then(|elem| elem.resolve_value(query_context, fields))
             .collect()
             .await;
 

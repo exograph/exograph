@@ -1,5 +1,5 @@
 operation: |
-    query($prefix: String!, $suffix: String!, $like: String!) {
+    query($prefix: String!, $suffix: String!, $like: String!, $ilike: String!) {
         starts_with: logs(where: { text: { startsWith: $prefix } }) {
             text
         }

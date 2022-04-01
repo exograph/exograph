@@ -4,6 +4,7 @@ use crate::{
         query_resolver::QuerySQLOperations,
     },
     execution::{query_context::QueryContext, resolver::GraphQLExecutionError},
+    validation::field::ValidatedField,
 };
 use payas_sql::PhysicalTable;
 
@@ -24,12 +25,10 @@ use super::operation_mapper::{
     OperationResolver, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
 };
 
-use async_graphql_parser::{types::Field, Positioned};
-
 impl<'a> OperationResolver<'a> for Mutation {
     fn resolve_operation(
         &'a self,
-        field: &'a Positioned<Field>,
+        field: &'a ValidatedField,
         query_context: &'a QueryContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         if let MutationKind::Service { method_id, .. } = &self.kind {
@@ -42,26 +41,20 @@ impl<'a> OperationResolver<'a> for Mutation {
                     GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
                 };
 
-                selection_query.operation(&field.node, AbstractPredicate::True, query_context)?
+                selection_query.operation(field, AbstractPredicate::True, query_context)?
             };
 
             Ok(OperationResolverResult::SQLOperation(match &self.kind {
                 MutationKind::Create(data_param) => AbstractOperation::Insert(create_operation(
                     self,
                     data_param,
-                    &field.node,
+                    field,
                     abstract_select,
                     query_context,
                 )?),
-                MutationKind::Delete(predicate_param) => {
-                    AbstractOperation::Delete(delete_operation(
-                        self,
-                        predicate_param,
-                        &field.node,
-                        abstract_select,
-                        query_context,
-                    )?)
-                }
+                MutationKind::Delete(predicate_param) => AbstractOperation::Delete(
+                    delete_operation(self, predicate_param, field, abstract_select, query_context)?,
+                ),
                 MutationKind::Update {
                     data_param,
                     predicate_param,
@@ -69,7 +62,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                     self,
                     data_param,
                     predicate_param,
-                    &field.node,
+                    field,
                     abstract_select,
                     query_context,
                 )?),
@@ -90,7 +83,7 @@ impl<'a> OperationResolver<'a> for Mutation {
 fn create_operation<'a>(
     mutation: &'a Mutation,
     data_param: &'a CreateDataParameter,
-    field: &'a Field,
+    field: &'a ValidatedField,
     select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<AbstractInsert<'a>> {
@@ -108,8 +101,7 @@ fn create_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let field_arguments = query_context.field_arguments(field)?;
-    let argument_value = super::find_arg(field_arguments, &data_param.name).unwrap();
+    let argument_value = super::find_arg(&field.arguments, &data_param.name).unwrap();
 
     data_param.insert_operation(mutation, select, argument_value, query_context)
 }
@@ -117,7 +109,7 @@ fn create_operation<'a>(
 fn delete_operation<'a>(
     mutation: &'a Mutation,
     predicate_param: &'a PredicateParameter,
-    field: &'a Field,
+    field: &'a ValidatedField,
     select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<AbstractDelete<'a>> {
@@ -135,11 +127,9 @@ fn delete_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let field_arguments = query_context.field_arguments(field)?;
-
     let predicate = super::compute_predicate(
         Some(predicate_param),
-        field_arguments,
+        &field.arguments,
         AbstractPredicate::True,
         query_context,
     )
@@ -161,7 +151,7 @@ fn update_operation<'a>(
     mutation: &'a Mutation,
     data_param: &'a UpdateDataParameter,
     predicate_param: &'a PredicateParameter,
-    field: &'a Field,
+    field: &'a ValidatedField,
     select: AbstractSelect<'a>,
     query_context: &'a QueryContext<'a>,
 ) -> Result<AbstractUpdate<'a>> {
@@ -179,11 +169,10 @@ fn update_operation<'a>(
         bail!(anyhow!(GraphQLExecutionError::Authorization))
     }
 
-    let field_arguments = query_context.field_arguments(field)?;
     // TODO: https://github.com/payalabs/payas/issues/343
     let predicate = super::compute_predicate(
         Some(predicate_param),
-        field_arguments,
+        &field.arguments,
         AbstractPredicate::True,
         query_context,
     )
@@ -194,7 +183,7 @@ fn update_operation<'a>(
         )
     })?;
 
-    let argument_value = super::find_arg(field_arguments, &data_param.name);
+    let argument_value = super::find_arg(&field.arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
             data_param.update_operation(mutation, predicate, select, argument_value, query_context)

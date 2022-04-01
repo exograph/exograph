@@ -14,8 +14,7 @@ use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, P
 use predicate_mapper::PredicateParameterMapper;
 
 use anyhow::{Context, Result};
-use async_graphql_parser::Positioned;
-use async_graphql_value::{ConstValue, Name};
+use async_graphql_value::ConstValue;
 
 use crate::execution::query_context::QueryContext;
 
@@ -25,13 +24,13 @@ use payas_model::model::{
     system::ModelSystem,
 };
 
-pub type Arguments = [(Positioned<Name>, Positioned<ConstValue>)];
+pub type Arguments = [(String, ConstValue)];
 
 fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a ConstValue> {
     arguments.iter().find_map(|argument| {
         let (argument_name, argument_value) = argument;
-        if arg_name == argument_name.node {
-            Some(&argument_value.node)
+        if arg_name == argument_name {
+            Some(argument_value)
         } else {
             None
         }

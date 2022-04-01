@@ -1,5 +1,6 @@
-pub mod enum_value_resolver;
-pub mod field_resolver;
-pub mod input_value_resolver;
-pub mod schema_resolver;
-pub mod type_resolver;
+mod directive_resolver;
+mod enum_value_resolver;
+mod field_resolver;
+mod input_value_resolver;
+mod schema_resolver;
+mod type_resolver;

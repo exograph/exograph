@@ -21,7 +21,7 @@ payas-sql = { path = "../payas-sql" }
 cc = "*"
 
 [dev-dependencies]
-insta = "1.7.0"
+insta = "1.14.0"
 serde_json = "1.0"
 
 [lib]

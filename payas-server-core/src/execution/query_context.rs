@@ -1,14 +1,8 @@
-use std::{collections::HashMap, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::{bail, Context, Result};
-use async_graphql_parser::{
-    types::{
-        BaseType, Field, FragmentDefinition, FragmentSpread, OperationDefinition, OperationType,
-        Type,
-    },
-    Positioned,
-};
-use async_graphql_value::{ConstValue, Name, Number, Value};
+use async_graphql_parser::types::{BaseType, OperationType, Type};
+use async_graphql_value::{ConstValue, Name, Number};
 use async_trait::async_trait;
 use chrono::prelude::*;
 use chrono::DateTime;
@@ -19,8 +13,7 @@ use payas_sql::{
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParam,
 };
 use pg_bigdecimal::{BigDecimal, PgNumeric};
-use serde_json::{Map, Value as JsonValue};
-use typed_arena::Arena;
+use serde_json::Value as JsonValue;
 
 use super::{
     query_executor::QueryExecutor,
@@ -29,22 +22,18 @@ use super::{
 
 use crate::{
     data::data_resolver::DataResolver,
-    error::ExecutionError,
     introspection::schema::{
         MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
     },
+    validation::{field::ValidatedField, operation::ValidatedOperation},
 };
 
 const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
 pub struct QueryContext<'a> {
-    pub operation_name: Option<&'a str>,
-    pub fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
-    pub variables: &'a Option<&'a Map<String, JsonValue>>,
     pub executor: &'a QueryExecutor<'a>,
     pub request_context: &'a serde_json::Value,
-    pub field_arguments: Arena<Vec<(Positioned<Name>, Positioned<ConstValue>)>>,
 }
 
 #[derive(Debug, Clone)]
@@ -71,44 +60,25 @@ impl QueryResponse {
 impl<'qc> QueryContext<'qc> {
     pub async fn resolve_operation<'b>(
         &self,
-        operation: (Option<&Name>, &'b Positioned<OperationDefinition>),
+        operation: ValidatedOperation,
     ) -> Result<Vec<(String, QueryResponse)>> {
-        operation
-            .1
-            .node
-            .resolve_selection_set(self, &operation.1.node.selection_set)
-            .await
+        operation.resolve_fields(self, &operation.fields).await
     }
 
-    pub fn fragment_definition(
-        &self,
-        fragment: &Positioned<FragmentSpread>,
-    ) -> Result<&FragmentDefinition, ExecutionError> {
-        self.fragment_definitions
-            .get(&fragment.node.fragment_name.node)
-            .map(|v| &v.node)
-            .ok_or_else(|| {
-                ExecutionError::FragmentDefinitionNotFound(
-                    fragment.node.fragment_name.node.as_str().to_string(),
-                    fragment.pos,
-                )
-            })
-    }
-
-    async fn resolve_type(&self, field: &Field) -> Result<JsonValue> {
+    async fn resolve_type(&self, field: &ValidatedField) -> Result<JsonValue> {
         let type_name = &field
             .arguments
             .iter()
-            .find(|arg| arg.0.node == "name")
+            .find(|arg| arg.0 == "name")
             .unwrap()
             .1;
 
-        if let Value::String(name_specified) = &type_name.node {
+        if let ConstValue::String(name_specified) = &type_name {
             let tpe: Type = Type {
                 base: BaseType::Named(Name::new(name_specified)),
                 nullable: true,
             };
-            tpe.resolve_value(self, &field.selection_set).await
+            tpe.resolve_value(self, &field.subfields).await
         } else {
             Ok(JsonValue::Null)
         }
@@ -123,38 +93,6 @@ impl<'qc> QueryContext<'qc> {
             value
                 .map(|v| Column::Literal(MaybeOwned::Owned(v)))
                 .unwrap_or(Column::Null)
-        })
-    }
-
-    pub fn field_arguments(
-        &'qc self,
-        field: &Field,
-    ) -> Result<&'qc Vec<(Positioned<Name>, Positioned<ConstValue>)>> {
-        let args: Result<Vec<(Positioned<Name>, Positioned<ConstValue>)>> = field
-            .arguments
-            .iter()
-            .map(|(name, value)| {
-                let v = value.node.clone().into_const_with(|var_name| {
-                    self.var_value(&Positioned::new(var_name, name.pos))
-                })?;
-
-                Ok((name.clone(), Positioned::new(v, value.pos)))
-            })
-            .collect();
-
-        Ok(self.field_arguments.alloc(args?))
-    }
-
-    fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ExecutionError> {
-        let resolved = self
-            .variables
-            .and_then(|variables| variables.get(name.node.as_str()))
-            .ok_or_else(|| {
-                ExecutionError::VariableNotFound(name.node.as_str().to_string(), name.pos)
-            })?;
-
-        ConstValue::from_json(resolved.to_owned()).map_err(|e| {
-            ExecutionError::MalformedVariable(name.node.as_str().to_string(), name.pos, e)
         })
     }
 
@@ -376,13 +314,13 @@ fragment query_info on Query {
 ```
 */
 #[async_trait(?Send)]
-impl FieldResolver<QueryResponse> for OperationDefinition {
+impl FieldResolver<QueryResponse> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
         query_context: &'e QueryContext<'e>,
-        field: &'e Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<QueryResponse> {
-        let name = field.node.name.node.as_str();
+        let name = field.name.as_str();
         let allow_introspection = if let Ok(setting) = std::env::var("CLAY_INTROSPECTION") {
             setting == "1"
         } else {
@@ -392,17 +330,17 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
         if name.starts_with("__") && allow_introspection {
             match name {
                 "__type" => Ok(QueryResponse::Json(
-                    query_context.resolve_type(&field.node).await?,
+                    query_context.resolve_type(field).await?,
                 )),
                 "__schema" => Ok(QueryResponse::Json(
                     query_context
                         .executor
                         .schema
-                        .resolve_value(query_context, &field.node.selection_set)
+                        .resolve_value(query_context, &field.subfields)
                         .await?,
                 )),
                 "__typename" => {
-                    let typename = match self.ty {
+                    let typename = match self.typ {
                         OperationType::Query => QUERY_ROOT_TYPENAME,
                         OperationType::Mutation => MUTATION_ROOT_TYPENAME,
                         OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
@@ -415,7 +353,7 @@ impl FieldResolver<QueryResponse> for OperationDefinition {
             query_context
                 .executor
                 .system
-                .resolve(field, &self.ty, query_context)
+                .resolve(field, &self.typ, query_context)
                 .await
         }
     }

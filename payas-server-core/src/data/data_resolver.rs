@@ -1,13 +1,13 @@
-use crate::execution::{
-    query_context::{QueryContext, QueryResponse},
-    resolver::FieldResolver,
+use crate::{
+    execution::{
+        query_context::{QueryContext, QueryResponse},
+        resolver::FieldResolver,
+    },
+    validation::field::ValidatedField,
 };
 use anyhow::Context;
 use anyhow::{anyhow, Result};
-use async_graphql_parser::{
-    types::{Field, OperationType},
-    Positioned,
-};
+use async_graphql_parser::types::OperationType;
 use async_trait::async_trait;
 
 use payas_model::model::system::ModelSystem;
@@ -19,7 +19,7 @@ use super::operation_mapper::OperationResolver;
 pub trait DataResolver {
     async fn resolve<'e>(
         &self,
-        field: &'e Positioned<Field>,
+        field: &'e ValidatedField,
         operation_type: &'e OperationType,
         query_context: &'e QueryContext<'e>,
     ) -> Result<QueryResponse>;
@@ -30,9 +30,9 @@ impl FieldResolver<Value> for Value {
     async fn resolve_field<'a>(
         &'a self,
         _query_context: &'a QueryContext<'a>,
-        field: &'a Positioned<Field>,
+        field: &ValidatedField,
     ) -> Result<Value> {
-        let field_name = field.node.name.node.as_str();
+        let field_name = field.name.as_str();
 
         if let Value::Object(map) = self {
             map.get(field_name)
@@ -51,11 +51,11 @@ impl FieldResolver<Value> for Value {
 impl DataResolver for ModelSystem {
     async fn resolve<'e>(
         &self,
-        field: &'e Positioned<Field>,
+        field: &'e ValidatedField,
         operation_type: &'e OperationType,
         query_context: &'e QueryContext<'e>,
     ) -> Result<QueryResponse> {
-        let name = &field.node.name.node;
+        let name = &field.name;
 
         match operation_type {
             OperationType::Query => {

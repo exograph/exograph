@@ -15,8 +15,8 @@ response: |
           "message": "Variable 'id' not found",
           "locations": [
             {
-              "line": 2,
-              "column": 9
+              "line": 1,
+              "column": 8
             }
           ]
         }
