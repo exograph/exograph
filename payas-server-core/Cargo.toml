@@ -23,10 +23,11 @@ typed-generational-arena = { version = "0.2", features = ["serde"] }
 maybe-owned = "0.3.4"
 thiserror = "1.0.30"
 uuid = "0.8"
-insta = "1.14.0"
 
 payas-sql = { path = "../payas-sql" }
 payas-model = { path = "../payas-model" }
 payas-deno = { path = "../payas-deno" }
 payas-parser = { path = "../payas-parser" }
 
+[dev-dependencies]
+insta = "1.14.0"
