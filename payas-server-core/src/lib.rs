@@ -63,7 +63,7 @@ pub fn create_query_executor(claypot_file: &str, database: Database) -> Result<Q
 }
 
 #[derive(Debug, Deserialize)]
-pub struct QueryPayload {
+pub struct OperationsPayload {
     operation_name: Option<String>,
     query: String,
     variables: Option<Map<String, Value>>,
@@ -78,10 +78,10 @@ pub struct QueryPayload {
 /// then call `resolve` with that object.
 pub async fn resolve<E>(
     executor: &QueryExecutor,
-    query_payload: QueryPayload,
+    operations_payload: OperationsPayload,
     request_context: RequestContext,
 ) -> impl Stream<Item = Result<Bytes, E>> {
-    let response = executor.execute(query_payload, request_context).await;
+    let response = executor.execute(operations_payload, request_context).await;
 
     try_stream! {
         match response {

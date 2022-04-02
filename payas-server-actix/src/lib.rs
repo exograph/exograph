@@ -3,7 +3,7 @@ pub mod request_context;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use payas_server_core::{QueryExecutor, QueryPayload};
+use payas_server_core::{OperationsPayload, QueryExecutor};
 
 use request_context::{ActixRequestContextProducer, ContextProducerError};
 use serde_json::Value;
@@ -24,13 +24,14 @@ pub async fn resolve(
 
     match request_context {
         Ok(request_context) => {
-            let query_payload: Result<QueryPayload, _> = serde_json::from_value(body.into_inner());
+            let operations_payload: Result<OperationsPayload, _> =
+                serde_json::from_value(body.into_inner());
 
-            match query_payload {
-                Ok(query_payload) => {
+            match operations_payload {
+                Ok(operations_payload) => {
                     let stream = payas_server_core::resolve::<Error>(
                         executor.as_ref(),
-                        query_payload,
+                        operations_payload,
                         request_context,
                     )
                     .await;

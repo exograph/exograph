@@ -1,6 +1,6 @@
 use super::query_context;
 use crate::request_context::RequestContext;
-use crate::QueryPayload;
+use crate::OperationsPayload;
 use crate::{
     error::ExecutionError,
     introspection::schema::Schema,
@@ -34,23 +34,23 @@ pub struct QueryExecutor {
 impl QueryExecutor {
     pub async fn execute(
         &self,
-        query_payload: QueryPayload,
+        operations_payload: OperationsPayload,
         request_context: RequestContext,
     ) -> Result<Vec<(String, QueryResponse)>> {
         let request_context = create_mapped_context(&self.system.contexts, &request_context)?;
 
-        self.execute_with_request_context(query_payload, request_context)
+        self.execute_with_request_context(operations_payload, request_context)
             .await
     }
 
     // A version of execute that is suitable to be exposed through a shim to services
     pub async fn execute_with_request_context(
         &self,
-        query_payload: QueryPayload,
+        operations_payload: OperationsPayload,
         request_context: Value,
     ) -> Result<Vec<(String, QueryResponse)>> {
         let (document, query_context) =
-            self.create_query_context(query_payload, &request_context)?;
+            self.create_query_context(operations_payload, &request_context)?;
 
         let resolutions = match document.operation_typ {
             OperationType::Query => {
@@ -85,15 +85,15 @@ impl QueryExecutor {
 
     fn create_query_context<'a>(
         &'a self,
-        query_payload: QueryPayload,
+        operations_payload: OperationsPayload,
         request_context: &'a serde_json::Value,
     ) -> Result<(ValidatedDocument, QueryContext<'a>), ExecutionError> {
-        let document = parse_query(query_payload.query).unwrap();
+        let document = parse_query(operations_payload.query).unwrap();
 
         let document_validator = DocumentValidator::new(
             &self.schema,
-            query_payload.operation_name,
-            query_payload.variables,
+            operations_payload.operation_name,
+            operations_payload.variables,
         );
 
         document_validator.validate(document).map(|validated| {

@@ -12,7 +12,7 @@ use tokio_postgres::{types::FromSqlOwned, Row};
 use crate::{
     execution::query_context::{QueryContext, QueryResponse},
     validation::field::ValidatedField,
-    QueryPayload,
+    OperationsPayload,
 };
 
 use super::access_solver;
@@ -270,7 +270,7 @@ async fn resolve_deno(
                         let result = query_context
                             .executor
                             .execute_with_request_context(
-                                QueryPayload {
+                                OperationsPayload {
                                     operation_name: None,
                                     query: query_string,
                                     variables,

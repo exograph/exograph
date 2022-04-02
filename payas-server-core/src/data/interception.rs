@@ -6,7 +6,7 @@ use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 use crate::{
     execution::query_context::{QueryContext, QueryResponse},
     validation::field::ValidatedField,
-    QueryPayload,
+    OperationsPayload,
 };
 use anyhow::{bail, Result};
 use serde_json::{Map, Value};
@@ -117,7 +117,7 @@ macro_rules! claytip_execute_query {
                     let result = $query_context
                         .executor
                         .execute_with_request_context(
-                            QueryPayload {
+                            OperationsPayload {
                                 operation_name: None,
                                 query: query_string,
                                 variables,
