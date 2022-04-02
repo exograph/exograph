@@ -10,8 +10,8 @@ use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
 use error::ExecutionError;
+pub use execution::operations_executor::OperationsExecutor;
 use execution::query_context::QueryResponse;
-pub use execution::query_executor::QueryExecutor;
 use futures::Stream;
 use introspection::schema::Schema;
 use payas_deno::DenoExecutor;
@@ -45,14 +45,17 @@ fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
     }
 }
 
-pub fn create_query_executor(claypot_file: &str, database: Database) -> Result<QueryExecutor> {
+pub fn create_operations_executor(
+    claypot_file: &str,
+    database: Database,
+) -> Result<OperationsExecutor> {
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
     let deno_executor = DenoExecutor::default();
 
     let database_executor = DatabaseExecutor { database };
 
-    let executor = QueryExecutor {
+    let executor = OperationsExecutor {
         database_executor,
         deno_execution: deno_executor,
         system,
@@ -74,10 +77,10 @@ pub struct OperationsPayload {
 /// if something went wrong.
 ///
 /// In a typical use case (for example payas-server-actix), the caller will
-/// first call `create_query_executor` to create a `QueryExecutor` object, and
+/// first call `create_operations_executor` to create an `OperationsExecutor` object, and
 /// then call `resolve` with that object.
 pub async fn resolve<E>(
-    executor: &QueryExecutor,
+    executor: &OperationsExecutor,
     operations_payload: OperationsPayload,
     request_context: RequestContext,
 ) -> impl Stream<Item = Result<Bytes, E>> {

@@ -16,7 +16,7 @@ use pg_bigdecimal::{BigDecimal, PgNumeric};
 use serde_json::Value as JsonValue;
 
 use super::{
-    query_executor::QueryExecutor,
+    operations_executor::OperationsExecutor,
     resolver::{FieldResolver, Resolver},
 };
 
@@ -33,7 +33,7 @@ const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
 pub struct QueryContext<'a> {
-    pub executor: &'a QueryExecutor,
+    pub executor: &'a OperationsExecutor,
     pub system: &'a ModelSystem,
     pub schema: &'a Schema,
     pub request_context: &'a serde_json::Value,

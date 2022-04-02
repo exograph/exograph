@@ -3,7 +3,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 use payas_server_actix::request_context::ActixRequestContextProducer;
 use payas_server_actix::resolve;
-use payas_server_core::create_query_executor;
+use payas_server_core::create_operations_executor;
 use payas_sql::Database;
 
 use std::time;
@@ -40,7 +40,8 @@ async fn main() -> std::io::Result<()> {
     };
 
     let database = Database::from_env(None).expect("Failed to create database"); // TODO: error handling here
-    let query_executor = web::Data::new(create_query_executor(&claypot_file, database).unwrap());
+    let operations_executor =
+        web::Data::new(create_operations_executor(&claypot_file, database).unwrap());
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
 
     let server_port = env::var("CLAY_SERVER_PORT")
@@ -57,7 +58,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
-            .app_data(query_executor.clone())
+            .app_data(operations_executor.clone())
             .app_data(request_context_processor.clone())
             .route("/", web::get().to(playground))
             .route("/", web::post().to(resolve))

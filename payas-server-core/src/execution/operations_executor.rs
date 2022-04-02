@@ -20,18 +20,18 @@ use serde_json::Value;
 /// Opaque type encapsulating the information required by the [crate::resolve]
 /// function.
 ///
-/// A server implementation should call [crate::create_query_executor] and store the
+/// A server implementation should call [crate::create_operations_executor] and store the
 /// returned value, passing a reference to it each time it calls `resolve`.
 ///
 /// For example, in actix, this should be added to the server using `app_data`.
-pub struct QueryExecutor {
+pub struct OperationsExecutor {
     pub database_executor: DatabaseExecutor,
     pub deno_execution: DenoExecutor,
     pub system: ModelSystem,
     pub schema: Schema,
 }
 
-impl QueryExecutor {
+impl OperationsExecutor {
     pub async fn execute(
         &self,
         operations_payload: OperationsPayload,

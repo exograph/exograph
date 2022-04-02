@@ -3,7 +3,7 @@ pub mod request_context;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use payas_server_core::{OperationsPayload, QueryExecutor};
+use payas_server_core::{OperationsExecutor, OperationsPayload};
 
 use request_context::{ActixRequestContextProducer, ContextProducerError};
 use serde_json::Value;
@@ -17,7 +17,7 @@ macro_rules! error_msg {
 pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
-    executor: web::Data<QueryExecutor>,
+    executor: web::Data<OperationsExecutor>,
     context_processor: web::Data<ActixRequestContextProducer>,
 ) -> impl Responder {
     let request_context = context_processor.generate_request_context(&req);
