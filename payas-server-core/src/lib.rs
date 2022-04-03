@@ -20,6 +20,7 @@ use serde_json::{Map, Value};
 mod data;
 mod error;
 mod execution;
+pub mod graphiql;
 mod introspection;
 pub mod request_context;
 mod validation;
@@ -27,7 +28,7 @@ mod validation;
 /// Opaque type encapsulating the information required by the `resolve`
 /// function.
 ///
-/// A server implmentation should call `create_system_info` and store the
+/// A server implementation should call `create_system_info` and store the
 /// returned value, passing a reference to it each time it calls `resolve`.
 ///
 /// For example, in actix, this should be added to the server using `app_data`.

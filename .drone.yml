@@ -45,6 +45,7 @@ steps:
     - name: sccache
       path: /sccache
     commands:
+      - (cd graphiql && npm install && npm run prod-build)
       - cargo build --release
       - export PATH=./target/release:$PATH
       - CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 clay test integration-tests

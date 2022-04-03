@@ -23,6 +23,7 @@ typed-generational-arena = { version = "0.2", features = ["serde"] }
 maybe-owned = "0.3.4"
 thiserror = "1.0.30"
 uuid = "0.8"
+include_dir = "0.7.2"
 
 payas-sql = { path = "../payas-sql" }
 payas-model = { path = "../payas-model" }
