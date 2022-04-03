@@ -22,6 +22,28 @@ From the project root directory,
 ln -s $PWD/vscode-extension/out $HOME/.vscode/extensions/clay.vscode
 ```
 
+## Building
+
+1. Build the `graphiql` app:
+
+Anytime you make a change to the `graphiql` app, you need to run this command.
+
+```
+(cd graphiql && npm install && npm run prod-build)
+```
+
+2. Build the `clay` and `clay-server` binaries:
+
+```
+cargo build
+```
+
+To create a production build:
+
+```
+cargo build --release
+```
+
 ## Testing the setup
 
 1. Create a test database
