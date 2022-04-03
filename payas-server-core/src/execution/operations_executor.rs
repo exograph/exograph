@@ -17,18 +17,19 @@ use payas_sql::DatabaseExecutor;
 use query_context::{QueryContext, QueryResponse};
 use serde_json::Value;
 
-/// Opaque type encapsulating the information required by the [crate::resolve]
-/// function.
+/// Opaque (to this crate) type encapsulating the information required by the
+/// [crate::resolve] function.
 ///
-/// A server implementation should call [crate::create_operations_executor] and store the
-/// returned value, passing a reference to it each time it calls `resolve`.
+/// A server implementation should call [crate::create_operations_executor] and
+/// store the returned value, passing a reference to it each time it calls
+/// `resolve`.
 ///
 /// For example, in actix, this should be added to the server using `app_data`.
 pub struct OperationsExecutor {
-    pub database_executor: DatabaseExecutor,
-    pub deno_execution: DenoExecutor,
-    pub system: ModelSystem,
-    pub schema: Schema,
+    pub(crate) database_executor: DatabaseExecutor,
+    pub(crate) deno_execution: DenoExecutor,
+    pub(crate) system: ModelSystem,
+    pub(crate) schema: Schema,
 }
 
 impl OperationsExecutor {
