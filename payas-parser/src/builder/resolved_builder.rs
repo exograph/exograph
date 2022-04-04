@@ -25,7 +25,7 @@ use crate::{
     typechecker::{PrimitiveType, Type, Typed},
     util::null_span,
 };
-use heck::SnakeCase;
+use heck::ToSnakeCase;
 use serde::{Deserialize, Serialize};
 
 /// Consume typed-checked types and build resolved types
