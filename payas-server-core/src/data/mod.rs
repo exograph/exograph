@@ -16,7 +16,7 @@ use predicate_mapper::PredicateParameterMapper;
 use anyhow::{Context, Result};
 use async_graphql_value::ConstValue;
 
-use crate::execution::query_context::QueryContext;
+use crate::execution::operations_context::OperationsContext;
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -41,7 +41,7 @@ fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     additional_predicate: AbstractPredicate<'a>,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<AbstractPredicate<'a>> {
     let mapped = predicate_param
         .as_ref()

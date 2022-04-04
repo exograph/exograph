@@ -1,15 +1,11 @@
 use actix_cors::Cors;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use anyhow::{Context, Result};
-use bincode::deserialize_from;
-use payas_model::model::system::ModelSystem;
+
 use payas_server_actix::request_context::ActixRequestContextProducer;
 use payas_server_actix::resolve;
-use payas_server_core::create_system_info;
+use payas_server_core::create_operations_executor;
 use payas_sql::Database;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
+
 use std::time;
 use std::{env, process::exit};
 
@@ -43,11 +39,11 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
-    let model_system = open_claypot_file(&claypot_file).unwrap();
-
-    let database = Database::from_env(None).expect("Failed to create database"); // TODO: error handling here
-    let system_info = web::Data::new(create_system_info(model_system, database));
+    let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
+    let operations_executor =
+        web::Data::new(create_operations_executor(&claypot_file, database).unwrap());
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
+
     let server_port = env::var("CLAY_SERVER_PORT")
         .map(|port_str| {
             port_str
@@ -62,7 +58,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
-            .app_data(system_info.clone())
+            .app_data(operations_executor.clone())
             .app_data(request_context_processor.clone())
             .route("/", web::get().to(playground))
             .route("/", web::post().to(resolve))
@@ -82,23 +78,6 @@ async fn main() -> std::io::Result<()> {
 
 async fn playground() -> impl Responder {
     HttpResponse::Ok().body(include_str!("assets/playground.html"))
-}
-
-fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
-    if !Path::new(&claypot_file).exists() {
-        anyhow::bail!("File '{}' not found", claypot_file);
-    }
-    match File::open(&claypot_file) {
-        Ok(file) => {
-            let claypot_file_buffer = BufReader::new(file);
-            let in_file = BufReader::new(claypot_file_buffer);
-            deserialize_from(in_file)
-                .with_context(|| format!("Failed to read claypot file {}", claypot_file))
-        }
-        Err(e) => {
-            anyhow::bail!("Failed to open claypot file {}: {}", claypot_file, e)
-        }
-    }
 }
 
 fn cors_from_env() -> Cors {

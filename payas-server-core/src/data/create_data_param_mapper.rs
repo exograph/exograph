@@ -5,7 +5,7 @@ use payas_sql::{
     NestedElementRelation, NestedInsertion,
 };
 
-use crate::execution::query_context::QueryContext;
+use crate::execution::operations_context::OperationsContext;
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -24,7 +24,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
         mutation: &'a Mutation,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractInsert> {
         let system = &query_context.get_system();
 
@@ -47,7 +47,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
 pub fn map_argument<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<Vec<InsertionRow<'a>>> {
     match argument {
         ConstValue::List(arguments) => arguments
@@ -64,7 +64,7 @@ pub fn map_argument<'a>(
 fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<InsertionRow<'a>> {
     let fields = match &input_data_type.kind {
         GqlTypeKind::Primitive => bail!("Query attempted on a primitive type"),
@@ -94,7 +94,7 @@ fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a GqlField,
     argument: &'a ConstValue,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<InsertionElement<'a>> {
     let system = query_context.get_system();
 
@@ -143,7 +143,7 @@ fn map_foreign<'a>(
     field: &'a GqlField,
     argument: &'a ConstValue,
     parent_data_type: &'a GqlType,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<InsertionElement<'a>> {
     let system = query_context.get_system();
 

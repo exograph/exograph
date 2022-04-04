@@ -3,14 +3,14 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
-use crate::{execution::query_context::QueryContext, validation::field::ValidatedField};
+use crate::{execution::operations_context::OperationsContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
 #[async_trait(?Send)]
 impl FieldResolver<Value> for EnumValueDefinition {
     async fn resolve_field<'e>(
         &'e self,
-        _query_context: &'e QueryContext<'e>,
+        _query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<Value> {
         match field.name.as_str() {
