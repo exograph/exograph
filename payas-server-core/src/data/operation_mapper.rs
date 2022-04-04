@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
 
 use crate::{
-    execution::query_context::{QueryContext, QueryResponse},
+    execution::operations_context::{OperationsContext, QueryResponse},
     validation::field::ValidatedField,
     OperationsPayload,
 };
@@ -31,7 +31,7 @@ pub trait SQLMapper<'a, R> {
     fn map_to_sql(
         &'a self,
         argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<R>;
 }
 
@@ -41,7 +41,7 @@ pub trait SQLInsertMapper<'a> {
         mutation: &'a Mutation,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractInsert>;
 }
 
@@ -52,7 +52,7 @@ pub trait SQLUpdateMapper<'a> {
         predicate: AbstractPredicate<'a>,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractUpdate>;
 }
 
@@ -61,13 +61,13 @@ pub trait OperationResolver<'a> {
     fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<OperationResolverResult<'a>>;
 
     async fn execute(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<QueryResponse> {
         let resolver_result = self.resolve_operation(field, query_context)?;
         let interceptors = self.interceptors().ordered();
@@ -100,7 +100,7 @@ pub enum SQLOperationKind {
 pub fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> AbstractPredicate<'a> {
     let return_type = return_type.typ(query_context.get_system());
 
@@ -125,7 +125,7 @@ pub fn compute_sql_access_predicate<'a>(
 pub fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> &'a Predicate<'a> {
     let return_type = return_type.typ(query_context.get_system());
 
@@ -175,7 +175,7 @@ impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
         &self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
             OperationResolverResult::SQLOperation(abstract_operation) => {
@@ -219,7 +219,7 @@ impl<'a> OperationResolverResult<'a> {
 async fn resolve_deno(
     method: &ServiceMethod,
     field: &ValidatedField,
-    query_context: &QueryContext<'_>,
+    query_context: &OperationsContext<'_>,
 ) -> Result<serde_json::Value> {
     let script = &query_context.system.deno_scripts[method.script];
 

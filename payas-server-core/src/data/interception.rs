@@ -4,7 +4,7 @@ use payas_deno::{Arg, FnClaytipExecuteQuery, FnClaytipInterceptorProceed};
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::{
-    execution::query_context::{QueryContext, QueryResponse},
+    execution::operations_context::{OperationsContext, QueryResponse},
     validation::field::ValidatedField,
     OperationsPayload,
 };
@@ -181,7 +181,7 @@ impl<'a> InterceptedOperation<'a> {
     pub async fn execute(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
             InterceptedOperation::Intercepted {
@@ -256,7 +256,7 @@ impl<'a> InterceptedOperation<'a> {
 
 async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     claytip_get_interceptor: Option<String>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,

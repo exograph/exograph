@@ -1,4 +1,4 @@
-use super::query_context;
+use super::operations_context;
 use crate::request_context::RequestContext;
 use crate::OperationsPayload;
 use crate::{
@@ -11,10 +11,10 @@ use async_graphql_parser::{parse_query, types::OperationType};
 use anyhow::Result;
 
 use futures::future::join_all;
+use operations_context::{OperationsContext, QueryResponse};
 use payas_deno::DenoExecutor;
 use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextType};
 use payas_sql::DatabaseExecutor;
-use query_context::{QueryContext, QueryResponse};
 use serde_json::Value;
 
 /// Opaque (to this crate) type encapsulating the information required by the
@@ -88,7 +88,7 @@ impl OperationsExecutor {
         &'a self,
         operations_payload: OperationsPayload,
         request_context: &'a serde_json::Value,
-    ) -> Result<(ValidatedDocument, QueryContext<'a>), ExecutionError> {
+    ) -> Result<(ValidatedDocument, OperationsContext<'a>), ExecutionError> {
         let document = parse_query(operations_payload.query).unwrap();
 
         let document_validator = DocumentValidator::new(
@@ -100,7 +100,7 @@ impl OperationsExecutor {
         document_validator.validate(document).map(|validated| {
             (
                 validated,
-                QueryContext {
+                OperationsContext {
                     executor: self,
                     system: &self.system,
                     schema: &self.schema,

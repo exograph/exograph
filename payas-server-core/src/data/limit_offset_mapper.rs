@@ -1,4 +1,4 @@
-use crate::execution::query_context::QueryContext;
+use crate::execution::operations_context::OperationsContext;
 
 use super::operation_mapper::SQLMapper;
 use anyhow::{anyhow, Result};
@@ -19,7 +19,7 @@ impl<'a> SQLMapper<'a, Limit> for LimitParameter {
     fn map_to_sql(
         &self,
         argument: &'a ConstValue,
-        _query_context: &'a QueryContext<'a>,
+        _query_context: &'a OperationsContext<'a>,
     ) -> Result<Limit> {
         cast_to_i64(argument).map(Limit)
     }
@@ -29,7 +29,7 @@ impl<'a> SQLMapper<'a, Offset> for OffsetParameter {
     fn map_to_sql(
         &self,
         argument: &'a ConstValue,
-        _query_context: &'a QueryContext<'a>,
+        _query_context: &'a OperationsContext<'a>,
     ) -> Result<Offset> {
         cast_to_i64(argument).map(Offset)
     }

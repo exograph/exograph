@@ -5,7 +5,7 @@ use crate::validation::field::ValidatedField;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::execution::query_context::QueryContext;
+use crate::execution::operations_context::OperationsContext;
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
 use anyhow::{anyhow, Result};
 
@@ -13,7 +13,7 @@ use anyhow::{anyhow, Result};
 impl FieldResolver<Value> for Schema {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<Value> {
         let schema = query_context.schema;

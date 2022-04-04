@@ -1,4 +1,4 @@
-use crate::{execution::query_context::QueryContext, validation::field::ValidatedField};
+use crate::{execution::operations_context::OperationsContext, validation::field::ValidatedField};
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -29,7 +29,7 @@ impl<'a> OperationResolver<'a> for Query {
     fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         Ok(match &self.kind {
             QueryKind::Database(_) => {
@@ -57,32 +57,32 @@ pub trait QuerySQLOperations<'a> {
     fn compute_order_by(
         &'a self,
         arguments: &'a Arguments,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Option<AbstractOrderBy<'a>>;
 
     fn compute_limit(
         &'a self,
         arguments: &'a Arguments,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Option<Limit>;
 
     fn compute_offset(
         &'a self,
         arguments: &'a Arguments,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Option<Offset>;
 
     fn content_select(
         &'a self,
         fields: &'a [ValidatedField],
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>>;
 
     fn operation(
         &'a self,
         field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractSelect<'a>>;
 }
 
@@ -90,7 +90,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_order_by(
         &'a self,
         arguments: &'a Arguments,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Option<AbstractOrderBy<'a>> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
@@ -113,7 +113,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn content_select(
         &'a self,
         fields: &'a [ValidatedField],
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>> {
         fields
             .iter()
@@ -124,7 +124,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_limit(
         &'a self,
         arguments: &'a Arguments,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Option<Limit> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
@@ -147,7 +147,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_offset(
         &'a self,
         arguments: &'a Arguments,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Option<Offset> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
@@ -171,7 +171,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         &'a self,
         field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractSelect<'a>> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
@@ -243,7 +243,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
 fn map_field<'a>(
     query: &'a Query,
     field: &'a ValidatedField,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<ColumnSelection<'a>> {
     let system = query_context.get_system();
     let return_type = query.return_type.typ(system);

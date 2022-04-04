@@ -3,14 +3,14 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
-use crate::{execution::query_context::QueryContext, validation::field::ValidatedField};
+use crate::{execution::operations_context::OperationsContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
 #[async_trait(?Send)]
 impl FieldResolver<Value> for FieldDefinition {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<Value> {
         match field.name.as_str() {

@@ -39,7 +39,7 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
-    let database = Database::from_env(None).expect("Failed to create database"); // TODO: error handling here
+    let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
     let operations_executor =
         web::Data::new(create_operations_executor(&claypot_file, database).unwrap());
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
