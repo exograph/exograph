@@ -17,8 +17,7 @@ use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, Co
 use payas_sql::DatabaseExecutor;
 use serde_json::Value;
 
-/// Opaque (to this crate) type encapsulating the information required by the
-/// [crate::resolve] function.
+/// Encapsulates the information required by the [crate::resolve] function.
 ///
 /// A server implementation should call [crate::create_operations_executor] and
 /// store the returned value, passing a reference to it each time it calls
