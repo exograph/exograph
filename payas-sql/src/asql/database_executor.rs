@@ -6,11 +6,11 @@ use anyhow::Result;
 
 use super::abstract_operation::AbstractOperation;
 
-pub struct DatabaseExecutor<'a> {
-    pub database: &'a Database,
+pub struct DatabaseExecutor {
+    pub database: Database,
 }
 
-impl DatabaseExecutor<'_> {
+impl DatabaseExecutor {
     /// Execute an operation on a database.
     ///
     /// Currently makes a hard assumption on Postgres implementation, but this could be made more generic.

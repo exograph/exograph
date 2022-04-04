@@ -8,13 +8,13 @@ use serde_json::Value;
 
 use crate::validation::field::ValidatedField;
 
-use super::query_context::QueryContext;
+use super::operations_context::OperationsContext;
 
 #[async_trait(?Send)]
 pub trait Resolver<R> {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
     ) -> Result<R>;
 }
@@ -30,13 +30,13 @@ where
     // `field` is `name` and ??? is the return value
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<R>;
 
     async fn resolve_fields(
         &self,
-        query_context: &QueryContext<'_>,
+        query_context: &OperationsContext<'_>,
         fields: &[ValidatedField],
     ) -> Result<Vec<(String, R)>> {
         futures::stream::iter(fields.iter())
@@ -97,7 +97,7 @@ where
 {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
     ) -> Result<Value> {
         Ok(Value::Object(FromIterator::from_iter(
@@ -113,7 +113,7 @@ where
 {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
     ) -> Result<Value> {
         match self {
@@ -130,7 +130,7 @@ where
 {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
     ) -> Result<Value> {
         self.node.resolve_value(query_context, fields).await
@@ -144,7 +144,7 @@ where
 {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
     ) -> Result<Value> {
         let resolved: Vec<_> = futures::stream::iter(self.iter())

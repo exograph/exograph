@@ -3,7 +3,7 @@ pub mod request_context;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use payas_server_core::SystemInfo;
+use payas_server_core::{OperationsExecutor, OperationsPayload};
 
 use request_context::{ActixRequestContextProducer, ContextProducerError};
 use serde_json::Value;
@@ -17,30 +17,33 @@ macro_rules! error_msg {
 pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
-    system_info: web::Data<SystemInfo>,
+    executor: web::Data<OperationsExecutor>,
     context_processor: web::Data<ActixRequestContextProducer>,
 ) -> impl Responder {
     let request_context = context_processor.generate_request_context(&req);
 
     match request_context {
         Ok(request_context) => {
-            let system_info = system_info.as_ref();
+            let operations_payload: Result<OperationsPayload, _> =
+                serde_json::from_value(body.into_inner());
 
-            let operation_name = body["operationName"].as_str();
-            let query_str = body["query"].as_str().unwrap();
-            let variables = body["variables"].as_object();
+            match operations_payload {
+                Ok(operations_payload) => {
+                    let stream = payas_server_core::resolve::<Error>(
+                        executor.as_ref(),
+                        operations_payload,
+                        request_context,
+                    )
+                    .await;
 
-            let stream = payas_server_core::resolve::<Error>(
-                system_info,
-                operation_name,
-                query_str,
-                variables,
-                request_context,
-            )
-            .await;
-            HttpResponse::Ok()
-                .content_type("application/json")
-                .streaming(Box::pin(stream))
+                    HttpResponse::Ok()
+                        .content_type("application/json")
+                        .streaming(Box::pin(stream))
+                }
+                Err(_) => {
+                    return HttpResponse::BadRequest().body(error_msg!("Invalid query payload"));
+                }
+            }
         }
 
         Err(err) => {

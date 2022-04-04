@@ -3,7 +3,7 @@ use crate::{
         operation_mapper::{compute_sql_access_predicate, SQLOperationKind},
         query_resolver::QuerySQLOperations,
     },
-    execution::{query_context::QueryContext, resolver::GraphQLExecutionError},
+    execution::{operations_context::OperationsContext, resolver::GraphQLExecutionError},
     validation::field::ValidatedField,
 };
 use payas_sql::PhysicalTable;
@@ -29,7 +29,7 @@ impl<'a> OperationResolver<'a> for Mutation {
     fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         if let MutationKind::Service { method_id, .. } = &self.kind {
             Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
@@ -85,7 +85,7 @@ fn create_operation<'a>(
     data_param: &'a CreateDataParameter,
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<AbstractInsert<'a>> {
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
@@ -111,7 +111,7 @@ fn delete_operation<'a>(
     predicate_param: &'a PredicateParameter,
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<AbstractDelete<'a>> {
     let (table, _, _) = return_type_info(mutation, query_context);
 
@@ -153,7 +153,7 @@ fn update_operation<'a>(
     predicate_param: &'a PredicateParameter,
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<AbstractUpdate<'a>> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
     // nested predicates aren't working.
@@ -193,7 +193,7 @@ fn update_operation<'a>(
 
 pub fn return_type_info<'a>(
     mutation: &'a Mutation,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
     let system = &query_context.get_system();
     let typ = mutation.return_type.typ(system);

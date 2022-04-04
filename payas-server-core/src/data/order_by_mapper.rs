@@ -1,4 +1,4 @@
-use crate::execution::query_context::QueryContext;
+use crate::execution::operations_context::OperationsContext;
 use anyhow::{bail, Context, Result};
 use async_graphql_value::ConstValue;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
@@ -12,7 +12,7 @@ pub trait OrderByParameterMapper<'a> {
         &'a self,
         argument: &'a ConstValue,
         parent_column_path: &'a Option<ColumnIdPath>,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractOrderBy<'a>>;
 }
 
@@ -21,7 +21,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
         &'a self,
         argument: &'a ConstValue,
         parent_column_path: &'a Option<ColumnIdPath>,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractOrderBy<'a>> {
         let parameter_type = &query_context.get_system().order_by_types[self.type_id];
 
@@ -69,7 +69,7 @@ fn order_by_pair<'a>(
     parameter_name: &str,
     parameter_value: &ConstValue,
     parent_column_path: &Option<ColumnIdPath>,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<(ColumnPath<'a>, Ordering)> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {

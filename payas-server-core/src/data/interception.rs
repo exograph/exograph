@@ -4,8 +4,9 @@ use payas_deno::{Arg, FnClaytipExecuteQuery, FnClaytipInterceptorProceed};
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::{
-    execution::query_context::{QueryContext, QueryResponse},
+    execution::operations_context::{OperationsContext, QueryResponse},
     validation::field::ValidatedField,
+    OperationsPayload,
 };
 use anyhow::{bail, Result};
 use serde_json::{Map, Value};
@@ -116,9 +117,11 @@ macro_rules! claytip_execute_query {
                     let result = $query_context
                         .executor
                         .execute_with_request_context(
-                            None,
-                            &query_string,
-                            variables.as_ref(),
+                            OperationsPayload {
+                                operation_name: None,
+                                query: query_string,
+                                variables,
+                            },
                             $query_context.request_context.clone(),
                         )
                         .await?
@@ -178,7 +181,7 @@ impl<'a> InterceptedOperation<'a> {
     pub async fn execute(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
             InterceptedOperation::Intercepted {
@@ -253,18 +256,17 @@ impl<'a> InterceptedOperation<'a> {
 
 async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
-    query_context: &'a QueryContext<'a>,
-
+    query_context: &'a OperationsContext<'a>,
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     claytip_get_interceptor: Option<String>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<serde_json::Value> {
-    let script = &query_context.executor.system.deno_scripts[interceptor.script];
+    let script = &query_context.system.deno_scripts[interceptor.script];
     let arg_sequence = interceptor
         .arguments
         .iter()
         .map(|arg| {
-            let arg_type = &query_context.executor.system.types[arg.type_id];
+            let arg_type = &query_context.system.types[arg.type_id];
 
             if arg_type.name == "Operation" || arg_type.name == "ClaytipInjected" {
                 // TODO: Change this to supply a shim if the arg_type is one of the shimmable types
