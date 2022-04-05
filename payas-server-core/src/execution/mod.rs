@@ -1,3 +1,3 @@
-pub mod query_context;
-pub mod query_executor;
+pub mod operations_context;
+pub mod operations_executor;
 pub mod resolver;

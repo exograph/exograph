@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
 use crate::introspection::definition::type_introspection::TypeDefinitionIntrospection;
-use crate::{execution::query_context::QueryContext, validation::field::ValidatedField};
+use crate::{execution::operations_context::OperationsContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ struct BoxedType<'a> {
 impl FieldResolver<Value> for TypeDefinition {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<Value> {
         match field.name.as_str() {
@@ -56,7 +56,7 @@ impl FieldResolver<Value> for TypeDefinition {
 impl FieldResolver<Value> for Type {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<Value> {
         let base_type = &self.base;
@@ -76,7 +76,7 @@ impl FieldResolver<Value> for Type {
                 BaseType::Named(name) => {
                     // See commented out derivation of FieldResolver for Option<T>
                     //query_context.schema.get_type_definition(name).resolve_field(query_context, field)
-                    let tpe = query_context.executor.schema.get_type_definition(name);
+                    let tpe = query_context.schema.get_type_definition(name);
                     match tpe {
                         Some(tpe) => tpe.resolve_field(query_context, field).await,
                         None => Ok(Value::Null),
@@ -101,7 +101,7 @@ impl FieldResolver<Value> for Type {
 impl<'a> FieldResolver<Value> for BoxedType<'a> {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<Value> {
         match field.name.as_str() {

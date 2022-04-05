@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-heck = "0.3"
+heck = "0.4.0"
 tree-sitter = "0.20.3"
 serde = { version = "1.0.125", features = ["derive"] }
 lazy_static = "1.4.0"

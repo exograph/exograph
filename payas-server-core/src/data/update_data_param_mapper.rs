@@ -6,7 +6,9 @@ use payas_sql::{
     Selection,
 };
 
-use crate::{data::mutation_resolver::return_type_info, execution::query_context::QueryContext};
+use crate::{
+    data::mutation_resolver::return_type_info, execution::operations_context::OperationsContext,
+};
 
 use payas_model::model::{
     operation::{Mutation, UpdateDataParameter},
@@ -27,7 +29,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         predicate: AbstractPredicate<'a>,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractUpdate<'a>> {
         let system = &query_context.get_system();
         let data_type = &system.mutation_types[self.type_id];
@@ -57,7 +59,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 fn compute_update_columns<'a>(
     data_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
     let system = &query_context.get_system();
 
@@ -108,7 +110,7 @@ fn compute_nested_ops<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     container_model_type: &'a GqlType,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
     Vec<NestedAbstractInsert<'a>>,
@@ -195,7 +197,7 @@ fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     container_model_type: &'a GqlType,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Vec<NestedAbstractUpdate<'a>> {
     let system = &query_context.get_system();
 
@@ -236,7 +238,7 @@ fn compute_nested_update_object_arg<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> NestedAbstractUpdate<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
@@ -298,13 +300,13 @@ fn compute_nested_inserts<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     container_model_type: &'a GqlType,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Vec<NestedAbstractInsert<'a>> {
     fn create_nested<'a>(
         field_model_type: &'a GqlType,
         argument: &'a ConstValue,
         container_model_type: &'a GqlType,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<NestedAbstractInsert<'a>> {
         let nested_reference_col = compute_nested_reference_column(
             field_model_type,
@@ -369,7 +371,7 @@ fn compute_nested_inserts<'a>(
 fn compute_nested_delete<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
     container_model_type: &'a GqlType,
 ) -> Vec<NestedAbstractDelete<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
@@ -413,7 +415,7 @@ fn compute_nested_delete_object_arg<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> NestedAbstractDelete<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 

@@ -1,4 +1,4 @@
-use crate::execution::query_context::{cast_value, QueryContext};
+use crate::execution::operations_context::{cast_value, OperationsContext};
 use anyhow::{bail, Result};
 use async_graphql_value::ConstValue;
 
@@ -12,7 +12,7 @@ pub trait PredicateParameterMapper<'a> {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractPredicate<'a>>;
 }
 
@@ -21,7 +21,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractPredicate<'a>> {
         let system = query_context.get_system();
         let parameter_type = &system.predicate_types[self.type_id];
@@ -195,7 +195,7 @@ fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> Result<(ColumnPath<'a>, ColumnPath<'a>)> {
     let system = query_context.get_system();
 

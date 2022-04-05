@@ -1,5 +1,7 @@
 use payas_model::model::{
-    mapped_arena::MappedArena, ContextField, ContextSource, ContextType, GqlFieldType,
+    access::Access, mapped_arena::MappedArena, relation::GqlRelation, ContextField, ContextSource,
+    ContextType, GqlCompositeType, GqlCompositeTypeKind, GqlField, GqlFieldType, GqlType,
+    GqlTypeKind,
 };
 
 use super::{
@@ -26,6 +28,16 @@ fn create_shallow(context: &ResolvedContext, building: &mut SystemContextBuildin
             fields: vec![],
         },
     );
+
+    building.types.add(
+        &context.name,
+        GqlType {
+            name: context.name.clone(),
+            plural_name: context.name.clone(), // TODO
+            kind: GqlTypeKind::Primitive,
+            is_input: false,
+        },
+    );
 }
 
 pub fn build_expanded(
@@ -38,10 +50,11 @@ pub fn build_expanded(
 }
 
 fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
-    let existing_type_id = building.contexts.get_id(&context.name).unwrap();
-    let existing_context = &building.contexts[existing_type_id];
+    let existing_context_id = building.contexts.get_id(&context.name).unwrap();
+    let existing_type_id = building.types.get_id(&context.name).unwrap();
+    let existing_context = &building.contexts[existing_context_id];
 
-    let fields = context
+    let context_fields = context
         .fields
         .iter()
         .map(|field| ContextField {
@@ -55,13 +68,28 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
                 }
             },
         })
-        .collect();
+        .collect::<Vec<_>>();
 
     let expanded_context = ContextType {
         name: existing_context.name.clone(),
-        fields,
+        fields: context_fields.clone(),
     };
-    building.contexts[existing_type_id] = expanded_context;
+    building.contexts[existing_context_id] = expanded_context;
+
+    let expanded_type_kind = GqlTypeKind::Composite(GqlCompositeType {
+        fields: context_fields
+            .iter()
+            .map(|field| GqlField {
+                name: field.name.clone(),
+                typ: field.typ.clone(),
+                relation: GqlRelation::NonPersistent,
+                has_default_value: false,
+            })
+            .collect(),
+        kind: GqlCompositeTypeKind::NonPersistent,
+        access: Access::restrictive(),
+    });
+    building.types[existing_type_id].kind = expanded_type_kind;
 }
 
 fn create_context_field_type(

@@ -1,6 +1,6 @@
 use crate::{
     execution::{
-        query_context::{QueryContext, QueryResponse},
+        operations_context::{OperationsContext, QueryResponse},
         resolver::FieldResolver,
     },
     validation::field::ValidatedField,
@@ -21,7 +21,7 @@ pub trait DataResolver {
         &self,
         field: &'e ValidatedField,
         operation_type: &'e OperationType,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
     ) -> Result<QueryResponse>;
 }
 
@@ -29,7 +29,7 @@ pub trait DataResolver {
 impl FieldResolver<Value> for Value {
     async fn resolve_field<'a>(
         &'a self,
-        _query_context: &'a QueryContext<'a>,
+        _query_context: &'a OperationsContext<'a>,
         field: &ValidatedField,
     ) -> Result<Value> {
         let field_name = field.name.as_str();
@@ -53,7 +53,7 @@ impl DataResolver for ModelSystem {
         &self,
         field: &'e ValidatedField,
         operation_type: &'e OperationType,
-        query_context: &'e QueryContext<'e>,
+        query_context: &'e OperationsContext<'e>,
     ) -> Result<QueryResponse> {
         let name = &field.name;
 

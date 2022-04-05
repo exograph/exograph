@@ -10,8 +10,9 @@ use serde_json::{Map, Value};
 use tokio_postgres::{types::FromSqlOwned, Row};
 
 use crate::{
-    execution::query_context::{QueryContext, QueryResponse},
+    execution::operations_context::{OperationsContext, QueryResponse},
     validation::field::ValidatedField,
+    OperationsPayload,
 };
 
 use super::access_solver;
@@ -30,7 +31,7 @@ pub trait SQLMapper<'a, R> {
     fn map_to_sql(
         &'a self,
         argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<R>;
 }
 
@@ -40,7 +41,7 @@ pub trait SQLInsertMapper<'a> {
         mutation: &'a Mutation,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractInsert>;
 }
 
@@ -51,7 +52,7 @@ pub trait SQLUpdateMapper<'a> {
         predicate: AbstractPredicate<'a>,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<AbstractUpdate>;
 }
 
@@ -60,13 +61,13 @@ pub trait OperationResolver<'a> {
     fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<OperationResolverResult<'a>>;
 
     async fn execute(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<QueryResponse> {
         let resolver_result = self.resolve_operation(field, query_context)?;
         let interceptors = self.interceptors().ordered();
@@ -99,7 +100,7 @@ pub enum SQLOperationKind {
 pub fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> AbstractPredicate<'a> {
     let return_type = return_type.typ(query_context.get_system());
 
@@ -115,7 +116,7 @@ pub fn compute_sql_access_predicate<'a>(
             access_solver::solve_access(
                 access_expr,
                 query_context.request_context,
-                query_context.executor.system,
+                query_context.system,
             )
         }
     }
@@ -124,7 +125,7 @@ pub fn compute_sql_access_predicate<'a>(
 pub fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
-    query_context: &'a QueryContext<'a>,
+    query_context: &'a OperationsContext<'a>,
 ) -> &'a Predicate<'a> {
     let return_type = return_type.typ(query_context.get_system());
 
@@ -143,7 +144,7 @@ pub fn compute_service_access_predicate<'a>(
             access_solver::solve_access(
                 access_expr,
                 query_context.request_context,
-                query_context.executor.system,
+                query_context.system,
             )
         }
         _ => panic!(),
@@ -157,7 +158,7 @@ pub fn compute_service_access_predicate<'a>(
     let method_level_access = access_solver::solve_access(
         method_access_expr,
         query_context.request_context,
-        query_context.executor.system,
+        query_context.system,
     );
     let method_level_access = method_level_access.predicate();
 
@@ -174,7 +175,7 @@ impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
         &self,
         field: &'a ValidatedField,
-        query_context: &'a QueryContext<'a>,
+        query_context: &'a OperationsContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
             OperationResolverResult::SQLOperation(abstract_operation) => {
@@ -198,7 +199,7 @@ impl<'a> OperationResolverResult<'a> {
             }
 
             OperationResolverResult::DenoOperation(method_id) => {
-                let method = &query_context.executor.system.methods[*method_id];
+                let method = &query_context.system.methods[*method_id];
 
                 let access_predicate =
                     compute_service_access_predicate(&method.return_type, method, query_context);
@@ -218,9 +219,10 @@ impl<'a> OperationResolverResult<'a> {
 async fn resolve_deno(
     method: &ServiceMethod,
     field: &ValidatedField,
-    query_context: &QueryContext<'_>,
+    query_context: &OperationsContext<'_>,
 ) -> Result<serde_json::Value> {
-    let script = &query_context.executor.system.deno_scripts[method.script];
+    let script = &query_context.system.deno_scripts[method.script];
+    let system = query_context.get_system();
 
     let mapped_args = field
         .arguments
@@ -233,15 +235,41 @@ async fn resolve_deno(
         })
         .collect::<HashMap<_, _>>();
 
+    // construct a sequence of arguments to pass to the Deno method
     let arg_sequence = method
         .arguments
         .iter()
         .map(|arg| {
-            let arg_type = &query_context.executor.system.types[arg.type_id];
-
             if arg.is_injected {
-                Ok(Arg::Shim(arg_type.name.clone()))
+                // handle injected arguments
+
+                let arg_type = &system.types[arg.type_id];
+
+                // what kind of injected argument is it?
+                // first check if it's a context
+                if let Some(context) = system
+                    .contexts
+                    .iter()
+                    .map(|(_, context)| context)
+                    .find(|context| context.name == arg_type.name)
+                {
+                    // this argument is a context, get the value of the context and give it as an argument
+                    let context_value = query_context
+                        .request_context
+                        .get(&context.name)
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "Could not get context `{}` from request context",
+                                &context.name
+                            )
+                        });
+                    Ok(Arg::Serde(context_value.clone()))
+                } else {
+                    // not a context, assume it is a provided shim by the Deno executor
+                    Ok(Arg::Shim(arg_type.name.clone()))
+                }
             } else if let Some(val) = mapped_args.get(&arg.name) {
+                // regular argument
                 Ok(Arg::Serde(val.clone()))
             } else {
                 Err(anyhow!("Invalid argument {}", arg.name))
@@ -269,9 +297,11 @@ async fn resolve_deno(
                         let result = query_context
                             .executor
                             .execute_with_request_context(
-                                None,
-                                &query_string,
-                                variables.as_ref(),
+                                OperationsPayload {
+                                    operation_name: None,
+                                    query: query_string,
+                                    variables,
+                                },
                                 query_context.request_context.clone(),
                             )
                             .await?

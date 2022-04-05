@@ -16,10 +16,11 @@ use pg_bigdecimal::{BigDecimal, PgNumeric};
 use serde_json::Value as JsonValue;
 
 use super::{
-    query_executor::QueryExecutor,
+    operations_executor::OperationsExecutor,
     resolver::{FieldResolver, Resolver},
 };
 
+use crate::introspection::schema::Schema;
 use crate::{
     data::data_resolver::DataResolver,
     introspection::schema::{
@@ -31,8 +32,10 @@ use crate::{
 const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
-pub struct QueryContext<'a> {
-    pub executor: &'a QueryExecutor<'a>,
+pub struct OperationsContext<'a> {
+    pub executor: &'a OperationsExecutor,
+    pub system: &'a ModelSystem,
+    pub schema: &'a Schema,
     pub request_context: &'a serde_json::Value,
 }
 
@@ -57,7 +60,7 @@ impl QueryResponse {
     }
 }
 
-impl<'qc> QueryContext<'qc> {
+impl<'qc> OperationsContext<'qc> {
     pub async fn resolve_operation<'b>(
         &self,
         operation: ValidatedOperation,
@@ -108,7 +111,7 @@ impl<'qc> QueryContext<'qc> {
     }
 
     pub fn get_system(&self) -> &ModelSystem {
-        self.executor.system
+        self.system
     }
 }
 
@@ -317,7 +320,7 @@ fragment query_info on Query {
 impl FieldResolver<QueryResponse> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e QueryContext<'e>,
+        operations_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<QueryResponse> {
         let name = field.name.as_str();
@@ -330,13 +333,12 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
         if name.starts_with("__") && allow_introspection {
             match name {
                 "__type" => Ok(QueryResponse::Json(
-                    query_context.resolve_type(field).await?,
+                    operations_context.resolve_type(field).await?,
                 )),
                 "__schema" => Ok(QueryResponse::Json(
-                    query_context
-                        .executor
+                    operations_context
                         .schema
-                        .resolve_value(query_context, &field.subfields)
+                        .resolve_value(operations_context, &field.subfields)
                         .await?,
                 )),
                 "__typename" => {
@@ -350,10 +352,9 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
                 _ => bail!("No such introspection field {}", name),
             }
         } else {
-            query_context
-                .executor
+            operations_context
                 .system
-                .resolve(field, &self.typ, query_context)
+                .resolve(field, &self.typ, operations_context)
                 .await
         }
     }
