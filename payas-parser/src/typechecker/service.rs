@@ -207,16 +207,17 @@ impl TypecheckFrom<AstArgument<Untyped>> for AstArgument<Typed> {
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
         if let Some(Type::Composite(model)) = type_env.get_by_key(&self.typ.name()) {
-            if !matches!(model.kind, AstModelKind::NonPersistentInput) {
-                errors.push(Diagnostic {
+            match model.kind {
+                AstModelKind::NonPersistentInput | AstModelKind::Context => {}
+                _ => errors.push(Diagnostic {
                     level: Level::Error,
                     message: format!(
-                        "Cannot have non-input type in method argument `{}`",
+                        "Argument `{}` must be either an input type or a context",
                         self.name
                     ),
                     code: Some("A000".to_string()),
                     spans: vec![],
-                })
+                }),
             }
         }
 
