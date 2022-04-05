@@ -235,20 +235,25 @@ async fn resolve_deno(
         })
         .collect::<HashMap<_, _>>();
 
+    // construct a sequence of arguments to pass to the Deno method
     let arg_sequence = method
         .arguments
         .iter()
         .map(|arg| {
             if arg.is_injected {
+                // handle injected arguments
+
                 let arg_type = &system.types[arg.type_id];
 
-                // first look if it's a context
+                // what kind of injected argument is it?
+                // first check if it's a context
                 if let Some(context) = system
                     .contexts
                     .iter()
                     .map(|(_, context)| context)
                     .find(|context| context.name == arg_type.name)
                 {
+                    // this argument is a context, get the value of the context and give it as an argument
                     let context_value = query_context
                         .request_context
                         .get(&context.name)
@@ -260,9 +265,11 @@ async fn resolve_deno(
                         });
                     Ok(Arg::Serde(context_value.clone()))
                 } else {
+                    // not a context, assume it is a provided shim by the Deno executor
                     Ok(Arg::Shim(arg_type.name.clone()))
                 }
             } else if let Some(val) = mapped_args.get(&arg.name) {
+                // regular argument
                 Ok(Arg::Serde(val.clone()))
             } else {
                 Err(anyhow!("Invalid argument {}", arg.name))
