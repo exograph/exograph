@@ -24,6 +24,7 @@ use serde_json::{Map, Value};
 mod data;
 mod error;
 mod execution;
+pub mod graphiql;
 mod introspection;
 pub mod request_context;
 mod validation;
