@@ -3,29 +3,50 @@ source: payas-server-core/src/validation/document_validator.rs
 expression: validator.validate(create_query_document(query))
 ---
 Ok(
-    ValidatedDocument {
-        operations: [
-            ValidatedOperation {
-                name: Some(
-                    "ConcertById",
+    ValidatedOperation {
+        name: Some(
+            "ConcertById",
+        ),
+        typ: Query,
+        fields: [
+            ValidatedField {
+                alias: None,
+                name: Name(
+                    "concert",
                 ),
-                typ: Query,
-                fields: [
+                arguments: [
+                    (
+                        "id",
+                        Number(
+                            Number(
+                                1,
+                            ),
+                        ),
+                    ),
+                ],
+                subfields: [
                     ValidatedField {
                         alias: None,
                         name: Name(
-                            "concert",
+                            "id",
                         ),
-                        arguments: [
-                            (
-                                "id",
-                                Number(
-                                    Number(
-                                        1,
-                                    ),
-                                ),
-                            ),
-                        ],
+                        arguments: [],
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "title",
+                        ),
+                        arguments: [],
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "venue",
+                        ),
+                        arguments: [],
                         subfields: [
                             ValidatedField {
                                 alias: None,
@@ -38,41 +59,15 @@ Ok(
                             ValidatedField {
                                 alias: None,
                                 name: Name(
-                                    "title",
+                                    "name",
                                 ),
                                 arguments: [],
                                 subfields: [],
-                            },
-                            ValidatedField {
-                                alias: None,
-                                name: Name(
-                                    "venue",
-                                ),
-                                arguments: [],
-                                subfields: [
-                                    ValidatedField {
-                                        alias: None,
-                                        name: Name(
-                                            "id",
-                                        ),
-                                        arguments: [],
-                                        subfields: [],
-                                    },
-                                    ValidatedField {
-                                        alias: None,
-                                        name: Name(
-                                            "name",
-                                        ),
-                                        arguments: [],
-                                        subfields: [],
-                                    },
-                                ],
                             },
                         ],
                     },
                 ],
             },
         ],
-        operation_typ: Query,
     },
 )

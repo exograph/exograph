@@ -1,16 +1,15 @@
 use super::operations_context;
 use crate::request_context::RequestContext;
+use crate::validation::operation::ValidatedOperation;
 use crate::OperationsPayload;
 use crate::{
-    error::ExecutionError,
-    introspection::schema::Schema,
-    validation::{document::ValidatedDocument, document_validator::DocumentValidator},
+    error::ExecutionError, introspection::schema::Schema,
+    validation::document_validator::DocumentValidator,
 };
-use async_graphql_parser::{parse_query, types::OperationType};
+use async_graphql_parser::parse_query;
 
 use anyhow::Result;
 
-use futures::future::join_all;
 use operations_context::{OperationsContext, QueryResponse};
 use payas_deno::DenoExecutor;
 use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextType};
@@ -49,45 +48,17 @@ impl OperationsExecutor {
         operations_payload: OperationsPayload,
         request_context: Value,
     ) -> Result<Vec<(String, QueryResponse)>> {
-        let (document, query_context) =
+        let (operation, query_context) =
             self.create_query_context(operations_payload, &request_context)?;
 
-        let resolutions = match document.operation_typ {
-            OperationType::Query => {
-                // process queries concurrently
-                let query_resolution_futures: Vec<_> = document
-                    .operations
-                    .into_iter()
-                    .map(|query| query_context.resolve_operation(query))
-                    .collect();
-                join_all(query_resolution_futures).await
-            }
-            OperationType::Mutation => {
-                // process mutations sequentially
-                let mut mutation_resolution = vec![];
-                for mutation in document.operations.into_iter() {
-                    let result = query_context.resolve_operation(mutation).await;
-                    mutation_resolution.push(result);
-                }
-                mutation_resolution
-            }
-            OperationType::Subscription => todo!(),
-        };
-
-        resolutions
-            .into_iter()
-            .flat_map(|query: Result<Vec<(String, QueryResponse)>>| match query {
-                Ok(resolved) => resolved.into_iter().map(Ok).collect(),
-                Err(err) => vec![Err(err)],
-            })
-            .collect()
+        query_context.resolve_operation(operation).await
     }
 
     fn create_query_context<'a>(
         &'a self,
         operations_payload: OperationsPayload,
         request_context: &'a serde_json::Value,
-    ) -> Result<(ValidatedDocument, OperationsContext<'a>), ExecutionError> {
+    ) -> Result<(ValidatedOperation, OperationsContext<'a>), ExecutionError> {
         let document = parse_query(operations_payload.query).unwrap();
 
         let document_validator = DocumentValidator::new(

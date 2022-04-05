@@ -36,8 +36,11 @@ pub enum ExecutionError {
     #[error("No operation found")]
     NoOperationFound,
 
-    #[error("Query and mutation may not be specified in the same document")]
-    DifferentOperationTypes,
+    #[error("Must provide operation name if query contains multiple operations")]
+    MultipleOperationsNoOperationName,
+
+    #[error("operationName '{0}' doesn't match any operation")]
+    MultipleOperationsUnmatchedOperationName(String),
 }
 
 impl ExecutionError {
@@ -54,7 +57,8 @@ impl ExecutionError {
             ExecutionError::RequiredArgumentNotFound(_, pos) => *pos,
             ExecutionError::StrayArguments(_, _, pos) => *pos,
             ExecutionError::NoOperationFound => Pos::default(),
-            ExecutionError::DifferentOperationTypes => Pos::default(),
+            ExecutionError::MultipleOperationsNoOperationName => Pos::default(),
+            ExecutionError::MultipleOperationsUnmatchedOperationName(_) => Pos::default(),
         }
     }
 }

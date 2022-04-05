@@ -68,6 +68,7 @@ pub fn create_operations_executor(
 
 #[derive(Debug, Deserialize)]
 pub struct OperationsPayload {
+    #[serde(rename = "operationName")]
     operation_name: Option<String>,
     query: String,
     variables: Option<Map<String, Value>>,
