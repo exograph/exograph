@@ -222,6 +222,7 @@ async fn resolve_deno(
     query_context: &OperationsContext<'_>,
 ) -> Result<serde_json::Value> {
     let script = &query_context.system.deno_scripts[method.script];
+    let system = query_context.get_system();
 
     let mapped_args = field
         .arguments
@@ -234,15 +235,41 @@ async fn resolve_deno(
         })
         .collect::<HashMap<_, _>>();
 
+    // construct a sequence of arguments to pass to the Deno method
     let arg_sequence = method
         .arguments
         .iter()
         .map(|arg| {
-            let arg_type = &query_context.system.types[arg.type_id];
-
             if arg.is_injected {
-                Ok(Arg::Shim(arg_type.name.clone()))
+                // handle injected arguments
+
+                let arg_type = &system.types[arg.type_id];
+
+                // what kind of injected argument is it?
+                // first check if it's a context
+                if let Some(context) = system
+                    .contexts
+                    .iter()
+                    .map(|(_, context)| context)
+                    .find(|context| context.name == arg_type.name)
+                {
+                    // this argument is a context, get the value of the context and give it as an argument
+                    let context_value = query_context
+                        .request_context
+                        .get(&context.name)
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "Could not get context `{}` from request context",
+                                &context.name
+                            )
+                        });
+                    Ok(Arg::Serde(context_value.clone()))
+                } else {
+                    // not a context, assume it is a provided shim by the Deno executor
+                    Ok(Arg::Shim(arg_type.name.clone()))
+                }
             } else if let Some(val) = mapped_args.get(&arg.name) {
+                // regular argument
                 Ok(Arg::Serde(val.clone()))
             } else {
                 Err(anyhow!("Invalid argument {}", arg.name))
