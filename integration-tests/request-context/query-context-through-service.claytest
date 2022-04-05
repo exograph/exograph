@@ -1,0 +1,24 @@
+operation: | 
+    query {
+      getRole 
+      getConnectingIp
+      getDevModeEnabled
+    }
+auth: |
+  {
+    "role": "ADMIN"
+  }
+headers: |
+  {
+    "X-Connecting-IP": "127.0.0.1"
+  }
+envs:
+  __DEV_MODE: "1"
+response: |
+  {
+    "data": {
+      "getRole": "ADMIN",
+      "getConnectingIp": "127.0.0.1",
+      "getDevModeEnabled": true
+    }
+  }

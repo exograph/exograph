@@ -14,3 +14,10 @@ model JournalEntry {
     id: Int = autoincrement() @pk
     text: String
 } 
+
+@external("context_getter.ts")
+service ContextGetter {
+    query getRole(@inject context: AuthContext): String
+    query getConnectingIp(@inject context: AuthContext): String
+    query getDevModeEnabled(@inject context: AuthContext): Boolean
+}

@@ -222,6 +222,7 @@ async fn resolve_deno(
     query_context: &OperationsContext<'_>,
 ) -> Result<serde_json::Value> {
     let script = &query_context.system.deno_scripts[method.script];
+    let system = query_context.get_system();
 
     let mapped_args = field
         .arguments
@@ -238,10 +239,29 @@ async fn resolve_deno(
         .arguments
         .iter()
         .map(|arg| {
-            let arg_type = &query_context.system.types[arg.type_id];
-
             if arg.is_injected {
-                Ok(Arg::Shim(arg_type.name.clone()))
+                let arg_type = &system.types[arg.type_id];
+
+                // first look if it's a context
+                if let Some(context) = system
+                    .contexts
+                    .iter()
+                    .map(|(_, context)| context)
+                    .find(|context| context.name == arg_type.name)
+                {
+                    let context_value = query_context
+                        .request_context
+                        .get(&context.name)
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "Could not get context `{}` from request context",
+                                &context.name
+                            )
+                        });
+                    Ok(Arg::Serde(context_value.clone()))
+                } else {
+                    Ok(Arg::Shim(arg_type.name.clone()))
+                }
             } else if let Some(val) = mapped_args.get(&arg.name) {
                 Ok(Arg::Serde(val.clone()))
             } else {
