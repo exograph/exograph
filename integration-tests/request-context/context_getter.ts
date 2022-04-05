@@ -6,6 +6,10 @@ interface AuthContext {
     devMode: string
 }
 
+interface TrackingContext {
+    uid: string
+}
+
 export function getRole(context: AuthContext): string {
     return context.role
 }
@@ -17,3 +21,10 @@ export function getConnectingIp(context: AuthContext): string {
 export function getDevModeEnabled(context: AuthContext): boolean {
     return context.devMode == "1"
 }
+
+// two separate injected contexts
+
+export function getRoleAndUid(auth: AuthContext, tracking: TrackingContext): string {
+    return auth.role + "," + tracking.uid
+}
+

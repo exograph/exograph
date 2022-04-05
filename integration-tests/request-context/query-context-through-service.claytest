@@ -3,6 +3,7 @@ operation: |
       getRole 
       getConnectingIp
       getDevModeEnabled
+      getRoleAndUid
     }
 auth: |
   {
@@ -10,7 +11,8 @@ auth: |
   }
 headers: |
   {
-    "X-Connecting-IP": "127.0.0.1"
+    "X-Connecting-IP": "127.0.0.1",
+    "X-User-ID": "abcde"
   }
 envs:
   __DEV_MODE: "1"
@@ -19,6 +21,7 @@ response: |
     "data": {
       "getRole": "ADMIN",
       "getConnectingIp": "127.0.0.1",
-      "getDevModeEnabled": true
+      "getDevModeEnabled": true,
+      "getRoleAndUid": "ADMIN,abcde"
     }
   }

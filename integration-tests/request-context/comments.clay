@@ -4,6 +4,10 @@ context AuthContext {
     devMode: String @env("__DEV_MODE")
 }
 
+context TrackingContext {
+    uid: String @header("X-User-ID")
+}
+
 @access(
     query=true,
     mutation=AuthContext.role == "ADMIN" ||
@@ -20,4 +24,7 @@ service ContextGetter {
     query getRole(@inject context: AuthContext): String
     query getConnectingIp(@inject context: AuthContext): String
     query getDevModeEnabled(@inject context: AuthContext): Boolean
+
+    // query with two different injected contexts
+    query getRoleAndUid(@inject auth: AuthContext, @inject tracking: TrackingContext): String
 }
