@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use heck::CamelCase;
+use heck::ToUpperCamelCase;
 
 use payas_sql::spec::{ColumnSpec, Issue, SchemaSpec, TableSpec, WithIssues};
 use payas_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
@@ -15,9 +15,9 @@ pub trait ToModel {
     fn to_model(&self) -> WithIssues<String>;
 }
 
-/// Converts the name of a SQL table to a claytip model name (PascalCase).
+/// Converts the name of a SQL table to a claytip model name (for example, concert_artist -> ConcertArtist).
 fn to_model_name(name: &str) -> String {
-    name.to_camel_case() // PascalCase is called CamelCase in heck
+    name.to_upper_camel_case()
 }
 
 impl FromModel<SerializableSlab<PhysicalTable>> for SchemaSpec {

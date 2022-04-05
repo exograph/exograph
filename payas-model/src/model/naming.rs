@@ -1,5 +1,5 @@
-use heck::MixedCase;
-use heck::SnakeCase;
+use heck::ToLowerCamelCase;
+use heck::ToSnakeCase;
 
 use crate::model::GqlType;
 
@@ -38,7 +38,7 @@ pub trait ToGqlQueryName {
 }
 
 fn to_query(name: &str) -> String {
-    name.to_mixed_case()
+    name.to_lower_camel_case()
 }
 
 impl<T: ToPlural> ToGqlQueryName for T {

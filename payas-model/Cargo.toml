@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-heck = "0.3"
+heck = "0.4.0"
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 serde = "1.0"
 payas-sql = { path = "../payas-sql" }
