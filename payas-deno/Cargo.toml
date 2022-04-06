@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 async-channel = "1.6.1"
-async-recursion = "0.3.2"
+async-recursion = "1.0.0"
 deno_runtime = "0.38.0"
 deno_core = "0.112.0"
 tokio = "1"

@@ -5,11 +5,11 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
-async-recursion = "0.3.2"
-async-graphql-parser = "3.0.19"
-async-graphql-value = "3.0.19"
-async-stream = "0.3.2"
-async-trait = "0.1.52"
+async-recursion = "1.0.0"
+async-graphql-parser = "3.0.37"
+async-graphql-value = "3.0.37"
+async-stream = "0.3.3"
+async-trait = "0.1.53"
 base64 = "0.13"
 bytes = "1"
 futures = "0.3"
@@ -25,7 +25,7 @@ maybe-owned = "0.3.4"
 thiserror = "1.0.30"
 uuid = "0.8"
 include_dir = "0.7.2"
-bincode = "1.2.1"
+bincode = "1.3.3"
 
 
 payas-sql = { path = "../payas-sql" }
