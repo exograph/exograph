@@ -1,0 +1,19 @@
+operation: |
+    {
+      venue(id: 1
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Syntax error  --> 3:1;   |; 3 | }␊;   | ^---;   |;   = expected name",
+          "locations": [
+            {
+              "line": 3,
+              "column": 1
+            }
+          ]
+        }
+      ]
+    }
+      

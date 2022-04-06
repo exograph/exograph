@@ -1,0 +1,33 @@
+operation: |
+    {
+      venue(id: 1) {
+        ...venueInfo
+      }
+    }
+
+    fragment venueInfo on Venue {
+      id
+    }
+
+    fragment venueInfo on Venue {
+      id
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Fragment venueInfo duplicated",
+          "locations": [
+            {
+              "line": 7,
+              "column": 1
+            },
+            {
+              "line": 11,
+              "column": 1
+            }
+          ]
+        }
+      ]
+    }
+      
