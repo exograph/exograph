@@ -116,13 +116,21 @@ pub async fn resolve<E>(
                         .replace("\n", "; ")
                 );
                 yield Bytes::from_static(br#"""#);
-                eprintln!("{:?}", err);
                 if let Some(err) = err.downcast_ref::<ExecutionError>() {
-                    yield Bytes::from_static(br#", "locations": [{"line": "#);
-                    yield Bytes::from(err.position().line.to_string());
+                    yield Bytes::from_static(br#", "locations": ["#);
+                    yield Bytes::from_static(br#"{"line": "#);
+                    yield Bytes::from(err.position1().line.to_string());
                     yield Bytes::from_static(br#", "column": "#);
-                    yield Bytes::from(err.position().column.to_string());
-                    yield Bytes::from_static(br#"}]"#);
+                    yield Bytes::from(err.position1().column.to_string());
+                    yield Bytes::from_static(br#"}"#);
+                    if let Some(position2) = err.position2() {
+                        yield Bytes::from_static(br#", {"line": "#);
+                        yield Bytes::from(position2.line.to_string());
+                        yield Bytes::from_static(br#", "column": "#);
+                        yield Bytes::from(position2.column.to_string());
+                        yield Bytes::from_static(br#"}"#);
+                    }
+                    yield Bytes::from_static(br#"]"#);
                 };
                 yield Bytes::from_static(br#"}"#);
                 yield Bytes::from_static(b"]}");
