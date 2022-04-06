@@ -130,8 +130,10 @@ pub async fn resolve<E>(
                 );
                 yield Bytes::from_static(br#"""#);
                 if let Some(err) = err.downcast_ref::<ExecutionError>() {
+                    yield Bytes::from_static(br#", "locations": ["#);
                     report_position!(err.position1());
                     if let Some(position2) = err.position2() {
+                        yield Bytes::from_static(br#","#);
                         report_position!(position2);
                     }
                     yield Bytes::from_static(br#"]"#);
