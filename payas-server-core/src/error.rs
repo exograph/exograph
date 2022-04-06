@@ -3,7 +3,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {
-    #[error("Failed to parse query. Error: {0}")]
+    #[error("{0}")]
     QueryParsingFailed(String, Pos, Option<Pos>),
 
     #[error("Variable '{0}' not found")]
