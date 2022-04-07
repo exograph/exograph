@@ -18,5 +18,4 @@ tokio = "1"
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
 payas-model = { path = "../payas-model" }
-payas-server-core = { path = "../payas-server-core" }
 payas-test = { path = "../payas-test" }
