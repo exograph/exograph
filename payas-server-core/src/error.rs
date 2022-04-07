@@ -3,6 +3,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {
+    #[error("{0}")]
+    QueryParsingFailed(String, Pos, Option<Pos>),
+
     #[error("Variable '{0}' not found")]
     VariableNotFound(String, Pos),
 
@@ -44,8 +47,9 @@ pub enum ExecutionError {
 }
 
 impl ExecutionError {
-    pub fn position(&self) -> Pos {
+    pub fn position1(&self) -> Pos {
         match self {
+            ExecutionError::QueryParsingFailed(_, pos, _) => *pos,
             ExecutionError::VariableNotFound(_, pos) => *pos,
             ExecutionError::MalformedVariable(_, pos, _) => *pos,
             ExecutionError::FragmentDefinitionNotFound(_, pos) => *pos,
@@ -59,6 +63,13 @@ impl ExecutionError {
             ExecutionError::NoOperationFound => Pos::default(),
             ExecutionError::MultipleOperationsNoOperationName => Pos::default(),
             ExecutionError::MultipleOperationsUnmatchedOperationName(_) => Pos::default(),
+        }
+    }
+
+    pub fn position2(&self) -> Option<Pos> {
+        match self {
+            ExecutionError::QueryParsingFailed(_, _, pos) => *pos,
+            _ => None,
         }
     }
 }

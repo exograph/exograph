@@ -6,7 +6,8 @@ use crate::{
     error::ExecutionError, introspection::schema::Schema,
     validation::document_validator::DocumentValidator,
 };
-use async_graphql_parser::parse_query;
+use async_graphql_parser::types::ExecutableDocument;
+use async_graphql_parser::Pos;
 
 use anyhow::Result;
 
@@ -59,7 +60,7 @@ impl OperationsExecutor {
         operations_payload: OperationsPayload,
         request_context: &'a serde_json::Value,
     ) -> Result<(ValidatedOperation, OperationsContext<'a>), ExecutionError> {
-        let document = parse_query(operations_payload.query).unwrap();
+        let document = Self::parse_query(operations_payload.query)?;
 
         let document_validator = DocumentValidator::new(
             &self.schema,
@@ -77,6 +78,52 @@ impl OperationsExecutor {
                     request_context,
                 },
             )
+        })
+    }
+
+    fn parse_query(query: String) -> Result<ExecutableDocument, ExecutionError> {
+        async_graphql_parser::parse_query(query).map_err(|e| {
+            let (message, pos1, pos2) = match e {
+                async_graphql_parser::Error::Syntax {
+                    message,
+                    start,
+                    end,
+                } => (format!("Syntax error {message}"), start, end),
+                async_graphql_parser::Error::MultipleRoots { root, schema, pos } => {
+                    (format!("Multiple roots of {root} type"), schema, Some(pos))
+                }
+                async_graphql_parser::Error::MissingQueryRoot { pos } => {
+                    ("Missing query root".to_string(), pos, None)
+                }
+                async_graphql_parser::Error::MultipleOperations {
+                    anonymous,
+                    operation,
+                } => (
+                    "Multiple operations".to_string(),
+                    anonymous,
+                    Some(operation),
+                ),
+                async_graphql_parser::Error::OperationDuplicated {
+                    operation: _,
+                    first,
+                    second,
+                } => ("Operation duplicated".to_string(), first, Some(second)),
+                async_graphql_parser::Error::FragmentDuplicated {
+                    fragment,
+                    first,
+                    second,
+                } => (
+                    format!("Fragment {fragment} duplicated"),
+                    first,
+                    Some(second),
+                ),
+                async_graphql_parser::Error::MissingOperation => {
+                    ("Missing operation".to_string(), Pos::default(), None)
+                }
+                _ => ("Unknown error".to_string(), Pos::default(), None),
+            };
+
+            ExecutionError::QueryParsingFailed(message, pos1, pos2)
         })
     }
 }

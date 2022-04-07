@@ -276,11 +276,18 @@ Error as a multistage test: {}
     let test_operation_sequence = stages
         .into_iter()
         .map(|stage| {
-            let gql_document = parse_query(&stage.operation).context("Invalid GraphQL")?;
+            let testvariable_bindings = parse_query(&stage.operation)
+                .map(|gql_document| build_testvariable_bindings(&gql_document))
+                .unwrap_or_else(|_| {
+                    eprintln!(
+                        "Invalid GraphQL document; defaulting test variables binding to empty"
+                    );
+                    HashMap::new()
+                });
 
             Ok(TestfileOperation::GqlDocument {
                 document: stage.operation,
-                testvariable_bindings: build_testvariable_bindings(&gql_document),
+                testvariable_bindings,
                 auth: stage.auth.map(from_json).transpose()?,
                 variables: stage.variable,
                 expected_payload: stage.response,

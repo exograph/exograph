@@ -6,6 +6,7 @@ use std::{fs::File, io::BufReader, path::Path};
 /// The `resolve` function is responsible for doing the work, using information
 /// extracted from an incoming request, and returning the response as a stream.
 use anyhow::{Context, Result};
+use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
@@ -89,6 +90,18 @@ pub async fn resolve<E>(
     let response = executor.execute(operations_payload, request_context).await;
 
     try_stream! {
+        macro_rules! report_position {
+            ($position:expr) => {
+                let p: Pos = $position;
+
+                yield Bytes::from_static(br#"{"line": "#);
+                yield Bytes::from(p.line.to_string());
+                yield Bytes::from_static(br#", "column": "#);
+                yield Bytes::from(p.column.to_string());
+                yield Bytes::from_static(br#"}"#);
+            };
+        }
+
         match response {
             Ok(parts) => {
                 let parts_len = parts.len();
@@ -117,13 +130,14 @@ pub async fn resolve<E>(
                         .replace("\n", "; ")
                 );
                 yield Bytes::from_static(br#"""#);
-                eprintln!("{:?}", err);
                 if let Some(err) = err.downcast_ref::<ExecutionError>() {
-                    yield Bytes::from_static(br#", "locations": [{"line": "#);
-                    yield Bytes::from(err.position().line.to_string());
-                    yield Bytes::from_static(br#", "column": "#);
-                    yield Bytes::from(err.position().column.to_string());
-                    yield Bytes::from_static(br#"}]"#);
+                    yield Bytes::from_static(br#", "locations": ["#);
+                    report_position!(err.position1());
+                    if let Some(position2) = err.position2() {
+                        yield Bytes::from_static(br#","#);
+                        report_position!(position2);
+                    }
+                    yield Bytes::from_static(br#"]"#);
                 };
                 yield Bytes::from_static(br#"}"#);
                 yield Bytes::from_static(b"]}");
