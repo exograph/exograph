@@ -1,4 +1,5 @@
 use maybe_owned::MaybeOwned;
+use tracing::instrument;
 
 use crate::{
     asql::{
@@ -21,6 +22,10 @@ use crate::{
 use super::Postgres;
 
 impl SelectTransformer for Postgres {
+    #[instrument(
+        name = "SelectTransformer::to_select for Postgres"
+        skip(self)
+        )]
     fn to_select<'a>(
         &self,
         abstract_select: &'a AbstractSelect,

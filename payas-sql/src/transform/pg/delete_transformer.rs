@@ -1,3 +1,5 @@
+use tracing::instrument;
+
 use crate::{
     asql::{delete::AbstractDelete, select::SelectionLevel},
     sql::{
@@ -13,6 +15,10 @@ use crate::{
 use super::Postgres;
 
 impl DeleteTransformer for Postgres {
+    #[instrument(
+        name = "DeleteTransformer::to_transaction_script for Postgres"
+        skip(self)
+        )]
     fn to_transaction_script<'a>(
         &self,
         abstract_delete: &'a AbstractDelete,

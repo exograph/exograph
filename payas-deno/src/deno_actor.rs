@@ -5,6 +5,7 @@ use futures::pin_mut;
 use serde_json::Value;
 use std::panic;
 use tokio::sync::mpsc::Receiver;
+use tracing::instrument;
 
 use crate::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
@@ -176,6 +177,10 @@ impl DenoActor {
         })
     }
 
+    #[instrument(
+        name = "deno_actor::call_method"
+        skip(self, to_user_sender)
+        )]
     pub async fn call_method(
         &mut self,
         method_name: String,
@@ -183,8 +188,6 @@ impl DenoActor {
         claytip_intercepted_operation_name: Option<String>,
         to_user_sender: tokio::sync::mpsc::Sender<RequestFromDenoMessage>,
     ) -> Result<Value> {
-        println!("Executing {}", &method_name);
-
         // put the intercepted operation name into Deno's op_state
         self.deno_module
             .put(InterceptedOperationName(claytip_intercepted_operation_name));

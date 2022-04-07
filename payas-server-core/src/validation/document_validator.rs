@@ -1,6 +1,7 @@
 use async_graphql_parser::types::{DocumentOperations, ExecutableDocument};
 use async_graphql_value::Name;
 use serde_json::{Map, Value};
+use tracing::instrument;
 
 use crate::{error::ExecutionError, introspection::schema::Schema};
 
@@ -32,6 +33,10 @@ impl<'a> DocumentValidator<'a> {
     /// - Validate that either there is only one operation or the operation name specified matches one of the operations in the document
     /// - Validate that there is at least one operation
     /// - Other validations are delegated to the operation validator
+    #[instrument(
+        name = "DocumentValidator::validate"
+        skip(self, document)
+        )]
     pub fn validate(
         self,
         document: ExecutableDocument,

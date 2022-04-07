@@ -16,6 +16,7 @@ use payas_deno::DenoExecutor;
 use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextType};
 use payas_sql::DatabaseExecutor;
 use serde_json::Value;
+use tracing::{error, instrument};
 
 /// Encapsulates the information required by the [crate::resolve] function.
 ///
@@ -44,6 +45,10 @@ impl OperationsExecutor {
     }
 
     // A version of execute that is suitable to be exposed through a shim to services
+    #[instrument(
+        name = "OperationsExecutor::execute_with_request_context"
+        skip_all
+        )]
     pub async fn execute_with_request_context(
         &self,
         operations_payload: OperationsPayload,
@@ -55,6 +60,7 @@ impl OperationsExecutor {
         query_context.resolve_operation(operation).await
     }
 
+    #[instrument(skip(self, operations_payload, request_context))]
     fn create_query_context<'a>(
         &'a self,
         operations_payload: OperationsPayload,
@@ -81,9 +87,11 @@ impl OperationsExecutor {
         })
     }
 
+    #[instrument(name = "OperationsExecutor::parse_query")]
     fn parse_query(query: String) -> Result<ExecutableDocument, ExecutionError> {
-        async_graphql_parser::parse_query(query).map_err(|e| {
-            let (message, pos1, pos2) = match e {
+        async_graphql_parser::parse_query(query).map_err(|error| {
+            error!(%error, "Failed to parse query");
+            let (message, pos1, pos2) = match error {
                 async_graphql_parser::Error::Syntax {
                     message,
                     start,
