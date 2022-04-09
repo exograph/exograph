@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{FragmentDefinition, OperationDefinition, OperationType},
+    types::{FragmentDefinition, OperationDefinition, OperationType, VariableDefinition},
     Pos, Positioned,
 };
 use async_graphql_value::{ConstValue, Name};
@@ -56,9 +56,9 @@ impl<'a> OperationValidator<'a> {
     ///
     /// # Returns
     ///   A validated operation with all variables and fields resolved and normalized.
-    pub(super) fn validate_operation(
-        &self,
-        (operation_name, operation): (Option<&Name>, &Positioned<OperationDefinition>),
+    pub(super) fn validate(
+        self,
+        operation: Positioned<OperationDefinition>,
     ) -> Result<ValidatedOperation, ExecutionError> {
         let operation_type_name = match operation.node.ty {
             OperationType::Query => QUERY_ROOT_TYPENAME,
@@ -76,10 +76,9 @@ impl<'a> OperationValidator<'a> {
             }
         };
 
-        let variables = self.validate_variables(operation)?;
+        let variables = self.validate_variables(operation.node.variable_definitions)?;
         let selection_set_validator = SelectionSetValidator::new(
             self.schema,
-            self.operation_name.as_deref(),
             container_type,
             &variables,
             &self.fragment_definitions,
@@ -88,7 +87,7 @@ impl<'a> OperationValidator<'a> {
         let fields = selection_set_validator.validate(&operation.node.selection_set)?;
 
         Ok(ValidatedOperation {
-            name: operation_name.map(|name| name.to_string()),
+            name: self.operation_name,
             typ: operation.node.ty,
             fields,
         })
@@ -108,16 +107,14 @@ impl<'a> OperationValidator<'a> {
     ///   `Value` to indicate that the value has been resolved)
     fn validate_variables(
         &'a self,
-        operation: &'a Positioned<OperationDefinition>,
-    ) -> Result<HashMap<&Name, ConstValue>, ExecutionError> {
-        operation
-            .node
-            .variable_definitions
-            .iter()
+        variable_definitions: Vec<Positioned<VariableDefinition>>,
+    ) -> Result<HashMap<Name, ConstValue>, ExecutionError> {
+        variable_definitions
+            .into_iter()
             .map(|variable_definition| {
-                let variable_name = &variable_definition.node.name;
-                let variable_value = self.var_value(variable_name)?;
-                Ok((&variable_name.node, variable_value))
+                let variable_name = variable_definition.node.name;
+                let variable_value = self.var_value(&variable_name)?;
+                Ok((variable_name.node, variable_value))
             })
             .collect()
     }

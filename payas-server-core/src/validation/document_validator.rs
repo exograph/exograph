@@ -1,9 +1,10 @@
-use async_graphql_parser::types::ExecutableDocument;
+use async_graphql_parser::types::{DocumentOperations, ExecutableDocument};
+use async_graphql_value::Name;
 use serde_json::{Map, Value};
 
 use crate::{error::ExecutionError, introspection::schema::Schema};
 
-use super::{document::ValidatedDocument, operation_validator::OperationValidator};
+use super::{operation::ValidatedOperation, operation_validator::OperationValidator};
 
 /// Context for validating a document.
 pub struct DocumentValidator<'a> {
@@ -26,43 +27,59 @@ impl<'a> DocumentValidator<'a> {
     }
 
     /// Validate the query payload.
+    ///
     /// Validations performed:
-    /// - Validate that all operations are of the same type (queries or mutations)
+    /// - Validate that either there is only one operation or the operation name specified matches one of the operations in the document
     /// - Validate that there is at least one operation
     /// - Other validations are delegated to the operation validator
     pub fn validate(
         self,
         document: ExecutableDocument,
-    ) -> Result<ValidatedDocument, ExecutionError> {
+    ) -> Result<ValidatedOperation, ExecutionError> {
+        let (operation_name, raw_operation) = match document.operations {
+            DocumentOperations::Single(operation) => Ok((self.operation_name, operation)),
+            DocumentOperations::Multiple(mut operations) => {
+                if operations.is_empty() {
+                    Err(ExecutionError::NoOperationFound)
+                } else {
+                    match self.operation_name {
+                        None if operations.len() == 1 => {
+                            // Per https://graphql.org/learn/queries/#operation-name, `operationName` is required
+                            // only for multiple operations, but async-graphql parses a named operation (`query Foo { ... }`)
+                            // to `DocumentOperations::Multiple` even if there is only one operation. So we add an additional
+                            // check here to make sure that the operation name is enforced only for truly multiple operations.
+
+                            // This unwrap is okay because we already check that there is exactly one operation.
+                            let (operation_name, operation) =
+                                operations.into_iter().next().unwrap();
+                            Ok((Some(operation_name.to_string()), operation))
+                        }
+                        None => Err(ExecutionError::MultipleOperationsNoOperationName),
+                        Some(operation_name) => {
+                            let operation = operations.remove(&Name::new(&operation_name));
+
+                            match operation {
+                                None => {
+                                    Err(ExecutionError::MultipleOperationsUnmatchedOperationName(
+                                        operation_name,
+                                    ))
+                                }
+                                Some(operation) => Ok((Some(operation_name), operation)),
+                            }
+                        }
+                    }
+                }
+            }
+        }?;
+
         let operation_validator = OperationValidator::new(
             self.schema,
-            self.operation_name,
+            operation_name,
             self.variables,
             document.fragments,
         );
 
-        let operations = document
-            .operations
-            .iter()
-            .map(|operation| operation_validator.validate_operation(operation))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let operation_typ = match &operations.first() {
-            Some(operation) => {
-                let same_operation_type = operations.iter().all(|op| op.typ == operation.typ);
-                if same_operation_type {
-                    Ok(operation.typ)
-                } else {
-                    Err(ExecutionError::DifferentOperationTypes)
-                }
-            }
-            None => Err(ExecutionError::NoOperationFound),
-        }?;
-
-        Ok(ValidatedDocument {
-            operations,
-            operation_typ,
-        })
+        operation_validator.validate(raw_operation)
     }
 }
 
@@ -277,6 +294,101 @@ mod tests {
                 }
             }
         "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn multi_operations_valid() {
+        let schema = create_test_schema();
+
+        let query = r#"
+            query concert1 {
+                concert(id: 1) {
+                    id
+                    headLine: title
+                }
+            }
+
+            query concert2 {
+                concert(id: 2) {
+                    id
+                    headLine: title
+                }
+            }
+        "#;
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: Some("concert1".to_string()),
+            variables: None,
+        };
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: Some("concert2".to_string()),
+            variables: None,
+        };
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn multi_operations_no_operation_name_invalid() {
+        let schema = create_test_schema();
+
+        let query = r#"
+            query concert1 {
+                concert(id: 1) {
+                    id
+                    headLine: title
+                }
+            }
+
+            query concert2 {
+                concert(id: 2) {
+                    id
+                    headLine: title
+                }
+            }
+        "#;
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn multi_operations_mismatched_operation_name_invalid() {
+        let schema = create_test_schema();
+
+        let query = r#"
+            query concert1 {
+                concert(id: 1) {
+                    id
+                    headLine: title
+                }
+            }
+
+            query concert2 {
+                concert(id: 2) {
+                    id
+                    headLine: title
+                }
+            }
+        "#;
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: Some("foo".to_string()),
+            variables: None,
+        };
 
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
     }

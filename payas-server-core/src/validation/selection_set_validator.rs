@@ -23,10 +23,9 @@ use super::field::ValidatedField;
 #[derive(Debug)]
 pub struct SelectionSetValidator<'a> {
     schema: &'a Schema,
-    operation_name: Option<&'a str>,
     /// The parent type of this field.
     container_type: &'a TypeDefinition,
-    variables: &'a HashMap<&'a Name, ConstValue>,
+    variables: &'a HashMap<Name, ConstValue>,
     fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
 }
 
@@ -34,14 +33,12 @@ impl<'a> SelectionSetValidator<'a> {
     #[must_use]
     pub fn new(
         schema: &'a Schema,
-        operation_name: Option<&'a str>,
         container_type: &'a TypeDefinition,
-        variables: &'a HashMap<&'a Name, ConstValue>,
+        variables: &'a HashMap<Name, ConstValue>,
         fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
     ) -> Self {
         Self {
             schema,
-            operation_name,
             container_type,
             variables,
             fragment_definitions,
@@ -134,7 +131,6 @@ impl<'a> SelectionSetValidator<'a> {
 
             let subfield_validator = SelectionSetValidator::new(
                 self.schema,
-                self.operation_name,
                 field_type_definition,
                 self.variables,
                 self.fragment_definitions,
