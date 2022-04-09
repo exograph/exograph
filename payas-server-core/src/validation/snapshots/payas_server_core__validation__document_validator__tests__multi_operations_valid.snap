@@ -4,7 +4,9 @@ expression: validator.validate(create_query_document(query))
 ---
 Ok(
     ValidatedOperation {
-        name: None,
+        name: Some(
+            "concert1",
+        ),
         typ: Query,
         fields: [
             ValidatedField {
@@ -32,43 +34,13 @@ Ok(
                         subfields: [],
                     },
                     ValidatedField {
-                        alias: None,
-                        name: Name(
-                            "title",
-                        ),
-                        arguments: [],
-                        subfields: [],
-                    },
-                ],
-            },
-            ValidatedField {
-                alias: None,
-                name: Name(
-                    "venue",
-                ),
-                arguments: [
-                    (
-                        "id",
-                        Number(
-                            Number(
-                                2,
+                        alias: Some(
+                            Name(
+                                "headLine",
                             ),
                         ),
-                    ),
-                ],
-                subfields: [
-                    ValidatedField {
-                        alias: None,
                         name: Name(
-                            "id",
-                        ),
-                        arguments: [],
-                        subfields: [],
-                    },
-                    ValidatedField {
-                        alias: None,
-                        name: Name(
-                            "name",
+                            "title",
                         ),
                         arguments: [],
                         subfields: [],

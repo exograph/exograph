@@ -4,47 +4,15 @@ expression: validator.validate(create_query_document(query))
 ---
 Ok(
     ValidatedOperation {
-        name: None,
+        name: Some(
+            "concert2",
+        ),
         typ: Query,
         fields: [
             ValidatedField {
                 alias: None,
                 name: Name(
                     "concert",
-                ),
-                arguments: [
-                    (
-                        "id",
-                        Number(
-                            Number(
-                                1,
-                            ),
-                        ),
-                    ),
-                ],
-                subfields: [
-                    ValidatedField {
-                        alias: None,
-                        name: Name(
-                            "id",
-                        ),
-                        arguments: [],
-                        subfields: [],
-                    },
-                    ValidatedField {
-                        alias: None,
-                        name: Name(
-                            "title",
-                        ),
-                        arguments: [],
-                        subfields: [],
-                    },
-                ],
-            },
-            ValidatedField {
-                alias: None,
-                name: Name(
-                    "venue",
                 ),
                 arguments: [
                     (
@@ -66,9 +34,13 @@ Ok(
                         subfields: [],
                     },
                     ValidatedField {
-                        alias: None,
+                        alias: Some(
+                            Name(
+                                "headLine",
+                            ),
+                        ),
                         name: Name(
-                            "name",
+                            "title",
                         ),
                         arguments: [],
                         subfields: [],
