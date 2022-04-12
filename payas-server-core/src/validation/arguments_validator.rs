@@ -337,7 +337,6 @@ impl<'a> ArgumentValidator<'a> {
         elems: &[Value],
         pos: Pos,
     ) -> Result<ConstValue, ExecutionError> {
-        println!("validate_list_argument {argument_definition:?}");
         let ty = &argument_definition.ty.node;
         let underlying = underlying_type(ty);
 
@@ -358,18 +357,20 @@ impl<'a> ArgumentValidator<'a> {
                 actual_type: format!("[{name}]"),
                 pos,
             }),
-            BaseType::List(elem_type) => {
+            BaseType::List(_elem_type) => {
                 // Peal off the list type to get the element type
-                let elem_argument_definition = InputValueDefinition {
-                    ty: Positioned::new(elem_type.as_ref().clone(), pos),
-                    ..argument_definition.clone()
-                };
+                let elem_argument_definition = argument_definition;
+                // See https://github.com/payalabs/payas/issues/401
+                // let elem_argument_definition = InputValueDefinition {
+                //     ty: Positioned::new(elem_type.as_ref().clone(), pos),
+                //     ..argument_definition.clone()
+                // };
 
                 let validated_elems = elems
                     .iter()
                     .flat_map(|elem| {
                         self.validate_argument(
-                            &elem_argument_definition,
+                            elem_argument_definition,
                             Some(&Positioned::new(elem.clone(), pos)),
                         )
                     })
