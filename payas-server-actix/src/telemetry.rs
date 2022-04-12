@@ -14,7 +14,7 @@
 ///
 /// To use Jaeger, a local server can be started using docker:
 ///
-/// ```
+/// ```shell
 /// $ docker run -d -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
 /// ```
 /// Evens and spans will be filtered according to the setting of `RUST_LOG`.
