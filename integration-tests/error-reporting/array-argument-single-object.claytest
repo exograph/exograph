@@ -1,0 +1,17 @@
+# A single object get coerced to a list, so shouldn't be an error
+operation: |
+    mutation {
+      createVenues(data: {name: "The Venue", published: true}) {
+        id
+      }
+    }
+response: |
+    {
+      "data": {
+        "createVenues": [
+          {
+            "id": 1
+          }
+        ]
+      }
+    }

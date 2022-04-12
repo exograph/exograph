@@ -1,0 +1,22 @@
+# Don't supply one of the mandatory field in an argument
+operation: |
+    mutation {
+      createVenue(data: {name: "The Venue"}) {
+        id
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Required argument 'published' not found",
+          "locations": [
+            {
+              "line": 2,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+    
