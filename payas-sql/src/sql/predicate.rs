@@ -295,13 +295,13 @@ mod tests {
     fn true_predicate() {
         let mut expression_context = ExpressionContext::default();
 
-        assert_binding!(&Predicate::True.binding(&mut expression_context), "true");
+        assert_binding!(Predicate::True.binding(&mut expression_context), "true");
     }
 
     #[test]
     fn false_predicate() {
         let mut expression_context = ExpressionContext::default();
-        assert_binding!(&Predicate::False.binding(&mut expression_context), "false");
+        assert_binding!(Predicate::False.binding(&mut expression_context), "false");
     }
 
     #[test]
@@ -319,7 +319,7 @@ mod tests {
 
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
-            &predicate.binding(&mut expression_context),
+            predicate.binding(&mut expression_context),
             r#""people"."age" = $1"#,
             5
         );
@@ -352,7 +352,7 @@ mod tests {
 
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
-            &predicate.binding(&mut expression_context),
+            predicate.binding(&mut expression_context),
             r#"("people"."name" = $1 AND "people"."age" = $2)"#,
             "foo",
             5
@@ -384,7 +384,7 @@ mod tests {
         let like_predicate =
             Predicate::StringLike(title_col, title_value_col, CaseSensitivity::Sensitive);
         assert_binding!(
-            &like_predicate.binding(&mut expression_context),
+            like_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE $1"#,
             "utawaku"
         );
@@ -395,7 +395,7 @@ mod tests {
         let ilike_predicate =
             Predicate::StringLike(title_col, title_value_col, CaseSensitivity::Insensitive);
         assert_binding!(
-            &ilike_predicate.binding(&mut expression_context),
+            ilike_predicate.binding(&mut expression_context),
             r#""videos"."title" ILIKE $1"#,
             "utawaku"
         );
@@ -405,7 +405,7 @@ mod tests {
         let mut expression_context = ExpressionContext::default();
         let starts_with_predicate = Predicate::StringStartsWith(title_col, title_value_col);
         assert_binding!(
-            &starts_with_predicate.binding(&mut expression_context),
+            starts_with_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE $1 || '%'"#,
             "utawaku"
         );
@@ -415,7 +415,7 @@ mod tests {
         let mut expression_context = ExpressionContext::default();
         let ends_with_predicate = Predicate::StringEndsWith(title_col, title_value_col);
         assert_binding!(
-            &ends_with_predicate.binding(&mut expression_context),
+            ends_with_predicate.binding(&mut expression_context),
             r#""videos"."title" LIKE '%' || $1"#,
             "utawaku"
         );
@@ -470,7 +470,7 @@ mod tests {
         let mut expression_context = ExpressionContext::default();
         let contains_predicate = Predicate::JsonContains(json_col, json_value_col);
         assert_binding!(
-            &contains_predicate.binding(&mut expression_context),
+            contains_predicate.binding(&mut expression_context),
             r#""card"."data" @> $1"#,
             *json_value
         );
@@ -480,7 +480,7 @@ mod tests {
         let mut expression_context = ExpressionContext::default();
         let contained_by_predicate = Predicate::JsonContainedBy(json_col, json_value_col);
         assert_binding!(
-            &contained_by_predicate.binding(&mut expression_context),
+            contained_by_predicate.binding(&mut expression_context),
             r#""card"."data" <@ $1"#,
             *json_value
         );
@@ -492,7 +492,7 @@ mod tests {
         let mut expression_context = ExpressionContext::default();
         let match_key_predicate = Predicate::JsonMatchKey(json_col, json_key_col.into());
         assert_binding!(
-            &match_key_predicate.binding(&mut expression_context),
+            match_key_predicate.binding(&mut expression_context),
             r#""card"."data" ? $1"#,
             "a"
         );
@@ -503,7 +503,7 @@ mod tests {
         let match_any_key_predicate =
             Predicate::JsonMatchAnyKey(json_col, json_key_list_col.into());
         assert_binding!(
-            &match_any_key_predicate.binding(&mut expression_context),
+            match_any_key_predicate.binding(&mut expression_context),
             r#""card"."data" ?| $1"#,
             *json_key_list
         );
@@ -516,7 +516,7 @@ mod tests {
         let match_all_keys_predicate =
             Predicate::JsonMatchAllKeys(json_col, json_key_list_col.into());
         assert_binding!(
-            &match_all_keys_predicate.binding(&mut expression_context),
+            match_all_keys_predicate.binding(&mut expression_context),
             r#""card"."data" ?& $1"#,
             *json_key_list
         );

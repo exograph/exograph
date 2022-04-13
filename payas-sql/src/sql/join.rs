@@ -111,7 +111,7 @@ mod tests {
         let binding = join.binding(&mut expression_context);
 
         assert_binding!(
-            &binding,
+            binding,
             r#""concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
         );
     }
