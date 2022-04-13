@@ -9,7 +9,7 @@
 /// of Rust's tracing subscriber can be used with the tracing spans built into
 /// the system.
 ///
-/// The Buyan logger prints to stdout and can be piped to the Rust bunyan
+/// The Bunyan logger prints to stdout and can be piped to the Rust bunyan
 /// command line tool (`cargo install bunyan`).
 ///
 /// To use Jaeger, a local server can be started using docker:
@@ -17,7 +17,7 @@
 /// ```shell
 /// $ docker run -d -p6831:6831/udp -p6832:6832/udp -p16686:16686 jaegertracing/all-in-one:latest
 /// ```
-/// Evens and spans will be filtered according to the setting of `RUST_LOG`.
+/// Events and spans will be filtered according to the setting of `RUST_LOG`.
 /// See the documentation for `EnvFilter` for more information.
 use std::{env, io::stdout, process::exit};
 use tracing::{subscriber::set_global_default, Subscriber};
@@ -31,7 +31,7 @@ pub fn init(name: &str) {
                 init_subscriber(create_bunyan_subscriber(name, stdout));
             }
             "jaeger" => {
-                init_subscriber(create_open_telemetry_subscriber(name));
+                init_subscriber(create_opentelemetry_jaeger_subscriber(name));
             }
             _ => {
                 eprintln!("Unknown value for CLAY_TELEMETRY: '{subscriber}'");
@@ -52,14 +52,12 @@ where
         .with(formatting_layer)
 }
 
-fn create_open_telemetry_subscriber(name: &str) -> impl Subscriber + Send + Sync {
+fn create_opentelemetry_jaeger_subscriber(name: &str) -> impl Subscriber + Send + Sync {
     // Install a new OpenTelemetry trace pipeline
     let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name(name)
-        .install_simple()
+        .install_batch(opentelemetry::runtime::Tokio)
         .expect("Failed to install jaeger pipeline");
-
-    //let tracer = opentelemetry::sdk::export::trace::stdout::new_pipeline().install_simple();
 
     // Create a tracing layer with the configured tracer
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
