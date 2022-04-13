@@ -12,7 +12,7 @@ actix-web-httpauth = "0.6.0"
 futures = "0.3"
 jsonwebtoken = "8.0.1"
 opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.16"
+opentelemetry-jaeger = { version = "0.16", features = ["rt-tokio"]}
 serde_json = { version = "1.0", features = ["preserve_order"] }
 tracing = "0.1"
 tracing-actix-web = "0.5"
