@@ -1,0 +1,21 @@
+# Supply null where a mandatory object value is expected.
+operation: |
+    mutation {
+      createVenue(data: null) {
+        id
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Required argument 'data' not found",
+          "locations": [
+            {
+              "line": 2,
+              "column": 21
+            }
+          ]
+        }
+      ]
+    }

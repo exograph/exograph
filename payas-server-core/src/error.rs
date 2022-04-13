@@ -36,6 +36,16 @@ pub enum ExecutionError {
     #[error("Argument(s) '{0:?}' invalid for '{1}'")]
     StrayArguments(Vec<String>, String, Pos),
 
+    #[error(
+        "Argument '{argument_name}' is not of a valid type. Expected '{expected_type}', got '{actual_type}'"
+    )]
+    InvalidArgumentType {
+        argument_name: String,
+        expected_type: String,
+        actual_type: String,
+        pos: Pos,
+    },
+
     #[error("No operation found")]
     NoOperationFound,
 
@@ -63,6 +73,7 @@ impl ExecutionError {
             ExecutionError::NoOperationFound => Pos::default(),
             ExecutionError::MultipleOperationsNoOperationName => Pos::default(),
             ExecutionError::MultipleOperationsUnmatchedOperationName(_) => Pos::default(),
+            ExecutionError::InvalidArgumentType { pos, .. } => *pos,
         }
     }
 
