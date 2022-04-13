@@ -142,7 +142,7 @@ mod tests {
         let binding = predicated_table.binding(&mut expression_context);
 
         assert_binding!(
-            &binding,
+            binding,
             r#"select "people"."age" from (select * from "people" WHERE "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
             5,
             20i64,
@@ -190,7 +190,7 @@ mod tests {
 
         let mut expression_context = ExpressionContext::default();
         assert_binding!(
-            &selected_table.binding(&mut expression_context),
+            selected_table.binding(&mut expression_context),
             r#"select "people"."age", json_build_object('namex', "people"."name", 'agex', "people"."age")::text from "people""#
         );
     }
