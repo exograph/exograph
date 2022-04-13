@@ -358,7 +358,7 @@ impl<'a> ArgumentValidator<'a> {
                 pos,
             }),
             BaseType::List(_elem_type) => {
-                // Peal off the list type to get the element type
+                // Peel off the list type to get the element type
                 let elem_argument_definition = argument_definition;
                 // See https://github.com/payalabs/payas/issues/401
                 // let elem_argument_definition = InputValueDefinition {
