@@ -29,6 +29,7 @@ pub struct OperationsExecutor {
     pub(crate) deno_execution: DenoExecutor,
     pub(crate) system: ModelSystem,
     pub(crate) schema: Schema,
+    pub allow_introspection: bool,
 }
 
 impl OperationsExecutor {
