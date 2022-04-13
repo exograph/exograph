@@ -12,7 +12,13 @@ response: |
   {
     "errors": [
       {
-        "message": "Number literals cannot be specified for decimal fields"
+        "message": "Argument 'verylong' is not of a valid type. Expected 'Decimal', got 'Number'",
+        "locations": [
+          {
+            "line": 2,
+            "column": 32
+          }
+        ]
       }
     ]
   }

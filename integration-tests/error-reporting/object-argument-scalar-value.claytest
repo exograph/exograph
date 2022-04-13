@@ -1,0 +1,22 @@
+# Supply a scalar value when an object is expected.
+operation: |
+    mutation {
+      createVenue(data: 5) {
+        id
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Argument 'data' is not of a valid type. Expected 'VenueCreationInput', got 'Number'",
+          "locations": [
+            {
+              "line": 2,
+              "column": 21
+            }
+          ]
+        }
+      ]
+    }
+    

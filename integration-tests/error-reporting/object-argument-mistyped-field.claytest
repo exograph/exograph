@@ -1,0 +1,22 @@
+# Supply a number when a boolean is expected for the `published` field
+operation: |
+    mutation {
+      createVenue(data: {name: "The Venue", published: 6}) {
+        id
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Argument 'published' is not of a valid type. Expected 'Boolean', got 'Number'",
+          "locations": [
+            {
+              "line": 2,
+              "column": 21
+            }
+          ]
+        }
+      ]
+    }
+    
