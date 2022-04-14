@@ -35,7 +35,7 @@ impl JwtAuthenticator {
         JwtAuthenticator { secret }
     }
 
-    // TODO: Expand to work with extenral authentication providers such as auth0 (that require JWK support)
+    // TODO: Expand to work with external authentication providers such as auth0 (that require JWK support)
     fn validate_jwt(&self, token: &str) -> Result<TokenData<Value>, jsonwebtoken::errors::Error> {
         decode::<Value>(
             token,

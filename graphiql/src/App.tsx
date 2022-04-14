@@ -1,25 +1,18 @@
 import GraphiQL from 'graphiql';
+import { createGraphiQLFetcher } from '@graphiql/toolkit';
+
 import 'graphiql/graphiql.min.css';
 
 const Logo = () => <img src="/logo.svg" className="logo" alt='Claytip'/>;
 
+const fetcher = createGraphiQLFetcher({
+  url: window.location.origin
+});
+
 const App = () => (
+  
   <GraphiQL tabs 
-    fetcher={async graphQLParams => {
-      const data = await fetch(
-        window.location.origin,
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(graphQLParams),
-          credentials: 'same-origin',
-        },
-      );
-      return data.json().catch(() => data.text());
-    }}
+    fetcher={fetcher}
     defaultVariableEditorOpen = {true}
     headerEditorEnabled = {true}
   >
