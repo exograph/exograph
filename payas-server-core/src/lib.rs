@@ -21,6 +21,7 @@ use payas_sql::{Database, DatabaseExecutor};
 use request_context::RequestContext;
 use serde::Deserialize;
 use serde_json::{Map, Value};
+use tracing::instrument;
 
 mod data;
 mod error;
@@ -94,6 +95,10 @@ pub struct OperationsPayload {
 /// In a typical use case (for example payas-server-actix), the caller will
 /// first call `create_operations_executor` to create an `OperationsExecutor` object, and
 /// then call `resolve` with that object.
+#[instrument(
+    name = "payas-server-core::resolve"
+    skip(executor, request_context)
+    )]
 pub async fn resolve<E>(
     executor: &OperationsExecutor,
     operations_payload: OperationsPayload,

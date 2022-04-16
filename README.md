@@ -92,3 +92,11 @@ CLAY_TEST_DATABASE_URL=postgresql://localhost:5432 CLAY_TEST_DATABASE_USER=$USER
 ```
 cargo build && CLAY_TEST_DATABASE_URL=postgresql://$USER@localhost:5432 target/debug/clay test integration-tests
 ```
+
+## Telemetry and tracing
+
+The code is instrumented using the [tracing](https://crates.io/crates/tracing) library and wwill output spans and events to any configured tracing subscriber. There are also two out of the box options available with `clay-server` which can be enabled by setting the `CLAY_TELEMETRY` environment variable. Current options are `bunyan` and `jaeger`. The `bunyan` option will output [bunyan](https://crates.io/crates/tracing-bunyan-formatter) formatted data to stdout. The `jaeger` option will send data to a local Jaeger server. See the [opentelemetry-jaeger](https://crates.io/crates/opentelemetry-jaeger) docs for how to run one using docker.
+
+The `RUST_LOG` environment variable can be used to configure the level(s) of spans and events which are recorded. It defaults to `info` but can be set to other standard log levels such as `debug` (which will also show logging from libraries such as `tokio-postgres`). More [sophisticated settings](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/struct.EnvFilter.html) can also be used to tune the output for specific crates and modules.
+
+As an example, if we wanted to run the integration tests at debug level with the Jaeger integration, we would prefix the command above with `RUST_LOG=debug CLAY_TELEMETRY=jaeger`.

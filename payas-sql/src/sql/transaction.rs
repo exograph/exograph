@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use tokio_postgres::{types::ToSql, Client, GenericClient, Row};
+use tracing::{error, instrument};
 
 use crate::sql::ExpressionContext;
 
@@ -39,8 +40,11 @@ impl TransactionContext {
 
 impl<'a> TransactionScript<'a> {
     /// Returns the result of the last step
+    #[instrument(
+        name = "TansactionScript::execute"
+        skip(self, client)
+        )]
     pub async fn execute(&'a self, client: &mut Client) -> Result<TransactionStepResult> {
-        println!("Starting transaction");
         let mut tx = client.transaction().await?;
 
         let mut transaction_context = TransactionContext { results: vec![] };
@@ -50,7 +54,6 @@ impl<'a> TransactionScript<'a> {
             transaction_context.results.push(result)
         }
 
-        println!("Committing transaction");
         tx.commit().await?;
 
         transaction_context
@@ -74,6 +77,11 @@ pub enum TransactionStep<'a> {
 }
 
 impl<'a> TransactionStep<'a> {
+    #[instrument(
+        name = "TransactionStep::execute"
+        level = "trace"
+        skip(self, client, transaction_context)
+        )]
     pub async fn execute(
         &self,
         client: &mut impl GenericClient,
@@ -108,6 +116,14 @@ impl<'a> ConcreteTransactionStep<'a> {
         Self { operation }
     }
 
+    #[instrument(
+        name = "ConcreteTransactionStep::execute"
+        level = "trace"
+        skip(self, client)
+        fields(
+            operation = ?self.operation
+            )
+        )]
     pub async fn execute(
         &'a self,
         client: &mut impl GenericClient,
@@ -123,10 +139,13 @@ impl<'a> ConcreteTransactionStep<'a> {
         let params: Vec<&(dyn ToSql + Sync)> =
             binding.params.iter().map(|p| (*p).as_pg()).collect();
 
-        println!("Executing transaction step: {}", binding.stmt);
         client
             .query(binding.stmt.as_str(), &params[..])
             .await
+            .map_err(|e| {
+                error!("Failed to execute query: {e:?}");
+                e
+            })
             .context("PostgreSQL query failed")
     }
 }

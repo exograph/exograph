@@ -2,10 +2,11 @@ use actix_cors::Cors;
 use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use payas_server_actix::request_context::ActixRequestContextProducer;
-use payas_server_actix::resolve;
+use payas_server_actix::{resolve, telemetry};
 use payas_server_core::graphiql;
 use payas_server_core::{create_operations_executor, OperationsExecutor};
 use payas_sql::Database;
+use tracing_actix_web::TracingLogger;
 
 use std::path::Path;
 use std::time;
@@ -15,31 +16,10 @@ use std::{env, process::exit};
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let start_time = time::SystemTime::now();
-    let mut args = env::args().skip(1);
+    let claypot_file = get_claypot_file_name();
 
-    if args.len() > 1 {
-        // $ clay-server <model-file-name> extra-arguments...
-        println!("Usage: clay-server <claypot-file>");
-        exit(1)
-    }
-
-    let claypot_file = if args.len() == 0 {
-        // $ clay-server
-        "index.claypot".to_string()
-    } else {
-        let file_name = args.next().unwrap();
-
-        if file_name.ends_with(".claypot") {
-            // $ clay-server concerts.claypot
-            file_name
-        } else if file_name.ends_with(".clay") {
-            // $ clay-server concerts.clay
-            format!("{}pot", file_name)
-        } else {
-            println!("The input file {} doesn't appear to be a claypot. You need build one with the 'clay build <model-file-name>' command.", file_name);
-            exit(1);
-        }
-    };
+    let subscriber_name = claypot_file.trim_end_matches(".claypot");
+    telemetry::init(subscriber_name);
 
     let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
     let operations_executor =
@@ -59,6 +39,7 @@ async fn main() -> std::io::Result<()> {
         let cors = cors_from_env();
 
         App::new()
+            .wrap(TracingLogger::default())
             .wrap(cors)
             .app_data(operations_executor.clone())
             .app_data(request_context_processor.clone())
@@ -76,6 +57,34 @@ async fn main() -> std::io::Result<()> {
     );
 
     server.run().await
+}
+
+fn get_claypot_file_name() -> String {
+    let mut args = env::args().skip(1);
+
+    if args.len() > 1 {
+        // $ clay-server <model-file-name> extra-arguments...
+        println!("Usage: clay-server <claypot-file>");
+        exit(1)
+    }
+
+    if args.len() == 0 {
+        // $ clay-server
+        "index.claypot".to_string()
+    } else {
+        let file_name = args.next().unwrap();
+
+        if file_name.ends_with(".claypot") {
+            // $ clay-server concerts.claypot
+            file_name
+        } else if file_name.ends_with(".clay") {
+            // $ clay-server concerts.clay
+            format!("{}pot", file_name)
+        } else {
+            println!("The input file {} doesn't appear to be a claypot. You need build one with the 'clay build <model-file-name>' command.", file_name);
+            exit(1);
+        }
+    }
 }
 
 #[get("/{path:.*}")]
