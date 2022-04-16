@@ -56,7 +56,7 @@ fn create_opentelemetry_jaeger_subscriber(name: &str) -> impl Subscriber + Send 
     // Install a new OpenTelemetry trace pipeline
     let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name(name)
-        .install_batch(opentelemetry::runtime::Tokio)
+        .install_simple()
         .expect("Failed to install jaeger pipeline");
 
     // Create a tracing layer with the configured tracer
