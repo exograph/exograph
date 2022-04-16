@@ -3,8 +3,8 @@ use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use payas_server_actix::request_context::ActixRequestContextProducer;
 use payas_server_actix::{resolve, telemetry};
-use payas_server_core::create_operations_executor;
 use payas_server_core::graphiql;
+use payas_server_core::{create_operations_executor, OperationsExecutor};
 use payas_sql::Database;
 use tracing_actix_web::TracingLogger;
 
@@ -88,7 +88,11 @@ fn get_claypot_file_name() -> String {
 }
 
 #[get("/{path:.*}")]
-async fn playground(req: HttpRequest) -> impl Responder {
+async fn playground(req: HttpRequest, executor: web::Data<OperationsExecutor>) -> impl Responder {
+    if !executor.allow_introspection {
+        return HttpResponse::Forbidden().body("Introspection is not enabled");
+    }
+
     let asset_path = req.match_info().get("path");
 
     // Adjust the path for "index.html" (which is requested with and empty path)

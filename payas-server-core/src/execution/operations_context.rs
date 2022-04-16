@@ -333,32 +333,31 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
         field: &ValidatedField,
     ) -> Result<QueryResponse> {
         let name = field.name.as_str();
-        let allow_introspection = if let Ok(setting) = std::env::var("CLAY_INTROSPECTION") {
-            setting == "1"
-        } else {
-            false
-        };
 
-        if name.starts_with("__") && allow_introspection {
-            match name {
-                "__type" => Ok(QueryResponse::Json(
-                    operations_context.resolve_type(field).await?,
-                )),
-                "__schema" => Ok(QueryResponse::Json(
-                    operations_context
-                        .schema
-                        .resolve_value(operations_context, &field.subfields)
-                        .await?,
-                )),
-                "__typename" => {
-                    let typename = match self.typ {
-                        OperationType::Query => QUERY_ROOT_TYPENAME,
-                        OperationType::Mutation => MUTATION_ROOT_TYPENAME,
-                        OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
-                    };
-                    Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
+        if name.starts_with("__") {
+            if operations_context.executor.allow_introspection {
+                match name {
+                    "__type" => Ok(QueryResponse::Json(
+                        operations_context.resolve_type(field).await?,
+                    )),
+                    "__schema" => Ok(QueryResponse::Json(
+                        operations_context
+                            .schema
+                            .resolve_value(operations_context, &field.subfields)
+                            .await?,
+                    )),
+                    "__typename" => {
+                        let typename = match self.typ {
+                            OperationType::Query => QUERY_ROOT_TYPENAME,
+                            OperationType::Mutation => MUTATION_ROOT_TYPENAME,
+                            OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
+                        };
+                        Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
+                    }
+                    _ => bail!("No such introspection field {}", name),
                 }
-                _ => bail!("No such introspection field {}", name),
+            } else {
+                bail!("Introspection is not allowed");
             }
         } else {
             operations_context

@@ -52,6 +52,17 @@ pub fn create_operations_executor(
     claypot_file: &str,
     database: Database,
 ) -> Result<OperationsExecutor> {
+    let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
+        Some(e) => match e.parse::<bool>() {
+            Ok(e) => e,
+            Err(_) => {
+                eprintln!("CLAY_INTROSPECTION env var must be set to either true or false");
+                std::process::exit(1);
+            }
+        },
+        None => false,
+    };
+
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
     let deno_executor = DenoExecutor::default();
@@ -63,6 +74,7 @@ pub fn create_operations_executor(
         deno_execution: deno_executor,
         system,
         schema,
+        allow_introspection,
     };
 
     Ok(executor)

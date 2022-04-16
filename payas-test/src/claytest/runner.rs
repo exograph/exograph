@@ -83,7 +83,7 @@ pub(crate) fn run_testfile(
             .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
             .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
             .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
-            .env("CLAY_INTROSPECTION", "1")
+            .env("CLAY_INTROSPECTION", "true")
             .envs(testfile.extra_envs.iter()) // add extra envs specified in testfile
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

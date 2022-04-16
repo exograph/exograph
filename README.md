@@ -72,10 +72,10 @@ and then paste the output of the `clay schema create` command.
 CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://localhost:5432/concerts-db CLAY_DATABASE_USER=$USER cargo run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay
 ```
 
-During development, it is nicer to use `cargo watch` and let compilation and restart happen automatically with any source changes. You may also set `CLAY_INTROSPECTION=1` to allow GraphQL introspection queries.
+During development, it is nicer to use `cargo watch` and let compilation and restart happen automatically with any source changes. You may also set `CLAY_INTROSPECTION=true` to allow GraphQL introspection queries.
 
 ```
-CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://localhost:5432/concerts-db CLAY_DATABASE_USER=$USER CLAY_INTROSPECTION=1 cargo watch --clear -x "run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay"
+CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://localhost:5432/concerts-db CLAY_DATABASE_USER=$USER CLAY_INTROSPECTION=true cargo watch --clear -x "run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay"
 ```
 
 **Note**
