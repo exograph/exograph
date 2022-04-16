@@ -1,4 +1,5 @@
 use maybe_owned::MaybeOwned;
+use tracing::instrument;
 
 use crate::{
     asql::{
@@ -26,6 +27,10 @@ use crate::{
 use super::Postgres;
 
 impl UpdateTransformer for Postgres {
+    #[instrument(
+        name = "UpdateTransformer::to_transaction_script for Postgres"
+        skip(self)
+        )]
     fn to_transaction_script<'a>(
         &self,
         abstract_select: &'a AbstractUpdate,

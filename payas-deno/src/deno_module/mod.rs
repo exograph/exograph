@@ -4,6 +4,8 @@ use deno_core::serde_json;
 use deno_core::JsRuntime;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use tracing::error;
+use tracing::instrument;
 
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
@@ -164,6 +166,11 @@ impl DenoModule {
         })
     }
 
+    #[instrument(
+        name = "deno_module::execute_function"
+        level = "debug"
+        skip_all
+        )]
     pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
         let worker = &mut self.worker;
         let runtime = &mut worker.try_lock().unwrap().js_runtime;
@@ -228,7 +235,7 @@ impl DenoModule {
                     let exception = tc_scope_ref.exception().unwrap();
                     let js_error = JsError::from_v8_exception(tc_scope_ref, exception);
 
-                    eprintln!("{}", js_error);
+                    error!(%js_error, "Exception executing function");
 
                     if js_error.message.starts_with(JSERROR_PREFIX) {
                         // code threw an explicit Error(...), expose to user
@@ -247,7 +254,7 @@ impl DenoModule {
         {
             let value = runtime.resolve_value(global).await.map_err(|err| {
                 // got some AnyError from Deno internals...
-                eprintln!("{}", err);
+                error!(%err);
                 anyhow!("Internal server error")
             })?;
 
@@ -270,7 +277,7 @@ impl DenoModule {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Arg {
     Serde(serde_json::Value),
     Shim(String),

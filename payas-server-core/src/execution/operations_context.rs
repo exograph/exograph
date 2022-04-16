@@ -14,6 +14,7 @@ use payas_sql::{
 };
 use pg_bigdecimal::{BigDecimal, PgNumeric};
 use serde_json::Value as JsonValue;
+use tracing::instrument;
 
 use super::{
     operations_executor::OperationsExecutor,
@@ -61,6 +62,14 @@ impl QueryResponse {
 }
 
 impl<'qc> OperationsContext<'qc> {
+    #[instrument(
+        name = "OperationsContext::resolve_operation"
+        skip_all
+        fields(
+            operation.name,
+            %operation.typ
+            )
+        )]
     pub async fn resolve_operation<'b>(
         &self,
         operation: ValidatedOperation,

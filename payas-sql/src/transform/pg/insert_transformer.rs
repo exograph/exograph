@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use maybe_owned::MaybeOwned;
+use tracing::instrument;
 
 use crate::{
     asql::{
@@ -24,6 +25,10 @@ use crate::{
 use super::Postgres;
 
 impl InsertTransformer for Postgres {
+    #[instrument(
+        name = "InsertTransformer::to_transaction_script for Postgres"
+        skip(self)
+        )]
     fn to_transaction_script<'a>(
         &self,
         abstract_insert: &'a AbstractInsert,
