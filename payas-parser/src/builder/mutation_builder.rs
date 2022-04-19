@@ -98,12 +98,7 @@ pub trait DataParamBuilder<D> {
 
     fn data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
         let base_name = Self::base_data_type_name(model_type_name);
-        match container_type {
-            Some(container_type) => {
-                format!("{}From{}", base_name, container_type)
-            }
-            None => base_name,
-        }
+        super::mutation_builder::data_type_name(&base_name, container_type)
     }
 
     fn compute_data_fields(
@@ -143,7 +138,8 @@ pub trait DataParamBuilder<D> {
                     _ => &field.typ,
                 };
 
-                if let ResolvedFieldType::List(_) = typ {
+                // If the type is a list or a reference, we need to create a nested input type (one-to-many or one-to-zero-or-one)
+                if let ResolvedFieldType::List(_) | ResolvedFieldType::Optional(_) = field.typ {
                     if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) =
                         typ.deref(resolved_types)
                     {
@@ -175,7 +171,7 @@ pub trait DataParamBuilder<D> {
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<GqlField> {
-        let optional = Self::mark_fields_optional();
+        let optional = Self::mark_fields_optional() || field.has_default_value;
 
         match &field.relation {
             GqlRelation::Pk { .. } => None, // TODO: Make this decision based on autoincrement/uuid etc of the id
@@ -228,7 +224,8 @@ pub trait DataParamBuilder<D> {
         container_type: Option<&str>,
         building: &SystemContextBuilding,
     ) -> Option<GqlField> {
-        let optional = Self::mark_fields_optional();
+        let optional =
+            matches!(field.typ, GqlFieldType::Optional(_)) || Self::mark_fields_optional();
 
         let field_type_name = Self::data_type_name(field.typ.type_name(), container_type);
 
@@ -275,8 +272,8 @@ pub trait DataParamBuilder<D> {
                 .iter()
                 .flat_map(|field| {
                     let field_type = field.typ.base_type(&building.types.values);
-                    if let (GqlTypeKind::Composite(_), GqlFieldType::List(_)) =
-                        (&field_type.kind, &field.typ)
+                    if let (GqlTypeKind::Composite(_), GqlRelation::OneToMany { .. }) =
+                        (&field_type.kind, &field.relation)
                     {
                         self.expand_one_to_many(
                             model_type,
@@ -338,7 +335,7 @@ pub trait DataParamBuilder<D> {
         if let GqlTypeKind::Primitive = building
             .mutation_types
             .get_by_key(&existing_type_name)
-            .unwrap()
+            .unwrap_or_else(|| panic!("Could not find type {} to expand", existing_type_name))
             .kind
         {
             // If not already expanded (i.e. the kind is primitive)
@@ -349,21 +346,21 @@ pub trait DataParamBuilder<D> {
     }
 }
 
-pub fn create_data_type_name(model_type_name: &str, container_type: &Option<&str>) -> String {
+pub fn create_data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
     let base_name = model_type_name.creation_type();
-    data_type_name(base_name, container_type)
+    data_type_name(&base_name, container_type)
 }
 
-pub fn update_data_type_name(model_type_name: &str, container_type: &Option<&str>) -> String {
+pub fn update_data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
     let base_name = model_type_name.update_type();
-    data_type_name(base_name, container_type)
+    data_type_name(&base_name, container_type)
 }
 
-fn data_type_name(base_name: String, container_type: &Option<&str>) -> String {
+fn data_type_name(base_name: &str, container_type: Option<&str>) -> String {
     match container_type {
         Some(container_type) => {
             format!("{}From{}", base_name, container_type)
         }
-        None => base_name,
+        None => base_name.to_owned(),
     }
 }
