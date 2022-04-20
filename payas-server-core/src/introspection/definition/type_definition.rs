@@ -6,7 +6,7 @@ use payas_model::model::{
     operation::{DatabaseQueryParameter, QueryKind},
     relation::GqlRelation,
     system::ModelSystem,
-    types::{GqlCompositeType, GqlField, GqlFieldType, GqlType, GqlTypeKind, GqlTypeModifier},
+    types::{GqlCompositeType, GqlField, GqlType, GqlTypeKind},
 };
 
 use super::provider::{FieldDefinitionProvider, TypeDefinitionProvider};
@@ -57,13 +57,7 @@ impl TypeDefinitionProvider for GqlType {
 
 impl FieldDefinitionProvider for GqlField {
     fn field_definition(&self, system: &ModelSystem) -> FieldDefinition {
-        let type_modifier = match &self.typ {
-            GqlFieldType::Optional(_) => GqlTypeModifier::Optional,
-            GqlFieldType::Reference { .. } => GqlTypeModifier::NonNull,
-            GqlFieldType::List(_) => GqlTypeModifier::List,
-        };
-        let field_type =
-            util::default_positioned(util::value_type(self.typ.type_name(), &type_modifier));
+        let field_type = util::default_positioned(util::compute_type(&self.typ));
 
         let arguments = match self.relation {
             GqlRelation::Pk { .. }
