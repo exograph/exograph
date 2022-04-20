@@ -14,11 +14,12 @@ opentelemetry = { version = "0.17", default-features = false, features = ["trace
 opentelemetry-jaeger = "0.16"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 bytes = "1.1.0"
+tokio = { version = "1", features = ["full"] }
 
 payas-server-core = { path = "../payas-server-core" }
 payas-sql = { path = "../payas-sql" }
 payas-model = { path = "../payas-model" }
 
 [[bin]]
-name = "clay-server"
+name = "clay-lambda-server"
 path = "src/main.rs"
