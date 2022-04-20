@@ -232,7 +232,10 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                         };
                         GqlField {
                             name: String::from(name),
-                            typ: GqlFieldType::List(Box::new(plain_field_type)),
+                            // The nested "create", "update", and "delete" fields are all optional that take multiple values.
+                            typ: GqlFieldType::Optional(Box::new(GqlFieldType::List(Box::new(
+                                plain_field_type,
+                            )))),
                             relation: field.relation.clone(),
                             has_default_value: field.has_default_value,
                         }
