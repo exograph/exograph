@@ -39,9 +39,6 @@ COPY graphiql graphiql
 RUN cd graphiql && npm install && npm run prod-build
 
 RUN cargo build --bin clay-server --release
-RUN strip target/release/clay-server
-
-
 
 FROM debian:buster-slim
 
