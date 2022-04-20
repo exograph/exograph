@@ -50,17 +50,14 @@ response: |
               "name": null,
               "ofType": {
                 "name": null,
-                "kind": "LIST",
+                "kind": "NON_NULL",
                 "ofType": {
-                  "name": null,
-                  "kind": "NON_NULL",
-                  "ofType": {
-                    "name": "ConcertArtistCreationInputFromConcert",
-                    "kind": "INPUT_OBJECT"
-                  }
+                  "name": "ConcertArtistCreationInputFromConcert",
+                  "kind": "INPUT_OBJECT",
+                  "ofType": null
                 }
               },
-              "kind": "NON_NULL"
+              "kind": "LIST"
             }
           },
           {
@@ -69,17 +66,14 @@ response: |
               "name": null,
               "ofType": {
                 "name": null,
-                "kind": "LIST",
+                "kind": "NON_NULL",
                 "ofType": {
-                  "name": null,
-                  "kind": "NON_NULL",
-                  "ofType": {
-                    "name": "ConcertArtistUpdateInputFromConcertNested",
-                    "kind": "INPUT_OBJECT"
-                  }
+                  "name": "ConcertArtistUpdateInputFromConcertNested",
+                  "kind": "INPUT_OBJECT",
+                  "ofType": null
                 }
               },
-              "kind": "NON_NULL"
+              "kind": "LIST"
             }
           },
           {
@@ -88,17 +82,14 @@ response: |
               "name": null,
               "ofType": {
                 "name": null,
-                "kind": "LIST",
+                "kind": "NON_NULL",
                 "ofType": {
-                  "name": null,
-                  "kind": "NON_NULL",
-                  "ofType": {
-                    "name": "ConcertArtistReferenceInput",
-                    "kind": "INPUT_OBJECT"
-                  }
+                  "name": "ConcertArtistReferenceInput",
+                  "kind": "INPUT_OBJECT",
+                  "ofType": null
                 }
               },
-              "kind": "NON_NULL"
+              "kind": "LIST"
             }
           }
         ]
