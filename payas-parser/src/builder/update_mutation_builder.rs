@@ -210,14 +210,14 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                         "create",
                         create_data_type_name(
                             field.typ.type_name(),
-                            &container_type.map(|t| t.name.as_str()),
+                            container_type.map(|t| t.name.as_str()),
                         ),
                     ),
                     (
                         "update",
                         update_data_type_name(
                             field.typ.type_name(),
-                            &container_type.map(|t| t.name.as_str()),
+                            container_type.map(|t| t.name.as_str()),
                         ) + "Nested",
                     ),
                     ("delete", field.typ.type_name().reference_type()),

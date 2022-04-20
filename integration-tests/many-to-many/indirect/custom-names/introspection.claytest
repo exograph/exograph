@@ -24,6 +24,15 @@ operation: |
         name
         ofType {
           name
+          kind
+          ofType {
+            name
+            kind
+            ofType {
+              name
+              kind
+            }
+          }
         }
         kind
       }
@@ -40,9 +49,18 @@ response: |
             "type": {
               "name": null,
               "ofType": {
-                "name": "ConcertArtistCreationInputFromConcert"
+                "name": null,
+                "kind": "LIST",
+                "ofType": {
+                  "name": null,
+                  "kind": "NON_NULL",
+                  "ofType": {
+                    "name": "ConcertArtistCreationInputFromConcert",
+                    "kind": "INPUT_OBJECT"
+                  }
+                }
               },
-              "kind": "LIST"
+              "kind": "NON_NULL"
             }
           },
           {
@@ -50,9 +68,18 @@ response: |
             "type": {
               "name": null,
               "ofType": {
-                "name": "ConcertArtistUpdateInputFromConcertNested"
+                "name": null,
+                "kind": "LIST",
+                "ofType": {
+                  "name": null,
+                  "kind": "NON_NULL",
+                  "ofType": {
+                    "name": "ConcertArtistUpdateInputFromConcertNested",
+                    "kind": "INPUT_OBJECT"
+                  }
+                }
               },
-              "kind": "LIST"
+              "kind": "NON_NULL"
             }
           },
           {
@@ -60,9 +87,18 @@ response: |
             "type": {
               "name": null,
               "ofType": {
-                "name": "ConcertArtistReferenceInput"
+                "name": null,
+                "kind": "LIST",
+                "ofType": {
+                  "name": null,
+                  "kind": "NON_NULL",
+                  "ofType": {
+                    "name": "ConcertArtistReferenceInput",
+                    "kind": "INPUT_OBJECT"
+                  }
+                }
               },
-              "kind": "LIST"
+              "kind": "NON_NULL"
             }
           }
         ]
@@ -75,7 +111,9 @@ response: |
             "type": {
               "name": null,
               "ofType": {
-                "name": "ArtistReferenceInput"
+                "name": "ArtistReferenceInput",
+                "kind": "INPUT_OBJECT",
+                "ofType": null
               },
               "kind": "NON_NULL"
             }
@@ -83,7 +121,6 @@ response: |
           {
             "name": "rank",
             "type": {
-              // fields with default values are never NOT_NULL
               "name": "Int",
               "ofType": null,
               "kind": "SCALAR"
@@ -94,7 +131,9 @@ response: |
             "type": {
               "name": null,
               "ofType": {
-                "name": "String"
+                "name": "String",
+                "kind": "SCALAR",
+                "ofType": null
               },
               "kind": "NON_NULL"
             }
@@ -107,9 +146,13 @@ response: |
           {
             "name": "id",
             "type": {
-              "name": "Int",
-              "ofType": null,
-              "kind": "SCALAR"
+              "name": null,
+              "ofType": {
+                "name": "Int",
+                "kind": "SCALAR",
+                "ofType": null
+              },
+              "kind": "NON_NULL"
             }
           },
           {
@@ -144,9 +187,13 @@ response: |
           {
             "name": "id",
             "type": {
-              "name": "Int",
-              "ofType": null,
-              "kind": "SCALAR"
+              "name": null,
+              "ofType": {
+                "name": "Int",
+                "kind": "SCALAR",
+                "ofType": null
+              },
+              "kind": "NON_NULL"
             }
           }
         ]

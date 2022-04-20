@@ -15,5 +15,5 @@ model ConcertArtist {
 model Artist {
   id: Int = autoincrement() @pk
   name: String
-  concertArtists: Set<ConcertArtist>
+  concertArtists: Set<ConcertArtist>? // An artist may yet to participate in a concert, hence optional
 }

@@ -91,8 +91,8 @@ impl Operation for Mutation {
     }
 }
 
-// Field defintion for the query such as `venue(id: Int!): Venue`, combining such fields will form
-// the Query, Mutation, and Subscription object defintion
+// Field definition for the query such as `venue(id: Int!): Venue`, combining such fields will form
+// the Query, Mutation, and Subscription object definition
 impl<T: Operation> FieldDefinitionProvider for T {
     fn field_definition(&self, _system: &ModelSystem) -> FieldDefinition {
         let fields = self
