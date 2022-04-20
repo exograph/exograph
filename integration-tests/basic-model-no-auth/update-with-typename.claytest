@@ -1,0 +1,23 @@
+operation: |
+    mutation {
+      updateVenue(id: 1, data: {name: "V1-updated", published: false, __typename: "IGNORED"}) {
+        id
+        name
+        published
+        latitude
+        __typename
+      }
+    }
+response: |
+    {
+      "data": {
+        "updateVenue": {
+          "id": 1,
+          "name": "V1-updated",
+          "published": false,
+          "latitude": 37.7749,
+          "__typename": "Venue"
+        }
+      }
+    }
+    
