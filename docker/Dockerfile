@@ -2,6 +2,9 @@ FROM rust:1.60.0-buster as builder
 
 # Compile the binaries (clay and clay-server)
 
+ARG BUILD_DIR
+ARG BUILD_FLAG
+
 ## Install NodeJS (needed by tree-sitter and building the GraphiQL app) and tree-sitter
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs
 RUN cargo install --version 0.20.6 tree-sitter-cli
@@ -35,9 +38,9 @@ COPY ./payas-test/Cargo.toml ./payas-test/Cargo.toml
 COPY ./graphiql/package.json ./graphiql/package.json
 COPY ./graphiql/package-lock.json ./graphiql/package-lock.json
 
-### Remove artifacts related to the non-dependency parts (so that when we use real code, they get rebuilt)
-RUN cargo build --release && rm */src/*.rs && rm target/release/deps/payas* && rm -rf target/release/.fingerprint/payas* 
-RUN cd graphiql && npm install 
+### Compile the depdencies and remove artifacts related to the non-dependency parts (so that when we use real code, they get rebuilt)
+RUN cargo build ${BUILD_FLAG} && rm */src/*.rs && rm target/${BUILD_DIR}/deps/payas* && rm -rf target/${BUILD_DIR}/.fingerprint/payas* 
+RUN cd graphiql && npm install
 
 ## Build the actual image
 ### Copy over the source files
@@ -54,11 +57,12 @@ ADD graphiql graphiql/
 
 ### Build the binaries (first the graphiql app and then the rest)
 RUN cd graphiql && npm run prod-build
-RUN cargo build --release
+RUN cargo build ${BUILD_FLAG}
 
 # Create an image to include the compiled binaries
 FROM debian:buster-slim
 
+ARG BUILD_DIR
 ARG APP=/usr/src/app
 
 RUN apt-get update \
@@ -72,8 +76,8 @@ RUN groupadd $APP_USER \
   && useradd -g $APP_USER $APP_USER \
   && mkdir -p ${APP}
 
-COPY --from=builder /usr/src/target/release/clay-server ${APP}/clay-server
-COPY --from=builder /usr/src/target/release/clay ${APP}/clay
+COPY --from=builder /usr/src/target/${BUILD_DIR}/clay-server ${APP}/clay-server
+COPY --from=builder /usr/src/target/${BUILD_DIR}/clay ${APP}/clay
 
 RUN chown -R $APP_USER:$APP_USER ${APP}
 

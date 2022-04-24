@@ -2,6 +2,14 @@
 
 From the root directory of the project, run:
 
+- To build a release version
+
 ```sh
-docker build -t clay-builder -f docker/Dockerfile .
+docker/build.sh release
+```
+
+- To build a debug version
+
+```sh
+docker/build.sh debug
 ```
