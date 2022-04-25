@@ -1,20 +1,27 @@
 FROM clay-builder:latest as builder
 
-COPY ./integration-tests/basic-model-no-auth/concerts.clay .
-RUN ./clay build concerts.clay
+ARG CLAY_FILE
+
+WORKDIR /usr/src/app
+
+COPY ${CLAY_FILE} .
+RUN ./clay build ${CLAY_FILE}
+
+
 
 #2: Run clay with plain buster-slim as the base
-#FROM debian:buster
+#FROM debian:buster-slim
 FROM rust:1.60.0-buster
+
+ARG CLAY_FILE
+ENV CLAYPOT_FILE=${CLAY_FILE}pot
 
 # 2.1 Copy clay-server from the builder image and the claypot created in the previous step
 COPY --from=builder /usr/src/app/clay-server ./clay-server
-COPY --from=builder /usr/src/app/concerts.claypot ./concerts.claypot
+COPY --from=builder /usr/src/app/${CLAYPOT_FILE} ./${CLAYPOT_FILE}
 
-# 2.2: Bridge between the ENV Fly exposes for the database and the one clay needs 
-RUN echo ${DATABASE_URL}
-# ENV CLAY_DATABASE_URL=${DATABASE_URL}
-COPY ./integration/flyio/clay-server-flyio.sh .
+# 2.2: Copy the script with a bridge between DATABASE_URL and CLAY_DATABASE_URL as well as env variables
+COPY ./run-clay-fly.sh .
 
 EXPOSE 8080
 
@@ -31,4 +38,4 @@ RUN groupadd $APP_USER \
   && useradd -g $APP_USER $APP_USER
 USER ${APP_USER}
 
-CMD ["./clay-server-flyio.sh", "concerts.claypot"]
+CMD ["./run-clay-fly.sh"]

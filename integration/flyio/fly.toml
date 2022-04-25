@@ -5,7 +5,7 @@ kill_timeout = 5
 processes = []
 
 [build]
-  image = "concerts-fly:latest"
+  image = "example-fly:latest"
 
 [env]
 

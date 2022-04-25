@@ -60,7 +60,20 @@ RUN cd graphiql && npm run prod-build
 RUN cargo build ${BUILD_FLAG}
 
 # Create an image to include the compiled binaries
-FROM debian:buster-slim
+# TODO: Resolve the openssl issues and then "FROM debian:buster-slim as clay-builder"
+FROM rust:1.60.0-slim-buster as clay-builder
+
+ARG BUILD_DIR
+ARG APP=/usr/src/app
+
+RUN mkdir -p ${APP}
+
+COPY --from=builder /usr/src/target/${BUILD_DIR}/clay-server ${APP}/clay-server
+COPY --from=builder /usr/src/target/${BUILD_DIR}/clay ${APP}/clay
+
+
+# Create an image that can be used for development--the `clay serve` style
+FROM clay-builder as clay-dev
 
 ARG BUILD_DIR
 ARG APP=/usr/src/app
@@ -76,11 +89,7 @@ RUN groupadd $APP_USER \
   && useradd -g $APP_USER $APP_USER \
   && mkdir -p ${APP}
 
-COPY --from=builder /usr/src/target/${BUILD_DIR}/clay-server ${APP}/clay-server
-COPY --from=builder /usr/src/target/${BUILD_DIR}/clay ${APP}/clay
-
 RUN chown -R $APP_USER:$APP_USER ${APP}
 
 USER $APP_USER
 WORKDIR ${APP}
-
