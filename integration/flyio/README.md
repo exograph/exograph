@@ -5,7 +5,7 @@ This is an example app to show how to use fly.io.
 From this directory, run:
 
 ```sh
-docker build -t concerts-fly -f Dockerfile ../..
+./build.sh -c example.clay -t example-fly -e example.env
 ```
 
 # Running
