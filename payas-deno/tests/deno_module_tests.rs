@@ -38,7 +38,6 @@ async fn test_actor() {
         UserCode::LoadFromFs(Path::new("./tests/direct.js").to_path_buf()),
         DenoModuleSharedState::default(),
     )
-    .await
     .unwrap();
 
     let (to_user_sender, _to_user_receiver) = channel(1);

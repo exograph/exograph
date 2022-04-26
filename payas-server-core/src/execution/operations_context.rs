@@ -325,7 +325,7 @@ fragment query_info on Query {
 }
 ```
 */
-#[async_trait(?Send)]
+#[async_trait]
 impl FieldResolver<QueryResponse> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,

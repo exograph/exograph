@@ -1,28 +1,39 @@
 use anyhow::{anyhow, Result};
 use deno_core::JsRuntime;
-use futures::future::LocalBoxFuture;
+use futures::future::BoxFuture;
 use futures::pin_mut;
 use serde_json::Value;
-use std::panic;
-use tokio::sync::mpsc::Receiver;
+use std::{
+    panic,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
+use tokio::sync::{
+    mpsc::{Receiver, Sender},
+    oneshot, Mutex,
+};
 use tracing::instrument;
 
 use crate::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 /// An actor-like wrapper for DenoModule.
+#[derive(Clone)]
 pub struct DenoActor {
-    deno_module: DenoModule,
-    from_deno_receiver: Receiver<RequestFromDenoMessage>,
+    deno_requests_receiver: Arc<Mutex<Receiver<RequestFromDenoMessage>>>,
+    deno_call_sender: Sender<DenoCall>,
+    busy: Arc<std::sync::atomic::AtomicBool>,
 }
 
 pub enum RequestFromDenoMessage {
     InterceptedOperationProceed {
-        response_sender: tokio::sync::oneshot::Sender<ResponseForDenoMessage>,
+        response_sender: oneshot::Sender<ResponseForDenoMessage>,
     },
     ClaytipExecute {
         query_string: String,
         variables: Option<serde_json::Map<String, Value>>,
-        response_sender: tokio::sync::oneshot::Sender<ResponseForDenoMessage>,
+        response_sender: oneshot::Sender<ResponseForDenoMessage>,
     },
 }
 
@@ -31,38 +42,30 @@ pub enum ResponseForDenoMessage {
     ClaytipExecute(Result<Value>),
 }
 
+pub struct DenoCall {
+    function_name: String,
+    function_args: Vec<Arg>,
+    intercepted_op_name: Option<String>,
+    response_sender: oneshot::Sender<DenoResult>,
+}
+
+type DenoResult = Result<Value>;
+
 struct InterceptedOperationName(Option<String>);
 
-pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> LocalBoxFuture<'a, Result<Value>>
-     + 'a);
-pub type FnClaytipInterceptorProceed<'a> = (dyn Fn() -> LocalBoxFuture<'a, Result<Value>> + 'a);
+pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> BoxFuture<'a, Result<Value>>
+     + 'a
+     + Send
+     + Sync);
+pub type FnClaytipInterceptorProceed<'a> =
+    (dyn Fn() -> BoxFuture<'a, Result<Value>> + 'a + Send + Sync);
 
 /// A wrapper around DenoModule.
 ///
-/// DenoActor exists only to make passing invoking operations from DenoModule easier. JavaScript code running on Deno can
-/// invoke preregistered Rust code through Deno.core.op_sync() or Deno.core.op_async(). We use Deno ops to facilitate
-/// operations such as executing Claytip queries directly from JavaScript.
-///
-/// Deno ops cannot be re-registered or unregistered; ops must stay static, which presents a problem if we want to
-/// dynamically change what the operations do (like in the case of the proceed() call from @around interceptors).
-///
-/// To work around this, DenoActor adopts message passing to handle operations. On creation, DenoActor will first
-/// initialize a Tokio mpsc channel. It will also initialize an instance of DenoModule and register operations that will send a
-/// RequestFromDenoMessage to the channel on invocation. This way, the actual operation does not have to change, just the recipient
-/// of Deno op request messages.
-///
-/// A complete Deno op would consist of an exchange that looks like this:
-/// ________________                                                                                                          _______________________________
-/// |    caller    | -> DenoActor.call_method -> DenoModule.execute_function -> {user code} --------------------------------> |    Deno.core.opAsync(...)   |      |
-/// |              |                                                                                                          |                             |      |
-/// |              | <-- to_user_sender  <- DenoActor forwarding loop <- from_deno_sender  <- [ RequestFromDenoMessage ] <--- |                             |     time
-/// |              |                                                                                                          |                             |      |
-/// |              | -> [ ResponseForDenoMessage ] -> response_sender ------------------------------------------------------> |                             |      V
-/// |              |                                                                                                          |                             |
-/// |______________|                                                                                           {user code} <- |_____________________________|
-///
+/// The purpose of DenoActor is to isolate DenoModule in its own thread and to provide methods to interact
+/// with DenoModule through message passing.
 impl DenoActor {
-    pub async fn new(code: UserCode, shared_state: DenoModuleSharedState) -> Result<DenoActor> {
+    pub fn new(code: UserCode, shared_state: DenoModuleSharedState) -> Result<DenoActor> {
         let shims = vec![
             ("ClaytipInjected", include_str!("claytip_shim.js")),
             ("Operation", include_str!("operation_shim.js")),
@@ -167,14 +170,58 @@ impl DenoActor {
             }
         };
 
-        let deno_module = DenoModule::new(code, "Claytip", &shims, register_ops, shared_state);
+        // we will receive DenoCall messages through this channel from call_method
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 
-        let deno_module = deno_module.await?;
+        // start the DenoModule thread
+        let busy = Arc::new(AtomicBool::new(false));
+        let busy_clone = busy.clone();
+        std::thread::spawn(move || {
+            let runtime = tokio::runtime::Runtime::new().unwrap();
+            let local = tokio::task::LocalSet::new();
+
+            local.block_on(&runtime, async {
+                // first, initialize the Deno module
+                let mut deno_module =
+                    DenoModule::new(code, "Claytip", &shims, register_ops, shared_state)
+                        .await
+                        .unwrap();
+
+                // start a receive loop
+                loop {
+                    // yield and wait for a DenoCall message
+                    let DenoCall {
+                        function_name,
+                        function_args,
+                        intercepted_op_name,
+                        response_sender,
+                    } = rx.recv().await.unwrap();
+                    busy_clone.store(true, Ordering::Relaxed); // mark DenoActor as busy
+
+                    deno_module.put(InterceptedOperationName(intercepted_op_name)); // store intercepted operation name into Deno's op_state
+
+                    // execute function
+                    let result = deno_module
+                        .execute_function(&function_name, function_args)
+                        .await;
+
+                    // send result of the Deno function back to call_method
+                    response_sender.send(result).unwrap();
+
+                    busy_clone.store(false, Ordering::Relaxed); // unmark DenoActor as busy
+                }
+            });
+        });
 
         Ok(DenoActor {
-            deno_module,
-            from_deno_receiver,
+            deno_requests_receiver: Arc::new(Mutex::new(from_deno_receiver)),
+            deno_call_sender: tx,
+            busy,
         })
+    }
+
+    pub fn is_busy(&self) -> bool {
+        self.busy.load(Ordering::Relaxed)
     }
 
     #[instrument(
@@ -188,16 +235,27 @@ impl DenoActor {
         claytip_intercepted_operation_name: Option<String>,
         to_user_sender: tokio::sync::mpsc::Sender<RequestFromDenoMessage>,
     ) -> Result<Value> {
-        // put the intercepted operation name into Deno's op_state
-        self.deno_module
-            .put(InterceptedOperationName(claytip_intercepted_operation_name));
+        // we will receive the final function result through this channel
+        let (tx, rx) = oneshot::channel();
 
-        let on_function_result = self.deno_module.execute_function(&method_name, arguments);
+        // construct a DenoCall message
+        let deno_call = DenoCall {
+            function_name: method_name,
+            function_args: arguments,
+            intercepted_op_name: claytip_intercepted_operation_name,
+            response_sender: tx,
+        };
 
+        // send it to the DenoModule thread
+        self.deno_call_sender.send(deno_call).await.ok().unwrap();
+
+        let on_function_result = rx;
         pin_mut!(on_function_result);
 
+        // receive loop
         loop {
-            let on_recv_request = self.from_deno_receiver.recv();
+            let mut receiver = self.deno_requests_receiver.lock().await;
+            let on_recv_request = receiver.recv();
             pin_mut!(on_recv_request);
 
             tokio::select! {
@@ -209,7 +267,7 @@ impl DenoActor {
                 }
 
                 final_result = &mut on_function_result => {
-                    break final_result;
+                    break final_result.unwrap();
                 }
             };
         }

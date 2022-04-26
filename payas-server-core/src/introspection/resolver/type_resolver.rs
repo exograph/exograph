@@ -13,7 +13,7 @@ struct BoxedType<'a> {
     type_kind: &'a str,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl FieldResolver<Value> for TypeDefinition {
     async fn resolve_field<'e>(
         &'e self,
@@ -52,7 +52,7 @@ impl FieldResolver<Value> for TypeDefinition {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl FieldResolver<Value> for Type {
     async fn resolve_field<'e>(
         &'e self,
@@ -97,7 +97,7 @@ impl FieldResolver<Value> for Type {
 /// Resolver for a boxed (non-null or list type). Since the underlying type
 /// determines the `ofType` value and the type_kind determines the `kind`, all
 /// other fields evaluate to null
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a> FieldResolver<Value> for BoxedType<'a> {
     async fn resolve_field<'e>(
         &'e self,
