@@ -177,6 +177,8 @@ impl DenoActor {
         let busy = Arc::new(AtomicBool::new(false));
         let busy_clone = busy.clone();
         std::thread::spawn(move || {
+            // we use new_current_thread to explictly select the current thread scheduler for tokio
+            // (don't want to spawn more threads on top of this new one if we don't need one)
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .build()
                 .unwrap();
