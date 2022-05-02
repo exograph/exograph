@@ -11,5 +11,5 @@ model User {
   secondary_email_id: String? @unique("unique_email_secondary")
   email_domain: String @unique("unique_email_primary", "unique_email_secondary")
 
-  rsvps: Set<Rsvp>
+  rsvps: Set<Rsvp>?
 }

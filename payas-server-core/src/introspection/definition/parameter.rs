@@ -11,7 +11,6 @@ use payas_model::model::{
     predicate::PredicateParameter,
     types::GqlField,
     types::GqlTypeModifier,
-    GqlFieldType,
 };
 
 use super::provider::InputValueProvider;
@@ -110,30 +109,6 @@ impl Parameter for UpdateDataParameter {
     }
 }
 
-impl Parameter for GqlField {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn type_name(&self) -> &str {
-        self.typ.type_name()
-    }
-
-    fn type_modifier(&self) -> &GqlTypeModifier {
-        match self.typ {
-            GqlFieldType::Optional(_) => &GqlTypeModifier::Optional,
-            GqlFieldType::Reference { .. } => {
-                if self.has_default_value {
-                    &GqlTypeModifier::Optional
-                } else {
-                    &GqlTypeModifier::NonNull
-                }
-            }
-            GqlFieldType::List(_) => &GqlTypeModifier::List,
-        }
-    }
-}
-
 impl Parameter for ArgumentParameter {
     fn name(&self) -> &str {
         &self.name
@@ -172,4 +147,21 @@ impl<T: Parameter> InputValueProvider for T {
 // TODO: Derive this from the one above
 impl InputValueProvider for &dyn Parameter {
     parameter_input_value_provider!();
+}
+
+// We need to a special case for the GqlField type, so that we can properly
+// created nested types such as Optional(List(List(String))). The blanket impl
+// above will not work for nested types like these.
+impl InputValueProvider for GqlField {
+    fn input_value(&self) -> InputValueDefinition {
+        let field_type = util::default_positioned(util::compute_type(&self.typ));
+
+        InputValueDefinition {
+            description: None,
+            name: default_positioned_name(&self.name),
+            ty: field_type,
+            default_value: None,
+            directives: vec![],
+        }
+    }
 }

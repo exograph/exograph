@@ -3,7 +3,7 @@ import "mailing_list.clay"
 model User {
     id: Int = autoincrement() @pk
     username: String
-    subscribed_lists: Set<UserSubscription> @column("subscribed_user_id")
+    subscribed_lists: Set<UserSubscription>? @column("subscribed_user_id")
 }
 
 model UserSubscription {

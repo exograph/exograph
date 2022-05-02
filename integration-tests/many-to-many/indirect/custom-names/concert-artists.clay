@@ -19,10 +19,10 @@ model ConcertArtist {
 model Artist {
   id: Int = autoincrement() @pk
   name: String
-  aristsConcerts: Set<ConcertArtist> @column("artist_id")
+  aristsConcerts: Set<ConcertArtist>? @column("artist_id") // An artist may yet to participate in a concert, hence optional
 }
 
 model Venue {
   id: Int = autoincrement() @pk
-  concerts: Set<Concert> @column("venue_id")
+  concerts: Set<Concert>? @column("venue_id")
 }

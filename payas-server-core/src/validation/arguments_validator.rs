@@ -54,7 +54,19 @@ impl<'a> ArgumentValidator<'a> {
         // Stray arguments tracking: 1. Maintain a hashmap of all the arguments supplied in the query
         let mut field_arguments: HashMap<_, _> = field_arguments
             .iter()
-            .map(|(name, value)| (&name.node, value))
+            .filter_map(|(name, value)| {
+                // A few typical usages of GraphQL operations involve taking an
+                // old value (typically has the `__typename` attribute while
+                // querying--often added by clients such as Apollo for caching
+                // purposes), update that value, and then send it as an argument
+                // for an update mutation. To support such cases we will not
+                // consider the __typename argument as a stray argument.
+                if name.node == "__typename" {
+                    None
+                } else {
+                    Some((&name.node, value))
+                }
+            })
             .collect();
 
         let validated_arguments = field_argument_definitions
@@ -357,20 +369,19 @@ impl<'a> ArgumentValidator<'a> {
                 actual_type: format!("[{name}]"),
                 pos,
             }),
-            BaseType::List(_elem_type) => {
+            BaseType::List(elem_type) => {
                 // Peel off the list type to get the element type
-                let elem_argument_definition = argument_definition;
-                // See https://github.com/payalabs/payas/issues/401
-                // let elem_argument_definition = InputValueDefinition {
-                //     ty: Positioned::new(elem_type.as_ref().clone(), pos),
-                //     ..argument_definition.clone()
-                // };
+
+                let elem_argument_definition = InputValueDefinition {
+                    ty: Positioned::new(elem_type.as_ref().clone(), pos),
+                    ..argument_definition.clone()
+                };
 
                 let validated_elems = elems
                     .iter()
                     .flat_map(|elem| {
                         self.validate_argument(
-                            elem_argument_definition,
+                            &elem_argument_definition,
                             Some(&Positioned::new(elem.clone(), pos)),
                         )
                     })
