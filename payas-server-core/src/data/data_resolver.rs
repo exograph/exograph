@@ -15,7 +15,7 @@ use serde_json::Value;
 
 use super::operation_mapper::OperationResolver;
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait DataResolver {
     async fn resolve<'e>(
         &self,
@@ -25,7 +25,7 @@ pub trait DataResolver {
     ) -> Result<QueryResponse>;
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl FieldResolver<Value> for Value {
     async fn resolve_field<'a>(
         &'a self,
@@ -47,7 +47,7 @@ impl FieldResolver<Value> for Value {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl DataResolver for ModelSystem {
     async fn resolve<'e>(
         &self,

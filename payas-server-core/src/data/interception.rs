@@ -131,7 +131,7 @@ macro_rules! claytip_execute_query {
 
                     Ok(serde_json::Value::Object(result))
                 }
-                .boxed_local()
+                .boxed()
             },
         )
     };
@@ -177,7 +177,7 @@ impl<'a> InterceptedOperation<'a> {
         }
     }
 
-    #[async_recursion(?Send)]
+    #[async_recursion]
     pub async fn execute(
         &'a self,
         field: &'a ValidatedField,
@@ -237,7 +237,7 @@ impl<'a> InterceptedOperation<'a> {
                                 },
                             )
                         }
-                        .boxed_local()
+                        .boxed()
                     }),
                 )
                 .await?;
