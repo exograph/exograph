@@ -2,6 +2,7 @@ use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
 use deno_core::JsRuntime;
+use tracing::log::debug;
 use std::path::PathBuf;
 use tracing::error;
 use tracing::instrument;
@@ -173,6 +174,8 @@ impl DenoModule {
         skip_all
         )]
     pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
+        debug!("starting function execution of {}", function_name);
+
         let worker = &mut self.worker;
         let runtime = &mut worker.js_runtime;
 

@@ -177,7 +177,9 @@ impl DenoActor {
         let busy = Arc::new(AtomicBool::new(false));
         let busy_clone = busy.clone();
         std::thread::spawn(move || {
-            let runtime = tokio::runtime::Runtime::new().unwrap();
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap();
             let local = tokio::task::LocalSet::new();
 
             local.block_on(&runtime, async {

@@ -46,7 +46,6 @@ async fn main() -> std::io::Result<()> {
             .service(playground)
             .service(resolve)
     })
-    .workers(1)
     .bind(&server_url)
     .unwrap();
 

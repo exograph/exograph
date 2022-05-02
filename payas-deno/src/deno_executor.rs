@@ -116,7 +116,7 @@ impl<'a> DenoExecutor {
                 .entry(script_path.to_string())
                 .or_insert(vec![]);
 
-            let free_actor = actor_pool.iter().find(|actor| actor.is_busy());
+            let free_actor = actor_pool.iter().find(|actor| !actor.is_busy());
 
             if let Some(actor) = free_actor {
                 // found a free actor!

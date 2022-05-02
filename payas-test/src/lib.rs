@@ -55,7 +55,7 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
     // Estimate an optimal pool size
     let pool_size = min(number_of_tests, cpus * 2);
     let pool = ThreadPoolBuilder::new()
-        .num_threads(1)
+        .num_threads(pool_size)
         .build()
         .unwrap();
 
