@@ -3,7 +3,6 @@ use deno_core::error::JsError;
 use deno_core::serde_json;
 use deno_core::JsRuntime;
 use std::path::PathBuf;
-use std::sync::Mutex;
 use tracing::error;
 use tracing::instrument;
 
@@ -41,7 +40,7 @@ pub enum UserCode {
 }
 
 pub struct DenoModule {
-    worker: Arc<Mutex<MainWorker>>,
+    worker: MainWorker,
     shim_object_names: Vec<String>,
     user_code: UserCode,
 }
@@ -71,7 +70,7 @@ impl DenoModule {
         shared_state: DenoModuleSharedState,
     ) -> Result<Self, AnyError>
     where
-        F: FnOnce(&mut JsRuntime),
+        F: FnOnce(&mut JsRuntime) + Send + Sync,
     {
         let shim_source_code = {
             let shims_source_codes: Vec<_> = shims
@@ -159,11 +158,13 @@ impl DenoModule {
 
         let shim_object_names = shims.iter().map(|(name, _)| name.to_string()).collect();
 
-        Ok(Self {
-            worker: Arc::new(Mutex::new(worker)),
+        let deno_module = Self {
+            worker,
             shim_object_names,
             user_code,
-        })
+        };
+
+        Ok(deno_module)
     }
 
     #[instrument(
@@ -173,7 +174,7 @@ impl DenoModule {
         )]
     pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
         let worker = &mut self.worker;
-        let runtime = &mut worker.try_lock().unwrap().js_runtime;
+        let runtime = &mut worker.js_runtime;
 
         let func_value_string = format!("mod.{}", function_name);
 
@@ -267,13 +268,7 @@ impl DenoModule {
 
     /// Put a single instance of a type into Deno's op_state
     pub fn put<T: 'static>(&mut self, val: T) {
-        self.worker
-            .lock()
-            .unwrap()
-            .js_runtime
-            .op_state()
-            .borrow_mut()
-            .put(val)
+        self.worker.js_runtime.op_state().borrow_mut().put(val)
     }
 }
 

@@ -6,7 +6,7 @@ use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver}
 use crate::{execution::operations_context::OperationsContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
-#[async_trait(?Send)]
+#[async_trait]
 impl FieldResolver<Value> for FieldDefinition {
     async fn resolve_field<'e>(
         &'e self,
