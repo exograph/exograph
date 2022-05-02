@@ -182,6 +182,9 @@ impl DenoActor {
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .build()
                 .expect("Could not start tokio runtime in DenoActor thread");
+
+            // we use a LocalSet here because Deno futures are not Send, and we need them to be
+            // executed in the same thread
             let local = tokio::task::LocalSet::new();
 
             local.block_on(&runtime, async {
