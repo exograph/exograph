@@ -2,10 +2,10 @@ use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
 use deno_core::JsRuntime;
-use tracing::log::debug;
 use std::path::PathBuf;
 use tracing::error;
 use tracing::instrument;
+use tracing::log::debug;
 
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
