@@ -174,8 +174,6 @@ impl DenoModule {
         skip_all
         )]
     pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
-        debug!("starting function execution of {}", function_name);
-
         let worker = &mut self.worker;
         let runtime = &mut worker.js_runtime;
 
