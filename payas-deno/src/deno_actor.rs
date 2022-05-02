@@ -64,6 +64,17 @@ pub type FnClaytipInterceptorProceed<'a> =
 ///
 /// The purpose of DenoActor is to isolate DenoModule in its own thread and to provide methods to interact
 /// with DenoModule through message passing.
+///
+/// JavaScript code running on Deno can invoke preregistered Rust code through Deno.core.op_sync() or Deno.core.op_async().
+/// We use Deno ops to facilitate operations such as executing Claytip queries directly from JavaScript.
+/// Deno ops cannot be re-registered or unregistered; ops must stay static, which presents a problem if we want to
+/// dynamically change what the operations do from request to request (like in the case of the proceed()
+/// call from @around interceptors).
+///
+/// To work around this, DenoActor adopts another layer of message passing (separate from the DenoCall and DenoResult messages)
+/// to handle operations. On creation, DenoActor will first initialize a Tokio mpsc channel. It will also initialize an instance
+/// of DenoModule and register operations that will send a RequestFromDenoMessage to the channel on invocation. This way, the
+/// actual operation does not have to change, just the recipient of Deno op request messages.
 impl DenoActor {
     pub fn new(code: UserCode, shared_state: DenoModuleSharedState) -> Result<DenoActor> {
         let shims = vec![
@@ -275,6 +286,7 @@ impl DenoActor {
             let on_recv_request = receiver.recv();
             pin_mut!(on_recv_request);
 
+            // wait on an event from either a Deno op or from DenoActor containing the final result of the function
             tokio::select! {
                 message = on_recv_request => {
                     // forward message from Deno to the caller through the channel they gave us
