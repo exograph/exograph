@@ -291,7 +291,7 @@ impl DenoActor {
                 message = on_recv_request => {
                     // forward message from Deno to the caller through the channel they gave us
                     to_user_sender.send(
-                        message.ok_or(anyhow!("Channel was dropped before completion while calling method"))?
+                        message.ok_or_else(|| anyhow!("Channel was dropped before completion while calling method"))?
                     ).await.map_err(|err| anyhow!("Could not send request result to DenoActor in call_method ({})", err))?;
                 }
 

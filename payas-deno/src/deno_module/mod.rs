@@ -5,7 +5,6 @@ use deno_core::JsRuntime;
 use std::path::PathBuf;
 use tracing::error;
 use tracing::instrument;
-use tracing::log::debug;
 
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
