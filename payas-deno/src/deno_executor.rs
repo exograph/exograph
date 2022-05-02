@@ -37,8 +37,6 @@ pub struct DenoExecutor {
     shared_state: DenoModuleSharedState,
 }
 
-unsafe impl Send for DenoExecutor {}
-
 impl<'a> DenoExecutor {
     /// Allocate a number of instances for a module.
     pub async fn preload_module(
