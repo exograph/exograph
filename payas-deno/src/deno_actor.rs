@@ -181,7 +181,7 @@ impl DenoActor {
             // (don't want to spawn more threads on top of this new one if we don't need one)
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .build()
-                .unwrap();
+                .expect("Could not start tokio runtime in DenoActor thread");
             let local = tokio::task::LocalSet::new();
 
             local.block_on(&runtime, async {
@@ -189,7 +189,7 @@ impl DenoActor {
                 let mut deno_module =
                     DenoModule::new(code, "Claytip", &shims, register_ops, shared_state)
                         .await
-                        .unwrap();
+                        .expect("Could not create new DenoModule in DenoActor thread");
 
                 // start a receive loop
                 loop {
@@ -199,7 +199,10 @@ impl DenoActor {
                         function_args,
                         intercepted_op_name,
                         response_sender,
-                    } = rx.recv().await.unwrap();
+                    } = rx
+                        .recv()
+                        .await
+                        .expect("Could not receive requests in DenoActor thread");
                     busy_clone.store(true, Ordering::Relaxed); // mark DenoActor as busy
 
                     deno_module.put(InterceptedOperationName(intercepted_op_name)); // store intercepted operation name into Deno's op_state
@@ -210,7 +213,9 @@ impl DenoActor {
                         .await;
 
                     // send result of the Deno function back to call_method
-                    response_sender.send(result).unwrap();
+                    response_sender
+                        .send(result)
+                        .expect("Could not send result in DenoActor thread");
 
                     busy_clone.store(false, Ordering::Relaxed); // unmark DenoActor as busy
                 }
@@ -251,7 +256,12 @@ impl DenoActor {
         };
 
         // send it to the DenoModule thread
-        self.deno_call_sender.send(deno_call).await.ok().unwrap();
+        self.deno_call_sender.send(deno_call).await.map_err(|err| {
+            anyhow!(
+                "Could not send method call request to DenoActor thread ({})",
+                err
+            )
+        })?;
 
         let on_function_result = rx;
         pin_mut!(on_function_result);
@@ -266,12 +276,12 @@ impl DenoActor {
                 message = on_recv_request => {
                     // forward message from Deno to the caller through the channel they gave us
                     to_user_sender.send(
-                        message.expect("Channel was dropped before completion while calling method")
-                    ).await.ok().expect("Could not send result to Deno in call_method");
+                        message.ok_or(anyhow!("Channel was dropped before completion while calling method"))?
+                    ).await.map_err(|err| anyhow!("Could not send request result to DenoActor in call_method ({})", err))?;
                 }
 
                 final_result = &mut on_function_result => {
-                    break final_result.unwrap();
+                    break final_result.map_err(|err| anyhow!("Could not receive result from DenoActor thread ({})", err))?;
                 }
             };
         }
