@@ -30,14 +30,14 @@ pub(crate) mod table;
 pub(crate) mod transaction;
 pub(crate) mod update;
 
-pub trait SQLParam: ToSql + Sync {
+pub trait SQLParam: ToSql + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn eq(&self, other: &dyn SQLParam) -> bool;
 
     fn as_pg(&self) -> &(dyn ToSql + Sync);
 }
 
-impl<T: ToSql + Sync + Any + PartialEq> SQLParam for T {
+impl<T: ToSql + Send + Sync + Any + PartialEq> SQLParam for T {
     fn as_any(&self) -> &dyn Any {
         self
     }

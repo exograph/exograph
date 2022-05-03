@@ -56,7 +56,7 @@ pub trait SQLUpdateMapper<'a> {
     ) -> Result<AbstractUpdate>;
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait OperationResolver<'a> {
     fn resolve_operation(
         &'a self,

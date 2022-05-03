@@ -10,7 +10,7 @@ use crate::validation::field::ValidatedField;
 
 use super::operations_context::OperationsContext;
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait Resolver<R> {
     async fn resolve_value<'e>(
         &self,
@@ -19,10 +19,11 @@ pub trait Resolver<R> {
     ) -> Result<R>;
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait FieldResolver<R>
 where
     Self: std::fmt::Debug,
+    R: Send + Sync,
 {
     // {
     //   name: ???
@@ -90,10 +91,10 @@ impl std::fmt::Display for GraphQLExecutionError {
 //     }
 // }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<T> Resolver<Value> for T
 where
-    T: FieldResolver<Value> + std::fmt::Debug,
+    T: FieldResolver<Value> + std::fmt::Debug + Send + Sync,
 {
     async fn resolve_value<'e>(
         &self,
@@ -106,10 +107,10 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<T> Resolver<Value> for Option<&T>
 where
-    T: Resolver<Value> + std::fmt::Debug,
+    T: Resolver<Value> + std::fmt::Debug + Send + Sync,
 {
     async fn resolve_value<'e>(
         &self,
@@ -123,10 +124,10 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<T> Resolver<Value> for Positioned<T>
 where
-    T: Resolver<Value> + std::fmt::Debug,
+    T: Resolver<Value> + std::fmt::Debug + Send + Sync,
 {
     async fn resolve_value<'e>(
         &self,
@@ -137,10 +138,10 @@ where
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<T> Resolver<Value> for Vec<T>
 where
-    T: Resolver<Value> + std::fmt::Debug,
+    T: Resolver<Value> + std::fmt::Debug + Send + Sync,
 {
     async fn resolve_value<'e>(
         &self,
