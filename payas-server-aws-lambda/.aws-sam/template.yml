@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   claytip serverless function
 
-  SAM template to serve the GET and POST endpoints for the payas-server-aws-lambda
+  SAM template to serve the the POST endpoint for payas-server-aws-lambda
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -19,11 +19,11 @@ Resources:
       Runtime: provided.al2
       Architectures:
         - x86_64
-      Events:    
+      Events:
         Claytip:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /hello
+            Path: /
             Method: post
 
 Outputs:

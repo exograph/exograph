@@ -1,35 +1,36 @@
 pub mod request_context;
 
-use lambda_http::{
-    http::{Error, StatusCode},
-    IntoResponse, Response,
-};
+use std::sync::Arc;
+
+use futures::StreamExt;
+use lambda_http::{http::StatusCode, Error, Response};
 use payas_server_core::{OperationsExecutor, OperationsPayload};
 
-use futures::stream::StreamExt;
 use request_context::{ContextProducerError, LambdaRequestContextProducer};
-use serde_json::Value;
 
-macro_rules! error_msg {
-    ($msg:literal) => {
-        concat!("{\"errors\": [{\"message\":\"", $msg, "\"}]}")
-            .as_bytes()
-            .to_vec()
-    };
+fn error_msg(message: &str) -> Vec<u8> {
+    format!(r#"{{ "errors": [{{"message": "{message}"}}] }}"#).into()
 }
 
-// #[post("/")]
 pub async fn resolve(
     req: lambda_http::Request,
-    body: Value,
-    executor: OperationsExecutor,
-    context_processor: LambdaRequestContextProducer,
-) -> Result<impl IntoResponse, Error> {
+    executor: Arc<OperationsExecutor>,
+    context_processor: Arc<LambdaRequestContextProducer>,
+) -> Result<Response<Vec<u8>>, Error> {
     let request_context = context_processor.generate_request_context(&req);
+
+    let (_, body) = req.into_parts();
+
+    let body_string = match body {
+        lambda_http::Body::Empty => todo!(),
+        lambda_http::Body::Text(string) => string,
+        lambda_http::Body::Binary(_) => todo!(),
+    };
 
     match request_context {
         Ok(request_context) => {
-            let operations_payload: Result<OperationsPayload, _> = serde_json::from_value(body);
+            let operations_payload: Result<OperationsPayload, _> =
+                serde_json::from_str(&body_string);
 
             match operations_payload {
                 Ok(operations_payload) => {
@@ -48,38 +49,36 @@ pub async fn resolve(
                     let bytes: Vec<u8> =
                         bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
 
-                    Response::builder()
+                    Ok(Response::builder()
                         .status(StatusCode::OK)
                         .header("Content-Type", "application/json")
-                        .body(bytes)
+                        .body(bytes)?)
                 }
-                Err(_) => {
-                    return Response::builder()
-                        .status(StatusCode::BAD_REQUEST)
-                        .body(error_msg!("Invalid query payload"));
-                }
+                Err(_) => Ok(Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(error_msg("Invalid query payload"))?),
             }
         }
 
         Err(err) => {
             let (message, base_response) = match err {
                 ContextProducerError::Unauthorized => (
-                    error_msg!("Unauthorized"),
+                    error_msg("Unauthorized"),
                     Response::builder().status(StatusCode::UNAUTHORIZED),
                 ),
                 ContextProducerError::Malformed => (
-                    error_msg!("Malformed header"),
+                    error_msg("Malformed header"),
                     Response::builder().status(StatusCode::BAD_REQUEST),
                 ),
                 ContextProducerError::Unknown => (
-                    error_msg!("Unknown error"),
+                    error_msg("Unknown error"),
                     Response::builder().status(StatusCode::UNAUTHORIZED),
                 ),
             };
 
-            base_response
+            Ok(base_response
                 .header("Content-Type", "application/json")
-                .body(message)
+                .body(message)?)
         }
     }
 }

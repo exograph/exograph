@@ -3144,7 +3144,6 @@ dependencies = [
 name = "payas-server-aws-lambda"
 version = "0.1.0"
 dependencies = [
- "actix-files",
  "anyhow",
  "bytes",
  "futures",

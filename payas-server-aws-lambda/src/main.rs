@@ -1,55 +1,35 @@
+use lambda_http::{Error, Request};
+
 use payas_server_aws_lambda::request_context::LambdaRequestContextProducer;
-use payas_server_core::graphiql;
-use payas_server_core::{create_operations_executor, OperationsExecutor};
+use payas_server_aws_lambda::resolve;
+use payas_server_core::create_operations_executor;
 use payas_sql::Database;
 
-use std::path::Path;
-use std::time;
+use std::sync::Arc;
 use std::{env, process::exit};
-/*
+
 /// Run the server in production mode with a compiled claypot file
-// #[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    let start_time = time::SystemTime::now();
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let claypot_file = get_claypot_file_name();
 
-    let subscriber_name = claypot_file.trim_end_matches(".claypot");
-
     let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
-    let operations_executor = create_operations_executor(&claypot_file, database).unwrap();
-    let request_context_processor = LambdaRequestContextProducer::new();
+    let operations_executor =
+        Arc::new(create_operations_executor(&claypot_file, database).unwrap());
+    let request_context_processor = Arc::new(LambdaRequestContextProducer::new());
 
-    let server_port = env::var("CLAY_SERVER_PORT")
-        .map(|port_str| {
-            port_str
-                .parse::<u32>()
-                .expect("Failed to parse CLAY_SERVER_PORT")
-        })
-        .unwrap_or(9876);
-    let server_url = format!("0.0.0.0:{}", server_port);
+    let service = lambda_http::service_fn(|request: Request| async {
+        resolve(
+            request,
+            operations_executor.clone(),
+            request_context_processor.clone(),
+        )
+        .await
+    });
 
-    let server = HttpServer::new(move || {
-        let cors = cors_from_env();
+    lambda_http::run(service).await?;
 
-        App::new()
-            .wrap(TracingLogger::default())
-            .wrap(cors)
-            .app_data(operations_executor.clone())
-            .app_data(request_context_processor.clone())
-            .service(playground)
-            .service(resolve)
-    })
-    .workers(1) // see payas-deno/executor.rs
-    .bind(&server_url)
-    .unwrap();
-
-    println!(
-        "Started server on {} in {:.2} ms",
-        server.addrs()[0],
-        start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
-    );
-
-    server.run().await
+    Ok(())
 }
 
 fn get_claypot_file_name() -> String {
@@ -78,97 +58,4 @@ fn get_claypot_file_name() -> String {
             exit(1);
         }
     }
-}
-
-// #[get("/{path:.*}")]
-async fn playground(req: HttpRequest, executor: web::Data<OperationsExecutor>) -> impl Responder {
-    if !executor.allow_introspection {
-        return HttpResponse::Forbidden().body("Introspection is not enabled");
-    }
-
-    let asset_path = req.match_info().get("path");
-
-    // Adjust the path for "index.html" (which is requested with and empty path)
-    let asset_path = asset_path.map(|path| if path.is_empty() { "index.html" } else { path });
-
-    match asset_path {
-        Some(asset_path) => {
-            let asset_path = Path::new(asset_path);
-            let extension = asset_path
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or(""); // If no extension, set it to an empty string, to use `actix_files::file_extension_to_mime`'s default behavior
-
-            let content_type = actix_files::file_extension_to_mime(extension);
-
-            // js/cs files in the static folder have content-hashed names, so we can cache them for a long duration
-            let cache_control = if asset_path.starts_with("static/") {
-                CacheControl(vec![
-                    CacheDirective::Public,
-                    CacheDirective::MaxAge(60 * 60 * 24 * 365), // seconds in one year
-                ])
-            } else {
-                CacheControl(vec![CacheDirective::NoCache])
-            };
-
-            match graphiql::get_asset_bytes(asset_path) {
-                Some(asset) => HttpResponse::Ok()
-                    .content_type(content_type)
-                    .insert_header(cache_control)
-                    .body(asset),
-                None => HttpResponse::NotFound().body(""),
-            }
-        }
-        None => HttpResponse::NotFound().body("Not found"),
-    }
-}
-
-fn cors_from_env() -> Cors {
-    match env::var("CLAY_CORS_DOMAINS").ok() {
-        Some(domains) => {
-            let domains_list = domains.split(',');
-
-            let cors = domains_list.fold(Cors::default(), |cors, domain| {
-                if domain == "*" {
-                    cors.allow_any_origin()
-                } else {
-                    cors.allowed_origin(domain)
-                }
-            });
-
-            // TODO: Allow more control over headers, max_age etc
-            cors.allowed_methods(vec!["GET", "POST"])
-                .allow_any_header()
-                .max_age(3600)
-        }
-        None => Cors::default(),
-    }
-}
-*/
-
-use lambda_http::{service_fn, Error, IntoResponse, Request, Response};
-
-#[tokio::main]
-async fn main() -> Result<(), Error> {
-    lambda_http::run(service_fn(hello)).await?;
-
-    Ok(())
-}
-
-/// Sample pure Lambda function
-async fn hello(_request: Request) -> Result<impl IntoResponse, Error> {
-    Ok(Response::builder()
-        .status(200)
-        .header("Content-Type", "text/plain")
-        .body("Hello, World!".to_string())?)
-}
-
-#[tokio::test]
-async fn test_hello() {
-    let request = Request::default();
-    let response = hello(request).await.unwrap().into_response();
-    assert_eq!(
-        response.body(),
-        &lambda_http::Body::Text("Hello, World!".to_string())
-    );
 }
