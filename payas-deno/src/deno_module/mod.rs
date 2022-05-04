@@ -237,11 +237,10 @@ impl DenoModule {
                     error!(%js_error, "Exception executing function");
                     if js_error.name.as_ref().unwrap_or(&("".to_string())) == JSERROR_NAME {
                         // code threw an explicit Error(...), expose to user
-                        let message = format!(
-                            "{}",
-                            js_error.message.unwrap_or("Unknown error".to_string())
-                        );
-                        return Err(anyhow!(message.to_owned()));
+                        let message = js_error
+                            .message
+                            .unwrap_or_else(|| "Unknown error".to_string());
+                        return Err(anyhow!(message));
                     } else {
                         // generic error message
                         return Err(anyhow!("Internal server error"));
