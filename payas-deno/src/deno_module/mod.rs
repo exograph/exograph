@@ -1,7 +1,8 @@
 use deno_core::error::AnyError;
 use deno_core::error::JsError;
 use deno_core::serde_json;
-use deno_core::JsRuntime;
+use deno_core::Extension;
+use deno_runtime::ops::io::Stdio;
 use std::path::PathBuf;
 use tracing::error;
 use tracing::instrument;
@@ -32,7 +33,7 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
 }
 
-const JSERROR_PREFIX: &str = "Uncaught ClaytipError: ";
+const JSERROR_NAME: &str = "ClaytipError";
 
 pub enum UserCode {
     LoadFromMemory { script: String, path: String },
@@ -62,16 +63,13 @@ pub struct DenoModuleSharedState {
 /// DenoModule has no concept of Claytip; it exists solely to configure the JavaScript execution environment
 /// and to load & execute methods in the Deno runtime from sources.
 impl DenoModule {
-    pub async fn new<F>(
+    pub async fn new(
         user_code: UserCode,
         user_agent_name: &str,
         shims: &[(&str, &str)],
-        register_ops: F,
+        extensions: Vec<Extension>,
         shared_state: DenoModuleSharedState,
-    ) -> Result<Self, AnyError>
-    where
-        F: FnOnce(&mut JsRuntime) + Send + Sync,
-    {
+    ) -> Result<Self, AnyError> {
         let shim_source_code = {
             let shims_source_codes: Vec<_> = shims
                 .iter()
@@ -112,7 +110,6 @@ impl DenoModule {
 
         let options = WorkerOptions {
             bootstrap: BootstrapOptions {
-                apply_source_maps: false,
                 args: vec![],
                 cpu_count: 1,
                 debug_flag: false,
@@ -122,13 +119,13 @@ impl DenoModule {
                 runtime_version: "x".to_string(),
                 ts_version: "x".to_string(),
                 unstable: true,
+                is_tty: false,
             },
-            extensions: vec![],
+            extensions,
             unsafely_ignore_certificate_errors: None,
             root_cert_store: None,
             user_agent: user_agent_name.to_string(),
             seed: None,
-            js_error_create_fn: None,
             create_web_worker_cb,
             maybe_inspector_server: None,
             should_break_on_first_statement: false,
@@ -139,6 +136,10 @@ impl DenoModule {
             broadcast_channel: shared_state.broadcast_channel,
             shared_array_buffer_store: None,
             compiled_wasm_module_store: None,
+            web_worker_preload_module_cb: Arc::new(|_| todo!()),
+            source_map_getter: None,
+            format_js_error_fn: None,
+            stdio: Stdio::default(),
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
@@ -146,9 +147,6 @@ impl DenoModule {
 
         let mut worker =
             MainWorker::bootstrap_from_options(main_module.clone(), permissions, options);
-
-        register_ops(&mut worker.js_runtime);
-        worker.js_runtime.sync_ops_cache();
 
         worker.execute_main_module(&main_module).await?;
         worker
@@ -237,10 +235,9 @@ impl DenoModule {
                     let js_error = JsError::from_v8_exception(tc_scope_ref, exception);
 
                     error!(%js_error, "Exception executing function");
-
-                    if js_error.message.starts_with(JSERROR_PREFIX) {
+                    if js_error.name.as_ref().unwrap_or(&("".to_string())) == JSERROR_NAME {
                         // code threw an explicit Error(...), expose to user
-                        let message = js_error.message.strip_prefix(JSERROR_PREFIX).unwrap();
+                        let message = format!("{}", js_error.message.unwrap_or("Unknown error".to_string()));
                         return Err(anyhow!(message.to_owned()));
                     } else {
                         // generic error message
