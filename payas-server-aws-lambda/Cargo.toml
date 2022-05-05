@@ -20,5 +20,5 @@ payas-sql = { path = "../payas-sql" }
 payas-model = { path = "../payas-model" }
 
 [[bin]]
-name = "clay-lambda-server"
+name = "bootstrap"
 path = "src/main.rs"
