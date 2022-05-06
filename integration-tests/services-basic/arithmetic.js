@@ -23,9 +23,7 @@ export function currentUnixEpoch() {
 export async function shimQuery(claytip) {
     const result = await claytip.executeQuery(
         `query {
-            foos(
-                where: { baz: {eq: 4} }
-            ) {
+            foos(where: {baz: {eq: 4}}) {
                 id
             }
         }`
