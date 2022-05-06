@@ -1,10 +1,12 @@
-use anyhow::{anyhow, Result};
-use deno_core::JsRuntime;
+use anyhow::{anyhow, bail, Result};
+use deno_core::{error::AnyError, op, Extension, OpState};
 use futures::future::BoxFuture;
 use futures::pin_mut;
 use serde_json::Value;
 use std::{
+    cell::RefCell,
     panic,
+    rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -60,6 +62,84 @@ pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<Stri
 pub type FnClaytipInterceptorProceed<'a> =
     (dyn Fn() -> BoxFuture<'a, Result<Value>> + 'a + Send + Sync);
 
+#[op]
+async fn op_claytip_execute_query(
+    state: Rc<RefCell<OpState>>,
+    query_string: Value,
+    variables: Option<Value>,
+) -> Result<Value, AnyError> {
+    let state = state.borrow();
+    let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
+    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+
+    sender
+        .send(RequestFromDenoMessage::ClaytipExecute {
+            query_string: query_string.as_str().unwrap().to_string(),
+            variables: variables.as_ref().map(|o| o.as_object().unwrap().clone()),
+            response_sender,
+        })
+        .await
+        .map_err(|err| {
+            anyhow!(
+                "Could not send request from op_claytip_execute_query ({})",
+                err
+            )
+        })?;
+
+    if let ResponseForDenoMessage::ClaytipExecute(result) =
+        response_receiver.await.map_err(|err| {
+            anyhow!(
+                "Could not receive result in op_claytip_execute_query ({})",
+                err
+            )
+        })?
+    {
+        result
+    } else {
+        bail!("Wrong response type for op_claytip_execute_query")
+    }
+}
+
+#[op]
+fn op_intercepted_operation_name(state: &mut OpState) -> Result<String, AnyError> {
+    // try to read the intercepted operation name out of Deno's GothamStorage
+    if let InterceptedOperationName(Some(name)) = state.borrow() {
+        Ok(name.clone())
+    } else {
+        Err(anyhow!("no stored operation name"))
+    }
+}
+
+#[op]
+async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, AnyError> {
+    let state = state.borrow();
+    let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
+    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+
+    sender
+        .send(RequestFromDenoMessage::InterceptedOperationProceed { response_sender })
+        .await
+        .map_err(|err| {
+            anyhow!(
+                "Could not send request from op_intercepted_proceed ({})",
+                err
+            )
+        })?;
+
+    if let ResponseForDenoMessage::InterceptedOperationProceed(result) =
+        response_receiver.await.map_err(|err| {
+            anyhow!(
+                "Could not receive result in op_intercepted_proceed ({})",
+                err
+            )
+        })?
+    {
+        result
+    } else {
+        bail!("Wrong response type for op_intercepted_proceed")
+    }
+}
+
 /// A wrapper around DenoModule.
 ///
 /// The purpose of DenoActor is to isolate DenoModule in its own thread and to provide methods to interact
@@ -83,103 +163,7 @@ impl DenoActor {
         ];
 
         let (from_deno_sender, from_deno_receiver) = tokio::sync::mpsc::channel(1);
-
-        let register_ops = move |runtime: &mut JsRuntime| {
-            let mut ops = vec![];
-
-            {
-                let from_deno_sender = from_deno_sender.clone();
-
-                ops.push((
-                    "op_claytip_execute_query",
-                    deno_core::op_async(move |_state, args: Vec<String>, (): _| {
-                        let sender = from_deno_sender.clone();
-
-                        async move {
-                            let query_string = &args[0];
-                            let variables: Option<serde_json::Map<String, Value>> =
-                                args.get(1).map(|vars| {
-                                    serde_json::from_str(vars)
-                                        .expect("Could not un-stringify variables from Deno during op_claytip_execute_query")
-                                });
-
-                            let (response_sender, response_receiver) =
-                                tokio::sync::oneshot::channel();
-
-                            sender
-                                .send(RequestFromDenoMessage::ClaytipExecute {
-                                    query_string: query_string.to_owned(),
-                                    variables,
-                                    response_sender,
-                                })
-                                .await
-                                .ok()
-                                .expect("Could not send request from op_claytip_execute_query");
-
-                            if let ResponseForDenoMessage::ClaytipExecute(result) =
-                                response_receiver.await.expect("Could not receive result in op_claytip_execute_query")
-                            {
-                                result
-                            } else {
-                                panic!()
-                            }
-                        }
-                    }),
-                ));
-            }
-
-            {
-                ops.push((
-                    "op_intercepted_operation_name",
-                    deno_core::op_sync(move |state, _: (), (): _| {
-                        // try to read the intercepted operation name out of Deno's GothamStorage
-                        if let InterceptedOperationName(Some(name)) = state.borrow() {
-                            Ok(name.clone())
-                        } else {
-                            Err(anyhow!("no stored operation name"))
-                        }
-                    }),
-                ));
-            }
-
-            {
-                let from_deno_sender = from_deno_sender.clone();
-
-                ops.push((
-                    "op_intercepted_proceed",
-                    deno_core::op_async(move |_state, _: (), (): _| {
-                        let sender = from_deno_sender.clone();
-
-                        async move {
-                            let (response_sender, response_receiver) =
-                                tokio::sync::oneshot::channel();
-
-                            sender
-                                .send(RequestFromDenoMessage::InterceptedOperationProceed {
-                                    response_sender,
-                                })
-                                .await
-                                .ok()
-                                .expect("Could not send request from op_intercepted_proceed");
-
-                            if let ResponseForDenoMessage::InterceptedOperationProceed(result) =
-                                response_receiver
-                                    .await
-                                    .expect("Could not receive result in op_intercepted_proceed")
-                            {
-                                result
-                            } else {
-                                panic!()
-                            }
-                        }
-                    }),
-                ));
-            }
-
-            for (name, op) in ops {
-                runtime.register_op(name, op);
-            }
-        };
+        let from_deno_sender: Sender<RequestFromDenoMessage> = from_deno_sender;
 
         // we will receive DenoCall messages through this channel from call_method
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
@@ -198,12 +182,25 @@ impl DenoActor {
             // executed in the same thread
             let local = tokio::task::LocalSet::new();
 
+            // we provide a set of Claytip functionality through custom Deno ops,
+            // create a Deno extension that provides these ops
+            let ext = Extension::builder()
+                .ops(vec![
+                    op_claytip_execute_query::decl(),
+                    op_intercepted_operation_name::decl(),
+                    op_intercepted_proceed::decl(),
+                ])
+                .build();
+
             local.block_on(&runtime, async {
                 // first, initialize the Deno module
                 let mut deno_module =
-                    DenoModule::new(code, "Claytip", &shims, register_ops, shared_state)
+                    DenoModule::new(code, "Claytip", &shims, vec![ext], shared_state)
                         .await
                         .expect("Could not create new DenoModule in DenoActor thread");
+
+                // store the request sender in Deno OpState for use by ops
+                deno_module.put(from_deno_sender);
 
                 // start a receive loop
                 loop {

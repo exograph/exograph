@@ -1,7 +1,9 @@
 use std::path::Path;
 
+use deno_core::error::AnyError;
 use deno_core::serde_json::json;
-use deno_core::{serde_json::Value, JsRuntime};
+use deno_core::serde_json::Value;
+use deno_core::{op, Extension};
 use futures::future::join_all;
 use payas_deno::{Arg, DenoActor, DenoExecutor, DenoModule, DenoModuleSharedState, UserCode};
 use tokio::sync::mpsc::channel;
@@ -12,7 +14,7 @@ async fn test_direct_sync() {
         UserCode::LoadFromFs(Path::new("./tests/direct.js").to_owned()),
         "deno_module",
         &[],
-        |_| {},
+        vec![],
         DenoModuleSharedState::default(),
     )
     .await
@@ -122,7 +124,7 @@ async fn test_direct_async() {
         UserCode::LoadFromFs(Path::new("./tests/direct.js").to_owned()),
         "deno_module",
         &[],
-        |_| {},
+        vec![],
         DenoModuleSharedState::default(),
     )
     .await
@@ -156,7 +158,7 @@ async fn test_shim_sync() {
         UserCode::LoadFromFs(Path::new("./tests/through_shim.js").to_owned()),
         "deno_module",
         &[GET_JSON_SHIM],
-        |_| {},
+        vec![],
         DenoModuleSharedState::default(),
     )
     .await
@@ -197,7 +199,7 @@ async fn test_shim_async() {
         UserCode::LoadFromFs(Path::new("./tests/through_shim.js").to_owned()),
         "deno_module",
         &[GET_JSON_SHIM],
-        |_| {},
+        vec![],
         DenoModuleSharedState::default(),
     )
     .await
@@ -235,25 +237,18 @@ async fn test_shim_async() {
     );
 }
 
+#[op]
+fn rust_impl(arg: String) -> Result<String, AnyError> {
+    Ok(format!("Register Op: {}", arg))
+}
+
 #[tokio::test]
 async fn test_register_ops() {
-    fn register_ops(runtime: &mut JsRuntime) {
-        let sync_ops = vec![(
-            "rust_impl",
-            deno_core::op_sync(|_state, args: Vec<String>, _: ()| {
-                Ok(format!("Register Op: {}", args[0]))
-            }),
-        )];
-        for (name, op) in sync_ops {
-            runtime.register_op(name, op);
-        }
-    }
-
     let mut deno_module = DenoModule::new(
         UserCode::LoadFromFs(Path::new("./tests/through_rust_fn.js").to_owned()),
         "deno_module",
         &[],
-        &register_ops,
+        vec![Extension::builder().ops(vec![rust_impl::decl()]).build()],
         DenoModuleSharedState::default(),
     )
     .await
