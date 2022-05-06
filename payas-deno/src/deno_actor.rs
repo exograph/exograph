@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use deno_core::{error::AnyError, op, Extension, OpState};
 use futures::future::BoxFuture;
 use futures::pin_mut;
@@ -79,16 +79,24 @@ async fn op_claytip_execute_query(
             response_sender,
         })
         .await
-        .ok()
-        .expect("Could not send request from op_claytip_execute_query");
+        .map_err(|err| {
+            anyhow!(
+                "Could not send request from op_claytip_execute_query ({})",
+                err
+            )
+        })?;
 
-    if let ResponseForDenoMessage::ClaytipExecute(result) = response_receiver
-        .await
-        .expect("Could not receive result in op_claytip_execute_query")
+    if let ResponseForDenoMessage::ClaytipExecute(result) =
+        response_receiver.await.map_err(|err| {
+            anyhow!(
+                "Could not receive result in op_claytip_execute_query ({})",
+                err
+            )
+        })?
     {
         result
     } else {
-        panic!()
+        bail!("Wrong response type for op_claytip_execute_query")
     }
 }
 
@@ -111,16 +119,24 @@ async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, An
     sender
         .send(RequestFromDenoMessage::InterceptedOperationProceed { response_sender })
         .await
-        .ok()
-        .expect("Could not send request from op_intercepted_proceed");
+        .map_err(|err| {
+            anyhow!(
+                "Could not send request from op_intercepted_proceed ({})",
+                err
+            )
+        })?;
 
-    if let ResponseForDenoMessage::InterceptedOperationProceed(result) = response_receiver
-        .await
-        .expect("Could not receive result in op_intercepted_proceed")
+    if let ResponseForDenoMessage::InterceptedOperationProceed(result) =
+        response_receiver.await.map_err(|err| {
+            anyhow!(
+                "Could not receive result in op_intercepted_proceed ({})",
+                err
+            )
+        })?
     {
         result
     } else {
-        panic!()
+        bail!("Wrong response type for op_intercepted_proceed")
     }
 }
 
