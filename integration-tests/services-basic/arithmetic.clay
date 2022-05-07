@@ -30,4 +30,17 @@ service MathService {
     export query shimQuery(@inject claytip: Claytip): Int 
     export mutation testMutation(@inject claytip: Claytip): Float 
     export mutation illegalFunction(): String
+
+}
+
+@external("todo.ts")
+service TodoService {
+    type Todo {
+        id: Int
+        userId: Int
+        title: String
+        completed: Boolean
+    }
+
+    export query todo(id: Int): Todo
 }

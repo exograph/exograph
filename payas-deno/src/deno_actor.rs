@@ -175,6 +175,7 @@ impl DenoActor {
             // we use new_current_thread to explictly select the current thread scheduler for tokio
             // (don't want to spawn more threads on top of this new one if we don't need one)
             let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
                 .build()
                 .expect("Could not start tokio runtime in DenoActor thread");
 

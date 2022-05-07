@@ -25,7 +25,7 @@ type DenoActorPool = Vec<DenoActor>;
 /// It will concurrently listen and handle requests from DenoActor sent through the channel by calling the
 /// appropriate function pointer passed to execute_function_with_shims and responding with the result.
 ///
-/// The hiearchy of modules:
+/// The hierarchy of modules:
 ///
 /// DenoExecutor -> DenoActor -> DenoModule
 ///              -> DenoActor -> DenoModule

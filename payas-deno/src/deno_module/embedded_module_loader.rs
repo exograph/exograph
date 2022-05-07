@@ -46,7 +46,7 @@ impl ModuleLoader for EmbeddedModuleLoader {
                 let specifier = module_specifier.to_string();
 
                 Ok(ModuleSource {
-                    code: script,
+                    code: script.into_bytes().into_boxed_slice(),
                     module_url_specified: specifier.clone(),
                     module_url_found: specifier,
                     module_type: ModuleType::JavaScript,
