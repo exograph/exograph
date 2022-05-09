@@ -105,7 +105,7 @@ impl DenoModule {
         });
 
         let create_web_worker_cb = Arc::new(|_| {
-            todo!("Web workers are not supported in the example");
+            todo!("Web workers are not supported in Claytip");
         });
 
         let options = WorkerOptions {
