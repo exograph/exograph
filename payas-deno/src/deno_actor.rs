@@ -168,13 +168,16 @@ impl DenoActor {
         // we will receive DenoCall messages through this channel from call_method
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
 
+        let tx_clone = tx.clone();
+
         // start the DenoModule thread
         let busy = Arc::new(AtomicBool::new(false));
         let busy_clone = busy.clone();
         std::thread::spawn(move || {
-            // we use new_current_thread to explictly select the current thread scheduler for tokio
+            // we use new_current_thread to explicitly select the current thread scheduler for tokio
             // (don't want to spawn more threads on top of this new one if we don't need one)
             let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
                 .build()
                 .expect("Could not start tokio runtime in DenoActor thread");
 
@@ -210,10 +213,14 @@ impl DenoActor {
                         function_args,
                         intercepted_op_name,
                         response_sender,
-                    } = rx
-                        .recv()
-                        .await
-                        .expect("Could not receive requests in DenoActor thread");
+                    } = match rx.recv().await {
+                        Some(call) => call,
+                        // check if the channel is closed (happens sometimes during shutdown). If so break, otherwise we end up
+                        // printing an error message after the shutdown message
+                        None if tx_clone.is_closed() => break,
+                        None => panic!("Could not receive requests in DenoActor thread"),
+                    };
+
                     busy_clone.store(true, Ordering::Relaxed); // mark DenoActor as busy
 
                     deno_module.put(InterceptedOperationName(intercepted_op_name)); // store intercepted operation name into Deno's op_state
