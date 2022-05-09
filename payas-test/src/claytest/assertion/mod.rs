@@ -38,7 +38,7 @@ pub fn dynamic_assert_using_deno(
         },
         "ClaytipTest",
         &[],
-        |runtime| runtime.sync_ops_cache(),
+        vec![],
         DenoModuleSharedState::default(),
     );
 
@@ -81,7 +81,7 @@ pub fn evaluate_using_deno(
         },
         "ClaytipTest",
         &[],
-        |runtime| runtime.sync_ops_cache(),
+        vec![],
         DenoModuleSharedState::default(),
     );
 
