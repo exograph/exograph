@@ -57,6 +57,25 @@ impl<'a> DenoExecutor {
         ("Operation", include_str!("operation_shim.js")),
     ];
 
+    const USER_AGENT: &'static str = "Claytip";
+    const ADDITIONAL_CODE: &'static [&'static str] = &[include_str!("./claytip_error.js")];
+    const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ClaytipError");
+
+    fn create_actor(&self, script_path: &str, script: &str) -> Result<DenoActor> {
+        DenoActor::new(
+            UserCode::LoadFromMemory {
+                path: script_path.to_owned(),
+                script: script.to_owned(),
+            },
+            Self::USER_AGENT,
+            &Self::SHIMS,
+            Self::ADDITIONAL_CODE,
+            create_extensions,
+            Self::EXPLICIT_ERROR_CLASS_NAME,
+            self.shared_state.clone(),
+        )
+    }
+
     /// Allocate a number of instances for a module.
     pub async fn preload_module(
         &self,
@@ -76,15 +95,7 @@ impl<'a> DenoExecutor {
         let mut initial_actor_pool = vec![];
 
         for _ in 0..instances {
-            let actor = DenoActor::new(
-                UserCode::LoadFromMemory {
-                    path: script_path.to_owned(),
-                    script: script.to_owned(),
-                },
-                &Self::SHIMS,
-                create_extensions,
-                self.shared_state.clone(),
-            )?;
+            let actor = self.create_actor(script_path, script)?;
             initial_actor_pool.push(actor);
         }
 
@@ -142,15 +153,7 @@ impl<'a> DenoExecutor {
                 actor.clone()
             } else {
                 // no free actors; need to allocate a new DenoActor
-                let new_actor = DenoActor::new(
-                    UserCode::LoadFromMemory {
-                        path: script_path.to_owned(),
-                        script: script.to_string(),
-                    },
-                    &Self::SHIMS,
-                    create_extensions,
-                    self.shared_state.clone(),
-                )?;
+                let new_actor = self.create_actor(script_path, script)?;
 
                 actor_pool.push(new_actor.clone());
                 new_actor

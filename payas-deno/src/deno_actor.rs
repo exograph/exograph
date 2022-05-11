@@ -79,8 +79,11 @@ pub type FnClaytipInterceptorProceed<'a> =
 impl DenoActor {
     pub fn new(
         code: UserCode,
+        user_agent_name: &'static str,
         shims: &'static [(&'static str, &'static str)],
+        additional_code: &'static [&'static str],
         extension_ops: fn() -> Vec<Extension>,
+        explicit_error_class_name: Option<&'static str>,
         shared_state: DenoModuleSharedState,
     ) -> Result<DenoActor> {
         let (from_deno_sender, from_deno_receiver) = tokio::sync::mpsc::channel(1);
@@ -110,12 +113,12 @@ impl DenoActor {
                 // first, initialize the Deno module
                 let mut deno_module = DenoModule::new(
                     code,
-                    "Claytip",
+                    user_agent_name,
                     shims,
-                    &[include_str!("./claytip-error.js")],
+                    additional_code,
                     extension_ops(),
                     shared_state,
-                    Some("ClaytipError"),
+                    explicit_error_class_name,
                 )
                 .await
                 .expect("Could not create new DenoModule in DenoActor thread");
@@ -231,12 +234,19 @@ mod tests {
     use std::path::Path;
     use tokio::sync::mpsc::channel;
 
+    const USER_AGENT_NAME: &str = "Claytip";
+    const ADDITIONAL_CODE: &str = "";
+    const EXPLICIT_ERROR_CLASS_NAME: Option<&str> = None;
+
     #[tokio::test]
     async fn test_actor() {
         let mut actor = DenoActor::new(
             UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_path_buf()),
+            USER_AGENT_NAME,
             &[],
+            &[ADDITIONAL_CODE],
             Vec::new,
+            EXPLICIT_ERROR_CLASS_NAME,
             DenoModuleSharedState::default(),
         )
         .unwrap();
