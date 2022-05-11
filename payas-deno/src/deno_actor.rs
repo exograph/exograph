@@ -1,12 +1,10 @@
-use anyhow::{anyhow, bail, Result};
-use deno_core::{error::AnyError, op, Extension, OpState};
+use anyhow::{anyhow, Result};
+use deno_core::Extension;
 use futures::future::BoxFuture;
 use futures::pin_mut;
 use serde_json::Value;
 use std::{
-    cell::RefCell,
     panic,
-    rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -18,7 +16,10 @@ use tokio::sync::{
 };
 use tracing::instrument;
 
-use crate::module::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
+use crate::{
+    claytip_ops::InterceptedOperationName,
+    module::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode},
+};
 
 /// An actor-like wrapper for DenoModule.
 #[derive(Clone)]
@@ -53,92 +54,12 @@ pub struct DenoCall {
 
 type DenoResult = Result<Value>;
 
-struct InterceptedOperationName(Option<String>);
-
 pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> BoxFuture<'a, Result<Value>>
      + 'a
      + Send
      + Sync);
 pub type FnClaytipInterceptorProceed<'a> =
     (dyn Fn() -> BoxFuture<'a, Result<Value>> + 'a + Send + Sync);
-
-#[op]
-async fn op_claytip_execute_query(
-    state: Rc<RefCell<OpState>>,
-    query_string: Value,
-    variables: Option<Value>,
-) -> Result<Value, AnyError> {
-    let state = state.borrow();
-    let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
-    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
-
-    sender
-        .send(RequestFromDenoMessage::ClaytipExecute {
-            query_string: query_string.as_str().unwrap().to_string(),
-            variables: variables.as_ref().map(|o| o.as_object().unwrap().clone()),
-            response_sender,
-        })
-        .await
-        .map_err(|err| {
-            anyhow!(
-                "Could not send request from op_claytip_execute_query ({})",
-                err
-            )
-        })?;
-
-    if let ResponseForDenoMessage::ClaytipExecute(result) =
-        response_receiver.await.map_err(|err| {
-            anyhow!(
-                "Could not receive result in op_claytip_execute_query ({})",
-                err
-            )
-        })?
-    {
-        result
-    } else {
-        bail!("Wrong response type for op_claytip_execute_query")
-    }
-}
-
-#[op]
-fn op_intercepted_operation_name(state: &mut OpState) -> Result<String, AnyError> {
-    // try to read the intercepted operation name out of Deno's GothamStorage
-    if let InterceptedOperationName(Some(name)) = state.borrow() {
-        Ok(name.clone())
-    } else {
-        Err(anyhow!("no stored operation name"))
-    }
-}
-
-#[op]
-async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, AnyError> {
-    let state = state.borrow();
-    let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
-    let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
-
-    sender
-        .send(RequestFromDenoMessage::InterceptedOperationProceed { response_sender })
-        .await
-        .map_err(|err| {
-            anyhow!(
-                "Could not send request from op_intercepted_proceed ({})",
-                err
-            )
-        })?;
-
-    if let ResponseForDenoMessage::InterceptedOperationProceed(result) =
-        response_receiver.await.map_err(|err| {
-            anyhow!(
-                "Could not receive result in op_intercepted_proceed ({})",
-                err
-            )
-        })?
-    {
-        result
-    } else {
-        bail!("Wrong response type for op_intercepted_proceed")
-    }
-}
 
 /// A wrapper around DenoModule.
 ///
@@ -156,12 +77,12 @@ async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, An
 /// of DenoModule and register operations that will send a RequestFromDenoMessage to the channel on invocation. This way, the
 /// actual operation does not have to change, just the recipient of Deno op request messages.
 impl DenoActor {
-    pub fn new(code: UserCode, shared_state: DenoModuleSharedState) -> Result<DenoActor> {
-        let shims = vec![
-            ("ClaytipInjected", include_str!("claytip_shim.js")),
-            ("Operation", include_str!("operation_shim.js")),
-        ];
-
+    pub fn new(
+        code: UserCode,
+        shims: &'static [(&'static str, &'static str)],
+        extension_ops: fn() -> Vec<Extension>,
+        shared_state: DenoModuleSharedState,
+    ) -> Result<DenoActor> {
         let (from_deno_sender, from_deno_receiver) = tokio::sync::mpsc::channel(1);
         let from_deno_sender: Sender<RequestFromDenoMessage> = from_deno_sender;
 
@@ -185,24 +106,14 @@ impl DenoActor {
             // executed in the same thread
             let local = tokio::task::LocalSet::new();
 
-            // we provide a set of Claytip functionality through custom Deno ops,
-            // create a Deno extension that provides these ops
-            let ext = Extension::builder()
-                .ops(vec![
-                    op_claytip_execute_query::decl(),
-                    op_intercepted_operation_name::decl(),
-                    op_intercepted_proceed::decl(),
-                ])
-                .build();
-
             local.block_on(&runtime, async {
                 // first, initialize the Deno module
                 let mut deno_module = DenoModule::new(
                     code,
                     "Claytip",
-                    &shims,
+                    shims,
                     &[include_str!("./claytip-error.js")],
-                    vec![ext],
+                    extension_ops(),
                     shared_state,
                     Some("ClaytipError"),
                 )
@@ -324,6 +235,8 @@ mod tests {
     async fn test_actor() {
         let mut actor = DenoActor::new(
             UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_path_buf()),
+            &[],
+            Vec::new,
             DenoModuleSharedState::default(),
         )
         .unwrap();

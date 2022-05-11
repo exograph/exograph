@@ -1,3 +1,4 @@
+mod claytip_ops;
 mod deno_actor;
 mod deno_executor;
 mod module;

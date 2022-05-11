@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use deno_core::Extension;
 use tokio::sync::Mutex;
 
 use futures::pin_mut;
@@ -37,7 +38,25 @@ pub struct DenoExecutor {
     shared_state: DenoModuleSharedState,
 }
 
+fn create_extensions() -> Vec<Extension> {
+    // we provide a set of Claytip functionality through custom Deno ops,
+    // create a Deno extension that provides these ops
+    let ext = Extension::builder()
+        .ops(vec![
+            crate::claytip_ops::op_claytip_execute_query::decl(),
+            crate::claytip_ops::op_intercepted_operation_name::decl(),
+            crate::claytip_ops::op_intercepted_proceed::decl(),
+        ])
+        .build();
+    vec![ext]
+}
+
 impl<'a> DenoExecutor {
+    const SHIMS: [(&'static str, &'static str); 2] = [
+        ("ClaytipInjected", include_str!("claytip_shim.js")),
+        ("Operation", include_str!("operation_shim.js")),
+    ];
+
     /// Allocate a number of instances for a module.
     pub async fn preload_module(
         &self,
@@ -62,6 +81,8 @@ impl<'a> DenoExecutor {
                     path: script_path.to_owned(),
                     script: script.to_owned(),
                 },
+                &Self::SHIMS,
+                create_extensions,
                 self.shared_state.clone(),
             )?;
             initial_actor_pool.push(actor);
@@ -126,6 +147,8 @@ impl<'a> DenoExecutor {
                         path: script_path.to_owned(),
                         script: script.to_string(),
                     },
+                    &Self::SHIMS,
+                    create_extensions,
                     self.shared_state.clone(),
                 )?;
 
