@@ -3120,7 +3120,6 @@ dependencies = [
  "deno_runtime",
  "futures",
  "lazy_static",
- "payas-model",
  "serde",
  "serde_json",
  "serde_v8",

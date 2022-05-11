@@ -6,10 +6,10 @@ use futures::pin_mut;
 
 use crate::{
     deno_actor::{
-        FnClaytipExecuteQuery, FnClaytipInterceptorProceed, RequestFromDenoMessage,
+        DenoActor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed, RequestFromDenoMessage,
         ResponseForDenoMessage,
     },
-    Arg, DenoActor, DenoModuleSharedState, UserCode,
+    module::deno_module::{Arg, DenoModuleSharedState, UserCode},
 };
 use anyhow::Result;
 use serde_json::Value;
@@ -175,5 +175,73 @@ impl<'a> DenoExecutor {
                 },
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use futures::future::join_all;
+
+    #[tokio::test]
+    async fn test_actor_executor() {
+        let executor = DenoExecutor::default();
+
+        let module_path = "test_js/direct.js";
+        let module_script = include_str!("test_js/direct.js");
+
+        executor
+            .preload_module(module_path, module_script, 1)
+            .await
+            .unwrap();
+
+        let res = executor
+            .execute_function(
+                module_path,
+                module_script,
+                "addAndDouble",
+                vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
+            )
+            .await;
+
+        assert_eq!(res.unwrap(), 10);
+    }
+
+    #[tokio::test]
+    async fn test_actor_executor_concurrent() {
+        let executor = DenoExecutor::default();
+        let module_path = "test_js/direct.js";
+        let module_script = include_str!("test_js/direct.js");
+        let total_futures = 10;
+
+        // start with one preloaded DenoModule
+        executor
+            .preload_module(module_path, module_script, 1)
+            .await
+            .unwrap();
+
+        let mut handles = vec![];
+
+        for _ in 1..=total_futures {
+            let handle = executor.execute_function(
+                module_path,
+                module_script,
+                "addAndDouble",
+                vec![
+                    Arg::Serde(Value::Number(4.into())),
+                    Arg::Serde(Value::Number(2.into())),
+                ],
+            );
+
+            handles.push(handle);
+        }
+
+        let result = join_all(handles)
+            .await
+            .iter()
+            .filter(|res| res.as_ref().unwrap() == 12)
+            .count();
+
+        assert_eq!(result, total_futures);
     }
 }

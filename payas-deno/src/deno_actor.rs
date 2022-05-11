@@ -18,11 +18,11 @@ use tokio::sync::{
 };
 use tracing::instrument;
 
-use crate::{Arg, DenoModule, DenoModuleSharedState, UserCode};
+use crate::module::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 /// An actor-like wrapper for DenoModule.
 #[derive(Clone)]
-pub struct DenoActor {
+pub(crate) struct DenoActor {
     deno_requests_receiver: Arc<Mutex<Receiver<RequestFromDenoMessage>>>,
     deno_call_sender: Sender<DenoCall>,
     busy: Arc<std::sync::atomic::AtomicBool>,
@@ -197,10 +197,17 @@ impl DenoActor {
 
             local.block_on(&runtime, async {
                 // first, initialize the Deno module
-                let mut deno_module =
-                    DenoModule::new(code, "Claytip", &shims, vec![ext], shared_state)
-                        .await
-                        .expect("Could not create new DenoModule in DenoActor thread");
+                let mut deno_module = DenoModule::new(
+                    code,
+                    "Claytip",
+                    &shims,
+                    &[include_str!("./claytip-error.js")],
+                    vec![ext],
+                    shared_state,
+                    Some("ClaytipError"),
+                )
+                .await
+                .expect("Could not create new DenoModule in DenoActor thread");
 
                 // store the request sender in Deno OpState for use by ops
                 deno_module.put(from_deno_sender);
@@ -304,5 +311,34 @@ impl DenoActor {
                 }
             };
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+    use tokio::sync::mpsc::channel;
+
+    #[tokio::test]
+    async fn test_actor() {
+        let mut actor = DenoActor::new(
+            UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_path_buf()),
+            DenoModuleSharedState::default(),
+        )
+        .unwrap();
+
+        let (to_user_sender, _to_user_receiver) = channel(1);
+
+        let res = actor
+            .call_method(
+                "addAndDouble".to_string(),
+                vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
+                None,
+                to_user_sender,
+            )
+            .await;
+
+        assert_eq!(res.unwrap(), 10);
     }
 }

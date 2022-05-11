@@ -15,8 +15,4 @@ serde_v8 = "0.44.0"
 serde_json = "1.0"
 tracing = "0.1"
 
-[dev-dependencies]
-
-payas-model = { path = "../payas-model" }
-
 [lib]

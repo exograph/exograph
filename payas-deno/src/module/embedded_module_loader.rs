@@ -12,7 +12,7 @@ use std::pin::Pin;
 /// A module loader that allows loading source code from memory for the given module specifier;
 /// otherwise, loading it from an FsModuleLoader
 /// Based on https://deno.land/x/deno@v1.15.0/cli/standalone.rs
-pub struct EmbeddedModuleLoader {
+pub(super) struct EmbeddedModuleLoader {
     pub source_code_map: HashMap<String, String>,
 }
 

@@ -38,8 +38,10 @@ pub fn dynamic_assert_using_deno(
         },
         "ClaytipTest",
         &[],
+        &[include_str!("../../../../payas-deno/src/claytip-error.js")],
         vec![],
         DenoModuleSharedState::default(),
+        Some("ClaytipError"),
     );
 
     let runtime = tokio::runtime::Runtime::new()?;
@@ -81,8 +83,10 @@ pub fn evaluate_using_deno(
         },
         "ClaytipTest",
         &[],
+        &[],
         vec![],
         DenoModuleSharedState::default(),
+        None,
     );
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
