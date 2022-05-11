@@ -1,0 +1,3 @@
+## Build setup for systems based on apt-get
+## Install NodeJS (needed by tree-sitter and building the GraphiQL app) and tree-sitter
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && apt-get install -y nodejs

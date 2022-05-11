@@ -1,0 +1,3 @@
+## Runtime setup for Amazon Linux 2 
+#RUN chown -R ec2-user ${APP}
+#USER ec2-user

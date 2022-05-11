@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  clay-aws 
+
+  Sample SAM Template for Claytip 
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+
+Parameters:
+  ClaytipDatabaseUsername:
+    Type: String
+    Default: clay
+    Description: The master username of the Claytip RDS DBInstance.
+  ClaytipDatabasePassword:
+    Type: String
+    Default: clay
+    Description: The master password of the Claytip RDS DBInstance.
+  ClaytipDatabaseName:
+    Type: String
+    Default: claytipdb
+    Description: The database name of the Claytip RDS DBInstance.
+
+Resources:
+  ClaytipDatabase:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: '5'
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      DBName: 
+        Ref: ClaytipDatabaseName
+      MasterUsername:
+        Ref: ClaytipDatabaseUsername
+      MasterPassword: 
+        Ref: ClaytipDatabasePassword
+  ClaytipFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: aws-app/
+      Handler: bootstrap.is.the.handler
+      Runtime: provided.al2
+      Architectures:
+        - x86_64
+      Events:
+        Claytip:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /
+            Method: post
+      Environment:
+        Variables:
+          CLAY_JWT_SECRET: "abcd"
+          CLAY_CORS_DOMAINS: "*" 
+          CLAY_CONNECTION_POOL_SIZE: 10
+          CLAY_CHECK_CONNECTION_ON_STARTUP: false 
+          CLAY_DATABASE_USER:
+            Ref: ClaytipDatabaseUsername
+          CLAY_DATABASE_URL: !Sub 
+            - "postgresql://${Username}:${Password}@${IP}:${Port}/${Database}"
+            - IP: !GetAtt [ClaytipDatabase, Endpoint.Address]
+            - Port: !GetAtt [ClaytipDatabase, Endpoint.Port]
+            - Username:
+                Ref: ClaytipDatabaseUsername
+            - Password:
+                Ref: ClaytipDatabasePassword
+            - Database:
+                Ref: ClaytipDatabaseName
+          CLAY_INTROSPECTION: true
+          CLAY_SERVER_PORT: 80
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  ClaytipApi:
+    Description: "API Gateway endpoint URL for Prod stage for Claytip function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/"
+  ClaytipFunction:
+    Description: "Hello World Lambda Function ARN"
+    Value: !GetAtt ClaytipFunction.Arn
+  HelloWorldFunctionIamRole:
+    Description: "Implicit IAM Role created for Hello World function"
+    Value: !GetAtt ClaytipFunctionRole.Arn
