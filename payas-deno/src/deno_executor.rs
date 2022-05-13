@@ -1,23 +1,44 @@
 use std::{collections::HashMap, sync::Arc};
 
 use deno_core::Extension;
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
 
 use futures::pin_mut;
 
 use crate::{
-    deno_actor::{
-        DenoActor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed, RequestFromDenoMessage,
-        ResponseForDenoMessage,
-    },
+    deno_actor::DenoActor,
     module::deno_module::{Arg, DenoModuleSharedState, UserCode},
     DenoModule,
 };
 use anyhow::Result;
+use futures::future::BoxFuture;
 use serde_json::Value;
 
 type DenoActorPoolMap = HashMap<String, DenoActorPool>;
-type DenoActorPool = Vec<DenoActor<Option<String>>>;
+type DenoActorPool = Vec<DenoActor<Option<String>, RequestFromDenoMessage>>;
+
+pub enum RequestFromDenoMessage {
+    InterceptedOperationProceed {
+        response_sender: oneshot::Sender<ResponseForDenoMessage>,
+    },
+    ClaytipExecute {
+        query_string: String,
+        variables: Option<serde_json::Map<String, Value>>,
+        response_sender: oneshot::Sender<ResponseForDenoMessage>,
+    },
+}
+
+pub enum ResponseForDenoMessage {
+    InterceptedOperationProceed(Result<Value>),
+    ClaytipExecute(Result<Value>),
+}
+
+pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> BoxFuture<'a, Result<Value>>
+     + 'a
+     + Send
+     + Sync);
+pub type FnClaytipInterceptorProceed<'a> =
+    (dyn Fn() -> BoxFuture<'a, Result<Value>> + 'a + Send + Sync);
 
 pub fn process_call_context(deno_module: &mut DenoModule, call_context: Option<String>) {
     deno_module
@@ -68,7 +89,11 @@ impl<'a> DenoExecutor {
     const ADDITIONAL_CODE: &'static [&'static str] = &[include_str!("./claytip_error.js")];
     const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ClaytipError");
 
-    fn create_actor(&self, script_path: &str, script: &str) -> Result<DenoActor<Option<String>>> {
+    fn create_actor(
+        &self,
+        script_path: &str,
+        script: &str,
+    ) -> Result<DenoActor<Option<String>, RequestFromDenoMessage>> {
         DenoActor::new(
             UserCode::LoadFromMemory {
                 path: script_path.to_owned(),

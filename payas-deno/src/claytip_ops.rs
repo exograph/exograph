@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::{cell::RefCell, rc::Rc};
 use tokio::sync::mpsc::Sender;
 
-use crate::deno_actor::{RequestFromDenoMessage, ResponseForDenoMessage};
+use crate::deno_executor::{RequestFromDenoMessage, ResponseForDenoMessage};
 
 pub struct InterceptedOperationName(pub Option<String>);
 
