@@ -16,16 +16,13 @@ use tokio::sync::{
 };
 use tracing::instrument;
 
-use crate::{
-    claytip_ops::InterceptedOperationName,
-    module::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode},
-};
+use crate::module::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 /// An actor-like wrapper for DenoModule.
 #[derive(Clone)]
-pub(crate) struct DenoActor {
+pub(crate) struct DenoActor<C> {
     deno_requests_receiver: Arc<Mutex<Receiver<RequestFromDenoMessage>>>,
-    deno_call_sender: Sender<DenoCall>,
+    deno_call_sender: Sender<(String, Vec<Arg>, C, oneshot::Sender<DenoResult>)>,
     busy: Arc<std::sync::atomic::AtomicBool>,
 }
 
@@ -43,13 +40,6 @@ pub enum RequestFromDenoMessage {
 pub enum ResponseForDenoMessage {
     InterceptedOperationProceed(Result<Value>),
     ClaytipExecute(Result<Value>),
-}
-
-pub struct DenoCall {
-    function_name: String,
-    function_args: Vec<Arg>,
-    intercepted_op_name: Option<String>,
-    response_sender: oneshot::Sender<DenoResult>,
 }
 
 type DenoResult = Result<Value>;
@@ -76,7 +66,11 @@ pub type FnClaytipInterceptorProceed<'a> =
 /// to handle operations. On creation, DenoActor will first initialize a Tokio mpsc channel. It will also initialize an instance
 /// of DenoModule and register operations that will send a RequestFromDenoMessage to the channel on invocation. This way, the
 /// actual operation does not have to change, just the recipient of Deno op request messages.
-impl DenoActor {
+impl<C> DenoActor<C>
+where
+    C: Sync + Send + std::fmt::Debug + 'static,
+{
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         code: UserCode,
         user_agent_name: &'static str,
@@ -85,12 +79,13 @@ impl DenoActor {
         extension_ops: fn() -> Vec<Extension>,
         explicit_error_class_name: Option<&'static str>,
         shared_state: DenoModuleSharedState,
-    ) -> Result<DenoActor> {
+        process_call_context: fn(&mut DenoModule, C) -> (),
+    ) -> Result<DenoActor<C>> {
         let (from_deno_sender, from_deno_receiver) = tokio::sync::mpsc::channel(1);
-        let from_deno_sender: Sender<RequestFromDenoMessage> = from_deno_sender;
 
         // we will receive DenoCall messages through this channel from call_method
-        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let (tx, mut rx) =
+            tokio::sync::mpsc::channel::<(String, Vec<Arg>, C, oneshot::Sender<DenoResult>)>(1);
 
         let tx_clone = tx.clone();
 
@@ -124,27 +119,25 @@ impl DenoActor {
                 .expect("Could not create new DenoModule in DenoActor thread");
 
                 // store the request sender in Deno OpState for use by ops
-                deno_module.put(from_deno_sender);
+                deno_module
+                    .put(from_deno_sender)
+                    .unwrap_or_else(|_| panic!("Could not store request sender in DenoModule"));
 
                 // start a receive loop
                 loop {
                     // yield and wait for a DenoCall message
-                    let DenoCall {
-                        function_name,
-                        function_args,
-                        intercepted_op_name,
-                        response_sender,
-                    } = match rx.recv().await {
-                        Some(call) => call,
-                        // check if the channel is closed (happens sometimes during shutdown). If so break, otherwise we end up
-                        // printing an error message after the shutdown message
-                        None if tx_clone.is_closed() => break,
-                        None => panic!("Could not receive requests in DenoActor thread"),
-                    };
+                    let (function_name, function_args, function_context, response_sender) =
+                        match rx.recv().await {
+                            Some(call_info) => call_info,
+                            // check if the channel is closed (happens sometimes during shutdown). If so break, otherwise we end up
+                            // printing an error message after the shutdown message
+                            None if tx_clone.is_closed() => break,
+                            None => panic!("Could not receive requests in DenoActor thread"),
+                        };
 
                     busy_clone.store(true, Ordering::Relaxed); // mark DenoActor as busy
 
-                    deno_module.put(InterceptedOperationName(intercepted_op_name)); // store intercepted operation name into Deno's op_state
+                    process_call_context(&mut deno_module, function_context);
 
                     // execute function
                     let result = deno_module
@@ -180,27 +173,22 @@ impl DenoActor {
         &mut self,
         method_name: String,
         arguments: Vec<Arg>,
-        claytip_intercepted_operation_name: Option<String>,
+        call_context: C,
         to_user_sender: tokio::sync::mpsc::Sender<RequestFromDenoMessage>,
     ) -> Result<Value> {
         // we will receive the final function result through this channel
         let (tx, rx) = oneshot::channel();
 
-        // construct a DenoCall message
-        let deno_call = DenoCall {
-            function_name: method_name,
-            function_args: arguments,
-            intercepted_op_name: claytip_intercepted_operation_name,
-            response_sender: tx,
-        };
-
         // send it to the DenoModule thread
-        self.deno_call_sender.send(deno_call).await.map_err(|err| {
-            anyhow!(
-                "Could not send method call request to DenoActor thread ({})",
-                err
-            )
-        })?;
+        self.deno_call_sender
+            .send((method_name, arguments, call_context, tx))
+            .await
+            .map_err(|err| {
+                anyhow!(
+                    "Could not send method call request to DenoActor thread ({})",
+                    err
+                )
+            })?;
 
         let on_function_result = rx;
         pin_mut!(on_function_result);
@@ -248,6 +236,7 @@ mod tests {
             Vec::new,
             EXPLICIT_ERROR_CLASS_NAME,
             DenoModuleSharedState::default(),
+            |_, _| {},
         )
         .unwrap();
 
@@ -257,7 +246,7 @@ mod tests {
             .call_method(
                 "addAndDouble".to_string(),
                 vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
-                None,
+                (),
                 to_user_sender,
             )
             .await;

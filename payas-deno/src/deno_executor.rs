@@ -11,12 +11,19 @@ use crate::{
         ResponseForDenoMessage,
     },
     module::deno_module::{Arg, DenoModuleSharedState, UserCode},
+    DenoModule,
 };
 use anyhow::Result;
 use serde_json::Value;
 
 type DenoActorPoolMap = HashMap<String, DenoActorPool>;
-type DenoActorPool = Vec<DenoActor>;
+type DenoActorPool = Vec<DenoActor<Option<String>>>;
+
+pub fn process_call_context(deno_module: &mut DenoModule, call_context: Option<String>) {
+    deno_module
+        .put(crate::claytip_ops::InterceptedOperationName(call_context))
+        .unwrap_or_else(|_| panic!("Failed to setup interceptor"));
+}
 
 /// DenoExecutor maintains a pool of DenoActors for each module to delegate work to.
 ///
@@ -61,7 +68,7 @@ impl<'a> DenoExecutor {
     const ADDITIONAL_CODE: &'static [&'static str] = &[include_str!("./claytip_error.js")];
     const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ClaytipError");
 
-    fn create_actor(&self, script_path: &str, script: &str) -> Result<DenoActor> {
+    fn create_actor(&self, script_path: &str, script: &str) -> Result<DenoActor<Option<String>>> {
         DenoActor::new(
             UserCode::LoadFromMemory {
                 path: script_path.to_owned(),
@@ -73,6 +80,7 @@ impl<'a> DenoExecutor {
             create_extensions,
             Self::EXPLICIT_ERROR_CLASS_NAME,
             self.shared_state.clone(),
+            process_call_context,
         )
     }
 
@@ -134,7 +142,6 @@ impl<'a> DenoExecutor {
         script: &str,
         method_name: &'a str,
         arguments: Vec<Arg>,
-
         claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
         claytip_intercepted_operation_name: Option<String>,
         claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,

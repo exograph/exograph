@@ -276,8 +276,9 @@ impl DenoModule {
     }
 
     /// Put a single instance of a type into Deno's op_state
-    pub fn put<T: 'static>(&mut self, val: T) {
-        self.worker.js_runtime.op_state().borrow_mut().put(val)
+    pub fn put<T: 'static>(&mut self, val: T) -> Result<()> {
+        self.worker.js_runtime.op_state().try_borrow_mut()?.put(val);
+        Ok(())
     }
 }
 
