@@ -196,7 +196,7 @@ impl<'a> DenoExecutor {
         let (to_user_sender, mut to_user_receiver) = tokio::sync::mpsc::channel(1);
 
         // construct a future for our final result
-        let on_function_result = actor.call_method(
+        let on_function_result = actor.execute(
             method_name.to_string(),
             arguments,
             claytip_intercepted_operation_name,
