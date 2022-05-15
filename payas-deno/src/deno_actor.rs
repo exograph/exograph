@@ -78,8 +78,8 @@ where
     pub fn new(
         code: UserCode,
         user_agent_name: &'static str,
-        shims: &'static [(&'static str, &'static str)],
-        additional_code: &'static [&'static str],
+        shims: Vec<(&'static str, &'static str)>,
+        additional_code: Vec<&'static str>,
         extension_ops: fn() -> Vec<Extension>,
         explicit_error_class_name: Option<&'static str>,
         shared_state: DenoModuleSharedState,
@@ -261,8 +261,8 @@ mod tests {
         let mut actor: DenoActor<(), ()> = DenoActor::new(
             UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_path_buf()),
             USER_AGENT_NAME,
-            &[],
-            &[ADDITIONAL_CODE],
+            vec![],
+            vec![ADDITIONAL_CODE],
             Vec::new,
             EXPLICIT_ERROR_CLASS_NAME,
             DenoModuleSharedState::default(),

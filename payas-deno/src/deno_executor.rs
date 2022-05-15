@@ -60,146 +60,27 @@ pub fn process_call_context(deno_module: &mut DenoModule, call_context: Option<S
 ///              -> DenoActor -> DenoModule
 ///              -> DenoActor -> DenoModule
 ///               ...
-#[derive(Default)]
 pub struct DenoExecutor {
-    actor_pool_map: Arc<Mutex<DenoActorPoolMap>>,
-    shared_state: DenoModuleSharedState,
-}
-
-fn create_extensions() -> Vec<Extension> {
-    // we provide a set of Claytip functionality through custom Deno ops,
-    // create a Deno extension that provides these ops
-    let ext = Extension::builder()
-        .ops(vec![
-            crate::claytip_ops::op_claytip_execute_query::decl(),
-            crate::claytip_ops::op_intercepted_operation_name::decl(),
-            crate::claytip_ops::op_intercepted_proceed::decl(),
-        ])
-        .build();
-    vec![ext]
+    actor: DenoActor<Option<String>, RequestFromDenoMessage>,
 }
 
 impl<'a> DenoExecutor {
-    const SHIMS: [(&'static str, &'static str); 2] = [
-        ("ClaytipInjected", include_str!("claytip_shim.js")),
-        ("Operation", include_str!("operation_shim.js")),
-    ];
-
-    const USER_AGENT: &'static str = "Claytip";
-    const ADDITIONAL_CODE: &'static [&'static str] = &[include_str!("./claytip_error.js")];
-    const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ClaytipError");
-
-    fn create_actor(
-        &self,
-        script_path: &str,
-        script: &str,
-    ) -> Result<DenoActor<Option<String>, RequestFromDenoMessage>> {
-        DenoActor::new(
-            UserCode::LoadFromMemory {
-                path: script_path.to_owned(),
-                script: script.to_owned(),
-            },
-            Self::USER_AGENT,
-            &Self::SHIMS,
-            Self::ADDITIONAL_CODE,
-            create_extensions,
-            Self::EXPLICIT_ERROR_CLASS_NAME,
-            self.shared_state.clone(),
-            process_call_context,
-        )
-    }
-
-    /// Allocate a number of instances for a module.
-    pub async fn preload_module(
-        &self,
-        script_path: &str,
-        script: &str,
-        instances: usize,
-    ) -> Result<()> {
-        {
-            if let Some(actor_pool) = self.actor_pool_map.lock().await.get(script_path) {
-                if actor_pool.len() >= instances {
-                    // already have enough instances
-                    return Ok(());
-                }
-            }
-        }
-
-        let mut initial_actor_pool = vec![];
-
-        for _ in 0..instances {
-            let actor = self.create_actor(script_path, script)?;
-            initial_actor_pool.push(actor);
-        }
-
-        self.actor_pool_map
-            .lock()
-            .await
-            .insert(script_path.to_owned(), initial_actor_pool);
-
-        Ok(())
-    }
-
-    pub async fn execute_function(
-        &self,
-        script_path: &str,
-        script: &str,
+    pub async fn process(
+        &mut self,
         method_name: &str,
         arguments: Vec<Arg>,
-    ) -> Result<Value> {
-        self.execute_function_with_shims(
-            script_path,
-            script,
-            method_name,
-            arguments,
-            None,
-            None,
-            None,
-        )
-        .await
-    }
-
-    // TODO: look at passing a fn pointer struct as an argument
-    #[allow(clippy::too_many_arguments)]
-    pub async fn execute_function_with_shims(
-        &'a self,
-        script_path: &str,
-        script: &str,
-        method_name: &'a str,
-        arguments: Vec<Arg>,
+        call_context: Option<String>,
         claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
-        claytip_intercepted_operation_name: Option<String>,
         claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
     ) -> Result<Value> {
-        // find or allocate a free actor in our pool
-        let mut actor = {
-            let mut actor_pool_map = self.actor_pool_map.lock().await;
-            let actor_pool = actor_pool_map
-                .entry(script_path.to_string())
-                .or_insert(vec![]);
-
-            let free_actor = actor_pool.iter().find(|actor| !actor.is_busy());
-
-            if let Some(actor) = free_actor {
-                // found a free actor!
-                actor.clone()
-            } else {
-                // no free actors; need to allocate a new DenoActor
-                let new_actor = self.create_actor(script_path, script)?;
-
-                actor_pool.push(new_actor.clone());
-                new_actor
-            }
-        };
-
         // set up a channel for Deno to talk to use through
         let (to_user_sender, mut to_user_receiver) = tokio::sync::mpsc::channel(1);
 
         // construct a future for our final result
-        let on_function_result = actor.execute(
+        let on_function_result = self.actor.execute(
             method_name.to_string(),
             arguments,
-            claytip_intercepted_operation_name,
+            call_context,
             to_user_sender,
         );
 
@@ -236,6 +117,124 @@ impl<'a> DenoExecutor {
     }
 }
 
+pub struct DenoExecutorConfig {
+    user_agent_name: &'static str,
+    shims: Vec<(&'static str, &'static str)>,
+    additional_code: Vec<&'static str>,
+    explicit_error_class_name: Option<&'static str>,
+    create_extensions: fn() -> Vec<Extension>,
+    shared_state: DenoModuleSharedState,
+}
+
+pub struct DenoExecutorPool {
+    config: DenoExecutorConfig,
+
+    actor_pool_map: Arc<Mutex<DenoActorPoolMap>>,
+}
+
+const SHIMS: [(&str, &str); 2] = [
+    ("ClaytipInjected", include_str!("claytip_shim.js")),
+    ("Operation", include_str!("operation_shim.js")),
+];
+
+const USER_AGENT: &str = "Claytip";
+const ADDITIONAL_CODE: &[&str] = &[include_str!("./claytip_error.js")];
+const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ClaytipError");
+
+impl DenoExecutorPool {
+    pub fn new(config: DenoExecutorConfig) -> Self {
+        Self {
+            config,
+            actor_pool_map: Arc::new(Mutex::new(DenoActorPoolMap::default())),
+        }
+    }
+
+    pub fn clay_config() -> DenoExecutorConfig {
+        fn create_extensions() -> Vec<Extension> {
+            // we provide a set of Claytip functionality through custom Deno ops,
+            // create a Deno extension that provides these ops
+            let ext = Extension::builder()
+                .ops(vec![
+                    crate::claytip_ops::op_claytip_execute_query::decl(),
+                    crate::claytip_ops::op_intercepted_operation_name::decl(),
+                    crate::claytip_ops::op_intercepted_proceed::decl(),
+                ])
+                .build();
+            vec![ext]
+        }
+
+        DenoExecutorConfig {
+            user_agent_name: USER_AGENT,
+            shims: SHIMS.to_vec(),
+            additional_code: ADDITIONAL_CODE.to_vec(),
+            explicit_error_class_name: EXPLICIT_ERROR_CLASS_NAME,
+            create_extensions,
+            shared_state: DenoModuleSharedState::default(),
+        }
+    }
+
+    pub async fn execute_function(
+        &self,
+        script_path: &str,
+        script: &str,
+        method_name: &str,
+        arguments: Vec<Arg>,
+    ) -> Result<Value> {
+        let executor = self.get_executor(script_path, script).await;
+
+        executor?
+            .process(method_name, arguments, None, None, None)
+            .await
+    }
+
+    // TODO: look at passing a fn pointer struct as an argument
+    #[allow(clippy::too_many_arguments)]
+    pub async fn get_executor(&self, script_path: &str, script: &str) -> Result<DenoExecutor> {
+        // find or allocate a free actor in our pool
+        let actor = {
+            let mut actor_pool_map = self.actor_pool_map.lock().await;
+            let actor_pool = actor_pool_map
+                .entry(script_path.to_string())
+                .or_insert(vec![]);
+
+            let free_actor = actor_pool.iter().find(|actor| !actor.is_busy());
+
+            if let Some(actor) = free_actor {
+                // found a free actor!
+                actor.clone()
+            } else {
+                // no free actors; need to allocate a new DenoActor
+                let new_actor = self.create_actor(script_path, script)?;
+
+                actor_pool.push(new_actor.clone());
+                new_actor
+            }
+        };
+
+        Ok(DenoExecutor { actor })
+    }
+
+    fn create_actor(
+        &self,
+        script_path: &str,
+        script: &str,
+    ) -> Result<DenoActor<Option<String>, RequestFromDenoMessage>> {
+        DenoActor::new(
+            UserCode::LoadFromMemory {
+                path: script_path.to_owned(),
+                script: script.to_owned(),
+            },
+            self.config.user_agent_name,
+            self.config.shims.clone(),
+            self.config.additional_code.clone(),
+            self.config.create_extensions,
+            self.config.explicit_error_class_name,
+            self.config.shared_state.clone(),
+            process_call_context,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,15 +242,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_actor_executor() {
-        let executor = DenoExecutor::default();
-
         let module_path = "test_js/direct.js";
         let module_script = include_str!("test_js/direct.js");
 
-        executor
-            .preload_module(module_path, module_script, 1)
-            .await
-            .unwrap();
+        let executor = DenoExecutorPool::new(DenoExecutorConfig {
+            user_agent_name: "Claytip_Test",
+            shims: vec![],
+            additional_code: vec![],
+            explicit_error_class_name: None,
+            create_extensions: Vec::new,
+            shared_state: DenoModuleSharedState::default(),
+        });
 
         let res = executor
             .execute_function(
@@ -267,16 +268,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_actor_executor_concurrent() {
-        let executor = DenoExecutor::default();
         let module_path = "test_js/direct.js";
         let module_script = include_str!("test_js/direct.js");
-        let total_futures = 10;
 
-        // start with one preloaded DenoModule
-        executor
-            .preload_module(module_path, module_script, 1)
-            .await
-            .unwrap();
+        let executor = DenoExecutorPool::new(DenoExecutorConfig {
+            user_agent_name: "Claytip_Test",
+            shims: vec![],
+            additional_code: vec![],
+            explicit_error_class_name: None,
+            create_extensions: Vec::new,
+            shared_state: DenoModuleSharedState::default(),
+        });
+
+        let total_futures = 10;
 
         let mut handles = vec![];
 

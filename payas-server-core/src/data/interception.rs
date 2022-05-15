@@ -258,7 +258,7 @@ async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
     query_context: &'a OperationsContext<'a>,
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
-    claytip_get_interceptor: Option<String>,
+    operation_name: Option<String>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<serde_json::Value> {
     let script = &query_context.system.deno_scripts[interceptor.script];
@@ -279,20 +279,14 @@ async fn execute_interceptor<'a>(
 
     query_context
         .executor
-        .deno_execution
-        .preload_module(&script.path, &script.script, 1)
-        .await?;
-
-    query_context
-        .executor
-        .deno_execution
-        .execute_function_with_shims(
-            &script.path,
-            &script.script,
+        .deno_execution_pool
+        .get_executor(&script.path, &script.script)
+        .await?
+        .process(
             &interceptor.name,
             arg_sequence,
+            operation_name,
             claytip_execute_query,
-            claytip_get_interceptor,
             claytip_proceed_operation,
         )
         .await

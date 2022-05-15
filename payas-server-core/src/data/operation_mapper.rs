@@ -277,20 +277,15 @@ async fn resolve_deno(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    query_context
-        .executor
-        .deno_execution
-        .preload_module(&script.path, &script.script, 1)
-        .await?;
-
     let function_result = query_context
         .executor
-        .deno_execution
-        .execute_function_with_shims(
-            &script.path,
-            &script.script,
+        .deno_execution_pool
+        .get_executor(&script.path, &script.script)
+        .await?
+        .process(
             &method.name,
             arg_sequence,
+            None,
             Some(
                 &|query_string: String, variables: Option<Map<String, Value>>| {
                     Box::pin(async move {
@@ -313,7 +308,6 @@ async fn resolve_deno(
                     })
                 },
             ),
-            None,
             None,
         )
         .await?;

@@ -15,7 +15,7 @@ use execution::operations_context::QueryResponse;
 pub use execution::operations_executor::OperationsExecutor;
 use futures::Stream;
 use introspection::schema::Schema;
-use payas_deno::DenoExecutor;
+use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
 use payas_sql::{Database, DatabaseExecutor};
 use request_context::RequestContext;
@@ -65,13 +65,13 @@ pub fn create_operations_executor(
 
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
-    let deno_executor = DenoExecutor::default();
+    let deno_execution_config = DenoExecutorPool::new(DenoExecutorPool::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 
     let executor = OperationsExecutor {
         database_executor,
-        deno_execution: deno_executor,
+        deno_execution_pool: deno_execution_config,
         system,
         schema,
         allow_introspection,
