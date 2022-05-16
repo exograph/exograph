@@ -5,20 +5,13 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 
-/// DenoExecutor maintains a pool of DenoActors for each module to delegate work to.
+/// `DenoExecutor` provides a way to execute a method.
 ///
-/// Calling execute_function_with_shims will either select a free actor or allocate a new DenoActor to run the function on.
-/// DenoExecutor will then set up a Tokio channel for the DenoActor to use in order to talk back to DenoExecutor.
-/// Afterwards, it will kick off the execution by awaiting on the DenoActor's asynchronous `call_method` method.
+/// # Implementation
+/// It sets up a Tokio channel for the `DenoActor` to use in order to talk back to `DenoExecutor`.
+/// Afterwards, it will kick off the execution by awaiting on the `DenoActor`'s asynchronous `execute` method.
 /// It will concurrently listen and handle requests from DenoActor sent through the channel by calling the
-/// appropriate function pointer passed to execute_function_with_shims and responding with the result.
-///
-/// The hierarchy of modules:
-///
-/// DenoExecutor -> DenoActor -> DenoModule
-///              -> DenoActor -> DenoModule
-///              -> DenoActor -> DenoModule
-///               ...
+/// `callback_processor` to resolve callbacks and responding with the final result.
 pub struct DenoExecutor<C, M> {
     pub(crate) actor: DenoActor<C, M>,
 }
@@ -34,7 +27,7 @@ impl CallbackProcessor<()> for () {
 }
 
 impl<'a, C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoExecutor<C, M> {
-    pub async fn execute(
+    pub(super) async fn execute(
         &self,
         method_name: &str,
         arguments: Vec<Arg>,

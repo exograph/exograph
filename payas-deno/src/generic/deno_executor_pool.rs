@@ -1,11 +1,14 @@
 use std::{collections::HashMap, sync::Arc};
 
 use deno_core::Extension;
+use serde_json::Value;
 use tokio::sync::Mutex;
+
+use crate::Arg;
 
 use super::{
     deno_actor::DenoActor,
-    deno_executor::DenoExecutor,
+    deno_executor::{CallbackProcessor, DenoExecutor},
     deno_module::{DenoModule, DenoModuleSharedState, UserCode},
 };
 use anyhow::Result;
@@ -45,6 +48,17 @@ impl<C> DenoExecutorConfig<C> {
     }
 }
 
+/// DenoExecutorPool maintains a pool of `DenoActor`s for each module to delegate work to.
+///
+/// Calling `execute` will either select a free actor or allocate a new `DenoActor` to run the function on.
+/// It will create a `DenoExecutor` with that actor and delegate the method execution to it.
+///
+/// The hierarchy of modules:
+///
+/// DenoExecutorPool -> DenoExecutor -> DenoActor -> DenoModule
+///                  -> DenoExecutor -> DenoActor -> DenoModule
+///                  -> DenoExecutor -> DenoActor -> DenoModule
+///               ...
 pub struct DenoExecutorPool<C, M> {
     config: DenoExecutorConfig<C>,
 
@@ -79,13 +93,23 @@ impl<C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoE
         }
     }
 
-    // TODO: look at passing a fn pointer struct as an argument
-    #[allow(clippy::too_many_arguments)]
-    pub async fn get_executor(
+    pub async fn execute(
         &self,
         script_path: &str,
         script: &str,
-    ) -> Result<DenoExecutor<C, M>> {
+        method_name: &str,
+        arguments: Vec<Arg>,
+        call_context: C,
+        callback_processor: impl CallbackProcessor<M>,
+    ) -> Result<Value> {
+        let executor = self.get_executor(script_path, script).await?;
+        executor
+            .execute(method_name, arguments, call_context, callback_processor)
+            .await
+    }
+
+    // TODO: look at passing a fn pointer struct as an argument
+    async fn get_executor(&self, script_path: &str, script: &str) -> Result<DenoExecutor<C, M>> {
         // find or allocate a free actor in our pool
         let actor = {
             let mut actor_pool_map = self.actor_pool_map.lock().await;
@@ -150,12 +174,10 @@ mod tests {
             DenoModuleSharedState::default(),
         );
 
-        let executor = executor_pool
-            .get_executor(module_path, module_script)
-            .await
-            .unwrap();
-        let res = executor
+        let res = executor_pool
             .execute(
+                module_path,
+                module_script,
                 "addAndDouble",
                 vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
                 (),
@@ -192,8 +214,8 @@ mod tests {
             method_name: &str,
             arguments: Vec<Arg>,
         ) -> Result<Value> {
-            let executor = pool.get_executor(script_path, script).await;
-            executor?.execute(method_name, arguments, (), ()).await
+            pool.execute(script_path, script, method_name, arguments, (), ())
+                .await
         }
 
         for _ in 1..=total_futures {

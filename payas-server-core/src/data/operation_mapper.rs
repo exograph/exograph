@@ -292,9 +292,14 @@ async fn resolve_deno<'a>(
     let function_result = query_context
         .executor
         .deno_execution_pool
-        .get_executor(&script.path, &script.script)
-        .await?
-        .execute(&method.name, arg_sequence, None, callback_processor)
+        .execute(
+            &script.path,
+            &script.script,
+            &method.name,
+            arg_sequence,
+            None,
+            callback_processor,
+        )
         .await?;
 
     let result = if let serde_json::Value::Object(_) = function_result {

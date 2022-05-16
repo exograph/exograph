@@ -255,9 +255,9 @@ async fn execute_interceptor<'a>(
     query_context
         .executor
         .deno_execution_pool
-        .get_executor(&script.path, &script.script)
-        .await?
         .execute(
+            &script.path,
+            &script.script,
             &interceptor.name,
             arg_sequence,
             operation_name,
