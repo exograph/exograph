@@ -1,6 +1,6 @@
 use async_recursion::async_recursion;
 use futures::FutureExt;
-use payas_deno::{Arg, FnClaytipExecuteQuery, FnClaytipInterceptorProceed};
+use payas_deno::{Arg, ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed};
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::{
@@ -277,17 +277,21 @@ async fn execute_interceptor<'a>(
         })
         .collect::<Result<Vec<_>>>()?;
 
+    let callback_processor = ClayCallbackProcessor {
+        claytip_execute_query,
+        claytip_proceed: claytip_proceed_operation,
+    };
+
     query_context
         .executor
         .deno_execution_pool
         .get_executor(&script.path, &script.script)
         .await?
-        .process(
+        .execute(
             &interceptor.name,
             arg_sequence,
             operation_name,
-            claytip_execute_query,
-            claytip_proceed_operation,
+            callback_processor,
         )
         .await
 }

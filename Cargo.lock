@@ -3116,6 +3116,7 @@ name = "payas-deno"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "deno_core",
  "deno_runtime",
  "futures",

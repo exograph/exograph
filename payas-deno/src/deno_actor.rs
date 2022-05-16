@@ -186,7 +186,7 @@ where
         skip(self, callback_sender)
         )]
     pub async fn execute(
-        &mut self,
+        &self,
         method_name: String,
         arguments: Vec<Arg>,
         call_context: C,
@@ -258,7 +258,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_actor() {
-        let mut actor: DenoActor<(), ()> = DenoActor::new(
+        let actor: DenoActor<(), ()> = DenoActor::new(
             UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_path_buf()),
             USER_AGENT_NAME,
             vec![],

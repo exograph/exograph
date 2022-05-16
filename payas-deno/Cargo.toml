@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0"
+async-trait = "0.1.53"
 deno_runtime = "0.59.0"
 deno_core = "0.133.0"
 tokio = "1"

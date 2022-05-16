@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
-use payas_deno::Arg;
+use futures::FutureExt;
+use payas_deno::{Arg, ClayCallbackProcessor, FnClaytipExecuteQuery};
 use payas_sql::{
     AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect, AbstractUpdate,
 };
@@ -171,6 +172,35 @@ pub fn compute_service_access_predicate<'a>(
     }
 }
 
+// TODO: Dedup this from interception.rs (see the commented code in mod.rs)
+macro_rules! claytip_execute_query {
+    ($query_context:ident) => {
+        Some(
+            &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
+                async move {
+                    let result = $query_context
+                        .executor
+                        .execute_with_request_context(
+                            OperationsPayload {
+                                operation_name: None,
+                                query: query_string,
+                                variables,
+                            },
+                            $query_context.request_context.clone(),
+                        )
+                        .await?
+                        .into_iter()
+                        .map(|(name, response)| (name, response.to_json().unwrap()))
+                        .collect::<Map<_, _>>();
+
+                    Ok(serde_json::Value::Object(result))
+                }
+                .boxed()
+            },
+        )
+    };
+}
+
 impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
         &self,
@@ -208,17 +238,23 @@ impl<'a> OperationResolverResult<'a> {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
-                resolve_deno(method, field, query_context)
-                    .await
-                    .map(QueryResponse::Json)
+                resolve_deno(
+                    method,
+                    field,
+                    claytip_execute_query!(query_context),
+                    query_context,
+                )
+                .await
+                .map(QueryResponse::Json)
             }
         }
     }
 }
 
-async fn resolve_deno(
+async fn resolve_deno<'a>(
     method: &ServiceMethod,
     field: &ValidatedField,
+    claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     query_context: &OperationsContext<'_>,
 ) -> Result<serde_json::Value> {
     let script = &query_context.system.deno_scripts[method.script];
@@ -277,39 +313,17 @@ async fn resolve_deno(
         })
         .collect::<Result<Vec<_>>>()?;
 
+    let callback_processor = ClayCallbackProcessor {
+        claytip_execute_query,
+        claytip_proceed: None,
+    };
+
     let function_result = query_context
         .executor
         .deno_execution_pool
         .get_executor(&script.path, &script.script)
         .await?
-        .process(
-            &method.name,
-            arg_sequence,
-            None,
-            Some(
-                &|query_string: String, variables: Option<Map<String, Value>>| {
-                    Box::pin(async move {
-                        let result = query_context
-                            .executor
-                            .execute_with_request_context(
-                                OperationsPayload {
-                                    operation_name: None,
-                                    query: query_string,
-                                    variables,
-                                },
-                                query_context.request_context.clone(),
-                            )
-                            .await?
-                            .into_iter()
-                            .map(|(name, response)| (name, response.to_json().unwrap()))
-                            .collect::<Map<_, _>>();
-
-                        Ok(serde_json::Value::Object(result))
-                    })
-                },
-            ),
-            None,
-        )
+        .execute(&method.name, arg_sequence, None, callback_processor)
         .await?;
 
     let result = if let serde_json::Value::Object(_) = function_result {
@@ -330,27 +344,3 @@ fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
         Err(err) => bail!("Got row without any columns {}", err),
     }
 }
-
-// TODO: Define this so that we can use it from multiple ways to invoke (service method and interceptors)
-// fn execute_query_fn<'a>(
-//     query_context: &'a QueryContext<'a>,
-// ) -> &'a dyn Fn(
-//     String,
-//     Option<&serde_json::Map<String, serde_json::Value>>,
-// ) -> Result<serde_json::Value> {
-//     &|query_string: String, variables| {
-//         let result = query_context
-//             .executor
-//             .execute_with_request_context(
-//                 None,
-//                 &query_string,
-//                 variables,
-//                 query_context.request_context.clone(),
-//             )?
-//             .into_iter()
-//             .map(|(name, response)| (name, response.to_json().unwrap()))
-//             .collect::<Map<_, _>>();
-
-//         Ok(serde_json::Value::Object(result))
-//     }
-// }

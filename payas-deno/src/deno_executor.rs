@@ -11,6 +11,7 @@ use crate::{
     DenoModule,
 };
 use anyhow::Result;
+use async_trait::async_trait;
 use futures::future::BoxFuture;
 use serde_json::Value;
 
@@ -64,14 +65,56 @@ pub struct DenoExecutor {
     actor: DenoActor<Option<String>, RequestFromDenoMessage>,
 }
 
+#[async_trait]
+pub trait CallbackProcessor {
+    async fn process_callback(&self, req: RequestFromDenoMessage);
+}
+pub struct ClayCallbackProcessor<'a> {
+    pub claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
+    pub claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
+}
+
+#[async_trait]
+impl<'a> CallbackProcessor for ClayCallbackProcessor<'a> {
+    async fn process_callback(&self, req: RequestFromDenoMessage) {
+        match req {
+            RequestFromDenoMessage::InterceptedOperationProceed { response_sender } => {
+                let proceed_result = self.claytip_proceed.unwrap()().await;
+                response_sender
+                    .send(ResponseForDenoMessage::InterceptedOperationProceed(
+                        proceed_result,
+                    ))
+                    .ok()
+                    .unwrap();
+            }
+            RequestFromDenoMessage::ClaytipExecute {
+                query_string,
+                variables,
+                response_sender,
+            } => {
+                let query_result =
+                    self.claytip_execute_query.unwrap()(query_string, variables).await;
+                response_sender
+                    .send(ResponseForDenoMessage::ClaytipExecute(query_result))
+                    .ok()
+                    .unwrap();
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl CallbackProcessor for () {
+    async fn process_callback(&self, _req: RequestFromDenoMessage) {}
+}
+
 impl<'a> DenoExecutor {
-    pub async fn process(
-        &mut self,
+    pub async fn execute(
+        &self,
         method_name: &str,
         arguments: Vec<Arg>,
         call_context: Option<String>,
-        claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
-        claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
+        callback_processor: impl CallbackProcessor,
     ) -> Result<Value> {
         // set up a channel for Deno to talk to use through
         let (to_user_sender, mut to_user_receiver) = tokio::sync::mpsc::channel(1);
@@ -94,18 +137,7 @@ impl<'a> DenoExecutor {
             tokio::select! {
                 msg = on_recv_request => {
                     // handle requests from Deno for data
-                    match msg.expect("Channel was dropped before operation completion") {
-                        RequestFromDenoMessage::InterceptedOperationProceed {
-                            response_sender
-                        } => {
-                            let proceed_result = claytip_proceed.unwrap()().await;
-                            response_sender.send(ResponseForDenoMessage::InterceptedOperationProceed(proceed_result)).ok().unwrap();
-                        },
-                        RequestFromDenoMessage::ClaytipExecute { query_string, variables, response_sender } => {
-                            let query_result = claytip_execute_query.unwrap()(query_string, variables).await;
-                            response_sender.send(ResponseForDenoMessage::ClaytipExecute(query_result)).ok().unwrap();
-                        },
-                    }
+                    callback_processor. process_callback(msg.expect("Channel was dropped before operation completion")).await;
                 }
 
                 final_result = &mut on_function_result => {
@@ -173,20 +205,6 @@ impl DenoExecutorPool {
         }
     }
 
-    pub async fn execute_function(
-        &self,
-        script_path: &str,
-        script: &str,
-        method_name: &str,
-        arguments: Vec<Arg>,
-    ) -> Result<Value> {
-        let executor = self.get_executor(script_path, script).await;
-
-        executor?
-            .process(method_name, arguments, None, None, None)
-            .await
-    }
-
     // TODO: look at passing a fn pointer struct as an argument
     #[allow(clippy::too_many_arguments)]
     pub async fn get_executor(&self, script_path: &str, script: &str) -> Result<DenoExecutor> {
@@ -245,7 +263,7 @@ mod tests {
         let module_path = "test_js/direct.js";
         let module_script = include_str!("test_js/direct.js");
 
-        let executor = DenoExecutorPool::new(DenoExecutorConfig {
+        let executor_pool = DenoExecutorPool::new(DenoExecutorConfig {
             user_agent_name: "Claytip_Test",
             shims: vec![],
             additional_code: vec![],
@@ -254,12 +272,16 @@ mod tests {
             shared_state: DenoModuleSharedState::default(),
         });
 
+        let executor = executor_pool
+            .get_executor(module_path, module_script)
+            .await
+            .unwrap();
         let res = executor
-            .execute_function(
-                module_path,
-                module_script,
+            .execute(
                 "addAndDouble",
                 vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
+                None,
+                (),
             )
             .await;
 
@@ -271,7 +293,7 @@ mod tests {
         let module_path = "test_js/direct.js";
         let module_script = include_str!("test_js/direct.js");
 
-        let executor = DenoExecutorPool::new(DenoExecutorConfig {
+        let executor_pool = DenoExecutorPool::new(DenoExecutorConfig {
             user_agent_name: "Claytip_Test",
             shims: vec![],
             additional_code: vec![],
@@ -284,8 +306,20 @@ mod tests {
 
         let mut handles = vec![];
 
+        async fn execute_function(
+            pool: &DenoExecutorPool,
+            script_path: &str,
+            script: &str,
+            method_name: &str,
+            arguments: Vec<Arg>,
+        ) -> Result<Value> {
+            let executor = pool.get_executor(script_path, script).await;
+            executor?.execute(method_name, arguments, None, ()).await
+        }
+
         for _ in 1..=total_futures {
-            let handle = executor.execute_function(
+            let handle = execute_function(
+                &executor_pool,
                 module_path,
                 module_script,
                 "addAndDouble",
