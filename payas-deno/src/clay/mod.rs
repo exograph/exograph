@@ -1,2 +1,2 @@
 pub mod clay_execution;
-mod claytip_ops;
+pub mod claytip_ops;

@@ -58,6 +58,9 @@ impl<C> DenoExecutorConfig<C> {
 /// DenoExecutorPool -> DenoExecutor -> DenoActor -> DenoModule
 ///                  -> DenoExecutor -> DenoActor -> DenoModule
 ///                  -> DenoExecutor -> DenoActor -> DenoModule
+///
+/// # Type Parameters
+/// - `C`: The type of the call context (for e)
 ///               ...
 pub struct DenoExecutorPool<C, M> {
     config: DenoExecutorConfig<C>,

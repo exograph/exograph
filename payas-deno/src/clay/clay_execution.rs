@@ -12,6 +12,8 @@ use crate::generic::{
     deno_module::{DenoModule, DenoModuleSharedState},
 };
 
+use super::claytip_ops::InterceptedOperationName;
+
 pub enum RequestFromDenoMessage {
     InterceptedOperationProceed {
         response_sender: oneshot::Sender<ResponseForDenoMessage>,
@@ -78,13 +80,16 @@ const USER_AGENT: &str = "Claytip";
 const ADDITIONAL_CODE: &[&str] = &[include_str!("./claytip_error.js")];
 const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ClaytipError");
 
-pub fn process_call_context(deno_module: &mut DenoModule, call_context: Option<String>) {
+pub fn process_call_context(
+    deno_module: &mut DenoModule,
+    call_context: Option<InterceptedOperationName>,
+) {
     deno_module
-        .put(super::claytip_ops::InterceptedOperationName(call_context))
+        .put(call_context)
         .unwrap_or_else(|_| panic!("Failed to setup interceptor"));
 }
 
-pub fn clay_config() -> DenoExecutorConfig<Option<String>> {
+pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationName>> {
     fn create_extensions() -> Vec<Extension> {
         // we provide a set of Claytip functionality through custom Deno ops,
         // create a Deno extension that provides these ops

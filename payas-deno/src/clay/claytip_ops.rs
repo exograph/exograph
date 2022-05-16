@@ -7,7 +7,8 @@ use tokio::sync::mpsc::Sender;
 
 use super::clay_execution::{RequestFromDenoMessage, ResponseForDenoMessage};
 
-pub struct InterceptedOperationName(pub Option<String>);
+#[derive(Debug)]
+pub struct InterceptedOperationName(pub String);
 
 #[op]
 pub async fn op_claytip_execute_query(
@@ -50,7 +51,7 @@ pub async fn op_claytip_execute_query(
 #[op]
 pub fn op_intercepted_operation_name(state: &mut OpState) -> Result<String, AnyError> {
     // try to read the intercepted operation name out of Deno's GothamStorage
-    if let InterceptedOperationName(Some(name)) = state.borrow() {
+    if let Some(InterceptedOperationName(name)) = state.borrow() {
         Ok(name.clone())
     } else {
         Err(anyhow!("no stored operation name"))
