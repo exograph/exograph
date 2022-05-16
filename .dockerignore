@@ -1,1 +1,4 @@
 target/
+integration/
+graphiql/build
+graphiql/node_modules

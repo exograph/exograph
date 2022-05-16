@@ -1,1 +1,5 @@
 aws-app/
+aws-cf-func/
+samconfig.toml
+.aws-sam/
+*.sql

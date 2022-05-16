@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 
-set -x
+set -e
+
+SCRIPT_DIRECTORY="$(dirname $BASH_SOURCE)"
+ROOT_DIRECTORY=$SCRIPT_DIRECTORY/..
 
 buildKind="$1" # "release" or "debug"
 
-BUILD_IMAGE=rust:1.60.0-buster
-BASE_IMAGE=rust:1.60.0-slim-buster
-DEPENDENCY_STYLE=deb
-TAG_SUFFIX=""
+# TODO: Resolve the openssl issues and then "BASE_IMAGE=debian:buster-slim"
+
+## DEFAULTS ##
+BUILD_IMAGE=rust:1.60.0-buster # image to build Claytip with
+BASE_IMAGE=rust:1.60.0-slim-buster # image to use when actually running Claytip
+DEPENDENCY_STYLE=deb # how to install or setup dependencies
+TAG_SUFFIX="" # docker tag suffix
 
 if [ "$buildKind" == "release" ]
 then
@@ -23,29 +29,31 @@ then
 elif [ "$buildKind" == "aws" ]
 then
     echo "Building with Amazon Linux 2"
-    BUILD_FLAG=
-    BUILD_DIR=debug
+    BUILD_FLAG=--release
+    BUILD_DIR=release
     BUILD_IMAGE=amazonlinux:2
     BASE_IMAGE=amazonlinux:2
     DEPENDENCY_STYLE=aws
     TAG_SUFFIX="-aws"
 else
-    echo "Unknown build kind: '$buildKind'. Must be 'release' or 'debug'."
+    echo "Unknown build kind: '$buildKind'. Must be 'release', 'debug', or 'aws'."
     exit 1
 fi
 
+# Generates Dockerfile.generated and builds a docker image from it to the specified target.
+# Final image is tagged with the specified tag.
 docker_build() {
     TAG=$1 
     TARGET=$2 
 
-    DOCKERFILE_TEMPLATE="$(dirname $BASH_SOURCE)/Dockerfile.template"
+    DOCKERFILE_TEMPLATE=$SCRIPT_DIRECTORY/Dockerfile.template
 
     # fragments to substitute into final dockerfile
-    BUILD_SETUP="$(dirname $BASH_SOURCE)/Dockerfile.$DEPENDENCY_STYLE.build"
-    RUNTIME_SETUP="$(dirname $BASH_SOURCE)/Dockerfile.$DEPENDENCY_STYLE"
+    BUILD_SETUP=$SCRIPT_DIRECTORY/Dockerfile.$DEPENDENCY_STYLE.build
+    RUNTIME_SETUP=$SCRIPT_DIRECTORY/Dockerfile.$DEPENDENCY_STYLE
 
     # where to create the generated dockerfile
-    GENERATED_DOCKERFILE="$(dirname $BASH_SOURCE)/Dockerfile.generated"
+    GENERATED_DOCKERFILE=$SCRIPT_DIRECTORY/Dockerfile.generated
 
     optional_target=()
     [[ ! -z "$TARGET" ]] && optional_target+=(--target "$TARGET")
@@ -64,7 +72,7 @@ docker_build() {
             --build-arg BUILD_IMAGE="$BUILD_IMAGE" \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
             "${optional_target[@]}" \
-            .
+            $ROOT_DIRECTORY 
 }
 
 docker_build "clay-builder$TAG_SUFFIX" "clay-builder"

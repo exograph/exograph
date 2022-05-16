@@ -67,7 +67,6 @@ RUN cd graphiql && npm run prod-build
 RUN cargo build ${BUILD_FLAG}
 
 # Create an image to include the compiled binaries
-# TODO: Resolve the openssl issues and then "FROM debian:buster-slim as clay-builder"
 ARG BASE_IMAGE
 FROM $BASE_IMAGE as clay-builder
 
