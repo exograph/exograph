@@ -70,7 +70,7 @@ impl JwtAuthenticator {
                     Err(err) => match &err.kind() {
                         ErrorKind::InvalidSignature => Err(JwtAuthenticationError::TamperedToken),
                         ErrorKind::ExpiredSignature => Err(JwtAuthenticationError::ExpiredToken),
-                        _ => Err(JwtAuthenticationError::Unknown)
+                        _ => Err(JwtAuthenticationError::Unknown),
                     },
                 }
             }
