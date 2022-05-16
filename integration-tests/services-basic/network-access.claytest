@@ -1,0 +1,33 @@
+operation: |
+    query {
+      todo1: todo(id: 1) {
+        ...allInfo
+      }
+
+      todo2: todo(id: 2) {
+        ...allInfo
+      }
+    }
+    fragment allInfo on Todo {
+      id
+      userId
+      title
+      completed
+    }
+response: |
+    {
+      "data": {
+        "todo1": {
+          "id": 1,
+          "userId": 1,
+          "title": "delectus aut autem",
+          "completed": false
+        },
+        "todo2": {
+          "id": 2,
+          "userId": 1,
+          "title": "quis ut nam facilis et officia qui",
+          "completed": false
+        }
+      }
+    }
