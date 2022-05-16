@@ -66,3 +66,9 @@ This is an example app to show how to deploy Claytip as an AWS lambda. This fold
     ```
 
     For future deployments, just `sam deploy` is sufficient.
+
+6. To clean up your deployment, simply run the following with your stack name:
+    ```sh
+    aws cloudformation delete-stack --stack-name <your stack name>
+    ```
+    ... or delete your stack manually through the CloudFormation dashboard.
