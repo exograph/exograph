@@ -51,23 +51,29 @@ impl JwtAuthenticator {
             .headers()
             .get("Authorization")
             .ok_or(JwtAuthenticationError::Unknown)
-            .and_then(|header| header.to_str().map_err(|_| JwtAuthenticationError::Unknown))?;
+            .and_then(|header| header.to_str().map_err(|_| JwtAuthenticationError::Unknown));
 
-        let jwt_token = if !auth_token.starts_with("Bearer ") {
-            Err(JwtAuthenticationError::Unknown)
-        } else {
-            Ok(auth_token["Bearer ".len()..].trim())
-        };
+        let jwt_token = auth_token.and_then(|auth_token| {
+            if auth_token.starts_with("Bearer ") {
+                Err(JwtAuthenticationError::Unknown)
+            } else {
+                Ok(auth_token["Bearer ".len()..].trim())
+            }
+        });
 
         match jwt_token {
-            Ok(jwt_token) => self
-                .validate_jwt(jwt_token)
-                .map(|v| Some(v.claims))
-                .map_err(|err| match &err.kind() {
-                    ErrorKind::InvalidSignature => JwtAuthenticationError::TamperedToken,
-                    ErrorKind::ExpiredSignature => JwtAuthenticationError::ExpiredToken,
-                    _ => JwtAuthenticationError::Unknown,
-                }),
+            Ok(jwt_token) => {
+                let jwt_result = self.validate_jwt(jwt_token);
+
+                match jwt_result {
+                    Ok(v) => Ok(Some(v.claims)),
+                    Err(err) => match &err.kind() {
+                        ErrorKind::InvalidSignature => Err(JwtAuthenticationError::TamperedToken),
+                        ErrorKind::ExpiredSignature => Err(JwtAuthenticationError::ExpiredToken),
+                        _ => Err(JwtAuthenticationError::Unknown)
+                    },
+                }
+            }
             Err(_) => {
                 // Either the "Authorization" header was absent or the next token wasn't "Bearer"
                 // It is not an error to have no authorization header, since that indicates an anonymous user
