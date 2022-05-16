@@ -15,7 +15,7 @@ use tokio::sync::{
 };
 use tracing::instrument;
 
-use crate::module::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
+use crate::generic::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 struct DenoCall<C> {
     method_name: String,
@@ -259,7 +259,7 @@ mod tests {
     #[tokio::test]
     async fn test_actor() {
         let actor: DenoActor<(), ()> = DenoActor::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_path_buf()),
+            UserCode::LoadFromFs(Path::new("src/generic/test_js/direct.js").to_path_buf()),
             USER_AGENT_NAME,
             vec![],
             vec![ADDITIONAL_CODE],

@@ -317,7 +317,7 @@ mod tests {
     #[tokio::test]
     async fn test_direct_sync() {
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_owned()),
+            UserCode::LoadFromFs(Path::new("src/generic/test_js/direct.js").to_owned()),
             "deno_module",
             vec![],
             vec![],
@@ -345,7 +345,7 @@ mod tests {
     #[tokio::test]
     async fn test_direct_async() {
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_owned()),
+            UserCode::LoadFromFs(Path::new("src/generic/test_js/direct.js").to_owned()),
             "deno_module",
             vec![],
             vec![],
@@ -378,10 +378,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_shim_sync() {
-        static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("../test_js/shim.js"));
+        static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("./test_js/shim.js"));
 
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/through_shim.js").to_owned()),
+            UserCode::LoadFromFs(Path::new("src/generic/test_js/through_shim.js").to_owned()),
             "deno_module",
             vec![GET_JSON_SHIM],
             vec![],
@@ -421,10 +421,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_shim_async() {
-        static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("../test_js/shim.js"));
+        static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("./test_js/shim.js"));
 
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/through_shim.js").to_owned()),
+            UserCode::LoadFromFs(Path::new("src/generic/test_js/through_shim.js").to_owned()),
             "deno_module",
             vec![GET_JSON_SHIM],
             vec![],
@@ -475,7 +475,7 @@ mod tests {
     #[tokio::test]
     async fn test_register_ops() {
         let mut deno_module = DenoModule::new(
-            UserCode::LoadFromFs(Path::new("src/test_js/through_rust_fn.js").to_owned()),
+            UserCode::LoadFromFs(Path::new("src/generic/test_js/through_rust_fn.js").to_owned()),
             "deno_module",
             vec![],
             vec![],

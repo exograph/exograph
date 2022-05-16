@@ -1,6 +1,6 @@
 use futures::pin_mut;
 
-use crate::{deno_actor::DenoActor, module::deno_module::Arg};
+use super::{deno_actor::DenoActor, deno_module::Arg};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;

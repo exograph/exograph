@@ -3,10 +3,10 @@ use std::{collections::HashMap, sync::Arc};
 use deno_core::Extension;
 use tokio::sync::Mutex;
 
-use crate::{
+use super::{
     deno_actor::DenoActor,
-    module::deno_module::{DenoModuleSharedState, UserCode},
-    DenoExecutor, DenoModule,
+    deno_executor::DenoExecutor,
+    deno_module::{DenoModule, DenoModuleSharedState, UserCode},
 };
 use anyhow::Result;
 
@@ -52,7 +52,27 @@ pub struct DenoExecutorPool<C, M> {
 }
 
 impl<C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoExecutorPool<C, M> {
-    pub fn new(config: DenoExecutorConfig<C>) -> Self {
+    pub fn new(
+        user_agent_name: &'static str,
+        shims: Vec<(&'static str, &'static str)>,
+        additional_code: Vec<&'static str>,
+        explicit_error_class_name: Option<&'static str>,
+        create_extensions: fn() -> Vec<Extension>,
+        process_call_context: fn(&mut DenoModule, C) -> (),
+        shared_state: DenoModuleSharedState,
+    ) -> Self {
+        Self::new_from_config(DenoExecutorConfig::new(
+            user_agent_name,
+            shims,
+            additional_code,
+            explicit_error_class_name,
+            create_extensions,
+            process_call_context,
+            shared_state,
+        ))
+    }
+
+    pub fn new_from_config(config: DenoExecutorConfig<C>) -> Self {
         Self {
             config,
             actor_pool_map: Arc::new(Mutex::new(DenoActorPoolMap::default())),
@@ -110,7 +130,7 @@ impl<C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoE
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::module::deno_module::{Arg, DenoModuleSharedState};
+    use crate::generic::deno_module::{Arg, DenoModuleSharedState};
     use serde_json::Value;
 
     use futures::future::join_all;
@@ -120,15 +140,15 @@ mod tests {
         let module_path = "test_js/direct.js";
         let module_script = include_str!("test_js/direct.js");
 
-        let executor_pool = DenoExecutorPool::new(DenoExecutorConfig {
-            user_agent_name: "PayasDenoTest",
-            shims: vec![],
-            additional_code: vec![],
-            explicit_error_class_name: None,
-            create_extensions: Vec::new,
-            process_call_context: |_, _| {},
-            shared_state: DenoModuleSharedState::default(),
-        });
+        let executor_pool = DenoExecutorPool::new(
+            "PayasDenoTest",
+            vec![],
+            vec![],
+            None,
+            Vec::new,
+            |_, _| {},
+            DenoModuleSharedState::default(),
+        );
 
         let executor = executor_pool
             .get_executor(module_path, module_script)
@@ -151,15 +171,15 @@ mod tests {
         let module_path = "test_js/direct.js";
         let module_script = include_str!("test_js/direct.js");
 
-        let executor_pool = DenoExecutorPool::new(DenoExecutorConfig {
-            user_agent_name: "PayasDenoTest",
-            shims: vec![],
-            additional_code: vec![],
-            explicit_error_class_name: None,
-            create_extensions: Vec::new,
-            process_call_context: |_, _| {},
-            shared_state: DenoModuleSharedState::default(),
-        });
+        let executor_pool = DenoExecutorPool::new(
+            "PayasDenoTest",
+            vec![],
+            vec![],
+            None,
+            Vec::new,
+            |_, _| {},
+            DenoModuleSharedState::default(),
+        );
 
         let total_futures = 10;
 

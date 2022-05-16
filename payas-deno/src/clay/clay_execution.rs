@@ -1,14 +1,16 @@
 use deno_core::Extension;
 use tokio::sync::oneshot;
 
-use crate::{
-    deno_executor::CallbackProcessor, deno_executor_pool::DenoExecutorConfig,
-    module::deno_module::DenoModuleSharedState, DenoModule,
-};
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use serde_json::Value;
+
+use crate::generic::{
+    deno_executor::CallbackProcessor,
+    deno_executor_pool::DenoExecutorConfig,
+    deno_module::{DenoModule, DenoModuleSharedState},
+};
 
 pub enum RequestFromDenoMessage {
     InterceptedOperationProceed {
@@ -78,7 +80,7 @@ const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ClaytipError");
 
 pub fn process_call_context(deno_module: &mut DenoModule, call_context: Option<String>) {
     deno_module
-        .put(crate::claytip_ops::InterceptedOperationName(call_context))
+        .put(super::claytip_ops::InterceptedOperationName(call_context))
         .unwrap_or_else(|_| panic!("Failed to setup interceptor"));
 }
 
@@ -88,9 +90,9 @@ pub fn clay_config() -> DenoExecutorConfig<Option<String>> {
         // create a Deno extension that provides these ops
         let ext = Extension::builder()
             .ops(vec![
-                crate::claytip_ops::op_claytip_execute_query::decl(),
-                crate::claytip_ops::op_intercepted_operation_name::decl(),
-                crate::claytip_ops::op_intercepted_proceed::decl(),
+                super::claytip_ops::op_claytip_execute_query::decl(),
+                super::claytip_ops::op_intercepted_operation_name::decl(),
+                super::claytip_ops::op_intercepted_proceed::decl(),
             ])
             .build();
         vec![ext]
