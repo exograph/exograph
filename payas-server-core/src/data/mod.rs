@@ -124,32 +124,32 @@ pub fn to_column_path<'a>(
     ColumnPath::Physical(path)
 }
 
-// macro_rules! claytip_execute_query {
-//     ($query_context:ident) => {
-//         Some(
-//             &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
-//                 async move {
-//                     let result = $query_context
-//                         .executor
-//                         .execute_with_request_context(
-//                             OperationsPayload {
-//                                 operation_name: None,
-//                                 query: query_string,
-//                                 variables,
-//                             },
-//                             $query_context.request_context.clone(),
-//                         )
-//                         .await?
-//                         .into_iter()
-//                         .map(|(name, response)| (name, response.to_json().unwrap()))
-//                         .collect::<Map<_, _>>();
+macro_rules! claytip_execute_query {
+    ($query_context:ident) => {
+        Some(
+            &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
+                async move {
+                    let result = $query_context
+                        .executor
+                        .execute_with_request_context(
+                            OperationsPayload {
+                                operation_name: None,
+                                query: query_string,
+                                variables,
+                            },
+                            $query_context.request_context.clone(),
+                        )
+                        .await?
+                        .into_iter()
+                        .map(|(name, response)| (name, response.to_json().unwrap()))
+                        .collect::<Map<_, _>>();
 
-//                     Ok(serde_json::Value::Object(result))
-//                 }
-//                 .boxed()
-//             },
-//         )
-//     };
-// }
+                    Ok(serde_json::Value::Object(result))
+                }
+                .boxed()
+            },
+        )
+    };
+}
 
-// pub(crate) use claytip_execute_query;
+pub(crate) use claytip_execute_query;

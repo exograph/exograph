@@ -172,35 +172,6 @@ pub fn compute_service_access_predicate<'a>(
     }
 }
 
-// TODO: Dedup this from interception.rs (see the commented code in mod.rs)
-macro_rules! claytip_execute_query {
-    ($query_context:ident) => {
-        Some(
-            &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
-                async move {
-                    let result = $query_context
-                        .executor
-                        .execute_with_request_context(
-                            OperationsPayload {
-                                operation_name: None,
-                                query: query_string,
-                                variables,
-                            },
-                            $query_context.request_context.clone(),
-                        )
-                        .await?
-                        .into_iter()
-                        .map(|(name, response)| (name, response.to_json().unwrap()))
-                        .collect::<Map<_, _>>();
-
-                    Ok(serde_json::Value::Object(result))
-                }
-                .boxed()
-            },
-        )
-    };
-}
-
 impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
         &self,
@@ -241,7 +212,7 @@ impl<'a> OperationResolverResult<'a> {
                 resolve_deno(
                     method,
                     field,
-                    claytip_execute_query!(query_context),
+                    super::claytip_execute_query!(query_context),
                     query_context,
                 )
                 .await
