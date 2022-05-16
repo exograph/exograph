@@ -60,7 +60,9 @@ impl<C> DenoExecutorConfig<C> {
 ///                  -> DenoExecutor -> DenoActor -> DenoModule
 ///
 /// # Type Parameters
-/// - `C`: The type of the call context (for e)
+/// - `C`: The type of the call context (for example, Option<InterceptedOperationName>). This object
+///        is set into the `DenoModule`s GothamState and may be resolved synchronously or asynchronously.
+/// - `M`: The type of the callback message
 ///               ...
 pub struct DenoExecutorPool<C, M> {
     config: DenoExecutorConfig<C>,
