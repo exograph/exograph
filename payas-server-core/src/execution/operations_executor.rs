@@ -12,7 +12,7 @@ use async_graphql_parser::Pos;
 use anyhow::Result;
 
 use operations_context::{OperationsContext, QueryResponse};
-use payas_deno::DenoExecutorPool;
+use payas_deno::ClayDenoExecutorPool;
 use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextType};
 use payas_sql::DatabaseExecutor;
 use serde_json::Value;
@@ -27,7 +27,7 @@ use tracing::{error, instrument};
 /// For example, in actix, this should be added to the server using `app_data`.
 pub struct OperationsExecutor {
     pub(crate) database_executor: DatabaseExecutor,
-    pub(crate) deno_execution_pool: DenoExecutorPool,
+    pub(crate) deno_execution_pool: ClayDenoExecutorPool,
     pub(crate) system: ModelSystem,
     pub(crate) schema: Schema,
     pub allow_introspection: bool,
