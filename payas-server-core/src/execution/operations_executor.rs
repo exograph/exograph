@@ -53,7 +53,7 @@ impl<'e> OperationsExecutor {
         request_context: &RequestContext<'_>,
     ) -> Result<Vec<(String, QueryResponse)>> {
         let (operation, query_context) =
-            self.create_query_context(operations_payload, &request_context)?;
+            self.create_query_context(operations_payload, request_context)?;
 
         query_context.resolve_operation(operation).await
     }
