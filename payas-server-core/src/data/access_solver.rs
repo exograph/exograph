@@ -91,7 +91,7 @@ async fn solve_context_selection<'a>(
                 value.extract_context(context_type).await.ok()
             }
 
-            // ... and substitute a shallow ContextType if we are unit testing 
+            // ... and substitute a shallow ContextType if we are unit testing
             #[cfg(test)]
             {
                 let context_type = ContextType {

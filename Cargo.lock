@@ -3118,11 +3118,11 @@ name = "payas-deno"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "deno_core",
  "deno_runtime",
  "futures",
  "lazy_static",
- "payas-model",
  "serde",
  "serde_json",
  "serde_v8",
@@ -3200,6 +3200,7 @@ dependencies = [
  "bincode",
  "bytes",
  "chrono",
+ "deno_core",
  "futures",
  "futures-util",
  "include_dir",
