@@ -441,7 +441,13 @@ fn build_shallow(
                 // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
                 let bundler_output = std::process::Command::new("deno")
                     .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
-                    .output()?;
+                    .output()
+                    .map_err(|err| {
+                        ParserError::Generic(format!(
+                            "While trying to invoke `deno` in order to bundle .ts files: {}",
+                            err
+                        ))
+                    })?;
 
                 let bundled_script = if bundler_output.status.success() {
                     std::str::from_utf8(&bundler_output.stdout)
