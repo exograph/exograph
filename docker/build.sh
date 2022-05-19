@@ -5,7 +5,8 @@ set -e
 SCRIPT_DIRECTORY="$(dirname $BASH_SOURCE)"
 ROOT_DIRECTORY=$SCRIPT_DIRECTORY/..
 
-buildKind="$1" # "release" or "debug"
+buildKind="$1" # "debian" or "aws"
+buildType="$2" # "release" or "debug"
 
 # TODO: Resolve the openssl issues and then "BASE_IMAGE=debian:buster-slim"
 
@@ -15,28 +16,36 @@ BASE_IMAGE=rust:1.60.0-slim-buster # image to use when actually running Claytip
 DEPENDENCY_STYLE=deb # how to install or setup dependencies
 TAG_SUFFIX="" # docker tag suffix
 
-if [ "$buildKind" == "release" ]
+## set build flags/build dirs from buildType
+if [ "$buildType" == "release" ]
 then
     echo "Building release"
     BUILD_FLAG=--release
     BUILD_DIR=release
-elif [ "$buildKind" == "debug" ]
+elif [ "$buildType" == "debug" ]
 then
     echo "Building debug"
     BUILD_FLAG=
     BUILD_DIR=debug
     TAG_SUFFIX="-debug"
+else
+    echo "Unknown build type: '$buildType'. Must be 'release' or 'debug'.".
+    exit 1
+fi
+
+## set options from buildKind
+if [ "$buildKind" == "debian" ]
+then
+    echo "Building regularly with Debian"
 elif [ "$buildKind" == "aws" ]
 then
     echo "Building with Amazon Linux 2"
-    BUILD_FLAG=--release
-    BUILD_DIR=release
     BUILD_IMAGE=amazonlinux:2
     BASE_IMAGE=amazonlinux:2
     DEPENDENCY_STYLE=aws
-    TAG_SUFFIX="-aws"
+    TAG_SUFFIX="$TAG_SUFFIX-aws"
 else
-    echo "Unknown build kind: '$buildKind'. Must be 'release', 'debug', or 'aws'."
+    echo "Unknown build kind: '$buildKind'. Must be 'debian' or 'aws'."
     exit 1
 fi
 
