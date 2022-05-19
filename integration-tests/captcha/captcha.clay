@@ -1,0 +1,30 @@
+@external("captcha.ts")
+service CaptchaService {
+    type CaptchaChallenge {
+        uuid: Uuid
+        question: String
+    }
+
+    export query getChallenge(
+        @inject claytip: Claytip
+    ): CaptchaChallenge
+
+    query verifyCaptcha(
+        @inject claytip: Claytip,
+        @inject context: CaptchaValidatorContext
+    ): Boolean
+}
+
+model CaptchaChallengeRecord {
+    uuid: Uuid = generate_uuid() @pk
+    properResponse: String
+}
+
+context CaptchaValidatorContext {
+    uuid: Uuid @header("X-Captcha-Id")
+    response: String @header("X-Captcha-Response") 
+}
+
+context CaptchaContext {
+    isValid: Boolean @query("verifyCaptcha")
+}

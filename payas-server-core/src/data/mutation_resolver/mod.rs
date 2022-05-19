@@ -6,6 +6,7 @@ use crate::{
     execution::{operations_context::OperationsContext, resolver::GraphQLExecutionError},
     validation::field::ValidatedField,
 };
+use async_trait::async_trait;
 use payas_sql::PhysicalTable;
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -25,8 +26,9 @@ use super::operation_mapper::{
     OperationResolver, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
 };
 
+#[async_trait(?Send)]
 impl<'a> OperationResolver<'a> for Mutation {
-    fn resolve_operation(
+    async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
@@ -41,31 +43,34 @@ impl<'a> OperationResolver<'a> for Mutation {
                     GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
                 };
 
-                selection_query.operation(field, AbstractPredicate::True, query_context)?
+                selection_query
+                    .operation(field, AbstractPredicate::True, query_context)
+                    .await?
             };
 
             Ok(OperationResolverResult::SQLOperation(match &self.kind {
-                MutationKind::Create(data_param) => AbstractOperation::Insert(create_operation(
-                    self,
-                    data_param,
-                    field,
-                    abstract_select,
-                    query_context,
-                )?),
+                MutationKind::Create(data_param) => AbstractOperation::Insert(
+                    create_operation(self, data_param, field, abstract_select, query_context)
+                        .await?,
+                ),
                 MutationKind::Delete(predicate_param) => AbstractOperation::Delete(
-                    delete_operation(self, predicate_param, field, abstract_select, query_context)?,
+                    delete_operation(self, predicate_param, field, abstract_select, query_context)
+                        .await?,
                 ),
                 MutationKind::Update {
                     data_param,
                     predicate_param,
-                } => AbstractOperation::Update(update_operation(
-                    self,
-                    data_param,
-                    predicate_param,
-                    field,
-                    abstract_select,
-                    query_context,
-                )?),
+                } => AbstractOperation::Update(
+                    update_operation(
+                        self,
+                        data_param,
+                        predicate_param,
+                        field,
+                        abstract_select,
+                        query_context,
+                    )
+                    .await?,
+                ),
                 MutationKind::Service { .. } => panic!(),
             }))
         }
@@ -80,7 +85,7 @@ impl<'a> OperationResolver<'a> for Mutation {
     }
 }
 
-fn create_operation<'a>(
+async fn create_operation<'a>(
     mutation: &'a Mutation,
     data_param: &'a CreateDataParameter,
     field: &'a ValidatedField,
@@ -92,7 +97,8 @@ fn create_operation<'a>(
         &mutation.return_type,
         &SQLOperationKind::Create,
         query_context,
-    );
+    )
+    .await;
 
     // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
     // See issue #69
@@ -106,7 +112,7 @@ fn create_operation<'a>(
     data_param.insert_operation(mutation, select, argument_value, query_context)
 }
 
-fn delete_operation<'a>(
+async fn delete_operation<'a>(
     mutation: &'a Mutation,
     predicate_param: &'a PredicateParameter,
     field: &'a ValidatedField,
@@ -120,7 +126,8 @@ fn delete_operation<'a>(
         &mutation.return_type,
         &SQLOperationKind::Delete,
         query_context,
-    );
+    )
+    .await;
 
     if access_predicate == AbstractPredicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
@@ -147,7 +154,7 @@ fn delete_operation<'a>(
     })
 }
 
-fn update_operation<'a>(
+async fn update_operation<'a>(
     mutation: &'a Mutation,
     data_param: &'a UpdateDataParameter,
     predicate_param: &'a PredicateParameter,
@@ -162,7 +169,8 @@ fn update_operation<'a>(
         &mutation.return_type,
         &SQLOperationKind::Update,
         query_context,
-    );
+    )
+    .await;
 
     if access_predicate == AbstractPredicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL

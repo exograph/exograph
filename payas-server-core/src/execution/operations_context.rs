@@ -22,6 +22,7 @@ use super::{
 };
 
 use crate::introspection::schema::Schema;
+use crate::request_context::RequestContext;
 use crate::{
     data::data_resolver::DataResolver,
     introspection::schema::{
@@ -37,7 +38,7 @@ pub struct OperationsContext<'a> {
     pub executor: &'a OperationsExecutor,
     pub system: &'a ModelSystem,
     pub schema: &'a Schema,
-    pub request_context: &'a serde_json::Value,
+    pub request_context: &'a RequestContext<'a>,
 }
 
 #[derive(Debug, Clone)]

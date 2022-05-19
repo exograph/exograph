@@ -268,6 +268,15 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             },
         ),
         (
+            "query",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
             "range",
             AnnotationSpec {
                 targets: &[AnnotationTarget::Field],

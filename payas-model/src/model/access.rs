@@ -49,7 +49,7 @@ pub enum AccessPredicateExpression {
 /// A path representing context selection such as `AuthContext.role`
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessContextSelection {
-    Single(String),                              // for example, `role`
+    Context(String),                             // for example, `AuthContext`
     Select(Box<AccessContextSelection>, String), // for example, `AuthContext.role`
 }
 

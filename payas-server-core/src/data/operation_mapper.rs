@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
+use futures::StreamExt;
 use payas_deno::Arg;
 use payas_sql::{
     AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect, AbstractUpdate,
@@ -58,7 +59,7 @@ pub trait SQLUpdateMapper<'a> {
 
 #[async_trait]
 pub trait OperationResolver<'a> {
-    fn resolve_operation(
+    async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
@@ -69,7 +70,7 @@ pub trait OperationResolver<'a> {
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
     ) -> Result<QueryResponse> {
-        let resolver_result = self.resolve_operation(field, query_context)?;
+        let resolver_result = self.resolve_operation(field, query_context).await?;
         let interceptors = self.interceptors().ordered();
 
         let op_name = &self.name();
@@ -97,7 +98,7 @@ pub enum SQLOperationKind {
     Delete,
 }
 
-pub fn compute_sql_access_predicate<'a>(
+pub async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
     query_context: &'a OperationsContext<'a>,
@@ -118,11 +119,12 @@ pub fn compute_sql_access_predicate<'a>(
                 query_context.request_context,
                 query_context.system,
             )
+            .await
         }
     }
 }
 
-pub fn compute_service_access_predicate<'a>(
+pub async fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
     query_context: &'a OperationsContext<'a>,
@@ -146,6 +148,7 @@ pub fn compute_service_access_predicate<'a>(
                 query_context.request_context,
                 query_context.system,
             )
+            .await
         }
         _ => panic!(),
     };
@@ -159,7 +162,9 @@ pub fn compute_service_access_predicate<'a>(
         method_access_expr,
         query_context.request_context,
         query_context.system,
-    );
+    )
+    .await;
+
     let method_level_access = method_level_access.predicate();
 
     if matches!(type_level_access, AbstractPredicate::False)
@@ -202,7 +207,8 @@ impl<'a> OperationResolverResult<'a> {
                 let method = &query_context.system.methods[*method_id];
 
                 let access_predicate =
-                    compute_service_access_predicate(&method.return_type, method, query_context);
+                    compute_service_access_predicate(&method.return_type, method, query_context)
+                        .await;
 
                 if access_predicate == &Predicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
@@ -236,10 +242,8 @@ async fn resolve_deno(
         .collect::<HashMap<_, _>>();
 
     // construct a sequence of arguments to pass to the Deno method
-    let arg_sequence = method
-        .arguments
-        .iter()
-        .map(|arg| {
+    let arg_sequence: Vec<Arg> = futures::stream::iter(method.arguments.iter())
+        .then(|arg| async {
             if arg.is_injected {
                 // handle injected arguments
 
@@ -256,14 +260,15 @@ async fn resolve_deno(
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = query_context
                         .request_context
-                        .get(&context.name)
-                        .unwrap_or_else(|| {
+                        .extract_context(context)
+                        .await
+                        .unwrap_or_else(|_| {
                             panic!(
                                 "Could not get context `{}` from request context",
                                 &context.name
                             )
                         });
-                    Ok(Arg::Serde(context_value.clone()))
+                    Ok(Arg::Serde(context_value))
                 } else {
                     // not a context, assume it is a provided shim by the Deno executor
                     Ok(Arg::Shim(arg_type.name.clone()))
@@ -275,7 +280,10 @@ async fn resolve_deno(
                 Err(anyhow!("Invalid argument {}", arg.name))
             }
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Vec<Result<_>>>()
+        .await
+        .into_iter()
+        .collect::<Result<_>>()?;
 
     query_context
         .executor
@@ -302,7 +310,7 @@ async fn resolve_deno(
                                     query: query_string,
                                     variables,
                                 },
-                                query_context.request_context.clone(),
+                                query_context.request_context,
                             )
                             .await?
                             .into_iter()

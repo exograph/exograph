@@ -3167,6 +3167,7 @@ dependencies = [
  "actix-web",
  "actix-web-httpauth",
  "anyhow",
+ "async-trait",
  "futures",
  "jsonwebtoken",
  "opentelemetry",

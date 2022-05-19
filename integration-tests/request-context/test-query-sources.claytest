@@ -1,0 +1,29 @@
+stages:
+
+  ## Tracking should be OFF for users with this header...
+  - operation: | 
+      query {
+        isTrackingEnabled
+      }
+    headers: |
+      {
+          "X-Connecting-IP": "127.0.0.1"
+      }
+    response: |
+      {
+        "data": {
+          "isTrackingEnabled": false
+        }
+      }
+
+  ## ... but ON for everyone else (see tracking.ts) 
+  - operation: | 
+      query {
+        isTrackingEnabled
+      }
+    response: |
+      {
+        "data": {
+          "isTrackingEnabled": true
+        }
+      }

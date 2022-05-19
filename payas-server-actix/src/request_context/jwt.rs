@@ -4,10 +4,13 @@ use actix_web::http::header::Header;
 use actix_web::HttpRequest;
 use actix_web_httpauth::headers::authorization::Authorization;
 use actix_web_httpauth::headers::authorization::Bearer;
+use async_trait::async_trait;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use payas_server_core::request_context::BoxedParsedContext;
 use payas_server_core::request_context::ParsedContext;
+use payas_server_core::request_context::RequestContext;
+use payas_server_core::OperationsExecutor;
 use serde_json::json;
 use serde_json::Value;
 
@@ -96,12 +99,18 @@ struct ParsedJwtContext {
     jwt_claims: Value,
 }
 
+#[async_trait(?Send)]
 impl ParsedContext for ParsedJwtContext {
     fn annotation_name(&self) -> &str {
         "jwt"
     }
 
-    fn extract_context_field(&self, key: &str) -> Option<Value> {
+    async fn extract_context_field<'e>(
+        &'e self,
+        key: &str,
+        _executor: &'e OperationsExecutor,
+        _rc: &'e RequestContext,
+    ) -> Option<Value> {
         self.jwt_claims.get(key).cloned()
     }
 }

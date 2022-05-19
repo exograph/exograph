@@ -1,0 +1,6 @@
+import "captcha.clay"
+
+model Comment {
+    id: Int = autoincrement() @pk
+    text: String
+}
