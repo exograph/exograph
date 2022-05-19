@@ -11,8 +11,8 @@ use async_graphql_parser::Pos;
 
 use anyhow::Result;
 
+use crate::deno_integration::ClayDenoExecutorPool;
 use operations_context::{OperationsContext, QueryResponse};
-use payas_deno::ClayDenoExecutorPool;
 use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextType};
 use payas_sql::DatabaseExecutor;
 use serde_json::Value;

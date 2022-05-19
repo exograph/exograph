@@ -1,9 +1,10 @@
-use async_recursion::async_recursion;
-use futures::FutureExt;
-use payas_deno::{
-    Arg, ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,
+use crate::deno_integration::{
+    ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,
     InterceptedOperationName,
 };
+use async_recursion::async_recursion;
+use futures::FutureExt;
+use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::{

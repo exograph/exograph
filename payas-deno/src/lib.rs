@@ -1,14 +1,14 @@
-mod clay;
-mod generic;
+/// This code has no concept of Claytip.
+///
+/// Module to encapsulate the logic creating a Deno module that supports
+/// embedding.
+///
+mod deno_actor;
+pub mod deno_executor;
+pub mod deno_executor_pool;
 
-pub use clay::clay_execution::{
-    clay_config, ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,
-};
-pub use clay::claytip_ops::InterceptedOperationName;
-pub use generic::deno_executor_pool::DenoExecutorPool;
-pub use generic::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
+pub mod deno_module;
+mod embedded_module_loader;
 
-pub type ClayDenoExecutorPool = DenoExecutorPool<
-    Option<InterceptedOperationName>,
-    clay::clay_execution::RequestFromDenoMessage,
->;
+pub use deno_executor_pool::DenoExecutorPool;
+pub use deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};

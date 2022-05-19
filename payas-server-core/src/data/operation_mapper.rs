@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
+use crate::deno_integration::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use futures::FutureExt;
-use payas_deno::{Arg, ClayCallbackProcessor, FnClaytipExecuteQuery};
+use payas_deno::Arg;
 use payas_sql::{
     AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect, AbstractUpdate,
 };

@@ -24,6 +24,7 @@ use serde_json::{Map, Value};
 use tracing::instrument;
 
 mod data;
+mod deno_integration;
 mod error;
 mod execution;
 pub mod graphiql;
@@ -65,7 +66,7 @@ pub fn create_operations_executor(
 
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
-    let deno_execution_config = DenoExecutorPool::new_from_config(payas_deno::clay_config());
+    let deno_execution_config = DenoExecutorPool::new_from_config(deno_integration::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 
