@@ -7,7 +7,7 @@ use super::{ParsedContext, RequestContext};
 
 pub struct EnvironmentContextExtractor;
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ParsedContext for EnvironmentContextExtractor {
     fn annotation_name(&self) -> &str {
         "env"

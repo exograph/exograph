@@ -34,7 +34,7 @@ pub async fn solve_access<'a>(
     solve_predicate_expression(expr, request_context, system).await
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 async fn solve_predicate_expression<'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
@@ -71,7 +71,7 @@ async fn solve_predicate_expression<'a>(
     }
 }
 
-#[async_recursion(?Send)]
+#[async_recursion]
 async fn solve_context_selection<'a>(
     context_selection: &AccessContextSelection,
     value: &'a RequestContext<'a>,

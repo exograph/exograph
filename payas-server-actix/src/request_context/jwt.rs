@@ -99,7 +99,7 @@ struct ParsedJwtContext {
     jwt_claims: Value,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ParsedContext for ParsedJwtContext {
     fn annotation_name(&self) -> &str {
         "jwt"

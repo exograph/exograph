@@ -26,7 +26,7 @@ use super::operation_mapper::{
     OperationResolver, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
 };
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a> OperationResolver<'a> for Mutation {
     async fn resolve_operation(
         &'a self,

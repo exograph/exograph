@@ -6,7 +6,7 @@ use super::{ParsedContext, RequestContext};
 
 pub struct QueryExtractor;
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ParsedContext for QueryExtractor {
     fn annotation_name(&self) -> &str {
         "query"

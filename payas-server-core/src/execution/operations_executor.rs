@@ -15,7 +15,6 @@ use operations_context::{OperationsContext, QueryResponse};
 use payas_deno::DenoExecutor;
 use payas_model::model::system::ModelSystem;
 use payas_sql::DatabaseExecutor;
-use serde_json::Value;
 use tracing::{error, instrument};
 
 /// Encapsulates the information required by the [crate::resolve] function.
@@ -64,8 +63,8 @@ impl<'e> OperationsExecutor {
         &'e self,
         operations_payload: OperationsPayload,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<(ValidatedDocument, OperationsContext<'e>), ExecutionError> {
-        let document = parse_query(operations_payload.query).unwrap();
+    ) -> Result<(ValidatedOperation, OperationsContext<'e>), ExecutionError> {
+        let document = Self::parse_query(operations_payload.query)?;
 
         let document_validator = DocumentValidator::new(
             &self.schema,

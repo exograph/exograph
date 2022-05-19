@@ -88,7 +88,7 @@ impl<'a> RequestContext<'a> {
 //
 // Provides methods to extract context fields out of a given struct
 // This trait should be implemented on objects that represent a particular source of parsed context fields
-#[async_trait(?Send)]
+#[async_trait]
 pub trait ParsedContext {
     // what annotation does this extractor provide values for?
     // e.g. "jwt", "header", etc.

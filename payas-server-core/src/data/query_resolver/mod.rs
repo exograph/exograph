@@ -27,7 +27,7 @@ use crate::execution::resolver::GraphQLExecutionError;
 
 // TODO: deal with panics at the type level
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a> OperationResolver<'a> for Query {
     async fn resolve_operation(
         &'a self,
@@ -58,7 +58,7 @@ impl<'a> OperationResolver<'a> for Query {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 pub trait QuerySQLOperations<'a> {
     fn compute_order_by(
         &'a self,
@@ -92,7 +92,7 @@ pub trait QuerySQLOperations<'a> {
     ) -> Result<AbstractSelect<'a>>;
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_order_by(
         &'a self,

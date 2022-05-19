@@ -26,7 +26,7 @@ struct ParsedHeaderContext {
     headers: HeaderMap,
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ParsedContext for ParsedHeaderContext {
     fn annotation_name(&self) -> &str {
         "header"
