@@ -1,34 +1,59 @@
 mod environment;
 mod query;
 
-use std::collections::HashMap;
-
+use crate::OperationsExecutor;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use futures::StreamExt;
 use payas_model::model::ContextType;
 use serde_json::Value;
 
-use crate::OperationsExecutor;
+#[cfg(test)]
+use std::marker::PhantomData;
 
+#[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
+#[cfg(not(test))]
+use futures::StreamExt;
+#[cfg(not(test))]
+use std::collections::HashMap;
 
 pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
 /// Represent a request context for a particular request
+///
+/// RequestContext has two variants available: a regular version for normal use, and a test version
+/// for payas-server-core unit tests. As we do not have a full OperationsExecutor to test functionality
+/// like the access solver, a more basic RequestContext is used during `cargo test`. This test variant
+/// may be constructed with RequestContext::test_request_context(value), `value` being a serde_json::Value
+/// that represents the complete request context.
+///
+/// For example:
+///
+/// let context = RequestContext::test_request_context(
+///     serde_json::json!({ "AccessContext": {"token1": "token_value", "token2": "token_value"} }),
+/// );
 pub struct RequestContext<'a> {
+    #[cfg(not(test))]
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedParsedContext>,
+    #[cfg(not(test))]
     executor: &'a OperationsExecutor,
+
+    #[cfg(test)]
+    test_values: serde_json::Value,
+    #[cfg(test)]
+    phantom: PhantomData<&'a ()>,
 }
 
 impl<'a> RequestContext<'a> {
     // Constructs a RequestContext from a vector of parsed contexts.
+    #[cfg(not(test))]
     pub fn from_parsed_contexts(
         contexts: Vec<BoxedParsedContext>,
-        executor: &OperationsExecutor,
-    ) -> RequestContext {
+        executor: &'a OperationsExecutor,
+    ) -> RequestContext<'a> {
         // a list of backend-agnostic contexts to also include
+
         let generic_contexts: Vec<BoxedParsedContext> = vec![
             Box::new(EnvironmentContextExtractor),
             Box::new(QueryExtractor),
@@ -46,7 +71,8 @@ impl<'a> RequestContext<'a> {
 
     // Given an annotation name and its value,
     // extract a context field from the request context
-    pub async fn extract_context_field_from_source(
+    #[cfg(not(test))]
+    async fn extract_context_field_from_source(
         &'a self,
         annotation_name: &str,
         value: &str,
@@ -61,6 +87,7 @@ impl<'a> RequestContext<'a> {
             .await)
     }
 
+    #[cfg(not(test))]
     pub async fn extract_context(&self, context: &ContextType) -> Result<Value> {
         Ok(Value::Object(
             futures::stream::iter(context.fields.iter())
@@ -81,6 +108,27 @@ impl<'a> RequestContext<'a> {
                 .flatten()
                 .collect(),
         ))
+    }
+
+    // ### BELOW USED ONLY DURING UNIT TESTS ###
+
+    #[cfg(test)]
+    pub fn test_request_context(test_values: serde_json::Value) -> RequestContext<'a> {
+        RequestContext {
+            test_values,
+            phantom: PhantomData,
+        }
+    }
+
+    #[cfg(test)]
+    pub async fn extract_context(&self, context: &ContextType) -> Result<Value> {
+        self.test_values
+            .get(&context.name)
+            .ok_or(anyhow!(
+                "Context type {} does not exist in test values",
+                &context.name
+            ))
+            .cloned()
     }
 }
 
