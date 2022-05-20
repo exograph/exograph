@@ -8,15 +8,15 @@ use payas_server_core::{OperationsExecutor, OperationsPayload};
 
 use request_context::{ContextProducerError, LambdaRequestContextProducer};
 
-fn error_msg(message: &str) -> Vec<u8> {
-    format!(r#"{{ "errors": [{{"message": "{message}"}}] }}"#).into()
+fn error_msg(message: &str) -> String {
+    format!(r#"{{ "errors": [{{"message": "{message}"}}] }}"#)
 }
 
 pub async fn resolve(
     req: lambda_http::Request,
     executor: Arc<OperationsExecutor>,
     context_processor: Arc<LambdaRequestContextProducer>,
-) -> Result<Response<Vec<u8>>, Error> {
+) -> Result<Response<String>, Error> {
     let request_context = context_processor.generate_request_context(&req);
 
     let (_, body) = req.into_parts();
@@ -49,10 +49,17 @@ pub async fn resolve(
                     let bytes: Vec<u8> =
                         bytes.into_iter().flat_map(|bytes| bytes.to_vec()).collect();
 
+                    // it would be nice to just pass `bytes` as the body,
+                    // but lambda_http sets "isBase64Encoded" for the Lambda integration response if
+                    // the body is not a string, and so our response gets base64'd if we do
+                    let body_string = std::str::from_utf8(&bytes)
+                        .expect("Response stream is not UTF-8")
+                        .to_string();
+
                     Ok(Response::builder()
                         .status(StatusCode::OK)
                         .header("Content-Type", "application/json")
-                        .body(bytes)?)
+                        .body(body_string)?)
                 }
                 Err(_) => Ok(Response::builder()
                     .status(StatusCode::BAD_REQUEST)
