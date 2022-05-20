@@ -124,10 +124,12 @@ impl<'a> RequestContext<'a> {
     pub async fn extract_context(&self, context: &ContextType) -> Result<Value> {
         self.test_values
             .get(&context.name)
-            .ok_or_else(|| anyhow!(
-                "Context type {} does not exist in test values",
-                &context.name
-            ))
+            .ok_or_else(|| {
+                anyhow!(
+                    "Context type {} does not exist in test values",
+                    &context.name
+                )
+            })
             .cloned()
     }
 }
