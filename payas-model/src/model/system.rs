@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModelSystem {
     pub types: SerializableSlab<GqlType>,
-    pub contexts: SerializableSlab<ContextType>,
+    pub contexts: MappedArena<ContextType>,
     pub argument_types: SerializableSlab<ArgumentParameterType>,
     pub order_by_types: SerializableSlab<OrderByParameterType>,
     pub predicate_types: SerializableSlab<PredicateParameterType>,
@@ -36,7 +36,7 @@ impl Default for ModelSystem {
     fn default() -> Self {
         ModelSystem {
             types: SerializableSlab::new(),
-            contexts: SerializableSlab::new(),
+            contexts: MappedArena::default(),
             order_by_types: SerializableSlab::new(),
             predicate_types: SerializableSlab::new(),
             queries: MappedArena::default(),

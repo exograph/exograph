@@ -1,0 +1,50 @@
+clayfile: "comments.clay"
+stages:
+    # get a captcha challenge first
+    - operation: |
+        query {
+            challenge: getChallenge {
+                uuid @bind(name: "challengeUuid")
+                challenge @bind(name: "challenge")
+            }
+        }
+      response: |
+        {
+            "data": {
+                "challenge": {
+                    "uuid": () => true,
+                    "challenge": () => true
+                }
+            }
+        }
+
+    # post a comment with the INCORRECT captcha response
+    - operation: |
+        mutation($comment: String!) {
+            comment: createComment(data: {
+                text: $comment
+            }) {
+                id
+                text
+            }
+        }
+      variable: |
+        {
+            "comment": "Hello, world!"
+        }
+      headers: |
+        {
+            "X-Captcha-Id": $.challengeUuid,
+            "X-Captcha-Response": "ThisIsTheWrongResponse" // pass an incorrect captcha response
+        }
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }
+        
+      
+      
