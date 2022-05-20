@@ -29,6 +29,10 @@ Parameters:
     Type: String
     Default: claytipdb
     Description: The database name of the Claytip RDS DBInstance.
+  ClaytipIntrospection:
+    Type: String
+    Default: "true"
+    Description: Enable introspection.
   ClaytipSubnetAZ1:
     Type: AWS::EC2::Subnet::Id
     Description: > 
@@ -92,6 +96,7 @@ Resources:
           CLAY_DATABASE_USER: !Ref ClaytipDatabaseUsername
           CLAY_DATABASE_PASSWORD: !Ref ClaytipDatabasePassword
           CLAY_DATABASE_NAME: !Ref ClaytipDatabaseName
+          CLAY_INTROSPECTION: !Ref ClaytipIntrospection
 
   # The real Claytip Lambda function.
   # This is the lambda that actually serves Claytip API requests. 
@@ -125,6 +130,7 @@ Resources:
               Username: !Ref ClaytipDatabaseUsername
               Password: !Ref ClaytipDatabasePassword
               Database: !Ref ClaytipDatabaseName
+          CLAY_INTROSPECTION: !Ref ClaytipIntrospection
 
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
