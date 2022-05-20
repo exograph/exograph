@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
+use crate::deno_integration::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
+use futures::FutureExt;
+use futures::StreamExt;
 use payas_deno::Arg;
 use payas_sql::{
     AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect, AbstractUpdate,
@@ -58,7 +61,7 @@ pub trait SQLUpdateMapper<'a> {
 
 #[async_trait]
 pub trait OperationResolver<'a> {
-    fn resolve_operation(
+    async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
@@ -69,7 +72,7 @@ pub trait OperationResolver<'a> {
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
     ) -> Result<QueryResponse> {
-        let resolver_result = self.resolve_operation(field, query_context)?;
+        let resolver_result = self.resolve_operation(field, query_context).await?;
         let interceptors = self.interceptors().ordered();
 
         let op_name = &self.name();
@@ -97,7 +100,7 @@ pub enum SQLOperationKind {
     Delete,
 }
 
-pub fn compute_sql_access_predicate<'a>(
+pub async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
     query_context: &'a OperationsContext<'a>,
@@ -118,11 +121,12 @@ pub fn compute_sql_access_predicate<'a>(
                 query_context.request_context,
                 query_context.system,
             )
+            .await
         }
     }
 }
 
-pub fn compute_service_access_predicate<'a>(
+pub async fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
     query_context: &'a OperationsContext<'a>,
@@ -146,6 +150,7 @@ pub fn compute_service_access_predicate<'a>(
                 query_context.request_context,
                 query_context.system,
             )
+            .await
         }
         _ => panic!(),
     };
@@ -159,7 +164,9 @@ pub fn compute_service_access_predicate<'a>(
         method_access_expr,
         query_context.request_context,
         query_context.system,
-    );
+    )
+    .await;
+
     let method_level_access = method_level_access.predicate();
 
     if matches!(type_level_access, AbstractPredicate::False)
@@ -202,23 +209,30 @@ impl<'a> OperationResolverResult<'a> {
                 let method = &query_context.system.methods[*method_id];
 
                 let access_predicate =
-                    compute_service_access_predicate(&method.return_type, method, query_context);
+                    compute_service_access_predicate(&method.return_type, method, query_context)
+                        .await;
 
                 if access_predicate == &Predicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
                 }
 
-                resolve_deno(method, field, query_context)
-                    .await
-                    .map(QueryResponse::Json)
+                resolve_deno(
+                    method,
+                    field,
+                    super::claytip_execute_query!(query_context),
+                    query_context,
+                )
+                .await
+                .map(QueryResponse::Json)
             }
         }
     }
 }
 
-async fn resolve_deno(
+async fn resolve_deno<'a>(
     method: &ServiceMethod,
     field: &ValidatedField,
+    claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     query_context: &OperationsContext<'_>,
 ) -> Result<serde_json::Value> {
     let script = &query_context.system.deno_scripts[method.script];
@@ -236,10 +250,8 @@ async fn resolve_deno(
         .collect::<HashMap<_, _>>();
 
     // construct a sequence of arguments to pass to the Deno method
-    let arg_sequence = method
-        .arguments
-        .iter()
-        .map(|arg| {
+    let arg_sequence: Vec<Arg> = futures::stream::iter(method.arguments.iter())
+        .then(|arg| async {
             if arg.is_injected {
                 // handle injected arguments
 
@@ -256,14 +268,15 @@ async fn resolve_deno(
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = query_context
                         .request_context
-                        .get(&context.name)
-                        .unwrap_or_else(|| {
+                        .extract_context(context)
+                        .await
+                        .unwrap_or_else(|_| {
                             panic!(
                                 "Could not get context `{}` from request context",
                                 &context.name
                             )
                         });
-                    Ok(Arg::Serde(context_value.clone()))
+                    Ok(Arg::Serde(context_value))
                 } else {
                     // not a context, assume it is a provided shim by the Deno executor
                     Ok(Arg::Shim(arg_type.name.clone()))
@@ -275,46 +288,26 @@ async fn resolve_deno(
                 Err(anyhow!("Invalid argument {}", arg.name))
             }
         })
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Vec<Result<_>>>()
+        .await
+        .into_iter()
+        .collect::<Result<_>>()?;
 
-    query_context
-        .executor
-        .deno_execution
-        .preload_module(&script.path, &script.script, 1)
-        .await?;
+    let callback_processor = ClayCallbackProcessor {
+        claytip_execute_query,
+        claytip_proceed: None,
+    };
 
     let function_result = query_context
         .executor
-        .deno_execution
-        .execute_function_with_shims(
+        .deno_execution_pool
+        .execute(
             &script.path,
             &script.script,
             &method.name,
             arg_sequence,
-            Some(
-                &|query_string: String, variables: Option<Map<String, Value>>| {
-                    Box::pin(async move {
-                        let result = query_context
-                            .executor
-                            .execute_with_request_context(
-                                OperationsPayload {
-                                    operation_name: None,
-                                    query: query_string,
-                                    variables,
-                                },
-                                query_context.request_context.clone(),
-                            )
-                            .await?
-                            .into_iter()
-                            .map(|(name, response)| (name, response.to_json().unwrap()))
-                            .collect::<Map<_, _>>();
-
-                        Ok(serde_json::Value::Object(result))
-                    })
-                },
-            ),
             None,
-            None,
+            callback_processor,
         )
         .await?;
 
@@ -336,27 +329,3 @@ fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
         Err(err) => bail!("Got row without any columns {}", err),
     }
 }
-
-// TODO: Define this so that we can use it from multiple ways to invoke (service method and interceptors)
-// fn execute_query_fn<'a>(
-//     query_context: &'a QueryContext<'a>,
-// ) -> &'a dyn Fn(
-//     String,
-//     Option<&serde_json::Map<String, serde_json::Value>>,
-// ) -> Result<serde_json::Value> {
-//     &|query_string: String, variables| {
-//         let result = query_context
-//             .executor
-//             .execute_with_request_context(
-//                 None,
-//                 &query_string,
-//                 variables,
-//                 query_context.request_context.clone(),
-//             )?
-//             .into_iter()
-//             .map(|(name, response)| (name, response.to_json().unwrap()))
-//             .collect::<Map<_, _>>();
-
-//         Ok(serde_json::Value::Object(result))
-//     }
-// }

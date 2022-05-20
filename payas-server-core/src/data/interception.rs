@@ -1,6 +1,10 @@
+use crate::deno_integration::{
+    ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,
+    InterceptedOperationName,
+};
 use async_recursion::async_recursion;
 use futures::FutureExt;
-use payas_deno::{Arg, FnClaytipExecuteQuery, FnClaytipInterceptorProceed};
+use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::{
@@ -107,36 +111,6 @@ pub enum InterceptedOperation<'a> {
     },
 }
 
-// this is a macro because rustc doesn't seem to be able to infer the associated type of
-// the following future closure unless it's directly inlined
-macro_rules! claytip_execute_query {
-    ($query_context:ident) => {
-        Some(
-            &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
-                async move {
-                    let result = $query_context
-                        .executor
-                        .execute_with_request_context(
-                            OperationsPayload {
-                                operation_name: None,
-                                query: query_string,
-                                variables,
-                            },
-                            $query_context.request_context.clone(),
-                        )
-                        .await?
-                        .into_iter()
-                        .map(|(name, response)| (name, response.to_json().unwrap()))
-                        .collect::<Map<_, _>>();
-
-                    Ok(serde_json::Value::Object(result))
-                }
-                .boxed()
-            },
-        )
-    };
-}
-
 impl<'a> InterceptedOperation<'a> {
     pub fn new(
         operation_name: &'a str,
@@ -194,7 +168,7 @@ impl<'a> InterceptedOperation<'a> {
                     execute_interceptor(
                         before_interceptor,
                         query_context,
-                        claytip_execute_query!(query_context),
+                        super::claytip_execute_query!(query_context),
                         Some(operation_name.to_string()),
                         None,
                     )
@@ -205,7 +179,7 @@ impl<'a> InterceptedOperation<'a> {
                     execute_interceptor(
                         after_interceptor,
                         query_context,
-                        claytip_execute_query!(query_context),
+                        super::claytip_execute_query!(query_context),
                         Some(operation_name.to_string()),
                         None,
                     )
@@ -223,7 +197,7 @@ impl<'a> InterceptedOperation<'a> {
                 let res = execute_interceptor(
                     interceptor,
                     query_context,
-                    claytip_execute_query!(query_context),
+                    super::claytip_execute_query!(query_context),
                     Some(operation_name.to_string()),
                     Some(&|| {
                         async move {
@@ -258,7 +232,7 @@ async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
     query_context: &'a OperationsContext<'a>,
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
-    claytip_get_interceptor: Option<String>,
+    operation_name: Option<String>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<serde_json::Value> {
     let script = &query_context.system.deno_scripts[interceptor.script];
@@ -277,23 +251,21 @@ async fn execute_interceptor<'a>(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    query_context
-        .executor
-        .deno_execution
-        .preload_module(&script.path, &script.script, 1)
-        .await?;
+    let callback_processor = ClayCallbackProcessor {
+        claytip_execute_query,
+        claytip_proceed: claytip_proceed_operation,
+    };
 
     query_context
         .executor
-        .deno_execution
-        .execute_function_with_shims(
+        .deno_execution_pool
+        .execute(
             &script.path,
             &script.script,
             &interceptor.name,
             arg_sequence,
-            claytip_execute_query,
-            claytip_get_interceptor,
-            claytip_proceed_operation,
+            operation_name.map(InterceptedOperationName),
+            callback_processor,
         )
         .await
 }

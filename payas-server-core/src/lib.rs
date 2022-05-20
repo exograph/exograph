@@ -15,7 +15,7 @@ use execution::operations_context::QueryResponse;
 pub use execution::operations_executor::OperationsExecutor;
 use futures::Stream;
 use introspection::schema::Schema;
-use payas_deno::DenoExecutor;
+use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
 use payas_sql::{Database, DatabaseExecutor};
 use request_context::RequestContext;
@@ -24,6 +24,7 @@ use serde_json::{Map, Value};
 use tracing::instrument;
 
 mod data;
+mod deno_integration;
 mod error;
 mod execution;
 pub mod graphiql;
@@ -65,13 +66,13 @@ pub fn create_operations_executor(
 
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
-    let deno_executor = DenoExecutor::default();
+    let deno_execution_config = DenoExecutorPool::new_from_config(deno_integration::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 
     let executor = OperationsExecutor {
         database_executor,
-        deno_execution: deno_executor,
+        deno_execution_pool: deno_execution_config,
         system,
         schema,
         allow_introspection,
@@ -99,12 +100,12 @@ pub struct OperationsPayload {
     name = "payas-server-core::resolve"
     skip(executor, request_context)
     )]
-pub async fn resolve<E>(
+pub async fn resolve<'a, E>(
     executor: &OperationsExecutor,
     operations_payload: OperationsPayload,
-    request_context: RequestContext,
+    request_context: RequestContext<'a>,
 ) -> impl Stream<Item = Result<Bytes, E>> {
-    let response = executor.execute(operations_payload, request_context).await;
+    let response = executor.execute(operations_payload, &request_context).await;
 
     try_stream! {
         macro_rules! report_position {

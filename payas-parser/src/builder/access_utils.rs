@@ -175,7 +175,7 @@ fn compute_selection<'a>(
                 .unwrap();
             (
                 AccessContextSelection::Select(
-                    Box::new(AccessContextSelection::Single(path_elements[0].clone())),
+                    Box::new(AccessContextSelection::Context(path_elements[0].clone())),
                     path_elements[1].clone(),
                 ),
                 &field.typ,

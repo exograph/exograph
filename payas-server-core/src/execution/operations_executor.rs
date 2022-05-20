@@ -11,11 +11,10 @@ use async_graphql_parser::Pos;
 
 use anyhow::Result;
 
+use crate::deno_integration::ClayDenoExecutorPool;
 use operations_context::{OperationsContext, QueryResponse};
-use payas_deno::DenoExecutor;
-use payas_model::model::{mapped_arena::SerializableSlab, system::ModelSystem, ContextType};
+use payas_model::model::system::ModelSystem;
 use payas_sql::DatabaseExecutor;
-use serde_json::Value;
 use tracing::{error, instrument};
 
 /// Encapsulates the information required by the [crate::resolve] function.
@@ -27,20 +26,18 @@ use tracing::{error, instrument};
 /// For example, in actix, this should be added to the server using `app_data`.
 pub struct OperationsExecutor {
     pub(crate) database_executor: DatabaseExecutor,
-    pub(crate) deno_execution: DenoExecutor,
+    pub(crate) deno_execution_pool: ClayDenoExecutorPool,
     pub(crate) system: ModelSystem,
     pub(crate) schema: Schema,
     pub allow_introspection: bool,
 }
 
-impl OperationsExecutor {
+impl<'e> OperationsExecutor {
     pub async fn execute(
-        &self,
+        &'e self,
         operations_payload: OperationsPayload,
-        request_context: RequestContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<Vec<(String, QueryResponse)>> {
-        let request_context = create_mapped_context(&self.system.contexts, &request_context)?;
-
         self.execute_with_request_context(operations_payload, request_context)
             .await
     }
@@ -53,20 +50,20 @@ impl OperationsExecutor {
     pub async fn execute_with_request_context(
         &self,
         operations_payload: OperationsPayload,
-        request_context: Value,
+        request_context: &RequestContext<'_>,
     ) -> Result<Vec<(String, QueryResponse)>> {
         let (operation, query_context) =
-            self.create_query_context(operations_payload, &request_context)?;
+            self.create_query_context(operations_payload, request_context)?;
 
         query_context.resolve_operation(operation).await
     }
 
     #[instrument(skip(self, operations_payload, request_context))]
-    fn create_query_context<'a>(
-        &'a self,
+    fn create_query_context(
+        &'e self,
         operations_payload: OperationsPayload,
-        request_context: &'a serde_json::Value,
-    ) -> Result<(ValidatedOperation, OperationsContext<'a>), ExecutionError> {
+        request_context: &'e RequestContext<'e>,
+    ) -> Result<(ValidatedOperation, OperationsContext<'e>), ExecutionError> {
         let document = Self::parse_query(operations_payload.query)?;
 
         let document_validator = DocumentValidator::new(
@@ -135,40 +132,4 @@ impl OperationsExecutor {
             ExecutionError::QueryParsingFailed(message, pos1, pos2)
         })
     }
-}
-
-fn create_mapped_context(
-    contexts: &SerializableSlab<ContextType>,
-    request_context: &RequestContext,
-) -> Result<Value> {
-    let mapped_contexts = contexts
-        .iter()
-        .map(|(_, context)| {
-            Ok((
-                context.name.clone(),
-                extract_context(request_context, context)?,
-            ))
-        })
-        .collect::<Result<_>>()?;
-
-    Ok(Value::Object(mapped_contexts))
-}
-
-fn extract_context(request_context: &RequestContext, context: &ContextType) -> Result<Value> {
-    Ok(Value::Object(
-        context
-            .fields
-            .iter()
-            .map(|field| {
-                let field_value = request_context.extract_context_field_from_source(
-                    &field.source.annotation_name,
-                    &field.source.value,
-                )?;
-                Ok(field_value.map(|value| (field.name.clone(), value)))
-            })
-            .collect::<Result<Vec<_>>>()?
-            .into_iter()
-            .flatten()
-            .collect(),
-    ))
 }

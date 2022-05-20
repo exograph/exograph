@@ -52,7 +52,7 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError>
 
     Ok(ModelSystem {
         types: building.types.values,
-        contexts: building.contexts.values,
+        contexts: building.contexts,
         argument_types: building.argument_types.values,
         order_by_types: building.order_by_types.values,
         predicate_types: building.predicate_types.values,

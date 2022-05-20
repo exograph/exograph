@@ -7,7 +7,8 @@ interface AuthContext {
 }
 
 interface TrackingContext {
-    uid: string
+    uid: string,
+    shouldTrack: boolean
 }
 
 export function getRole(context: AuthContext): string {
@@ -20,6 +21,10 @@ export function getConnectingIp(context: AuthContext): string {
 
 export function getDevModeEnabled(context: AuthContext): boolean {
     return context.devMode == "1"
+}
+
+export function isTrackingEnabled(context: TrackingContext): boolean {
+    return context.shouldTrack
 }
 
 // two separate injected contexts
