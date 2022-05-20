@@ -1,10 +1,12 @@
-pub mod environment;
 pub mod header;
 pub mod jwt;
 
-use payas_server_core::request_context::{BoxedParsedContext, RequestContext};
+use payas_server_core::{
+    request_context::{BoxedParsedContext, RequestContext},
+    OperationsExecutor,
+};
 
-use self::{environment::EnvironmentProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
+use self::{header::HeaderProcessor, jwt::JwtAuthenticator};
 
 pub trait LambdaContextProducer {
     fn parse_context(
@@ -28,15 +30,15 @@ impl LambdaRequestContextProducer {
             producers: vec![
                 Box::new(JwtAuthenticator::new_from_env()),
                 Box::new(HeaderProcessor),
-                Box::new(EnvironmentProcessor),
             ],
         }
     }
 
     /// Generates request context
-    pub fn generate_request_context(
-        &self,
+    pub fn generate_request_context<'a>(
+        &'a self,
         request: &lambda_http::Request,
+        executor: &'a OperationsExecutor,
     ) -> Result<RequestContext, ContextProducerError> {
         let parsed_contexts = self
             .producers
@@ -47,7 +49,10 @@ impl LambdaRequestContextProducer {
             })
             .collect::<Result<Vec<_>, ContextProducerError>>()?; // emit errors if we encounter any while gathering context
 
-        Ok(RequestContext::from_parsed_contexts(parsed_contexts))
+        Ok(RequestContext::from_parsed_contexts(
+            parsed_contexts,
+            executor,
+        ))
     }
 }
 

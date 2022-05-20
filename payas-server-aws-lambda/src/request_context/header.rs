@@ -1,6 +1,10 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use lambda_http::http::HeaderMap;
-use payas_server_core::request_context::{BoxedParsedContext, ParsedContext};
+use payas_server_core::{
+    request_context::{BoxedParsedContext, ParsedContext, RequestContext},
+    OperationsExecutor,
+};
 use serde_json::Value;
 
 use super::LambdaContextProducer;
@@ -22,14 +26,20 @@ struct ParsedHeaderContext {
     headers: HeaderMap,
 }
 
+#[async_trait]
 impl ParsedContext for ParsedHeaderContext {
     fn annotation_name(&self) -> &str {
         "header"
     }
 
-    fn extract_context_field(&self, key: &str) -> Option<Value> {
+    async fn extract_context_field<'e>(
+        &'e self,
+        value: &str,
+        _executor: &'e OperationsExecutor,
+        _request_context: &'e RequestContext<'e>,
+    ) -> Option<Value> {
         self.headers
-            .get(&key.to_ascii_lowercase())
+            .get(&value.to_ascii_lowercase())
             .and_then(|v| v.to_str().ok())
             .map(|str| str.into())
     }
