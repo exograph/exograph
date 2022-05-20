@@ -6,8 +6,17 @@ context AuthContext {
 
 context TrackingContext {
     uid: String @header("X-User-ID")
+
+    // this should be determined by the query `shouldTrack` (as specified through the @query source) 
+    // e.g.
+    // query {
+    //      shouldTrack
+    // }
+    shouldTrack: Boolean @query("shouldTrack")
 }
 
+// A journal model, providing a journal that is queryable by everyone, but can only be
+// mutated if certain conditions are satisfied.
 @access(
     query=true,
     mutation=AuthContext.role == "ADMIN" ||
@@ -19,12 +28,23 @@ model JournalEntry {
     text: String
 } 
 
+// Our example service providing 'tracking' logic. Doesn't actually do very much.
+@external("tracking.ts")
+service TrackingService {
+    // this query will return `true` for all requests EXCEPT when X-Connecting-IP is set to 127.0.0.1
+    query shouldTrack(@inject context: AuthContext): Boolean
+}
+
+// Test queries for direct use in integration tests.
 @external("context_getter.ts")
 service ContextGetter {
-    query getRole(@inject context: AuthContext): String
-    query getConnectingIp(@inject context: AuthContext): String
-    query getDevModeEnabled(@inject context: AuthContext): Boolean
+    export query getRole(@inject context: AuthContext): String
+    export query getConnectingIp(@inject context: AuthContext): String
+    export query getDevModeEnabled(@inject context: AuthContext): Boolean
+
+    // this method simply takes TrackingContext and returns TrackingContext.shouldTrack
+    export query isTrackingEnabled(@inject tracking: TrackingContext): Boolean
 
     // query with two different injected contexts
-    query getRoleAndUid(@inject auth: AuthContext, @inject tracking: TrackingContext): String
+    export query getRoleAndUid(@inject auth: AuthContext, @inject tracking: TrackingContext): String
 }

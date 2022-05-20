@@ -100,12 +100,12 @@ pub struct OperationsPayload {
     name = "payas-server-core::resolve"
     skip(executor, request_context)
     )]
-pub async fn resolve<E>(
+pub async fn resolve<'a, E>(
     executor: &OperationsExecutor,
     operations_payload: OperationsPayload,
-    request_context: RequestContext,
+    request_context: RequestContext<'a>,
 ) -> impl Stream<Item = Result<Bytes, E>> {
-    let response = executor.execute(operations_payload, request_context).await;
+    let response = executor.execute(operations_payload, &request_context).await;
 
     try_stream! {
         macro_rules! report_position {

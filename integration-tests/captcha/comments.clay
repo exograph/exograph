@@ -1,0 +1,10 @@
+import "captcha.clay"
+
+@access(
+    query=true,
+    mutation=CaptchaContext.isValid
+)
+model Comment {
+    id: Int = autoincrement() @pk
+    text: String
+}

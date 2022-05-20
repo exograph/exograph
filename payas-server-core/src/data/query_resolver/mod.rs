@@ -2,6 +2,8 @@ use crate::{execution::operations_context::OperationsContext, validation::field:
 
 use anyhow::{anyhow, bail, Context, Result};
 
+use async_trait::async_trait;
+use futures::StreamExt;
 use payas_model::model::{
     operation::{DatabaseQueryParameter, Interceptors, Query, QueryKind},
     relation::{GqlRelation, RelationCardinality},
@@ -25,15 +27,18 @@ use crate::execution::resolver::GraphQLExecutionError;
 
 // TODO: deal with panics at the type level
 
+#[async_trait]
 impl<'a> OperationResolver<'a> for Query {
-    fn resolve_operation(
+    async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         Ok(match &self.kind {
             QueryKind::Database(_) => {
-                let operation = self.operation(field, AbstractPredicate::True, query_context)?;
+                let operation = self
+                    .operation(field, AbstractPredicate::True, query_context)
+                    .await?;
 
                 OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
             }
@@ -53,6 +58,7 @@ impl<'a> OperationResolver<'a> for Query {
     }
 }
 
+#[async_trait]
 pub trait QuerySQLOperations<'a> {
     fn compute_order_by(
         &'a self,
@@ -72,13 +78,13 @@ pub trait QuerySQLOperations<'a> {
         query_context: &'a OperationsContext<'a>,
     ) -> Option<Offset>;
 
-    fn content_select(
+    async fn content_select(
         &'a self,
         fields: &'a [ValidatedField],
         query_context: &'a OperationsContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>>;
 
-    fn operation(
+    async fn operation(
         &'a self,
         field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
@@ -86,6 +92,7 @@ pub trait QuerySQLOperations<'a> {
     ) -> Result<AbstractSelect<'a>>;
 }
 
+#[async_trait]
 impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_order_by(
         &'a self,
@@ -110,14 +117,16 @@ impl<'a> QuerySQLOperations<'a> for Query {
         }
     }
 
-    fn content_select(
+    async fn content_select(
         &'a self,
         fields: &'a [ValidatedField],
         query_context: &'a OperationsContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>> {
-        fields
-            .iter()
-            .map(|field| map_field(self, field, query_context))
+        futures::stream::iter(fields.iter())
+            .then(|field| async { map_field(self, field, query_context).await })
+            .collect::<Vec<Result<_>>>()
+            .await
+            .into_iter()
             .collect()
     }
 
@@ -167,7 +176,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         }
     }
 
-    fn operation(
+    async fn operation(
         &'a self,
         field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
@@ -182,7 +191,8 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     &self.return_type,
                     &SQLOperationKind::Retrieve,
                     query_context,
-                );
+                )
+                .await;
 
                 if access_predicate == AbstractPredicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
@@ -200,7 +210,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 let predicate = AbstractPredicate::and(predicate, access_predicate);
 
-                let content_object = self.content_select(&field.subfields, query_context)?;
+                let content_object = self.content_select(&field.subfields, query_context).await?;
 
                 // Apply the join logic only for top-level selections
                 let system = query_context.get_system();
@@ -240,7 +250,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     }
 }
 
-fn map_field<'a>(
+async fn map_field<'a>(
     query: &'a Query,
     field: &'a ValidatedField,
     query_context: &'a OperationsContext<'a>,
@@ -283,11 +293,9 @@ fn map_field<'a>(
                     )),
                 };
 
-                let nested_abstract_select = other_table_pk_query.operation(
-                    field,
-                    AbstractPredicate::True,
-                    query_context,
-                )?;
+                let nested_abstract_select = other_table_pk_query
+                    .operation(field, AbstractPredicate::True, query_context)
+                    .await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
             }
             GqlRelation::OneToMany {
@@ -320,8 +328,9 @@ fn map_field<'a>(
                         &system.tables[other_type.table_id().unwrap()],
                     )),
                 };
-                let nested_abstract_select =
-                    other_table_query.operation(field, AbstractPredicate::True, query_context)?;
+                let nested_abstract_select = other_table_query
+                    .operation(field, AbstractPredicate::True, query_context)
+                    .await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
             }
 
