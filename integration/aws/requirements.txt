@@ -1,0 +1,3 @@
+# Python dependencies for lambda_function.py 
+psycopg2-binary
+crhelper

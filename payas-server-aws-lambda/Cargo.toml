@@ -1,0 +1,24 @@
+[package]
+name = "payas-server-aws-lambda"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1.53"
+lambda_http = "0.5.1"
+futures = "0.3"
+jsonwebtoken = "8.0.1"
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.16"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+bytes = "1.1.0"
+tokio = { version = "1", features = ["full"] }
+
+payas-server-core = { path = "../payas-server-core" }
+payas-sql = { path = "../payas-sql" }
+payas-model = { path = "../payas-model" }
+
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"

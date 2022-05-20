@@ -13,3 +13,9 @@ docker/build.sh release
 ```sh
 docker/build.sh debug
 ```
+
+- To build a release version that works with Amazon Linux 2
+
+```sh
+docker/build.sh aws
+```
