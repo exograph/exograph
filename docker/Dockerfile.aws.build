@@ -1,0 +1,6 @@
+## Build setup for Amazon Linux 2 
+## Install NodeJS (needed by tree-sitter and building the GraphiQL app) and tree-sitter
+RUN amazon-linux-extras install epel -y 
+RUN yum -y install curl
+RUN curl -sL https://rpm.nodesource.com/setup_16.x | bash -
+RUN yum install -y file gcc make nodejs rust cargo openssl-devel zlib-devel 
