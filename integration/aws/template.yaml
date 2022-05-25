@@ -116,6 +116,7 @@ Resources:
             Method: post
             RequestParameters:
               - method.request.header.Authorization
+              - method.request.header.Cookie
       Environment:
         Variables:
           CLAY_JWT_SECRET: "abcd"

@@ -1,3 +1,4 @@
+pub mod cookie;
 pub mod header;
 pub mod jwt;
 
