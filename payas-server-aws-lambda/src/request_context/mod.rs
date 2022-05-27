@@ -7,7 +7,7 @@ use payas_server_core::{
     OperationsExecutor,
 };
 
-use self::{header::HeaderProcessor, jwt::JwtAuthenticator};
+use self::{cookie::CookieProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
 
 pub trait LambdaContextProducer {
     fn parse_context(
@@ -29,6 +29,7 @@ impl LambdaRequestContextProducer {
     pub fn new() -> Self {
         Self {
             producers: vec![
+                Box::new(CookieProcessor),
                 Box::new(JwtAuthenticator::new_from_env()),
                 Box::new(HeaderProcessor),
             ],

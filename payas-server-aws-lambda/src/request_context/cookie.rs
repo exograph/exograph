@@ -16,23 +16,28 @@ impl LambdaContextProducer for CookieProcessor {
         &self,
         request: &lambda_http::Request,
     ) -> Result<BoxedParsedContext, ContextProducerError> {
-        let cookies = match request.headers().get("Cookie") {
-            Some(cookie_strings) => {
-                let cookie_strings = cookie_strings
+        let cookies: Vec<Cookie<'static>> = request
+            .headers()
+            .get_all("Cookie")
+            .iter()
+            .map(|cookie_header| {
+                let cookie_strings = cookie_header
                     .to_str()
                     .map_err(|_| ContextProducerError::Malformed)?
                     .split(';');
 
-                cookie_strings
+                Ok(cookie_strings
                     .map(Cookie::parse)
                     .collect::<Result<Vec<Cookie<'_>>, cookie::ParseError>>()
                     .map_err(|_| ContextProducerError::Malformed)?
                     .into_iter()
-                    .map(|cookie| cookie.into_owned())
-                    .collect()
-            }
-            None => vec![],
-        };
+                    .map(Cookie::into_owned)
+                    .collect::<Vec<Cookie<'static>>>())
+            })
+            .collect::<Result<Vec<_>, ContextProducerError>>()?
+            .into_iter()
+            .flatten()
+            .collect();
 
         Ok(Box::new(ParsedCookieContext { cookies }))
     }
