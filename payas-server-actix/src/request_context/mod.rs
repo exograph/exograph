@@ -1,3 +1,4 @@
+pub mod cookie;
 pub mod header;
 pub mod jwt;
 
@@ -7,7 +8,7 @@ use payas_server_core::{
     OperationsExecutor,
 };
 
-use self::{header::HeaderProcessor, jwt::JwtAuthenticator};
+use self::{cookie::CookieProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
 
 pub trait ActixContextProducer {
     fn parse_context(
@@ -29,6 +30,7 @@ impl ActixRequestContextProducer {
     pub fn new() -> ActixRequestContextProducer {
         ActixRequestContextProducer {
             producers: vec![
+                Box::new(CookieProcessor),
                 Box::new(JwtAuthenticator::new_from_env()),
                 Box::new(HeaderProcessor),
             ],

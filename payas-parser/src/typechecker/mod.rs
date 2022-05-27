@@ -151,6 +151,15 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             },
         ),
         (
+            "cookie",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        (
             "dbtype",
             AnnotationSpec {
                 targets: &[AnnotationTarget::Field],

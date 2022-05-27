@@ -1,4 +1,4 @@
-FROM clay-aws:latest as clay-builder
+FROM clay-builder-aws:latest as builder
 
 ARG CLAY_FILE
 
@@ -23,7 +23,7 @@ ARG CLAY_FILE
 ENV CLAYPOT_FILE=${CLAY_FILE}pot
 
 # 3.1 Copy artifacts created in the previous steps
-COPY --from=clay-builder /usr/src/app/bootstrap ./bootstrap
-COPY --from=clay-builder /usr/src/app/${CLAYPOT_FILE} ./index.claypot
-COPY --from=clay-builder /usr/src/app/index.sql ./index.sql
+COPY --from=builder /usr/src/app/bootstrap ./bootstrap
+COPY --from=builder /usr/src/app/${CLAYPOT_FILE} ./index.claypot
+COPY --from=builder /usr/src/app/index.sql ./index.sql
 COPY --from=python-deps-builder /usr/src/python-deps ./python-deps

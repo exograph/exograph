@@ -1,0 +1,16 @@
+headers: |
+    {
+        "Cookie": "foo=bar; session_id=abcde"
+    }
+operation: | 
+    mutation {
+        createJournalEntry(data: {
+            text: "Entry made possible through cookie."
+        }) 
+    }
+response: |
+    {
+      "data": {
+        "createJournalEntry": {}
+      }
+    }

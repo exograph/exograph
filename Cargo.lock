@@ -189,6 +189,7 @@ dependencies = [
  "bytes",
  "bytestring",
  "cfg-if 1.0.0",
+ "cookie",
  "derive_more",
  "encoding_rs",
  "futures-core",
@@ -837,6 +838,17 @@ name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
+
+[[package]]
+name = "cookie"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94d4706de1b0fa5b132270cddffa8585166037822e260a944fe161acd137ca05"
+dependencies = [
+ "percent-encoding",
+ "time 0.3.9",
+ "version_check",
+]
 
 [[package]]
 name = "copyless"
@@ -3301,6 +3313,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "bytes",
+ "cookie",
  "futures",
  "jsonwebtoken",
  "lambda_http",
