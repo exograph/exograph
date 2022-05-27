@@ -1,9 +1,12 @@
+use std::marker::PhantomData;
+
 use futures::pin_mut;
 
 use super::{deno_actor::DenoActor, deno_module::Arg};
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
+use std::fmt::Debug;
 
 /// `DenoExecutor` provides a way to execute a method.
 ///
@@ -12,8 +15,9 @@ use serde_json::Value;
 /// Afterwards, it will kick off the execution by awaiting on the `DenoActor`'s asynchronous `execute` method.
 /// It will concurrently listen and handle requests from DenoActor sent through the channel by calling the
 /// `callback_processor` to resolve callbacks and responding with the final result.
-pub struct DenoExecutor<C, M> {
-    pub(crate) actor: DenoActor<C, M>,
+pub struct DenoExecutor<C, M, R> {
+    pub(crate) actor: DenoActor<C, M, R>,
+    pub(crate) return_type: PhantomData<R>,
 }
 
 #[async_trait]
@@ -26,14 +30,20 @@ impl CallbackProcessor<()> for () {
     async fn process_callback(&self, _req: ()) {}
 }
 
-impl<'a, C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoExecutor<C, M> {
+impl<
+        'a,
+        C: Sync + Send + Debug + 'static,
+        M: Sync + Send + 'static,
+        R: Debug + Sync + Send + 'static,
+    > DenoExecutor<C, M, R>
+{
     pub(super) async fn execute(
         &self,
         method_name: &str,
         arguments: Vec<Arg>,
         call_context: C,
         callback_processor: impl CallbackProcessor<M>,
-    ) -> Result<Value> {
+    ) -> Result<(Value, Option<R>)> {
         // set up a channel for Deno to talk to use through
         let (to_user_sender, mut to_user_receiver) = tokio::sync::mpsc::channel(1);
 
@@ -55,7 +65,7 @@ impl<'a, C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> D
             tokio::select! {
                 msg = on_recv_request => {
                     // handle requests from Deno for data
-                    callback_processor. process_callback(msg.expect("Channel was dropped before operation completion")).await;
+                    callback_processor.process_callback(msg.expect("Channel was dropped before operation completion")).await;
                 }
 
                 final_result = &mut on_function_result => {

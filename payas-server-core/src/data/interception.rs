@@ -1,6 +1,9 @@
-use crate::deno_integration::{
-    ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,
-    InterceptedOperationName,
+use crate::{
+    deno_integration::{
+        clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
+        FnClaytipInterceptorProceed, InterceptedOperationName,
+    },
+    execution::operations_context::QueryResponseBody,
 };
 use async_recursion::async_recursion;
 use futures::FutureExt;
@@ -194,31 +197,23 @@ impl<'a> InterceptedOperation<'a> {
                 core,
                 interceptor,
             } => {
-                let res = execute_interceptor(
+                let (result, response) = execute_interceptor(
                     interceptor,
                     query_context,
                     super::claytip_execute_query!(query_context),
                     Some(operation_name.to_string()),
-                    Some(&|| {
-                        async move {
-                            core.execute(field, query_context).await.map(
-                                |response| match response {
-                                    QueryResponse::Json(json) => json,
-                                    QueryResponse::Raw(string) => match string {
-                                        Some(string) => serde_json::Value::String(string),
-                                        None => serde_json::Value::Null,
-                                    },
-                                },
-                            )
-                        }
-                        .boxed()
-                    }),
+                    Some(&|| async move { core.execute(field, query_context).await }.boxed()),
                 )
                 .await?;
-                match res {
-                    serde_json::Value::String(value) => Ok(QueryResponse::Raw(Some(value))),
-                    _ => Ok(QueryResponse::Json(res)),
-                }
+                let body = match result {
+                    serde_json::Value::String(value) => QueryResponseBody::Raw(Some(value)),
+                    _ => QueryResponseBody::Json(result),
+                };
+
+                Ok(QueryResponse {
+                    body,
+                    headers: response.map(|r| r.headers).unwrap_or_default(),
+                })
             }
 
             InterceptedOperation::Plain { resolver_result } => {
@@ -234,7 +229,7 @@ async fn execute_interceptor<'a>(
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     operation_name: Option<String>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-) -> Result<serde_json::Value> {
+) -> Result<(Value, Option<ClaytipMethodResponse>)> {
     let script = &query_context.system.deno_scripts[interceptor.script];
     let arg_sequence = interceptor
         .arguments
@@ -259,7 +254,7 @@ async fn execute_interceptor<'a>(
     query_context
         .executor
         .deno_execution_pool
-        .execute(
+        .execute_and_get_r(
             &script.path,
             &script.script,
             &interceptor.name,

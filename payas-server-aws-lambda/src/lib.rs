@@ -34,7 +34,7 @@ pub async fn resolve(
 
             match operations_payload {
                 Ok(operations_payload) => {
-                    let stream = payas_server_core::resolve::<Error>(
+                    let (stream, headers) = payas_server_core::resolve::<Error>(
                         &executor,
                         operations_payload,
                         request_context,
@@ -56,10 +56,15 @@ pub async fn resolve(
                         .expect("Response stream is not UTF-8")
                         .to_string();
 
-                    Ok(Response::builder()
-                        .status(StatusCode::OK)
-                        .header("Content-Type", "application/json")
-                        .body(body_string)?)
+                    let mut builder = Response::builder();
+                    builder = builder.status(StatusCode::OK);
+                    builder = builder.header("Content-Type", "application/json");
+
+                    for header in headers.iter() {
+                        builder = builder.header(&header.0, &header.1)
+                    }
+
+                    Ok(builder.body(body_string)?)
                 }
                 Err(_) => Ok(Response::builder()
                     .status(StatusCode::BAD_REQUEST)

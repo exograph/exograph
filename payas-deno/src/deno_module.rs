@@ -280,6 +280,16 @@ impl DenoModule {
         self.worker.js_runtime.op_state().try_borrow_mut()?.put(val);
         Ok(())
     }
+
+    /// Try to take a single instance of a type from Deno's op_state
+    pub fn take<T: 'static>(&mut self) -> Result<Option<T>> {
+        Ok(self
+            .worker
+            .js_runtime
+            .op_state()
+            .try_borrow_mut()?
+            .try_take())
+    }
 }
 
 /// Set of shared resources between DenoModules.

@@ -31,16 +31,21 @@ pub async fn resolve(
 
             match operations_payload {
                 Ok(operations_payload) => {
-                    let stream = payas_server_core::resolve::<Error>(
+                    let (stream, headers) = payas_server_core::resolve::<Error>(
                         executor.as_ref(),
                         operations_payload,
                         request_context,
                     )
                     .await;
 
-                    HttpResponse::Ok()
-                        .content_type("application/json")
-                        .streaming(Box::pin(stream))
+                    let mut builder = HttpResponse::Ok();
+                    builder.content_type("application/json");
+
+                    for header in headers.into_iter() {
+                        builder.append_header(header);
+                    }
+
+                    builder.streaming(Box::pin(stream))
                 }
                 Err(_) => {
                     return HttpResponse::BadRequest().body(error_msg!("Invalid query payload"));

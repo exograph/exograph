@@ -5,7 +5,9 @@ use serde_json::Value;
 use std::{cell::RefCell, rc::Rc};
 use tokio::sync::mpsc::Sender;
 
-use super::clay_execution::{RequestFromDenoMessage, ResponseForDenoMessage};
+use super::clay_execution::{
+    ClaytipMethodResponse, RequestFromDenoMessage, ResponseForDenoMessage,
+};
 
 #[derive(Debug)]
 pub struct InterceptedOperationName(pub String);
@@ -16,7 +18,7 @@ pub async fn op_claytip_execute_query(
     query_string: Value,
     variables: Option<Value>,
 ) -> Result<Value, AnyError> {
-    let state = state.borrow();
+    let mut state = state.borrow_mut();
     let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
 
@@ -42,7 +44,13 @@ pub async fn op_claytip_execute_query(
             )
         })?
     {
-        result
+        let result = result?;
+
+        for (header, value) in result.headers.into_iter() {
+            add_header(&mut state, header, value)?
+        }
+
+        Ok(result.body.to_json()?)
     } else {
         bail!("Wrong response type for op_claytip_execute_query")
     }
@@ -60,7 +68,7 @@ pub fn op_intercepted_operation_name(state: &mut OpState) -> Result<String, AnyE
 
 #[op]
 pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, AnyError> {
-    let state = state.borrow();
+    let mut state = state.borrow_mut();
     let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
 
@@ -82,8 +90,39 @@ pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value
             )
         })?
     {
-        result
+        let result = result?;
+
+        for (header, value) in result.headers.into_iter() {
+            add_header(&mut state, header, value)?
+        }
+
+        Ok(result.body.to_json()?)
     } else {
         bail!("Wrong response type for op_intercepted_proceed")
     }
+}
+
+// add a header to ClaytipMethodResponse;
+// this is eventually returned to Claytip through execute_and_get_r
+pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<(), AnyError> {
+    // get response object out of GothamStorage
+    // if no object exists, create one
+    let mut response = if let Some(resp @ ClaytipMethodResponse { .. }) = state.try_take() {
+        resp
+    } else {
+        ClaytipMethodResponse::default()
+    };
+
+    // add header
+    response.headers.push((header, value));
+
+    // put back response object
+    state.put(response);
+
+    Ok(())
+}
+
+#[op]
+pub fn op_add_header(state: &mut OpState, header: String, value: String) -> Result<(), AnyError> {
+    add_header(state, header, value)
 }

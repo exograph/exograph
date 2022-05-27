@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 use deno_core::Extension;
 use serde_json::Value;
@@ -11,10 +11,12 @@ use super::{
     deno_executor::{CallbackProcessor, DenoExecutor},
     deno_module::{DenoModule, DenoModuleSharedState, UserCode},
 };
-use anyhow::Result;
 
-type DenoActorPoolMap<C, M> = HashMap<String, DenoActorPool<C, M>>;
-type DenoActorPool<C, M> = Vec<DenoActor<C, M>>;
+use anyhow::Result;
+use std::fmt::Debug;
+
+type DenoActorPoolMap<C, M, R> = HashMap<String, DenoActorPool<C, M, R>>;
+type DenoActorPool<C, M, R> = Vec<DenoActor<C, M, R>>;
 
 pub struct DenoExecutorConfig<C> {
     user_agent_name: &'static str,
@@ -62,15 +64,22 @@ impl<C> DenoExecutorConfig<C> {
 /// # Type Parameters
 /// - `C`: The type of the call context (for example, Option<InterceptedOperationName>). This object
 ///        is set into the `DenoModule`s GothamState and may be resolved synchronously or asynchronously.
-/// - `M`: The type of the callback message
+/// - `M`: The type of the callback message.
+/// - `R`: An opaque return type to also return from GothamStorage with each method execution. Useful for
+///        returning out-of-band information that should not be a part of the return value.
 ///               ...
-pub struct DenoExecutorPool<C, M> {
+pub struct DenoExecutorPool<C, M, R> {
     config: DenoExecutorConfig<C>,
-
-    actor_pool_map: Arc<Mutex<DenoActorPoolMap<C, M>>>,
+    actor_pool_map: Arc<Mutex<DenoActorPoolMap<C, M, R>>>,
+    return_type: PhantomData<R>,
 }
 
-impl<C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoExecutorPool<C, M> {
+impl<
+        C: Sync + Send + Debug + 'static,
+        M: Sync + Send + 'static,
+        R: Sync + Send + Debug + 'static,
+    > DenoExecutorPool<C, M, R>
+{
     pub fn new(
         user_agent_name: &'static str,
         shims: Vec<(&'static str, &'static str)>,
@@ -95,9 +104,11 @@ impl<C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoE
         Self {
             config,
             actor_pool_map: Arc::new(Mutex::new(DenoActorPoolMap::default())),
+            return_type: PhantomData,
         }
     }
 
+    // Execute a method and obtain its result
     pub async fn execute(
         &self,
         script_path: &str,
@@ -107,6 +118,29 @@ impl<C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoE
         call_context: C,
         callback_processor: impl CallbackProcessor<M>,
     ) -> Result<Value> {
+        let (result, _) = self
+            .execute_and_get_r(
+                script_path,
+                script,
+                method_name,
+                arguments,
+                call_context,
+                callback_processor,
+            )
+            .await?;
+        Ok(result)
+    }
+
+    // execute(...), but also return R from Deno's GothamStorage
+    pub async fn execute_and_get_r(
+        &self,
+        script_path: &str,
+        script: &str,
+        method_name: &str,
+        arguments: Vec<Arg>,
+        call_context: C,
+        callback_processor: impl CallbackProcessor<M>,
+    ) -> Result<(Value, Option<R>)> {
         let executor = self.get_executor(script_path, script).await?;
         executor
             .execute(method_name, arguments, call_context, callback_processor)
@@ -114,7 +148,7 @@ impl<C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoE
     }
 
     // TODO: look at passing a fn pointer struct as an argument
-    async fn get_executor(&self, script_path: &str, script: &str) -> Result<DenoExecutor<C, M>> {
+    async fn get_executor(&self, script_path: &str, script: &str) -> Result<DenoExecutor<C, M, R>> {
         // find or allocate a free actor in our pool
         let actor = {
             let mut actor_pool_map = self.actor_pool_map.lock().await;
@@ -136,10 +170,13 @@ impl<C: Sync + Send + std::fmt::Debug + 'static, M: Sync + Send + 'static> DenoE
             }
         };
 
-        Ok(DenoExecutor { actor })
+        Ok(DenoExecutor {
+            actor,
+            return_type: self.return_type,
+        })
     }
 
-    fn create_actor(&self, script_path: &str, script: &str) -> Result<DenoActor<C, M>> {
+    fn create_actor(&self, script_path: &str, script: &str) -> Result<DenoActor<C, M, R>> {
         DenoActor::new(
             UserCode::LoadFromMemory {
                 path: script_path.to_owned(),
@@ -169,7 +206,7 @@ mod tests {
         let module_path = "test_js/direct.js";
         let module_script = include_str!("test_js/direct.js");
 
-        let executor_pool = DenoExecutorPool::new(
+        let executor_pool = DenoExecutorPool::<(), (), ()>::new(
             "PayasDenoTest",
             vec![],
             vec![],
@@ -213,7 +250,7 @@ mod tests {
         let mut handles = vec![];
 
         async fn execute_function(
-            pool: &DenoExecutorPool<(), ()>,
+            pool: &DenoExecutorPool<(), (), ()>,
             script_path: &str,
             script: &str,
             method_name: &str,

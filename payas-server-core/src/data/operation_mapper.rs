@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::deno_integration::{ClayCallbackProcessor, FnClaytipExecuteQuery};
+use crate::execution::operations_context::QueryResponseBody;
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use futures::FutureExt;
@@ -192,17 +193,22 @@ impl<'a> OperationResolverResult<'a> {
                     .execute(abstract_operation)
                     .await?;
 
-                if result.len() == 1 {
+                let body: Result<QueryResponseBody> = if result.len() == 1 {
                     let string_result = extractor(result.swap_remove(0))?;
-                    Ok(QueryResponse::Raw(Some(string_result)))
+                    Ok(QueryResponseBody::Raw(Some(string_result)))
                 } else if result.is_empty() {
-                    Ok(QueryResponse::Raw(None))
+                    Ok(QueryResponseBody::Raw(None))
                 } else {
                     bail!(format!(
                         "Result has {} entries; expected only zero or one",
                         result.len()
                     ))
-                }
+                };
+
+                Ok(QueryResponse {
+                    body: body?,
+                    headers: vec![], // we shouldn't get any HTTP headers from a SQL op
+                })
             }
 
             OperationResolverResult::DenoOperation(method_id) => {
@@ -223,7 +229,6 @@ impl<'a> OperationResolverResult<'a> {
                     query_context,
                 )
                 .await
-                .map(QueryResponse::Json)
             }
         }
     }
@@ -234,7 +239,7 @@ async fn resolve_deno<'a>(
     field: &ValidatedField,
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     query_context: &OperationsContext<'_>,
-) -> Result<serde_json::Value> {
+) -> Result<QueryResponse> {
     let script = &query_context.system.deno_scripts[method.script];
     let system = query_context.get_system();
 
@@ -298,10 +303,10 @@ async fn resolve_deno<'a>(
         claytip_proceed: None,
     };
 
-    let function_result = query_context
+    let (result, response) = query_context
         .executor
         .deno_execution_pool
-        .execute(
+        .execute_and_get_r(
             &script.path,
             &script.script,
             &method.name,
@@ -311,16 +316,19 @@ async fn resolve_deno<'a>(
         )
         .await?;
 
-    let result = if let serde_json::Value::Object(_) = function_result {
-        let resolved_set = function_result
+    let result = if let serde_json::Value::Object(_) = result {
+        let resolved_set = result
             .resolve_fields(query_context, &field.subfields)
             .await?;
         serde_json::Value::Object(resolved_set.into_iter().collect())
     } else {
-        function_result
+        result
     };
 
-    Ok(result)
+    Ok(QueryResponse {
+        body: QueryResponseBody::Json(result),
+        headers: response.map(|r| r.headers).unwrap_or_default(),
+    })
 }
 
 fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
