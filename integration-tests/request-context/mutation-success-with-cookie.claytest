@@ -5,7 +5,7 @@ headers: |
 operation: | 
     mutation {
         createJournalEntry(data: {
-            text: "Entry made possible through environment variable."
+            text: "Entry made possible through cookie."
         }) 
     }
 response: |
