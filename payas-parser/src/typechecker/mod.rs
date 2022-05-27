@@ -409,11 +409,14 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
 
 #[cfg(test)]
 pub mod test_support {
+    use codemap::CodeMap;
+
     use super::*;
     use crate::parser::parse_str;
 
     pub fn build(src: &str) -> Result<MappedArena<Type>, ParserError> {
-        let parsed = parse_str(src, "input.clay")?;
+        let mut codemap = CodeMap::new();
+        let parsed = parse_str(src, &mut codemap, "input.clay")?;
         super::build(parsed)
     }
 

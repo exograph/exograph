@@ -20,11 +20,11 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
         model_file.as_ref().to_str().unwrap().to_string(),
         file_content,
     );
-    let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
-    parser::parse_file(&model_file)
+    parser::parse_file(&model_file, &mut codemap)
         .and_then(builder::build)
         .map_err(|err| {
+            let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
             if let ParserError::Diagnosis(err) = err {
                 emitter.emit(&err);
                 ParserError::Generic("Failed to parse input file".to_string())
@@ -42,11 +42,12 @@ pub fn build_system_from_str(
 ) -> Result<ModelSystem, ParserError> {
     let mut codemap = CodeMap::new();
     codemap.add_file(file_name.clone(), model_str.to_string());
-    let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 
-    parser::parse_str(model_str, &file_name)
+    parser::parse_str(model_str, &mut codemap, &file_name)
         .and_then(builder::build)
         .map_err(|err| {
+            let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
+
             if let ParserError::Diagnosis(err) = err {
                 emitter.emit(&err);
                 ParserError::Generic("Failed to parse input file".to_string())

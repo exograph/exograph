@@ -140,6 +140,7 @@ pub struct SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
+    use codemap::CodeMap;
     use payas_model::model::mapped_arena::SerializableSlab;
     use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
@@ -360,7 +361,8 @@ mod tests {
     }
 
     fn create_system(src: &str) -> ModelSystem {
-        let parsed = parser::parse_str(src, "input.clay").unwrap();
+        let mut codemap = CodeMap::new();
+        let parsed = parser::parse_str(src, &mut codemap, "input.clay").unwrap();
         build(parsed).unwrap()
     }
 }
