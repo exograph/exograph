@@ -25,13 +25,17 @@ fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
     source_span.subspan(node.start_byte() as u64, node.end_byte() as u64)
 }
 
-pub fn parse_file<P: AsRef<Path>>(input_file: P) -> Result<AstSystem<Untyped>, ParserError> {
+pub fn parse_file<P: AsRef<Path>>(
+    input_file: P,
+    codemap: &mut CodeMap,
+) -> Result<AstSystem<Untyped>, ParserError> {
     let mut already_parsed = vec![];
-    _parse_file(input_file, &mut already_parsed)
+    _parse_file(input_file, codemap, &mut already_parsed)
 }
 
 fn _parse_file<P: AsRef<Path>>(
     input_file: P,
+    codemap: &mut CodeMap,
     already_parsed: &mut Vec<PathBuf>,
 ) -> Result<AstSystem<Untyped>, ParserError> {
     let input_file_path = Path::new(input_file.as_ref());
@@ -40,16 +44,19 @@ fn _parse_file<P: AsRef<Path>>(
             input_file.as_ref().display().to_string(),
         ));
     }
+
+    let input_file_path = input_file_path.canonicalize()?;
+
     let source = fs::read_to_string(input_file.as_ref())?;
-    let mut system = parse_str(&source, input_file_path)?;
+    let mut system = parse_str(&source, codemap, &input_file_path)?;
 
     // add to already parsed list since we're parsing it currently
-    already_parsed.push(input_file_path.to_path_buf().canonicalize()?);
+    already_parsed.push(input_file_path);
 
     for import in system.imports.iter() {
         if !already_parsed.contains(import) {
             // parse import
-            let mut imported_system = _parse_file(import, already_parsed)?;
+            let mut imported_system = _parse_file(import, codemap, already_parsed)?;
 
             // merge import into system
             system.models.append(&mut imported_system.models);
@@ -62,9 +69,9 @@ fn _parse_file<P: AsRef<Path>>(
 
 pub fn parse_str<P: AsRef<Path>>(
     source: &str,
+    codemap: &mut CodeMap,
     input_file_name: P,
 ) -> Result<AstSystem<Untyped>, ParserError> {
-    let mut codemap = CodeMap::new();
     let source_span = codemap
         .add_file(
             input_file_name.as_ref().to_str().unwrap().to_string(),
