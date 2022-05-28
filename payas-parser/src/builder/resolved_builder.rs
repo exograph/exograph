@@ -1444,6 +1444,8 @@ fn field_cardinality(field_type: &AstFieldType<Typed>) -> Cardinality {
 
 #[cfg(test)]
 mod tests {
+    use codemap::CodeMap;
+
     use super::*;
     use crate::{parser, typechecker};
     use std::fs::File;
@@ -1700,7 +1702,8 @@ mod tests {
     }
 
     fn create_resolved_system(src: &str) -> Result<ResolvedSystem, ParserError> {
-        let parsed = parser::parse_str(src, "input.clay")?;
+        let mut codemap = CodeMap::new();
+        let parsed = parser::parse_str(src, &mut codemap, "input.clay")?;
         let types = typechecker::build(parsed)?;
         build(types)
     }
