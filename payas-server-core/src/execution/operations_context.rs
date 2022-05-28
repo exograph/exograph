@@ -288,6 +288,10 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
 
         PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
 
+        PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
+            cast_string(string, ref_pk_type)?
+        }
+
         _ => Box::new(string.to_owned()),
     };
 
