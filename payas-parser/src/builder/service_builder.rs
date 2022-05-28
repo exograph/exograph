@@ -1,7 +1,7 @@
 use payas_model::model::{
     access::Access,
     argument::ArgumentParameter,
-    interceptor::{Interceptor, InterceptorArgument, InterceptorKind},
+    interceptor::{Interceptor, InterceptorKind},
     mapped_arena::{MappedArena, SerializableSlabIndex},
     operation::{Interceptors, Mutation, MutationKind, OperationReturnType, Query, QueryKind},
     service::{Argument, Script, ServiceMethod, ServiceMethodType},
@@ -244,13 +244,14 @@ pub fn create_shallow_intercetor(
             arguments: resolved_interceptor
                 .arguments
                 .iter()
-                .map(|arg| InterceptorArgument {
+                .map(|arg| Argument {
                     name: arg.name.clone(),
                     type_id: building
                         .types
                         .get_id(arg.typ.get_underlying_typename())
                         .unwrap(),
                     modifier: arg.typ.get_modifier(),
+                    is_injected: true, // implicitly set is_injected for interceptors
                 })
                 .collect(),
         },
