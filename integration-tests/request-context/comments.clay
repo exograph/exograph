@@ -30,6 +30,12 @@ model JournalEntry {
     text: String
 } 
 
+@external("cookie.ts")
+service CookieService {
+    // Sets a session cookie on the client
+    export query getCookie(@inject claytip: Claytip): Boolean
+}
+
 // Our example service providing 'tracking' logic. Doesn't actually do very much.
 @external("tracking.ts")
 service TrackingService {

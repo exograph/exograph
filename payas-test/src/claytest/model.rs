@@ -1,32 +1,39 @@
 use crate::claytest::dbutils::dropdb_psql;
 use anyhow::Error;
-use std::{fmt, process::Child};
+use isahc::HttpClient;
+use std::{
+    collections::HashMap,
+    fmt,
+    process::Child,
+    sync::{Arc, Mutex},
+};
 
 /// Structure to hold open resources associated with a running testfile.
 /// When dropped, we will clean them up.
-#[derive(Default)]
 pub struct TestfileContext {
-    pub dbname: Option<String>,
-    pub dburl: Option<String>,
-    pub server: Option<Child>,
+    pub dbname: String,
+    pub dburl: String,
+    pub server: Child,
+    pub endpoint: String,
+    pub jwtsecret: String,
+    pub client: HttpClient,
+    pub testvariables: HashMap<String, serde_json::Value>,
+    pub output_mutex: Arc<Mutex<String>>,
 }
 
 impl Drop for TestfileContext {
     fn drop(&mut self) {
         // kill the started server
-        if let Some(server) = &mut self.server {
-            if let e @ Err(_) = server.kill() {
-                println!("Error killing server instance: {:?}", e)
-            }
+        if let e @ Err(_) = self.server.kill() {
+            println!("Error killing server instance: {:?}", e)
         }
 
         // drop the database
-        if let Some(dburl) = &self.dburl {
-            if let Some(dbname) = &self.dbname {
-                if let e @ Err(_) = dropdb_psql(dbname, dburl) {
-                    println!("Error dropping {} using {}: {:?}", dbname, dburl, e)
-                }
-            }
+        if let e @ Err(_) = dropdb_psql(&self.dbname, &self.dburl) {
+            println!(
+                "Error dropping {} using {}: {:?}",
+                self.dbname, self.dburl, e
+            )
         }
     }
 }
