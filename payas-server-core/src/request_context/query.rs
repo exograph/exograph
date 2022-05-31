@@ -40,7 +40,7 @@ impl ParsedContext for QueryExtractor {
         });
 
         Some(
-            query_result.to_json().expect(
+            query_result.body.to_json().expect(
                 "Could not convert query result into JSON during @query context processing",
             ),
         )

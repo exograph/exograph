@@ -13,8 +13,20 @@ use crate::{
 static CLAYTIP_D_TS: &str = r#"
 interface Claytip {
   executeQuery(query: string, variable?: { [key: string]: any }): Promise<any>;
+  addResponseHeader(name: string, value: string ): Promise<void>;
+  setCookie(cookie: {
+    name: string,
+    value: string,
+    expires: Date,
+    maxAge: number,
+    domain: string,
+    path: string,
+    secure: boolean,
+    httpOnly: boolean,
+    sameSite: "Lax" | "Strict" | "None"
+  }): Promise<void>;
 }
-
+ 
 interface Operation {
   name(): Promise<string>;
   proceed<T>(): Promise<T>;

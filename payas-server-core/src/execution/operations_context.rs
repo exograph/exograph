@@ -42,16 +42,22 @@ pub struct OperationsContext<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub enum QueryResponse {
+pub struct QueryResponse {
+    pub body: QueryResponseBody,
+    pub headers: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone)]
+pub enum QueryResponseBody {
     Json(JsonValue),
     Raw(Option<String>),
 }
 
-impl QueryResponse {
+impl QueryResponseBody {
     pub fn to_json(&self) -> Result<JsonValue> {
         match &self {
-            QueryResponse::Json(val) => Ok(val.clone()),
-            QueryResponse::Raw(raw) => {
+            QueryResponseBody::Json(val) => Ok(val.clone()),
+            QueryResponseBody::Raw(raw) => {
                 if let Some(raw) = raw {
                     Ok(serde_json::from_str(raw)?)
                 } else {
@@ -340,12 +346,13 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
         let name = field.name.as_str();
 
         if name.starts_with("__") {
-            if operations_context.executor.allow_introspection {
+            let body: Result<QueryResponseBody> = if operations_context.executor.allow_introspection
+            {
                 match name {
-                    "__type" => Ok(QueryResponse::Json(
+                    "__type" => Ok(QueryResponseBody::Json(
                         operations_context.resolve_type(field).await?,
                     )),
-                    "__schema" => Ok(QueryResponse::Json(
+                    "__schema" => Ok(QueryResponseBody::Json(
                         operations_context
                             .schema
                             .resolve_value(operations_context, &field.subfields)
@@ -357,13 +364,20 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
                             OperationType::Mutation => MUTATION_ROOT_TYPENAME,
                             OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
                         };
-                        Ok(QueryResponse::Json(JsonValue::String(typename.to_string())))
+                        Ok(QueryResponseBody::Json(JsonValue::String(
+                            typename.to_string(),
+                        )))
                     }
                     _ => bail!("No such introspection field {}", name),
                 }
             } else {
                 bail!("Introspection is not allowed");
-            }
+            };
+
+            Ok(QueryResponse {
+                body: body?,
+                headers: vec![],
+            })
         } else {
             operations_context
                 .system

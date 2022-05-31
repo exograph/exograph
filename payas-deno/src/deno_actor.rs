@@ -2,7 +2,9 @@ use anyhow::{anyhow, Result};
 use deno_core::Extension;
 use futures::pin_mut;
 use serde_json::Value;
+use std::fmt::Debug;
 use std::{
+    marker::PhantomData,
     panic,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -17,12 +19,12 @@ use tracing::instrument;
 
 use crate::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
-struct DenoCall<C> {
+struct DenoCall<C, R> {
     method_name: String,
     arguments: Vec<Arg>,
     call_context: C,
     /// The sender to communicate the final result
-    final_response_sender: oneshot::Sender<Result<Value>>,
+    final_response_sender: oneshot::Sender<Result<(Value, Option<R>)>>,
 }
 
 /// An actor-like wrapper for `DenoModule`.
@@ -61,18 +63,22 @@ struct DenoCall<C> {
 /// * `C` - The type of the call context. Call context is any value (such as the name of the current
 ///   operation) that the message processing may need
 /// * `M` - The type of the message that the actor will receive.
-pub(crate) struct DenoActor<C, M> {
+/// * `R` - An opaque, optional, out-of-band type to also return with the method result. This type is
+///         extracted from Deno's GothamStorage. Useful for returning information from #[op] blocks.
+pub(crate) struct DenoActor<C, M, R> {
     // Receiver to poll for callback messages such as `proceed` or `executeQuery`.
     callback_receiver: Arc<Mutex<Receiver<M>>>,
     // Sender to ask the actor to execute a JS/TS call. The actor will poll for messages on the corresponding receiver.
-    call_sender: Sender<DenoCall<C>>,
+    call_sender: Sender<DenoCall<C, R>>,
     busy: Arc<std::sync::atomic::AtomicBool>,
+    return_type: PhantomData<R>,
 }
 
-impl<C, M> DenoActor<C, M>
+impl<C, M, R> DenoActor<C, M, R>
 where
     C: Sync + Send + std::fmt::Debug + 'static, // Call context
     M: Sync + Send + 'static,                   // Message from Deno
+    R: Debug + Sync + Send + 'static,           // OOB Return value
 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -84,7 +90,7 @@ where
         explicit_error_class_name: Option<&'static str>,
         shared_state: DenoModuleSharedState,
         process_call_context: fn(&mut DenoModule, C) -> (),
-    ) -> Result<DenoActor<C, M>> {
+    ) -> Result<DenoActor<C, M, R>> {
         let (callback_sender, callback_receiver) = tokio::sync::mpsc::channel(1);
 
         // we will receive DenoCall messages through this channel from call_method
@@ -143,15 +149,19 @@ where
                     };
 
                     busy_clone.store(true, Ordering::Relaxed); // mark DenoActor as busy
+                    let _: Option<R> = deno_module.take().expect("take() should not have failed"); // clear any existing R from GothamStorage
 
                     process_call_context(&mut deno_module, call_context);
 
                     // execute function
                     let result = deno_module.execute_function(&method_name, arguments).await;
 
+                    // take R from GothamStorage
+                    let r: Option<R> = deno_module.take().expect("take() should not have failed");
+
                     // send result of the Deno function back to call_method
                     final_response_sender
-                        .send(result)
+                        .send(result.map(|result| (result, r)))
                         .expect("Could not send result in DenoActor thread");
 
                     busy_clone.store(false, Ordering::Relaxed); // unmark DenoActor as busy
@@ -163,6 +173,7 @@ where
             callback_receiver: Arc::new(Mutex::new(callback_receiver)),
             call_sender: deno_call_sender,
             busy,
+            return_type: PhantomData,
         })
     }
 
@@ -191,7 +202,7 @@ where
         arguments: Vec<Arg>,
         call_context: C,
         callback_sender: tokio::sync::mpsc::Sender<M>,
-    ) -> Result<Value> {
+    ) -> Result<(Value, Option<R>)> {
         // Channel to communicate the final result
         let (final_response_sender, final_result_receiver) = oneshot::channel();
 
@@ -236,12 +247,13 @@ where
 }
 
 // Need to manually implement `Clone` due to https://github.com/rust-lang/rust/issues/26925
-impl<C, M> Clone for DenoActor<C, M> {
+impl<C, M, R> Clone for DenoActor<C, M, R> {
     fn clone(&self) -> Self {
         DenoActor {
             callback_receiver: self.callback_receiver.clone(),
             call_sender: self.call_sender.clone(),
             busy: self.busy.clone(),
+            return_type: PhantomData,
         }
     }
 }
@@ -258,7 +270,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_actor() {
-        let actor: DenoActor<(), ()> = DenoActor::new(
+        let actor: DenoActor<(), (), ()> = DenoActor::new(
             UserCode::LoadFromFs(Path::new("src/test_js/direct.js").to_path_buf()),
             USER_AGENT_NAME,
             vec![],
@@ -272,15 +284,16 @@ mod tests {
 
         let (to_user_sender, _to_user_receiver) = channel(1);
 
-        let res = actor
+        let (res, _) = actor
             .execute(
                 "addAndDouble".to_string(),
-                vec![Arg::Serde(2.into()), Arg::Serde(3.into())],
+                vec![Arg::Serde(2_i32.into()), Arg::Serde(3_i32.into())],
                 (),
                 to_user_sender,
             )
-            .await;
+            .await
+            .unwrap();
 
-        assert_eq!(res.unwrap(), 10);
+        assert_eq!(res, 10);
     }
 }
