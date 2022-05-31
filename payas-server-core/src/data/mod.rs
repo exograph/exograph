@@ -129,6 +129,7 @@ macro_rules! claytip_execute_query {
         Some(
             &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
                 async move {
+                    // execute query
                     let result = $query_context
                         .executor
                         .execute_with_request_context(
@@ -139,12 +140,27 @@ macro_rules! claytip_execute_query {
                             },
                             $query_context.request_context.clone(),
                         )
-                        .await?
+                        .await?;
+
+                    // collate result into a single QueryResponse
+
+                    // since query execution results in a Vec<(String, QueryResponse)>, we want to
+                    // extract and collect all HTTP headers generated in QueryResponses
+                    let headers = result
+                        .iter()
+                        .flat_map(|(_, response)| response.headers.clone())
+                        .collect::<Vec<_>>();
+
+                    // generate the body
+                    let body = result
                         .into_iter()
-                        .map(|(name, response)| (name, response.to_json().unwrap()))
+                        .map(|(name, response)| (name, response.body.to_json().unwrap()))
                         .collect::<Map<_, _>>();
 
-                    Ok(serde_json::Value::Object(result))
+                    Ok(QueryResponse {
+                        body: QueryResponseBody::Json(serde_json::Value::Object(body)),
+                        headers,
+                    })
                 }
                 .boxed()
             },

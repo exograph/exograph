@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufReader, path::Path};
+use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 
 /// Provides core functionality for handling incoming queries without depending
 /// on any specific web framework.
@@ -11,7 +11,6 @@ use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
 use error::ExecutionError;
-use execution::operations_context::QueryResponse;
 pub use execution::operations_executor::OperationsExecutor;
 use futures::Stream;
 use introspection::schema::Schema;
@@ -22,6 +21,8 @@ use request_context::RequestContext;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use tracing::instrument;
+
+use crate::execution::operations_context::QueryResponseBody;
 
 mod data;
 mod deno_integration;
@@ -89,8 +90,10 @@ pub struct OperationsPayload {
     variables: Option<Map<String, Value>>,
 }
 
-/// Resolves an incoming query, returning a response stream which containing
-/// JSON which can either be the data returned by the query, or a list of errors
+pub type Headers = Vec<(String, String)>;
+
+/// Resolves an incoming query, returning a response stream containing JSON and a set
+/// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
 /// if something went wrong.
 ///
 /// In a typical use case (for example payas-server-actix), the caller will
@@ -100,14 +103,23 @@ pub struct OperationsPayload {
     name = "payas-server-core::resolve"
     skip(executor, request_context)
     )]
-pub async fn resolve<'a, E>(
+pub async fn resolve<'a, E: 'static>(
     executor: &OperationsExecutor,
     operations_payload: OperationsPayload,
     request_context: RequestContext<'a>,
-) -> impl Stream<Item = Result<Bytes, E>> {
+) -> (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers) {
     let response = executor.execute(operations_payload, &request_context).await;
 
-    try_stream! {
+    let headers = if let Ok(ref response) = response {
+        response
+            .iter()
+            .flat_map(|(_, qr)| qr.headers.clone())
+            .collect()
+    } else {
+        vec![]
+    };
+
+    let stream = try_stream! {
         macro_rules! report_position {
             ($position:expr) => {
                 let p: Pos = $position;
@@ -128,10 +140,10 @@ pub async fn resolve<'a, E>(
                     yield Bytes::from_static(b"\"");
                     yield Bytes::from(part.0);
                     yield Bytes::from_static(br#"":"#);
-                    match part.1 {
-                        QueryResponse::Json(value) => yield Bytes::from(value.to_string()),
-                        QueryResponse::Raw(Some(value)) => yield Bytes::from(value),
-                        QueryResponse::Raw(None) => yield Bytes::from_static(b"null"),
+                    match part.1.body {
+                        QueryResponseBody::Json(value) => yield Bytes::from(value.to_string()),
+                        QueryResponseBody::Raw(Some(value)) => yield Bytes::from(value),
+                        QueryResponseBody::Raw(None) => yield Bytes::from_static(b"null"),
                     };
                     if index != parts_len - 1 {
                         yield Bytes::from_static(b", ");
@@ -161,5 +173,9 @@ pub async fn resolve<'a, E>(
                 yield Bytes::from_static(b"]}");
             },
         }
-    }
+    };
+
+    let boxed_stream = Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
+
+    (boxed_stream, headers)
 }

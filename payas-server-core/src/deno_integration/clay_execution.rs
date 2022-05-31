@@ -12,9 +12,14 @@ use payas_deno::{
     deno_module::{DenoModule, DenoModuleSharedState},
 };
 
-use crate::deno_integration;
+use crate::{deno_integration, execution::operations_context::QueryResponse};
 
 use super::claytip_ops::InterceptedOperationName;
+
+#[derive(Default, Debug)]
+pub struct ClaytipMethodResponse {
+    pub(crate) headers: Vec<(String, String)>,
+}
 
 pub enum RequestFromDenoMessage {
     InterceptedOperationProceed {
@@ -28,16 +33,16 @@ pub enum RequestFromDenoMessage {
 }
 
 pub enum ResponseForDenoMessage {
-    InterceptedOperationProceed(Result<Value>),
-    ClaytipExecute(Result<Value>),
+    InterceptedOperationProceed(Result<QueryResponse>),
+    ClaytipExecute(Result<QueryResponse>),
 }
 
-pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> BoxFuture<'a, Result<Value>>
+pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> BoxFuture<'a, Result<QueryResponse>>
      + 'a
      + Send
      + Sync);
 pub type FnClaytipInterceptorProceed<'a> =
-    (dyn Fn() -> BoxFuture<'a, Result<Value>> + 'a + Send + Sync);
+    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse>> + 'a + Send + Sync);
 
 pub struct ClayCallbackProcessor<'a> {
     pub claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
@@ -100,6 +105,7 @@ pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationName>> {
                 deno_integration::claytip_ops::op_claytip_execute_query::decl(),
                 deno_integration::claytip_ops::op_intercepted_operation_name::decl(),
                 deno_integration::claytip_ops::op_intercepted_proceed::decl(),
+                deno_integration::claytip_ops::op_add_header::decl(),
             ])
             .build();
         vec![ext]

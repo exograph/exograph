@@ -27,55 +27,51 @@ use super::{
 #[derive(Serialize)]
 struct ClayPost {
     query: String,
-    variables: serde_json::Value,
+    variables: Map<String, Value>,
 }
 
 pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
     bootstrap_dburl: String,
 ) -> Result<TestOutput> {
-    // iterate through our tests
-    let mut ctx = TestfileContext::default();
-
     let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name()));
 
-    let dbname = testfile.dbname();
-    ctx.dbname = Some(dbname.clone());
+    // iterate through our tests
+    let mut ctx = {
+        let dbname = testfile.dbname();
 
-    // generate a JWT secret
-    let jwtsecret: String = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect();
+        // generate a JWT secret
+        let jwtsecret: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(30)
+            .map(char::from)
+            .collect();
 
-    // create a database
-    dropdb_psql(&dbname, &bootstrap_dburl).ok(); // clear any existing databases
-    let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &bootstrap_dburl)?;
-    ctx.dburl = Some(dburl_for_clay.clone());
+        // create a database
+        dropdb_psql(&dbname, &bootstrap_dburl).ok(); // clear any existing databases
+        let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &bootstrap_dburl)?;
 
-    // create the schema
-    println!("{} Initializing schema in {} ...", log_prefix, dbname);
+        // create the schema
+        println!("{} Initializing schema in {} ...", log_prefix, dbname);
 
-    let cli_child = cmd("clay")
-        .args(["schema", "create", &testfile.model_path_string()])
-        .output()?;
+        let cli_child = cmd("clay")
+            .args(["schema", "create", &testfile.model_path_string()])
+            .output()?;
 
-    if !cli_child.status.success() {
-        eprintln!("{}", std::str::from_utf8(&cli_child.stderr).unwrap());
-        bail!("Could not build schema.");
-    }
+        if !cli_child.status.success() {
+            eprintln!("{}", std::str::from_utf8(&cli_child.stderr).unwrap());
+            bail!("Could not build schema.");
+        }
 
-    let query = std::str::from_utf8(&cli_child.stdout)?;
-    run_psql(query, &dburl_for_clay)?;
+        let query = std::str::from_utf8(&cli_child.stdout)?;
+        run_psql(query, &dburl_for_clay)?;
 
-    // spawn a clay instance
-    println!("{} Initializing clay-server ...", log_prefix);
+        // spawn a clay instance
+        println!("{} Initializing clay-server ...", log_prefix);
 
-    let check_on_startup = if rand::random() { "true" } else { "false" };
+        let check_on_startup = if rand::random() { "true" } else { "false" };
 
-    ctx.server = Some(
-        cmd("clay-server")
+        let mut server = cmd("clay-server")
             .args(vec![testfile.model_path_string()])
             .env("CLAY_DATABASE_URL", &dburl_for_clay)
             .env("CLAY_DATABASE_USER", dbusername)
@@ -88,68 +84,76 @@ pub(crate) fn run_testfile(
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .context("clay-server failed to start")?,
-    );
+            .context("clay-server failed to start")?;
 
-    // wait for it to start
-    const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
+        // wait for it to start
+        const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
 
-    let mut server_stdout = BufReader::new(ctx.server.as_mut().unwrap().stdout.take().unwrap());
-    let mut server_stderr = BufReader::new(ctx.server.as_mut().unwrap().stderr.take().unwrap());
+        let mut server_stdout = BufReader::new(server.stdout.take().unwrap());
+        let mut server_stderr = BufReader::new(server.stderr.take().unwrap());
 
-    let mut line = String::new();
-    server_stdout.read_line(&mut line).context(format!(
-        r#"Failed to read output line for "{}" server"#,
-        testfile.name()
-    ))?;
+        let mut line = String::new();
+        server_stdout.read_line(&mut line).context(format!(
+            r#"Failed to read output line for "{}" server"#,
+            testfile.name()
+        ))?;
 
-    if !line.starts_with(MAGIC_STRING) {
-        bail!(
-            r#"Unexpected output from clay-server "{}": {}"#,
-            testfile.name(),
-            line
-        )
-    }
+        if !line.starts_with(MAGIC_STRING) {
+            bail!(
+                r#"Unexpected output from clay-server "{}": {}"#,
+                testfile.name(),
+                line
+            )
+        }
 
-    // take the digits part which represents the port (and ignore other information such as time to start the server)
-    let port: String = line
-        .trim_start_matches(MAGIC_STRING)
-        .chars()
-        .take_while(|c| c.is_digit(10))
-        .collect();
-    let endpoint = format!("http://127.0.0.1:{}/", port);
+        // spawn threads to continually drain stdout and stderr
+        let output_mutex = Arc::new(Mutex::new(String::new()));
 
-    // spawn threads to continually drain stdout and stderr
-    let output_mutex = Arc::new(Mutex::new(String::new()));
+        let stdout_output = output_mutex.clone();
+        let _stdout_drain = std::thread::spawn(move || loop {
+            let mut buf = String::new();
+            let _ = server_stdout.read_line(&mut buf);
+            stdout_output.lock().unwrap().push_str(&buf);
+        });
 
-    let stdout_output = output_mutex.clone();
-    let _stdout_drain = std::thread::spawn(move || loop {
-        let mut buf = String::new();
-        let _ = server_stdout.read_line(&mut buf);
-        stdout_output.lock().unwrap().push_str(&buf);
-    });
+        let stderr_output = output_mutex.clone();
+        let _stderr_drain = std::thread::spawn(move || loop {
+            let mut buf = String::new();
+            let _ = server_stderr.read_line(&mut buf);
+            stderr_output.lock().unwrap().push_str(&buf);
+        });
 
-    let stderr_output = output_mutex.clone();
-    let _stderr_drain = std::thread::spawn(move || loop {
-        let mut buf = String::new();
-        let _ = server_stderr.read_line(&mut buf);
-        stderr_output.lock().unwrap().push_str(&buf);
-    });
+        // spawn an HttpClient for requests to clay
+        let client = HttpClient::builder()
+            .cookies()
+            .build()
+            .context("While initializing HttpClient")?;
 
-    let mut testvariables = HashMap::new();
+        // take the digits part which represents the port (and ignore other information such as time to start the server)
+        let port: String = line
+            .trim_start_matches(MAGIC_STRING)
+            .chars()
+            .take_while(|c| c.is_digit(10))
+            .collect();
+        let endpoint = format!("http://127.0.0.1:{}/", port);
+
+        TestfileContext {
+            dbname,
+            dburl: dburl_for_clay,
+            server,
+            endpoint,
+            jwtsecret,
+            client,
+            output_mutex,
+            testvariables: HashMap::new(),
+        }
+    };
 
     // run the init section
     println!("{} Initializing database...", log_prefix);
     for operation in testfile.init_operations.iter() {
-        let result = run_operation(
-            &endpoint,
-            operation,
-            &jwtsecret,
-            &dburl_for_clay,
-            &testvariables,
-        )
-        .with_context(|| {
-            let output: String = output_mutex.lock().unwrap().clone();
+        let result = run_operation(operation, &mut ctx).with_context(|| {
+            let output: String = ctx.output_mutex.lock().unwrap().clone();
             println!("{}", output);
 
             format!(
@@ -159,10 +163,7 @@ pub(crate) fn run_testfile(
         })?;
 
         match result {
-            OperationResult::Finished { variables } => {
-                testvariables.extend(variables);
-            }
-
+            OperationResult::Finished => {}
             OperationResult::AssertFailed(_) | OperationResult::AssertPassed { .. } => {
                 panic!("did not expect assertions in setup")
             }
@@ -174,23 +175,12 @@ pub(crate) fn run_testfile(
 
     let mut fail = None;
     for operation in testfile.test_operation_stages.iter() {
-        let result = run_operation(
-            &endpoint,
-            operation,
-            &jwtsecret,
-            &dburl_for_clay,
-            &testvariables,
-        )
-        .with_context(|| anyhow!("While running tests for {}", testfile.name()));
+        let result = run_operation(operation, &mut ctx)
+            .with_context(|| anyhow!("While running tests for {}", testfile.name()));
 
         match result {
             Ok(op_result) => match op_result {
-                OperationResult::AssertPassed { variables }
-                | OperationResult::Finished { variables } => {
-                    // add resulting variables into our map for the next stage
-                    testvariables.extend(variables)
-                }
-
+                OperationResult::AssertPassed | OperationResult::Finished => {}
                 OperationResult::AssertFailed(e) => {
                     fail = Some(TestResult::AssertionFail(e));
                     break;
@@ -205,7 +195,7 @@ pub(crate) fn run_testfile(
     }
 
     let success = fail.unwrap_or(TestResult::Success);
-    let output: String = output_mutex.lock().unwrap().clone();
+    let output: String = ctx.output_mutex.lock().unwrap().clone();
 
     Ok(TestOutput {
         log_prefix: log_prefix.to_string(),
@@ -231,23 +221,12 @@ fn cmd(binary_name: &str) -> Command {
 }
 
 enum OperationResult {
-    Finished {
-        variables: HashMap<String, serde_json::Value>,
-    },
-
-    AssertPassed {
-        variables: HashMap<String, serde_json::Value>,
-    },
+    Finished,
+    AssertPassed,
     AssertFailed(anyhow::Error),
 }
 
-fn run_operation(
-    url: &str,
-    gql: &TestfileOperation,
-    jwtsecret: &str,
-    dburl: &str,
-    testvariables: &HashMap<String, serde_json::Value>,
-) -> Result<OperationResult> {
+fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<OperationResult> {
     match gql {
         TestfileOperation::GqlDocument {
             document,
@@ -257,13 +236,19 @@ fn run_operation(
             auth,
             headers,
         } => {
-            let mut req = Request::post(url);
+            let mut req = Request::post(&ctx.endpoint);
 
             // process substitutions in query variables section
-            let variables = variables
+            // and extend our collection with the results
+            let variables_map: Map<String, Value> = variables
                 .as_ref()
-                .map(|vars| evaluate_using_deno(vars, testvariables))
-                .transpose()?;
+                .map(|vars| evaluate_using_deno(vars, &ctx.testvariables))
+                .transpose()?
+                .unwrap_or_else(|| Value::Object(Map::new()))
+                .as_object()
+                .expect("evaluation to finish with a variable map")
+                .clone();
+            ctx.testvariables.extend(variables_map.clone());
 
             // remove @bind directives from our query
             // TODO: could we take them out of ExecutableDocument and serialize that instead?
@@ -284,7 +269,7 @@ fn run_operation(
                 let token = encode(
                     &Header::default(),
                     &auth,
-                    &EncodingKey::from_secret(jwtsecret.as_ref()),
+                    &EncodingKey::from_secret(ctx.jwtsecret.as_ref()),
                 )
                 .unwrap();
                 req = req.header("Authorization", format!("Bearer {}", token));
@@ -293,7 +278,7 @@ fn run_operation(
             // add extra headers from testfile
             let headers = headers
                 .as_ref()
-                .map(|headers| evaluate_using_deno(headers, testvariables))
+                .map(|headers| evaluate_using_deno(headers, &ctx.testvariables))
                 .transpose()?;
 
             if let Some(Value::Object(map)) = headers {
@@ -310,14 +295,11 @@ fn run_operation(
                 req.header("Content-Type", "application/json")
                     .body(serde_json::to_string(&ClayPost {
                         query,
-                        variables: variables
-                            .as_ref()
-                            .unwrap_or(&Value::Object(Map::new()))
-                            .clone(),
+                        variables: variables_map,
                     })?)?;
 
-            let client = HttpClient::new()?;
-            let mut resp = client
+            let mut resp = ctx
+                .client
                 .send(req)
                 .map_err(|e| anyhow!("Error sending POST request: {}", e))?;
 
@@ -334,6 +316,7 @@ fn run_operation(
             let body: serde_json::Value = json;
 
             // resolve testvariables from the result of our current operation
+            // and extend our collection with them
             let resolved_variables_keys = testvariable_bindings.keys().cloned();
             let resolved_variables_values = testvariable_bindings
                 .keys()
@@ -343,31 +326,17 @@ fn run_operation(
             let resolved_variables: HashMap<_, _> = resolved_variables_keys
                 .zip(resolved_variables_values)
                 .collect();
+            ctx.testvariables.extend(resolved_variables);
 
             match expected_payload {
                 Some(expected_payload) => {
                     // expected response specified - do an assertion
-
-                    // provide the following inside $ object
-                    // - query variables
-                    // - testvariables specified to run_operation at the start
-                    // - testvariables resolved just now from the result of our current operation
-                    let variables = match variables.unwrap_or_else(|| Value::Object(Map::new())) {
-                        Value::Object(map) => {
-                            let mut variable_map = HashMap::new();
-                            variable_map.extend(testvariables.clone());
-                            variable_map.extend(map);
-                            variable_map.extend(resolved_variables.clone());
-                            variable_map
-                        }
-
-                        _ => panic!("variables is not an Object"),
-                    };
-
-                    match assertion::dynamic_assert_using_deno(expected_payload, body, &variables) {
-                        Ok(()) => Ok(OperationResult::AssertPassed {
-                            variables: resolved_variables,
-                        }),
+                    match assertion::dynamic_assert_using_deno(
+                        expected_payload,
+                        body,
+                        &ctx.testvariables,
+                    ) {
+                        Ok(()) => Ok(OperationResult::AssertPassed),
                         Err(e) => Ok(OperationResult::AssertFailed(e)),
                     }
                 }
@@ -375,18 +344,14 @@ fn run_operation(
                 None => {
                     // don't need to check anything
 
-                    Ok(OperationResult::Finished {
-                        variables: resolved_variables,
-                    })
+                    Ok(OperationResult::Finished)
                 }
             }
         }
 
         TestfileOperation::Sql(query) => {
-            run_psql(query, dburl)?;
-            Ok(OperationResult::Finished {
-                variables: Default::default(),
-            })
+            run_psql(query, &ctx.dburl)?;
+            Ok(OperationResult::Finished)
         }
     }
 }

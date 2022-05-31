@@ -240,7 +240,7 @@ Error as a multistage test: {}
         );
     };
 
-    let testfile_folder = testfile_path.parent().expect("Testfile has no parent?");
+    let testfile_folder = testfile_path.parent().expect("Testfile has no parent");
     let model_path = if let Some(path) = common.clayfile {
         // test specifies a root clayfile, use that
         testfile_folder.to_owned().join(path)
