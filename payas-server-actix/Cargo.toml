@@ -23,8 +23,6 @@ tracing-opentelemetry = "0.17.2"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 
 payas-server-core = { path = "../payas-server-core" }
-payas-sql = { path = "../payas-sql" }
-payas-model = { path = "../payas-model" }
 
 [[bin]]
 name = "clay-server"

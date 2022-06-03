@@ -5,7 +5,6 @@ use payas_server_actix::request_context::ActixRequestContextProducer;
 use payas_server_actix::{resolve, telemetry};
 use payas_server_core::graphiql;
 use payas_server_core::{create_operations_executor, OperationsExecutor};
-use payas_sql::Database;
 use tracing_actix_web::TracingLogger;
 
 use std::path::Path;
@@ -21,9 +20,7 @@ async fn main() -> std::io::Result<()> {
     let subscriber_name = claypot_file.trim_end_matches(".claypot");
     telemetry::init(subscriber_name);
 
-    let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
-    let operations_executor =
-        web::Data::new(create_operations_executor(&claypot_file, database).unwrap());
+    let operations_executor = web::Data::new(create_operations_executor(&claypot_file).unwrap());
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
 
     let server_port = env::var("CLAY_SERVER_PORT")
