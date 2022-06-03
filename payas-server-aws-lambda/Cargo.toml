@@ -17,8 +17,6 @@ bytes = "1.1.0"
 tokio = { version = "1", features = ["full"] }
 
 payas-server-core = { path = "../payas-server-core" }
-payas-sql = { path = "../payas-sql" }
-payas-model = { path = "../payas-model" }
 
 [[bin]]
 name = "bootstrap"
