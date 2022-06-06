@@ -184,6 +184,7 @@ fn convert_service(
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
         base_clayfile: filepath.into(),
+        span: span_from_node(source_span, node),
     }
 }
 
