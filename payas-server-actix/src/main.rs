@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
     let subscriber_name = claypot_file.trim_end_matches(".claypot");
     telemetry::init(subscriber_name);
 
-    let operations_executor = web::Data::new(create_operations_executor(&claypot_file));
+    let operations_executor = web::Data::new(create_operations_executor(&claypot_file).unwrap());
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
 
     let server_port = env::var("CLAY_SERVER_PORT")
