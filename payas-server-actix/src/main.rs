@@ -7,6 +7,7 @@ use payas_server_core::graphiql;
 use payas_server_core::{create_operations_executor, OperationsExecutor};
 use tracing_actix_web::TracingLogger;
 
+use std::io::ErrorKind;
 use std::path::Path;
 use std::time;
 use std::{env, process::exit};
@@ -20,7 +21,7 @@ async fn main() -> std::io::Result<()> {
     let subscriber_name = claypot_file.trim_end_matches(".claypot");
     telemetry::init(subscriber_name);
 
-    let operations_executor = web::Data::new(create_operations_executor(&claypot_file).unwrap());
+    let operations_executor = web::Data::new(create_operations_executor(&claypot_file));
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
 
     let server_port = env::var("CLAY_SERVER_PORT")
@@ -43,16 +44,26 @@ async fn main() -> std::io::Result<()> {
             .service(playground)
             .service(resolve)
     })
-    .bind(&server_url)
-    .unwrap();
+    .bind(&server_url);
 
-    println!(
-        "Started server on {} in {:.2} ms",
-        server.addrs()[0],
-        start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
-    );
-
-    server.run().await
+    match server {
+        Ok(server) => {
+            println!(
+                "Started server on {} in {:.2} ms",
+                server.addrs()[0],
+                start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
+            );
+            server.run().await
+        }
+        Err(e) => {
+            if e.kind() == ErrorKind::AddrInUse {
+                eprintln!("Error: Port {} is already in use. Check if there is another process running at that port.", server_port);
+            } else {
+                eprintln!("Error: Failed to start server: {}", e);
+            }
+            exit(1);
+        }
+    }
 }
 
 fn get_claypot_file_name() -> String {
