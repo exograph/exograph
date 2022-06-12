@@ -11,6 +11,7 @@ use super::command::Command;
 /// Run local claytip server
 pub struct ServeCommand {
     pub model: PathBuf,
+    pub port: Option<u32>,
 }
 
 impl Command for ServeCommand {
@@ -36,10 +37,12 @@ impl Command for ServeCommand {
 
         let start_server = || {
             super::build::build(&self.model, None, false).and_then(|_| {
-                std::process::Command::new(&server_binary)
-                    .args(vec![&claypot_file_name])
-                    .spawn()
-                    .context("Failed to start clay-server")
+                let mut command = std::process::Command::new(&server_binary);
+                command.args(vec![&claypot_file_name]);
+                if let Some(port) = self.port {
+                    command.env("CLAY_SERVER_PORT", port.to_string());
+                }
+                command.spawn().context("Failed to start clay-server")
             })
         };
 
