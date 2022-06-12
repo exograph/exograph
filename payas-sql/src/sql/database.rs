@@ -98,10 +98,13 @@ impl<'a> Database {
         // 1. "ssl" parameter is a quick way to specify SSL mode. If it is true, then it has the same effect as setting "sslmode" to "verify-full".
         //    So we process this first.
         if let Some(ssl_param) = ssl_param {
-            let ssl_mode = match ssl_param.as_str() {
-                "true" => SslMode::Require,
-                "false" => SslMode::Disable,
-                _ => bail!("Invalid 'ssl' parameter value {ssl_param}"),
+            let ssl_param_parsed = ssl_param.as_str().parse();
+            let ssl_mode = match ssl_param_parsed {
+                Ok(true) => SslMode::Require,
+                Ok(false) => SslMode::Disable,
+                _ => {
+                    bail!("Invalid 'ssl' parameter value {ssl_param}. Must be a 'true' or 'false'")
+                }
             };
             config.ssl_mode(ssl_mode);
         }
