@@ -3375,6 +3375,7 @@ dependencies = [
  "serde_json",
  "tokio-postgres",
  "tracing",
+ "url",
 ]
 
 [[package]]
