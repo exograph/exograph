@@ -6,7 +6,7 @@ import 'graphiql/graphiql.min.css';
 const Logo = () => <img src="/logo.svg" className="logo" alt='Claytip'/>;
 
 const fetcher = createGraphiQLFetcher({
-  url: window.location.origin
+  url: "%%ENDPOINT_URL%%"
 });
 
 const App = () => (
