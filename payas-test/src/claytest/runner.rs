@@ -135,7 +135,7 @@ pub(crate) fn run_testfile(
             .chars()
             .take_while(|c| c.is_digit(10))
             .collect();
-        let endpoint = format!("http://127.0.0.1:{}/", port);
+        let endpoint = format!("http://127.0.0.1:{}/graphql", port);
 
         TestfileContext {
             dbname,
