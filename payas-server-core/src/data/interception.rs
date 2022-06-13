@@ -15,7 +15,7 @@ use crate::{
     validation::field::ValidatedField,
     OperationsPayload,
 };
-use anyhow::{bail, Result};
+use anyhow::Result;
 use serde_json::{Map, Value};
 
 /// Determine the order and nesting for interceptors.
@@ -92,7 +92,7 @@ use serde_json::{Map, Value};
 ///     ]
 /// )
 /// ```
-use super::operation_mapper::OperationResolverResult;
+use super::operation_mapper::{construct_arg_sequence, OperationResolverResult};
 
 #[allow(clippy::large_enum_variant)]
 pub enum InterceptedOperation<'a> {
@@ -231,20 +231,9 @@ async fn execute_interceptor<'a>(
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>)> {
     let script = &query_context.system.deno_scripts[interceptor.script];
-    let arg_sequence = interceptor
-        .arguments
-        .iter()
-        .map(|arg| {
-            let arg_type = &query_context.system.types[arg.type_id];
 
-            if arg_type.name == "Operation" || arg_type.name == "ClaytipInjected" {
-                // TODO: Change this to supply a shim if the arg_type is one of the shimmable types
-                Ok(Arg::Shim(arg_type.name.clone()))
-            } else {
-                bail!("Invalid argument type {}", arg_type.name)
-            }
-        })
-        .collect::<Result<Vec<_>>>()?;
+    let arg_sequence: Vec<Arg> =
+        construct_arg_sequence(&[], &interceptor.arguments, query_context).await?;
 
     let callback_processor = ClayCallbackProcessor {
         claytip_execute_query,

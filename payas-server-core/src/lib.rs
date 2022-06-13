@@ -50,10 +50,9 @@ fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
     }
 }
 
-pub fn create_operations_executor(
-    claypot_file: &str,
-    database: Database,
-) -> Result<OperationsExecutor> {
+pub fn create_operations_executor(claypot_file: &str) -> Result<OperationsExecutor> {
+    let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
+
     let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
         Some(e) => match e.parse::<bool>() {
             Ok(e) => e,

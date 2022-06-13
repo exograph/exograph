@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use futures::FutureExt;
 use futures::StreamExt;
 use payas_deno::Arg;
+use payas_model::model::service::Argument;
 use payas_sql::{
     AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect, AbstractUpdate,
 };
@@ -234,17 +235,13 @@ impl<'a> OperationResolverResult<'a> {
     }
 }
 
-async fn resolve_deno<'a>(
-    method: &ServiceMethod,
-    field: &ValidatedField,
-    claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
+pub async fn construct_arg_sequence(
+    field_args: &[(String, ConstValue)],
+    args: &[Argument],
     query_context: &OperationsContext<'_>,
-) -> Result<QueryResponse> {
-    let script = &query_context.system.deno_scripts[method.script];
+) -> Result<Vec<Arg>> {
     let system = query_context.get_system();
-
-    let mapped_args = field
-        .arguments
+    let mapped_args = field_args
         .iter()
         .map(|(gql_name, gql_value)| {
             (
@@ -254,8 +251,7 @@ async fn resolve_deno<'a>(
         })
         .collect::<HashMap<_, _>>();
 
-    // construct a sequence of arguments to pass to the Deno method
-    let arg_sequence: Vec<Arg> = futures::stream::iter(method.arguments.iter())
+    futures::stream::iter(args.iter())
         .then(|arg| async {
             if arg.is_injected {
                 // handle injected arguments
@@ -296,7 +292,20 @@ async fn resolve_deno<'a>(
         .collect::<Vec<Result<_>>>()
         .await
         .into_iter()
-        .collect::<Result<_>>()?;
+        .collect::<Result<_>>()
+}
+
+async fn resolve_deno<'a>(
+    method: &ServiceMethod,
+    field: &ValidatedField,
+    claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
+    query_context: &OperationsContext<'_>,
+) -> Result<QueryResponse> {
+    let script = &query_context.system.deno_scripts[method.script];
+
+    // construct a sequence of arguments to pass to the Deno method
+    let arg_sequence: Vec<Arg> =
+        construct_arg_sequence(&field.arguments, &method.arguments, query_context).await?;
 
     let callback_processor = ClayCallbackProcessor {
         claytip_execute_query,
