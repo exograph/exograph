@@ -98,12 +98,22 @@ fn main() -> Result<()> {
                 ),
         )
         .subcommand(
-            Command::new("serve").about("Run local claytip server").arg(
-                Arg::new("model")
-                    .help("Claytip model file")
-                    .default_value(DEFAULT_MODEL_FILE)
-                    .index(1),
-            ),
+            Command::new("serve")
+                .about("Run local claytip server")
+                .arg(
+                    Arg::new("model")
+                        .help("Claytip model file")
+                        .default_value(DEFAULT_MODEL_FILE)
+                        .index(1),
+                )
+                .arg(
+                    Arg::new("port")
+                        .help("Port to start the server")
+                        .short('p')
+                        .long("port")
+                        .takes_value(true)
+                        .value_name("port"),
+                ),
         )
         .subcommand(
             Command::new("test")
@@ -161,6 +171,16 @@ fn main() -> Result<()> {
 
         Some(("serve", matches)) => Box::new(ServeCommand {
             model: PathBuf::from(matches.value_of("model").unwrap()),
+            port: {
+                let port_str = matches.value_of("port");
+                port_str.map(|port_str| match port_str.parse() {
+                    Ok(port) => port,
+                    Err(_) => {
+                        eprintln!("Invalid port number '{port_str}'");
+                        std::process::exit(1);
+                    }
+                })
+            },
         }),
         Some(("test", matches)) => Box::new(TestCommand {
             dir: PathBuf::from(matches.value_of("dir").unwrap()),
