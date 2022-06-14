@@ -69,6 +69,10 @@ pub struct AstService<T: NodeTypedness> {
     pub interceptors: Vec<AstInterceptor<T>>,
     pub annotations: T::Annotations,
     pub base_clayfile: PathBuf,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

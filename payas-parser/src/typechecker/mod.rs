@@ -14,7 +14,7 @@ mod typ;
 
 use std::collections::HashMap;
 
-use codemap_diagnostic::Diagnostic;
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use serde::{Deserialize, Serialize};
 
 pub(super) use annotation_map::AnnotationMap;
@@ -386,7 +386,12 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
                     did_change = true;
                 }
             } else {
-                panic!()
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!("Type {} is not a model", typ),
+                    code: Some("C000".to_string()),
+                    spans: vec![],
+                });
             }
         }
 
@@ -402,7 +407,16 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
                     did_change = true;
                 }
             } else {
-                panic!()
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!("Type {} is not a service", service.name),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: service.span,
+                        style: SpanStyle::Primary,
+                        label: None,
+                    }],
+                });
             }
         }
 
@@ -635,6 +649,21 @@ mod tests {
 
         assert_err(model);
         assert_err(field);
+    }
+
+    #[test]
+    fn multiple_types() {
+        let model = r#"
+        service User {
+            type User {
+                id: Int
+            }
+
+            query userName(id: Int): String
+        }
+        "#;
+
+        assert_err(model);
     }
 
     fn assert_err(src: &str) {
