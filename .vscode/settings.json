@@ -1,0 +1,7 @@
+{
+  "azureFunctions.deploySubpath": "./integration/azure/azure-app",
+  "azureFunctions.projectLanguage": "Custom",
+  "azureFunctions.projectRuntime": "~4",
+  "azureFunctions.requestTimeout": 180,
+  "azureFunctions.projectSubpath": "integration/azure/azure-app"
+}
