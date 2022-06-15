@@ -11,6 +11,6 @@ pub struct MigrateCommand {
 
 impl Command for MigrateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        todo!("Implmement migrate command");
+        todo!("Implement migrate command");
     }
 }
