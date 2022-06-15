@@ -111,6 +111,7 @@ fn main() -> Result<()> {
                         .help("Port to start the server")
                         .short('p')
                         .long("port")
+                        .value_parser(clap::value_parser!(u32))
                         .takes_value(true)
                         .value_name("port"),
                 ),
@@ -143,51 +144,46 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
+    fn get_path(matches: &clap::ArgMatches, arg_id: &str) -> PathBuf {
+        PathBuf::from(matches.get_one::<String>(arg_id).unwrap())
+    }
+
     // Map subcommands with args
     let command: Box<dyn crate::commands::command::Command> = match matches.subcommand() {
         Some(("build", matches)) => Box::new(BuildCommand {
-            model: PathBuf::from(matches.value_of("model").unwrap()),
+            model: get_path(matches, "model"),
         }),
         Some(("migrate", matches)) => Box::new(MigrateCommand {
-            model: PathBuf::from(matches.value_of("model").unwrap()),
-            database: matches.value_of("database").unwrap().to_owned(),
+            model: get_path(matches, "model"),
+            database: matches.get_one::<String>("database").unwrap().to_owned(),
         }),
         Some(("model", matches)) => match matches.subcommand() {
             Some(("import", matches)) => Box::new(import::ImportCommand {
-                output: PathBuf::from(matches.value_of("output").unwrap()),
+                output: get_path(matches, "output"),
             }),
             _ => panic!("Unhandled command name"),
         },
         Some(("schema", matches)) => match matches.subcommand() {
             Some(("create", matches)) => Box::new(schema::CreateCommand {
-                model: PathBuf::from(matches.value_of("model").unwrap()),
+                model: get_path(matches, "model"),
             }),
             Some(("verify", matches)) => Box::new(schema::VerifyCommand {
-                model: PathBuf::from(matches.value_of("model").unwrap()),
-                database: matches.value_of("database").unwrap().to_owned(),
+                model: get_path(matches, "model"),
+                database: matches.get_one::<String>("database").unwrap().to_owned(),
             }),
             _ => panic!("Unhandled command name"),
         },
 
         Some(("serve", matches)) => Box::new(ServeCommand {
-            model: PathBuf::from(matches.value_of("model").unwrap()),
-            port: {
-                let port_str = matches.value_of("port");
-                port_str.map(|port_str| match port_str.parse() {
-                    Ok(port) => port,
-                    Err(_) => {
-                        eprintln!("Invalid port number '{port_str}'");
-                        std::process::exit(1);
-                    }
-                })
-            },
+            model: get_path(matches, "model"),
+            port: matches.get_one::<u32>("port").copied(),
         }),
         Some(("test", matches)) => Box::new(TestCommand {
-            dir: PathBuf::from(matches.value_of("dir").unwrap()),
-            pattern: matches.value_of("pattern").map(|s| s.to_owned()),
+            dir: get_path(matches, "dir"),
+            pattern: matches.get_one::<String>("pattern").map(|s| s.to_owned()),
         }),
         Some(("yolo", matches)) => Box::new(YoloCommand {
-            model: PathBuf::from(matches.value_of("model").unwrap()),
+            model: get_path(matches, "model"),
         }),
         _ => panic!("Unhandled command name"),
     };
