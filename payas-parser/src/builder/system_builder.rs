@@ -71,7 +71,7 @@ fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextB
     let resolved_services = &resolved_system.services;
 
     // First build shallow GQL types for types, context, query parameters (order by and predicate)
-    // The order of next four is unimportant, since each of them simply create a shallow type without refering to anything
+    // The order of next five is unimportant, since each of them simply create a shallow type without referring to anything
     type_builder::build_shallow(resolved_types, building);
     context_builder::build_shallow(resolved_contexts, building);
     order_by_type_builder::build_shallow(resolved_types, building);
