@@ -30,6 +30,6 @@ pub struct VerifyCommand {
 
 impl Command for VerifyCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        todo!("Implmement verify command");
+        todo!("Implement verify command");
     }
 }
