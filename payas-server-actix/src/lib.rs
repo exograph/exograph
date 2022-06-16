@@ -2,7 +2,7 @@ pub mod request_context;
 pub mod telemetry;
 
 use actix_web::web::Bytes;
-use actix_web::{post, web, Error, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
 use payas_server_core::{OperationsExecutor, OperationsPayload};
 
@@ -15,7 +15,6 @@ macro_rules! error_msg {
     };
 }
 
-#[post("/")]
 pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,

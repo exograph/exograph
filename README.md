@@ -78,6 +78,8 @@ During development, it is nicer to use `cargo watch` and let compilation and res
 CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://localhost:5432/concerts-db CLAY_DATABASE_USER=$USER CLAY_INTROSPECTION=true cargo watch --clear -x "run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay"
 ```
 
+When introspection is on, an interactive page is served at `/playground` by default; this is adjustable through the environment variable `CLAY_PLAYGROUND_HTTP_PATH`. The GraphQL endpoint accepts requests at `/graphql` by default; this is also adjustable through the environment variable `CLAY_ENDPOINT_HTTP_PATH`.
+
 **Note**
 If you change the treesitter grammar source file, `cargo watch` doesn't seem to pick up the change, so you need to run the non-watch version.
 

@@ -178,3 +178,11 @@ pub async fn resolve<'a, E: 'static>(
 
     (boxed_stream, headers)
 }
+
+pub fn get_playground_http_path() -> String {
+    std::env::var("CLAY_PLAYGROUND_HTTP_PATH").unwrap_or_else(|_| "/playground".to_string())
+}
+
+pub fn get_endpoint_http_path() -> String {
+    std::env::var("CLAY_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
+}
