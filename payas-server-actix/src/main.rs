@@ -123,8 +123,15 @@ async fn playground(req: HttpRequest, executor: web::Data<OperationsExecutor>) -
 
     let content_type = actix_files::file_extension_to_mime(extension);
 
-    // we shouldn't cache static assets because they may change with different paths for the endpoint and playground
-    let cache_control = CacheControl(vec![CacheDirective::NoCache]);
+    // we shouldn't cache the index page, as we substitute in the endpoint path dynamically
+    let cache_control = if index == "index.html" {
+        CacheControl(vec![CacheDirective::NoCache])
+    } else {
+        CacheControl(vec![
+            CacheDirective::Public,
+            CacheDirective::MaxAge(60 * 60 * 24 * 365), // seconds in one year
+        ])
+    };
 
     match graphiql::get_asset_bytes(asset_path) {
         Some(asset) => HttpResponse::Ok()

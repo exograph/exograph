@@ -12,14 +12,15 @@
   },
   "devDependencies": {
     "@types/react": "^17.0.43",
-    "@types/react-dom": "^17.0.14"
+    "@types/react-dom": "^17.0.14",
+    "react-app-rewired": "^2.2.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "dev-build": "PUBLIC_URL=\"%%PLAYGROUND_URL%%\" react-scripts build",
-    "prod-build": "PUBLIC_URL=\"%%PLAYGROUND_URL%%\" GENERATE_SOURCEMAP=false react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "react-app-rewired start",
+    "dev-build": "react-app-rewired build",
+    "prod-build": "GENERATE_SOURCEMAP=false react-app-rewired build",
+    "test": "react-app-rewired test",
+    "eject": "react-app-rewired eject"
   },
   "eslintConfig": {
     "extends": [
