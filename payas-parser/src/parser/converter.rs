@@ -1,7 +1,10 @@
 use std::convert::TryInto;
+use std::ffi::OsStr;
+use std::path::PathBuf;
 use std::{collections::HashMap, path::Path};
 
 use codemap::Span;
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use tree_sitter::{Node, Tree, TreeCursor};
 
 use super::{sitter_ffi, span_from_node};
@@ -38,34 +41,72 @@ pub fn convert_root(
             .filter(|n| n.kind() == "declaration")
             .filter_map(|c| convert_declaration_to_service(c, source, source_span, filepath))
             .collect::<Vec<_>>(),
-        imports: node
-            .children(&mut cursor)
-            .filter(|n| n.kind() == "declaration")
-            .filter_map(|c| {
-                let first_child = c.child(0).unwrap();
+        imports: {
+            let imports = node
+                .children(&mut cursor)
+                .filter(|n| n.kind() == "declaration")
+                .map(|c| {
+                    let first_child = c.child(0).unwrap();
 
-                if first_child.kind() == "import" {
-                    let path_str = first_child
-                        .child_by_field_name("path")
-                        .unwrap()
-                        .child_by_field_name("value")
-                        .unwrap()
-                        .utf8_text(source)
-                        .unwrap();
+                    if first_child.kind() == "import" {
+                        let path_str = first_child
+                            .child_by_field_name("path")
+                            .unwrap()
+                            .child_by_field_name("value")
+                            .unwrap()
+                            .utf8_text(source)
+                            .unwrap();
 
-                    let mut import_path = filepath.to_owned();
-                    import_path.pop();
-                    import_path.push(path_str);
+                        let mut import_path = filepath.to_owned();
+                        import_path.pop();
+                        import_path.push(path_str);
 
-                    let canonicalized = import_path.canonicalize().unwrap_or_else(|_| {
-                        panic!("While canonicalizing {}", import_path.to_string_lossy())
-                    });
-                    Some(canonicalized)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>(),
+                        fn compute_diagnosis(
+                            import_path: PathBuf,
+                            source_span: Span,
+                            node: Node,
+                        ) -> ParserError {
+                            ParserError::Diagnosis(vec![Diagnostic {
+                                level: Level::Error,
+                                message: format!(
+                                    "File not found {}",
+                                    import_path.to_string_lossy()
+                                ),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span: span_from_node(source_span, node),
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            }])
+                        }
+
+                        match import_path.canonicalize() {
+                            Ok(path) => Ok(Some(path)),
+                            Err(_) => {
+                                // If no extension is given, try if a file with the same name but with ".clay" extension exists.
+                                if import_path.extension() == Some(OsStr::new("clay")) {
+                                    Err(compute_diagnosis(import_path, source_span, first_child))
+                                } else {
+                                    let with_extension = import_path.with_extension("clay");
+                                    match with_extension.canonicalize() {
+                                        Ok(path) => Ok(Some(path)),
+                                        Err(_) => Err(compute_diagnosis(
+                                            with_extension,
+                                            source_span,
+                                            first_child,
+                                        )),
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Ok(None)
+                    }
+                })
+                .collect::<Result<Vec<_>, _>>();
+            imports?.into_iter().flatten().collect()
+        },
     })
 }
 
