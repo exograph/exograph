@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use heck::ToUpperCamelCase;
 
-use payas_sql::spec::{ColumnSpec, Issue, SchemaSpec, TableSpec, WithIssues};
+use payas_sql::spec::{Issue, SchemaSpec, WithIssues};
 use payas_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
 use crate::model::mapped_arena::SerializableSlab;
@@ -23,10 +23,7 @@ fn to_model_name(name: &str) -> String {
 impl FromModel<SerializableSlab<PhysicalTable>> for SchemaSpec {
     /// Creates a new schema specification from the tables of a claytip model file.
     fn from_model(tables: SerializableSlab<PhysicalTable>) -> Self {
-        let table_specs: Vec<_> = tables
-            .iter()
-            .map(|(_, table)| TableSpec::from_model(table))
-            .collect();
+        let table_specs: Vec<_> = tables.into_iter().collect();
 
         let mut required_extensions = HashSet::new();
         for table_spec in table_specs.iter() {
@@ -64,26 +61,14 @@ impl ToModel for SchemaSpec {
     }
 }
 
-impl FromModel<&PhysicalTable> for TableSpec {
-    /// Creates a new table specification from a claytip model.
-    fn from_model(table: &PhysicalTable) -> Self {
-        let column_specs: Vec<_> = table.columns.iter().map(ColumnSpec::from_model).collect();
-
-        TableSpec {
-            name: table.name.clone(),
-            column_specs,
-        }
-    }
-}
-
-impl ToModel for TableSpec {
+impl ToModel for PhysicalTable {
     /// Converts the table specification to a claytip model.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
 
         let table_annot = format!("@table(\"{}\")", self.name);
         let column_stmts = self
-            .column_specs
+            .columns
             .iter()
             .map(|c| {
                 let mut model = c.to_model();
@@ -112,23 +97,7 @@ impl ToModel for TableSpec {
     }
 }
 
-impl FromModel<&PhysicalColumn> for ColumnSpec {
-    /// Creates a new column specification from a claytip model field.
-    fn from_model(column: &PhysicalColumn) -> ColumnSpec {
-        ColumnSpec {
-            table_name: column.table_name.clone(),
-            column_name: column.column_name.clone(),
-            db_type: column.typ.clone(),
-            is_pk: column.is_pk,
-            is_autoincrement: column.is_autoincrement,
-            is_nullable: column.is_nullable,
-            unique_constraints: column.unique_constraints.clone(),
-            default_value: column.default_value.clone(),
-        }
-    }
-}
-
-impl ToModel for ColumnSpec {
+impl ToModel for PhysicalColumn {
     /// Converts the column specification to a claytip model.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
@@ -140,8 +109,8 @@ impl ToModel for ColumnSpec {
             ""
         };
 
-        let (mut data_type, annots) = self.db_type.to_model();
-        if let PhysicalColumnType::ColumnReference { ref_table_name, .. } = &self.db_type {
+        let (mut data_type, annots) = self.typ.to_model();
+        if let PhysicalColumnType::ColumnReference { ref_table_name, .. } = &self.typ {
             data_type = to_model_name(&data_type);
 
             issues.push(Issue::Hint(format!(

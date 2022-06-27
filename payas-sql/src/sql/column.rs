@@ -1,4 +1,4 @@
-use crate::spec::{ColumnSpec, SQLStatement};
+use crate::spec::SQLStatement;
 
 use super::{
     select::Select, transaction::TransactionStepId, Expression, ExpressionContext,
@@ -34,21 +34,6 @@ impl Default for PhysicalColumn {
             is_nullable: true,
             unique_constraints: vec![],
             default_value: None,
-        }
-    }
-}
-
-impl From<ColumnSpec> for PhysicalColumn {
-    fn from(c: ColumnSpec) -> Self {
-        Self {
-            table_name: c.table_name,
-            column_name: c.column_name,
-            typ: c.db_type,
-            is_pk: c.is_pk,
-            is_autoincrement: c.is_autoincrement,
-            is_nullable: c.is_nullable,
-            unique_constraints: c.unique_constraints,
-            default_value: c.default_value,
         }
     }
 }

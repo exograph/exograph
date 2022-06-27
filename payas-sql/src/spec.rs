@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Display, Formatter};
 
 use crate::sql::column::PhysicalColumnType;
+use crate::{PhysicalColumn, PhysicalTable};
 use anyhow::{anyhow, Result};
 use deadpool_postgres::Client;
 use regex::Regex;
@@ -52,7 +53,7 @@ pub struct WithIssues<T> {
 
 /// Specification for the overall schema.
 pub struct SchemaSpec {
-    pub table_specs: Vec<TableSpec>,
+    pub table_specs: Vec<PhysicalTable>,
     pub required_extensions: HashSet<String>,
 }
 
@@ -69,7 +70,7 @@ impl SchemaSpec {
 
         for row in client.query(QUERY, &[]).await.map_err(|e| anyhow!(e))? {
             let name: String = row.get("table_name");
-            let mut table = TableSpec::from_db(client, &name).await?;
+            let mut table = PhysicalTable::from_db(client, &name).await?;
             issues.append(&mut table.issues);
             table_specs.push(table.value);
         }
@@ -114,15 +115,9 @@ impl SchemaSpec {
     }
 }
 
-/// Specification for a single table.
-pub struct TableSpec {
-    pub name: String,
-    pub column_specs: Vec<ColumnSpec>,
-}
-
-impl TableSpec {
+impl PhysicalTable {
     /// Creates a new table specification from an SQL table.
-    pub async fn from_db(client: &Client, table_name: &str) -> Result<WithIssues<TableSpec>> {
+    pub async fn from_db(client: &Client, table_name: &str) -> Result<WithIssues<PhysicalTable>> {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
@@ -174,7 +169,8 @@ impl TableSpec {
             let ref_column_name = matches[3].to_owned(); // name of the column in the referenced table
 
             let mut column =
-                ColumnSpec::from_db(client, &ref_table_name, &ref_column_name, true, None).await?;
+                PhysicalColumn::from_db(client, &ref_table_name, &ref_column_name, true, None)
+                    .await?;
             issues.append(&mut column.issues);
 
             if let Some(spec) = column.value {
@@ -183,16 +179,16 @@ impl TableSpec {
                     PhysicalColumnType::ColumnReference {
                         ref_table_name: ref_table_name.clone(),
                         ref_column_name: ref_column_name.clone(),
-                        ref_pk_type: Box::new(spec.db_type),
+                        ref_pk_type: Box::new(spec.typ),
                     },
                 );
             }
         }
 
-        let mut column_specs = Vec::new();
+        let mut columns = Vec::new();
         for row in client.query(columns_query.as_str(), &[]).await? {
             let name: String = row.get("column_name");
-            let mut column = ColumnSpec::from_db(
+            let mut column = PhysicalColumn::from_db(
                 client,
                 table_name,
                 &name,
@@ -203,14 +199,14 @@ impl TableSpec {
             issues.append(&mut column.issues);
 
             if let Some(spec) = column.value {
-                column_specs.push(spec);
+                columns.push(spec);
             }
         }
 
         Ok(WithIssues {
-            value: TableSpec {
+            value: PhysicalTable {
                 name: table_name.to_string(),
-                column_specs,
+                columns,
             },
             issues,
         })
@@ -220,7 +216,7 @@ impl TableSpec {
     pub fn to_sql(&self) -> SQLStatement {
         let mut foreign_constraints = Vec::new();
         let column_stmts: String = self
-            .column_specs
+            .columns
             .iter()
             .map(|c| {
                 let mut s = c.to_sql(&self.name);
@@ -230,16 +226,15 @@ impl TableSpec {
             .collect::<Vec<_>>()
             .join(",\n\t");
 
-        let named_unique_constraints =
-            self.column_specs.iter().fold(HashMap::new(), |mut map, c| {
-                {
-                    for name in c.unique_constraints.iter() {
-                        let entry: &mut Vec<String> = map.entry(name).or_insert_with(Vec::new);
-                        (*entry).push(c.column_name.clone());
-                    }
+        let named_unique_constraints = self.columns.iter().fold(HashMap::new(), |mut map, c| {
+            {
+                for name in c.unique_constraints.iter() {
+                    let entry: &mut Vec<String> = map.entry(name).or_insert_with(Vec::new);
+                    (*entry).push(c.column_name.clone());
                 }
-                map
-            });
+            }
+            map
+        });
 
         for (unique_constraint_name, columns) in named_unique_constraints.iter() {
             let columns_part = columns
@@ -264,8 +259,8 @@ impl TableSpec {
     pub fn get_required_extensions(&self) -> HashSet<String> {
         let mut required_extensions = HashSet::new();
 
-        for col_spec in self.column_specs.iter() {
-            if let PhysicalColumnType::Uuid = col_spec.db_type {
+        for col_spec in self.columns.iter() {
+            if let PhysicalColumnType::Uuid = col_spec.typ {
                 required_extensions.insert("pgcrypto".to_string());
             }
         }
@@ -274,20 +269,7 @@ impl TableSpec {
     }
 }
 
-/// Specification for a single column.
-#[derive(Debug)]
-pub struct ColumnSpec {
-    pub table_name: String,
-    pub column_name: String,
-    pub db_type: PhysicalColumnType,
-    pub is_pk: bool,
-    pub is_autoincrement: bool,
-    pub is_nullable: bool,
-    pub unique_constraints: Vec<String>,
-    pub default_value: Option<String>,
-}
-
-impl ColumnSpec {
+impl PhysicalColumn {
     /// Creates a new column specification from an SQL column.
     ///
     /// If the column references another table's column, the column's type can be specified with
@@ -298,7 +280,7 @@ impl ColumnSpec {
         column_name: &str,
         is_pk: bool,
         explicit_type: Option<PhysicalColumnType>,
-    ) -> Result<WithIssues<Option<ColumnSpec>>> {
+    ) -> Result<WithIssues<Option<PhysicalColumn>>> {
         // Find all sequences in the database that are used for SERIAL (autoincrement) columns
         // e.g. an autoincrement column `id` in the table `users` will create a sequence called
         // `users_id_seq`
@@ -381,10 +363,10 @@ impl ColumnSpec {
         };
 
         Ok(WithIssues {
-            value: db_type.map(|db_type| ColumnSpec {
+            value: db_type.map(|typ| PhysicalColumn {
                 table_name: table_name.to_owned(),
                 column_name: column_name.to_owned(),
-                db_type,
+                typ,
                 is_pk,
                 is_autoincrement: serial_columns
                     .contains(&format!("{}_{}_seq", table_name, column_name)),
@@ -402,7 +384,7 @@ impl ColumnSpec {
             statement,
             foreign_constraints,
         } = self
-            .db_type
+            .typ
             .to_sql(table_name, &self.column_name, self.is_autoincrement);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
         let not_null_str = if !self.is_nullable && !self.is_pk {
