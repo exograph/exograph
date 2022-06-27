@@ -6,10 +6,11 @@ use super::{
 };
 use anyhow::{bail, Result};
 use maybe_owned::MaybeOwned;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct PhysicalColumn {
     pub table_name: String,
     pub column_name: String,
@@ -144,6 +145,7 @@ impl PhysicalColumnType {
                     bits: FloatBits::_53,
                 },
 
+                "UUID" => PhysicalColumnType::Uuid,
                 "TEXT" => PhysicalColumnType::String { length: None },
                 "BOOLEAN" => PhysicalColumnType::Boolean,
                 "JSONB" => PhysicalColumnType::Json,
@@ -175,6 +177,17 @@ impl PhysicalColumnType {
                         }
                     } else if s.starts_with("DATE") {
                         PhysicalColumnType::Date
+                    } else if s.starts_with("NUMERIC") {
+                        let regex =
+                            Regex::new("NUMERIC\\((?P<precision>\\d+),?(?P<scale>\\d+)?\\)")?;
+                        let captures = regex.captures(s).unwrap();
+
+                        let precision = captures
+                            .name("precision")
+                            .and_then(|s| s.as_str().parse().ok());
+                        let scale = captures.name("scale").and_then(|s| s.as_str().parse().ok());
+
+                        PhysicalColumnType::Numeric { precision, scale }
                     } else {
                         bail!("unknown type {}", s)
                     }
@@ -289,7 +302,7 @@ impl PhysicalColumnType {
                     }
                 }
                 .to_owned(),
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Float { bits } => SQLStatement {
@@ -298,7 +311,7 @@ impl PhysicalColumnType {
                     FloatBits::_53 => "DOUBLE PRECISION",
                 }
                 .to_owned(),
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Numeric { precision, scale } => SQLStatement {
@@ -314,7 +327,7 @@ impl PhysicalColumnType {
                         "NUMERIC".to_owned()
                     }
                 },
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::String { length } => SQLStatement {
@@ -323,12 +336,12 @@ impl PhysicalColumnType {
                 } else {
                     "TEXT".to_owned()
                 },
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Boolean => SQLStatement {
                 statement: "BOOLEAN".to_owned(),
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Timestamp {
@@ -356,7 +369,7 @@ impl PhysicalColumnType {
                     // e.g. "TIMESTAMP(3) WITH TIME ZONE"
                     format!("{}{} {}", typ, precision_option, timezone_option)
                 },
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Time { precision } => SQLStatement {
@@ -365,27 +378,27 @@ impl PhysicalColumnType {
                 } else {
                     "TIME".to_owned()
                 },
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Date => SQLStatement {
                 statement: "DATE".to_owned(),
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Json => SQLStatement {
                 statement: "JSONB".to_owned(),
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Blob => SQLStatement {
                 statement: "BYTEA".to_owned(),
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Uuid => SQLStatement {
                 statement: "uuid".to_owned(),
-                foreign_constraints: Vec::new(),
+                foreign_constraints_statements: Vec::new(),
             },
 
             PhysicalColumnType::Array { typ } => {
@@ -427,7 +440,9 @@ impl PhysicalColumnType {
                     ref_table_name = ref_table_name,
                 );
 
-                sql_statement.foreign_constraints.push(foreign_constraint);
+                sql_statement
+                    .foreign_constraints_statements
+                    .push(foreign_constraint);
                 sql_statement
             }
         }

@@ -63,18 +63,19 @@ fn main() -> Result<()> {
                 )
                 .subcommand(
                     Command::new("migrate")
-                        .about("Perform a database migration for a claytip model")
+                        .about("Produces a SQL migration script for a claytip model and the provided database")
+                        .arg(
+                            Arg::new("dry-run")
+                                .help("Comment destructive changes")
+                                .long("dry-run")
+                                .required(false)
+                                .takes_value(false),
+                        )
                         .arg(
                             Arg::new("model")
                                 .help("Claytip model file")
                                 .required(true)
                                 .index(1),
-                        )
-                        .arg(
-                            Arg::new("database")
-                                .help("Database source (postgres, git)")
-                                .required(true)
-                                .index(2),
                         ),
                 )
                 .subcommand(
@@ -160,7 +161,7 @@ fn main() -> Result<()> {
             }),
             Some(("migrate", matches)) => Box::new(MigrateCommand {
                 model: get_path(matches, "model"),
-                database: matches.get_one::<String>("database").unwrap().to_owned(),
+                comment_destructive_changes: matches.contains_id("dry-run"),
             }),
             _ => panic!("Unhandled command name"),
         },

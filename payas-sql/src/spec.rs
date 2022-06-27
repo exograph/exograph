@@ -11,7 +11,61 @@ use regex::Regex;
 /// statements have been executed.
 pub struct SQLStatement {
     pub statement: String,
-    pub foreign_constraints: Vec<String>,
+    pub foreign_constraints_statements: Vec<String>,
+}
+
+#[derive(Debug)]
+pub enum SQLOperation<'a> {
+    CreateTable {
+        table: &'a PhysicalTable,
+    },
+    DeleteTable {
+        table: &'a PhysicalTable,
+    },
+
+    CreateColumn {
+        table: &'a PhysicalTable,
+        column: &'a PhysicalColumn,
+    },
+    DeleteColumn {
+        table: &'a PhysicalTable,
+        column: &'a PhysicalColumn,
+    },
+
+    RemoveExtension {
+        extension: String,
+    },
+}
+
+impl SQLOperation<'_> {
+    pub fn to_sql(&self) -> SQLStatement {
+        match self {
+            SQLOperation::CreateTable { table } => table.to_sql(),
+            SQLOperation::DeleteTable { table } => SQLStatement {
+                statement: format!("DROP TABLE \"{}\";", table.name),
+                foreign_constraints_statements: vec![],
+            },
+            SQLOperation::CreateColumn { table, column } => {
+                let column = column.to_sql(&table.name);
+
+                SQLStatement {
+                    statement: format!("ALTER TABLE \"{}\" ADD {};", table.name, column.statement),
+                    foreign_constraints_statements: column.foreign_constraints_statements,
+                }
+            }
+            SQLOperation::DeleteColumn { table, column } => SQLStatement {
+                statement: format!(
+                    "ALTER TABLE \"{}\" DROP COLUMN \"{}\";",
+                    table.name, column.column_name
+                ),
+                foreign_constraints_statements: vec![],
+            },
+            SQLOperation::RemoveExtension { extension } => SQLStatement {
+                statement: format!("DROP EXTENSION \"{}\";", extension),
+                foreign_constraints_statements: vec![],
+            },
+        }
+    }
 }
 
 impl Display for SQLStatement {
@@ -20,7 +74,7 @@ impl Display for SQLStatement {
             f,
             "{}\n{}",
             self.statement,
-            self.foreign_constraints.join("\n")
+            self.foreign_constraints_statements.join("\n")
         )
     }
 }
@@ -105,12 +159,12 @@ impl SchemaSpec {
             .map(|t| t.to_sql())
             .for_each(|mut s| {
                 stmts.push(s.statement + "\n");
-                foreign_constraints.append(&mut s.foreign_constraints);
+                foreign_constraints.append(&mut s.foreign_constraints_statements);
             });
 
         SQLStatement {
             statement: stmts.join("\n"),
-            foreign_constraints,
+            foreign_constraints_statements: foreign_constraints,
         }
     }
 }
@@ -220,7 +274,7 @@ impl PhysicalTable {
             .iter()
             .map(|c| {
                 let mut s = c.to_sql(&self.name);
-                foreign_constraints.append(&mut s.foreign_constraints);
+                foreign_constraints.append(&mut s.foreign_constraints_statements);
                 s.statement
             })
             .collect::<Vec<_>>()
@@ -251,7 +305,7 @@ impl PhysicalTable {
 
         SQLStatement {
             statement: format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts),
-            foreign_constraints,
+            foreign_constraints_statements: foreign_constraints,
         }
     }
 
@@ -346,7 +400,16 @@ impl PhysicalColumn {
             .map(|row| -> String { row.get("relname") })
             .collect::<HashSet<_>>();
 
-        let default_value = {
+        let is_autoincrement =
+            serial_columns.contains(&format!("{}_{}_seq", table_name, column_name));
+
+        let default_value = if is_autoincrement {
+            // if this column is autoincrement, then default value will be populated
+            // with an invocation of nextval()
+            //
+            // clear it to normalize the column
+            None
+        } else {
             let db_type_query = format!(
                 "
                 SELECT pg_get_expr(pg_attrdef.adbin, pg_attrdef.adrelid)
@@ -368,8 +431,7 @@ impl PhysicalColumn {
                 column_name: column_name.to_owned(),
                 typ,
                 is_pk,
-                is_autoincrement: serial_columns
-                    .contains(&format!("{}_{}_seq", table_name, column_name)),
+                is_autoincrement,
                 is_nullable: !not_null,
                 unique_constraints: vec![], // TODO: transfer unique constraints from db
                 default_value,
@@ -382,7 +444,7 @@ impl PhysicalColumn {
     pub fn to_sql(&self, table_name: &str) -> SQLStatement {
         let SQLStatement {
             statement,
-            foreign_constraints,
+            foreign_constraints_statements: foreign_constraints,
         } = self
             .typ
             .to_sql(table_name, &self.column_name, self.is_autoincrement);
@@ -404,7 +466,7 @@ impl PhysicalColumn {
                 "\"{}\" {}{}{}{}",
                 self.column_name, statement, pk_str, not_null_str, default_value_part
             ),
-            foreign_constraints,
+            foreign_constraints_statements: foreign_constraints,
         }
     }
 }
