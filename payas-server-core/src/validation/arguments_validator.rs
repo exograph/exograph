@@ -40,7 +40,7 @@ impl<'a> ArgumentValidator<'a> {
     pub(super) fn validate(
         &self,
         field_argument_definition: &[&InputValueDefinition],
-    ) -> Result<Vec<(String, ConstValue)>, ExecutionError> {
+    ) -> Result<HashMap<String, ConstValue>, ExecutionError> {
         self.validate_arguments(field_argument_definition, &self.field.node.arguments)
     }
 
@@ -48,7 +48,7 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         field_argument_definitions: &[&InputValueDefinition],
         field_arguments: &[(Positioned<Name>, Positioned<Value>)],
-    ) -> Result<Vec<(String, ConstValue)>, ExecutionError> {
+    ) -> Result<HashMap<String, ConstValue>, ExecutionError> {
         let field_name = self.field.node.name.node.as_str();
 
         // Stray arguments tracking: 1. Maintain a hashmap of all the arguments supplied in the query

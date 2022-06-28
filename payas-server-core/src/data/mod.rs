@@ -10,6 +10,8 @@ pub mod predicate_mapper;
 pub mod query_resolver;
 mod update_data_param_mapper;
 
+use std::collections::HashMap;
+
 use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 use predicate_mapper::PredicateParameterMapper;
 
@@ -24,7 +26,7 @@ use payas_model::model::{
     system::ModelSystem,
 };
 
-pub type Arguments = [(String, ConstValue)];
+pub type Arguments = HashMap<String, ConstValue>;
 
 fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a ConstValue> {
     arguments.iter().find_map(|argument| {

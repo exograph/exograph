@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use crate::{
     deno_integration::{
         clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
-        FnClaytipInterceptorProceed, InterceptedOperationName,
+        FnClaytipInterceptorProceed, InterceptedOperationInfo,
     },
     execution::operations_context::QueryResponseBody,
 };
@@ -173,6 +175,7 @@ impl<'a> InterceptedOperation<'a> {
                         query_context,
                         super::claytip_execute_query!(query_context),
                         Some(operation_name.to_string()),
+                        field,
                         None,
                     )
                     .await?;
@@ -184,6 +187,7 @@ impl<'a> InterceptedOperation<'a> {
                         query_context,
                         super::claytip_execute_query!(query_context),
                         Some(operation_name.to_string()),
+                        field,
                         None,
                     )
                     .await?;
@@ -202,6 +206,7 @@ impl<'a> InterceptedOperation<'a> {
                     query_context,
                     super::claytip_execute_query!(query_context),
                     Some(operation_name.to_string()),
+                    field,
                     Some(&|| async move { core.execute(field, query_context).await }.boxed()),
                 )
                 .await?;
@@ -228,12 +233,15 @@ async fn execute_interceptor<'a>(
     query_context: &'a OperationsContext<'a>,
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     operation_name: Option<String>,
+    operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>)> {
     let script = &query_context.system.deno_scripts[interceptor.script];
 
+    let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
+
     let arg_sequence: Vec<Arg> =
-        construct_arg_sequence(&[], &interceptor.arguments, query_context).await?;
+        construct_arg_sequence(&HashMap::new(), &interceptor.arguments, query_context).await?;
 
     let callback_processor = ClayCallbackProcessor {
         claytip_execute_query,
@@ -248,7 +256,10 @@ async fn execute_interceptor<'a>(
             &script.script,
             &interceptor.name,
             arg_sequence,
-            operation_name.map(InterceptedOperationName),
+            operation_name.map(|name| InterceptedOperationInfo {
+                name,
+                query: serialized_operation_query,
+            }),
             callback_processor,
         )
         .await
