@@ -106,7 +106,7 @@ impl<'a> SelectionSetValidator<'a> {
                 Ok(ValidatedField {
                     alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
                     name: field.node.name.node.clone(),
-                    arguments: vec![],
+                    arguments: HashMap::new(),
                     subfields: vec![],
                 })
             }

@@ -236,7 +236,7 @@ impl<'a> OperationResolverResult<'a> {
 }
 
 pub async fn construct_arg_sequence(
-    field_args: &[(String, ConstValue)],
+    field_args: &HashMap<String, ConstValue>,
     args: &[Argument],
     query_context: &OperationsContext<'_>,
 ) -> Result<Vec<Arg>> {
@@ -310,6 +310,7 @@ async fn resolve_deno<'a>(
     let callback_processor = ClayCallbackProcessor {
         claytip_execute_query,
         claytip_proceed: None,
+        // operation_query: None,
     };
 
     let (result, response) = query_context

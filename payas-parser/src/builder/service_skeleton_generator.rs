@@ -26,10 +26,21 @@ interface Claytip {
     sameSite: "Lax" | "Strict" | "None"
   }): Promise<void>;
 }
- 
+
+type JsonObject = { [Key in string]?: JsonValue };
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+
+interface Field {
+    alias: string | null;
+    name: string;
+    arguments: JsonObject;
+    subfields: Field[];
+}
+
 interface Operation {
-  name(): Promise<string>;
-  proceed<T>(): Promise<T>;
+    name(): string;
+    proceed<T>(): Promise<T>;
+    query(): Field;
 }
 "#;
 

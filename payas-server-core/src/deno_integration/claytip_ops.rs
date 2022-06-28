@@ -10,7 +10,10 @@ use super::clay_execution::{
 };
 
 #[derive(Debug)]
-pub struct InterceptedOperationName(pub String);
+pub struct InterceptedOperationInfo {
+    pub name: String,
+    pub query: Value,
+}
 
 #[op]
 pub async fn op_claytip_execute_query(
@@ -59,10 +62,19 @@ pub async fn op_claytip_execute_query(
 #[op]
 pub fn op_intercepted_operation_name(state: &mut OpState) -> Result<String, AnyError> {
     // try to read the intercepted operation name out of Deno's GothamStorage
-    if let Some(InterceptedOperationName(name)) = state.borrow() {
+    if let Some(InterceptedOperationInfo { name, .. }) = state.borrow() {
         Ok(name.clone())
     } else {
         Err(anyhow!("no stored operation name"))
+    }
+}
+
+#[op]
+pub fn op_intercepted_operation_query(state: &mut OpState) -> Result<Value, AnyError> {
+    if let Some(InterceptedOperationInfo { query, .. }) = state.borrow() {
+        Ok(query.to_owned())
+    } else {
+        Err(anyhow!("no stored operation query"))
     }
 }
 
@@ -124,5 +136,6 @@ pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<
 
 #[op]
 pub fn op_add_header(state: &mut OpState, header: String, value: String) -> Result<(), AnyError> {
+    println!("op_add_header: {}: {}", header, value);
     add_header(state, header, value)
 }
