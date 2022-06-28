@@ -14,23 +14,20 @@ Ok(
                 name: Name(
                     "concert",
                 ),
-                arguments: [
-                    (
-                        "id",
+                arguments: {
+                    "id": Number(
                         Number(
-                            Number(
-                                1,
-                            ),
+                            1,
                         ),
                     ),
-                ],
+                },
                 subfields: [
                     ValidatedField {
                         alias: None,
                         name: Name(
                             "id",
                         ),
-                        arguments: [],
+                        arguments: {},
                         subfields: [],
                     },
                     ValidatedField {
@@ -38,7 +35,7 @@ Ok(
                         name: Name(
                             "title",
                         ),
-                        arguments: [],
+                        arguments: {},
                         subfields: [],
                     },
                     ValidatedField {
@@ -46,14 +43,14 @@ Ok(
                         name: Name(
                             "venue",
                         ),
-                        arguments: [],
+                        arguments: {},
                         subfields: [
                             ValidatedField {
                                 alias: None,
                                 name: Name(
                                     "id",
                                 ),
-                                arguments: [],
+                                arguments: {},
                                 subfields: [],
                             },
                             ValidatedField {
@@ -61,7 +58,7 @@ Ok(
                                 name: Name(
                                     "name",
                                 ),
-                                arguments: [],
+                                arguments: {},
                                 subfields: [],
                             },
                         ],

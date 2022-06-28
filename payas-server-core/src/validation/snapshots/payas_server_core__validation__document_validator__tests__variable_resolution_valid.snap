@@ -12,23 +12,20 @@ Ok(
                 name: Name(
                     "concert",
                 ),
-                arguments: [
-                    (
-                        "id",
+                arguments: {
+                    "id": Number(
                         Number(
-                            Number(
-                                1,
-                            ),
+                            1,
                         ),
                     ),
-                ],
+                },
                 subfields: [
                     ValidatedField {
                         alias: None,
                         name: Name(
                             "id",
                         ),
-                        arguments: [],
+                        arguments: {},
                         subfields: [],
                     },
                     ValidatedField {
@@ -36,7 +33,7 @@ Ok(
                         name: Name(
                             "title",
                         ),
-                        arguments: [],
+                        arguments: {},
                         subfields: [],
                     },
                 ],
@@ -46,23 +43,20 @@ Ok(
                 name: Name(
                     "venue",
                 ),
-                arguments: [
-                    (
-                        "id",
+                arguments: {
+                    "id": Number(
                         Number(
-                            Number(
-                                2,
-                            ),
+                            2,
                         ),
                     ),
-                ],
+                },
                 subfields: [
                     ValidatedField {
                         alias: None,
                         name: Name(
                             "id",
                         ),
-                        arguments: [],
+                        arguments: {},
                         subfields: [],
                     },
                     ValidatedField {
@@ -70,7 +64,7 @@ Ok(
                         name: Name(
                             "name",
                         ),
-                        arguments: [],
+                        arguments: {},
                         subfields: [],
                     },
                 ],
