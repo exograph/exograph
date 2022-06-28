@@ -21,8 +21,6 @@ impl Command for MigrateCommand {
             .build()
             .unwrap();
 
-        //let mut issues = Vec::new();
-
         rt.block_on(async {
             let database = Database::from_env(Some(1))?; // TODO: error handling here
             let client = database.get_client().await?;

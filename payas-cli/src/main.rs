@@ -65,9 +65,9 @@ fn main() -> Result<()> {
                     Command::new("migrate")
                         .about("Produces a SQL migration script for a claytip model and the provided database")
                         .arg(
-                            Arg::new("dry-run")
+                            Arg::new("allow-destructive-changes")
                                 .help("Comment destructive changes")
-                                .long("dry-run")
+                                .long("allow-destructive-changes")
                                 .required(false)
                                 .takes_value(false),
                         )
@@ -161,7 +161,7 @@ fn main() -> Result<()> {
             }),
             Some(("migrate", matches)) => Box::new(MigrateCommand {
                 model: get_path(matches, "model"),
-                comment_destructive_changes: matches.contains_id("dry-run"),
+                comment_destructive_changes: !matches.contains_id("allow-destructive-changes"),
             }),
             _ => panic!("Unhandled command name"),
         },
