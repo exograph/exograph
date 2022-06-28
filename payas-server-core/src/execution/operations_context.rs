@@ -81,7 +81,7 @@ impl<'qc> OperationsContext<'qc> {
         &self,
         operation: ValidatedOperation,
     ) -> Result<Vec<(String, QueryResponse)>> {
-        operation.typ.resolve_fields(self, &operation.fields).await
+        operation.resolve_fields(self, &operation.fields).await
     }
 
     async fn resolve_type(&self, field: &ValidatedField) -> Result<JsonValue> {
@@ -337,7 +337,7 @@ fragment query_info on Query {
 ```
 */
 #[async_trait]
-impl FieldResolver<QueryResponse> for OperationType {
+impl FieldResolver<QueryResponse> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
         operations_context: &'e OperationsContext<'e>,
@@ -359,7 +359,7 @@ impl FieldResolver<QueryResponse> for OperationType {
                             .await?,
                     )),
                     "__typename" => {
-                        let typename = match self {
+                        let typename = match self.typ {
                             OperationType::Query => QUERY_ROOT_TYPENAME,
                             OperationType::Mutation => MUTATION_ROOT_TYPENAME,
                             OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
@@ -381,7 +381,7 @@ impl FieldResolver<QueryResponse> for OperationType {
         } else {
             operations_context
                 .system
-                .resolve(field, self, operations_context)
+                .resolve(field, &self.typ, operations_context)
                 .await
         }
     }
