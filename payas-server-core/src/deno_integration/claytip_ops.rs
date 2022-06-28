@@ -136,6 +136,5 @@ pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<
 
 #[op]
 pub fn op_add_header(state: &mut OpState, header: String, value: String) -> Result<(), AnyError> {
-    println!("op_add_header: {}: {}", header, value);
     add_header(state, header, value)
 }

@@ -310,7 +310,6 @@ async fn resolve_deno<'a>(
     let callback_processor = ClayCallbackProcessor {
         claytip_execute_query,
         claytip_proceed: None,
-        // operation_query: None,
     };
 
     let (result, response) = query_context

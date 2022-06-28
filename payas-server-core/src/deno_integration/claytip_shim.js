@@ -11,7 +11,6 @@
     setCookie: function (
         cookie
     ) {
-        console.log("setCookie: " + cookie)
         // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
         let cookieString = `${encodeURIComponent(cookie.name)}=${encodeURIComponent(cookie.value)}`;
 
