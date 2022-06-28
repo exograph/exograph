@@ -14,7 +14,7 @@ use payas_deno::{
 
 use crate::{deno_integration, execution::operations_context::QueryResponse};
 
-use super::claytip_ops::InterceptedOperationName;
+use super::claytip_ops::InterceptedOperationInfo;
 
 #[derive(Default, Debug)]
 pub struct ClaytipMethodResponse {
@@ -89,14 +89,14 @@ const EXPLICIT_ERROR_CLASS_NAME: Option<&'static str> = Some("ClaytipError");
 
 pub fn process_call_context(
     deno_module: &mut DenoModule,
-    call_context: Option<InterceptedOperationName>,
+    call_context: Option<InterceptedOperationInfo>,
 ) {
     deno_module
         .put(call_context)
         .unwrap_or_else(|_| panic!("Failed to setup interceptor"));
 }
 
-pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationName>> {
+pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
     fn create_extensions() -> Vec<Extension> {
         // we provide a set of Claytip functionality through custom Deno ops,
         // create a Deno extension that provides these ops
@@ -104,6 +104,7 @@ pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationName>> {
             .ops(vec![
                 deno_integration::claytip_ops::op_claytip_execute_query::decl(),
                 deno_integration::claytip_ops::op_intercepted_operation_name::decl(),
+                deno_integration::claytip_ops::op_intercepted_operation_query::decl(),
                 deno_integration::claytip_ops::op_intercepted_proceed::decl(),
                 deno_integration::claytip_ops::op_add_header::decl(),
             ])

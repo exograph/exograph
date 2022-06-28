@@ -1,0 +1,17 @@
+model Todo {
+  id: Int = autoincrement() @pk
+  title: String
+}
+
+@external("interception.ts")
+service Interception {
+  @around("query *")
+  interceptor captureParams(operation: Operation)
+
+  type OperationParams {
+    name: String
+    query: String
+  }
+
+  query serve(intArg: Int, stringArg: String): OperationParams?
+}

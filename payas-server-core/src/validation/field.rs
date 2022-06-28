@@ -1,12 +1,15 @@
-use async_graphql_value::{ConstValue, Name};
+use std::collections::HashMap;
 
-#[derive(Debug)]
+use async_graphql_value::{ConstValue, Name};
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
 pub struct ValidatedField {
     pub alias: Option<Name>,
     /// The name of the field.
     pub name: Name,
     /// The arguments to the field, empty if no arguments are provided.
-    pub arguments: Vec<(String, ConstValue)>,
+    pub arguments: HashMap<String, ConstValue>,
 
     /// The subfields being selected in this field, if it is an object. Empty if no fields are
     /// being selected.

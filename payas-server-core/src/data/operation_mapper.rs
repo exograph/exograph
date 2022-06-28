@@ -236,7 +236,7 @@ impl<'a> OperationResolverResult<'a> {
 }
 
 pub async fn construct_arg_sequence(
-    field_args: &[(String, ConstValue)],
+    field_args: &HashMap<String, ConstValue>,
     args: &[Argument],
     query_context: &OperationsContext<'_>,
 ) -> Result<Vec<Arg>> {
