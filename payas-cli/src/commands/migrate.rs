@@ -44,7 +44,7 @@ impl Command for MigrateCommand {
                     | SQLOperation::DeleteTable { .. }
                     | SQLOperation::RemoveExtension { .. } => {
                         if self.comment_destructive_changes {
-                            print!("// ");
+                            print!("-- ");
                         }
                     }
 
