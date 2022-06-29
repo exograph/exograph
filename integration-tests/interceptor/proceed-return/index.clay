@@ -1,0 +1,23 @@
+model Todo {
+  id: Int = autoincrement() @pk
+  title: String
+}
+
+@external("test-service.ts")
+service TestService {
+  type Info {
+    id: Int
+    title: String
+  }
+
+  query getInfo(): Info
+}
+
+@external("interception.ts")
+service Interception {
+  @around("query todo")
+  interceptor todoReturnFreshValue(operation: Operation)
+
+  @around("query getInfo")
+  interceptor infoReturnFreshValue(operation: Operation)
+}
