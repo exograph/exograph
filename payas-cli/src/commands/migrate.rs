@@ -135,10 +135,6 @@ fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SQLOp<'
             PhysicalColumnType::ColumnReference { .. } => {}
             _ => {
                 if !existing_columns.contains(column) {
-                    //println!("!! {:#?}", column);
-                    //println!("!! {:#?}", existing_columns);
-                    //panic!();
-
                     // new column
                     changes.push(SQLOp::CreateColumn { table: new, column });
                 }
