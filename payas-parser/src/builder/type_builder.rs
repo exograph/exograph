@@ -307,10 +307,10 @@ fn create_column(
             .and_then(|default_value| match default_value {
                 ResolvedFieldDefault::Value(val) => Some(match &**val {
                     AstExpr::StringLiteral(string, _) => {
-                        format!("'{}'", string.replace('\'', "''"))
+                        format!("'{}'::text", string.replace('\'', "''"))
                     }
                     AstExpr::BooleanLiteral(boolean, _) => {
-                        format!("{}", boolean).to_ascii_uppercase()
+                        format!("{}", boolean)
                     }
                     AstExpr::NumberLiteral(val, _) => {
                         format!("{}", val)

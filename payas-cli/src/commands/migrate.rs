@@ -4,7 +4,7 @@ use super::command::Command;
 use anyhow::Result;
 use payas_model::spec::FromModel;
 use payas_sql::{
-    spec::{SQLOperation, SchemaSpec},
+    spec::{SQLOp, SchemaSpec},
     Database, PhysicalColumnType, PhysicalTable,
 };
 
@@ -38,15 +38,17 @@ impl Command for MigrateCommand {
 
             for diff in diffs.iter() {
                 match diff {
-                    SQLOperation::DeleteColumn { .. }
-                    | SQLOperation::DeleteTable { .. }
-                    | SQLOperation::RemoveExtension { .. } => {
+                    SQLOp::DeleteColumn { .. }
+                    | SQLOp::DeleteTable { .. }
+                    | SQLOp::RemoveExtension { .. } => {
                         if self.comment_destructive_changes {
                             print!("-- ");
                         }
                     }
 
-                    SQLOperation::CreateColumn { .. } | SQLOperation::CreateTable { .. } => {}
+                    SQLOp::CreateColumn { .. }
+                    | SQLOp::CreateTable { .. }
+                    | SQLOp::CreateExtension { .. } => {}
                 };
 
                 let statement = diff.to_sql();
@@ -62,53 +64,56 @@ impl Command for MigrateCommand {
     }
 }
 
-fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SQLOperation<'a>> {
+fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SQLOp<'a>> {
     let existing_tables = &old.table_specs;
     let new_tables = &new.table_specs;
     let mut changes = vec![];
 
+    // extension removal
+    let extensions_to_drop = old.required_extensions.difference(&new.required_extensions);
+    for extension in extensions_to_drop {
+        changes.push(SQLOp::RemoveExtension {
+            extension: extension.clone(),
+        })
+    }
+
+    // extension creation
+    let extensions_to_create = old.required_extensions.difference(&new.required_extensions);
+    for extension in extensions_to_create {
+        changes.push(SQLOp::CreateExtension {
+            extension: extension.clone(),
+        })
+    }
+
     for old_table in old.table_specs.iter() {
+        // try to find a table with the same name in the new spec
         match new_tables
             .iter()
             .find(|new_table| old_table.name == new_table.name)
         {
-            Some(new_table) => {
-                // table exists, compare columns
-                changes.extend(diff_table(old_table, new_table))
-            }
+            // table exists, compare columns
+            Some(new_table) => changes.extend(diff_table(old_table, new_table)),
 
-            None => {
-                // table deletion
-                changes.push(SQLOperation::DeleteTable { table: old_table })
-            }
+            // table does not exist, deletion
+            None => changes.push(SQLOp::DeleteTable { table: old_table }),
         }
     }
 
+    // try to find a table that needs to be created
     for new_table in new.table_specs.iter() {
         if !existing_tables
             .iter()
             .any(|old_table| new_table.name == old_table.name)
         {
             // new table
-            changes.push(SQLOperation::CreateTable { table: new_table })
+            changes.push(SQLOp::CreateTable { table: new_table })
         }
-    }
-
-    // extension addition is handled by schema.to_sql
-    // noop
-
-    // extension removal
-    let dropped_extensions = old.required_extensions.difference(&new.required_extensions);
-    for extension in dropped_extensions {
-        changes.push(SQLOperation::RemoveExtension {
-            extension: extension.clone(),
-        })
     }
 
     changes
 }
 
-fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SQLOperation<'a>> {
+fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SQLOp<'a>> {
     let existing_columns = &old.columns;
     let new_columns = &new.columns;
     let mut changes = vec![];
@@ -119,7 +124,7 @@ fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SQLOper
             _ => {
                 if !new_columns.contains(column) {
                     // column deletion
-                    changes.push(SQLOperation::DeleteColumn { table: new, column });
+                    changes.push(SQLOp::DeleteColumn { table: new, column });
                 }
             }
         }
@@ -130,8 +135,12 @@ fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SQLOper
             PhysicalColumnType::ColumnReference { .. } => {}
             _ => {
                 if !existing_columns.contains(column) {
+                    //println!("!! {:#?}", column);
+                    //println!("!! {:#?}", existing_columns);
+                    //panic!();
+
                     // new column
-                    changes.push(SQLOperation::CreateColumn { table: new, column });
+                    changes.push(SQLOp::CreateColumn { table: new, column });
                 }
             }
         }

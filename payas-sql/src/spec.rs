@@ -9,13 +9,15 @@ use regex::Regex;
 
 /// An SQL statement along with any foreign constraint statements that should follow after all the
 /// statements have been executed.
+#[derive(Default)]
 pub struct SQLStatement {
     pub statement: String,
     pub foreign_constraints_statements: Vec<String>,
 }
 
+/// An execution unit of SQL, representing an operation that can create or destroy resources.
 #[derive(Debug)]
-pub enum SQLOperation<'a> {
+pub enum SQLOp<'a> {
     CreateTable {
         table: &'a PhysicalTable,
     },
@@ -32,20 +34,23 @@ pub enum SQLOperation<'a> {
         column: &'a PhysicalColumn,
     },
 
+    CreateExtension {
+        extension: String,
+    },
     RemoveExtension {
         extension: String,
     },
 }
 
-impl SQLOperation<'_> {
+impl SQLOp<'_> {
     pub fn to_sql(&self) -> SQLStatement {
         match self {
-            SQLOperation::CreateTable { table } => table.to_sql(),
-            SQLOperation::DeleteTable { table } => SQLStatement {
+            SQLOp::CreateTable { table } => table.to_sql(),
+            SQLOp::DeleteTable { table } => SQLStatement {
                 statement: format!("DROP TABLE \"{}\";", table.name),
                 foreign_constraints_statements: vec![],
             },
-            SQLOperation::CreateColumn { table, column } => {
+            SQLOp::CreateColumn { table, column } => {
                 let column = column.to_sql(&table.name);
 
                 SQLStatement {
@@ -53,16 +58,20 @@ impl SQLOperation<'_> {
                     foreign_constraints_statements: column.foreign_constraints_statements,
                 }
             }
-            SQLOperation::DeleteColumn { table, column } => SQLStatement {
+            SQLOp::DeleteColumn { table, column } => SQLStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" DROP COLUMN \"{}\";",
                     table.name, column.column_name
                 ),
-                foreign_constraints_statements: vec![],
+                ..Default::default()
             },
-            SQLOperation::RemoveExtension { extension } => SQLStatement {
+            SQLOp::CreateExtension { extension } => SQLStatement {
+                statement: format!("CREATE EXTENSION \"{}\";", extension),
+                ..Default::default()
+            },
+            SQLOp::RemoveExtension { extension } => SQLStatement {
                 statement: format!("DROP EXTENSION \"{}\";", extension),
-                foreign_constraints_statements: vec![],
+                ..Default::default()
             },
         }
     }
@@ -145,27 +154,26 @@ impl SchemaSpec {
         })
     }
 
-    /// Converts the schema specification to SQL statements.
-    pub fn to_sql(&self) -> SQLStatement {
-        let mut stmts = Vec::new();
-        let mut foreign_constraints = Vec::new();
+    /// Merges the schema specification into a single SQL statement.
+    pub fn to_sql_string(&self) -> String {
+        let mut ops = Vec::new();
 
         self.required_extensions.iter().for_each(|ext| {
-            stmts.push(format!("CREATE EXTENSION \"{}\";", ext));
+            ops.push(SQLOp::CreateExtension {
+                extension: ext.to_owned(),
+            });
         });
 
-        self.table_specs
-            .iter()
-            .map(|t| t.to_sql())
-            .for_each(|mut s| {
-                stmts.push(s.statement + "\n");
-                foreign_constraints.append(&mut s.foreign_constraints_statements);
-            });
+        self.table_specs.iter().for_each(|t| {
+            ops.push(SQLOp::CreateTable { table: t });
+        });
 
-        SQLStatement {
-            statement: stmts.join("\n"),
-            foreign_constraints_statements: foreign_constraints,
-        }
+        let statements: Vec<String> = ops
+            .into_iter()
+            .map(|op| format!("{}", op.to_sql()))
+            .collect();
+
+        statements.join("\n")
     }
 }
 

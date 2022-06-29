@@ -17,7 +17,7 @@ impl Command for CreateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         let system = payas_parser::build_system(&self.model)?;
 
-        println!("{}", SchemaSpec::from_model(system.tables).to_sql());
+        println!("{}", SchemaSpec::from_model(system.tables).to_sql_string());
         Ok(())
     }
 }
