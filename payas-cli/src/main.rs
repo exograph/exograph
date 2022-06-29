@@ -32,7 +32,7 @@ fn main() -> Result<()> {
         )
         .subcommand(
             Command::new("schema")
-                .about("Database schema utilities")
+                .about("Create, migrate, import, and verify database schema")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .subcommand(
@@ -93,7 +93,7 @@ fn main() -> Result<()> {
         )
         .subcommand(
             Command::new("serve")
-                .about("Run local claytip server")
+                .about("Run claytip server in development mode")
                 .arg(
                     Arg::new("model")
                         .help("Claytip model file")
