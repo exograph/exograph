@@ -1,4 +1,5 @@
 export async function todoReturnFreshValue(operation: Operation) {
+	// Intercept the operation and return a fresh value i.e. not the one returned by `operation.proceed()`
 	return {
 		id: 1,
 		title: 'Test'
@@ -6,25 +7,9 @@ export async function todoReturnFreshValue(operation: Operation) {
 }
 
 export async function infoReturnFreshValue(operation: Operation) {
+	// Intercept the operation and return a fresh value i.e. not the one returned by `operation.proceed()`
 	return {
 		id: 1,
 		title: 'Test'
 	}
 }
-
-interface OperationParams {
-	name: string
-	query: string
-}
-
-export async function serve(intArg: number, stringArg: string): Promise<OperationParams | null> {
-	return null;
-}
-
-export async function captureParams(operation: Operation) {
-	return {
-		name: operation.name(),
-		query: JSON.stringify(operation.query())
-	}
-}
-

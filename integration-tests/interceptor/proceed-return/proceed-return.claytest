@@ -4,9 +4,11 @@ operation: |
       id
       title
     }
+    # Get only id field (the interesting returns the whole object, so this allows testing if we receive only the id)
     todo_id: todo(id: 1) {
       id
     }
+    # Ensure that aliasing has no effect on the filtering logic
     todo_title_aliased: todo(id: 1) {
       title_alias: title
     }
@@ -14,6 +16,7 @@ operation: |
       id
       title
     }
+    # Same as above, but for Deno-implemented services
     info_id: getInfo {
       id
     }
