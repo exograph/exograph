@@ -81,7 +81,28 @@ pub trait OperationResolver<'a> {
 
         let intercepted_operation =
             InterceptedOperation::new(op_name, resolver_result, interceptors);
-        intercepted_operation.execute(field, query_context).await
+        let QueryResponse { body, headers } =
+            intercepted_operation.execute(field, query_context).await?;
+
+        // A proceed call in an around interceptor may have returned more fields that necessary (just like a normal service),
+        // so we need to filter out the fields that are not needed.
+        // TODO: Validate that all requested fields are present in the response.
+        let field_selected_response_body = match body {
+            QueryResponseBody::Json(value @ serde_json::Value::Object(_)) => {
+                let resolved_set = value
+                    .resolve_fields(query_context, &field.subfields)
+                    .await?;
+                QueryResponseBody::Json(serde_json::Value::Object(
+                    resolved_set.into_iter().collect(),
+                ))
+            }
+            _ => body,
+        };
+
+        Ok(QueryResponse {
+            body: field_selected_response_body,
+            headers,
+        })
     }
 
     fn name(&self) -> &str;
@@ -324,15 +345,6 @@ async fn resolve_deno<'a>(
             callback_processor,
         )
         .await?;
-
-    let result = if let serde_json::Value::Object(_) = result {
-        let resolved_set = result
-            .resolve_fields(query_context, &field.subfields)
-            .await?;
-        serde_json::Value::Object(resolved_set.into_iter().collect())
-    } else {
-        result
-    };
 
     Ok(QueryResponse {
         body: QueryResponseBody::Json(result),
