@@ -2,10 +2,8 @@
 
 use anyhow::Result;
 use payas_model::spec::ToModel;
-use payas_sql::{
-    spec::{SchemaSpec, WithIssues},
-    Database,
-};
+use payas_sql::schema::issue::WithIssues;
+use payas_sql::{schema::spec::SchemaSpec, Database};
 use std::{fs::File, io::Write, path::PathBuf, time::SystemTime};
 
 use super::command::Command;

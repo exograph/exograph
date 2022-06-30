@@ -2,7 +2,8 @@ use std::collections::HashSet;
 
 use heck::ToUpperCamelCase;
 
-use payas_sql::spec::{Issue, SchemaSpec, WithIssues};
+use payas_sql::schema::issue::{Issue, WithIssues};
+use payas_sql::schema::spec::SchemaSpec;
 use payas_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
 use crate::model::mapped_arena::SerializableSlab;

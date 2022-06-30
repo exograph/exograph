@@ -4,7 +4,7 @@ use super::command::Command;
 use anyhow::Result;
 use payas_model::spec::FromModel;
 use payas_sql::{
-    spec::{SQLOp, SchemaSpec},
+    schema::{op::SchemaOp, spec::SchemaSpec},
     Database, PhysicalColumnType, PhysicalTable,
 };
 
@@ -38,17 +38,17 @@ impl Command for MigrateCommand {
 
             for diff in diffs.iter() {
                 match diff {
-                    SQLOp::DeleteColumn { .. }
-                    | SQLOp::DeleteTable { .. }
-                    | SQLOp::RemoveExtension { .. } => {
+                    SchemaOp::DeleteColumn { .. }
+                    | SchemaOp::DeleteTable { .. }
+                    | SchemaOp::RemoveExtension { .. } => {
                         if self.comment_destructive_changes {
                             print!("-- ");
                         }
                     }
 
-                    SQLOp::CreateColumn { .. }
-                    | SQLOp::CreateTable { .. }
-                    | SQLOp::CreateExtension { .. } => {}
+                    SchemaOp::CreateColumn { .. }
+                    | SchemaOp::CreateTable { .. }
+                    | SchemaOp::CreateExtension { .. } => {}
                 };
 
                 let statement = diff.to_sql();
@@ -69,7 +69,7 @@ impl Command for MigrateCommand {
     }
 }
 
-fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SQLOp<'a>> {
+fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SchemaOp<'a>> {
     let existing_tables = &old.table_specs;
     let new_tables = &new.table_specs;
     let mut changes = vec![];
@@ -77,7 +77,7 @@ fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SQLOp<'a>> {
     // extension removal
     let extensions_to_drop = old.required_extensions.difference(&new.required_extensions);
     for extension in extensions_to_drop {
-        changes.push(SQLOp::RemoveExtension {
+        changes.push(SchemaOp::RemoveExtension {
             extension: extension.clone(),
         })
     }
@@ -85,7 +85,7 @@ fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SQLOp<'a>> {
     // extension creation
     let extensions_to_create = old.required_extensions.difference(&new.required_extensions);
     for extension in extensions_to_create {
-        changes.push(SQLOp::CreateExtension {
+        changes.push(SchemaOp::CreateExtension {
             extension: extension.clone(),
         })
     }
@@ -100,7 +100,7 @@ fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SQLOp<'a>> {
             Some(new_table) => changes.extend(diff_table(old_table, new_table)),
 
             // table does not exist, deletion
-            None => changes.push(SQLOp::DeleteTable { table: old_table }),
+            None => changes.push(SchemaOp::DeleteTable { table: old_table }),
         }
     }
 
@@ -111,14 +111,14 @@ fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SQLOp<'a>> {
             .any(|old_table| new_table.name == old_table.name)
         {
             // new table
-            changes.push(SQLOp::CreateTable { table: new_table })
+            changes.push(SchemaOp::CreateTable { table: new_table })
         }
     }
 
     changes
 }
 
-fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SQLOp<'a>> {
+fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SchemaOp<'a>> {
     let existing_columns = &old.columns;
     let new_columns = &new.columns;
     let mut changes = vec![];
@@ -129,7 +129,7 @@ fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SQLOp<'
             _ => {
                 if !new_columns.contains(column) {
                     // column deletion
-                    changes.push(SQLOp::DeleteColumn { table: new, column });
+                    changes.push(SchemaOp::DeleteColumn { table: new, column });
                 }
             }
         }
@@ -141,7 +141,7 @@ fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SQLOp<'
             _ => {
                 if !existing_columns.contains(column) {
                     // new column
-                    changes.push(SQLOp::CreateColumn { table: new, column });
+                    changes.push(SchemaOp::CreateColumn { table: new, column });
                 }
             }
         }

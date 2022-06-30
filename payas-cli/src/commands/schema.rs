@@ -4,7 +4,7 @@ use anyhow::Result;
 use payas_model::spec::FromModel;
 use std::{path::PathBuf, time::SystemTime};
 
-use payas_sql::spec::SchemaSpec;
+use payas_sql::schema::spec::SchemaSpec;
 
 use super::command::Command;
 
