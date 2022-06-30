@@ -52,9 +52,14 @@ impl Command for MigrateCommand {
                 };
 
                 let statement = diff.to_sql();
+
+                for constraint in statement.pre_statements.iter() {
+                    println!("{}", constraint);
+                }
+
                 println!("{}", statement.statement);
 
-                for constraint in statement.foreign_constraints_statements.iter() {
+                for constraint in statement.post_statements.iter() {
                     println!("{}", constraint);
                 }
             }

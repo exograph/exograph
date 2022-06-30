@@ -12,7 +12,12 @@ use regex::Regex;
 #[derive(Default)]
 pub struct SQLStatement {
     pub statement: String,
-    pub foreign_constraints_statements: Vec<String>,
+    // foreign constraint statements that need to be executed before this statement. For example, when deleting a table,
+    // foreign constraint statements need to be executed before the table is deleted.
+    pub pre_statements: Vec<String>,
+    // foreign constraint statements that need to be executed after this statement. For example, when creating a table,
+    // foreign constraint statements need to be executed after the table is created.
+    pub post_statements: Vec<String>,
 }
 
 /// An execution unit of SQL, representing an operation that can create or destroy resources.
@@ -45,17 +50,15 @@ pub enum SQLOp<'a> {
 impl SQLOp<'_> {
     pub fn to_sql(&self) -> SQLStatement {
         match self {
-            SQLOp::CreateTable { table } => table.to_sql(),
-            SQLOp::DeleteTable { table } => SQLStatement {
-                statement: format!("DROP TABLE \"{}\";", table.name),
-                foreign_constraints_statements: vec![],
-            },
+            SQLOp::CreateTable { table } => table.creation_sql(),
+            SQLOp::DeleteTable { table } => table.deletion_sql(),
             SQLOp::CreateColumn { table, column } => {
                 let column = column.to_sql(&table.name);
 
                 SQLStatement {
                     statement: format!("ALTER TABLE \"{}\" ADD {};", table.name, column.statement),
-                    foreign_constraints_statements: column.foreign_constraints_statements,
+                    pre_statements: column.pre_statements,
+                    post_statements: column.post_statements,
                 }
             }
             SQLOp::DeleteColumn { table, column } => SQLStatement {
@@ -81,9 +84,10 @@ impl Display for SQLStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}\n{}",
+            "{}\n{}\n{}",
+            self.pre_statements.join("\n"),
             self.statement,
-            self.foreign_constraints_statements.join("\n")
+            self.post_statements.join("\n")
         )
     }
 }
@@ -168,12 +172,28 @@ impl SchemaSpec {
             ops.push(SQLOp::CreateTable { table: t });
         });
 
-        let statements: Vec<String> = ops
-            .into_iter()
-            .map(|op| format!("{}", op.to_sql()))
-            .collect();
+        let mut all_pre_statements = Vec::new();
+        let mut all_statements = Vec::new();
+        let mut all_post_statements = Vec::new();
 
-        statements.join("\n")
+        ops.into_iter().map(|op| op.to_sql()).for_each(
+            |SQLStatement {
+                 statement,
+                 pre_statements,
+                 post_statements,
+             }| {
+                all_pre_statements.extend(pre_statements);
+                all_statements.push(statement);
+                all_post_statements.extend(post_statements);
+            },
+        );
+
+        all_pre_statements
+            .into_iter()
+            .chain(all_statements.into_iter())
+            .chain(all_post_statements.into_iter())
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 
@@ -275,30 +295,20 @@ impl PhysicalTable {
     }
 
     /// Converts the table specification to SQL statements.
-    pub fn to_sql(&self) -> SQLStatement {
+    pub fn creation_sql(&self) -> SQLStatement {
         let mut foreign_constraints = Vec::new();
         let column_stmts: String = self
             .columns
             .iter()
             .map(|c| {
                 let mut s = c.to_sql(&self.name);
-                foreign_constraints.append(&mut s.foreign_constraints_statements);
+                foreign_constraints.append(&mut s.post_statements);
                 s.statement
             })
             .collect::<Vec<_>>()
             .join(",\n\t");
 
-        let named_unique_constraints = self.columns.iter().fold(HashMap::new(), |mut map, c| {
-            {
-                for name in c.unique_constraints.iter() {
-                    let entry: &mut Vec<String> = map.entry(name).or_insert_with(Vec::new);
-                    (*entry).push(c.column_name.clone());
-                }
-            }
-            map
-        });
-
-        for (unique_constraint_name, columns) in named_unique_constraints.iter() {
+        for (unique_constraint_name, columns) in self.named_unique_constraints().iter() {
             let columns_part = columns
                 .iter()
                 .map(|c| format!("\"{}\"", c))
@@ -313,7 +323,24 @@ impl PhysicalTable {
 
         SQLStatement {
             statement: format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts),
-            foreign_constraints_statements: foreign_constraints,
+            pre_statements: vec![],
+            post_statements: foreign_constraints,
+        }
+    }
+
+    fn deletion_sql(&self) -> SQLStatement {
+        let mut pre_statements = vec![];
+        for (unique_constraint_name, _) in self.named_unique_constraints().iter() {
+            pre_statements.push(format!(
+                "ALTER TABLE \"{}\" DROP CONSTRAINT \"{}\";",
+                self.name, unique_constraint_name
+            ));
+        }
+
+        SQLStatement {
+            statement: format!("DROP TABLE \"{}\";", self.name),
+            pre_statements,
+            post_statements: vec![],
         }
     }
 
@@ -328,6 +355,18 @@ impl PhysicalTable {
         }
 
         required_extensions
+    }
+
+    fn named_unique_constraints(&self) -> HashMap<&String, Vec<String>> {
+        self.columns.iter().fold(HashMap::new(), |mut map, c| {
+            {
+                for name in c.unique_constraints.iter() {
+                    let entry: &mut Vec<String> = map.entry(name).or_insert_with(Vec::new);
+                    (*entry).push(c.column_name.clone());
+                }
+            }
+            map
+        })
     }
 }
 
@@ -452,7 +491,8 @@ impl PhysicalColumn {
     pub fn to_sql(&self, table_name: &str) -> SQLStatement {
         let SQLStatement {
             statement,
-            foreign_constraints_statements: foreign_constraints,
+            post_statements: foreign_constraints,
+            ..
         } = self
             .typ
             .to_sql(table_name, &self.column_name, self.is_autoincrement);
@@ -474,7 +514,8 @@ impl PhysicalColumn {
                 "\"{}\" {}{}{}{}",
                 self.column_name, statement, pk_str, not_null_str, default_value_part
             ),
-            foreign_constraints_statements: foreign_constraints,
+            pre_statements: vec![],
+            post_statements: foreign_constraints,
         }
     }
 }
