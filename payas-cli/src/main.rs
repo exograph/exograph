@@ -66,7 +66,7 @@ fn main() -> Result<()> {
                         .about("Produces a SQL migration script for a claytip model and the provided database")
                         .arg(
                             Arg::new("allow-destructive-changes")
-                                .help("Comment destructive changes")
+                                .help("Allow destructive changes (otherwise commented for manual review)")
                                 .long("allow-destructive-changes")
                                 .required(false)
                                 .takes_value(false),
