@@ -108,13 +108,13 @@ impl PhysicalTable {
 
     /// Converts the table specification to SQL statements.
     pub fn creation_sql(&self) -> SchemaStatement {
-        let mut foreign_constraints = Vec::new();
+        let mut post_statements = Vec::new();
         let column_stmts: String = self
             .columns
             .iter()
             .map(|c| {
                 let mut s = c.to_sql(&self.name);
-                foreign_constraints.append(&mut s.post_statements);
+                post_statements.append(&mut s.post_statements);
                 s.statement
             })
             .collect::<Vec<_>>()
@@ -127,7 +127,7 @@ impl PhysicalTable {
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            foreign_constraints.push(format!(
+            post_statements.push(format!(
                 "ALTER TABLE \"{}\" ADD CONSTRAINT \"{}\" UNIQUE ({});",
                 self.name, unique_constraint_name, columns_part
             ));
@@ -136,7 +136,7 @@ impl PhysicalTable {
         SchemaStatement {
             statement: format!("CREATE TABLE \"{}\" (\n\t{}\n);", self.name, column_stmts),
             pre_statements: vec![],
-            post_statements: foreign_constraints,
+            post_statements,
         }
     }
 

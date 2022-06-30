@@ -129,7 +129,7 @@ impl PhysicalColumn {
     pub fn to_sql(&self, table_name: &str) -> SchemaStatement {
         let SchemaStatement {
             statement,
-            post_statements: foreign_constraints,
+            post_statements,
             ..
         } = self
             .typ
@@ -153,7 +153,7 @@ impl PhysicalColumn {
                 self.column_name, statement, pk_str, not_null_str, default_value_part
             ),
             pre_statements: vec![],
-            post_statements: foreign_constraints,
+            post_statements,
         }
     }
 }
@@ -332,7 +332,7 @@ impl PhysicalColumnType {
                     ref_table_name = ref_table_name,
                 );
 
-                sql_statement.pre_statements.push(foreign_constraint);
+                sql_statement.post_statements.push(foreign_constraint);
                 sql_statement
             }
         }

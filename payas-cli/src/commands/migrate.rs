@@ -14,6 +14,45 @@ pub struct MigrateCommand {
     pub comment_destructive_changes: bool,
 }
 
+pub fn migration_statements(
+    old_schema_spec: SchemaSpec,
+    new_schema_spec: SchemaSpec,
+) -> Vec<(String, bool)> {
+    let mut pre_statements = vec![];
+    let mut statements = vec![];
+    let mut post_statements = vec![];
+
+    let diffs = diff_schema(&old_schema_spec, &new_schema_spec);
+
+    for diff in diffs.iter() {
+        let is_destructive = match diff {
+            SchemaOp::DeleteColumn { .. }
+            | SchemaOp::DeleteTable { .. }
+            | SchemaOp::RemoveExtension { .. } => true,
+
+            SchemaOp::CreateColumn { .. }
+            | SchemaOp::CreateTable { .. }
+            | SchemaOp::CreateExtension { .. } => false,
+        };
+
+        let statement = diff.to_sql();
+
+        for constraint in statement.pre_statements.into_iter() {
+            pre_statements.push((constraint, is_destructive));
+        }
+
+        statements.push((statement.statement, is_destructive));
+
+        for constraint in statement.post_statements.into_iter() {
+            post_statements.push((constraint, is_destructive));
+        }
+    }
+
+    pre_statements.extend(statements);
+    pre_statements.extend(post_statements);
+    pre_statements
+}
+
 impl Command for MigrateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         let rt = tokio::runtime::Builder::new_current_thread()
@@ -34,34 +73,13 @@ impl Command for MigrateCommand {
             let new_system = payas_parser::build_system(&self.model)?;
             let new_schema = SchemaSpec::from_model(new_system.tables);
 
-            let diffs = diff_schema(&old_schema.value, &new_schema);
+            let statements = migration_statements(old_schema.value, new_schema);
 
-            for diff in diffs.iter() {
-                match diff {
-                    SchemaOp::DeleteColumn { .. }
-                    | SchemaOp::DeleteTable { .. }
-                    | SchemaOp::RemoveExtension { .. } => {
-                        if self.comment_destructive_changes {
-                            print!("-- ");
-                        }
-                    }
-
-                    SchemaOp::CreateColumn { .. }
-                    | SchemaOp::CreateTable { .. }
-                    | SchemaOp::CreateExtension { .. } => {}
-                };
-
-                let statement = diff.to_sql();
-
-                for constraint in statement.pre_statements.iter() {
-                    println!("{}", constraint);
+            for (statement, is_destructive) in statements {
+                if is_destructive && self.comment_destructive_changes {
+                    print!("-- ");
                 }
-
-                println!("{}", statement.statement);
-
-                for constraint in statement.post_statements.iter() {
-                    println!("{}", constraint);
-                }
+                println!("{}", statement);
             }
 
             Ok(())
@@ -83,7 +101,7 @@ fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SchemaOp<'a>
     }
 
     // extension creation
-    let extensions_to_create = old.required_extensions.difference(&new.required_extensions);
+    let extensions_to_create = new.required_extensions.difference(&old.required_extensions);
     for extension in extensions_to_create {
         changes.push(SchemaOp::CreateExtension {
             extension: extension.clone(),

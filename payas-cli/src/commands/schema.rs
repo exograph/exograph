@@ -6,6 +6,8 @@ use std::{path::PathBuf, time::SystemTime};
 
 use payas_sql::schema::spec::SchemaSpec;
 
+use crate::commands::migrate::migration_statements;
+
 use super::command::Command;
 
 /// Create a database schema from a claytip model
@@ -17,7 +19,12 @@ impl Command for CreateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         let system = payas_parser::build_system(&self.model)?;
 
-        println!("{}", SchemaSpec::from_model(system.tables).to_sql_string());
+        for (statement, _) in
+            migration_statements(SchemaSpec::default(), SchemaSpec::from_model(system.tables))
+        {
+            println!("{}\n", statement);
+        }
+
         Ok(())
     }
 }

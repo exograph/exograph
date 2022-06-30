@@ -5,10 +5,9 @@ use anyhow::{anyhow, Result};
 use deadpool_postgres::Client;
 
 use super::issue::WithIssues;
-use super::op::SchemaOp;
-use super::statement::SchemaStatement;
 
 /// Specification for the overall schema.
+#[derive(Default)]
 pub struct SchemaSpec {
     pub table_specs: Vec<PhysicalTable>,
     pub required_extensions: HashSet<String>,
@@ -46,43 +45,5 @@ impl SchemaSpec {
             },
             issues,
         })
-    }
-
-    /// Merges the schema specification into a single SQL statement.
-    pub fn to_sql_string(&self) -> String {
-        let mut ops = Vec::new();
-
-        self.required_extensions.iter().for_each(|ext| {
-            ops.push(SchemaOp::CreateExtension {
-                extension: ext.to_owned(),
-            });
-        });
-
-        self.table_specs.iter().for_each(|t| {
-            ops.push(SchemaOp::CreateTable { table: t });
-        });
-
-        let mut all_pre_statements = Vec::new();
-        let mut all_statements = Vec::new();
-        let mut all_post_statements = Vec::new();
-
-        ops.into_iter().map(|op| op.to_sql()).for_each(
-            |SchemaStatement {
-                 statement,
-                 pre_statements,
-                 post_statements,
-             }| {
-                all_pre_statements.extend(pre_statements);
-                all_statements.push(statement);
-                all_post_statements.extend(post_statements);
-            },
-        );
-
-        all_pre_statements
-            .into_iter()
-            .chain(all_statements.into_iter())
-            .chain(all_post_statements.into_iter())
-            .collect::<Vec<_>>()
-            .join("\n")
     }
 }
