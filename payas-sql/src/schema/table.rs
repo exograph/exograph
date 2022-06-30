@@ -150,7 +150,7 @@ impl PhysicalTable {
         }
 
         SchemaStatement {
-            statement: format!("DROP TABLE \"{}\";", self.name),
+            statement: format!("DROP TABLE \"{}\" CASCADE;", self.name),
             pre_statements,
             post_statements: vec![],
         }

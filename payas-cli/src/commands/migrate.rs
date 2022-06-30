@@ -5,7 +5,7 @@ use anyhow::Result;
 use payas_model::spec::FromModel;
 use payas_sql::{
     schema::{op::SchemaOp, spec::SchemaSpec},
-    Database, PhysicalColumnType, PhysicalTable,
+    Database, PhysicalTable,
 };
 
 /// Perform a database migration for a claytip model
@@ -142,26 +142,16 @@ fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SchemaO
     let mut changes = vec![];
 
     for column in old.columns.iter() {
-        match column.typ {
-            PhysicalColumnType::ColumnReference { .. } => {}
-            _ => {
-                if !new_columns.contains(column) {
-                    // column deletion
-                    changes.push(SchemaOp::DeleteColumn { table: new, column });
-                }
-            }
+        if !new_columns.contains(column) {
+            // column deletion
+            changes.push(SchemaOp::DeleteColumn { table: new, column });
         }
     }
 
     for column in new.columns.iter() {
-        match column.typ {
-            PhysicalColumnType::ColumnReference { .. } => {}
-            _ => {
-                if !existing_columns.contains(column) {
-                    // new column
-                    changes.push(SchemaOp::CreateColumn { table: new, column });
-                }
-            }
+        if !existing_columns.contains(column) {
+            // new column
+            changes.push(SchemaOp::CreateColumn { table: new, column });
         }
     }
 
