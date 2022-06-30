@@ -82,16 +82,16 @@ pub fn convert_root(
                         }
 
                         match import_path.canonicalize() {
-                            Ok(path) => Ok(Some(path)),
-                            Err(_) => {
+                            Ok(path) if path.is_file() => Ok(Some(path)),
+                            _ => {
                                 // If no extension is given, try if a file with the same name but with ".clay" extension exists.
                                 if import_path.extension() == Some(OsStr::new("clay")) {
                                     Err(compute_diagnosis(import_path, source_span, first_child))
                                 } else {
                                     let with_extension = import_path.with_extension("clay");
                                     match with_extension.canonicalize() {
-                                        Ok(path) => Ok(Some(path)),
-                                        Err(_) => Err(compute_diagnosis(
+                                        Ok(path) if path.is_file() => Ok(Some(path)),
+                                        _ => Err(compute_diagnosis(
                                             with_extension,
                                             source_span,
                                             first_child,
