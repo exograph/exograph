@@ -112,3 +112,195 @@ fn diff_table<'a>(old: &'a PhysicalTable, new: &'a PhysicalTable) -> Vec<SchemaO
 
     changes
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use payas_sql::schema::spec::SchemaSpec;
+    use stripmargin::StripMargin;
+
+    #[test]
+    fn add_model() {
+        assert_changes(
+            "",
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                published: Boolean
+            }
+            "#,
+            vec![(
+                r#"CREATE TABLE "concerts" (
+                   |    "id" SERIAL PRIMARY KEY,
+                   |    "title" TEXT NOT NULL,
+                   |    "published" BOOLEAN NOT NULL
+                   |);"#,
+                false,
+            )],
+        );
+    }
+
+    #[test]
+    fn add_field() {
+        assert_changes(
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+            }
+            "#,
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                published: Boolean
+            }
+            "#,
+            vec![(
+                r#"ALTER TABLE "concerts" ADD "published" BOOLEAN NOT NULL;"#,
+                false,
+            )],
+        );
+    }
+
+    #[test]
+    fn remove_field() {
+        assert_changes(
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                published: Boolean
+            }
+            "#,
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+            }
+            "#,
+            vec![(r#"ALTER TABLE "concerts" DROP COLUMN "published";"#, true)],
+        );
+    }
+
+    #[test]
+    fn add_relation() {
+        assert_changes(
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+            }
+            "#,
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                venue: Venue
+            }
+            model Venue {
+                id: Int = autoincrement() @pk
+                name: String
+                concerts: Set<Concert>?
+            }
+            "#,
+            vec![
+                (
+                    r#"ALTER TABLE "concerts" ADD "venue_id" INT NOT NULL;"#,
+                    false,
+                ),
+                (
+                    r#"CREATE TABLE "venues" (
+                |    "id" SERIAL PRIMARY KEY,
+                |    "name" TEXT NOT NULL
+                |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+            ],
+        );
+    }
+
+    #[test]
+    fn remove_relation_field() {
+        assert_changes(
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                venue: Venue
+            }
+            model Venue {
+                id: Int = autoincrement() @pk
+                name: String
+                concerts: Set<Concert>?
+            }
+            "#,
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+            }
+            model Venue {
+                id: Int = autoincrement() @pk
+                name: String
+            }
+            "#,
+            vec![(r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true)],
+        );
+    }
+
+    #[test]
+    fn remove_relation_and_related_model() {
+        assert_changes(
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                venue: Venue
+            }
+            model Venue {
+                id: Int = autoincrement() @pk
+                name: String
+                concerts: Set<Concert>?
+            }
+            "#,
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+            }
+            "#,
+            vec![
+                (r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true),
+                (r#"DROP TABLE "venues" CASCADE;"#, true),
+            ],
+        );
+    }
+
+    fn compute_spec(model: &str) -> SchemaSpec {
+        let system = payas_parser::build_system_from_str(model, "test.clay".to_string()).unwrap();
+        SchemaSpec::from_model(system.tables.into_iter().collect())
+    }
+
+    fn assert_changes(old_system: &str, new_system: &str, expected_changes: Vec<(&str, bool)>) {
+        let old_system = compute_spec(old_system);
+        let new_system = compute_spec(new_system);
+        let actual = migration_statements(old_system, new_system);
+
+        let actual_changes = actual
+            .into_iter()
+            .map(|(s, d)| (s.replace('\t', "    "), d))
+            .collect::<Vec<_>>();
+        let expected_changes = expected_changes
+            .into_iter()
+            .map(|(s, d)| (s.strip_margin(), d))
+            .collect::<Vec<_>>();
+
+        assert_eq!(actual_changes, expected_changes);
+    }
+}

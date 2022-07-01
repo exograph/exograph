@@ -20,3 +20,6 @@ payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
 payas-model = { path = "../payas-model" }
 payas-test = { path = "../payas-test" }
+
+[dev-dependencies]
+stripmargin = "0.1.1"
