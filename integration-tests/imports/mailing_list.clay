@@ -1,4 +1,4 @@
-import "users.clay"
+import "users/users.clay"
 
 model MailingList {
     id: Int = autoincrement() @pk
