@@ -142,6 +142,21 @@ mod tests {
     }
 
     #[test]
+    fn remove_model() {
+        assert_changes(
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                published: Boolean
+            }
+            "#,
+            "",
+            vec![(r#"DROP TABLE "concerts" CASCADE;"#, true)],
+        );
+    }
+
+    #[test]
     fn add_field() {
         assert_changes(
             r#"
@@ -185,7 +200,7 @@ mod tests {
     }
 
     #[test]
-    fn add_relation() {
+    fn add_relation_and_related_model() {
         assert_changes(
             r#"
             model Concert {
@@ -226,6 +241,72 @@ mod tests {
     }
 
     #[test]
+    fn remove_relation_and_related_model() {
+        assert_changes(
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                venue: Venue
+            }
+            model Venue {
+                id: Int = autoincrement() @pk
+                name: String
+                concerts: Set<Concert>?
+            }
+            "#,
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+            }
+            "#,
+            vec![
+                (r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true),
+                (r#"DROP TABLE "venues" CASCADE;"#, true),
+            ],
+        );
+    }
+
+    #[test]
+    fn add_relation_field() {
+        assert_changes(
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+            }
+            model Venue {
+                id: Int = autoincrement() @pk
+                name: String
+            }
+            "#,
+            r#"
+            model Concert {
+                id: Int = autoincrement() @pk
+                title: String
+                venue: Venue
+            }
+            model Venue {
+                id: Int = autoincrement() @pk
+                name: String
+                concerts: Set<Concert>?
+            }
+            "#,
+            vec![
+                (
+                    r#"ALTER TABLE "concerts" ADD "venue_id" INT NOT NULL;"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
+                    false,
+                ),
+            ],
+        );
+    }
+
+    #[test]
     fn remove_relation_field() {
         assert_changes(
             r#"
@@ -251,34 +332,6 @@ mod tests {
             }
             "#,
             vec![(r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true)],
-        );
-    }
-
-    #[test]
-    fn remove_relation_and_related_model() {
-        assert_changes(
-            r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-                venue: Venue
-            }
-            model Venue {
-                id: Int = autoincrement() @pk
-                name: String
-                concerts: Set<Concert>?
-            }
-            "#,
-            r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-            }
-            "#,
-            vec![
-                (r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true),
-                (r#"DROP TABLE "venues" CASCADE;"#, true),
-            ],
         );
     }
 
