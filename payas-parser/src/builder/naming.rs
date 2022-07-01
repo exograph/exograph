@@ -1,10 +1,9 @@
 use heck::ToLowerCamelCase;
 use heck::ToSnakeCase;
-
-use crate::model::GqlType;
+use payas_model::model::GqlType;
 
 /// A type with both singular and plural versions of itself.
-pub trait ToPlural {
+pub(super) trait ToPlural {
     fn to_singular(&self) -> String;
     fn to_plural(&self) -> String;
 }
@@ -30,7 +29,7 @@ impl ToPlural for GqlType {
 }
 
 /// A type that can generate GraphQL query names.
-pub trait ToGqlQueryName {
+pub(super) trait ToGqlQueryName {
     /// Single query name (e.g. `concert`)
     fn pk_query(&self) -> String;
     /// Plural query name (e.g. `concerts`)
@@ -64,7 +63,7 @@ fn to_update(name: &str) -> String {
 }
 
 /// A type that can generate GraphQL mutation names.
-pub trait ToGqlMutationNames {
+pub(crate) trait ToGqlMutationNames {
     /// Single create name (e.g. `createConcert`)
     fn pk_create(&self) -> String;
     /// Single delete name (e.g. `deleteConcert`)
@@ -118,7 +117,7 @@ fn to_reference_type(name: &str) -> String {
 }
 
 /// A type that can generate GraphQL type names.
-pub trait ToGqlTypeNames {
+pub(crate) trait ToGqlTypeNames {
     /// Creation type name (e.g. `ConcertCreationInput`)
     fn creation_type(&self) -> String;
     /// Update type name (e.g. `ConcertUpdateInput`)
@@ -155,7 +154,7 @@ impl<T: ToPlural> ToGqlTypeNames for T {
     }
 }
 
-pub trait ToTableName {
+pub(crate) trait ToTableName {
     fn table_name(&self, plural_name: Option<String>) -> String;
 }
 

@@ -10,6 +10,7 @@ mod create_mutation_builder;
 mod delete_mutation_builder;
 mod interceptor_weaver;
 mod mutation_builder;
+mod naming;
 mod order_by_type_builder;
 mod predicate_builder;
 mod query_builder;

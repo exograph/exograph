@@ -1,9 +1,9 @@
 //! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
+use super::naming::ToGqlTypeNames;
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::naming::ToGqlTypeNames;
 use payas_model::model::operation::{Interceptors, Mutation, MutationKind, OperationReturnType};
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::{

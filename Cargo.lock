@@ -3223,12 +3223,14 @@ dependencies = [
  "anyhow",
  "bincode",
  "clap",
+ "heck",
  "notify 4.0.17",
  "payas-model",
  "payas-parser",
  "payas-sql",
  "payas-test",
  "serde",
+ "stripmargin",
  "tokio",
 ]
 
@@ -3253,7 +3255,6 @@ dependencies = [
 name = "payas-model"
 version = "0.1.0"
 dependencies = [
- "heck",
  "payas-sql",
  "serde",
  "typed-generational-arena",
@@ -4445,6 +4446,12 @@ dependencies = [
  "unicode-bidi",
  "unicode-normalization",
 ]
+
+[[package]]
+name = "stripmargin"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "784dea3618a8c4f8bba0af715e4075f6d743d766d46f7c3339525dd95776c004"
 
 [[package]]
 name = "strsim"

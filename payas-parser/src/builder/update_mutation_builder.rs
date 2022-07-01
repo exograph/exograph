@@ -1,8 +1,8 @@
 //! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
 
+use super::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
 use payas_model::model::{
     GqlCompositeType, GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind,

@@ -6,10 +6,10 @@
 
 use std::io::Write;
 
+use super::naming::{ToPlural, ToTableName};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
-use payas_model::model::naming::{ToPlural, ToTableName};
 use payas_model::model::GqlTypeModifier;
 
 use crate::ast::ast_types::{
@@ -779,7 +779,7 @@ fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> Resolve
         }
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
             DEFAULT_FN_AUTOINCREMENT => ResolvedFieldDefault::Autoincrement,
-            DEFAULT_FN_CURRENT_TIME => ResolvedFieldDefault::DatabaseFunction("NOW()".to_string()),
+            DEFAULT_FN_CURRENT_TIME => ResolvedFieldDefault::DatabaseFunction("now()".to_string()),
             DEFAULT_FN_GENERATE_UUID => {
                 ResolvedFieldDefault::DatabaseFunction("gen_random_uuid()".to_string())
             }

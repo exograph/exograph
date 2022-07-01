@@ -1,8 +1,8 @@
 //! Build mutation input types associatd with creation (<Type>CreationInput) and
 //! the create mutations (create<Type>, and create<Type>s)
 
+use super::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::naming::{ToGqlMutationNames, ToGqlTypeNames};
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 

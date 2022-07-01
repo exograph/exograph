@@ -1,6 +1,6 @@
+use super::naming::ToGqlQueryName;
 use payas_model::model::limit_offset::OffsetParameter;
 use payas_model::model::mapped_arena::SerializableSlabIndex;
-use payas_model::model::naming::ToGqlQueryName;
 use payas_model::model::operation::{DatabaseQueryParameter, Interceptors, QueryKind};
 use payas_model::model::predicate::ColumnIdPathLink;
 use payas_model::model::{
