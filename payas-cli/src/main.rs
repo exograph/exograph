@@ -2,11 +2,9 @@ use std::{env, path::PathBuf, time::SystemTime};
 
 use anyhow::Result;
 use clap::{Arg, Command};
-use commands::{
-    migrate::MigrateCommand, serve::ServeCommand, test::TestCommand, yolo::YoloCommand,
-};
+use commands::{serve::ServeCommand, test::TestCommand, yolo::YoloCommand};
 
-use crate::commands::{build::BuildCommand, import, schema};
+use crate::commands::{build::BuildCommand, schema};
 
 mod commands;
 
@@ -149,17 +147,17 @@ fn main() -> Result<()> {
             model: get_path(matches, "model"),
         }),
         Some(("schema", matches)) => match matches.subcommand() {
-            Some(("create", matches)) => Box::new(schema::CreateCommand {
+            Some(("create", matches)) => Box::new(schema::create::CreateCommand {
                 model: get_path(matches, "model"),
             }),
-            Some(("verify", matches)) => Box::new(schema::VerifyCommand {
+            Some(("verify", matches)) => Box::new(schema::verify::VerifyCommand {
                 model: get_path(matches, "model"),
                 database: matches.get_one::<String>("database").unwrap().to_owned(),
             }),
-            Some(("import", matches)) => Box::new(import::ImportCommand {
+            Some(("import", matches)) => Box::new(schema::import::ImportCommand {
                 output: get_path(matches, "output"),
             }),
-            Some(("migrate", matches)) => Box::new(MigrateCommand {
+            Some(("migrate", matches)) => Box::new(schema::migrate::MigrateCommand {
                 model: get_path(matches, "model"),
                 comment_destructive_changes: !matches.contains_id("allow-destructive-changes"),
             }),

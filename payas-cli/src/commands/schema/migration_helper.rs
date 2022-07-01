@@ -1,20 +1,9 @@
-use std::{path::PathBuf, time::SystemTime};
-
-use super::command::Command;
-use anyhow::Result;
-use payas_model::spec::FromModel;
 use payas_sql::{
     schema::{op::SchemaOp, spec::SchemaSpec},
-    Database, PhysicalTable,
+    PhysicalTable,
 };
 
-/// Perform a database migration for a claytip model
-pub struct MigrateCommand {
-    pub model: PathBuf,
-    pub comment_destructive_changes: bool,
-}
-
-pub fn migration_statements(
+pub(super) fn migration_statements(
     old_schema_spec: SchemaSpec,
     new_schema_spec: SchemaSpec,
 ) -> Vec<(String, bool)> {
@@ -53,43 +42,9 @@ pub fn migration_statements(
     pre_statements
 }
 
-impl Command for MigrateCommand {
-    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_io()
-            .build()
-            .unwrap();
-
-        rt.block_on(async {
-            let database = Database::from_env(Some(1))?; // TODO: error handling here
-            let client = database.get_client().await?;
-
-            let old_schema = SchemaSpec::from_db(&client).await?;
-
-            for issue in &old_schema.issues {
-                println!("{}", issue);
-            }
-
-            let new_system = payas_parser::build_system(&self.model)?;
-            let new_schema = SchemaSpec::from_model(new_system.tables);
-
-            let statements = migration_statements(old_schema.value, new_schema);
-
-            for (statement, is_destructive) in statements {
-                if is_destructive && self.comment_destructive_changes {
-                    print!("-- ");
-                }
-                println!("{}", statement);
-            }
-
-            Ok(())
-        })
-    }
-}
-
 fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SchemaOp<'a>> {
-    let existing_tables = &old.table_specs;
-    let new_tables = &new.table_specs;
+    let existing_tables = &old.tables;
+    let new_tables = &new.tables;
     let mut changes = vec![];
 
     // extension removal
@@ -108,7 +63,7 @@ fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SchemaOp<'a>
         })
     }
 
-    for old_table in old.table_specs.iter() {
+    for old_table in old.tables.iter() {
         // try to find a table with the same name in the new spec
         match new_tables
             .iter()
@@ -123,7 +78,7 @@ fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SchemaOp<'a>
     }
 
     // try to find a table that needs to be created
-    for new_table in new.table_specs.iter() {
+    for new_table in new.tables.iter() {
         if !existing_tables
             .iter()
             .any(|old_table| new_table.name == old_table.name)

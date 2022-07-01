@@ -6,10 +6,10 @@
 
 use std::io::Write;
 
+use super::naming::{ToPlural, ToTableName};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
-use payas_model::model::naming::{ToPlural, ToTableName};
 use payas_model::model::GqlTypeModifier;
 
 use crate::ast::ast_types::{

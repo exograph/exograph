@@ -13,7 +13,7 @@ impl PhysicalColumn {
     ///
     /// If the column references another table's column, the column's type can be specified with
     /// `explicit_type`.
-    pub async fn from_db(
+    pub(super) async fn from_db(
         client: &Client,
         table_name: &str,
         column_name: &str,
@@ -126,7 +126,7 @@ impl PhysicalColumn {
     }
 
     /// Converts the column specification to SQL statements.
-    pub fn to_sql(&self, table_name: &str) -> SchemaStatement {
+    pub(super) fn to_sql(&self, table_name: &str) -> SchemaStatement {
         let SchemaStatement {
             statement,
             post_statements,
@@ -159,7 +159,7 @@ impl PhysicalColumn {
 }
 
 impl PhysicalColumnType {
-    pub fn to_sql(
+    pub(super) fn to_sql(
         &self,
         table_name: &str,
         column_name: &str,

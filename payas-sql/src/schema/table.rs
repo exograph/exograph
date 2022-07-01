@@ -11,7 +11,10 @@ use super::statement::SchemaStatement;
 
 impl PhysicalTable {
     /// Creates a new table specification from an SQL table.
-    pub async fn from_db(client: &Client, table_name: &str) -> Result<WithIssues<PhysicalTable>> {
+    pub(super) async fn from_db(
+        client: &Client,
+        table_name: &str,
+    ) -> Result<WithIssues<PhysicalTable>> {
         // Query to get a list of constraints in the table (primary key and foreign key constraints)
         let constraints_query = format!(
             "
@@ -107,7 +110,7 @@ impl PhysicalTable {
     }
 
     /// Converts the table specification to SQL statements.
-    pub fn creation_sql(&self) -> SchemaStatement {
+    pub(super) fn creation_sql(&self) -> SchemaStatement {
         let mut post_statements = Vec::new();
         let column_stmts: String = self
             .columns
@@ -140,7 +143,7 @@ impl PhysicalTable {
         }
     }
 
-    pub fn deletion_sql(&self) -> SchemaStatement {
+    pub(super) fn deletion_sql(&self) -> SchemaStatement {
         let mut pre_statements = vec![];
         for (unique_constraint_name, _) in self.named_unique_constraints().iter() {
             pre_statements.push(format!(

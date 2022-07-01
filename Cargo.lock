@@ -3223,6 +3223,7 @@ dependencies = [
  "anyhow",
  "bincode",
  "clap",
+ "heck",
  "notify 4.0.17",
  "payas-model",
  "payas-parser",
@@ -3253,7 +3254,6 @@ dependencies = [
 name = "payas-model"
 version = "0.1.0"
 dependencies = [
- "heck",
  "payas-sql",
  "serde",
  "typed-generational-arena",

@@ -1,15 +1,57 @@
-use std::collections::HashSet;
+//! Subcommands under the `model` subcommand
+
+use anyhow::Result;
+use payas_sql::schema::issue::WithIssues;
+use payas_sql::{schema::spec::SchemaSpec, Database};
+use std::{fs::File, io::Write, path::PathBuf, time::SystemTime};
 
 use heck::ToUpperCamelCase;
 
-use payas_sql::schema::issue::{Issue, WithIssues};
-use payas_sql::schema::spec::SchemaSpec;
+use payas_sql::schema::issue::Issue;
 use payas_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
-use crate::model::mapped_arena::SerializableSlab;
+use crate::commands::command::Command;
 
-pub trait FromModel<T> {
-    fn from_model(_: T) -> Self;
+/// Create a claytip model file based on a database schema
+pub struct ImportCommand {
+    pub output: PathBuf,
+}
+
+impl Command for ImportCommand {
+    fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
+        // Create runtime and make the rest of this an async block
+        // (then block on it)
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_io()
+            .build()
+            .unwrap();
+
+        let mut issues = Vec::new();
+        let mut schema = rt.block_on(import_schema())?;
+        let mut model = schema.value.to_model();
+
+        issues.append(&mut schema.issues);
+        issues.append(&mut model.issues);
+
+        if self.output.exists() {
+            Err(anyhow::anyhow!("File {} already exists. Rerun after removing that file or specify a different output file using the -o option", self.output.display()))
+        } else {
+            File::create(&self.output)?.write_all(schema.value.to_model().value.as_bytes())?;
+            for issue in &issues {
+                println!("{}", issue);
+            }
+
+            println!("\nClaytip model written to `{}`", self.output.display());
+            Ok(())
+        }
+    }
+}
+
+async fn import_schema() -> Result<WithIssues<SchemaSpec>> {
+    let database = Database::from_env(Some(1))?; // TODO: error handling here
+    let client = database.get_client().await?;
+    let schema = SchemaSpec::from_db(&client).await?;
+    Ok(schema)
 }
 
 pub trait ToModel {
@@ -21,35 +63,15 @@ fn to_model_name(name: &str) -> String {
     name.to_upper_camel_case()
 }
 
-impl FromModel<SerializableSlab<PhysicalTable>> for SchemaSpec {
-    /// Creates a new schema specification from the tables of a claytip model file.
-    fn from_model(tables: SerializableSlab<PhysicalTable>) -> Self {
-        let table_specs: Vec<_> = tables.into_iter().collect();
-
-        let mut required_extensions = HashSet::new();
-        for table_spec in table_specs.iter() {
-            required_extensions = required_extensions
-                .union(&table_spec.get_required_extensions())
-                .cloned()
-                .collect();
-        }
-
-        SchemaSpec {
-            table_specs,
-            required_extensions,
-        }
-    }
-}
-
 impl ToModel for SchemaSpec {
     /// Converts the schema specification to a claytip file.
     fn to_model(&self) -> WithIssues<String> {
         let mut issues = Vec::new();
         let stmt = self
-            .table_specs
+            .tables
             .iter()
-            .map(|table_spec| {
-                let mut model = table_spec.to_model();
+            .map(|table| {
+                let mut model = table.to_model();
                 issues.append(&mut model.issues);
                 format!("{}\n\n", model.value)
             })
