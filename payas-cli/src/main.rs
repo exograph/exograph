@@ -2,11 +2,9 @@ use std::{env, path::PathBuf, time::SystemTime};
 
 use anyhow::Result;
 use clap::{Arg, Command};
-use commands::{
-    migrate::MigrateCommand, serve::ServeCommand, test::TestCommand, yolo::YoloCommand,
-};
+use commands::{serve::ServeCommand, test::TestCommand, yolo::YoloCommand};
 
-use crate::commands::{build::BuildCommand, import, schema};
+use crate::commands::{build::BuildCommand, schema};
 
 mod commands;
 
@@ -63,18 +61,19 @@ fn main() -> Result<()> {
                 )
                 .subcommand(
                     Command::new("migrate")
-                        .about("Perform a database migration for a claytip model")
+                        .about("Produces a SQL migration script for a claytip model and the provided database")
+                        .arg(
+                            Arg::new("allow-destructive-changes")
+                                .help("Allow destructive changes (otherwise commented for manual review)")
+                                .long("allow-destructive-changes")
+                                .required(false)
+                                .takes_value(false),
+                        )
                         .arg(
                             Arg::new("model")
                                 .help("Claytip model file")
                                 .required(true)
                                 .index(1),
-                        )
-                        .arg(
-                            Arg::new("database")
-                                .help("Database source (postgres, git)")
-                                .required(true)
-                                .index(2),
                         ),
                 )
                 .subcommand(
@@ -148,19 +147,19 @@ fn main() -> Result<()> {
             model: get_path(matches, "model"),
         }),
         Some(("schema", matches)) => match matches.subcommand() {
-            Some(("create", matches)) => Box::new(schema::CreateCommand {
+            Some(("create", matches)) => Box::new(schema::create::CreateCommand {
                 model: get_path(matches, "model"),
             }),
-            Some(("verify", matches)) => Box::new(schema::VerifyCommand {
+            Some(("verify", matches)) => Box::new(schema::verify::VerifyCommand {
                 model: get_path(matches, "model"),
                 database: matches.get_one::<String>("database").unwrap().to_owned(),
             }),
-            Some(("import", matches)) => Box::new(import::ImportCommand {
+            Some(("import", matches)) => Box::new(schema::import::ImportCommand {
                 output: get_path(matches, "output"),
             }),
-            Some(("migrate", matches)) => Box::new(MigrateCommand {
+            Some(("migrate", matches)) => Box::new(schema::migrate::MigrateCommand {
                 model: get_path(matches, "model"),
-                database: matches.get_one::<String>("database").unwrap().to_owned(),
+                comment_destructive_changes: !matches.contains_id("allow-destructive-changes"),
             }),
             _ => panic!("Unhandled command name"),
         },
