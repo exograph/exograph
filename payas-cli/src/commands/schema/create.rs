@@ -16,6 +16,7 @@ impl Command for CreateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
         let system = payas_parser::build_system(&self.model)?;
 
+        // Creating the schema from the model is the same as migrating from an empty database.
         for (statement, _) in migration_statements(
             SchemaSpec::default(),
             SchemaSpec::from_model(system.tables.into_iter().collect()),

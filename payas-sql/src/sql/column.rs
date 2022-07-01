@@ -1,5 +1,3 @@
-// use crate::schema::spec::SQLStatement;
-
 use super::{
     select::Select, transaction::TransactionStepId, Expression, ExpressionContext,
     ParameterBinding, SQLParam,
