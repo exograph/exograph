@@ -4,6 +4,7 @@ use crate::{
         query_resolver::QuerySQLOperations,
     },
     execution::{operations_context::OperationsContext, resolver::GraphQLExecutionError},
+    request_context::RequestContext,
     validation::field::ValidatedField,
 };
 use async_trait::async_trait;
@@ -32,6 +33,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         &'a self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         if let MutationKind::Service { method_id, .. } = &self.kind {
             Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
@@ -44,18 +46,37 @@ impl<'a> OperationResolver<'a> for Mutation {
                 };
 
                 selection_query
-                    .operation(field, AbstractPredicate::True, query_context)
+                    .operation(
+                        field,
+                        AbstractPredicate::True,
+                        query_context,
+                        request_context,
+                    )
                     .await?
             };
 
             Ok(OperationResolverResult::SQLOperation(match &self.kind {
                 MutationKind::Create(data_param) => AbstractOperation::Insert(
-                    create_operation(self, data_param, field, abstract_select, query_context)
-                        .await?,
+                    create_operation(
+                        self,
+                        data_param,
+                        field,
+                        abstract_select,
+                        query_context,
+                        request_context,
+                    )
+                    .await?,
                 ),
                 MutationKind::Delete(predicate_param) => AbstractOperation::Delete(
-                    delete_operation(self, predicate_param, field, abstract_select, query_context)
-                        .await?,
+                    delete_operation(
+                        self,
+                        predicate_param,
+                        field,
+                        abstract_select,
+                        query_context,
+                        request_context,
+                    )
+                    .await?,
                 ),
                 MutationKind::Update {
                     data_param,
@@ -68,6 +89,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                         field,
                         abstract_select,
                         query_context,
+                        request_context,
                     )
                     .await?,
                 ),
@@ -91,12 +113,14 @@ async fn create_operation<'a>(
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
     query_context: &'a OperationsContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractInsert<'a>> {
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Create,
         query_context,
+        request_context,
     )
     .await;
 
@@ -118,6 +142,7 @@ async fn delete_operation<'a>(
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
     query_context: &'a OperationsContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractDelete<'a>> {
     let (table, _, _) = return_type_info(mutation, query_context);
 
@@ -126,6 +151,7 @@ async fn delete_operation<'a>(
         &mutation.return_type,
         &SQLOperationKind::Delete,
         query_context,
+        request_context,
     )
     .await;
 
@@ -161,6 +187,7 @@ async fn update_operation<'a>(
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
     query_context: &'a OperationsContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractUpdate<'a>> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
     // nested predicates aren't working.
@@ -169,6 +196,7 @@ async fn update_operation<'a>(
         &mutation.return_type,
         &SQLOperationKind::Update,
         query_context,
+        request_context,
     )
     .await;
 

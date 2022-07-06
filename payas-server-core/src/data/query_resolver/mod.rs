@@ -1,4 +1,7 @@
-use crate::{execution::operations_context::OperationsContext, validation::field::ValidatedField};
+use crate::{
+    execution::operations_context::OperationsContext, request_context::RequestContext,
+    validation::field::ValidatedField,
+};
 
 use anyhow::{anyhow, bail, Context, Result};
 
@@ -33,11 +36,17 @@ impl<'a> OperationResolver<'a> for Query {
         &'a self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         Ok(match &self.kind {
             QueryKind::Database(_) => {
                 let operation = self
-                    .operation(field, AbstractPredicate::True, query_context)
+                    .operation(
+                        field,
+                        AbstractPredicate::True,
+                        query_context,
+                        request_context,
+                    )
                     .await?;
 
                 OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
@@ -82,6 +91,7 @@ pub trait QuerySQLOperations<'a> {
         &'a self,
         fields: &'a [ValidatedField],
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>>;
 
     async fn operation(
@@ -89,6 +99,7 @@ pub trait QuerySQLOperations<'a> {
         field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractSelect<'a>>;
 }
 
@@ -121,9 +132,10 @@ impl<'a> QuerySQLOperations<'a> for Query {
         &'a self,
         fields: &'a [ValidatedField],
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>> {
         futures::stream::iter(fields.iter())
-            .then(|field| async { map_field(self, field, query_context).await })
+            .then(|field| async { map_field(self, field, query_context, request_context).await })
             .collect::<Vec<Result<_>>>()
             .await
             .into_iter()
@@ -181,6 +193,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractSelect<'a>> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
@@ -191,6 +204,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     &self.return_type,
                     &SQLOperationKind::Retrieve,
                     query_context,
+                    request_context,
                 )
                 .await;
 
@@ -210,7 +224,9 @@ impl<'a> QuerySQLOperations<'a> for Query {
 
                 let predicate = AbstractPredicate::and(predicate, access_predicate);
 
-                let content_object = self.content_select(&field.subfields, query_context).await?;
+                let content_object = self
+                    .content_select(&field.subfields, query_context, request_context)
+                    .await?;
 
                 // Apply the join logic only for top-level selections
                 let system = query_context.get_system();
@@ -254,6 +270,7 @@ async fn map_field<'a>(
     query: &'a Query,
     field: &'a ValidatedField,
     query_context: &'a OperationsContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<ColumnSelection<'a>> {
     let system = query_context.get_system();
     let return_type = query.return_type.typ(system);
@@ -294,7 +311,12 @@ async fn map_field<'a>(
                 };
 
                 let nested_abstract_select = other_table_pk_query
-                    .operation(field, AbstractPredicate::True, query_context)
+                    .operation(
+                        field,
+                        AbstractPredicate::True,
+                        query_context,
+                        request_context,
+                    )
                     .await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
             }
@@ -329,7 +351,12 @@ async fn map_field<'a>(
                     )),
                 };
                 let nested_abstract_select = other_table_query
-                    .operation(field, AbstractPredicate::True, query_context)
+                    .operation(
+                        field,
+                        AbstractPredicate::True,
+                        query_context,
+                        request_context,
+                    )
                     .await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
             }

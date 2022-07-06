@@ -3,6 +3,7 @@ use crate::{
         operations_context::{OperationsContext, QueryResponse},
         resolver::FieldResolver,
     },
+    request_context::RequestContext,
     validation::field::ValidatedField,
 };
 use anyhow::Context;
@@ -22,6 +23,7 @@ pub trait DataResolver {
         field: &'e ValidatedField,
         operation_type: &'e OperationType,
         query_context: &'e OperationsContext<'e>,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse>;
 }
 
@@ -29,8 +31,9 @@ pub trait DataResolver {
 impl FieldResolver<Value> for Value {
     async fn resolve_field<'a>(
         &'a self,
-        _query_context: &'a OperationsContext<'a>,
         field: &ValidatedField,
+        _query_context: &'a OperationsContext<'a>,
+        _request_context: &'a RequestContext<'a>,
     ) -> Result<Value> {
         let field_name = field.name.as_str();
 
@@ -54,6 +57,7 @@ impl DataResolver for ModelSystem {
         field: &'e ValidatedField,
         operation_type: &'e OperationType,
         query_context: &'e OperationsContext<'e>,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse> {
         let name = &field.name;
 
@@ -63,14 +67,18 @@ impl DataResolver for ModelSystem {
                     .queries
                     .get_by_key(name)
                     .with_context(|| format!("No such query {}", name))?;
-                operation.execute(field, query_context).await
+                operation
+                    .execute(field, query_context, request_context)
+                    .await
             }
             OperationType::Mutation => {
                 let operation = self
                     .mutations
                     .get_by_key(name)
                     .with_context(|| format!("No such mutation {}", name))?;
-                operation.execute(field, query_context).await
+                operation
+                    .execute(field, query_context, request_context)
+                    .await
             }
             OperationType::Subscription => {
                 todo!()

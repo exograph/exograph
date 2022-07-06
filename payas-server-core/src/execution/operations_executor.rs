@@ -52,17 +52,17 @@ impl<'e> OperationsExecutor {
         operations_payload: OperationsPayload,
         request_context: &RequestContext<'_>,
     ) -> Result<Vec<(String, QueryResponse)>> {
-        let (operation, query_context) =
-            self.create_query_context(operations_payload, request_context)?;
+        let (operation, query_context) = self.create_query_context(operations_payload)?;
 
-        query_context.resolve_operation(operation).await
+        query_context
+            .resolve_operation(operation, request_context)
+            .await
     }
 
-    #[instrument(skip(self, operations_payload, request_context))]
+    #[instrument(skip(self, operations_payload))]
     fn create_query_context(
         &'e self,
         operations_payload: OperationsPayload,
-        request_context: &'e RequestContext<'e>,
     ) -> Result<(ValidatedOperation, OperationsContext<'e>), ExecutionError> {
         let document = Self::parse_query(operations_payload.query)?;
 
@@ -72,15 +72,9 @@ impl<'e> OperationsExecutor {
             operations_payload.variables,
         );
 
-        document_validator.validate(document).map(|validated| {
-            (
-                validated,
-                OperationsContext {
-                    executor: self,
-                    request_context,
-                },
-            )
-        })
+        document_validator
+            .validate(document)
+            .map(|validated| (validated, OperationsContext { executor: self }))
     }
 
     #[instrument(name = "OperationsExecutor::parse_query")]

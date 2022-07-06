@@ -5,7 +5,7 @@ use payas_sql::{
     NestedElementRelation, NestedInsertion,
 };
 
-use crate::execution::operations_context::OperationsContext;
+use crate::execution::operations_context::{self, OperationsContext};
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -76,7 +76,7 @@ fn map_single<'a>(
         .flat_map(|field| {
             // Process fields that map to a column in the current table
             let field_self_column = field.relation.self_column();
-            let field_arg = query_context.get_argument_field(argument, &field.name);
+            let field_arg = operations_context::get_argument_field(argument, &field.name);
 
             field_arg.map(|field_arg| match field_self_column {
                 Some(field_self_column) => {
@@ -113,7 +113,7 @@ fn map_self_column<'a>(
                         field.name
                     )
                 })?;
-            match query_context.get_argument_field(argument, other_type_pk_field_name) {
+            match operations_context::get_argument_field(argument, other_type_pk_field_name) {
                 Some(other_type_pk_arg) => other_type_pk_arg,
                 None => todo!(),
             }
@@ -121,8 +121,7 @@ fn map_self_column<'a>(
         _ => argument,
     };
 
-    let value_column = query_context
-        .literal_column(argument_value, key_column)
+    let value_column = operations_context::literal_column(argument_value, key_column)
         .with_context(|| {
             format!(
                 "While trying to get literal column for {}.{}",

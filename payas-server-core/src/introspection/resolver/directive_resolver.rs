@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
+use crate::request_context::RequestContext;
 use crate::{execution::operations_context::OperationsContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
@@ -10,8 +11,9 @@ use anyhow::{anyhow, Result};
 impl FieldResolver<Value> for Directive {
     async fn resolve_field<'e>(
         &'e self,
-        _query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
+        _query_context: &'e OperationsContext<'e>,
+        _request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match field.name.as_str() {
             "name" => Ok(Value::String(self.name.node.as_str().to_owned())),

@@ -127,7 +127,7 @@ pub fn to_column_path<'a>(
 }
 
 macro_rules! claytip_execute_query {
-    ($query_context:ident) => {
+    ($query_context:ident, $request_context:ident) => {
         Some(
             &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
                 async move {
@@ -140,7 +140,7 @@ macro_rules! claytip_execute_query {
                                 query: query_string,
                                 variables,
                             },
-                            $query_context.request_context.clone(),
+                            $request_context.clone(),
                         )
                         .await?;
 

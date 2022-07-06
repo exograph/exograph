@@ -7,7 +7,8 @@ use payas_sql::{
 };
 
 use crate::{
-    data::mutation_resolver::return_type_info, execution::operations_context::OperationsContext,
+    data::mutation_resolver::return_type_info,
+    execution::operations_context::{self, OperationsContext},
 };
 
 use payas_model::model::{
@@ -69,9 +70,8 @@ fn compute_update_columns<'a>(
             .iter()
             .flat_map(|field| {
                 field.relation.self_column().and_then(|key_column_id| {
-                    query_context
-                        .get_argument_field(argument, &field.name)
-                        .map(|argument_value| {
+                    operations_context::get_argument_field(argument, &field.name).map(
+                        |argument_value| {
                             let key_column = key_column_id.get_column(system);
                             let argument_value = match &field.relation {
                                 GqlRelation::ManyToOne { other_type_id, .. } => {
@@ -80,7 +80,7 @@ fn compute_update_columns<'a>(
                                         .pk_column_id()
                                         .map(|column_id| &column_id.get_column(system).column_name)
                                         .unwrap();
-                                    match query_context.get_argument_field(
+                                    match operations_context::get_argument_field(
                                         argument_value,
                                         other_type_pk_field_name,
                                     ) {
@@ -92,9 +92,10 @@ fn compute_update_columns<'a>(
                             };
 
                             let value_column =
-                                query_context.literal_column(argument_value, key_column);
+                                operations_context::literal_column(argument_value, key_column);
                             (key_column, value_column.unwrap())
-                        })
+                        },
+                    )
                 })
             })
             .collect(),
@@ -129,7 +130,8 @@ fn compute_nested_ops<'a>(
                 if let GqlRelation::OneToMany { other_type_id, .. } = &field.relation {
                     let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
 
-                    if let Some(argument) = query_context.get_argument_field(argument, &field.name)
+                    if let Some(argument) =
+                        operations_context::get_argument_field(argument, &field.name)
                     {
                         nested_updates.extend(compute_nested_update(
                             field_model_type,
@@ -204,7 +206,7 @@ fn compute_nested_update<'a>(
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-    let update_arg = query_context.get_argument_field(argument, "update");
+    let update_arg = operations_context::get_argument_field(argument, "update");
 
     match update_arg {
         Some(update_arg) => match update_arg {
@@ -344,7 +346,7 @@ fn compute_nested_inserts<'a>(
         })
     }
 
-    let create_arg = query_context.get_argument_field(argument, "create");
+    let create_arg = operations_context::get_argument_field(argument, "create");
 
     match create_arg {
         Some(create_arg) => match create_arg {
@@ -381,7 +383,7 @@ fn compute_nested_delete<'a>(
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-    let delete_arg = query_context.get_argument_field(argument, "delete");
+    let delete_arg = operations_context::get_argument_field(argument, "delete");
 
     match delete_arg {
         Some(update_arg) => match update_arg {

@@ -1,4 +1,4 @@
-use crate::execution::operations_context::{cast_value, OperationsContext};
+use crate::execution::operations_context::{self, cast_value, OperationsContext};
 use anyhow::{bail, Result};
 use async_graphql_value::ConstValue;
 
@@ -41,8 +41,10 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     parameters
                         .iter()
                         .fold(AbstractPredicate::True, |acc, parameter| {
-                            let arg =
-                                query_context.get_argument_field(argument_value, &parameter.name);
+                            let arg = operations_context::get_argument_field(
+                                argument_value,
+                                &parameter.name,
+                            );
                             let new_predicate = match arg {
                                 Some(op_value) => {
                                     let (op_key_column, op_value_column) = operands(
@@ -76,7 +78,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .map(|parameter| {
                         (
                             parameter.name.as_str(),
-                            query_context.get_argument_field(argument_value, &parameter.name),
+                            operations_context::get_argument_field(argument_value, &parameter.name),
                         )
                     })
                     .fold(Ok(("", None)), |acc, (name, result)| {
@@ -162,8 +164,10 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                         let mut new_predicate = AbstractPredicate::True;
 
                         for parameter in field_params.iter() {
-                            let arg =
-                                query_context.get_argument_field(argument_value, &parameter.name);
+                            let arg = operations_context::get_argument_field(
+                                argument_value,
+                                &parameter.name,
+                            );
 
                             let new_column_path =
                                 to_column_id_path(&parent_column_path, &self.column_path_link);

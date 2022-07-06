@@ -35,7 +35,6 @@ const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
 pub struct OperationsContext<'a> {
     pub executor: &'a OperationsExecutor,
-    pub request_context: &'a RequestContext<'a>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,11 +76,18 @@ impl<'qc> OperationsContext<'qc> {
     pub async fn resolve_operation<'b>(
         &self,
         operation: ValidatedOperation,
+        request_context: &'b RequestContext<'b>,
     ) -> Result<Vec<(String, QueryResponse)>> {
-        operation.resolve_fields(self, &operation.fields).await
+        operation
+            .resolve_fields(&operation.fields, self, request_context)
+            .await
     }
 
-    async fn resolve_type(&self, field: &ValidatedField) -> Result<JsonValue> {
+    async fn resolve_type<'b>(
+        &self,
+        field: &ValidatedField,
+        request_context: &'b RequestContext<'b>,
+    ) -> Result<JsonValue> {
         let type_name = &field
             .arguments
             .iter()
@@ -94,37 +100,36 @@ impl<'qc> OperationsContext<'qc> {
                 base: BaseType::Named(Name::new(name_specified)),
                 nullable: true,
             };
-            tpe.resolve_value(self, &field.subfields).await
+            tpe.resolve_value(&field.subfields, self, request_context)
+                .await
         } else {
             Ok(JsonValue::Null)
         }
     }
 
-    pub fn literal_column(
-        &'qc self,
-        value: &ConstValue,
-        associated_column: &PhysicalColumn,
-    ) -> Result<Column<'qc>> {
-        cast_value(value, &associated_column.typ).map(|value| {
-            value
-                .map(|v| Column::Literal(MaybeOwned::Owned(v)))
-                .unwrap_or(Column::Null)
-        })
-    }
-
-    pub fn get_argument_field(
-        &'qc self,
-        argument_value: &'qc ConstValue,
-        field_name: &str,
-    ) -> Option<&'qc ConstValue> {
-        match argument_value {
-            ConstValue::Object(value) => value.get(field_name),
-            _ => None,
-        }
-    }
-
     pub fn get_system(&self) -> &ModelSystem {
         &self.executor.system
+    }
+}
+
+pub fn literal_column<'a>(
+    value: &ConstValue,
+    associated_column: &PhysicalColumn,
+) -> Result<Column<'a>> {
+    cast_value(value, &associated_column.typ).map(|value| {
+        value
+            .map(|v| Column::Literal(MaybeOwned::Owned(v)))
+            .unwrap_or(Column::Null)
+    })
+}
+
+pub fn get_argument_field<'a>(
+    argument_value: &'a ConstValue,
+    field_name: &str,
+) -> Option<&'a ConstValue> {
+    match argument_value {
+        ConstValue::Object(value) => value.get(field_name),
+        _ => None,
     }
 }
 
@@ -337,8 +342,9 @@ fragment query_info on Query {
 impl FieldResolver<QueryResponse> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
-        operations_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
+        operations_context: &'e OperationsContext<'e>,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse> {
         let name = field.name.as_str();
 
@@ -347,13 +353,15 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
             {
                 match name {
                     "__type" => Ok(QueryResponseBody::Json(
-                        operations_context.resolve_type(field).await?,
+                        operations_context
+                            .resolve_type(field, request_context)
+                            .await?,
                     )),
                     "__schema" => Ok(QueryResponseBody::Json(
                         operations_context
                             .executor
                             .schema
-                            .resolve_value(operations_context, &field.subfields)
+                            .resolve_value(&field.subfields, operations_context, request_context)
                             .await?,
                     )),
                     "__typename" => {
@@ -380,7 +388,7 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
             operations_context
                 .executor
                 .system
-                .resolve(field, &self.typ, operations_context)
+                .resolve(field, &self.typ, operations_context, request_context)
                 .await
         }
     }

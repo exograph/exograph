@@ -1,6 +1,7 @@
 use crate::introspection::schema::{
     Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
 };
+use crate::request_context::RequestContext;
 use crate::validation::field::ValidatedField;
 use async_trait::async_trait;
 use serde_json::Value;
@@ -13,32 +14,33 @@ use anyhow::{anyhow, Result};
 impl FieldResolver<Value> for Schema {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
+        query_context: &'e OperationsContext<'e>,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         let schema = &query_context.executor.schema;
         match field.name.as_str() {
             "types" => {
                 self.type_definitions
-                    .resolve_value(query_context, &field.subfields)
+                    .resolve_value(&field.subfields, query_context, request_context)
                     .await
             }
             "queryType" => {
                 schema
                     .get_type_definition(QUERY_ROOT_TYPENAME)
-                    .resolve_value(query_context, &field.subfields)
+                    .resolve_value(&field.subfields, query_context, request_context)
                     .await
             }
             "mutationType" => {
                 schema
                     .get_type_definition(MUTATION_ROOT_TYPENAME)
-                    .resolve_value(query_context, &field.subfields)
+                    .resolve_value(&field.subfields, query_context, request_context)
                     .await
             }
             "subscriptionType" => {
                 schema
                     .get_type_definition(SUBSCRIPTION_ROOT_TYPENAME)
-                    .resolve_value(query_context, &field.subfields)
+                    .resolve_value(&field.subfields, query_context, request_context)
                     .await
             }
             "directives" => Ok(Value::Array(vec![])), // TODO

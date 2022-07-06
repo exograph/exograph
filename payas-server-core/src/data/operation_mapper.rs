@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::deno_integration::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use crate::execution::operations_context::QueryResponseBody;
+use crate::request_context::RequestContext;
 use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use futures::FutureExt;
@@ -67,22 +68,27 @@ pub trait OperationResolver<'a> {
         &'a self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<OperationResolverResult<'a>>;
 
     async fn execute(
         &'a self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse> {
-        let resolver_result = self.resolve_operation(field, query_context).await?;
+        let resolver_result = self
+            .resolve_operation(field, query_context, request_context)
+            .await?;
         let interceptors = self.interceptors().ordered();
 
         let op_name = &self.name();
 
         let intercepted_operation =
             InterceptedOperation::new(op_name, resolver_result, interceptors);
-        let QueryResponse { body, headers } =
-            intercepted_operation.execute(field, query_context).await?;
+        let QueryResponse { body, headers } = intercepted_operation
+            .execute(field, query_context, request_context)
+            .await?;
 
         // A proceed call in an around interceptor may have returned more fields that necessary (just like a normal service),
         // so we need to filter out the fields that are not needed.
@@ -90,7 +96,7 @@ pub trait OperationResolver<'a> {
         let field_selected_response_body = match body {
             QueryResponseBody::Json(value @ serde_json::Value::Object(_)) => {
                 let resolved_set = value
-                    .resolve_fields(query_context, &field.subfields)
+                    .resolve_fields(&field.subfields, query_context, request_context)
                     .await?;
                 QueryResponseBody::Json(serde_json::Value::Object(
                     resolved_set.into_iter().collect(),
@@ -127,6 +133,7 @@ pub async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
     query_context: &'a OperationsContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> AbstractPredicate<'a> {
     let return_type = return_type.typ(query_context.get_system());
 
@@ -139,12 +146,8 @@ pub async fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver::solve_access(
-                access_expr,
-                query_context.request_context,
-                query_context.get_system(),
-            )
-            .await
+            access_solver::solve_access(access_expr, request_context, query_context.get_system())
+                .await
         }
     }
 }
@@ -153,6 +156,7 @@ pub async fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
     query_context: &'a OperationsContext<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> &'a Predicate<'a> {
     let return_type = return_type.typ(query_context.get_system());
 
@@ -168,12 +172,8 @@ pub async fn compute_service_access_predicate<'a>(
                 ServiceMethodType::Mutation(_) => &access.creation, // mutation
             };
 
-            access_solver::solve_access(
-                access_expr,
-                query_context.request_context,
-                query_context.get_system(),
-            )
-            .await
+            access_solver::solve_access(access_expr, request_context, query_context.get_system())
+                .await
         }
         _ => panic!(),
     };
@@ -185,7 +185,7 @@ pub async fn compute_service_access_predicate<'a>(
 
     let method_level_access = access_solver::solve_access(
         method_access_expr,
-        query_context.request_context,
+        request_context,
         query_context.get_system(),
     )
     .await;
@@ -206,6 +206,7 @@ impl<'a> OperationResolverResult<'a> {
         &self,
         field: &'a ValidatedField,
         query_context: &'a OperationsContext<'a>,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
             OperationResolverResult::SQLOperation(abstract_operation) => {
@@ -236,9 +237,13 @@ impl<'a> OperationResolverResult<'a> {
             OperationResolverResult::DenoOperation(method_id) => {
                 let method = &query_context.get_system().methods[*method_id];
 
-                let access_predicate =
-                    compute_service_access_predicate(&method.return_type, method, query_context)
-                        .await;
+                let access_predicate = compute_service_access_predicate(
+                    &method.return_type,
+                    method,
+                    query_context,
+                    request_context,
+                )
+                .await;
 
                 if access_predicate == &Predicate::False {
                     bail!(anyhow!(GraphQLExecutionError::Authorization))
@@ -247,8 +252,9 @@ impl<'a> OperationResolverResult<'a> {
                 resolve_deno(
                     method,
                     field,
-                    super::claytip_execute_query!(query_context),
+                    super::claytip_execute_query!(query_context, request_context),
                     query_context,
+                    request_context,
                 )
                 .await
             }
@@ -260,6 +266,7 @@ pub async fn construct_arg_sequence(
     field_args: &HashMap<String, ConstValue>,
     args: &[Argument],
     query_context: &OperationsContext<'_>,
+    request_context: &RequestContext<'_>,
 ) -> Result<Vec<Arg>> {
     let system = query_context.get_system();
     let mapped_args = field_args
@@ -288,8 +295,7 @@ pub async fn construct_arg_sequence(
                     .find(|context| context.name == arg_type.name)
                 {
                     // this argument is a context, get the value of the context and give it as an argument
-                    let context_value = query_context
-                        .request_context
+                    let context_value = request_context
                         .extract_context(context)
                         .await
                         .unwrap_or_else(|_| {
@@ -321,12 +327,18 @@ async fn resolve_deno<'a>(
     field: &ValidatedField,
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     query_context: &OperationsContext<'_>,
+    request_context: &RequestContext<'_>,
 ) -> Result<QueryResponse> {
     let script = &query_context.get_system().deno_scripts[method.script];
 
     // construct a sequence of arguments to pass to the Deno method
-    let arg_sequence: Vec<Arg> =
-        construct_arg_sequence(&field.arguments, &method.arguments, query_context).await?;
+    let arg_sequence: Vec<Arg> = construct_arg_sequence(
+        &field.arguments,
+        &method.arguments,
+        query_context,
+        request_context,
+    )
+    .await?;
 
     let callback_processor = ClayCallbackProcessor {
         claytip_execute_query,
