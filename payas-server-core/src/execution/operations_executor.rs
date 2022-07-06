@@ -77,8 +77,6 @@ impl<'e> OperationsExecutor {
                 validated,
                 OperationsContext {
                     executor: self,
-                    system: &self.system,
-                    schema: &self.schema,
                     request_context,
                 },
             )

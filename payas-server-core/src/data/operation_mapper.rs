@@ -142,7 +142,7 @@ pub async fn compute_sql_access_predicate<'a>(
             access_solver::solve_access(
                 access_expr,
                 query_context.request_context,
-                query_context.system,
+                query_context.get_system(),
             )
             .await
         }
@@ -171,7 +171,7 @@ pub async fn compute_service_access_predicate<'a>(
             access_solver::solve_access(
                 access_expr,
                 query_context.request_context,
-                query_context.system,
+                query_context.get_system(),
             )
             .await
         }
@@ -186,7 +186,7 @@ pub async fn compute_service_access_predicate<'a>(
     let method_level_access = access_solver::solve_access(
         method_access_expr,
         query_context.request_context,
-        query_context.system,
+        query_context.get_system(),
     )
     .await;
 
@@ -234,7 +234,7 @@ impl<'a> OperationResolverResult<'a> {
             }
 
             OperationResolverResult::DenoOperation(method_id) => {
-                let method = &query_context.system.methods[*method_id];
+                let method = &query_context.get_system().methods[*method_id];
 
                 let access_predicate =
                     compute_service_access_predicate(&method.return_type, method, query_context)
@@ -322,7 +322,7 @@ async fn resolve_deno<'a>(
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     query_context: &OperationsContext<'_>,
 ) -> Result<QueryResponse> {
-    let script = &query_context.system.deno_scripts[method.script];
+    let script = &query_context.get_system().deno_scripts[method.script];
 
     // construct a sequence of arguments to pass to the Deno method
     let arg_sequence: Vec<Arg> =

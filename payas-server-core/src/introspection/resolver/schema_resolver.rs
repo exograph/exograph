@@ -16,7 +16,7 @@ impl FieldResolver<Value> for Schema {
         query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
     ) -> Result<Value> {
-        let schema = query_context.schema;
+        let schema = &query_context.executor.schema;
         match field.name.as_str() {
             "types" => {
                 self.type_definitions

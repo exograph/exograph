@@ -236,7 +236,7 @@ async fn execute_interceptor<'a>(
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>)> {
-    let script = &query_context.system.deno_scripts[interceptor.script];
+    let script = &query_context.get_system().deno_scripts[interceptor.script];
 
     let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
 
