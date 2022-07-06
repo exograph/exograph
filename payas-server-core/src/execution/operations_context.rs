@@ -1,40 +1,62 @@
 use std::str::FromStr;
 
-use anyhow::{bail, Context, Result};
+use crate::request_context::RequestContext;
+use crate::validation::operation::ValidatedOperation;
+use crate::OperationsPayload;
+use crate::{
+    error::ExecutionError, introspection::schema::Schema,
+    validation::document_validator::DocumentValidator,
+};
+use async_graphql_parser::types::ExecutableDocument;
+use async_graphql_parser::Pos;
+
+use anyhow::Result;
+
+use crate::deno_integration::ClayDenoExecutorPool;
+use payas_model::model::system::ModelSystem;
+use payas_sql::DatabaseExecutor;
+use tracing::{error, instrument};
+
+use anyhow::{bail, Context};
 use async_graphql_parser::types::{BaseType, OperationType, Type};
 use async_graphql_value::{ConstValue, Name, Number};
 use async_trait::async_trait;
 use chrono::prelude::*;
 use chrono::DateTime;
 use maybe_owned::MaybeOwned;
-use payas_model::model::system::ModelSystem;
 use payas_sql::{
     array_util::{self, ArrayEntry},
     Column, FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, SQLBytes, SQLParam,
 };
 use pg_bigdecimal::{BigDecimal, PgNumeric};
 use serde_json::Value as JsonValue;
-use tracing::instrument;
 
-use super::{
-    operations_executor::OperationsExecutor,
-    resolver::{FieldResolver, Resolver},
-};
+use super::resolver::{FieldResolver, Resolver};
 
-use crate::request_context::RequestContext;
 use crate::{
     data::data_resolver::DataResolver,
     introspection::schema::{
         MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
     },
-    validation::{field::ValidatedField, operation::ValidatedOperation},
+    validation::field::ValidatedField,
 };
 
 const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
-pub struct OperationsContext<'a> {
-    pub executor: &'a OperationsExecutor,
+/// Encapsulates the information required by the [crate::resolve] function.
+///
+/// A server implementation should call [crate::create_operations_executor] and
+/// store the returned value, passing a reference to it each time it calls
+/// `resolve`.
+///
+/// For example, in actix, this should be added to the server using `app_data`.
+pub struct OperationsContext {
+    pub(crate) database_executor: DatabaseExecutor,
+    pub(crate) deno_execution_pool: ClayDenoExecutorPool,
+    pub(crate) system: ModelSystem,
+    pub(crate) schema: Schema,
+    pub allow_introspection: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -64,7 +86,47 @@ impl QueryResponseBody {
     }
 }
 
-impl<'qc> OperationsContext<'qc> {
+impl OperationsContext {
+    pub async fn execute<'e>(
+        &'e self,
+        operations_payload: OperationsPayload,
+        request_context: &'e RequestContext<'e>,
+    ) -> Result<Vec<(String, QueryResponse)>> {
+        self.execute_with_request_context(operations_payload, request_context)
+            .await
+    }
+
+    // A version of execute that is suitable to be exposed through a shim to services
+    #[instrument(
+        name = "OperationsExecutor::execute_with_request_context"
+        skip_all
+        )]
+    pub async fn execute_with_request_context(
+        &self,
+        operations_payload: OperationsPayload,
+        request_context: &RequestContext<'_>,
+    ) -> Result<Vec<(String, QueryResponse)>> {
+        let operation = self.validate_operation(operations_payload)?;
+
+        self.resolve_operation(operation, request_context).await
+    }
+
+    #[instrument(skip(self, operations_payload))]
+    fn validate_operation<'e>(
+        &'e self,
+        operations_payload: OperationsPayload,
+    ) -> Result<ValidatedOperation, ExecutionError> {
+        let document = parse_query(operations_payload.query)?;
+
+        let document_validator = DocumentValidator::new(
+            &self.schema,
+            operations_payload.operation_name,
+            operations_payload.variables,
+        );
+
+        document_validator.validate(document)
+    }
+
     #[instrument(
         name = "OperationsContext::resolve_operation"
         skip_all
@@ -106,10 +168,54 @@ impl<'qc> OperationsContext<'qc> {
             Ok(JsonValue::Null)
         }
     }
+}
 
-    pub fn get_system(&self) -> &ModelSystem {
-        &self.executor.system
-    }
+#[instrument(name = "operations_context::parse_query")]
+fn parse_query(query: String) -> Result<ExecutableDocument, ExecutionError> {
+    async_graphql_parser::parse_query(query).map_err(|error| {
+        error!(%error, "Failed to parse query");
+        let (message, pos1, pos2) = match error {
+            async_graphql_parser::Error::Syntax {
+                message,
+                start,
+                end,
+            } => (format!("Syntax error {message}"), start, end),
+            async_graphql_parser::Error::MultipleRoots { root, schema, pos } => {
+                (format!("Multiple roots of {root} type"), schema, Some(pos))
+            }
+            async_graphql_parser::Error::MissingQueryRoot { pos } => {
+                ("Missing query root".to_string(), pos, None)
+            }
+            async_graphql_parser::Error::MultipleOperations {
+                anonymous,
+                operation,
+            } => (
+                "Multiple operations".to_string(),
+                anonymous,
+                Some(operation),
+            ),
+            async_graphql_parser::Error::OperationDuplicated {
+                operation: _,
+                first,
+                second,
+            } => ("Operation duplicated".to_string(), first, Some(second)),
+            async_graphql_parser::Error::FragmentDuplicated {
+                fragment,
+                first,
+                second,
+            } => (
+                format!("Fragment {fragment} duplicated"),
+                first,
+                Some(second),
+            ),
+            async_graphql_parser::Error::MissingOperation => {
+                ("Missing operation".to_string(), Pos::default(), None)
+            }
+            _ => ("Unknown error".to_string(), Pos::default(), None),
+        };
+
+        ExecutionError::QueryParsingFailed(message, pos1, pos2)
+    })
 }
 
 pub fn literal_column<'a>(
@@ -343,14 +449,13 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        operations_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse> {
         let name = field.name.as_str();
 
         if name.starts_with("__") {
-            let body: Result<QueryResponseBody> = if operations_context.executor.allow_introspection
-            {
+            let body: Result<QueryResponseBody> = if operations_context.allow_introspection {
                 match name {
                     "__type" => Ok(QueryResponseBody::Json(
                         operations_context
@@ -359,7 +464,6 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
                     )),
                     "__schema" => Ok(QueryResponseBody::Json(
                         operations_context
-                            .executor
                             .schema
                             .resolve_value(&field.subfields, operations_context, request_context)
                             .await?,
@@ -386,7 +490,6 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
             })
         } else {
             operations_context
-                .executor
                 .system
                 .resolve(field, &self.typ, operations_context, request_context)
                 .await

@@ -11,7 +11,7 @@ use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
 use error::ExecutionError;
-pub use execution::operations_executor::OperationsExecutor;
+pub use execution::operations_context::OperationsContext;
 use futures::Stream;
 use introspection::schema::Schema;
 use payas_deno::DenoExecutorPool;
@@ -50,7 +50,7 @@ fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
     }
 }
 
-pub fn create_operations_executor(claypot_file: &str) -> Result<OperationsExecutor> {
+pub fn create_operations_executor(claypot_file: &str) -> Result<OperationsContext> {
     let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
 
     let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
@@ -70,7 +70,7 @@ pub fn create_operations_executor(claypot_file: &str) -> Result<OperationsExecut
 
     let database_executor = DatabaseExecutor { database };
 
-    let executor = OperationsExecutor {
+    let executor = OperationsContext {
         database_executor,
         deno_execution_pool: deno_execution_config,
         system,
@@ -100,14 +100,16 @@ pub type Headers = Vec<(String, String)>;
 /// then call `resolve` with that object.
 #[instrument(
     name = "payas-server-core::resolve"
-    skip(executor, request_context)
+    skip(operations_context, request_context)
     )]
 pub async fn resolve<'a, E: 'static>(
-    executor: &OperationsExecutor,
     operations_payload: OperationsPayload,
+    operations_context: &OperationsContext,
     request_context: RequestContext<'a>,
 ) -> (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers) {
-    let response = executor.execute(operations_payload, &request_context).await;
+    let response = operations_context
+        .execute(operations_payload, &request_context)
+        .await;
 
     let headers = if let Ok(ref response) = response {
         response

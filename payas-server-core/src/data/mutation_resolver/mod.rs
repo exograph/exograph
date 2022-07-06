@@ -32,14 +32,14 @@ impl<'a> OperationResolver<'a> for Mutation {
     async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
-        query_context: &'a OperationsContext<'a>,
+        operations_context: &'a OperationsContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         if let MutationKind::Service { method_id, .. } = &self.kind {
             Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
         } else {
             let abstract_select = {
-                let (_, pk_query, collection_query) = return_type_info(self, query_context);
+                let (_, pk_query, collection_query) = return_type_info(self, operations_context);
                 let selection_query = match &self.return_type.type_modifier {
                     GqlTypeModifier::List => collection_query,
                     GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
@@ -49,7 +49,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                     .operation(
                         field,
                         AbstractPredicate::True,
-                        query_context,
+                        operations_context,
                         request_context,
                     )
                     .await?
@@ -62,7 +62,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                         data_param,
                         field,
                         abstract_select,
-                        query_context,
+                        operations_context,
                         request_context,
                     )
                     .await?,
@@ -73,7 +73,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                         predicate_param,
                         field,
                         abstract_select,
-                        query_context,
+                        operations_context,
                         request_context,
                     )
                     .await?,
@@ -88,7 +88,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                         predicate_param,
                         field,
                         abstract_select,
-                        query_context,
+                        operations_context,
                         request_context,
                     )
                     .await?,
@@ -112,14 +112,14 @@ async fn create_operation<'a>(
     data_param: &'a CreateDataParameter,
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractInsert<'a>> {
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Create,
-        query_context,
+        operations_context,
         request_context,
     )
     .await;
@@ -133,7 +133,7 @@ async fn create_operation<'a>(
 
     let argument_value = super::find_arg(&field.arguments, &data_param.name).unwrap();
 
-    data_param.insert_operation(mutation, select, argument_value, query_context)
+    data_param.insert_operation(mutation, select, argument_value, operations_context)
 }
 
 async fn delete_operation<'a>(
@@ -141,16 +141,16 @@ async fn delete_operation<'a>(
     predicate_param: &'a PredicateParameter,
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractDelete<'a>> {
-    let (table, _, _) = return_type_info(mutation, query_context);
+    let (table, _, _) = return_type_info(mutation, operations_context);
 
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Delete,
-        query_context,
+        operations_context,
         request_context,
     )
     .await;
@@ -164,7 +164,7 @@ async fn delete_operation<'a>(
         Some(predicate_param),
         &field.arguments,
         AbstractPredicate::True,
-        query_context,
+        operations_context,
     )
     .with_context(|| {
         format!(
@@ -186,7 +186,7 @@ async fn update_operation<'a>(
     predicate_param: &'a PredicateParameter,
     field: &'a ValidatedField,
     select: AbstractSelect<'a>,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
     request_context: &'a RequestContext<'a>,
 ) -> Result<AbstractUpdate<'a>> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
@@ -195,7 +195,7 @@ async fn update_operation<'a>(
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Update,
-        query_context,
+        operations_context,
         request_context,
     )
     .await;
@@ -210,7 +210,7 @@ async fn update_operation<'a>(
         Some(predicate_param),
         &field.arguments,
         AbstractPredicate::True,
-        query_context,
+        operations_context,
     )
     .with_context(|| {
         format!(
@@ -222,16 +222,22 @@ async fn update_operation<'a>(
     let argument_value = super::find_arg(&field.arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
-            data_param.update_operation(mutation, predicate, select, argument_value, query_context)
+            data_param.update_operation(
+                mutation,
+                predicate,
+                select,
+                argument_value,
+                operations_context,
+            )
         })
         .unwrap()
 }
 
 pub fn return_type_info<'a>(
     mutation: &'a Mutation,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
-    let system = &query_context.get_system();
+    let system = &operations_context.system;
     let typ = mutation.return_type.typ(system);
 
     match &typ.kind {

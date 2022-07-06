@@ -24,15 +24,15 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
         mutation: &'a Mutation,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        query_context: &'a OperationsContext<'a>,
+        operations_context: &'a OperationsContext,
     ) -> Result<AbstractInsert> {
-        let system = &query_context.get_system();
+        let system = &operations_context.system;
 
         let table = mutation.return_type.physical_table(system);
 
         let data_type = &system.mutation_types[self.type_id];
 
-        let rows = map_argument(data_type, argument, query_context)?;
+        let rows = map_argument(data_type, argument, operations_context)?;
 
         let abs_insert = AbstractInsert {
             table,
@@ -47,14 +47,14 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
 pub fn map_argument<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
 ) -> Result<Vec<InsertionRow<'a>>> {
     match argument {
         ConstValue::List(arguments) => arguments
             .iter()
-            .map(|argument| map_single(input_data_type, argument, query_context))
+            .map(|argument| map_single(input_data_type, argument, operations_context))
             .collect::<Result<Vec<_>>>(),
-        _ => vec![map_single(input_data_type, argument, query_context)]
+        _ => vec![map_single(input_data_type, argument, operations_context)]
             .into_iter()
             .collect(),
     }
@@ -64,7 +64,7 @@ pub fn map_argument<'a>(
 fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
 ) -> Result<InsertionRow<'a>> {
     let fields = match &input_data_type.kind {
         GqlTypeKind::Primitive => bail!("Query attempted on a primitive type"),
@@ -80,9 +80,9 @@ fn map_single<'a>(
 
             field_arg.map(|field_arg| match field_self_column {
                 Some(field_self_column) => {
-                    map_self_column(field_self_column, field, field_arg, query_context)
+                    map_self_column(field_self_column, field, field_arg, operations_context)
                 }
-                None => map_foreign(field, field_arg, input_data_type, query_context),
+                None => map_foreign(field, field_arg, input_data_type, operations_context),
             })
         })
         .collect();
@@ -94,9 +94,9 @@ fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a GqlField,
     argument: &'a ConstValue,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
 ) -> Result<InsertionElement<'a>> {
-    let system = query_context.get_system();
+    let system = &operations_context.system;
 
     let key_column = key_column_id.get_column(system);
     let argument_value = match &field.relation {
@@ -142,9 +142,9 @@ fn map_foreign<'a>(
     field: &'a GqlField,
     argument: &'a ConstValue,
     parent_data_type: &'a GqlType,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
 ) -> Result<InsertionElement<'a>> {
-    let system = query_context.get_system();
+    let system = &operations_context.system;
 
     fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
         // TODO: Unhack this. Most likely, we need to separate input types from output types and have input types carry
@@ -198,7 +198,7 @@ fn map_foreign<'a>(
         .unwrap()
         .get_column(system);
 
-    let insertion = map_argument(field_type, argument, query_context)?;
+    let insertion = map_argument(field_type, argument, operations_context)?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
         relation: NestedElementRelation {

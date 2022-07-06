@@ -22,7 +22,7 @@ pub trait DataResolver {
         &self,
         field: &'e ValidatedField,
         operation_type: &'e OperationType,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse>;
 }
@@ -32,7 +32,7 @@ impl FieldResolver<Value> for Value {
     async fn resolve_field<'a>(
         &'a self,
         field: &ValidatedField,
-        _query_context: &'a OperationsContext<'a>,
+        _operations_context: &'a OperationsContext,
         _request_context: &'a RequestContext<'a>,
     ) -> Result<Value> {
         let field_name = field.name.as_str();
@@ -56,7 +56,7 @@ impl DataResolver for ModelSystem {
         &self,
         field: &'e ValidatedField,
         operation_type: &'e OperationType,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse> {
         let name = &field.name;
@@ -68,7 +68,7 @@ impl DataResolver for ModelSystem {
                     .get_by_key(name)
                     .with_context(|| format!("No such query {}", name))?;
                 operation
-                    .execute(field, query_context, request_context)
+                    .execute(field, operations_context, request_context)
                     .await
             }
             OperationType::Mutation => {
@@ -77,7 +77,7 @@ impl DataResolver for ModelSystem {
                     .get_by_key(name)
                     .with_context(|| format!("No such mutation {}", name))?;
                 operation
-                    .execute(field, query_context, request_context)
+                    .execute(field, operations_context, request_context)
                     .await
             }
             OperationType::Subscription => {

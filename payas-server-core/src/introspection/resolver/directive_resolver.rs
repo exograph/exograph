@@ -12,7 +12,7 @@ impl FieldResolver<Value> for Directive {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        _query_context: &'e OperationsContext<'e>,
+        _operations_context: &'e OperationsContext,
         _request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match field.name.as_str() {

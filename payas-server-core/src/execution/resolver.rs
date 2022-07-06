@@ -18,7 +18,7 @@ pub trait Resolver<R> {
     async fn resolve_value<'e>(
         &self,
         fields: &'e [ValidatedField],
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<R>;
 }
@@ -36,19 +36,19 @@ where
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<R>;
 
     async fn resolve_fields(
         &self,
         fields: &[ValidatedField],
-        query_context: &OperationsContext<'_>,
+        operations_context: &OperationsContext,
         request_context: &request_context::RequestContext<'_>,
     ) -> Result<Vec<(String, R)>> {
         futures::stream::iter(fields.iter())
             .then(|field| async {
-                self.resolve_field(field, query_context, request_context)
+                self.resolve_field(field, operations_context, request_context)
                     .await
                     .map(|value| (field.output_name(), value))
             })
@@ -89,9 +89,9 @@ impl std::fmt::Display for GraphQLExecutionError {
 // where
 //     T: FieldResolver<Value>,
 // {
-//     fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Field) -> Value {
+//     fn resolve_field(&self, operations_context: &QueryContext<'_>, field: &Field) -> Value {
 //         match self {
-//             Some(td) => td.resolve_field(query_context, field),
+//             Some(td) => td.resolve_field(operations_context, field),
 //             None => Value::Null,
 //         }
 //     }
@@ -105,11 +105,11 @@ where
     async fn resolve_value<'e>(
         &self,
         fields: &'e [ValidatedField],
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e request_context::RequestContext<'e>,
     ) -> Result<Value> {
         Ok(Value::Object(FromIterator::from_iter(
-            self.resolve_fields(fields, query_context, request_context)
+            self.resolve_fields(fields, operations_context, request_context)
                 .await?,
         )))
     }
@@ -123,12 +123,12 @@ where
     async fn resolve_value<'e>(
         &self,
         fields: &'e [ValidatedField],
-        query_context: &'e OperationsContext<'e>,
-        request_context: &'e request_context::RequestContext<'e>,
+        operations_context: &'e OperationsContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match self {
             Some(elem) => {
-                elem.resolve_value(fields, query_context, request_context)
+                elem.resolve_value(fields, operations_context, request_context)
                     .await
             }
             None => Ok(Value::Null),
@@ -144,11 +144,11 @@ where
     async fn resolve_value<'e>(
         &self,
         fields: &'e [ValidatedField],
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         self.node
-            .resolve_value(fields, query_context, request_context)
+            .resolve_value(fields, operations_context, request_context)
             .await
     }
 }
@@ -161,11 +161,11 @@ where
     async fn resolve_value<'e>(
         &self,
         fields: &'e [ValidatedField],
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e request_context::RequestContext<'e>,
     ) -> Result<Value> {
         let resolved: Vec<_> = futures::stream::iter(self.iter())
-            .then(|elem| elem.resolve_value(fields, query_context, request_context))
+            .then(|elem| elem.resolve_value(fields, operations_context, request_context))
             .collect()
             .await;
 

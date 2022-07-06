@@ -12,7 +12,7 @@ impl FieldResolver<Value> for FieldDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match field.name.as_str() {
@@ -24,12 +24,12 @@ impl FieldResolver<Value> for FieldDefinition {
                 .unwrap_or(Value::Null)),
             "type" => {
                 self.ty
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "args" => {
                 self.arguments
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "isDeprecated" => Ok(Value::Bool(false)), // TODO

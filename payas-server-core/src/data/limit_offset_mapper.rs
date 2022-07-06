@@ -19,7 +19,7 @@ impl<'a> SQLMapper<'a, Limit> for LimitParameter {
     fn map_to_sql(
         &self,
         argument: &'a ConstValue,
-        _query_context: &'a OperationsContext<'a>,
+        _operations_context: &'a OperationsContext,
     ) -> Result<Limit> {
         cast_to_i64(argument).map(Limit)
     }
@@ -29,7 +29,7 @@ impl<'a> SQLMapper<'a, Offset> for OffsetParameter {
     fn map_to_sql(
         &self,
         argument: &'a ConstValue,
-        _query_context: &'a OperationsContext<'a>,
+        _operations_context: &'a OperationsContext,
     ) -> Result<Offset> {
         cast_to_i64(argument).map(Offset)
     }

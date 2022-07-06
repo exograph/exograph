@@ -3,7 +3,7 @@ use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use payas_server_actix::request_context::ActixRequestContextProducer;
 use payas_server_actix::{resolve, telemetry};
-use payas_server_core::{create_operations_executor, OperationsExecutor};
+use payas_server_core::{create_operations_executor, OperationsContext};
 use payas_server_core::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use tracing_actix_web::TracingLogger;
 
@@ -102,7 +102,7 @@ fn get_claypot_file_name() -> String {
     }
 }
 
-async fn playground(req: HttpRequest, executor: web::Data<OperationsExecutor>) -> impl Responder {
+async fn playground(req: HttpRequest, executor: web::Data<OperationsContext>) -> impl Responder {
     if !executor.allow_introspection {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }

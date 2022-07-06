@@ -12,7 +12,7 @@ pub trait PredicateParameterMapper<'a> {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        query_context: &'a OperationsContext<'a>,
+        operations_context: &'a OperationsContext,
     ) -> Result<AbstractPredicate<'a>>;
 }
 
@@ -21,15 +21,15 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        query_context: &'a OperationsContext<'a>,
+        operations_context: &'a OperationsContext,
     ) -> Result<AbstractPredicate<'a>> {
-        let system = query_context.get_system();
+        let system = &operations_context.system;
         let parameter_type = &system.predicate_types[self.type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_path, op_value_path) =
-                    operands(self, argument_value, parent_column_path, query_context)?;
+                    operands(self, argument_value, parent_column_path, operations_context)?;
 
                 Ok(AbstractPredicate::Eq(
                     op_key_path.into(),
@@ -51,7 +51,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                         self,
                                         op_value,
                                         parent_column_path.clone(),
-                                        query_context,
+                                        operations_context,
                                     )
                                     .expect("Could not get operands");
                                     AbstractPredicate::from_name(
@@ -128,7 +128,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                         let arg_predicate = self.map_to_predicate(
                                             argument,
                                             parent_column_path.clone(),
-                                            query_context,
+                                            operations_context,
                                         )?;
                                         new_predicate = predicate_connector(
                                             Box::new(new_predicate),
@@ -148,7 +148,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 let arg_predicate = self.map_to_predicate(
                                     logical_op_argument_value,
                                     parent_column_path,
-                                    query_context,
+                                    operations_context,
                                 )?;
 
                                 Ok(AbstractPredicate::Not(Box::new(arg_predicate)))
@@ -176,7 +176,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 Some(argument_value_component) => parameter.map_to_predicate(
                                     argument_value_component,
                                     new_column_path,
-                                    query_context,
+                                    operations_context,
                                 )?,
                                 None => AbstractPredicate::True,
                             };
@@ -199,9 +199,9 @@ fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
 ) -> Result<(ColumnPath<'a>, ColumnPath<'a>)> {
-    let system = query_context.get_system();
+    let system = &operations_context.system;
 
     let op_physical_column = &param
         .column_path_link

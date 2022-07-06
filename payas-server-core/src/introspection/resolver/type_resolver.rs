@@ -19,7 +19,7 @@ impl FieldResolver<Value> for TypeDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match field.name.as_str() {
@@ -28,19 +28,19 @@ impl FieldResolver<Value> for TypeDefinition {
             "description" => Ok(self.description().map(Value::String).unwrap_or(Value::Null)),
             "fields" => {
                 self.fields()
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "interfaces" => Ok(Value::Array(vec![])), // TODO
             "possibleTypes" => Ok(Value::Null),       // TODO
             "enumValues" => {
                 self.enum_values()
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "inputFields" => {
                 self.input_fields()
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "ofType" => Ok(Value::Null),
@@ -59,7 +59,7 @@ impl FieldResolver<Value> for Type {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         let base_type = &self.base;
@@ -74,17 +74,17 @@ impl FieldResolver<Value> for Type {
                 type_kind: "NON_NULL",
             };
             boxed_type
-                .resolve_field(field, query_context, request_context)
+                .resolve_field(field, operations_context, request_context)
                 .await
         } else {
             match base_type {
                 BaseType::Named(name) => {
                     // See commented out derivation of FieldResolver for Option<T>
-                    //query_context.schema.get_type_definition(name).resolve_field(query_context, field)
-                    let tpe = query_context.executor.schema.get_type_definition(name);
+                    //operations_context.schema.get_type_definition(name).resolve_field(operations_context, field)
+                    let tpe = operations_context.schema.get_type_definition(name);
                     match tpe {
                         Some(tpe) => {
-                            tpe.resolve_field(field, query_context, request_context)
+                            tpe.resolve_field(field, operations_context, request_context)
                                 .await
                         }
                         None => Ok(Value::Null),
@@ -96,7 +96,7 @@ impl FieldResolver<Value> for Type {
                         type_kind: "LIST",
                     };
                     boxed_type
-                        .resolve_field(field, query_context, request_context)
+                        .resolve_field(field, operations_context, request_context)
                         .await
                 }
             }
@@ -112,14 +112,14 @@ impl<'a> FieldResolver<Value> for BoxedType<'a> {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match field.name.as_str() {
             "kind" => Ok(Value::String(self.type_kind.to_owned())),
             "ofType" => {
                 self.tpe
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"

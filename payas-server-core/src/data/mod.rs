@@ -43,14 +43,14 @@ fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     additional_predicate: AbstractPredicate<'a>,
-    query_context: &'a OperationsContext<'a>,
+    operations_context: &'a OperationsContext,
 ) -> Result<AbstractPredicate<'a>> {
     let mapped = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
             let argument_value = find_arg(arguments, &predicate_parameter.name);
             argument_value.map(|argument_value| {
-                predicate_parameter.map_to_predicate(argument_value, None, query_context)
+                predicate_parameter.map_to_predicate(argument_value, None, operations_context)
             })
         })
         .transpose()
@@ -127,13 +127,12 @@ pub fn to_column_path<'a>(
 }
 
 macro_rules! claytip_execute_query {
-    ($query_context:ident, $request_context:ident) => {
+    ($operations_context:ident, $request_context:ident) => {
         Some(
             &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
                 async move {
                     // execute query
-                    let result = $query_context
-                        .executor
+                    let result = $operations_context
                         .execute_with_request_context(
                             OperationsPayload {
                                 operation_name: None,

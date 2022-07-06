@@ -12,7 +12,7 @@ impl FieldResolver<Value> for InputValueDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match field.name.as_str() {
@@ -24,7 +24,7 @@ impl FieldResolver<Value> for InputValueDefinition {
                 .unwrap_or(Value::Null)),
             "type" => {
                 self.ty
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "defaultValue" => Ok(Value::Null), // TODO

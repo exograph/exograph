@@ -15,32 +15,32 @@ impl FieldResolver<Value> for Schema {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        query_context: &'e OperationsContext<'e>,
+        operations_context: &'e OperationsContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
-        let schema = &query_context.executor.schema;
+        let schema = &operations_context.schema;
         match field.name.as_str() {
             "types" => {
                 self.type_definitions
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "queryType" => {
                 schema
                     .get_type_definition(QUERY_ROOT_TYPENAME)
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "mutationType" => {
                 schema
                     .get_type_definition(MUTATION_ROOT_TYPENAME)
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "subscriptionType" => {
                 schema
                     .get_type_definition(SUBSCRIPTION_ROOT_TYPENAME)
-                    .resolve_value(&field.subfields, query_context, request_context)
+                    .resolve_value(&field.subfields, operations_context, request_context)
                     .await
             }
             "directives" => Ok(Value::Array(vec![])), // TODO

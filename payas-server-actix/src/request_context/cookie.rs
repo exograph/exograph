@@ -3,7 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use payas_server_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
-    OperationsExecutor,
+    OperationsContext,
 };
 use serde_json::Value;
 
@@ -38,7 +38,7 @@ impl ParsedContext for ParsedCookieContext {
     async fn extract_context_field<'e>(
         &'e self,
         value: &str,
-        _executor: &'e OperationsExecutor,
+        _operations_context: &'e OperationsContext,
         _rc: &'e RequestContext,
     ) -> Option<Value> {
         self.cookies

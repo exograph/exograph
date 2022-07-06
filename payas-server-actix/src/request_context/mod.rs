@@ -5,7 +5,7 @@ pub mod jwt;
 use actix_web::HttpRequest;
 use payas_server_core::{
     request_context::{BoxedParsedContext, RequestContext},
-    OperationsExecutor,
+    OperationsContext,
 };
 
 use self::{cookie::CookieProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
@@ -41,7 +41,7 @@ impl ActixRequestContextProducer {
     pub fn generate_request_context<'a>(
         &self,
         request: &HttpRequest,
-        executor: &'a OperationsExecutor,
+        operations_context: &'a OperationsContext,
     ) -> Result<RequestContext<'a>, ContextProducerError> {
         let parsed_contexts = self
             .producers
@@ -54,7 +54,7 @@ impl ActixRequestContextProducer {
 
         Ok(RequestContext::from_parsed_contexts(
             parsed_contexts,
-            executor,
+            operations_context,
         ))
     }
 }
