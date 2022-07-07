@@ -72,7 +72,7 @@ fn main() -> Result<()> {
                         .arg(
                             Arg::new("model")
                                 .help("Claytip model file")
-                                .required(true)
+                                .default_value(DEFAULT_MODEL_FILE)
                                 .index(1),
                         ),
                 )
