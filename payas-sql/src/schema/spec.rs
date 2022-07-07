@@ -7,7 +7,7 @@ use deadpool_postgres::Client;
 use super::issue::WithIssues;
 
 /// Specification for the overall schema.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SchemaSpec {
     pub tables: Vec<PhysicalTable>,
     pub required_extensions: HashSet<String>,

@@ -95,19 +95,16 @@ impl PhysicalColumn {
             // clear it to normalize the column
             None
         } else {
-            let db_type_query = format!(
+            let db_query = format!(
                 "
-                SELECT pg_get_expr(pg_attrdef.adbin, pg_attrdef.adrelid)
-                FROM pg_attrdef
-                INNER JOIN pg_attribute
-                ON pg_attrdef.adnum = pg_attribute.attnum
-                AND pg_attribute.attrelid = '{}'::regclass
-                AND pg_attribute.attname = '{}'",
-                table_name, column_name
+                SELECT column_default FROM information_schema.columns
+                WHERE table_name='{table_name}' and column_name = '{column_name}'"
             );
 
-            let rows = client.query(db_type_query.as_str(), &[]).await?;
-            rows.get(0).map(|row| row.get("pg_get_expr"))
+            let rows = client.query(db_query.as_str(), &[]).await?;
+
+            rows.get(0)
+                .and_then(|row| row.try_get("column_default").ok())
         };
 
         Ok(WithIssues {
