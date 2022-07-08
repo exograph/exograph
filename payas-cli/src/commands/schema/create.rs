@@ -18,8 +18,8 @@ impl Command for CreateCommand {
 
         // Creating the schema from the model is the same as migrating from an empty database.
         for (statement, _) in migration_statements(
-            SchemaSpec::default(),
-            SchemaSpec::from_model(system.tables.into_iter().collect()),
+            &SchemaSpec::default(),
+            &SchemaSpec::from_model(system.tables.into_iter().collect()),
         ) {
             println!("{}\n", statement);
         }

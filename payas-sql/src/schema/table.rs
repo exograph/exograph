@@ -4,78 +4,97 @@ use crate::sql::column::PhysicalColumnType;
 use crate::{PhysicalColumn, PhysicalTable};
 use anyhow::Result;
 use deadpool_postgres::Client;
-use regex::Regex;
 
+use super::constraint::Constraints;
 use super::issue::WithIssues;
+use super::op::SchemaOp;
 use super::statement::SchemaStatement;
 
 impl PhysicalTable {
+    pub fn diff<'a>(&'a self, new: &'a PhysicalTable) -> Vec<SchemaOp<'a>> {
+        let existing_columns = &self.columns;
+        let new_columns = &new.columns;
+        let mut changes = vec![];
+
+        for column in self.columns.iter() {
+            if !new_columns.contains(column) {
+                // column deletion
+                changes.push(SchemaOp::DeleteColumn { table: new, column });
+            }
+        }
+
+        for column in new.columns.iter() {
+            if !existing_columns.contains(column) {
+                // new column
+                changes.push(SchemaOp::CreateColumn { table: new, column });
+            }
+        }
+
+        for (constraint_name, _column_names) in self.named_unique_constraints().iter() {
+            if !new.named_unique_constraints().contains_key(constraint_name) {
+                // constraint deletion
+                changes.push(SchemaOp::RemoveConstraint {
+                    table: new,
+                    constraint: constraint_name.to_string(),
+                });
+            }
+        }
+
+        for (constraint_name, column_names) in new.named_unique_constraints().iter() {
+            if !self
+                .named_unique_constraints()
+                .contains_key(constraint_name)
+            {
+                // new constraint
+                changes.push(SchemaOp::CreateConstraint {
+                    table: new,
+                    constraint_name: constraint_name.to_string(),
+                    columns: column_names.clone(),
+                });
+            }
+        }
+
+        changes
+    }
+
     /// Creates a new table specification from an SQL table.
     pub(super) async fn from_db(
         client: &Client,
         table_name: &str,
     ) -> Result<WithIssues<PhysicalTable>> {
-        // Query to get a list of constraints in the table (primary key and foreign key constraints)
-        let constraints_query = format!(
-            "
-            SELECT contype, pg_get_constraintdef(oid, true) as condef
-            FROM pg_constraint
-            WHERE
-                conrelid = '{}'::regclass AND conparentid = 0",
-            table_name
-        );
-
         // Query to get a list of columns in the table
         let columns_query = format!(
             "SELECT column_name FROM information_schema.columns WHERE table_name = '{}'",
             table_name
         );
 
-        let primary_key_re = Regex::new(r"PRIMARY KEY \(([^)]+)\)").unwrap();
-        let foreign_key_re =
-            Regex::new(r"FOREIGN KEY \(([^)]+)\) REFERENCES ([^\(]+)\(([^)]+)\)").unwrap();
-
         let mut issues = Vec::new();
 
-        // Get all the constraints in the table
-        let constraints = client
-            .query(constraints_query.as_str(), &[])
-            .await?
-            .iter()
-            .map(|row| {
-                let contype: i8 = row.get("contype");
-                let condef: String = row.get("condef");
+        let constraints = Constraints::from_db(client, table_name).await?;
 
-                (contype as u8 as char, condef)
-            })
-            .collect::<Vec<_>>();
+        let mut column_type_mapping = HashMap::new();
 
-        // Filter out primary key constraints to find which columns are primary keys
-        let primary_keys = constraints
-            .iter()
-            .filter(|(contype, _)| *contype == 'p')
-            .map(|(_, condef)| primary_key_re.captures_iter(condef).next().unwrap()[1].to_owned())
-            .collect::<HashSet<_>>();
-
-        // Filter out foreign key constraints to find which columns require foreign key constraints
-        let mut foreign_constraints = HashMap::new();
-        for (_, condef) in constraints.iter().filter(|(contype, _)| *contype == 'f') {
-            let matches = foreign_key_re.captures_iter(condef).next().unwrap();
-            let column_name = matches[1].to_owned(); // name of the column
-            let ref_table_name = matches[2].to_owned(); // name of the table the column refers to
-            let ref_column_name = matches[3].to_owned(); // name of the column in the referenced table
-
-            let mut column =
-                PhysicalColumn::from_db(client, &ref_table_name, &ref_column_name, true, None)
-                    .await?;
+        for foreign_constraint in constraints.foreign_constraints.iter() {
+            // Assumption that there is only one column in the foreign key (for now a correct assumption since we don't support composite keys)
+            let self_column_name = foreign_constraint.self_columns.iter().next().unwrap();
+            let ref_column_name = foreign_constraint.ref_columns.iter().next().unwrap();
+            let mut column = PhysicalColumn::from_db(
+                client,
+                &foreign_constraint.ref_table,
+                ref_column_name,
+                true,
+                None,
+                vec![],
+            )
+            .await?;
             issues.append(&mut column.issues);
 
             if let Some(spec) = column.value {
-                foreign_constraints.insert(
-                    column_name.clone(),
+                column_type_mapping.insert(
+                    self_column_name.clone(),
                     PhysicalColumnType::ColumnReference {
-                        ref_table_name: ref_table_name.clone(),
-                        ref_column_name: ref_column_name.clone(),
+                        ref_table_name: foreign_constraint.ref_table.clone(),
+                        ref_column_name: ref_column_name.to_string(),
                         ref_pk_type: Box::new(spec.typ),
                     },
                 );
@@ -85,12 +104,26 @@ impl PhysicalTable {
         let mut columns = Vec::new();
         for row in client.query(columns_query.as_str(), &[]).await? {
             let name: String = row.get("column_name");
+
+            let unique_constraint_names: Vec<_> = constraints
+                .uniques
+                .iter()
+                .flat_map(|unique| {
+                    if unique.columns.contains(&name) {
+                        Some(unique.constraint_name.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
             let mut column = PhysicalColumn::from_db(
                 client,
                 table_name,
                 &name,
-                primary_keys.contains(&name),
-                foreign_constraints.get(&name).cloned(),
+                constraints.primary_key.columns.contains(&name),
+                column_type_mapping.get(&name).cloned(),
+                unique_constraint_names,
             )
             .await?;
             issues.append(&mut column.issues);

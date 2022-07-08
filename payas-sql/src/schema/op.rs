@@ -27,6 +27,16 @@ pub enum SchemaOp<'a> {
     RemoveExtension {
         extension: String,
     },
+
+    CreateConstraint {
+        table: &'a PhysicalTable,
+        constraint_name: String,
+        columns: Vec<String>,
+    },
+    RemoveConstraint {
+        table: &'a PhysicalTable,
+        constraint: String,
+    },
 }
 
 impl SchemaOp<'_> {
@@ -56,6 +66,26 @@ impl SchemaOp<'_> {
             },
             SchemaOp::RemoveExtension { extension } => SchemaStatement {
                 statement: format!("DROP EXTENSION \"{}\";", extension),
+                ..Default::default()
+            },
+            SchemaOp::CreateConstraint {
+                table,
+                constraint_name,
+                columns,
+            } => SchemaStatement {
+                statement: format!(
+                    "ALTER TABLE \"{}\" ADD CONSTRAINT \"{}\" UNIQUE ({});",
+                    table.name,
+                    constraint_name,
+                    columns.join(", ")
+                ),
+                ..Default::default()
+            },
+            SchemaOp::RemoveConstraint { table, constraint } => SchemaStatement {
+                statement: format!(
+                    "ALTER TABLE \"{}\" DROP CONSTRAINT \"{}\";",
+                    table.name, constraint
+                ),
                 ..Default::default()
             },
         }

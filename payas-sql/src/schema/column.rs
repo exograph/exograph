@@ -19,6 +19,7 @@ impl PhysicalColumn {
         column_name: &str,
         is_pk: bool,
         explicit_type: Option<PhysicalColumnType>,
+        unique_constraints: Vec<String>,
     ) -> Result<WithIssues<Option<PhysicalColumn>>> {
         // Find all sequences in the database that are used for SERIAL (autoincrement) columns
         // e.g. an autoincrement column `id` in the table `users` will create a sequence called
@@ -115,7 +116,7 @@ impl PhysicalColumn {
                 is_pk,
                 is_autoincrement,
                 is_nullable: !not_null,
-                unique_constraints: vec![], // TODO: transfer unique constraints from db
+                unique_constraints,
                 default_value,
             }),
             issues,
