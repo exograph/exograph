@@ -14,19 +14,40 @@ impl PhysicalTable {
     pub fn diff<'a>(&'a self, new: &'a PhysicalTable) -> Vec<SchemaOp<'a>> {
         let existing_columns = &self.columns;
         let new_columns = &new.columns;
+
+        let existing_column_map: HashMap<_, _> = existing_columns
+            .iter()
+            .map(|c| (c.column_name.clone(), c))
+            .collect();
+        let new_column_map: HashMap<_, _> = new_columns
+            .iter()
+            .map(|c| (c.column_name.clone(), c))
+            .collect();
+
         let mut changes = vec![];
 
-        for column in self.columns.iter() {
-            if !new_columns.contains(column) {
-                // column deletion
-                changes.push(SchemaOp::DeleteColumn { table: new, column });
+        for existing_column in self.columns.iter() {
+            let new_column = new_column_map.get(&existing_column.column_name);
+
+            match new_column {
+                Some(new_column) => {
+                    changes.extend(existing_column.diff(new_column));
+                }
+                None => {
+                    // column was removed
+                    changes.push(SchemaOp::DeleteColumn {
+                        column: existing_column,
+                    });
+                }
             }
         }
 
-        for column in new.columns.iter() {
-            if !existing_columns.contains(column) {
+        for new_column in new.columns.iter() {
+            let existing_column = existing_column_map.get(&new_column.column_name);
+
+            if existing_column.is_none() {
                 // new column
-                changes.push(SchemaOp::CreateColumn { table: new, column });
+                changes.push(SchemaOp::CreateColumn { column: new_column });
             }
         }
 
@@ -149,7 +170,7 @@ impl PhysicalTable {
             .columns
             .iter()
             .map(|c| {
-                let mut s = c.to_sql(&self.name);
+                let mut s = c.to_sql();
                 post_statements.append(&mut s.post_statements);
                 s.statement
             })

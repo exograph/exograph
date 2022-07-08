@@ -16,11 +16,14 @@ pub(super) fn migration_statements(
             | SchemaOp::DeleteTable { .. }
             | SchemaOp::RemoveExtension { .. } => true,
 
+            // Explicitly matching the other cases here to ensure that we have thought about each case
             SchemaOp::CreateColumn { .. }
             | SchemaOp::CreateTable { .. }
             | SchemaOp::CreateExtension { .. }
             | SchemaOp::CreateConstraint { .. }
-            | SchemaOp::RemoveConstraint { .. } => false,
+            | SchemaOp::RemoveConstraint { .. }
+            | SchemaOp::SetColumnDefaultValue { .. }
+            | SchemaOp::UnsetColumnDefaultValue { .. } => false,
         };
 
         let statement = diff.to_sql();
@@ -441,23 +444,79 @@ mod tests {
                     false,
                 ),
             ],
+            vec![(
+                r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE (email, event_id);"#,
+                false,
+            )],
+            vec![(
+                r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
+                false,
+            )],
+        )
+    }
+
+    #[test]
+    fn default_value_change() {
+        assert_changes(
+            r#"
+                model User {
+                    id: Int = autoincrement() @pk
+                    role: String
+                    verified: Boolean = false
+                    enabled: Boolean = true
+                }
+            "#,
+            r#"
+                model User {
+                    id: Int = autoincrement() @pk
+                    role: String = "USER" // Set default value
+                    verified: Boolean = true // Change default value
+                    enabled: Boolean // Drop default value
+                }
+            "#,
+            vec![(
+                r#"CREATE TABLE "users" (
+                |    "id" SERIAL PRIMARY KEY,
+                |    "role" TEXT NOT NULL,
+                |    "verified" BOOLEAN NOT NULL DEFAULT false,
+                |    "enabled" BOOLEAN NOT NULL DEFAULT true
+                |);"#,
+                false,
+            )],
+            vec![(
+                r#"CREATE TABLE "users" (
+                |    "id" SERIAL PRIMARY KEY,
+                |    "role" TEXT NOT NULL DEFAULT 'USER'::text,
+                |    "verified" BOOLEAN NOT NULL DEFAULT true,
+                |    "enabled" BOOLEAN NOT NULL
+                |);"#,
+                false,
+            )],
             vec![
-                (r#"ALTER TABLE "rsvps" DROP COLUMN "email";"#, true),
-                (r#"ALTER TABLE "rsvps" DROP COLUMN "event_id";"#, true),
-                (r#"ALTER TABLE "rsvps" ADD "email" TEXT NOT NULL;"#, false),
-                (r#"ALTER TABLE "rsvps" ADD "event_id" INT NOT NULL;"#, false),
                 (
-                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE (email, event_id);"#,
+                    r#"ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'USER'::text;"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "users" ALTER COLUMN "verified" SET DEFAULT true;"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "users" ALTER COLUMN "enabled" DROP DEFAULT;"#,
                     false,
                 ),
             ],
             vec![
-                (r#"ALTER TABLE "rsvps" DROP COLUMN "email";"#, true),
-                (r#"ALTER TABLE "rsvps" DROP COLUMN "event_id";"#, true),
-                (r#"ALTER TABLE "rsvps" ADD "email" TEXT NOT NULL;"#, false),
-                (r#"ALTER TABLE "rsvps" ADD "event_id" INT NOT NULL;"#, false),
                 (
-                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
+                    r#"ALTER TABLE "users" ALTER COLUMN "role" DROP DEFAULT;"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "users" ALTER COLUMN "verified" SET DEFAULT false;"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "users" ALTER COLUMN "enabled" SET DEFAULT true;"#,
                     false,
                 ),
             ],

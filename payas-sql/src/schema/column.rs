@@ -1,6 +1,7 @@
 use crate::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
 use super::issue::{Issue, WithIssues};
+use super::op::SchemaOp;
 use super::statement::SchemaStatement;
 use deadpool_postgres::Client;
 use std::collections::HashSet;
@@ -9,6 +10,41 @@ use std::fmt::Write;
 use anyhow::Result;
 
 impl PhysicalColumn {
+    pub fn diff<'a>(&'a self, new: &'a Self) -> Vec<SchemaOp<'a>> {
+        let mut changes = vec![];
+        let table_name_same = self.table_name == new.table_name;
+        let column_name_same = self.column_name == new.column_name;
+        let type_same = self.typ == new.typ;
+        let is_pk_same = self.is_pk == new.is_pk;
+        let is_autoincrement_same = self.is_autoincrement == new.is_autoincrement;
+        let is_nullable_same = self.is_nullable == new.is_nullable;
+        let _unique_constraints_same = self.unique_constraints == new.unique_constraints;
+        let default_value_same = self.default_value == new.default_value;
+
+        if !(table_name_same && column_name_same) {
+            panic!("Diffing columns must have the same table name and column name");
+        }
+
+        if !(type_same || is_pk_same || is_autoincrement_same || is_nullable_same) {
+            changes.push(SchemaOp::DeleteColumn { column: self });
+            changes.push(SchemaOp::CreateColumn { column: new });
+        } else if !default_value_same {
+            match &new.default_value {
+                Some(default_value) => {
+                    changes.push(SchemaOp::SetColumnDefaultValue {
+                        column: new,
+                        default_value: default_value.clone(),
+                    });
+                }
+                None => {
+                    changes.push(SchemaOp::UnsetColumnDefaultValue { column: new });
+                }
+            }
+        }
+
+        changes
+    }
+
     /// Creates a new column specification from an SQL column.
     ///
     /// If the column references another table's column, the column's type can be specified with
@@ -124,14 +160,14 @@ impl PhysicalColumn {
     }
 
     /// Converts the column specification to SQL statements.
-    pub(super) fn to_sql(&self, table_name: &str) -> SchemaStatement {
+    pub(super) fn to_sql(&self) -> SchemaStatement {
         let SchemaStatement {
             statement,
             post_statements,
             ..
         } = self
             .typ
-            .to_sql(table_name, &self.column_name, self.is_autoincrement);
+            .to_sql(&self.table_name, &self.column_name, self.is_autoincrement);
         let pk_str = if self.is_pk { " PRIMARY KEY" } else { "" };
         let not_null_str = if !self.is_nullable && !self.is_pk {
             // primary keys are implied to be not null
