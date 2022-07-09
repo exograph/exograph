@@ -8,7 +8,7 @@ pub(super) fn migration_statements(
     let mut statements = vec![];
     let mut post_statements = vec![];
 
-    let diffs = diff_schema(old_schema_spec, new_schema_spec);
+    let diffs = old_schema_spec.diff(new_schema_spec);
 
     for diff in diffs.iter() {
         let is_destructive = match diff {
@@ -42,55 +42,6 @@ pub(super) fn migration_statements(
     pre_statements.extend(statements);
     pre_statements.extend(post_statements);
     pre_statements
-}
-
-fn diff_schema<'a>(old: &'a SchemaSpec, new: &'a SchemaSpec) -> Vec<SchemaOp<'a>> {
-    let existing_tables = &old.tables;
-    let new_tables = &new.tables;
-    let mut changes = vec![];
-
-    // extension removal
-    let extensions_to_drop = old.required_extensions.difference(&new.required_extensions);
-    for extension in extensions_to_drop {
-        changes.push(SchemaOp::RemoveExtension {
-            extension: extension.clone(),
-        })
-    }
-
-    // extension creation
-    let extensions_to_create = new.required_extensions.difference(&old.required_extensions);
-    for extension in extensions_to_create {
-        changes.push(SchemaOp::CreateExtension {
-            extension: extension.clone(),
-        })
-    }
-
-    for old_table in old.tables.iter() {
-        // try to find a table with the same name in the new spec
-        match new_tables
-            .iter()
-            .find(|new_table| old_table.name == new_table.name)
-        {
-            // table exists, compare columns
-            Some(new_table) => changes.extend(old_table.diff(new_table)),
-
-            // table does not exist, deletion
-            None => changes.push(SchemaOp::DeleteTable { table: old_table }),
-        }
-    }
-
-    // try to find a table that needs to be created
-    for new_table in new.tables.iter() {
-        if !existing_tables
-            .iter()
-            .any(|old_table| new_table.name == old_table.name)
-        {
-            // new table
-            changes.push(SchemaOp::CreateTable { table: new_table })
-        }
-    }
-
-    changes
 }
 
 #[cfg(test)]
@@ -452,6 +403,74 @@ mod tests {
                 r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
                 false,
             )],
+        )
+    }
+
+    #[test]
+    fn multi_column_unique_constraint_participation_change() {
+        assert_changes(
+            r#"
+                model Rsvp {
+                    id: Int = autoincrement() @pk
+                    email: String @unique("email_event_id")
+                    event_id: Int
+                }
+            "#,
+            r#"
+                model Rsvp {
+                    id: Int = autoincrement() @pk
+                    email: String @unique("email_event_id")
+                    event_id: Int @unique("email_event_id")
+                }
+            "#,
+            vec![
+                (
+                    r#"CREATE TABLE "rsvps" (
+                |    "id" SERIAL PRIMARY KEY,
+                |    "email" TEXT NOT NULL,
+                |    "event_id" INT NOT NULL
+                |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email");"#,
+                    false,
+                ),
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "rsvps" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "email" TEXT NOT NULL,
+                    |    "event_id" INT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
+                    false,
+                ),
+            ],
+            vec![
+                (
+                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE (email, event_id);"#,
+                    false,
+                ),
+            ],
+            vec![
+                (
+                    r#"ALTER TABLE "rsvps" DROP CONSTRAINT "email_event_id";"#,
+                    false,
+                ),
+                (
+                    r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE (email);"#,
+                    false,
+                ),
+            ],
         )
     }
 

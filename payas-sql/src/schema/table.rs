@@ -61,17 +61,35 @@ impl PhysicalTable {
             }
         }
 
-        for (constraint_name, column_names) in new.named_unique_constraints().iter() {
-            if !self
-                .named_unique_constraints()
-                .contains_key(constraint_name)
-            {
-                // new constraint
-                changes.push(SchemaOp::CreateConstraint {
-                    table: new,
-                    constraint_name: constraint_name.to_string(),
-                    columns: column_names.clone(),
-                });
+        for (new_constraint_name, new_constraint_column_names) in
+            new.named_unique_constraints().iter()
+        {
+            let existing_constraints = self.named_unique_constraints();
+            let existing_constraint_column_names = existing_constraints.get(new_constraint_name);
+
+            match existing_constraint_column_names {
+                Some(existing_constraint_column_names) => {
+                    if existing_constraint_column_names != new_constraint_column_names {
+                        // constraint modification, so remove the old constraint and add the new one
+                        changes.push(SchemaOp::RemoveConstraint {
+                            table: new,
+                            constraint: new_constraint_name.to_string(),
+                        });
+                        changes.push(SchemaOp::CreateConstraint {
+                            table: new,
+                            constraint_name: new_constraint_name.to_string(),
+                            columns: new_constraint_column_names.clone(),
+                        });
+                    }
+                }
+                None => {
+                    // new constraint
+                    changes.push(SchemaOp::CreateConstraint {
+                        table: new,
+                        constraint_name: new_constraint_name.to_string(),
+                        columns: new_constraint_column_names.clone(),
+                    });
+                }
             }
         }
 
