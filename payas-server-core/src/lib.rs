@@ -11,7 +11,7 @@ use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
 use error::ExecutionError;
-pub use execution::operations_executor::OperationsExecutor;
+pub use execution::system_context::SystemContext;
 use futures::Stream;
 use introspection::schema::Schema;
 use payas_deno::DenoExecutorPool;
@@ -22,7 +22,7 @@ use serde::Deserialize;
 use serde_json::{Map, Value};
 use tracing::instrument;
 
-use crate::execution::operations_context::QueryResponseBody;
+use crate::execution::system_context::QueryResponseBody;
 
 mod data;
 mod deno_integration;
@@ -50,7 +50,7 @@ fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
     }
 }
 
-pub fn create_operations_executor(claypot_file: &str) -> Result<OperationsExecutor> {
+pub fn create_system_context(claypot_file: &str) -> Result<SystemContext> {
     let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
 
     let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
@@ -70,7 +70,7 @@ pub fn create_operations_executor(claypot_file: &str) -> Result<OperationsExecut
 
     let database_executor = DatabaseExecutor { database };
 
-    let executor = OperationsExecutor {
+    let executor = SystemContext {
         database_executor,
         deno_execution_pool: deno_execution_config,
         system,
@@ -96,18 +96,20 @@ pub type Headers = Vec<(String, String)>;
 /// if something went wrong.
 ///
 /// In a typical use case (for example payas-server-actix), the caller will
-/// first call `create_operations_executor` to create an `OperationsExecutor` object, and
+/// first call `create_system_context` to create an `OperationsExecutor` object, and
 /// then call `resolve` with that object.
 #[instrument(
     name = "payas-server-core::resolve"
-    skip(executor, request_context)
+    skip(system_context, request_context)
     )]
 pub async fn resolve<'a, E: 'static>(
-    executor: &OperationsExecutor,
     operations_payload: OperationsPayload,
+    system_context: &SystemContext,
     request_context: RequestContext<'a>,
 ) -> (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers) {
-    let response = executor.execute(operations_payload, &request_context).await;
+    let response = system_context
+        .execute(operations_payload, &request_context)
+        .await;
 
     let headers = if let Ok(ref response) = response {
         response

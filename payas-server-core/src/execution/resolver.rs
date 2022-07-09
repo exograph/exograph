@@ -6,16 +6,20 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::Value;
 
-use crate::validation::field::ValidatedField;
+use crate::{
+    request_context::{self, RequestContext},
+    validation::field::ValidatedField,
+};
 
-use super::operations_context::OperationsContext;
+use super::system_context::SystemContext;
 
 #[async_trait]
 pub trait Resolver<R> {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
+        system_context: &'e SystemContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<R>;
 }
 
@@ -31,18 +35,20 @@ where
     // `field` is `name` and ??? is the return value
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
+        system_context: &'e SystemContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<R>;
 
     async fn resolve_fields(
         &self,
-        query_context: &OperationsContext<'_>,
         fields: &[ValidatedField],
+        system_context: &SystemContext,
+        request_context: &request_context::RequestContext<'_>,
     ) -> Result<Vec<(String, R)>> {
         futures::stream::iter(fields.iter())
             .then(|field| async {
-                self.resolve_field(query_context, field)
+                self.resolve_field(field, system_context, request_context)
                     .await
                     .map(|value| (field.output_name(), value))
             })
@@ -83,9 +89,9 @@ impl std::fmt::Display for GraphQLExecutionError {
 // where
 //     T: FieldResolver<Value>,
 // {
-//     fn resolve_field(&self, query_context: &QueryContext<'_>, field: &Field) -> Value {
+//     fn resolve_field(&self, system_context: &QueryContext<'_>, field: &Field) -> Value {
 //         match self {
-//             Some(td) => td.resolve_field(query_context, field),
+//             Some(td) => td.resolve_field(system_context, field),
 //             None => Value::Null,
 //         }
 //     }
@@ -98,11 +104,13 @@ where
 {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
+        system_context: &'e SystemContext,
+        request_context: &'e request_context::RequestContext<'e>,
     ) -> Result<Value> {
         Ok(Value::Object(FromIterator::from_iter(
-            self.resolve_fields(query_context, fields).await?,
+            self.resolve_fields(fields, system_context, request_context)
+                .await?,
         )))
     }
 }
@@ -114,11 +122,15 @@ where
 {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
+        system_context: &'e SystemContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match self {
-            Some(elem) => elem.resolve_value(query_context, fields).await,
+            Some(elem) => {
+                elem.resolve_value(fields, system_context, request_context)
+                    .await
+            }
             None => Ok(Value::Null),
         }
     }
@@ -131,10 +143,13 @@ where
 {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
+        system_context: &'e SystemContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
-        self.node.resolve_value(query_context, fields).await
+        self.node
+            .resolve_value(fields, system_context, request_context)
+            .await
     }
 }
 
@@ -145,11 +160,12 @@ where
 {
     async fn resolve_value<'e>(
         &self,
-        query_context: &'e OperationsContext<'e>,
         fields: &'e [ValidatedField],
+        system_context: &'e SystemContext,
+        request_context: &'e request_context::RequestContext<'e>,
     ) -> Result<Value> {
         let resolved: Vec<_> = futures::stream::iter(self.iter())
-            .then(|elem| elem.resolve_value(query_context, fields))
+            .then(|elem| elem.resolve_value(fields, system_context, request_context))
             .collect()
             .await;
 

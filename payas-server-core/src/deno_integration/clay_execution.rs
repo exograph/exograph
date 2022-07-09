@@ -12,7 +12,7 @@ use payas_deno::{
     deno_module::{DenoModule, DenoModuleSharedState},
 };
 
-use crate::{deno_integration, execution::operations_context::QueryResponse};
+use crate::{deno_integration, execution::system_context::QueryResponse};
 
 use super::claytip_ops::InterceptedOperationInfo;
 
