@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use futures::StreamExt;
 use lambda_http::{http::StatusCode, Error, Response};
-use payas_server_core::{OperationsContext, OperationsPayload};
+use payas_server_core::{OperationsPayload, SystemContext};
 
 use request_context::{ContextProducerError, LambdaRequestContextProducer};
 
@@ -14,10 +14,10 @@ fn error_msg(message: &str) -> String {
 
 pub async fn resolve(
     req: lambda_http::Request,
-    operations_context: Arc<OperationsContext>,
+    system_context: Arc<SystemContext>,
     context_processor: Arc<LambdaRequestContextProducer>,
 ) -> Result<Response<String>, Error> {
-    let request_context = context_processor.generate_request_context(&req, &operations_context);
+    let request_context = context_processor.generate_request_context(&req, &system_context);
 
     let (_, body) = req.into_parts();
 
@@ -36,7 +36,7 @@ pub async fn resolve(
                 Ok(operations_payload) => {
                     let (stream, headers) = payas_server_core::resolve::<Error>(
                         operations_payload,
-                        &operations_context,
+                        &system_context,
                         request_context,
                     )
                     .await;

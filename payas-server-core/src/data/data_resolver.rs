@@ -1,7 +1,7 @@
 use crate::{
     execution::{
-        operations_context::{OperationsContext, QueryResponse},
         resolver::FieldResolver,
+        system_context::{QueryResponse, SystemContext},
     },
     request_context::RequestContext,
     validation::field::ValidatedField,
@@ -22,7 +22,7 @@ pub trait DataResolver {
         &self,
         field: &'e ValidatedField,
         operation_type: &'e OperationType,
-        operations_context: &'e OperationsContext,
+        system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse>;
 }
@@ -32,7 +32,7 @@ impl FieldResolver<Value> for Value {
     async fn resolve_field<'a>(
         &'a self,
         field: &ValidatedField,
-        _operations_context: &'a OperationsContext,
+        _system_context: &'a SystemContext,
         _request_context: &'a RequestContext<'a>,
     ) -> Result<Value> {
         let field_name = field.name.as_str();
@@ -56,7 +56,7 @@ impl DataResolver for ModelSystem {
         &self,
         field: &'e ValidatedField,
         operation_type: &'e OperationType,
-        operations_context: &'e OperationsContext,
+        system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse> {
         let name = &field.name;
@@ -68,7 +68,7 @@ impl DataResolver for ModelSystem {
                     .get_by_key(name)
                     .with_context(|| format!("No such query {}", name))?;
                 operation
-                    .execute(field, operations_context, request_context)
+                    .execute(field, system_context, request_context)
                     .await
             }
             OperationType::Mutation => {
@@ -77,7 +77,7 @@ impl DataResolver for ModelSystem {
                     .get_by_key(name)
                     .with_context(|| format!("No such mutation {}", name))?;
                 operation
-                    .execute(field, operations_context, request_context)
+                    .execute(field, system_context, request_context)
                     .await
             }
             OperationType::Subscription => {

@@ -5,7 +5,7 @@ use crate::{
         clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
         FnClaytipInterceptorProceed, InterceptedOperationInfo,
     },
-    execution::operations_context::QueryResponseBody,
+    execution::system_context::QueryResponseBody,
     request_context::RequestContext,
 };
 use async_recursion::async_recursion;
@@ -14,7 +14,7 @@ use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::{
-    execution::operations_context::{OperationsContext, QueryResponse},
+    execution::system_context::{QueryResponse, SystemContext},
     validation::field::ValidatedField,
     OperationsPayload,
 };
@@ -161,7 +161,7 @@ impl<'a> InterceptedOperation<'a> {
     pub async fn execute(
         &'a self,
         field: &'a ValidatedField,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse> {
         match self {
@@ -174,24 +174,22 @@ impl<'a> InterceptedOperation<'a> {
                 for before_interceptor in before {
                     execute_interceptor(
                         before_interceptor,
-                        operations_context,
+                        system_context,
                         request_context,
-                        super::claytip_execute_query!(operations_context, request_context),
+                        super::claytip_execute_query!(system_context, request_context),
                         Some(operation_name.to_string()),
                         field,
                         None,
                     )
                     .await?;
                 }
-                let res = core
-                    .execute(field, operations_context, request_context)
-                    .await?;
+                let res = core.execute(field, system_context, request_context).await?;
                 for after_interceptor in after {
                     execute_interceptor(
                         after_interceptor,
-                        operations_context,
+                        system_context,
                         request_context,
-                        super::claytip_execute_query!(operations_context, request_context),
+                        super::claytip_execute_query!(system_context, request_context),
                         Some(operation_name.to_string()),
                         field,
                         None,
@@ -209,17 +207,14 @@ impl<'a> InterceptedOperation<'a> {
             } => {
                 let (result, response) = execute_interceptor(
                     interceptor,
-                    operations_context,
+                    system_context,
                     request_context,
-                    super::claytip_execute_query!(operations_context, request_context),
+                    super::claytip_execute_query!(system_context, request_context),
                     Some(operation_name.to_string()),
                     field,
                     Some(&|| {
-                        async move {
-                            core.execute(field, operations_context, request_context)
-                                .await
-                        }
-                        .boxed()
+                        async move { core.execute(field, system_context, request_context).await }
+                            .boxed()
                     }),
                 )
                 .await?;
@@ -236,7 +231,7 @@ impl<'a> InterceptedOperation<'a> {
 
             InterceptedOperation::Plain { resolver_result } => {
                 resolver_result
-                    .execute(field, operations_context, request_context)
+                    .execute(field, system_context, request_context)
                     .await
             }
         }
@@ -245,21 +240,21 @@ impl<'a> InterceptedOperation<'a> {
 
 async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
-    operations_context: &'a OperationsContext,
+    system_context: &'a SystemContext,
     request_context: &'a RequestContext<'a>,
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     operation_name: Option<String>,
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>)> {
-    let script = &operations_context.system.deno_scripts[interceptor.script];
+    let script = &system_context.system.deno_scripts[interceptor.script];
 
     let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
 
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &HashMap::new(),
         &interceptor.arguments,
-        operations_context,
+        system_context,
         request_context,
     )
     .await?;
@@ -269,7 +264,7 @@ async fn execute_interceptor<'a>(
         claytip_proceed: claytip_proceed_operation,
     };
 
-    operations_context
+    system_context
         .deno_execution_pool
         .execute_and_get_r(
             &script.path,

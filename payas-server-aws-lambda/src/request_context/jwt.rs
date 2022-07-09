@@ -5,7 +5,7 @@ use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use payas_server_core::request_context::ParsedContext;
 use payas_server_core::request_context::{BoxedParsedContext, RequestContext};
-use payas_server_core::OperationsContext;
+use payas_server_core::SystemContext;
 use serde_json::json;
 use serde_json::Value;
 
@@ -118,7 +118,7 @@ impl ParsedContext for ParsedJwtContext {
     async fn extract_context_field<'e>(
         &'e self,
         value: &str,
-        _operations_context: &'e OperationsContext,
+        _system_context: &'e SystemContext,
         _request_context: &'e RequestContext<'e>,
     ) -> Option<Value> {
         self.jwt_claims.get(value).cloned()

@@ -1,4 +1,4 @@
-use crate::execution::operations_context::{self, cast_value, OperationsContext};
+use crate::execution::system_context::{self, cast_value, SystemContext};
 use anyhow::{bail, Result};
 use async_graphql_value::ConstValue;
 
@@ -12,7 +12,7 @@ pub trait PredicateParameterMapper<'a> {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Result<AbstractPredicate<'a>>;
 }
 
@@ -21,15 +21,15 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Result<AbstractPredicate<'a>> {
-        let system = &operations_context.system;
+        let system = &system_context.system;
         let parameter_type = &system.predicate_types[self.type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_path, op_value_path) =
-                    operands(self, argument_value, parent_column_path, operations_context)?;
+                    operands(self, argument_value, parent_column_path, system_context)?;
 
                 Ok(AbstractPredicate::Eq(
                     op_key_path.into(),
@@ -41,17 +41,15 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     parameters
                         .iter()
                         .fold(AbstractPredicate::True, |acc, parameter| {
-                            let arg = operations_context::get_argument_field(
-                                argument_value,
-                                &parameter.name,
-                            );
+                            let arg =
+                                system_context::get_argument_field(argument_value, &parameter.name);
                             let new_predicate = match arg {
                                 Some(op_value) => {
                                     let (op_key_column, op_value_column) = operands(
                                         self,
                                         op_value,
                                         parent_column_path.clone(),
-                                        operations_context,
+                                        system_context,
                                     )
                                     .expect("Could not get operands");
                                     AbstractPredicate::from_name(
@@ -78,7 +76,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .map(|parameter| {
                         (
                             parameter.name.as_str(),
-                            operations_context::get_argument_field(argument_value, &parameter.name),
+                            system_context::get_argument_field(argument_value, &parameter.name),
                         )
                     })
                     .fold(Ok(("", None)), |acc, (name, result)| {
@@ -128,7 +126,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                         let arg_predicate = self.map_to_predicate(
                                             argument,
                                             parent_column_path.clone(),
-                                            operations_context,
+                                            system_context,
                                         )?;
                                         new_predicate = predicate_connector(
                                             Box::new(new_predicate),
@@ -148,7 +146,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 let arg_predicate = self.map_to_predicate(
                                     logical_op_argument_value,
                                     parent_column_path,
-                                    operations_context,
+                                    system_context,
                                 )?;
 
                                 Ok(AbstractPredicate::Not(Box::new(arg_predicate)))
@@ -164,10 +162,8 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                         let mut new_predicate = AbstractPredicate::True;
 
                         for parameter in field_params.iter() {
-                            let arg = operations_context::get_argument_field(
-                                argument_value,
-                                &parameter.name,
-                            );
+                            let arg =
+                                system_context::get_argument_field(argument_value, &parameter.name);
 
                             let new_column_path =
                                 to_column_id_path(&parent_column_path, &self.column_path_link);
@@ -176,7 +172,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 Some(argument_value_component) => parameter.map_to_predicate(
                                     argument_value_component,
                                     new_column_path,
-                                    operations_context,
+                                    system_context,
                                 )?,
                                 None => AbstractPredicate::True,
                             };
@@ -199,9 +195,9 @@ fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
-    operations_context: &'a OperationsContext,
+    system_context: &'a SystemContext,
 ) -> Result<(ColumnPath<'a>, ColumnPath<'a>)> {
-    let system = &operations_context.system;
+    let system = &system_context.system;
 
     let op_physical_column = &param
         .column_path_link

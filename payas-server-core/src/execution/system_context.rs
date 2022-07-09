@@ -46,12 +46,12 @@ const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
 
 /// Encapsulates the information required by the [crate::resolve] function.
 ///
-/// A server implementation should call [crate::create_operations_executor] and
+/// A server implementation should call [crate::create_system_context] and
 /// store the returned value, passing a reference to it each time it calls
 /// `resolve`.
 ///
 /// For example, in actix, this should be added to the server using `app_data`.
-pub struct OperationsContext {
+pub struct SystemContext {
     pub(crate) database_executor: DatabaseExecutor,
     pub(crate) deno_execution_pool: ClayDenoExecutorPool,
     pub(crate) system: ModelSystem,
@@ -86,7 +86,7 @@ impl QueryResponseBody {
     }
 }
 
-impl OperationsContext {
+impl SystemContext {
     pub async fn execute<'e>(
         &'e self,
         operations_payload: OperationsPayload,
@@ -170,7 +170,7 @@ impl OperationsContext {
     }
 }
 
-#[instrument(name = "operations_context::parse_query")]
+#[instrument(name = "system_context::parse_query")]
 fn parse_query(query: String) -> Result<ExecutableDocument, ExecutionError> {
     async_graphql_parser::parse_query(query).map_err(|error| {
         error!(%error, "Failed to parse query");
@@ -449,23 +449,21 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        operations_context: &'e OperationsContext,
+        system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse> {
         let name = field.name.as_str();
 
         if name.starts_with("__") {
-            let body: Result<QueryResponseBody> = if operations_context.allow_introspection {
+            let body: Result<QueryResponseBody> = if system_context.allow_introspection {
                 match name {
                     "__type" => Ok(QueryResponseBody::Json(
-                        operations_context
-                            .resolve_type(field, request_context)
-                            .await?,
+                        system_context.resolve_type(field, request_context).await?,
                     )),
                     "__schema" => Ok(QueryResponseBody::Json(
-                        operations_context
+                        system_context
                             .schema
-                            .resolve_value(&field.subfields, operations_context, request_context)
+                            .resolve_value(&field.subfields, system_context, request_context)
                             .await?,
                     )),
                     "__typename" => {
@@ -489,9 +487,9 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
                 headers: vec![],
             })
         } else {
-            operations_context
+            system_context
                 .system
-                .resolve(field, &self.typ, operations_context, request_context)
+                .resolve(field, &self.typ, system_context, request_context)
                 .await
         }
     }

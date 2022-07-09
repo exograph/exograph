@@ -1,4 +1,4 @@
-use crate::execution::operations_context::OperationsContext;
+use crate::execution::system_context::SystemContext;
 use anyhow::{bail, Context, Result};
 use async_graphql_value::ConstValue;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
@@ -12,7 +12,7 @@ pub trait OrderByParameterMapper<'a> {
         &'a self,
         argument: &'a ConstValue,
         parent_column_path: &'a Option<ColumnIdPath>,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Result<AbstractOrderBy<'a>>;
 }
 
@@ -21,9 +21,9 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
         &'a self,
         argument: &'a ConstValue,
         parent_column_path: &'a Option<ColumnIdPath>,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Result<AbstractOrderBy<'a>> {
-        let parameter_type = &operations_context.system.order_by_types[self.type_id];
+        let parameter_type = &system_context.system.order_by_types[self.type_id];
 
         match argument {
             ConstValue::Object(elems) => {
@@ -36,7 +36,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
                             elem.0,
                             elem.1,
                             parent_column_path,
-                            operations_context,
+                            system_context,
                         )
                     })
                     .collect::<Result<Vec<_>>>()?;
@@ -45,7 +45,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
             ConstValue::List(elems) => {
                 let mapped: Vec<_> = elems
                     .iter()
-                    .map(|elem| self.map_to_order_by(elem, parent_column_path, operations_context))
+                    .map(|elem| self.map_to_order_by(elem, parent_column_path, system_context))
                     .collect::<Result<Vec<_>>>()
                     .with_context(|| {
                         format!(
@@ -69,7 +69,7 @@ fn order_by_pair<'a>(
     parameter_name: &str,
     parameter_value: &ConstValue,
     parent_column_path: &Option<ColumnIdPath>,
-    operations_context: &'a OperationsContext,
+    system_context: &'a SystemContext,
 ) -> Result<(ColumnPath<'a>, Ordering)> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
@@ -84,7 +84,7 @@ fn order_by_pair<'a>(
     let new_column_path = to_column_path(
         parent_column_path,
         &next_column_id_path_link,
-        &operations_context.system,
+        &system_context.system,
     );
 
     ordering(parameter_value).map(|ordering| (new_column_path, ordering))

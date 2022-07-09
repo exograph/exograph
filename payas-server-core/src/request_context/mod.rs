@@ -1,7 +1,7 @@
 mod environment;
 mod query;
 
-use crate::execution::operations_context::OperationsContext;
+use crate::execution::system_context::SystemContext;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use payas_model::model::ContextType;
@@ -37,7 +37,7 @@ pub struct RequestContext<'a> {
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedParsedContext>,
     #[cfg(not(test))]
-    operations_context: &'a OperationsContext,
+    system_context: &'a SystemContext,
 
     #[cfg(test)]
     test_values: serde_json::Value,
@@ -50,7 +50,7 @@ impl<'a> RequestContext<'a> {
     #[cfg(not(test))]
     pub fn from_parsed_contexts(
         contexts: Vec<BoxedParsedContext>,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> RequestContext<'a> {
         // a list of backend-agnostic contexts to also include
 
@@ -65,7 +65,7 @@ impl<'a> RequestContext<'a> {
                 .chain(generic_contexts.into_iter()) // include agnostic contexts
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
-            operations_context,
+            system_context,
         }
     }
 
@@ -83,7 +83,7 @@ impl<'a> RequestContext<'a> {
             .ok_or_else(|| anyhow!("Could not find source `{}`", annotation_name))?;
 
         Ok(parsed_context
-            .extract_context_field(value, self.operations_context, self)
+            .extract_context_field(value, self.system_context, self)
             .await)
     }
 
@@ -148,7 +148,7 @@ pub trait ParsedContext {
     async fn extract_context_field<'e>(
         &'e self,
         value: &str,
-        operations_context: &'e OperationsContext,
+        system_context: &'e SystemContext,
         request_context: &'e RequestContext,
     ) -> Option<Value>;
 }

@@ -3,7 +3,7 @@ use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use payas_server_actix::request_context::ActixRequestContextProducer;
 use payas_server_actix::{resolve, telemetry};
-use payas_server_core::{create_operations_executor, OperationsContext};
+use payas_server_core::{create_system_context, SystemContext};
 use payas_server_core::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use tracing_actix_web::TracingLogger;
 
@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
     let subscriber_name = claypot_file.trim_end_matches(".claypot");
     telemetry::init(subscriber_name);
 
-    let operations_executor = web::Data::new(create_operations_executor(&claypot_file).unwrap());
+    let system_context = web::Data::new(create_system_context(&claypot_file).unwrap());
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
 
     let server_port = env::var("CLAY_SERVER_PORT")
@@ -46,7 +46,7 @@ async fn main() -> std::io::Result<()> {
                 middleware::TrailingSlash::Trim,
             ))
             .wrap(cors)
-            .app_data(operations_executor.clone())
+            .app_data(system_context.clone())
             .app_data(request_context_processor.clone())
             .route(&resolve_path, web::post().to(resolve))
             .route(&playground_path, web::get().to(playground))
@@ -102,7 +102,7 @@ fn get_claypot_file_name() -> String {
     }
 }
 
-async fn playground(req: HttpRequest, executor: web::Data<OperationsContext>) -> impl Responder {
+async fn playground(req: HttpRequest, executor: web::Data<SystemContext>) -> impl Responder {
     if !executor.allow_introspection {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }

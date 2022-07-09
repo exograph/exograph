@@ -4,7 +4,7 @@ pub mod telemetry;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use payas_server_core::{OperationsContext, OperationsPayload};
+use payas_server_core::{OperationsPayload, SystemContext};
 
 use request_context::{ActixRequestContextProducer, ContextProducerError};
 use serde_json::Value;
@@ -18,10 +18,10 @@ macro_rules! error_msg {
 pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
-    operations_context: web::Data<OperationsContext>,
+    system_context: web::Data<SystemContext>,
     context_processor: web::Data<ActixRequestContextProducer>,
 ) -> impl Responder {
-    let request_context = context_processor.generate_request_context(&req, &operations_context);
+    let request_context = context_processor.generate_request_context(&req, &system_context);
 
     match request_context {
         Ok(request_context) => {
@@ -32,7 +32,7 @@ pub async fn resolve(
                 Ok(operations_payload) => {
                     let (stream, headers) = payas_server_core::resolve::<Error>(
                         operations_payload,
-                        operations_context.as_ref(),
+                        system_context.as_ref(),
                         request_context,
                     )
                     .await;

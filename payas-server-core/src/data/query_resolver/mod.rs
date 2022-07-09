@@ -1,5 +1,5 @@
 use crate::{
-    execution::operations_context::OperationsContext, request_context::RequestContext,
+    execution::system_context::SystemContext, request_context::RequestContext,
     validation::field::ValidatedField,
 };
 
@@ -35,7 +35,7 @@ impl<'a> OperationResolver<'a> for Query {
     async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<OperationResolverResult<'a>> {
         Ok(match &self.kind {
@@ -44,7 +44,7 @@ impl<'a> OperationResolver<'a> for Query {
                     .operation(
                         field,
                         AbstractPredicate::True,
-                        operations_context,
+                        system_context,
                         request_context,
                     )
                     .await?;
@@ -72,25 +72,25 @@ pub trait QuerySQLOperations<'a> {
     fn compute_order_by(
         &'a self,
         arguments: &'a Arguments,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Option<AbstractOrderBy<'a>>;
 
     fn compute_limit(
         &'a self,
         arguments: &'a Arguments,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Option<Limit>;
 
     fn compute_offset(
         &'a self,
         arguments: &'a Arguments,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Option<Offset>;
 
     async fn content_select(
         &'a self,
         fields: &'a [ValidatedField],
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>>;
 
@@ -98,7 +98,7 @@ pub trait QuerySQLOperations<'a> {
         &'a self,
         field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractSelect<'a>>;
 }
@@ -108,7 +108,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_order_by(
         &'a self,
         arguments: &'a Arguments,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Option<AbstractOrderBy<'a>> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
@@ -118,11 +118,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     .and_then(|order_by_param| {
                         let argument_value = super::find_arg(arguments, &order_by_param.name);
                         argument_value.map(|argument_value| {
-                            order_by_param.map_to_order_by(
-                                argument_value,
-                                &None,
-                                operations_context,
-                            )
+                            order_by_param.map_to_order_by(argument_value, &None, system_context)
                         })
                     })
                     .transpose()
@@ -135,13 +131,11 @@ impl<'a> QuerySQLOperations<'a> for Query {
     async fn content_select(
         &'a self,
         fields: &'a [ValidatedField],
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<Vec<ColumnSelection<'a>>> {
         futures::stream::iter(fields.iter())
-            .then(|field| async {
-                map_field(self, field, operations_context, request_context).await
-            })
+            .then(|field| async { map_field(self, field, system_context, request_context).await })
             .collect::<Vec<Result<_>>>()
             .await
             .into_iter()
@@ -151,7 +145,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_limit(
         &'a self,
         arguments: &'a Arguments,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Option<Limit> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
@@ -161,7 +155,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     .and_then(|limit_param| {
                         let argument_value = super::find_arg(arguments, &limit_param.name);
                         argument_value.map(|argument_value| {
-                            limit_param.map_to_sql(argument_value, operations_context)
+                            limit_param.map_to_sql(argument_value, system_context)
                         })
                     })
                     .transpose()
@@ -174,7 +168,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
     fn compute_offset(
         &'a self,
         arguments: &'a Arguments,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
     ) -> Option<Offset> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
@@ -184,7 +178,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     .and_then(|offset_param| {
                         let argument_value = super::find_arg(arguments, &offset_param.name);
                         argument_value.map(|argument_value| {
-                            offset_param.map_to_sql(argument_value, operations_context)
+                            offset_param.map_to_sql(argument_value, system_context)
                         })
                     })
                     .transpose()
@@ -198,7 +192,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         &'a self,
         field: &'a ValidatedField,
         additional_predicate: AbstractPredicate<'a>,
-        operations_context: &'a OperationsContext,
+        system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<AbstractSelect<'a>> {
         match &self.kind {
@@ -209,7 +203,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 let access_predicate = compute_sql_access_predicate(
                     &self.return_type,
                     &SQLOperationKind::Retrieve,
-                    operations_context,
+                    system_context,
                     request_context,
                 )
                 .await;
@@ -222,23 +216,23 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     predicate_param.as_ref(),
                     &field.arguments,
                     additional_predicate,
-                    operations_context,
+                    system_context,
                 )
                 .with_context(|| format!("While computing predicate for field {}", field.name))?;
 
-                let order_by = self.compute_order_by(&field.arguments, operations_context);
+                let order_by = self.compute_order_by(&field.arguments, system_context);
 
                 let predicate = AbstractPredicate::and(predicate, access_predicate);
 
                 let content_object = self
-                    .content_select(&field.subfields, operations_context, request_context)
+                    .content_select(&field.subfields, system_context, request_context)
                     .await?;
 
                 // Apply the join logic only for top-level selections
-                let system = &operations_context.system;
+                let system = &system_context.system;
 
-                let limit = self.compute_limit(&field.arguments, operations_context);
-                let offset = self.compute_offset(&field.arguments, operations_context);
+                let limit = self.compute_limit(&field.arguments, system_context);
+                let offset = self.compute_offset(&field.arguments, system_context);
 
                 let root_physical_table = if let GqlTypeKind::Composite(composite_root_type) =
                     &self.return_type.typ(system).kind
@@ -275,10 +269,10 @@ impl<'a> QuerySQLOperations<'a> for Query {
 async fn map_field<'a>(
     query: &'a Query,
     field: &'a ValidatedField,
-    operations_context: &'a OperationsContext,
+    system_context: &'a SystemContext,
     request_context: &'a RequestContext<'a>,
 ) -> Result<ColumnSelection<'a>> {
-    let system = &operations_context.system;
+    let system = &system_context.system;
     let return_type = query.return_type.typ(system);
 
     let selection_elem = if field.name == "__typename" {
@@ -320,7 +314,7 @@ async fn map_field<'a>(
                     .operation(
                         field,
                         AbstractPredicate::True,
-                        operations_context,
+                        system_context,
                         request_context,
                     )
                     .await?;
@@ -360,7 +354,7 @@ async fn map_field<'a>(
                     .operation(
                         field,
                         AbstractPredicate::True,
-                        operations_context,
+                        system_context,
                         request_context,
                     )
                     .await?;

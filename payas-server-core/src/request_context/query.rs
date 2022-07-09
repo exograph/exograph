@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{execution::operations_context::OperationsContext, OperationsPayload};
+use crate::{execution::system_context::SystemContext, OperationsPayload};
 
 use super::{ParsedContext, RequestContext};
 
@@ -15,12 +15,12 @@ impl ParsedContext for QueryExtractor {
     async fn extract_context_field<'e>(
         &'e self,
         value: &str,
-        operations_context: &'e OperationsContext,
+        system_context: &'e SystemContext,
         request_context: &'e RequestContext,
     ) -> Option<serde_json::Value> {
         let query = format!("query {{ {} }}", value.to_owned());
 
-        let result = operations_context
+        let result = system_context
             .execute(
                 OperationsPayload {
                     operation_name: None,
