@@ -2,7 +2,7 @@ use lambda_http::{Error, Request};
 
 use payas_server_aws_lambda::request_context::LambdaRequestContextProducer;
 use payas_server_aws_lambda::resolve;
-use payas_server_core::create_operations_executor;
+use payas_server_core::create_system_context;
 
 use std::sync::Arc;
 use std::{env, process::exit};
@@ -12,13 +12,13 @@ use std::{env, process::exit};
 async fn main() -> Result<(), Error> {
     let claypot_file = get_claypot_file_name();
 
-    let operations_executor = Arc::new(create_operations_executor(&claypot_file).unwrap());
+    let system_context = Arc::new(create_system_context(&claypot_file).unwrap());
     let request_context_processor = Arc::new(LambdaRequestContextProducer::new());
 
     let service = lambda_http::service_fn(|request: Request| async {
         resolve(
             request,
-            operations_executor.clone(),
+            system_context.clone(),
             request_context_processor.clone(),
         )
         .await

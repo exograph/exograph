@@ -4,7 +4,8 @@ use serde_json::Value;
 
 use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
 use crate::introspection::definition::type_introspection::TypeDefinitionIntrospection;
-use crate::{execution::operations_context::OperationsContext, validation::field::ValidatedField};
+use crate::request_context::RequestContext;
+use crate::{execution::system_context::SystemContext, validation::field::ValidatedField};
 use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
@@ -17,8 +18,9 @@ struct BoxedType<'a> {
 impl FieldResolver<Value> for TypeDefinition {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
+        system_context: &'e SystemContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match field.name.as_str() {
             "name" => Ok(Value::String(self.name())),
@@ -26,19 +28,19 @@ impl FieldResolver<Value> for TypeDefinition {
             "description" => Ok(self.description().map(Value::String).unwrap_or(Value::Null)),
             "fields" => {
                 self.fields()
-                    .resolve_value(query_context, &field.subfields)
+                    .resolve_value(&field.subfields, system_context, request_context)
                     .await
             }
             "interfaces" => Ok(Value::Array(vec![])), // TODO
             "possibleTypes" => Ok(Value::Null),       // TODO
             "enumValues" => {
                 self.enum_values()
-                    .resolve_value(query_context, &field.subfields)
+                    .resolve_value(&field.subfields, system_context, request_context)
                     .await
             }
             "inputFields" => {
                 self.input_fields()
-                    .resolve_value(query_context, &field.subfields)
+                    .resolve_value(&field.subfields, system_context, request_context)
                     .await
             }
             "ofType" => Ok(Value::Null),
@@ -56,8 +58,9 @@ impl FieldResolver<Value> for TypeDefinition {
 impl FieldResolver<Value> for Type {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
+        system_context: &'e SystemContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         let base_type = &self.base;
 
@@ -70,15 +73,20 @@ impl FieldResolver<Value> for Type {
                 tpe: &underlying,
                 type_kind: "NON_NULL",
             };
-            boxed_type.resolve_field(query_context, field).await
+            boxed_type
+                .resolve_field(field, system_context, request_context)
+                .await
         } else {
             match base_type {
                 BaseType::Named(name) => {
                     // See commented out derivation of FieldResolver for Option<T>
-                    //query_context.schema.get_type_definition(name).resolve_field(query_context, field)
-                    let tpe = query_context.schema.get_type_definition(name);
+                    //system_context.schema.get_type_definition(name).resolve_field(system_context, field)
+                    let tpe = system_context.schema.get_type_definition(name);
                     match tpe {
-                        Some(tpe) => tpe.resolve_field(query_context, field).await,
+                        Some(tpe) => {
+                            tpe.resolve_field(field, system_context, request_context)
+                                .await
+                        }
                         None => Ok(Value::Null),
                     }
                 }
@@ -87,7 +95,9 @@ impl FieldResolver<Value> for Type {
                         tpe: underlying,
                         type_kind: "LIST",
                     };
-                    boxed_type.resolve_field(query_context, field).await
+                    boxed_type
+                        .resolve_field(field, system_context, request_context)
+                        .await
                 }
             }
         }
@@ -101,14 +111,15 @@ impl FieldResolver<Value> for Type {
 impl<'a> FieldResolver<Value> for BoxedType<'a> {
     async fn resolve_field<'e>(
         &'e self,
-        query_context: &'e OperationsContext<'e>,
         field: &ValidatedField,
+        system_context: &'e SystemContext,
+        request_context: &'e RequestContext<'e>,
     ) -> Result<Value> {
         match field.name.as_str() {
             "kind" => Ok(Value::String(self.type_kind.to_owned())),
             "ofType" => {
                 self.tpe
-                    .resolve_value(query_context, &field.subfields)
+                    .resolve_value(&field.subfields, system_context, request_context)
                     .await
             }
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"
