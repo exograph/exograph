@@ -552,8 +552,8 @@ mod tests {
         new_system: &str,
         old_create: Vec<(&str, bool)>,
         new_create: Vec<(&str, bool)>,
-        up_changes: Vec<(&str, bool)>,
-        down_changes: Vec<(&str, bool)>,
+        up_migration: Vec<(&str, bool)>,
+        down_migration: Vec<(&str, bool)>,
     ) {
         let old_system = compute_spec(old_system);
         let new_system = compute_spec(new_system);
@@ -587,9 +587,9 @@ mod tests {
         );
 
         // Up changes old -> new
-        assert_change(&old_system, &new_system, up_changes, "Up migration");
+        assert_change(&old_system, &new_system, up_migration, "Up migration");
         // Down changes new -> old
-        assert_change(&new_system, &old_system, down_changes, "Down migration");
+        assert_change(&new_system, &old_system, down_migration, "Down migration");
     }
 
     fn assert_change(
