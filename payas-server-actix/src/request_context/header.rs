@@ -3,7 +3,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use payas_server_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
-    OperationsExecutor,
+    SystemContext,
 };
 use serde_json::Value;
 
@@ -35,7 +35,7 @@ impl ParsedContext for ParsedHeaderContext {
     async fn extract_context_field<'e>(
         &'e self,
         key: &str,
-        _executor: &'e OperationsExecutor,
+        _system_context: &'e SystemContext,
         _rc: &'e RequestContext,
     ) -> Option<Value> {
         self.headers

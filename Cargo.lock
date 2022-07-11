@@ -3251,7 +3251,6 @@ dependencies = [
  "payas-parser",
  "payas-sql",
  "payas-test",
- "quit",
  "rand",
  "serde",
  "stripmargin",
@@ -3390,6 +3389,7 @@ dependencies = [
  "bytes",
  "chrono",
  "deadpool-postgres",
+ "lazy_static",
  "maybe-owned",
  "once_cell",
  "openssl",
@@ -3781,21 +3781,6 @@ checksum = "588f6378e4dd99458b60ec275b4477add41ce4fa9f64dcba6f15adccb19b50d6"
 dependencies = [
  "rand",
 ]
-
-[[package]]
-name = "quit"
-version = "1.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bad314fc86f60b58587ffaf97e3150ed6f0aece74012db9cf0e36ee88768e49d"
-dependencies = [
- "quit_macros",
-]
-
-[[package]]
-name = "quit_macros"
-version = "1.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a411616b47dce3139c0169c89899ba5ea3534e545ab4d0c1d3956460fe781bae"
 
 [[package]]
 name = "quote"

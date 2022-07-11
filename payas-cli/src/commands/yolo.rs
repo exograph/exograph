@@ -60,7 +60,7 @@ impl Command for YoloCommand {
                 let new_system = payas_parser::build_system(&self.model)?;
                 let new_schema = SchemaSpec::from_model(new_system.tables.into_iter().collect());
 
-                let statements = migration_statements(old_schema.value, new_schema);
+                let statements = migration_statements(&old_schema.value, &new_schema);
 
                 // execute migration
                 println!("Running migrations...");
