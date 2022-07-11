@@ -136,7 +136,7 @@ macro_rules! claytip_execute_query {
             async move {
                 // execute query
                 let result = $system_context
-                    .execute_with_request_context(
+                    .execute(
                         OperationsPayload {
                             operation_name: None,
                             query: query_string,

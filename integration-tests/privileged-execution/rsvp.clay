@@ -3,7 +3,7 @@ context AuthContext {
 }
 
 // Normal users are allowed to create an RSVP (in real world, those with verified captcha)
-@access(query = true, create = true, update = AuthContext.role == "admin", delete = AuthContext.role == "admin")
+@access(query = AuthContext.role == "admin", create = true, update = AuthContext.role == "admin", delete = AuthContext.role == "admin")
 model Rsvp {
   id: Int = autoincrement() @pk
   email: String
