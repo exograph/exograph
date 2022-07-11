@@ -3,7 +3,7 @@ use payas_sql::{
     PhysicalTable,
 };
 
-pub(super) fn migration_statements(
+pub fn migration_statements(
     old_schema_spec: SchemaSpec,
     new_schema_spec: SchemaSpec,
 ) -> Vec<(String, bool)> {

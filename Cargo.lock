@@ -989,6 +989,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctrlc"
+version = "3.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b37feaa84e6861e00a1f5e5aa8da3ee56d605c9992d33e082786754828e20865"
+dependencies = [
+ "nix 0.24.1",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "cty"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1279,7 +1289,7 @@ dependencies = [
  "log",
  "lzzzz",
  "netif",
- "nix",
+ "nix 0.23.0",
  "notify 5.0.0-pre.14",
  "once_cell",
  "regex",
@@ -2832,6 +2842,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f17df307904acd05aa8e32e97bb20f2a0df1728bbc2d771ae8f9a90463441e9"
+dependencies = [
+ "bitflags",
+ "cfg-if 1.0.0",
+ "libc",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3223,12 +3244,15 @@ dependencies = [
  "anyhow",
  "bincode",
  "clap",
+ "ctrlc",
  "heck",
  "notify 4.0.17",
  "payas-model",
  "payas-parser",
  "payas-sql",
  "payas-test",
+ "quit",
+ "rand",
  "serde",
  "stripmargin",
  "tokio",
@@ -3757,6 +3781,21 @@ checksum = "588f6378e4dd99458b60ec275b4477add41ce4fa9f64dcba6f15adccb19b50d6"
 dependencies = [
  "rand",
 ]
+
+[[package]]
+name = "quit"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bad314fc86f60b58587ffaf97e3150ed6f0aece74012db9cf0e36ee88768e49d"
+dependencies = [
+ "quit_macros",
+]
+
+[[package]]
+name = "quit_macros"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a411616b47dce3139c0169c89899ba5ea3534e545ab4d0c1d3956460fe781bae"
 
 [[package]]
 name = "quote"
