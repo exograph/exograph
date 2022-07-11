@@ -9,7 +9,7 @@ use crate::{
     request_context::RequestContext,
 };
 use async_recursion::async_recursion;
-use futures::FutureExt;
+use futures::{future::BoxFuture, FutureExt};
 use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
@@ -97,6 +97,15 @@ use serde_json::{Map, Value};
 /// ```
 use super::operation_mapper::{construct_arg_sequence, OperationResolverResult};
 
+pub type FnResolve<'a> = (dyn Fn(
+    &'a ValidatedField,
+    &'a SystemContext,
+    &'a RequestContext<'a>,
+) -> BoxFuture<'a, Result<OperationResolverResult<'a>>>
+     + 'a
+     + Send
+     + Sync);
+
 #[allow(clippy::large_enum_variant)]
 pub enum InterceptedOperation<'a> {
     // around
@@ -112,19 +121,13 @@ pub enum InterceptedOperation<'a> {
         interceptor: &'a Interceptor,
     },
     // query/mutation
-    Plain {
-        resolver_result: OperationResolverResult<'a>,
-    },
+    Plain,
 }
 
 impl<'a> InterceptedOperation<'a> {
-    pub fn new(
-        operation_name: &'a str,
-        resolver_result: OperationResolverResult<'a>,
-        interceptors: Vec<&'a Interceptor>,
-    ) -> Self {
+    pub fn new(operation_name: &'a str, interceptors: Vec<&'a Interceptor>) -> Self {
         if interceptors.is_empty() {
-            Self::Plain { resolver_result }
+            Self::Plain
         } else {
             let mut before = Vec::new();
             let mut after = Vec::new();
@@ -138,7 +141,7 @@ impl<'a> InterceptedOperation<'a> {
                     InterceptorKind::Around => around.push(interceptor),
                 });
 
-            let core = Box::new(InterceptedOperation::Plain { resolver_result });
+            let core = Box::new(InterceptedOperation::Plain);
 
             let core = around.into_iter().fold(core, |core, interceptor| {
                 Box::new(InterceptedOperation::Around {
@@ -157,12 +160,19 @@ impl<'a> InterceptedOperation<'a> {
         }
     }
 
+    /// Execute the intercepted operation
+    ///
+    /// # Arguments
+    /// * `resolve` - Function to resolve the operation. This needs to be evaluated in the context of the intercepted operation, since
+    ///               the intercepted operation may be invoked with overridden context (privileged execution) and access control must
+    ///               be evaluated considering the overridden context.
     #[async_recursion]
     pub async fn execute(
-        &'a self,
+        &self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
+        resolve: &FnResolve<'a>,
     ) -> Result<QueryResponse> {
         match self {
             InterceptedOperation::Intercepted {
@@ -183,7 +193,9 @@ impl<'a> InterceptedOperation<'a> {
                     )
                     .await?;
                 }
-                let res = core.execute(field, system_context, request_context).await?;
+                let res = core
+                    .execute(field, system_context, request_context, resolve)
+                    .await?;
                 for after_interceptor in after {
                     execute_interceptor(
                         after_interceptor,
@@ -213,8 +225,11 @@ impl<'a> InterceptedOperation<'a> {
                     Some(operation_name.to_string()),
                     field,
                     Some(&|| {
-                        async move { core.execute(field, system_context, request_context).await }
-                            .boxed()
+                        async move {
+                            core.execute(field, system_context, request_context, resolve)
+                                .await
+                        }
+                        .boxed()
                     }),
                 )
                 .await?;
@@ -229,7 +244,9 @@ impl<'a> InterceptedOperation<'a> {
                 })
             }
 
-            InterceptedOperation::Plain { resolver_result } => {
+            InterceptedOperation::Plain => {
+                let resolver_result = resolve(field, system_context, request_context).await?;
+
                 resolver_result
                     .execute(field, system_context, request_context)
                     .await

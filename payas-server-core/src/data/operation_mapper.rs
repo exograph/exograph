@@ -77,17 +77,16 @@ pub trait OperationResolver<'a> {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse> {
-        let resolver_result = self
-            .resolve_operation(field, system_context, request_context)
-            .await?;
-        let interceptors = self.interceptors().ordered();
-
-        let op_name = &self.name();
+        let resolve = move |field: &'a ValidatedField,
+                            system_context: &'a SystemContext,
+                            request_context: &'a RequestContext<'a>| {
+            self.resolve_operation(field, system_context, request_context)
+        };
 
         let intercepted_operation =
-            InterceptedOperation::new(op_name, resolver_result, interceptors);
+            InterceptedOperation::new(self.name(), self.interceptors().ordered());
         let QueryResponse { body, headers } = intercepted_operation
-            .execute(field, system_context, request_context)
+            .execute(field, system_context, request_context, &resolve)
             .await?;
 
         // A proceed call in an around interceptor may have returned more fields that necessary (just like a normal service),
