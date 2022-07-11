@@ -45,7 +45,9 @@ where
 
     let start_server = || {
         build(&absolute_path, None, false).and_then(|_| {
-            prestart_callback()?;
+            if let Err(e) = prestart_callback() {
+                println!("Error: {}", e);
+            }
 
             let mut command = std::process::Command::new(&server_binary);
             command.args(vec![&claypot_file_name]);
