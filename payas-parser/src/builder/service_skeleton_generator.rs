@@ -236,7 +236,8 @@ fn typescript_base_type(clay_type_name: &str) -> String {
         "Float" => "number".to_string(),
         "Boolean" => "boolean".to_string(),
         "DateTime" => "Date".to_string(),
-        "ClaytipInjected" => "Claytip".to_string(),
+        "Claytip" => "Claytip".to_string(),
+        "ClaytipPriv" => "ClaytipPriv".to_string(),
         t => t.to_string(),
     }
 }

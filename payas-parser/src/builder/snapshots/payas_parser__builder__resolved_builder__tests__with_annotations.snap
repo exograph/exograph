@@ -1,7 +1,6 @@
 ---
 source: payas-parser/src/builder/resolved_builder.rs
 expression: resolved
-
 ---
 types:
   values:
@@ -30,7 +29,9 @@ types:
     - - ~
       - Primitive: Uuid
     - - ~
-      - Primitive: ClaytipInjected
+      - Primitive: Claytip
+    - - ~
+      - Primitive: ClaytipPriv
     - - ~
       - Primitive:
           Interception: Operation
@@ -217,6 +218,21 @@ types:
             delete:
               BooleanLiteral:
                 - true
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
   map:
     Blob:
       index: 10
@@ -224,11 +240,14 @@ types:
     Boolean:
       index: 0
       generation: ~
-    ClaytipInjected:
+    Claytip:
       index: 12
       generation: ~
+    ClaytipPriv:
+      index: 13
+      generation: ~
     Concert:
-      index: 14
+      index: 15
       generation: ~
     Decimal:
       index: 3
@@ -255,7 +274,7 @@ types:
       index: 5
       generation: ~
     Operation:
-      index: 13
+      index: 14
       generation: ~
     String:
       index: 4
@@ -264,7 +283,7 @@ types:
       index: 11
       generation: ~
     Venue:
-      index: 15
+      index: 16
       generation: ~
 contexts:
   values:
@@ -299,7 +318,7 @@ services:
             arguments:
               - name: claytip
                 typ:
-                  Plain: ClaytipInjected
+                  Plain: Claytip
                 is_injected: true
               - name: x
                 typ:

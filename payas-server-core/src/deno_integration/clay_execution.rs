@@ -28,6 +28,7 @@ pub enum RequestFromDenoMessage {
     ClaytipExecute {
         query_string: String,
         variables: Option<serde_json::Map<String, Value>>,
+        context_override: Value,
         response_sender: oneshot::Sender<ResponseForDenoMessage>,
     },
 }
@@ -37,7 +38,11 @@ pub enum ResponseForDenoMessage {
     ClaytipExecute(Result<QueryResponse>),
 }
 
-pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> BoxFuture<'a, Result<QueryResponse>>
+pub type FnClaytipExecuteQuery<'a> = (dyn Fn(
+    String,
+    Option<serde_json::Map<String, Value>>,
+    Value,
+) -> BoxFuture<'a, Result<QueryResponse>>
      + 'a
      + Send
      + Sync);
@@ -65,10 +70,12 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a>
             RequestFromDenoMessage::ClaytipExecute {
                 query_string,
                 variables,
+                context_override,
                 response_sender,
             } => {
                 let query_result =
-                    self.claytip_execute_query.unwrap()(query_string, variables).await;
+                    self.claytip_execute_query.unwrap()(query_string, variables, context_override)
+                        .await;
                 response_sender
                     .send(ResponseForDenoMessage::ClaytipExecute(query_result))
                     .ok()
@@ -78,8 +85,9 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a>
     }
 }
 
-const SHIMS: [(&str, &str); 2] = [
-    ("ClaytipInjected", include_str!("claytip_shim.js")),
+const SHIMS: [(&str, &str); 3] = [
+    ("Claytip", include_str!("claytip_shim.js")),
+    ("ClaytipPriv", include_str!("claytip_priv_shim.js")),
     ("Operation", include_str!("operation_shim.js")),
 ];
 
@@ -103,6 +111,7 @@ pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
         let ext = Extension::builder()
             .ops(vec![
                 deno_integration::claytip_ops::op_claytip_execute_query::decl(),
+                deno_integration::claytip_ops::op_claytip_execute_query_priv::decl(),
                 deno_integration::claytip_ops::op_intercepted_operation_name::decl(),
                 deno_integration::claytip_ops::op_intercepted_operation_query::decl(),
                 deno_integration::claytip_ops::op_intercepted_proceed::decl(),

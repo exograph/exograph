@@ -1,0 +1,17 @@
+context AuthContext {
+  role: String @jwt("role")
+}
+
+// Normal users are allowed to create an RSVP (in real world, those with verified captcha)
+@access(query = true, create = true, update = AuthContext.role == "admin", delete = AuthContext.role == "admin")
+model Rsvp {
+  id: Int = autoincrement() @pk
+  email: String
+  count: Int
+}
+
+@external("rsvp-service.ts")
+service RsvpService {
+  @around("mutation createRsvp")
+  interceptor processRsvp(operation: Operation, claytip: ClaytipPriv)
+}

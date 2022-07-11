@@ -1,7 +1,6 @@
 ---
 source: payas-parser/src/typechecker/mod.rs
 expression: build(src).unwrap()
-
 ---
 values:
   - - ~
@@ -29,7 +28,9 @@ values:
   - - ~
     - Primitive: Uuid
   - - ~
-    - Primitive: ClaytipInjected
+    - Primitive: Claytip
+  - - ~
+    - Primitive: ClaytipPriv
   - - ~
     - Primitive:
         Interception: Operation
@@ -87,7 +88,7 @@ values:
                                         - Single:
                                             - - AuthContext
                                             - Reference:
-                                                index: 14
+                                                index: 15
                                                 generation: ~
                                         - - role
                                         - Reference:
@@ -101,7 +102,7 @@ values:
                                   - Single:
                                       - - self
                                       - Reference:
-                                          index: 15
+                                          index: 16
                                           generation: ~
                                   - - is_public
                                   - Reference:
@@ -111,9 +112,24 @@ values:
             default_value: ~
         annotations:
           annotations: {}
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
 map:
   AuthContext:
-    index: 14
+    index: 15
     generation: ~
   Blob:
     index: 10
@@ -124,11 +140,14 @@ map:
   Claytip:
     index: 12
     generation: ~
+  ClaytipPriv:
+    index: 13
+    generation: ~
   Decimal:
     index: 3
     generation: ~
   Doc:
-    index: 15
+    index: 16
     generation: ~
   Float:
     index: 2
@@ -152,7 +171,7 @@ map:
     index: 5
     generation: ~
   Operation:
-    index: 13
+    index: 14
     generation: ~
   String:
     index: 4
