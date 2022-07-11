@@ -3366,6 +3366,7 @@ dependencies = [
  "bytes",
  "chrono",
  "deadpool-postgres",
+ "lazy_static",
  "maybe-owned",
  "once_cell",
  "openssl",
