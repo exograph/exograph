@@ -57,6 +57,7 @@ impl Command for YoloCommand {
                 std::env::set_var("CLAY_CORS_DOMAINS", "*");
 
                 println!("JWT secret is {}", &jwt_secret);
+                println!("Database URL is {}", &db.connection_url);
 
                 // generate migrations for current database
                 println!("Generating migrations...");
