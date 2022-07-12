@@ -13,6 +13,15 @@ use anyhow::{Context, Result};
 use payas_sql::{schema::spec::SchemaSpec, Database};
 use rand::Rng;
 
+fn generate_random_string() -> String {
+    rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(15)
+        .map(char::from)
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
+}
+
 /// Run local claytip server with a temporary database
 pub struct YoloCommand {
     pub model: PathBuf,
@@ -35,16 +44,19 @@ impl Command for YoloCommand {
         let db = PostgreSQLInstance::from_docker()
             .context("While trying to instantiate PostgreSQL docker")?;
 
+        let jwt_secret = generate_random_string();
+
         let prestart_callback = || {
             rt.block_on(async {
                 // set envs for server
                 std::env::set_var("CLAY_DATABASE_URL", &db.connection_url);
                 std::env::remove_var("CLAY_DATABASE_USER");
                 std::env::remove_var("CLAY_DATABASE_PASSWORD");
-
                 std::env::set_var("CLAY_INTROSPECTION", "true");
-                std::env::set_var("CLAY_JWT_SECRET", "abcd");
+                std::env::set_var("CLAY_JWT_SECRET", &jwt_secret);
                 std::env::set_var("CLAY_CORS_DOMAINS", "*");
+
+                println!("JWT secret is {}", &jwt_secret);
 
                 // generate migrations for current database
                 println!("Generating migrations...");
@@ -95,15 +107,7 @@ impl PostgreSQLInstance {
         };
 
         // generate container name
-        let container_name = {
-            let random_string: String = rand::thread_rng()
-                .sample_iter(&rand::distributions::Alphanumeric)
-                .take(15)
-                .map(char::from)
-                .map(|c| c.to_ascii_lowercase())
-                .collect();
-            format!("claytip-yolo-{}", random_string)
-        };
+        let container_name = format!("claytip-yolo-{}", generate_random_string());
 
         // start postgres docker in background
         let mut db_background = std::process::Command::new("docker");
