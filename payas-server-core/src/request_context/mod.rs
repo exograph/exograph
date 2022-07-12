@@ -2,8 +2,10 @@ mod environment;
 mod query;
 
 use crate::execution::system_context::SystemContext;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_trait::async_trait;
+use futures::StreamExt;
+use payas_model::model::ContextField;
 use payas_model::model::ContextType;
 use serde_json::Value;
 
@@ -13,7 +15,8 @@ use std::marker::PhantomData;
 #[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
 #[cfg(not(test))]
-use futures::StreamExt;
+use anyhow::anyhow;
+
 #[cfg(not(test))]
 use std::collections::HashMap;
 
@@ -52,7 +55,7 @@ pub enum RequestContext<'a> {
     User(UserRequestContext<'a>),
 
     Service {
-        user_context: &'a UserRequestContext<'a>,
+        base_context: &'a RequestContext<'a>,
         context_override: Value,
     },
 }
@@ -82,19 +85,29 @@ impl<'a> RequestContext<'a> {
     }
 
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
-        match self {
-            RequestContext::User(user_context) => RequestContext::Service {
-                user_context,
-                context_override,
-            },
-            RequestContext::Service { .. } => todo!(), // We could merge the two contexts
+        RequestContext::Service {
+            base_context: self,
+            context_override,
         }
+    }
+
+    pub async fn extract_context(&self, context: &ContextType) -> Result<Value> {
+        Ok(Value::Object(
+            futures::stream::iter(context.fields.iter())
+                .then(|field| async { self.extract_context_field(context, field).await })
+                .collect::<Vec<Result<_>>>()
+                .await
+                .into_iter()
+                .collect::<Result<Vec<_>>>()?
+                .into_iter()
+                .flatten()
+                .collect(),
+        ))
     }
 
     // Given an annotation name and its value,
     // extract a context field from the request context
     #[cfg(not(test))]
-    #[async_recursion]
     async fn extract_context_field_from_source(
         &self,
         parsed_context_map: &HashMap<String, BoxedParsedContext>,
@@ -112,59 +125,41 @@ impl<'a> RequestContext<'a> {
     }
 
     #[cfg(not(test))]
-    pub async fn extract_context(&self, context: &ContextType) -> Result<Value> {
-        Ok(Value::Object(
-            futures::stream::iter(context.fields.iter())
-                .then(|field| async {
-                    match self {
-                        RequestContext::User(UserRequestContext {
-                            parsed_context_map,
-                            system_context,
-                        }) => {
-                            let field_value = self
-                                .extract_context_field_from_source(
-                                    parsed_context_map,
-                                    system_context,
-                                    &field.source.annotation_name,
-                                    &field.source.value,
-                                )
-                                .await?;
-                            Ok(field_value.map(|value| (field.name.clone(), value)))
-                        }
-                        RequestContext::Service {
-                            user_context,
-                            context_override,
-                        } => {
-                            let overridden: Option<&Value> =
-                                context_override.get(&context.name).and_then(|value| {
-                                    value.as_object().and_then(|value| value.get(&field.name))
-                                });
+    #[async_recursion]
+    pub async fn extract_context_field(
+        &self,
+        context: &ContextType,
+        field: &ContextField,
+    ) -> Result<Option<(String, Value)>> {
+        match self {
+            RequestContext::User(UserRequestContext {
+                parsed_context_map,
+                system_context,
+            }) => {
+                let field_value = self
+                    .extract_context_field_from_source(
+                        parsed_context_map,
+                        system_context,
+                        &field.source.annotation_name,
+                        &field.source.value,
+                    )
+                    .await?;
+                Ok(field_value.map(|value| (field.name.clone(), value)))
+            }
+            RequestContext::Service {
+                base_context,
+                context_override,
+            } => {
+                let overridden: Option<&Value> = context_override
+                    .get(&context.name)
+                    .and_then(|value| value.as_object().and_then(|value| value.get(&field.name)));
 
-                            match overridden {
-                                Some(value) => Ok(Some((field.name.clone(), value.clone()))),
-                                None => {
-                                    let field_value = self
-                                        .extract_context_field_from_source(
-                                            &user_context.parsed_context_map,
-                                            user_context.system_context,
-                                            &field.source.annotation_name,
-                                            &field.source.value,
-                                        )
-                                        .await?;
-                                    Ok(field_value.map(|value| (field.name.clone(), value)))
-                                }
-                            }
-                        }
-                    }
-                })
-                .collect::<Vec<Result<_>>>()
-                .await
-                .into_iter()
-                .collect::<Result<Vec<_>>>()?
-                .into_iter()
-                .flatten()
-                .collect(),
-        ))
+                match overridden {
+                    Some(value) => Ok(Some((field.name.clone(), value.clone()))),
+                    None => base_context.extract_context_field(context, field).await,
+                }
+            }
+        }
     }
 
     // ### BELOW USED ONLY DURING UNIT TESTS ###
@@ -179,40 +174,33 @@ impl<'a> RequestContext<'a> {
 
     #[cfg(test)]
     #[async_recursion]
-    pub async fn extract_context(&self, context: &ContextType) -> Result<Value> {
+    pub async fn extract_context_field(
+        &self,
+        context: &ContextType,
+        field: &ContextField,
+    ) -> Result<Option<(String, Value)>> {
         match self {
-            RequestContext::User(UserRequestContext {
-                test_values,
-                phantom: _,
-            }) => test_values
-                .get(&context.name)
-                .ok_or_else(|| {
-                    anyhow!(
-                        "Context type {} does not exist in test values",
-                        &context.name
-                    )
-                })
-                .cloned(),
+            RequestContext::User(UserRequestContext { test_values, .. }) => {
+                let context_value: Option<Value> = test_values.get(&context.name).cloned();
+
+                Ok(context_value.and_then(|value| {
+                    value.as_object().and_then(|context_value| {
+                        let field_value = context_value.get(&field.name).cloned();
+                        field_value.map(|field_value| (field.name.clone(), field_value))
+                    })
+                }))
+            }
             RequestContext::Service {
-                user_context,
+                base_context,
                 context_override,
             } => {
-                let overridden = context_override
-                    .as_object()
-                    .and_then(|context_override_map| context_override_map.get(&context.name))
-                    .cloned();
+                let overridden: Option<&Value> = context_override
+                    .get(&context.name)
+                    .and_then(|value| value.as_object().and_then(|value| value.get(&field.name)));
+
                 match overridden {
-                    Some(overridden) => Ok(overridden),
-                    None => user_context
-                        .test_values
-                        .get(&context.name)
-                        .ok_or_else(|| {
-                            anyhow!(
-                                "Context type {} does not exist in test values",
-                                &context.name
-                            )
-                        })
-                        .cloned(),
+                    Some(value) => Ok(Some((field.name.clone(), value.clone()))),
+                    None => base_context.extract_context_field(context, field).await,
                 }
             }
         }

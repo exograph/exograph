@@ -9,9 +9,6 @@ use payas_model::model::{
     system::ModelSystem,
 };
 
-#[cfg(test)]
-use payas_model::model::ContextType;
-
 use payas_sql::{AbstractPredicate, ColumnPath};
 use serde_json::Value;
 
@@ -83,23 +80,8 @@ async fn solve_context_selection<'a>(
 ) -> Option<Value> {
     match context_selection {
         AccessContextSelection::Context(context_name) => {
-            // during unit tests, `system.contexts` may not be fully populated
-            // use the regular version when not unit testing ...
-            #[cfg(not(test))]
-            {
-                let context_type = system.contexts.get_by_key(context_name).unwrap();
-                value.extract_context(context_type).await.ok()
-            }
-
-            // ... and substitute a shallow ContextType if we are unit testing
-            #[cfg(test)]
-            {
-                let context_type = ContextType {
-                    name: context_name.to_string(),
-                    fields: vec![],
-                };
-                value.extract_context(&context_type).await.ok()
-            }
+            let context_type = system.contexts.get_by_key(context_name).unwrap();
+            value.extract_context(context_type).await.ok()
         }
         AccessContextSelection::Select(path, key) => solve_context_selection(path, value, system)
             .await
@@ -295,7 +277,6 @@ mod tests {
     use payas_model::model::{
         column_id::ColumnId, predicate::ColumnIdPathLink, system::ModelSystem,
     };
-    use payas_sql::{IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
     use serde_json::json;
 
     use super::*;
@@ -327,34 +308,47 @@ mod tests {
     }
 
     fn test_system() -> TestSystem {
-        fn mk_column(column_name: &str, typ: PhysicalColumnType) -> PhysicalColumn {
-            PhysicalColumn {
-                table_name: "article".to_string(),
-                column_name: column_name.to_string(),
-                typ,
-                is_nullable: false,
-                ..Default::default()
-            }
-        }
+        let system = payas_parser::build_system_from_str(
+            r#"
+                context AccessContext {
+                    role: String @jwt("role")
+                    token1: String @jwt("token1")
+                    token2: String @jwt("token2")
+                    is_admin: Boolean @jwt("is_admin")
+                    user_id: String @jwt("user_id")
+                    v1: Boolean @jwt("v1")
+                    v2: Boolean @jwt("v2")
+                    v1_clone: Boolean @jwt("v1_clone")
+                    v2_clone: Boolean @jwt("v2_clone")
+                }
 
-        let table = PhysicalTable {
-            name: "article".to_string(),
-            columns: vec![
-                mk_column("published", PhysicalColumnType::Boolean),
-                mk_column("owner_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
-                mk_column("dept1_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
-                mk_column("dept2_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
-            ],
+                model Article {
+                    id: Int = autoincrement() @pk
+                    published: Boolean
+                    owner_id: Int @bits(64)
+                    dept1_id: Int @bits(64)
+                    dept2_id: Int @bits(64)
+                }
+            "#,
+            "test.clay".to_string(),
+        )
+        .unwrap();
+        let (table_id, table) = system
+            .tables
+            .iter()
+            .find(|table| table.1.name == "articles")
+            .unwrap();
+
+        let get_column_id = |column_name: &str| {
+            let column_index = table.column_index(column_name).unwrap();
+
+            ColumnId::new(table_id, column_index)
         };
 
-        let mut system = ModelSystem::default();
-        let table_id = system.tables.insert(table);
-
-        let table = &system.tables[table_id];
-        let published_column_id = ColumnId::new(table_id, table.column_index("published").unwrap());
-        let owner_id_column_id = ColumnId::new(table_id, table.column_index("owner_id").unwrap());
-        let dept1_id_column_id = ColumnId::new(table_id, table.column_index("dept1_id").unwrap());
-        let dept2_id_column_id = ColumnId::new(table_id, table.column_index("dept2_id").unwrap());
+        let published_column_id = get_column_id("published");
+        let owner_id_column_id = get_column_id("owner_id");
+        let dept1_id_column_id = get_column_id("dept1_id");
+        let dept2_id_column_id = get_column_id("dept2_id");
 
         let published_column_path = ColumnIdPath {
             path: vec![ColumnIdPathLink {
@@ -888,7 +882,7 @@ mod tests {
     async fn context_only() {
         // Scenario: AuthContext.role == "ROLE_ADMIN"
 
-        let system = ModelSystem::default();
+        let TestSystem { system, .. } = test_system();
 
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", &["role"]),
