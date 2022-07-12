@@ -87,6 +87,13 @@ impl PostgreSQLInstance {
     pub fn from_docker() -> Result<PostgreSQLInstance> {
         println!("Starting PostgreSQL docker...");
 
+        // acquire an empty port
+        let port = {
+            let listener = std::net::TcpListener::bind("127.0.0.1:0")?;
+            let addr = listener.local_addr()?;
+            addr.port()
+        };
+
         // generate container name
         let container_name = {
             let random_string: String = rand::thread_rng()
@@ -110,6 +117,8 @@ impl PostgreSQLInstance {
                 "POSTGRES_USER=clay",
                 "-e",
                 "POSTGRES_PASSWORD=clay",
+                "-p",
+                &format!("{}:5432", port),
                 "postgres",
             ])
             .stdin(Stdio::null())
@@ -128,21 +137,9 @@ impl PostgreSQLInstance {
             }
         }
 
-        // get ip for docker
-        let mut ip = std::process::Command::new("docker");
-        let ip = ip
-            .args([
-                "inspect",
-                "-f",
-                "{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
-                &container_name,
-            ])
-            .output()?;
-        let ip = std::str::from_utf8(&ip.stdout)?.trim();
-
         Ok(PostgreSQLInstance {
             container_name,
-            connection_url: format!("postgresql://clay:clay@{}:5432/postgres", ip),
+            connection_url: format!("postgresql://clay:clay@127.0.0.1:{}/postgres", port),
         })
     }
 }
