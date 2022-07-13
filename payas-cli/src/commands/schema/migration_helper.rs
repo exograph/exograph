@@ -1,6 +1,6 @@
 use payas_sql::schema::{op::SchemaOp, spec::SchemaSpec};
 
-pub(super) fn migration_statements(
+pub(crate) fn migration_statements(
     old_schema_spec: &SchemaSpec,
     new_schema_spec: &SchemaSpec,
 ) -> Vec<(String, bool)> {
