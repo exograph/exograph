@@ -2,8 +2,9 @@ context AuthContext {
   role: String @jwt("role")
 }
 
-// Normal users are allowed to create an RSVP (in real world, those with verified captcha)
-@access(query = AuthContext.role == "admin", create = true, update = AuthContext.role == "admin", delete = AuthContext.role == "admin")
+// Non-admins cannot use the rsvp APIs (a service with priviledged Claytip will be able to escalate the role and thus use the APIs)
+// Later, we will allow to not even export this APIs
+@access(query = AuthContext.role == "admin", create = AuthContext.role == "admin", update = AuthContext.role == "admin", delete = AuthContext.role == "admin")
 model Rsvp {
   id: Int = autoincrement() @pk
   email: String
@@ -12,6 +13,10 @@ model Rsvp {
 
 @external("rsvp-service.ts")
 service RsvpService {
-  @around("mutation createRsvp")
-  interceptor processRsvp(operation: Operation, claytip: ClaytipPriv)
+  type RsvpConfirmation {
+    email: String
+    count: Int
+  }
+
+  mutation processRsvp(email: String, count: Int, @inject claytip: ClaytipPriv): RsvpConfirmation
 }

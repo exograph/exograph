@@ -1,0 +1,80 @@
+# Anonymous user should not be able to query/create/update/delete any data
+stages:
+    - operation: |
+        query {
+          rsvps {
+            id
+          }
+        }      
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }
+
+    - operation: |
+        mutation createRsvp($rsvp: RsvpCreationInput!) {
+          createRsvp(data: $rsvp) {
+            id
+          }
+        }
+      variable: |
+        {
+          "rsvp": {
+            "email": "example@example.com",
+            "count": 3
+          }
+        }        
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }        
+
+    - operation: |
+        mutation updateRsvp($id: Int!, $rsvp: RsvpUpdateInput!) {
+          updateRsvp(id: $id, data: $rsvp) {
+            id
+          }
+        }
+      variable: |
+        {
+          "id": 1,
+          "rsvp": {
+            "email": "example@example.com",
+            "count": 3
+          }
+        }        
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }
+      
+    - operation: |
+        mutation deleteRsvp($id: Int!) {
+          deleteRsvp(id: $id) {
+            id
+          }
+        }
+      response: |
+        {
+          "errors": [
+            {
+              "message": "Not authorized"
+            }
+          ]
+        }          
+      variable: |
+        {
+          "id": 1,
+        }
