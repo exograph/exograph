@@ -27,6 +27,10 @@ interface Claytip {
   }): Promise<void>;
 }
 
+interface ClaytipPriv {
+  executeQueryPriv(query: string, variable?: { [key: string]: any }, contextOverride?: { [key: string]: any }): Promise<any>;
+}
+
 type JsonObject = { [Key in string]?: JsonValue };
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 
