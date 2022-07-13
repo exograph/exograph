@@ -1,4 +1,9 @@
-use std::{env, path::PathBuf, time::SystemTime};
+use std::{
+    env,
+    path::PathBuf,
+    sync::atomic::{AtomicBool, Ordering},
+    time::SystemTime,
+};
 
 use anyhow::Result;
 use clap::{Arg, Command};
@@ -7,11 +12,29 @@ use commands::{serve::ServeCommand, test::TestCommand, yolo::YoloCommand};
 use crate::commands::{build::BuildCommand, schema};
 
 mod commands;
+pub(crate) mod util;
 
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
+pub static SIGINT: AtomicBool = AtomicBool::new(false);
+pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
+
 fn main() -> Result<()> {
     let system_start_time = SystemTime::now();
+
+    // register a sigint handler
+    ctrlc::set_handler(move || {
+        // set SIGINT flag when receiving signal
+        SIGINT.store(true, Ordering::SeqCst);
+
+        // exit if EXIT_ON_SIGINT is set
+        // code may set this to be false if they have resources to
+        // clean up before exiting
+        if EXIT_ON_SIGINT.load(Ordering::SeqCst) {
+            std::process::exit(0);
+        }
+    })
+    .expect("Error setting Ctrl-C handler");
 
     let matches = Command::new("Claytip")
         .version(env!("CARGO_PKG_VERSION"))
@@ -133,6 +156,15 @@ fn main() -> Result<()> {
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
+
+                ).arg(
+                    Arg::new("port")
+                        .help("Port to start the server")
+                        .short('p')
+                        .long("port")
+                        .value_parser(clap::value_parser!(u32))
+                        .takes_value(true)
+                        .value_name("port"),
                 ),
         )
         .get_matches();
@@ -173,6 +205,7 @@ fn main() -> Result<()> {
         }),
         Some(("yolo", matches)) => Box::new(YoloCommand {
             model: get_path(matches, "model"),
+            port: matches.get_one::<u32>("port").copied(),
         }),
         _ => panic!("Unhandled command name"),
     };

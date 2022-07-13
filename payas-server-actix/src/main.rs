@@ -61,6 +61,19 @@ async fn main() -> std::io::Result<()> {
                 server.addrs()[0],
                 start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
             );
+
+            let print_all_addrs = |suffix| {
+                for addr in server.addrs() {
+                    println!("\thttp://{}{}", addr, suffix);
+                }
+            };
+
+            println!("- Playground hosted at:");
+            print_all_addrs(get_playground_http_path());
+
+            println!("- Endpoint hosted at:");
+            print_all_addrs(get_endpoint_http_path());
+
             server.run().await
         }
         Err(e) => {
