@@ -86,7 +86,8 @@ impl<'a> UserRequestContext<'a> {
 pub enum RequestContext<'a> {
     User(UserRequestContext<'a>),
 
-    Service {
+    // The recursive nature allows stacking overrides
+    Overridden {
         base_context: &'a RequestContext<'a>,
         context_override: Value,
     },
@@ -94,7 +95,7 @@ pub enum RequestContext<'a> {
 
 impl<'a> RequestContext<'a> {
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
-        RequestContext::Service {
+        RequestContext::Overridden {
             base_context: self,
             context_override,
         }
@@ -155,7 +156,7 @@ impl<'a> RequestContext<'a> {
                     .await?;
                 Ok(field_value.map(|value| (field.name.clone(), value)))
             }
-            RequestContext::Service {
+            RequestContext::Overridden {
                 base_context,
                 context_override,
             } => {
@@ -191,7 +192,7 @@ impl<'a> RequestContext<'a> {
                     })
                 }))
             }
-            RequestContext::Service {
+            RequestContext::Overridden {
                 base_context,
                 context_override,
             } => {
