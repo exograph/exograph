@@ -3,7 +3,7 @@ pub mod header;
 pub mod jwt;
 
 use payas_server_core::{
-    request_context::{BoxedParsedContext, RequestContext},
+    request_context::{BoxedParsedContext, RequestContext, UserRequestContext},
     SystemContext,
 };
 
@@ -51,9 +51,8 @@ impl LambdaRequestContextProducer {
             })
             .collect::<Result<Vec<_>, ContextProducerError>>()?; // emit errors if we encounter any while gathering context
 
-        Ok(RequestContext::from_parsed_contexts(
-            parsed_contexts,
-            system_context,
+        Ok(RequestContext::User(
+            UserRequestContext::from_parsed_contexts(parsed_contexts, system_context),
         ))
     }
 }

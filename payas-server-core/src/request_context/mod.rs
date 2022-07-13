@@ -24,9 +24,9 @@ use async_recursion::async_recursion;
 
 pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
-/// Represent a request context for a particular request
+/// Represent a request context extracted for a particular request
 ///
-/// RequestContext has two variants available: a regular version for normal use, and a test version
+/// UserRequestContext has two variants available: a regular version for normal use, and a test version
 /// for payas-server-core unit tests. As we do not have a full OperationsExecutor to test functionality
 /// like the access solver, a more basic RequestContext is used during `cargo test`. This test variant
 /// may be constructed with RequestContext::test_request_context(value), `value` being a serde_json::Value
@@ -34,10 +34,9 @@ pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 ///
 /// For example:
 ///
-/// let context = RequestContext::test_request_context(
+/// let context = UserRequestContext::test_request_context(
 ///     serde_json::json!({ "AccessContext": {"token1": "token_value", "token2": "token_value"} }),
 /// );
-
 pub struct UserRequestContext<'a> {
     #[cfg(not(test))]
     // maps from an annotation to a parsed context
@@ -51,6 +50,39 @@ pub struct UserRequestContext<'a> {
     phantom: PhantomData<&'a ()>,
 }
 
+impl<'a> UserRequestContext<'a> {
+    // Constructs a UserRequestContext from a vector of parsed contexts.
+    #[cfg(not(test))]
+    pub fn from_parsed_contexts(
+        contexts: Vec<BoxedParsedContext>,
+        system_context: &'a SystemContext,
+    ) -> UserRequestContext<'a> {
+        // a list of backend-agnostic contexts to also include
+
+        let generic_contexts: Vec<BoxedParsedContext> = vec![
+            Box::new(EnvironmentContextExtractor),
+            Box::new(QueryExtractor),
+        ];
+
+        UserRequestContext {
+            parsed_context_map: contexts
+                .into_iter()
+                .chain(generic_contexts.into_iter()) // include agnostic contexts
+                .map(|context| (context.annotation_name().to_owned(), context))
+                .collect(),
+            system_context,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn test_request_context(test_values: serde_json::Value) -> UserRequestContext<'a> {
+        UserRequestContext {
+            test_values,
+            phantom: PhantomData,
+        }
+    }
+}
+
 pub enum RequestContext<'a> {
     User(UserRequestContext<'a>),
 
@@ -61,29 +93,6 @@ pub enum RequestContext<'a> {
 }
 
 impl<'a> RequestContext<'a> {
-    // Constructs a RequestContext from a vector of parsed contexts.
-    #[cfg(not(test))]
-    pub fn from_parsed_contexts(
-        contexts: Vec<BoxedParsedContext>,
-        system_context: &'a SystemContext,
-    ) -> RequestContext<'a> {
-        // a list of backend-agnostic contexts to also include
-
-        let generic_contexts: Vec<BoxedParsedContext> = vec![
-            Box::new(EnvironmentContextExtractor),
-            Box::new(QueryExtractor),
-        ];
-
-        RequestContext::User(UserRequestContext {
-            parsed_context_map: contexts
-                .into_iter()
-                .chain(generic_contexts.into_iter()) // include agnostic contexts
-                .map(|context| (context.annotation_name().to_owned(), context))
-                .collect(),
-            system_context,
-        })
-    }
-
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
         RequestContext::Service {
             base_context: self,
@@ -163,14 +172,6 @@ impl<'a> RequestContext<'a> {
     }
 
     // ### BELOW USED ONLY DURING UNIT TESTS ###
-
-    #[cfg(test)]
-    pub fn test_request_context(test_values: serde_json::Value) -> RequestContext<'a> {
-        RequestContext::User(UserRequestContext {
-            test_values,
-            phantom: PhantomData,
-        })
-    }
 
     #[cfg(test)]
     #[async_recursion]
