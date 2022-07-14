@@ -27,6 +27,10 @@ interface Claytip {
   }): Promise<void>;
 }
 
+interface ClaytipPriv extends Claytip {
+  executeQueryPriv(query: string, variable?: { [key: string]: any }, contextOverride?: { [key: string]: any }): Promise<any>;
+}
+
 type JsonObject = { [Key in string]?: JsonValue };
 type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
 
@@ -236,7 +240,8 @@ fn typescript_base_type(clay_type_name: &str) -> String {
         "Float" => "number".to_string(),
         "Boolean" => "boolean".to_string(),
         "DateTime" => "Date".to_string(),
-        "ClaytipInjected" => "Claytip".to_string(),
+        "Claytip" => "Claytip".to_string(),
+        "ClaytipPriv" => "ClaytipPriv".to_string(),
         t => t.to_string(),
     }
 }

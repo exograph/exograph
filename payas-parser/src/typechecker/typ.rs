@@ -118,7 +118,8 @@ pub enum PrimitiveType {
     Blob,
     Uuid,
     Array(Box<PrimitiveType>),
-    ClaytipInjected,
+    Claytip,
+    ClaytipPriv,
     Interception(String), // Types such as "Operation" that an interceptor is passed to
 }
 
@@ -141,7 +142,8 @@ impl PrimitiveType {
             PrimitiveType::Json => "Json",
             PrimitiveType::Blob => "Blob",
             PrimitiveType::Uuid => "Uuid",
-            PrimitiveType::ClaytipInjected => "ClaytipInjected",
+            PrimitiveType::Claytip => "Claytip",
+            PrimitiveType::ClaytipPriv => "ClaytipPriv",
             PrimitiveType::Interception(name) => name,
             PrimitiveType::Array(_) => panic!(),
         }

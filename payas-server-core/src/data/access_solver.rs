@@ -9,9 +9,6 @@ use payas_model::model::{
     system::ModelSystem,
 };
 
-#[cfg(test)]
-use payas_model::model::ContextType;
-
 use payas_sql::{AbstractPredicate, ColumnPath};
 use serde_json::Value;
 
@@ -83,23 +80,8 @@ async fn solve_context_selection<'a>(
 ) -> Option<Value> {
     match context_selection {
         AccessContextSelection::Context(context_name) => {
-            // during unit tests, `system.contexts` may not be fully populated
-            // use the regular version when not unit testing ...
-            #[cfg(not(test))]
-            {
-                let context_type = system.contexts.get_by_key(context_name).unwrap();
-                value.extract_context(context_type).await.ok()
-            }
-
-            // ... and substitute a shallow ContextType if we are unit testing
-            #[cfg(test)]
-            {
-                let context_type = ContextType {
-                    name: context_name.to_string(),
-                    fields: vec![],
-                };
-                value.extract_context(&context_type).await.ok()
-            }
+            let context_type = system.contexts.get_by_key(context_name).unwrap();
+            value.extract_context(context_type).await.ok()
         }
         AccessContextSelection::Select(path, key) => solve_context_selection(path, value, system)
             .await
@@ -295,8 +277,9 @@ mod tests {
     use payas_model::model::{
         column_id::ColumnId, predicate::ColumnIdPathLink, system::ModelSystem,
     };
-    use payas_sql::{IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
     use serde_json::json;
+
+    use crate::request_context::UserRequestContext;
 
     use super::*;
 
@@ -327,34 +310,47 @@ mod tests {
     }
 
     fn test_system() -> TestSystem {
-        fn mk_column(column_name: &str, typ: PhysicalColumnType) -> PhysicalColumn {
-            PhysicalColumn {
-                table_name: "article".to_string(),
-                column_name: column_name.to_string(),
-                typ,
-                is_nullable: false,
-                ..Default::default()
-            }
-        }
+        let system = payas_parser::build_system_from_str(
+            r#"
+                context AccessContext {
+                    role: String @jwt("role")
+                    token1: String @jwt("token1")
+                    token2: String @jwt("token2")
+                    is_admin: Boolean @jwt("is_admin")
+                    user_id: String @jwt("user_id")
+                    v1: Boolean @jwt("v1")
+                    v2: Boolean @jwt("v2")
+                    v1_clone: Boolean @jwt("v1_clone")
+                    v2_clone: Boolean @jwt("v2_clone")
+                }
 
-        let table = PhysicalTable {
-            name: "article".to_string(),
-            columns: vec![
-                mk_column("published", PhysicalColumnType::Boolean),
-                mk_column("owner_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
-                mk_column("dept1_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
-                mk_column("dept2_id", PhysicalColumnType::Int { bits: IntBits::_64 }),
-            ],
+                model Article {
+                    id: Int = autoincrement() @pk
+                    published: Boolean
+                    owner_id: Int @bits(64)
+                    dept1_id: Int @bits(64)
+                    dept2_id: Int @bits(64)
+                }
+            "#,
+            "test.clay".to_string(),
+        )
+        .unwrap();
+        let (table_id, table) = system
+            .tables
+            .iter()
+            .find(|table| table.1.name == "articles")
+            .unwrap();
+
+        let get_column_id = |column_name: &str| {
+            let column_index = table.column_index(column_name).unwrap();
+
+            ColumnId::new(table_id, column_index)
         };
 
-        let mut system = ModelSystem::default();
-        let table_id = system.tables.insert(table);
-
-        let table = &system.tables[table_id];
-        let published_column_id = ColumnId::new(table_id, table.column_index("published").unwrap());
-        let owner_id_column_id = ColumnId::new(table_id, table.column_index("owner_id").unwrap());
-        let dept1_id_column_id = ColumnId::new(table_id, table.column_index("dept1_id").unwrap());
-        let dept2_id_column_id = ColumnId::new(table_id, table.column_index("dept2_id").unwrap());
+        let published_column_id = get_column_id("published");
+        let owner_id_column_id = get_column_id("owner_id");
+        let dept1_id_column_id = get_column_id("dept1_id");
+        let dept2_id_column_id = get_column_id("dept2_id");
 
         let published_column_path = ColumnIdPath {
             path: vec![ColumnIdPathLink {
@@ -448,7 +444,7 @@ mod tests {
                 context_selection_expr("AccessContext", &["token2"]),
             ));
 
-            let context = RequestContext::test_request_context(
+            let context = test_request_context(
                 json!({ "AccessContext": {"token1": "token_value", "token2": "token_value"} }),
             );
             let solved_predicate = solve_access(&test_ae, &context, system).await;
@@ -466,7 +462,7 @@ mod tests {
             // (to reduce obvious matches such as 5 < 6 => Predicate::True/False) in those cases,
             // the unoptimized predicate created works for both match and mismatch cases.
 
-            let context = RequestContext::test_request_context(
+            let context = test_request_context(
                 json!({ "AccessContext": {"token1": "token_value1", "token2": "token_value2"} }),
             );
             let solved_predicate = solve_access(&test_ae, &context, system).await;
@@ -485,9 +481,7 @@ mod tests {
         {
             let test_context_column = |test_ae: AccessPredicateExpression| async {
                 let test_ae = test_ae;
-                let context = RequestContext::test_request_context(
-                    json!({ "AccessContext": {"user_id": "u1"} }),
-                );
+                let context = test_request_context(json!({ "AccessContext": {"user_id": "u1"} }));
                 let solved_predicate = solve_access(&test_ae, &context, system).await;
                 assert_eq!(
                     solved_predicate,
@@ -498,7 +492,7 @@ mod tests {
                 );
 
                 // No user_id, so we can definitely declare it Predicate::False
-                let context = RequestContext::test_request_context(json!({ "AccessContext": {} }));
+                let context = test_request_context(json!({ "AccessContext": {} }));
                 let solved_predicate = solve_access(&test_ae, &context, system).await;
                 assert_eq!(&solved_predicate, &context_missing_predicate);
             };
@@ -533,7 +527,7 @@ mod tests {
             ));
 
             // context is irrelevant
-            let context = RequestContext::test_request_context(Value::Null);
+            let context = test_request_context(Value::Null);
             let solved_predicate = solve_access(&test_ae, &context, system).await;
             assert_eq!(
                 solved_predicate,
@@ -656,7 +650,7 @@ mod tests {
         {
             // Two literals
             // context is irrelevant
-            let context = RequestContext::test_request_context(Value::Null);
+            let context = test_request_context(Value::Null);
 
             let scenarios = [
                 (true, true, &both_value_true),
@@ -677,7 +671,7 @@ mod tests {
         }
         {
             // Two context values
-            let context = RequestContext::test_request_context(
+            let context = test_request_context(
                 json!({ "AccessContext": {"v1": true, "v1_clone": true, "v2": false, "v2_clone": false} }),
             );
 
@@ -714,7 +708,7 @@ mod tests {
                 (true, &one_literal_true_other_column),
                 (false, &one_literal_false_other_column),
             ];
-            let context = RequestContext::test_request_context(Value::Null); // context is irrelevant
+            let context = test_request_context(Value::Null); // context is irrelevant
 
             for (l, predicate_fn) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(op(
@@ -763,7 +757,7 @@ mod tests {
                 )),
             ));
 
-            let context = RequestContext::test_request_context(Value::Null); // context is irrelevant
+            let context = test_request_context(Value::Null); // context is irrelevant
             let solved_predicate = solve_access(&test_ae, &context, system).await;
             assert_eq!(
                 solved_predicate,
@@ -823,7 +817,7 @@ mod tests {
         {
             // A literal
 
-            let context = RequestContext::test_request_context(Value::Null); // context is irrelevant
+            let context = test_request_context(Value::Null); // context is irrelevant
 
             let scenarios = [
                 (true, AbstractPredicate::False),
@@ -841,9 +835,8 @@ mod tests {
         }
         {
             // A context value
-            let context = RequestContext::test_request_context(
-                json!({ "AccessContext": {"v1": true, "v2": false} }),
-            );
+            let context =
+                test_request_context(json!({ "AccessContext": {"v1": true, "v2": false} }));
 
             let scenarios = [
                 ("v1", AbstractPredicate::False),
@@ -872,7 +865,7 @@ mod tests {
                     AccessPredicateExpression::BooleanColumn(dept1_id_column_id.clone()),
                 )));
 
-            let context = RequestContext::test_request_context(Value::Null); // context is irrelevant
+            let context = test_request_context(Value::Null); // context is irrelevant
             let solved_predicate = solve_access(&test_ae, &context, system).await;
             assert_eq!(
                 solved_predicate,
@@ -888,7 +881,7 @@ mod tests {
     async fn context_only() {
         // Scenario: AuthContext.role == "ROLE_ADMIN"
 
-        let system = ModelSystem::default();
+        let TestSystem { system, .. } = test_system();
 
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", &["role"]),
@@ -897,14 +890,11 @@ mod tests {
             )),
         ));
 
-        let context = RequestContext::test_request_context(
-            json!({ "AccessContext": {"role": "ROLE_ADMIN"} }),
-        );
+        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_ADMIN"} }));
         let solved_predicate = solve_access(&test_ae, &context, &system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context =
-            RequestContext::test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
+        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
         let solved_predicate = solve_access(&test_ae, &context, &system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
@@ -940,14 +930,11 @@ mod tests {
             ))
         };
 
-        let context = RequestContext::test_request_context(
-            json!({ "AccessContext": {"role": "ROLE_ADMIN"} }),
-        );
+        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_ADMIN"} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context =
-            RequestContext::test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
+        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -976,8 +963,7 @@ mod tests {
             )),
         ));
 
-        let context =
-            RequestContext::test_request_context(json!({ "AccessContext": {"user_id": "1"} }));
+        let context = test_request_context(json!({ "AccessContext": {"user_id": "1"} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -987,8 +973,7 @@ mod tests {
             )
         );
 
-        let context =
-            RequestContext::test_request_context(json!({ "AccessContext": {"user_id": "2"} }));
+        let context = test_request_context(json!({ "AccessContext": {"user_id": "2"} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -1044,15 +1029,12 @@ mod tests {
         ));
 
         // For admins, allow access without any further restrictions
-        let context = RequestContext::test_request_context(
-            json!({ "AccessContext": {"role": "ROLE_ADMIN"} }),
-        );
+        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_ADMIN"} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         // For users, allow only if the article is published
-        let context =
-            RequestContext::test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
+        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -1063,19 +1045,17 @@ mod tests {
         );
 
         // For other roles, do not allow
-        let context = RequestContext::test_request_context(
-            json!({ "AccessContext": {"role": "ROLE_GUEST"} }),
-        );
+        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_GUEST"} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
         // For anonymous users, too, do not allow (irrelevant context content that doesn't define a user role)
-        let context = RequestContext::test_request_context(json!({ "Foo": "bar" }));
+        let context = test_request_context(json!({ "Foo": "bar" }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
         // For anonymous users, too, do not allow (no context content)
-        let context = RequestContext::test_request_context(Value::Null);
+        let context = test_request_context(Value::Null);
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
@@ -1086,12 +1066,12 @@ mod tests {
         let system = ModelSystem::default();
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(true);
-        let context = RequestContext::test_request_context(Value::Null); // irrelevant context content
+        let context = test_request_context(Value::Null); // irrelevant context content
         let solved_predicate = solve_access(&test_ae, &context, &system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(false);
-        let context = RequestContext::test_request_context(Value::Null); // irrelevant context content
+        let context = test_request_context(Value::Null); // irrelevant context content
         let solved_predicate = solve_access(&test_ae, &context, &system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
@@ -1109,7 +1089,7 @@ mod tests {
 
         let test_ae = AccessPredicateExpression::BooleanColumn(published_column_id.clone());
 
-        let context = RequestContext::test_request_context(Value::Null); // irrelevant context content
+        let context = test_request_context(Value::Null); // irrelevant context content
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(
             solved_predicate,
@@ -1132,18 +1112,20 @@ mod tests {
             &["is_admin"],
         ));
 
-        let context =
-            RequestContext::test_request_context(json!({ "AccessContext": {"is_admin": true} }));
+        let context = test_request_context(json!({ "AccessContext": {"is_admin": true} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context =
-            RequestContext::test_request_context(json!({ "AccessContext": {"is_admin": false} }));
+        let context = test_request_context(json!({ "AccessContext": {"is_admin": false} }));
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
-        let context = RequestContext::test_request_context(Value::Null); // context not provided, so we should assume that the user is not an admin
+        let context = test_request_context(Value::Null); // context not provided, so we should assume that the user is not an admin
         let solved_predicate = solve_access(&test_ae, &context, system).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
+    }
+
+    fn test_request_context<'a>(test_values: Value) -> RequestContext<'a> {
+        RequestContext::User(UserRequestContext::test_request_context(test_values))
     }
 }

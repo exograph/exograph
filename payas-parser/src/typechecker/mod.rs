@@ -88,7 +88,8 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     env.add("Blob", Type::Primitive(PrimitiveType::Blob));
     env.add("Uuid", Type::Primitive(PrimitiveType::Uuid));
 
-    env.add("Claytip", Type::Primitive(PrimitiveType::ClaytipInjected));
+    env.add("Claytip", Type::Primitive(PrimitiveType::Claytip));
+    env.add("ClaytipPriv", Type::Primitive(PrimitiveType::ClaytipPriv));
 
     env.add(
         "Operation",

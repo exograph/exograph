@@ -20,7 +20,7 @@ type DenoActorPool<C, M, R> = Vec<DenoActor<C, M, R>>;
 
 pub struct DenoExecutorConfig<C> {
     user_agent_name: &'static str,
-    shims: Vec<(&'static str, &'static str)>,
+    shims: Vec<(&'static str, &'static [&'static str])>,
     additional_code: Vec<&'static str>,
     explicit_error_class_name: Option<&'static str>,
     create_extensions: fn() -> Vec<Extension>,
@@ -31,7 +31,7 @@ pub struct DenoExecutorConfig<C> {
 impl<C> DenoExecutorConfig<C> {
     pub fn new(
         user_agent_name: &'static str,
-        shims: Vec<(&'static str, &'static str)>,
+        shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         explicit_error_class_name: Option<&'static str>,
         create_extensions: fn() -> Vec<Extension>,
@@ -82,7 +82,7 @@ impl<
 {
     pub fn new(
         user_agent_name: &'static str,
-        shims: Vec<(&'static str, &'static str)>,
+        shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         explicit_error_class_name: Option<&'static str>,
         create_extensions: fn() -> Vec<Extension>,
