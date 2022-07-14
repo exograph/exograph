@@ -50,7 +50,8 @@ pub struct DenoModule {
 /// # Arguments
 /// * `user_code` - The user code with exported functions (which may then be invoked using `DenoModule.execute_function` ).
 /// * `user_agent_name` - The name of the user agent
-/// * `shims` - A list of shims to load (each tuple is the name of the shim and the source code).
+/// * `shims` - A list of shims to load (each tuple is the name of the shim and a list of the source code).
+///             Each source code must define an object with properties that become the property of the name of the shim.
 /// * `additional_code` - Any additional code (such as definition of a global type or a global function) to load.
 /// * `extensions` - A list of extensions to load.
 /// * `shared_state` - A shared state object to pass to the worker.
@@ -59,7 +60,7 @@ impl DenoModule {
     pub async fn new(
         user_code: UserCode,
         user_agent_name: &str,
-        shims: Vec<(&str, &str)>,
+        shims: Vec<(&str, &[&str])>,
         additional_code: Vec<&str>,
         extensions: Vec<Extension>,
         shared_state: DenoModuleSharedState,
@@ -68,7 +69,15 @@ impl DenoModule {
         let shim_source_code = {
             let shims_source_codes: Vec<_> = shims
                 .iter()
-                .map(|(shim_name, source)| format!("globalThis.{shim_name} = {source};"))
+                .flat_map(|(shim_name, sources)| {
+                    sources.iter().enumerate().map(move |(index, source)| {
+                        if index == 0 {
+                            format!("globalThis.{shim_name} = {source};")
+                        } else {
+                            format!("Object.assign(globalThis.{shim_name}, {source});")
+                        }
+                    })
+                })
                 .collect();
 
             shims_source_codes.join("\n")
@@ -388,7 +397,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_shim_sync() {
-        static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("./test_js/shim.js"));
+        static GET_JSON_SHIM: (&str, &[&str]) = ("__shim", &[include_str!("./test_js/shim.js")]);
 
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(Path::new("src/test_js/through_shim.js").to_owned()),
@@ -431,7 +440,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_shim_async() {
-        static GET_JSON_SHIM: (&str, &str) = ("__shim", include_str!("./test_js/shim.js"));
+        static GET_JSON_SHIM: (&str, &[&str]) = ("__shim", &[include_str!("./test_js/shim.js")]);
 
         let mut deno_module = DenoModule::new(
             UserCode::LoadFromFs(Path::new("src/test_js/through_shim.js").to_owned()),

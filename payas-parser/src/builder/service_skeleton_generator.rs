@@ -27,7 +27,7 @@ interface Claytip {
   }): Promise<void>;
 }
 
-interface ClaytipPriv {
+interface ClaytipPriv extends Claytip {
   executeQueryPriv(query: string, variable?: { [key: string]: any }, contextOverride?: { [key: string]: any }): Promise<any>;
 }
 

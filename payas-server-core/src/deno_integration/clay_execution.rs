@@ -85,11 +85,18 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a>
     }
 }
 
-const SHIMS: [(&str, &str); 3] = [
-    ("Claytip", include_str!("claytip_shim.js")),
-    ("ClaytipPriv", include_str!("claytip_priv_shim.js")),
-    ("Operation", include_str!("operation_shim.js")),
-];
+const SHIMS: [(&str, &[&str]); 3] = {
+    let claytip_shim = include_str!("claytip_shim.js");
+    [
+        ("Claytip", &[claytip_shim]),
+        (
+            "ClaytipPriv",
+            // Pass both the shim and the private shim so that in effect we get `ClaytipPriv extends Claytip`.
+            &[claytip_shim, include_str!("claytip_priv_shim.js")],
+        ),
+        ("Operation", &[include_str!("operation_shim.js")]),
+    ]
+};
 
 const USER_AGENT: &str = "Claytip";
 const ADDITIONAL_CODE: &[&str] = &[include_str!("./claytip_error.js")];

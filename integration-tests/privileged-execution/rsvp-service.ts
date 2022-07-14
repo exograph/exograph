@@ -41,6 +41,9 @@ interface RsvpConfirmation {
 
 // Perform an upsert operation. In real world app, this would also send a confirmation email etc.
 export async function processRsvp(email: string, count: number, claytip: ClaytipPriv): Promise<RsvpConfirmation> {
+  // Just to test that we can make non-privileged calls through a ClaytipPriv instance
+  let nonPrivQuery = await claytip.executeQuery('query { __type(name: "Rsvp") { name } }');
+
   const existing = await claytip.executeQueryPriv(existingRsvpQuery, {
     email,
   }, adminContext);
