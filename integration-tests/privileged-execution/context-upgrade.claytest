@@ -1,0 +1,46 @@
+stages:
+    # Create a new rsvp (anonymous user)
+    - operation: |
+        mutation($email: String!, $count: Int!) {
+          processRsvp(email: $email, count: $count) {
+            email
+            count
+          }
+        }
+      variable: |
+        {
+          "email": "first@first.com",
+          "count": 2
+        }
+      response: |
+        {
+            "data": {
+                "processRsvp": {
+                    "email": "first@first.com",
+                    "count": 2
+                }
+            }
+        }
+
+    # Update that new rsvp (anonymous user). But through the creation API (the interceptor will do the upsert)
+    - operation: |
+        mutation($email: String!, $count: Int!) {
+          processRsvp(email: $email, count: $count) {
+            email
+            count
+          }
+        }
+      variable: |
+        {
+          "email": "first@first.com",
+          "count": 5
+        }
+      response: |
+        {
+            "data": {
+                "processRsvp": {
+                    "email": "first@first.com",
+                    "count": 5
+                }
+            }
+        }

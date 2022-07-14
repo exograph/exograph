@@ -87,24 +87,14 @@ impl QueryResponseBody {
 }
 
 impl SystemContext {
+    #[instrument(
+        name = "OperationsExecutor::execute"
+        skip_all
+        )]
     pub async fn execute<'e>(
         &'e self,
         operations_payload: OperationsPayload,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Vec<(String, QueryResponse)>> {
-        self.execute_with_request_context(operations_payload, request_context)
-            .await
-    }
-
-    // A version of execute that is suitable to be exposed through a shim to services
-    #[instrument(
-        name = "OperationsExecutor::execute_with_request_context"
-        skip_all
-        )]
-    pub async fn execute_with_request_context(
-        &self,
-        operations_payload: OperationsPayload,
-        request_context: &RequestContext<'_>,
     ) -> Result<Vec<(String, QueryResponse)>> {
         let operation = self.validate_operation(operations_payload)?;
 

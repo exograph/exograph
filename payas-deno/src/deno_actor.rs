@@ -84,7 +84,7 @@ where
     pub fn new(
         code: UserCode,
         user_agent_name: &'static str,
-        shims: Vec<(&'static str, &'static str)>,
+        shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         extension_ops: fn() -> Vec<Extension>,
         explicit_error_class_name: Option<&'static str>,
