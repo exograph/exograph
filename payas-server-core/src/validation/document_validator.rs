@@ -3,7 +3,7 @@ use async_graphql_value::Name;
 use serde_json::{Map, Value};
 use tracing::instrument;
 
-use crate::{error::ExecutionError, introspection::schema::Schema};
+use crate::{error::ValidationError, introspection::schema::Schema};
 
 use super::{operation::ValidatedOperation, operation_validator::OperationValidator};
 
@@ -40,12 +40,12 @@ impl<'a> DocumentValidator<'a> {
     pub fn validate(
         self,
         document: ExecutableDocument,
-    ) -> Result<ValidatedOperation, ExecutionError> {
+    ) -> Result<ValidatedOperation, ValidationError> {
         let (operation_name, raw_operation) = match document.operations {
             DocumentOperations::Single(operation) => Ok((self.operation_name, operation)),
             DocumentOperations::Multiple(mut operations) => {
                 if operations.is_empty() {
-                    Err(ExecutionError::NoOperationFound)
+                    Err(ValidationError::NoOperationFound)
                 } else {
                     match self.operation_name {
                         None if operations.len() == 1 => {
@@ -59,13 +59,13 @@ impl<'a> DocumentValidator<'a> {
                                 operations.into_iter().next().unwrap();
                             Ok((Some(operation_name.to_string()), operation))
                         }
-                        None => Err(ExecutionError::MultipleOperationsNoOperationName),
+                        None => Err(ValidationError::MultipleOperationsNoOperationName),
                         Some(operation_name) => {
                             let operation = operations.remove(&Name::new(&operation_name));
 
                             match operation {
                                 None => {
-                                    Err(ExecutionError::MultipleOperationsUnmatchedOperationName(
+                                    Err(ValidationError::MultipleOperationsUnmatchedOperationName(
                                         operation_name,
                                     ))
                                 }

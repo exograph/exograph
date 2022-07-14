@@ -8,7 +8,7 @@ use async_graphql_value::{ConstValue, Name};
 use serde_json::{Map, Value};
 
 use crate::{
-    error::ExecutionError,
+    error::ValidationError,
     introspection::schema::{Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME},
 };
 
@@ -59,7 +59,7 @@ impl<'a> OperationValidator<'a> {
     pub(super) fn validate(
         self,
         operation: Positioned<OperationDefinition>,
-    ) -> Result<ValidatedOperation, ExecutionError> {
+    ) -> Result<ValidatedOperation, ValidationError> {
         let operation_type_name = match operation.node.ty {
             OperationType::Query => QUERY_ROOT_TYPENAME,
             OperationType::Mutation => MUTATION_ROOT_TYPENAME,
@@ -69,7 +69,7 @@ impl<'a> OperationValidator<'a> {
         let container_type = match self.schema.get_type_definition(operation_type_name) {
             Some(td) => td,
             None => {
-                return Err(ExecutionError::OperationNotFound(
+                return Err(ValidationError::OperationNotFound(
                     operation_type_name.to_string(),
                     Pos::default(),
                 ))
@@ -108,7 +108,7 @@ impl<'a> OperationValidator<'a> {
     fn validate_variables(
         &'a self,
         variable_definitions: Vec<Positioned<VariableDefinition>>,
-    ) -> Result<HashMap<Name, ConstValue>, ExecutionError> {
+    ) -> Result<HashMap<Name, ConstValue>, ValidationError> {
         variable_definitions
             .into_iter()
             .map(|variable_definition| {
@@ -119,17 +119,17 @@ impl<'a> OperationValidator<'a> {
             .collect()
     }
 
-    fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ExecutionError> {
+    fn var_value(&self, name: &Positioned<Name>) -> Result<ConstValue, ValidationError> {
         let resolved = self
             .variables
             .as_ref()
             .and_then(|variables| variables.get(name.node.as_str()))
             .ok_or_else(|| {
-                ExecutionError::VariableNotFound(name.node.as_str().to_string(), name.pos)
+                ValidationError::VariableNotFound(name.node.as_str().to_string(), name.pos)
             })?;
 
         ConstValue::from_json(resolved.to_owned()).map_err(|e| {
-            ExecutionError::MalformedVariable(name.node.as_str().to_string(), name.pos, e)
+            ValidationError::MalformedVariable(name.node.as_str().to_string(), name.pos, e)
         })
     }
 }

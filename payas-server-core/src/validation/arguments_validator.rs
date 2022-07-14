@@ -7,7 +7,7 @@ use async_graphql_parser::{
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
 use bytes::Bytes;
 
-use crate::{error::ExecutionError, introspection::schema::Schema};
+use crate::{error::ValidationError, introspection::schema::Schema};
 
 use super::underlying_type;
 
@@ -40,7 +40,7 @@ impl<'a> ArgumentValidator<'a> {
     pub(super) fn validate(
         &self,
         field_argument_definition: &[&InputValueDefinition],
-    ) -> Result<HashMap<String, ConstValue>, ExecutionError> {
+    ) -> Result<HashMap<String, ConstValue>, ValidationError> {
         self.validate_arguments(field_argument_definition, &self.field.node.arguments)
     }
 
@@ -48,7 +48,7 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         field_argument_definitions: &[&InputValueDefinition],
         field_arguments: &[(Positioned<Name>, Positioned<Value>)],
-    ) -> Result<HashMap<String, ConstValue>, ExecutionError> {
+    ) -> Result<HashMap<String, ConstValue>, ValidationError> {
         let field_name = self.field.node.name.node.as_str();
 
         // Stray arguments tracking: 1. Maintain a hashmap of all the arguments supplied in the query
@@ -91,7 +91,7 @@ impl<'a> ArgumentValidator<'a> {
                 .map(|name| name.to_string())
                 .collect::<Vec<_>>();
 
-            Err(ExecutionError::StrayArguments(
+            Err(ValidationError::StrayArguments(
                 stray_arguments,
                 field_name.to_string(),
                 self.field.pos,
@@ -112,7 +112,7 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         argument_definition: &InputValueDefinition,
         argument_value: Option<&Positioned<Value>>,
-    ) -> Option<Result<ConstValue, ExecutionError>> {
+    ) -> Option<Result<ConstValue, ValidationError>> {
         match argument_value {
             Some(value) => match &value.node {
                 Value::Variable(name) => {
@@ -125,7 +125,7 @@ impl<'a> ArgumentValidator<'a> {
                                 value.pos,
                             )),
                         ),
-                        None => Some(Err(ExecutionError::VariableNotFound(
+                        None => Some(Err(ValidationError::VariableNotFound(
                             name.to_string(),
                             self.field.pos,
                         ))),
@@ -156,7 +156,7 @@ impl<'a> ArgumentValidator<'a> {
                 if argument_definition.ty.node.nullable {
                     None
                 } else {
-                    Some(Err(ExecutionError::RequiredArgumentNotFound(
+                    Some(Err(ValidationError::RequiredArgumentNotFound(
                         argument_definition.name.node.to_string(),
                         self.field.pos,
                     )))
@@ -169,13 +169,13 @@ impl<'a> ArgumentValidator<'a> {
         &self,
         argument_definition: &InputValueDefinition,
         pos: Pos,
-    ) -> Result<ConstValue, ExecutionError> {
+    ) -> Result<ConstValue, ValidationError> {
         let ty = &argument_definition.ty.node;
 
         if ty.nullable {
             Ok(ConstValue::Null)
         } else {
-            Err(ExecutionError::RequiredArgumentNotFound(
+            Err(ValidationError::RequiredArgumentNotFound(
                 argument_definition.name.node.to_string(),
                 pos,
             ))
@@ -187,7 +187,7 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         number: &Number,
         pos: Pos,
-    ) -> Result<ConstValue, ExecutionError> {
+    ) -> Result<ConstValue, ValidationError> {
         // TODO: Use the types from PrimitiveType (but that is currently in the payas-parser crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Number",
@@ -203,7 +203,7 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         boolean: &bool,
         pos: Pos,
-    ) -> Result<ConstValue, ExecutionError> {
+    ) -> Result<ConstValue, ValidationError> {
         // TODO: Use the types from PrimitiveType (but that is currently in the payas-parser crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Boolean",
@@ -219,7 +219,7 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         string: &str,
         pos: Pos,
-    ) -> Result<ConstValue, ExecutionError> {
+    ) -> Result<ConstValue, ValidationError> {
         // TODO: Use the types from PrimitiveType (but that is currently in the payas-parser crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "String",
@@ -245,7 +245,7 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         bytes: &Bytes,
         pos: Pos,
-    ) -> Result<ConstValue, ExecutionError> {
+    ) -> Result<ConstValue, ValidationError> {
         self.validate_scalar_argument(
             "Binary",
             &["Binary"],
@@ -264,14 +264,14 @@ impl<'a> ArgumentValidator<'a> {
         to_const_value: impl FnOnce() -> ConstValue,
         argument_definition: &InputValueDefinition,
         pos: Pos,
-    ) -> Result<ConstValue, ExecutionError> {
+    ) -> Result<ConstValue, ValidationError> {
         let ty = &argument_definition.ty.node;
         let underlying = underlying_type(ty);
 
         if acceptable_destination_types.contains(&underlying.as_str()) {
             Ok(to_const_value())
         } else {
-            Err(ExecutionError::InvalidArgumentType {
+            Err(ValidationError::InvalidArgumentType {
                 argument_name: argument_definition.name.node.to_string(),
                 expected_type: underlying.to_string(),
                 actual_type: argument_typename.to_string(),
@@ -286,14 +286,14 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         entires: &IndexMap<Name, Value>,
         pos: Pos,
-    ) -> Result<ConstValue, ExecutionError> {
+    ) -> Result<ConstValue, ValidationError> {
         let ty = &argument_definition.ty.node;
         let underlying = underlying_type(ty);
 
         if underlying.as_str() == "Json" {
             let const_value = Value::Object(entires.clone()).into_const_with(|name| {
                 self.variables.get(&name).cloned().ok_or_else(|| {
-                    ExecutionError::VariableNotFound(name.to_string(), Pos::default())
+                    ValidationError::VariableNotFound(name.to_string(), Pos::default())
                 })
             });
             return const_value;
@@ -308,7 +308,7 @@ impl<'a> ArgumentValidator<'a> {
             .unwrap();
         let input_object_type = match &td.kind {
             TypeKind::InputObject(input_object_type) => Ok(input_object_type),
-            _ => Err(ExecutionError::InvalidArgumentType {
+            _ => Err(ValidationError::InvalidArgumentType {
                 argument_name: argument_definition.name.node.to_string(),
                 expected_type: ty.to_string(),
                 actual_type: td.name.to_string(),
@@ -348,7 +348,7 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &InputValueDefinition,
         elems: &[Value],
         pos: Pos,
-    ) -> Result<ConstValue, ExecutionError> {
+    ) -> Result<ConstValue, ValidationError> {
         let ty = &argument_definition.ty.node;
         let underlying = underlying_type(ty);
 
@@ -356,14 +356,14 @@ impl<'a> ArgumentValidator<'a> {
         if underlying.as_str() == "Json" {
             let const_value = Value::List(elems.to_vec()).into_const_with(|name| {
                 self.variables.get(&name).cloned().ok_or_else(|| {
-                    ExecutionError::VariableNotFound(name.to_string(), Pos::default())
+                    ValidationError::VariableNotFound(name.to_string(), Pos::default())
                 })
             });
             return const_value;
         }
 
         match &ty.base {
-            BaseType::Named(name) => Err(ExecutionError::InvalidArgumentType {
+            BaseType::Named(name) => Err(ValidationError::InvalidArgumentType {
                 argument_name: argument_definition.name.node.to_string(),
                 expected_type: underlying.to_string(),
                 actual_type: format!("[{name}]"),

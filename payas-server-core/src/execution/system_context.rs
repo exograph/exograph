@@ -4,7 +4,7 @@ use crate::request_context::RequestContext;
 use crate::validation::operation::ValidatedOperation;
 use crate::OperationsPayload;
 use crate::{
-    error::ExecutionError, introspection::schema::Schema,
+    error::ValidationError, introspection::schema::Schema,
     validation::document_validator::DocumentValidator,
 };
 use async_graphql_parser::types::ExecutableDocument;
@@ -105,7 +105,7 @@ impl SystemContext {
     fn validate_operation<'e>(
         &'e self,
         operations_payload: OperationsPayload,
-    ) -> Result<ValidatedOperation, ExecutionError> {
+    ) -> Result<ValidatedOperation, ValidationError> {
         let document = parse_query(operations_payload.query)?;
 
         let document_validator = DocumentValidator::new(
@@ -161,7 +161,7 @@ impl SystemContext {
 }
 
 #[instrument(name = "system_context::parse_query")]
-fn parse_query(query: String) -> Result<ExecutableDocument, ExecutionError> {
+fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
     async_graphql_parser::parse_query(query).map_err(|error| {
         error!(%error, "Failed to parse query");
         let (message, pos1, pos2) = match error {
@@ -204,7 +204,7 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ExecutionError> {
             _ => ("Unknown error".to_string(), Pos::default(), None),
         };
 
-        ExecutionError::QueryParsingFailed(message, pos1, pos2)
+        ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
 }
 

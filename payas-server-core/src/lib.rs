@@ -10,7 +10,7 @@ use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
-use error::ExecutionError;
+use error::ValidationError;
 pub use execution::system_context::SystemContext;
 use futures::Stream;
 use introspection::schema::Schema;
@@ -161,7 +161,7 @@ pub async fn resolve<'a, E: 'static>(
                         .replace("\n", "; ")
                 );
                 yield Bytes::from_static(br#"""#);
-                if let Some(err) = err.downcast_ref::<ExecutionError>() {
+                if let Some(err) = err.downcast_ref::<ValidationError>() {
                     yield Bytes::from_static(br#", "locations": ["#);
                     report_position!(err.position1());
                     if let Some(position2) = err.position2() {
