@@ -9,6 +9,7 @@ use payas_sql::{
 use crate::{
     data::mutation_resolver::return_type_info,
     execution::system_context::{self, SystemContext},
+    execution_error::ExecutionError,
 };
 
 use payas_model::model::{
@@ -31,7 +32,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         system_context: &'a SystemContext,
-    ) -> Result<AbstractUpdate<'a>> {
+    ) -> Result<AbstractUpdate<'a>, ExecutionError> {
         let system = &system_context.system;
         let data_type = &system.mutation_types[self.type_id];
 

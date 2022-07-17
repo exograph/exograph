@@ -3261,7 +3261,6 @@ dependencies = [
 name = "payas-deno"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "deno_core",
  "deno_runtime",
@@ -3270,6 +3269,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_v8",
+ "thiserror",
  "tokio",
  "tracing",
 ]

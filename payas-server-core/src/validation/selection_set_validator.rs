@@ -10,11 +10,11 @@ use async_graphql_parser::{
 use async_graphql_value::{ConstValue, Name};
 
 use crate::{
-    error::ValidationError,
     introspection::{
         definition::type_introspection::TypeDefinitionIntrospection,
         schema::{Schema, QUERY_ROOT_TYPENAME},
     },
+    validation_error::ValidationError,
 };
 
 use super::{arguments_validator::ArgumentValidator, field::ValidatedField, underlying_type};

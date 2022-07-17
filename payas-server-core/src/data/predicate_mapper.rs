@@ -1,5 +1,7 @@
-use crate::execution::system_context::{self, cast_value, SystemContext};
-use anyhow::{bail, Result};
+use crate::{
+    execution::system_context::{self, cast_value, SystemContext},
+    execution_error::ExecutionError,
+};
 use async_graphql_value::ConstValue;
 
 use payas_model::model::predicate::{ColumnIdPath, PredicateParameter, PredicateParameterTypeKind};
@@ -13,7 +15,7 @@ pub trait PredicateParameterMapper<'a> {
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
         system_context: &'a SystemContext,
-    ) -> Result<AbstractPredicate<'a>>;
+    ) -> Result<AbstractPredicate<'a>, ExecutionError>;
 }
 
 impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
@@ -22,7 +24,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
         system_context: &'a SystemContext,
-    ) -> Result<AbstractPredicate<'a>> {
+    ) -> Result<AbstractPredicate<'a>, ExecutionError> {
         let system = &system_context.system;
         let parameter_type = &system.predicate_types[self.type_id];
 
@@ -82,7 +84,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .fold(Ok(("", None)), |acc, (name, result)| {
                         acc.and_then(|(acc_name, acc_result)| {
                                     if acc_result.is_some() && result.is_some() {
-                                        bail!("Cannot specify more than one logical operation on the same level")
+                                        Err(ExecutionError::Generic("Cannot specify more than one logical operation on the same level".into()))
                                     } else if acc_result.is_some() && result.is_none() {
                                         Ok((acc_name, acc_result))
                                     } else {
@@ -104,7 +106,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 if let ConstValue::List(arguments) = logical_op_argument_value {
                                     // first make sure we have arguments
                                     if arguments.is_empty() {
-                                        bail!("Logical operation predicate does not have any arguments")
+                                        return Err(ExecutionError::Generic("Logical operation predicate does not have any arguments".into()));
                                     }
 
                                     // build our predicate chain from the array of arguments provided
@@ -136,9 +138,10 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
 
                                     Ok(new_predicate)
                                 } else {
-                                    bail!(
+                                    Err(ExecutionError::Generic(
                                         "This logical operation predicate needs a list of queries"
-                                    )
+                                            .into(),
+                                    ))
                                 }
                             }
 
@@ -196,7 +199,7 @@ fn operands<'a>(
     op_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
     system_context: &'a SystemContext,
-) -> Result<(ColumnPath<'a>, ColumnPath<'a>)> {
+) -> Result<(ColumnPath<'a>, ColumnPath<'a>), ExecutionError> {
     let system = &system_context.system;
 
     let op_physical_column = &param
@@ -207,10 +210,12 @@ fn operands<'a>(
         .get_column(system);
     let op_value = cast_value(op_value, &op_physical_column.typ);
 
-    op_value.map(move |op_value| {
-        (
-            to_column_path(&parent_column_path, &param.column_path_link, system),
-            ColumnPath::Literal(op_value.unwrap().into()),
-        )
-    })
+    op_value
+        .map(move |op_value| {
+            (
+                to_column_path(&parent_column_path, &param.column_path_link, system),
+                ColumnPath::Literal(op_value.unwrap().into()),
+            )
+        })
+        .map_err(ExecutionError::AnyhowError)
 }

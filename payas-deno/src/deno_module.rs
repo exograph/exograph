@@ -23,8 +23,9 @@ use std::fs;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::deno_error::DenoError;
+
 use super::embedded_module_loader::EmbeddedModuleLoader;
-use anyhow::{anyhow, Result};
 
 fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
@@ -182,7 +183,11 @@ impl DenoModule {
         level = "debug"
         skip_all
         )]
-    pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
+    pub async fn execute_function(
+        &mut self,
+        function_name: &str,
+        args: Vec<Arg>,
+    ) -> Result<Value, DenoError> {
         let worker = &mut self.worker;
         let runtime = &mut worker.js_runtime;
 
@@ -214,7 +219,7 @@ impl DenoModule {
                     Arg::Serde(v) => Ok(serde_v8::to_v8(tc_scope_ref, v)?),
                     Arg::Shim(name) => Ok(shim_objects
                         .get(&name)
-                        .ok_or_else(|| anyhow!("Missing shim {}", &name))?
+                        .ok_or_else(|| DenoError::Generic(format!("Missing shim {}", &name)))?
                         .open(tc_scope_ref)
                         .to_object(tc_scope_ref)
                         .unwrap()
@@ -226,14 +231,14 @@ impl DenoModule {
                 .open(tc_scope_ref)
                 .to_object(tc_scope_ref)
                 .ok_or_else(|| {
-                    anyhow!(
+                    DenoError::Generic(format!(
                         "no function named {} exported from {}",
                         function_name,
                         match &self.user_code {
                             UserCode::LoadFromMemory { path, .. } => path,
                             UserCode::LoadFromFs(path) => path.to_str().unwrap(),
                         }
-                    )
+                    ))
                 })?;
             let func = v8::Local::<v8::Function>::try_from(func_obj)?;
 
@@ -257,11 +262,11 @@ impl DenoModule {
                             let message = js_error
                                 .message
                                 .unwrap_or_else(|| "Unknown error".to_string());
-                            return Err(anyhow!(message));
+                            return Err(DenoError::Generic(message));
                         }
                         _ => {
                             // generic error message
-                            return Err(anyhow!("Internal server error"));
+                            return Err(DenoError::Generic("Internal server error".into()));
                         }
                     }
                 }
@@ -274,7 +279,7 @@ impl DenoModule {
             let value = runtime.resolve_value(global).await.map_err(|err| {
                 // got some AnyError from Deno internals...
                 error!(%err);
-                anyhow!("Internal server error")
+                DenoError::Generic("Internal server error".into())
             })?;
 
             let scope = &mut runtime.handle_scope();
@@ -285,13 +290,13 @@ impl DenoModule {
     }
 
     /// Put a single instance of a type into Deno's op_state
-    pub fn put<T: 'static>(&mut self, val: T) -> Result<()> {
+    pub fn put<T: 'static>(&mut self, val: T) -> Result<(), DenoError> {
         self.worker.js_runtime.op_state().try_borrow_mut()?.put(val);
         Ok(())
     }
 
     /// Try to take a single instance of a type from Deno's op_state
-    pub fn take<T: 'static>(&mut self) -> Result<Option<T>> {
+    pub fn take<T: 'static>(&mut self) -> Result<Option<T>, DenoError> {
         Ok(self
             .worker
             .js_runtime

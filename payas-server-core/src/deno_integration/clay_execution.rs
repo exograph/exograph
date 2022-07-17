@@ -1,7 +1,6 @@
 use deno_core::Extension;
 use tokio::sync::oneshot;
 
-use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use serde_json::Value;
@@ -12,7 +11,9 @@ use payas_deno::{
     deno_module::{DenoModule, DenoModuleSharedState},
 };
 
-use crate::{deno_integration, execution::system_context::QueryResponse};
+use crate::{
+    deno_integration, execution::system_context::QueryResponse, execution_error::ExecutionError,
+};
 
 use super::claytip_ops::InterceptedOperationInfo;
 
@@ -34,20 +35,20 @@ pub enum RequestFromDenoMessage {
 }
 
 pub enum ResponseForDenoMessage {
-    InterceptedOperationProceed(Result<QueryResponse>),
-    ClaytipExecute(Result<QueryResponse>),
+    InterceptedOperationProceed(Result<QueryResponse, ExecutionError>),
+    ClaytipExecute(Result<QueryResponse, ExecutionError>),
 }
 
 pub type FnClaytipExecuteQuery<'a> = (dyn Fn(
     String,
     Option<serde_json::Map<String, Value>>,
     Value,
-) -> BoxFuture<'a, Result<QueryResponse>>
+) -> BoxFuture<'a, Result<QueryResponse, ExecutionError>>
      + 'a
      + Send
      + Sync);
 pub type FnClaytipInterceptorProceed<'a> =
-    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse>> + 'a + Send + Sync);
+    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, ExecutionError>> + 'a + Send + Sync);
 
 pub struct ClayCallbackProcessor<'a> {
     pub claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,

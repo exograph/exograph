@@ -5,14 +5,13 @@ use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 ///
 /// The `resolve` function is responsible for doing the work, using information
 /// extracted from an incoming request, and returning the response as a stream.
-use anyhow::{Context, Result};
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
-use error::ValidationError;
 pub use execution::system_context::SystemContext;
 use futures::Stream;
+use initialization_error::InitializationError;
 use introspection::schema::Schema;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
@@ -22,35 +21,36 @@ use serde::Deserialize;
 use serde_json::{Map, Value};
 use tracing::instrument;
 
-use crate::execution::system_context::QueryResponseBody;
+use crate::{execution::system_context::QueryResponseBody, execution_error::ExecutionError};
 
 mod data;
 mod deno_integration;
-mod error;
 mod execution;
+mod execution_error;
 pub mod graphiql;
+pub mod initialization_error;
 mod introspection;
 pub mod request_context;
 mod validation;
+mod validation_error;
 
-fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
+fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
     if !Path::new(&claypot_file).exists() {
-        anyhow::bail!("File '{}' not found", claypot_file);
+        return Err(InitializationError::FileNotFound(claypot_file.to_string()));
     }
     match File::open(&claypot_file) {
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
             let in_file = BufReader::new(claypot_file_buffer);
-            deserialize_from(in_file)
-                .with_context(|| format!("Failed to read claypot file {}", claypot_file))
+            deserialize_from(in_file).map_err(|err| {
+                InitializationError::ClaypotDeserialization(claypot_file.into(), err)
+            })
         }
-        Err(e) => {
-            anyhow::bail!("Failed to open claypot file {}: {}", claypot_file, e)
-        }
+        Err(e) => Err(InitializationError::FileOpen(claypot_file.into(), e)),
     }
 }
 
-pub fn create_system_context(claypot_file: &str) -> Result<SystemContext> {
+pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, InitializationError> {
     let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
 
     let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
@@ -156,12 +156,12 @@ pub async fn resolve<'a, E: 'static>(
                 yield Bytes::from_static(br#"{"errors": [{"message":""#);
                 yield Bytes::from(
                     // TODO: escape PostgreSQL errors properly here
-                    format!("{}", err.chain().last().unwrap())
+                    format!("{}", err.user_error_message())
                         .replace("\"", "")
                         .replace("\n", "; ")
                 );
                 yield Bytes::from_static(br#"""#);
-                if let Some(err) = err.downcast_ref::<ValidationError>() {
+                if let ExecutionError::Validation(err) = err {
                     yield Bytes::from_static(br#", "locations": ["#);
                     report_position!(err.position1());
                     if let Some(position2) = err.position2() {

@@ -146,7 +146,7 @@ impl<'a> ConcreteTransactionStep<'a> {
                 error!("Failed to execute query: {e:?}");
                 e
             })
-            .context("PostgreSQL query failed")
+            .context("Database operation failed")
     }
 }
 

@@ -1,16 +1,15 @@
 use std::str::FromStr;
 
+use crate::execution_error::ExecutionError;
 use crate::request_context::RequestContext;
 use crate::validation::operation::ValidatedOperation;
 use crate::OperationsPayload;
 use crate::{
-    error::ValidationError, introspection::schema::Schema,
-    validation::document_validator::DocumentValidator,
+    introspection::schema::Schema, validation::document_validator::DocumentValidator,
+    validation_error::ValidationError,
 };
 use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
-
-use anyhow::Result;
 
 use crate::deno_integration::ClayDenoExecutorPool;
 use payas_model::model::system::ModelSystem;
@@ -72,7 +71,7 @@ pub enum QueryResponseBody {
 }
 
 impl QueryResponseBody {
-    pub fn to_json(&self) -> Result<JsonValue> {
+    pub fn to_json(&self) -> Result<JsonValue, ExecutionError> {
         match &self {
             QueryResponseBody::Json(val) => Ok(val.clone()),
             QueryResponseBody::Raw(raw) => {
@@ -95,7 +94,7 @@ impl SystemContext {
         &'e self,
         operations_payload: OperationsPayload,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Vec<(String, QueryResponse)>> {
+    ) -> Result<Vec<(String, QueryResponse)>, ExecutionError> {
         let operation = self.validate_operation(operations_payload)?;
 
         self.resolve_operation(operation, request_context).await
@@ -129,7 +128,7 @@ impl SystemContext {
         &self,
         operation: ValidatedOperation,
         request_context: &'b RequestContext<'b>,
-    ) -> Result<Vec<(String, QueryResponse)>> {
+    ) -> Result<Vec<(String, QueryResponse)>, ExecutionError> {
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
@@ -139,7 +138,7 @@ impl SystemContext {
         &self,
         field: &ValidatedField,
         request_context: &'b RequestContext<'b>,
-    ) -> Result<JsonValue> {
+    ) -> Result<JsonValue, ExecutionError> {
         let type_name = &field
             .arguments
             .iter()
@@ -211,12 +210,14 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
 pub fn literal_column<'a>(
     value: &ConstValue,
     associated_column: &PhysicalColumn,
-) -> Result<Column<'a>> {
-    cast_value(value, &associated_column.typ).map(|value| {
-        value
-            .map(|v| Column::Literal(MaybeOwned::Owned(v)))
-            .unwrap_or(Column::Null)
-    })
+) -> Result<Column<'a>, ExecutionError> {
+    cast_value(value, &associated_column.typ)
+        .map(|value| {
+            value
+                .map(|v| Column::Literal(MaybeOwned::Owned(v)))
+                .unwrap_or(Column::Null)
+        })
+        .map_err(ExecutionError::AnyhowError)
 }
 
 pub fn get_argument_field<'a>(
@@ -232,7 +233,7 @@ pub fn get_argument_field<'a>(
 pub fn cast_value(
     value: &ConstValue,
     destination_type: &PhysicalColumnType,
-) -> Result<Option<Box<dyn SQLParam>>> {
+) -> anyhow::Result<Option<Box<dyn SQLParam>>> {
     match value {
         ConstValue::Number(number) => cast_number(number, destination_type).map(Some),
         ConstValue::String(v) => cast_string(v, destination_type).map(Some),
@@ -248,7 +249,7 @@ pub fn cast_value(
 fn cast_list(
     elems: &[ConstValue],
     destination_type: &PhysicalColumnType,
-) -> Result<Option<Box<dyn SQLParam>>> {
+) -> anyhow::Result<Option<Box<dyn SQLParam>>> {
     fn array_entry(elem: &ConstValue) -> ArrayEntry<ConstValue> {
         match elem {
             ConstValue::List(elems) => ArrayEntry::List(elems),
@@ -262,7 +263,7 @@ fn cast_list(
 fn cast_number(
     number: &Number,
     destination_type: &PhysicalColumnType,
-) -> Result<Box<dyn SQLParam>> {
+) -> anyhow::Result<Box<dyn SQLParam>> {
     let result: Box<dyn SQLParam> = match destination_type {
         PhysicalColumnType::Int { bits } => match bits {
             IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
@@ -274,20 +275,25 @@ fn cast_number(
             FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
         },
         PhysicalColumnType::Numeric { .. } => {
-            bail!("Number literals cannot be specified for decimal fields")
+            bail!("Number literals cannot be specified for decimal fields",);
         }
         PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
             // TODO assumes that `id` columns are always integers
             cast_number(number, ref_pk_type)?
         }
         // TODO: Expand for other number types such as float
-        _ => bail!("Unexpected destination_type for number value"),
+        _ => {
+            anyhow::bail!("Unexpected destination_type for number value",)
+        }
     };
 
     Ok(result)
 }
 
-fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Box<dyn SQLParam>> {
+fn cast_string(
+    string: &str,
+    destination_type: &PhysicalColumnType,
+) -> anyhow::Result<Box<dyn SQLParam>> {
     let value: Box<dyn SQLParam> = match destination_type {
         PhysicalColumnType::Numeric { .. } => {
             let decimal =
@@ -326,7 +332,7 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
                         }
                         PhysicalColumnType::Time { .. } => Box::new(datetime.time()),
                         PhysicalColumnType::Date => Box::new(datetime.date().naive_local()),
-                        _ => bail!("missing case for datetime in inner match"),
+                        _ => anyhow::bail!("missing case for datetime in inner match"),
                     }
                 }
 
@@ -342,7 +348,7 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
                         }
                         PhysicalColumnType::Time { .. } => Box::new(naive_datetime.time()),
                         PhysicalColumnType::Date { .. } => Box::new(naive_datetime.date()),
-                        _ => bail!("missing case for datetime in inner match"),
+                        _ => anyhow::bail!("missing case for datetime in inner match"),
                     }
                 }
 
@@ -350,7 +356,7 @@ fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Bo
                     match &destination_type {
                         PhysicalColumnType::Timestamp { .. } => {
                             // exhausted options for timestamp formats
-                            bail!("Could not parse {} as a valid timestamp format", string)
+                            bail!("Could not parse {} as a valid timestamp format", string);
                         }
                         PhysicalColumnType::Time { .. } => {
                             // try parsing the string as a time only
@@ -441,36 +447,44 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
         field: &ValidatedField,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<QueryResponse> {
+    ) -> Result<QueryResponse, ExecutionError> {
         let name = field.name.as_str();
 
         if name.starts_with("__") {
-            let body: Result<QueryResponseBody> = if system_context.allow_introspection {
-                match name {
-                    "__type" => Ok(QueryResponseBody::Json(
-                        system_context.resolve_type(field, request_context).await?,
-                    )),
-                    "__schema" => Ok(QueryResponseBody::Json(
-                        system_context
-                            .schema
-                            .resolve_value(&field.subfields, system_context, request_context)
-                            .await?,
-                    )),
-                    "__typename" => {
-                        let typename = match self.typ {
-                            OperationType::Query => QUERY_ROOT_TYPENAME,
-                            OperationType::Mutation => MUTATION_ROOT_TYPENAME,
-                            OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
-                        };
-                        Ok(QueryResponseBody::Json(JsonValue::String(
-                            typename.to_string(),
-                        )))
+            let body: Result<QueryResponseBody, ExecutionError> =
+                if system_context.allow_introspection {
+                    match name {
+                        "__type" => Ok(QueryResponseBody::Json(
+                            system_context.resolve_type(field, request_context).await?,
+                        )),
+                        "__schema" => Ok(QueryResponseBody::Json(
+                            system_context
+                                .schema
+                                .resolve_value(&field.subfields, system_context, request_context)
+                                .await?,
+                        )),
+                        "__typename" => {
+                            let typename = match self.typ {
+                                OperationType::Query => QUERY_ROOT_TYPENAME,
+                                OperationType::Mutation => MUTATION_ROOT_TYPENAME,
+                                OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
+                            };
+                            Ok(QueryResponseBody::Json(JsonValue::String(
+                                typename.to_string(),
+                            )))
+                        }
+                        _ => {
+                            return Err(ExecutionError::Generic(format!(
+                                "No such introspection field {}",
+                                name
+                            )))
+                        }
                     }
-                    _ => bail!("No such introspection field {}", name),
-                }
-            } else {
-                bail!("Introspection is not allowed");
-            };
+                } else {
+                    return Err(ExecutionError::Generic(
+                        "Introspection is not allowed".into(),
+                    ));
+                };
 
             Ok(QueryResponse {
                 body: body?,

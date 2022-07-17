@@ -8,8 +8,8 @@ use async_graphql_value::{ConstValue, Name};
 use serde_json::{Map, Value};
 
 use crate::{
-    error::ValidationError,
     introspection::schema::{Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME},
+    validation_error::ValidationError,
 };
 
 use super::{operation::ValidatedOperation, selection_set_validator::SelectionSetValidator};

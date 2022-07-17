@@ -3,7 +3,7 @@ use async_graphql_value::Name;
 use serde_json::{Map, Value};
 use tracing::instrument;
 
-use crate::{error::ValidationError, introspection::schema::Schema};
+use crate::{introspection::schema::Schema, validation_error::ValidationError};
 
 use super::{operation::ValidatedOperation, operation_validator::OperationValidator};
 
