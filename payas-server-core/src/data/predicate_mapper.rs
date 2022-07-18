@@ -217,5 +217,5 @@ fn operands<'a>(
                 ColumnPath::Literal(op_value.unwrap().into()),
             )
         })
-        .map_err(ExecutionError::AnyhowError)
+        .map_err(ExecutionError::CastError)
 }

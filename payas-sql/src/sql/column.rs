@@ -1,8 +1,9 @@
+use crate::database_error::DatabaseError;
+
 use super::{
     select::Select, transaction::TransactionStepId, Expression, ExpressionContext,
     ParameterBinding, SQLParam,
 };
-use anyhow::{bail, Result};
 use maybe_owned::MaybeOwned;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -89,7 +90,7 @@ pub enum FloatBits {
 
 impl PhysicalColumnType {
     /// Create a new physical column type given the SQL type string.
-    pub fn from_string(s: &str) -> Result<PhysicalColumnType> {
+    pub fn from_string(s: &str) -> Result<PhysicalColumnType, DatabaseError> {
         let s = s.to_uppercase();
 
         match s.find('[') {
@@ -106,7 +107,7 @@ impl PhysicalColumnType {
                             dims = &dims[2..];
                             count += 1;
                         } else {
-                            bail!("unknown type {}", s);
+                            return Err(DatabaseError::Generic(format!("unknown type {}", s)));
                         }
                     } else {
                         break;
@@ -176,7 +177,10 @@ impl PhysicalColumnType {
                         PhysicalColumnType::Date
                     } else if s.starts_with("NUMERIC") {
                         let regex =
-                            Regex::new("NUMERIC\\((?P<precision>\\d+),?(?P<scale>\\d+)?\\)")?;
+                            Regex::new("NUMERIC\\((?P<precision>\\d+),?(?P<scale>\\d+)?\\)")
+                                .map_err(|_| {
+                                    DatabaseError::Generic("Invalid numeric column spec".into())
+                                })?;
                         let captures = regex.captures(s).unwrap();
 
                         let precision = captures
@@ -186,7 +190,7 @@ impl PhysicalColumnType {
 
                         PhysicalColumnType::Numeric { precision, scale }
                     } else {
-                        bail!("unknown type {}", s)
+                        return Err(DatabaseError::Generic(format!("unknown type {}", s)));
                     }
                 }
             }),

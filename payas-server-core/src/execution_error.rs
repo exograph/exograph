@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use base64::DecodeError;
 use payas_deno::deno_error::DenoError;
 use thiserror::Error;
 
@@ -23,6 +24,9 @@ pub enum ExecutionError {
     Deno(#[from] DenoError),
 
     #[error(transparent)]
+    DatabaseError(#[from] payas_sql::database_error::DatabaseError),
+
+    #[error(transparent)]
     Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
@@ -30,6 +34,9 @@ pub enum ExecutionError {
 
     #[error(transparent)]
     AnyhowError(#[from] anyhow::Error),
+
+    #[error(transparent)]
+    CastError(#[from] CastError),
 
     #[error("Invalid field {0} for {1}")]
     InvalidField(String, &'static str), // (field name, container type)
@@ -56,6 +63,8 @@ impl ExecutionError {
         match self {
             ExecutionError::WithContext(_message, source) => source.user_error_message(),
             ExecutionError::AnyhowError(error) => error.to_string(),
+            // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).
+            ExecutionError::DatabaseError(_error) => "Database operation failed".to_string(),
             _ => match self.source() {
                 Some(source) => source.to_string(),
                 None => self.to_string(),
@@ -72,4 +81,25 @@ impl<T> WithContext for Result<T, ExecutionError> {
     fn with_context(self, context: String) -> Result<T, ExecutionError> {
         self.map_err(|e| e.with_context(context))
     }
+}
+
+#[derive(Debug, Error)]
+pub enum CastError {
+    #[error("{0}")]
+    Generic(String),
+
+    #[error("{0}")]
+    Date(String, #[source] chrono::format::ParseError),
+
+    #[error(transparent)]
+    Blob(#[from] DecodeError),
+
+    #[error(transparent)]
+    Uuid(#[from] uuid::Error),
+
+    #[error("{0}")]
+    BigDecimal(String),
+
+    #[error(transparent)]
+    Database(#[from] payas_sql::database_error::DatabaseError),
 }

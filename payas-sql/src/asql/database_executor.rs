@@ -1,8 +1,8 @@
 use crate::{
+    database_error::DatabaseError,
     sql::{database::Database, transaction::TransactionStepResult},
     transform::{pg::Postgres, transformer::Transformer},
 };
-use anyhow::Result;
 
 use super::abstract_operation::AbstractOperation;
 
@@ -17,7 +17,7 @@ impl DatabaseExecutor {
     pub async fn execute<'a>(
         &self,
         operation: &'a AbstractOperation<'a>,
-    ) -> Result<TransactionStepResult> {
+    ) -> Result<TransactionStepResult, DatabaseError> {
         let mut client = self.database.get_client().await?;
 
         let database_kind = Postgres {};
