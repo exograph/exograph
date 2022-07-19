@@ -3311,7 +3311,6 @@ dependencies = [
  "actix-files",
  "actix-web",
  "actix-web-httpauth",
- "anyhow",
  "async-trait",
  "futures",
  "jsonwebtoken",
@@ -3331,7 +3330,6 @@ dependencies = [
 name = "payas-server-aws-lambda"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-trait",
  "bytes",
  "cookie",
