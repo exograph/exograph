@@ -264,7 +264,7 @@ mod tests {
     use std::path::Path;
     use tokio::sync::mpsc::channel;
 
-    const USER_AGENT_NAME: &str = "Claytip";
+    const USER_AGENT_NAME: &str = "TestDenoAgent";
     const ADDITIONAL_CODE: &str = "";
     const EXPLICIT_ERROR_CLASS_NAME: Option<&str> = None;
 

@@ -3,16 +3,42 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DenoError {
-    #[error("Channel error")]
-    Channel,
+    // Explicit error thrown by a script (this should be propagated to the user)
+    #[error("{0}")]
+    Explicit(String),
+
+    // Show it to developers (such as missing "await") so they may possibly fix it.
+    #[error(transparent)]
+    Diagnostic(#[from] DenoDiagnosticError),
+
+    // We messed up...
+    #[error(transparent)]
+    Internal(#[from] DenoInternalError),
+
     #[error("{0}")]
     Generic(String),
+}
+
+#[derive(Error, Debug)]
+pub enum DenoDiagnosticError {
+    #[error("Missing shim {0}")]
+    MissingShim(String),
+    #[error("no function named {0} exported from {1}")]
+    MissingFunction(String, String), // (function name, module name)
     #[error(transparent)]
-    Delegate(#[from] AnyError),
+    BorrowMutError(#[from] core::cell::BorrowMutError), // Diagnostic for now: possibly missing "await"
+}
+
+#[derive(Error, Debug)]
+pub enum DenoInternalError {
     #[error(transparent)]
-    BorrowMutError(#[from] core::cell::BorrowMutError),
+    Any(#[from] AnyError),
+
     #[error(transparent)]
-    SerdeError(#[from] serde_v8::Error),
+    Serde(#[from] serde_v8::Error),
     #[error(transparent)]
     DataError(#[from] DataError),
+
+    #[error("Channel error")]
+    Channel,
 }
