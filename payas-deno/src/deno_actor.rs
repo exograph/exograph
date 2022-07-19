@@ -3,7 +3,6 @@ use futures::pin_mut;
 use serde_json::Value;
 use std::fmt::Debug;
 use std::{
-    marker::PhantomData,
     panic,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -71,7 +70,6 @@ pub(crate) struct DenoActor<C, M, R> {
     // Sender to ask the actor to execute a JS/TS call. The actor will poll for messages on the corresponding receiver.
     call_sender: Sender<DenoCall<C, R>>,
     busy: Arc<std::sync::atomic::AtomicBool>,
-    return_type: PhantomData<R>,
 }
 
 impl<C, M, R> DenoActor<C, M, R>
@@ -173,7 +171,6 @@ where
             callback_receiver: Arc::new(Mutex::new(callback_receiver)),
             call_sender: deno_call_sender,
             busy,
-            return_type: PhantomData,
         })
     }
 
@@ -253,7 +250,6 @@ impl<C, M, R> Clone for DenoActor<C, M, R> {
             callback_receiver: self.callback_receiver.clone(),
             call_sender: self.call_sender.clone(),
             busy: self.busy.clone(),
-            return_type: PhantomData,
         }
     }
 }
