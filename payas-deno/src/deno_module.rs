@@ -271,7 +271,7 @@ impl DenoModule {
                         }
                         _ => {
                             // generic error message
-                            return Err(DenoError::Generic("Internal server error".into()));
+                            return Err(DenoError::Explicit("Internal server error".into()));
                         }
                     }
                 }
@@ -284,7 +284,7 @@ impl DenoModule {
             let value = runtime.resolve_value(global).await.map_err(|err| {
                 // got some AnyError from Deno internals...
                 error!(%err);
-                DenoError::Generic("Internal server error".into())
+                DenoError::Explicit("Internal server error".into())
             })?;
 
             let scope = &mut runtime.handle_scope();

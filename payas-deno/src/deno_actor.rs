@@ -15,7 +15,7 @@ use tokio::sync::{
 };
 use tracing::instrument;
 
-use crate::deno_error::DenoError;
+use crate::deno_error::{DenoError, DenoInternalError};
 use crate::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 struct DenoCall<C, R> {
@@ -211,7 +211,7 @@ where
         };
         // send it to the DenoModule thread
         self.call_sender.send(deno_call).await.map_err(|err| {
-            DenoError::Generic(format!(
+            DenoInternalError::Channel(format!(
                 "Could not send method call request to DenoActor thread: {}",
                 err
             ))
@@ -230,13 +230,13 @@ where
                 message = on_recv_request => {
                     // forward callback message from Deno to the caller through the channel they gave us
                     callback_sender.send(
-                        message.ok_or_else(|| DenoError::Generic("Channel was dropped before completion while calling method".into()))?
-                    ).await.map_err(|err| DenoError::Generic(format!("Could not send request result to DenoActor in call_method ({err})")))?;
+                        message.ok_or_else(|| DenoInternalError::Channel("Channel was dropped before completion while calling method".into()))?
+                    ).await.map_err(|err| DenoInternalError::Channel(format!("Could not send request result to DenoActor in call_method ({err})")))?;
                 }
 
                 final_result = &mut final_result_receiver => {
                     // final result is received, break the loop with the result
-                    break final_result.map_err(|err| DenoError::Generic(format!("Could not receive result from DenoActor thread ({err})")))?;
+                    break final_result.map_err(|err| DenoInternalError::Channel(format!("Could not receive result from DenoActor thread ({err})")))?;
                 }
             };
         }
