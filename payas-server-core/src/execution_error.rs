@@ -33,9 +33,6 @@ pub enum ExecutionError {
     Validation(#[from] ValidationError),
 
     #[error(transparent)]
-    AnyhowError(#[from] anyhow::Error),
-
-    #[error(transparent)]
     CastError(#[from] CastError),
 
     #[error("Invalid field {0} for {1}")]
@@ -46,9 +43,6 @@ pub enum ExecutionError {
 
     #[error("{0} {1}")]
     WithContext(String, #[source] Box<ExecutionError>),
-
-    #[error("{0}")]
-    InvalidLiteral(String, #[source] anyhow::Error),
 }
 
 impl ExecutionError {
@@ -62,7 +56,6 @@ impl ExecutionError {
     pub fn user_error_message(&self) -> String {
         match self {
             ExecutionError::WithContext(_message, source) => source.user_error_message(),
-            ExecutionError::AnyhowError(error) => error.to_string(),
             // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).
             ExecutionError::DatabaseError(_error) => "Database operation failed".to_string(),
             _ => match self.source() {

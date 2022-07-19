@@ -209,7 +209,7 @@ impl<'a> OperationResolverResult<'a> {
                     .execute(abstract_operation)
                     .await?;
 
-                let body: anyhow::Result<QueryResponseBody> = if result.len() == 1 {
+                let body: Result<QueryResponseBody, ExecutionError> = if result.len() == 1 {
                     let string_result = extractor(result.swap_remove(0))?;
                     Ok(QueryResponseBody::Raw(Some(string_result)))
                 } else if result.is_empty() {

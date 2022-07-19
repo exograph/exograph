@@ -2,7 +2,7 @@ mod environment;
 mod query;
 
 use crate::execution::system_context::SystemContext;
-use anyhow::Result;
+use crate::execution_error::ExecutionError;
 use async_trait::async_trait;
 use futures::StreamExt;
 use payas_model::model::ContextField;
@@ -14,8 +14,6 @@ use std::marker::PhantomData;
 
 #[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
-#[cfg(not(test))]
-use anyhow::anyhow;
 
 #[cfg(not(test))]
 use std::collections::HashMap;
@@ -101,14 +99,14 @@ impl<'a> RequestContext<'a> {
         }
     }
 
-    pub async fn extract_context(&self, context: &ContextType) -> Result<Value> {
+    pub async fn extract_context(&self, context: &ContextType) -> Result<Value, ExecutionError> {
         Ok(Value::Object(
             futures::stream::iter(context.fields.iter())
                 .then(|field| async { self.extract_context_field(context, field).await })
-                .collect::<Vec<Result<_>>>()
+                .collect::<Vec<Result<_, _>>>()
                 .await
                 .into_iter()
-                .collect::<Result<Vec<_>>>()?
+                .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
                 .flatten()
                 .collect(),
@@ -124,10 +122,10 @@ impl<'a> RequestContext<'a> {
         system_context: &'a SystemContext,
         annotation_name: &str,
         value: &str,
-    ) -> Result<Option<Value>> {
-        let parsed_context = parsed_context_map
-            .get(annotation_name)
-            .ok_or_else(|| anyhow!("Could not find source `{}`", annotation_name))?;
+    ) -> Result<Option<Value>, ExecutionError> {
+        let parsed_context = parsed_context_map.get(annotation_name).ok_or_else(|| {
+            ExecutionError::Generic(format!("Could not find source `{}`", annotation_name))
+        })?;
 
         Ok(parsed_context
             .extract_context_field(value, system_context, self)
@@ -140,7 +138,7 @@ impl<'a> RequestContext<'a> {
         &self,
         context: &ContextType,
         field: &ContextField,
-    ) -> Result<Option<(String, Value)>> {
+    ) -> Result<Option<(String, Value)>, ExecutionError> {
         match self {
             RequestContext::User(UserRequestContext {
                 parsed_context_map,
@@ -180,7 +178,7 @@ impl<'a> RequestContext<'a> {
         &self,
         context: &ContextType,
         field: &ContextField,
-    ) -> Result<Option<(String, Value)>> {
+    ) -> Result<Option<(String, Value)>, ExecutionError> {
         match self {
             RequestContext::User(UserRequestContext { test_values, .. }) => {
                 let context_value: Option<Value> = test_values.get(&context.name).cloned();

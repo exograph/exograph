@@ -1,4 +1,3 @@
-use anyhow::Result;
 use async_graphql_value::ConstValue;
 use payas_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, ColumnPath, ColumnPathLink,
@@ -310,7 +309,7 @@ fn compute_nested_inserts<'a>(
         argument: &'a ConstValue,
         container_model_type: &'a GqlType,
         system_context: &'a SystemContext,
-    ) -> Result<NestedAbstractInsert<'a>> {
+    ) -> Result<NestedAbstractInsert<'a>, ExecutionError> {
         let nested_reference_col = compute_nested_reference_column(
             field_model_type,
             container_model_type,
