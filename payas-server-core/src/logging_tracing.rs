@@ -19,7 +19,7 @@
 /// ```
 /// Events and spans will be filtered according to the setting of `RUST_LOG`.
 /// See the documentation for `EnvFilter` for more information.
-use std::{env, io::stdout};
+use std::{env, io::stdout, process::exit};
 use tracing::{log::LevelFilter, subscriber::set_global_default, Subscriber};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt, EnvFilter, Registry};
@@ -32,20 +32,23 @@ pub fn init() {
             "bunyan" => init_subscriber(create_bunyan_subscriber(name, stdout)),
             "jaeger" => init_subscriber(create_opentelemetry_jaeger_subscriber(name)),
             _ => {
-                // log to console
-                let mut builder = pretty_env_logger::formatted_builder();
-                let mut builder = builder
-                    .filter_level(LevelFilter::Warn)
-                    .filter_module("tracing_actix_web", LevelFilter::Warn)
-                    .filter_module("actix_server::worker", LevelFilter::Warn);
-
-                if let Ok(rust_log) = std::env::var("CLAY_CONSOLE_LOG") {
-                    builder = builder.parse_filters(&rust_log);
-                }
-
-                builder.init();
+                eprintln!("Unknown value for CLAY_TELEMETRY: '{variable}'");
+                exit(1);
             }
         }
+    } else {
+        // log to console
+        let mut builder = pretty_env_logger::formatted_builder();
+        let mut builder = builder
+            .filter_level(LevelFilter::Warn)
+            .filter_module("tracing_actix_web", LevelFilter::Warn)
+            .filter_module("actix_server::worker", LevelFilter::Warn);
+
+        if let Ok(rust_log) = std::env::var("CLAY_CONSOLE_LOG") {
+            builder = builder.parse_filters(&rust_log);
+        }
+
+        builder.init();
     }
 }
 
