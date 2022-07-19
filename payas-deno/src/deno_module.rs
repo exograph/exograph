@@ -10,9 +10,9 @@ use deno_runtime::permissions::Permissions;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
+use tracing::error;
 
 use std::path::PathBuf;
-use tracing::error;
 use tracing::instrument;
 
 use serde_json::Value;

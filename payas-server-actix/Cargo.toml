@@ -12,16 +12,10 @@ actix-files = "0.6.0"
 actix-web-httpauth = "0.6.0"
 futures = "0.3"
 jsonwebtoken = "8.0.1"
-opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.16"
+
 serde_json = { version = "1.0", features = ["preserve_order"] }
 tracing = "0.1"
 tracing-actix-web = "0.5"
-tracing-bunyan-formatter = "0.3"
-tracing-log = "0.1"
-tracing-opentelemetry = "0.17.2"
-tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
-
 payas-server-core = { path = "../payas-server-core" }
 
 [[bin]]

@@ -1,5 +1,4 @@
 pub mod request_context;
-pub mod telemetry;
 
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
