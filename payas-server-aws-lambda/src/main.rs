@@ -12,6 +12,8 @@ use std::{env, process::exit};
 async fn main() -> Result<(), Error> {
     let claypot_file = get_claypot_file_name();
 
+    payas_server_core::init();
+
     let system_context = Arc::new(create_system_context(&claypot_file).unwrap());
     let request_context_processor = Arc::new(LambdaRequestContextProducer::new());
 
