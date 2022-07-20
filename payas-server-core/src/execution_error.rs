@@ -11,20 +11,11 @@ pub enum ExecutionError {
     #[error("{0}")]
     Generic(String),
 
-    #[error("Result has {0} entries; expected only zero or one")]
-    NonUniqueResult(usize),
-
-    #[error("Invalid argument {0}")]
-    InvalidServiceArgument(String),
+    #[error(transparent)]
+    Database(#[from] DatabaseExecutionError),
 
     #[error(transparent)]
-    EmptyRow(#[from] tokio_postgres::Error),
-
-    #[error(transparent)]
-    Deno(#[from] DenoError),
-
-    #[error(transparent)]
-    DatabaseError(#[from] payas_sql::database_error::DatabaseError),
+    Service(#[from] ServiceExecutionError),
 
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
@@ -45,6 +36,27 @@ pub enum ExecutionError {
     WithContext(String, #[source] Box<ExecutionError>),
 }
 
+#[derive(Error, Debug)]
+pub enum DatabaseExecutionError {
+    #[error(transparent)]
+    Database(#[from] payas_sql::database_error::DatabaseError),
+
+    #[error(transparent)]
+    EmptyRow(#[from] tokio_postgres::Error),
+
+    #[error("Result has {0} entries; expected only zero or one")]
+    NonUniqueResult(usize),
+}
+
+#[derive(Error, Debug)]
+pub enum ServiceExecutionError {
+    #[error(transparent)]
+    Deno(#[from] DenoError),
+
+    #[error("Invalid argument {0}")]
+    InvalidArgument(String),
+}
+
 impl ExecutionError {
     pub fn with_context(self, context: String) -> ExecutionError {
         ExecutionError::WithContext(context, Box::new(self))
@@ -57,7 +69,7 @@ impl ExecutionError {
         match self {
             ExecutionError::WithContext(_message, source) => source.user_error_message(),
             // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).
-            ExecutionError::DatabaseError(_error) => "Database operation failed".to_string(),
+            ExecutionError::Database(_error) => "Database operation failed".to_string(),
             _ => match self.source() {
                 Some(source) => source.to_string(),
                 None => self.to_string(),

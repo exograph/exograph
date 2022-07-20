@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::deno_integration::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use crate::execution::system_context::QueryResponseBody;
-use crate::execution_error::ExecutionError;
+use crate::execution_error::{DatabaseExecutionError, ExecutionError, ServiceExecutionError};
 use crate::request_context::RequestContext;
 use async_trait::async_trait;
 use futures::FutureExt;
@@ -207,19 +207,20 @@ impl<'a> OperationResolverResult<'a> {
                 let mut result = system_context
                     .database_executor
                     .execute(abstract_operation)
-                    .await?;
+                    .await
+                    .map_err(DatabaseExecutionError::Database)?;
 
-                let body: Result<QueryResponseBody, ExecutionError> = if result.len() == 1 {
+                let body = if result.len() == 1 {
                     let string_result = extractor(result.swap_remove(0))?;
                     Ok(QueryResponseBody::Raw(Some(string_result)))
                 } else if result.is_empty() {
                     Ok(QueryResponseBody::Raw(None))
                 } else {
-                    return Err(ExecutionError::NonUniqueResult(result.len()));
-                };
+                    Err(DatabaseExecutionError::NonUniqueResult(result.len()))
+                }?;
 
                 Ok(QueryResponse {
-                    body: body?,
+                    body,
                     headers: vec![], // we shouldn't get any HTTP headers from a SQL op
                 })
             }
@@ -257,7 +258,7 @@ pub async fn construct_arg_sequence(
     args: &[Argument],
     system_context: &SystemContext,
     request_context: &RequestContext<'_>,
-) -> Result<Vec<Arg>, ExecutionError> {
+) -> Result<Vec<Arg>, ServiceExecutionError> {
     let system = &system_context.system;
     let mapped_args = field_args
         .iter()
@@ -303,7 +304,7 @@ pub async fn construct_arg_sequence(
                 // regular argument
                 Ok(Arg::Serde(val.clone()))
             } else {
-                Err(ExecutionError::InvalidServiceArgument(arg.name.clone()))
+                Err(ServiceExecutionError::InvalidArgument(arg.name.clone()))
             }
         })
         .collect::<Vec<Result<_, _>>>()
@@ -345,7 +346,8 @@ async fn resolve_deno<'a>(
             None,
             callback_processor,
         )
-        .await?;
+        .await
+        .map_err(ServiceExecutionError::Deno)?;
 
     Ok(QueryResponse {
         body: QueryResponseBody::Json(result),
@@ -353,9 +355,9 @@ async fn resolve_deno<'a>(
     })
 }
 
-fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, ExecutionError> {
+fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, DatabaseExecutionError> {
     match row.try_get(0) {
         Ok(col) => Ok(col),
-        Err(err) => Err(ExecutionError::EmptyRow(err)),
+        Err(err) => Err(DatabaseExecutionError::EmptyRow(err)),
     }
 }

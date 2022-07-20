@@ -6,7 +6,7 @@ use crate::{
         FnClaytipInterceptorProceed, InterceptedOperationInfo,
     },
     execution::system_context::QueryResponseBody,
-    execution_error::ExecutionError,
+    execution_error::{ExecutionError, ServiceExecutionError},
     request_context::RequestContext,
 };
 use async_recursion::async_recursion;
@@ -263,7 +263,7 @@ async fn execute_interceptor<'a>(
     operation_name: Option<String>,
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-) -> Result<(Value, Option<ClaytipMethodResponse>), ExecutionError> {
+) -> Result<(Value, Option<ClaytipMethodResponse>), ServiceExecutionError> {
     let script = &system_context.system.deno_scripts[interceptor.script];
 
     let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
