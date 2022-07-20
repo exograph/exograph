@@ -1,23 +1,22 @@
 use std::str::FromStr;
 
+use crate::execution_error::{CastError, ExecutionError};
 use crate::request_context::RequestContext;
 use crate::validation::operation::ValidatedOperation;
 use crate::OperationsPayload;
 use crate::{
-    error::ExecutionError, introspection::schema::Schema,
-    validation::document_validator::DocumentValidator,
+    introspection::schema::Schema, validation::document_validator::DocumentValidator,
+    validation_error::ValidationError,
 };
 use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
-
-use anyhow::Result;
+use payas_sql::database_error::DatabaseError;
 
 use crate::deno_integration::ClayDenoExecutorPool;
 use payas_model::model::system::ModelSystem;
 use payas_sql::DatabaseExecutor;
 use tracing::{error, instrument};
 
-use anyhow::{bail, Context};
 use async_graphql_parser::types::{BaseType, OperationType, Type};
 use async_graphql_value::{ConstValue, Name, Number};
 use async_trait::async_trait;
@@ -72,7 +71,7 @@ pub enum QueryResponseBody {
 }
 
 impl QueryResponseBody {
-    pub fn to_json(&self) -> Result<JsonValue> {
+    pub fn to_json(&self) -> Result<JsonValue, ExecutionError> {
         match &self {
             QueryResponseBody::Json(val) => Ok(val.clone()),
             QueryResponseBody::Raw(raw) => {
@@ -95,7 +94,7 @@ impl SystemContext {
         &'e self,
         operations_payload: OperationsPayload,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Vec<(String, QueryResponse)>> {
+    ) -> Result<Vec<(String, QueryResponse)>, ExecutionError> {
         let operation = self.validate_operation(operations_payload)?;
 
         self.resolve_operation(operation, request_context).await
@@ -105,7 +104,7 @@ impl SystemContext {
     fn validate_operation<'e>(
         &'e self,
         operations_payload: OperationsPayload,
-    ) -> Result<ValidatedOperation, ExecutionError> {
+    ) -> Result<ValidatedOperation, ValidationError> {
         let document = parse_query(operations_payload.query)?;
 
         let document_validator = DocumentValidator::new(
@@ -129,7 +128,7 @@ impl SystemContext {
         &self,
         operation: ValidatedOperation,
         request_context: &'b RequestContext<'b>,
-    ) -> Result<Vec<(String, QueryResponse)>> {
+    ) -> Result<Vec<(String, QueryResponse)>, ExecutionError> {
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
@@ -139,7 +138,7 @@ impl SystemContext {
         &self,
         field: &ValidatedField,
         request_context: &'b RequestContext<'b>,
-    ) -> Result<JsonValue> {
+    ) -> Result<JsonValue, ExecutionError> {
         let type_name = &field
             .arguments
             .iter()
@@ -161,7 +160,7 @@ impl SystemContext {
 }
 
 #[instrument(name = "system_context::parse_query")]
-fn parse_query(query: String) -> Result<ExecutableDocument, ExecutionError> {
+fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
     async_graphql_parser::parse_query(query).map_err(|error| {
         error!(%error, "Failed to parse query");
         let (message, pos1, pos2) = match error {
@@ -204,19 +203,21 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ExecutionError> {
             _ => ("Unknown error".to_string(), Pos::default(), None),
         };
 
-        ExecutionError::QueryParsingFailed(message, pos1, pos2)
+        ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
 }
 
 pub fn literal_column<'a>(
     value: &ConstValue,
     associated_column: &PhysicalColumn,
-) -> Result<Column<'a>> {
-    cast_value(value, &associated_column.typ).map(|value| {
-        value
-            .map(|v| Column::Literal(MaybeOwned::Owned(v)))
-            .unwrap_or(Column::Null)
-    })
+) -> Result<Column<'a>, ExecutionError> {
+    cast_value(value, &associated_column.typ)
+        .map(|value| {
+            value
+                .map(|v| Column::Literal(MaybeOwned::Owned(v)))
+                .unwrap_or(Column::Null)
+        })
+        .map_err(ExecutionError::CastError)
 }
 
 pub fn get_argument_field<'a>(
@@ -229,10 +230,12 @@ pub fn get_argument_field<'a>(
     }
 }
 
+// TODO: Move all cast* functions to a separate module.
+
 pub fn cast_value(
     value: &ConstValue,
     destination_type: &PhysicalColumnType,
-) -> Result<Option<Box<dyn SQLParam>>> {
+) -> Result<Option<Box<dyn SQLParam>>, CastError> {
     match value {
         ConstValue::Number(number) => cast_number(number, destination_type).map(Some),
         ConstValue::String(v) => cast_string(v, destination_type).map(Some),
@@ -248,7 +251,7 @@ pub fn cast_value(
 fn cast_list(
     elems: &[ConstValue],
     destination_type: &PhysicalColumnType,
-) -> Result<Option<Box<dyn SQLParam>>> {
+) -> Result<Option<Box<dyn SQLParam>>, CastError> {
     fn array_entry(elem: &ConstValue) -> ArrayEntry<ConstValue> {
         match elem {
             ConstValue::List(elems) => ArrayEntry::List(elems),
@@ -256,13 +259,21 @@ fn cast_list(
         }
     }
 
-    array_util::to_sql_param(elems, destination_type, array_entry, cast_value)
+    fn cast_value_with_error(
+        value: &ConstValue,
+        destination_type: &PhysicalColumnType,
+    ) -> Result<Option<Box<dyn SQLParam>>, DatabaseError> {
+        cast_value(value, destination_type).map_err(|error| DatabaseError::BoxedError(error.into()))
+    }
+
+    array_util::to_sql_param(elems, destination_type, array_entry, cast_value_with_error)
+        .map_err(CastError::Database)
 }
 
 fn cast_number(
     number: &Number,
     destination_type: &PhysicalColumnType,
-) -> Result<Box<dyn SQLParam>> {
+) -> Result<Box<dyn SQLParam>, CastError> {
     let result: Box<dyn SQLParam> = match destination_type {
         PhysicalColumnType::Int { bits } => match bits {
             IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
@@ -274,130 +285,156 @@ fn cast_number(
             FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
         },
         PhysicalColumnType::Numeric { .. } => {
-            bail!("Number literals cannot be specified for decimal fields")
+            return Err(CastError::Generic(
+                "Number literals cannot be specified for decimal fields".into(),
+            ));
         }
         PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
             // TODO assumes that `id` columns are always integers
             cast_number(number, ref_pk_type)?
         }
         // TODO: Expand for other number types such as float
-        _ => bail!("Unexpected destination_type for number value"),
+        _ => {
+            return Err(CastError::Generic(
+                "Unexpected destination_type for number value".into(),
+            ));
+        }
     };
 
     Ok(result)
 }
 
-fn cast_string(string: &str, destination_type: &PhysicalColumnType) -> Result<Box<dyn SQLParam>> {
-    let value: Box<dyn SQLParam> = match destination_type {
-        PhysicalColumnType::Numeric { .. } => {
-            let decimal =
-                match string {
+fn cast_string(
+    string: &str,
+    destination_type: &PhysicalColumnType,
+) -> Result<Box<dyn SQLParam>, CastError> {
+    let value: Box<dyn SQLParam> =
+        match destination_type {
+            PhysicalColumnType::Numeric { .. } => {
+                let decimal = match string {
                     "NaN" => PgNumeric { n: None },
                     _ => PgNumeric {
-                        n: Some(BigDecimal::from_str(string).with_context(|| {
-                            format!("Could not parse {} into a decimal", string)
+                        n: Some(BigDecimal::from_str(string).map_err(|_| {
+                            CastError::Generic(format!("Could not parse {} into a decimal", string))
                         })?),
                     },
                 };
 
-            Box::new(decimal)
-        }
+                Box::new(decimal)
+            }
 
-        PhysicalColumnType::Timestamp { .. }
-        | PhysicalColumnType::Time { .. }
-        | PhysicalColumnType::Date => {
-            let datetime = DateTime::parse_from_rfc3339(string);
-            let naive_datetime = NaiveDateTime::parse_from_str(
-                string,
-                &format!("{}T{}", NAIVE_DATE_FORMAT, NAIVE_TIME_FORMAT),
-            );
+            PhysicalColumnType::Timestamp { .. }
+            | PhysicalColumnType::Time { .. }
+            | PhysicalColumnType::Date => {
+                let datetime = DateTime::parse_from_rfc3339(string);
+                let naive_datetime = NaiveDateTime::parse_from_str(
+                    string,
+                    &format!("{}T{}", NAIVE_DATE_FORMAT, NAIVE_TIME_FORMAT),
+                );
 
-            // attempt to parse string as either datetime+offset or as a naive datetime
-            match (datetime, naive_datetime) {
-                (Ok(datetime), _) => {
-                    match &destination_type {
-                        PhysicalColumnType::Timestamp { timezone, .. } => {
-                            if *timezone {
-                                Box::new(datetime)
-                            } else {
-                                // default to the naive time if this is a non-timezone field
-                                Box::new(datetime.naive_local())
+                // attempt to parse string as either datetime+offset or as a naive datetime
+                match (datetime, naive_datetime) {
+                    (Ok(datetime), _) => {
+                        match &destination_type {
+                            PhysicalColumnType::Timestamp { timezone, .. } => {
+                                if *timezone {
+                                    Box::new(datetime)
+                                } else {
+                                    // default to the naive time if this is a non-timezone field
+                                    Box::new(datetime.naive_local())
+                                }
+                            }
+                            PhysicalColumnType::Time { .. } => Box::new(datetime.time()),
+                            PhysicalColumnType::Date => Box::new(datetime.date().naive_local()),
+                            _ => {
+                                return Err(CastError::Generic(
+                                    "missing case for datetime in inner match".into(),
+                                ))
                             }
                         }
-                        PhysicalColumnType::Time { .. } => Box::new(datetime.time()),
-                        PhysicalColumnType::Date => Box::new(datetime.date().naive_local()),
-                        _ => bail!("missing case for datetime in inner match"),
                     }
-                }
 
-                (_, Ok(naive_datetime)) => {
-                    match &destination_type {
-                        PhysicalColumnType::Timestamp { timezone, .. } => {
-                            if *timezone {
-                                // default to UTC+0 if this field is a timestamp+timezone field
-                                Box::new(DateTime::<Utc>::from_utc(naive_datetime, chrono::Utc))
-                            } else {
-                                Box::new(naive_datetime)
+                    (_, Ok(naive_datetime)) => {
+                        match &destination_type {
+                            PhysicalColumnType::Timestamp { timezone, .. } => {
+                                if *timezone {
+                                    // default to UTC+0 if this field is a timestamp+timezone field
+                                    Box::new(DateTime::<Utc>::from_utc(naive_datetime, chrono::Utc))
+                                } else {
+                                    Box::new(naive_datetime)
+                                }
+                            }
+                            PhysicalColumnType::Time { .. } => Box::new(naive_datetime.time()),
+                            PhysicalColumnType::Date { .. } => Box::new(naive_datetime.date()),
+                            _ => {
+                                return Err(CastError::Generic(
+                                    "missing case for datetime in inner match".into(),
+                                ))
                             }
                         }
-                        PhysicalColumnType::Time { .. } => Box::new(naive_datetime.time()),
-                        PhysicalColumnType::Date { .. } => Box::new(naive_datetime.date()),
-                        _ => bail!("missing case for datetime in inner match"),
                     }
-                }
 
-                (Err(_), Err(_)) => {
-                    match &destination_type {
-                        PhysicalColumnType::Timestamp { .. } => {
-                            // exhausted options for timestamp formats
-                            bail!("Could not parse {} as a valid timestamp format", string)
+                    (Err(_), Err(_)) => {
+                        match &destination_type {
+                            PhysicalColumnType::Timestamp { .. } => {
+                                // exhausted options for timestamp formats
+                                return Err(CastError::Generic(format!(
+                                    "Could not parse {} as a valid timestamp format",
+                                    string
+                                )));
+                            }
+                            PhysicalColumnType::Time { .. } => {
+                                // try parsing the string as a time only
+                                let t = NaiveTime::parse_from_str(string, NAIVE_TIME_FORMAT)
+                                    .map_err(|e| {
+                                        CastError::Date(
+                                            format!(
+                                                "Could not parse {} as a valid time-only format",
+                                                string
+                                            ),
+                                            e,
+                                        )
+                                    })?;
+                                Box::new(t)
+                            }
+                            PhysicalColumnType::Date => {
+                                // try parsing the string as a date only
+                                let d = NaiveDate::parse_from_str(string, NAIVE_DATE_FORMAT)
+                                    .map_err(|e| {
+                                        CastError::Date(
+                                            format!(
+                                                "Could not parse {} as a valid date-only format",
+                                                string
+                                            ),
+                                            e,
+                                        )
+                                    })?;
+                                Box::new(d)
+                            }
+                            _ => panic!(),
                         }
-                        PhysicalColumnType::Time { .. } => {
-                            // try parsing the string as a time only
-                            let t = NaiveTime::parse_from_str(string, NAIVE_TIME_FORMAT)
-                                .with_context(|| {
-                                    format!(
-                                        "Could not parse {} as a valid time-only format",
-                                        string
-                                    )
-                                })?;
-                            Box::new(t)
-                        }
-                        PhysicalColumnType::Date => {
-                            // try parsing the string as a date only
-                            let d = NaiveDate::parse_from_str(string, NAIVE_DATE_FORMAT)
-                                .with_context(|| {
-                                    format!(
-                                        "Could not parse {} as a valid date-only format",
-                                        string
-                                    )
-                                })?;
-                            Box::new(d)
-                        }
-                        _ => panic!(),
                     }
                 }
             }
-        }
 
-        PhysicalColumnType::Blob => {
-            let bytes = base64::decode(string)?;
-            Box::new(SQLBytes::new(bytes))
-        }
+            PhysicalColumnType::Blob => {
+                let bytes = base64::decode(string)?;
+                Box::new(SQLBytes::new(bytes))
+            }
 
-        PhysicalColumnType::Uuid => {
-            let uuid = uuid::Uuid::parse_str(string)?;
-            Box::new(uuid)
-        }
+            PhysicalColumnType::Uuid => {
+                let uuid = uuid::Uuid::parse_str(string)?;
+                Box::new(uuid)
+            }
 
-        PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
+            PhysicalColumnType::Array { typ } => cast_string(string, typ)?,
 
-        PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
-            cast_string(string, ref_pk_type)?
-        }
+            PhysicalColumnType::ColumnReference { ref_pk_type, .. } => {
+                cast_string(string, ref_pk_type)?
+            }
 
-        _ => Box::new(string.to_owned()),
-    };
+            _ => Box::new(string.to_owned()),
+        };
 
     Ok(value)
 }
@@ -441,36 +478,44 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
         field: &ValidatedField,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<QueryResponse> {
+    ) -> Result<QueryResponse, ExecutionError> {
         let name = field.name.as_str();
 
         if name.starts_with("__") {
-            let body: Result<QueryResponseBody> = if system_context.allow_introspection {
-                match name {
-                    "__type" => Ok(QueryResponseBody::Json(
-                        system_context.resolve_type(field, request_context).await?,
-                    )),
-                    "__schema" => Ok(QueryResponseBody::Json(
-                        system_context
-                            .schema
-                            .resolve_value(&field.subfields, system_context, request_context)
-                            .await?,
-                    )),
-                    "__typename" => {
-                        let typename = match self.typ {
-                            OperationType::Query => QUERY_ROOT_TYPENAME,
-                            OperationType::Mutation => MUTATION_ROOT_TYPENAME,
-                            OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
-                        };
-                        Ok(QueryResponseBody::Json(JsonValue::String(
-                            typename.to_string(),
-                        )))
+            let body: Result<QueryResponseBody, ExecutionError> =
+                if system_context.allow_introspection {
+                    match name {
+                        "__type" => Ok(QueryResponseBody::Json(
+                            system_context.resolve_type(field, request_context).await?,
+                        )),
+                        "__schema" => Ok(QueryResponseBody::Json(
+                            system_context
+                                .schema
+                                .resolve_value(&field.subfields, system_context, request_context)
+                                .await?,
+                        )),
+                        "__typename" => {
+                            let typename = match self.typ {
+                                OperationType::Query => QUERY_ROOT_TYPENAME,
+                                OperationType::Mutation => MUTATION_ROOT_TYPENAME,
+                                OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
+                            };
+                            Ok(QueryResponseBody::Json(JsonValue::String(
+                                typename.to_string(),
+                            )))
+                        }
+                        _ => {
+                            return Err(ExecutionError::Generic(format!(
+                                "No such introspection field {}",
+                                name
+                            )))
+                        }
                     }
-                    _ => bail!("No such introspection field {}", name),
-                }
-            } else {
-                bail!("Introspection is not allowed");
-            };
+                } else {
+                    return Err(ExecutionError::Generic(
+                        "Introspection is not allowed".into(),
+                    ));
+                };
 
             Ok(QueryResponse {
                 body: body?,

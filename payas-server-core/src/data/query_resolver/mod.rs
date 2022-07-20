@@ -1,9 +1,9 @@
 use crate::{
-    execution::system_context::SystemContext, request_context::RequestContext,
+    execution::system_context::SystemContext,
+    execution_error::{ExecutionError, WithContext},
+    request_context::RequestContext,
     validation::field::ValidatedField,
 };
-
-use anyhow::{anyhow, bail, Context, Result};
 
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -26,8 +26,6 @@ use super::{
     Arguments,
 };
 
-use crate::execution::resolver::GraphQLExecutionError;
-
 // TODO: deal with panics at the type level
 
 #[async_trait]
@@ -37,7 +35,7 @@ impl<'a> OperationResolver<'a> for Query {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<OperationResolverResult<'a>> {
+    ) -> Result<OperationResolverResult<'a>, ExecutionError> {
         Ok(match &self.kind {
             QueryKind::Database(_) => {
                 let operation = self
@@ -92,7 +90,7 @@ pub trait QuerySQLOperations<'a> {
         fields: &'a [ValidatedField],
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<Vec<ColumnSelection<'a>>>;
+    ) -> Result<Vec<ColumnSelection<'a>>, ExecutionError>;
 
     async fn operation(
         &'a self,
@@ -100,7 +98,7 @@ pub trait QuerySQLOperations<'a> {
         additional_predicate: AbstractPredicate<'a>,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractSelect<'a>>;
+    ) -> Result<AbstractSelect<'a>, ExecutionError>;
 }
 
 #[async_trait]
@@ -133,10 +131,10 @@ impl<'a> QuerySQLOperations<'a> for Query {
         fields: &'a [ValidatedField],
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<Vec<ColumnSelection<'a>>> {
+    ) -> Result<Vec<ColumnSelection<'a>>, ExecutionError> {
         futures::stream::iter(fields.iter())
             .then(|field| async { map_field(self, field, system_context, request_context).await })
-            .collect::<Vec<Result<_>>>()
+            .collect::<Vec<Result<_, _>>>()
             .await
             .into_iter()
             .collect()
@@ -194,7 +192,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
         additional_predicate: AbstractPredicate<'a>,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractSelect<'a>> {
+    ) -> Result<AbstractSelect<'a>, ExecutionError> {
         match &self.kind {
             QueryKind::Database(db_query_param) => {
                 let DatabaseQueryParameter {
@@ -209,7 +207,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 .await;
 
                 if access_predicate == AbstractPredicate::False {
-                    bail!(anyhow!(GraphQLExecutionError::Authorization))
+                    return Err(ExecutionError::Authorization);
                 }
 
                 let predicate = super::compute_predicate(
@@ -218,7 +216,10 @@ impl<'a> QuerySQLOperations<'a> for Query {
                     additional_predicate,
                     system_context,
                 )
-                .with_context(|| format!("While computing predicate for field {}", field.name))?;
+                .with_context(format!(
+                    "While computing predicate for field {}",
+                    field.name
+                ))?;
 
                 let order_by = self.compute_order_by(&field.arguments, system_context);
 
@@ -239,7 +240,7 @@ impl<'a> QuerySQLOperations<'a> for Query {
                 {
                     &system.tables[composite_root_type.get_table_id()]
                 } else {
-                    bail!("Expected a composite type");
+                    return Err(ExecutionError::Generic("Expected a composite type".into()));
                 };
 
                 let selection_cardinality = match self.return_type.type_modifier {
@@ -271,7 +272,7 @@ async fn map_field<'a>(
     field: &'a ValidatedField,
     system_context: &'a SystemContext,
     request_context: &'a RequestContext<'a>,
-) -> Result<ColumnSelection<'a>> {
+) -> Result<ColumnSelection<'a>, ExecutionError> {
     let system = &system_context.system;
     let return_type = query.return_type.typ(system);
 

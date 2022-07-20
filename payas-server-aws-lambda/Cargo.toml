@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
 async-trait = "0.1.53"
 cookie = "0.16"
 lambda_http = "0.5.1"

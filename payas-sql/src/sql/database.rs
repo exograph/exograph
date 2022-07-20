@@ -1,10 +1,11 @@
-use anyhow::{anyhow, bail, Context, Result};
 use std::env;
 
 use deadpool_postgres::{Client, Manager, ManagerConfig, Pool, RecyclingMethod};
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres_openssl::MakeTlsConnector;
 use tokio_postgres::{config::SslMode, Config};
+
+use crate::database_error::DatabaseError;
 
 const URL_PARAM: &str = "CLAY_DATABASE_URL";
 const USER_PARAM: &str = "CLAY_DATABASE_USER";
@@ -25,8 +26,9 @@ struct SslConfig {
 
 impl<'a> Database {
     // pool_size_override useful when we want to explicitly control the pool size (for example, to 1, when importing database schema)
-    pub fn from_env(pool_size_override: Option<usize>) -> Result<Self> {
-        let url = env::var(URL_PARAM).context("CLAY_DATABASE_URL must be provided")?;
+    pub fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
+        let url = env::var(URL_PARAM)
+            .map_err(|_| DatabaseError::Generic("CLAY_DATABASE_URL must be provided".into()))?;
         let user = env::var(USER_PARAM).ok();
         let password = env::var(PASSWORD_PARAM).ok();
         let pool_size = pool_size_override.unwrap_or_else(|| {
@@ -50,13 +52,15 @@ impl<'a> Database {
         url: String,
         user: Option<String>,
         password: Option<String>,
-    ) -> Result<Self> {
+    ) -> Result<Self, DatabaseError> {
         use std::str::FromStr;
 
         let (url, ssl_config) = Self::create_ssl_config(url)?;
 
-        let mut config =
-            Config::from_str(&url).context("Failed to parse PostgreSQL connection string")?;
+        let mut config = Config::from_str(&url).map_err(|e| {
+            DatabaseError::Delegate(e)
+                .with_context("Failed to parse PostgreSQL connection string".into())
+        })?;
 
         if let Some(user) = &user {
             config.user(user);
@@ -66,7 +70,7 @@ impl<'a> Database {
         }
 
         if config.get_user() == None {
-            bail!("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER")
+            return Err(DatabaseError::Generic("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER".into()));
         }
 
         let manager_config = ManagerConfig {
@@ -102,12 +106,13 @@ impl<'a> Database {
         Ok(db)
     }
 
-    pub async fn get_client(&self) -> Result<Client> {
+    pub async fn get_client(&self) -> Result<Client, DatabaseError> {
         Ok(self.pool.get().await?)
     }
 
-    fn create_ssl_config(url: String) -> Result<(String, Option<SslConfig>)> {
-        let url = url::Url::parse(&url).context("Invalid URL")?;
+    fn create_ssl_config(url: String) -> Result<(String, Option<SslConfig>), DatabaseError> {
+        let url =
+            url::Url::parse(&url).map_err(|_| DatabaseError::Generic("Invalid URL".into()))?;
 
         let mut ssl_param_string: Option<String> = None;
         let mut ssl_mode_string: Option<String> = None;
@@ -149,7 +154,9 @@ impl<'a> Database {
                 Ok(true) => ssl_mode = SslMode::Require,
                 Ok(false) => ssl_mode = SslMode::Disable,
                 _ => {
-                    bail!("Invalid 'ssl' parameter value {ssl_param}. Must be a 'true' or 'false'")
+                    return Err(DatabaseError::Generic(format!(
+                        "Invalid 'ssl' parameter value {ssl_param}. Must be a 'true' or 'false'",
+                    )));
                 }
             }
         }
@@ -160,7 +167,11 @@ impl<'a> Database {
                 "verify-full" | "verify-ca" | "require" => ssl_mode = SslMode::Require,
                 "prefer" | "allow" => ssl_mode = SslMode::Prefer,
                 "disable" => ssl_mode = SslMode::Disable,
-                _ => bail!("Invalid 'sslmode' parameter value {ssl_mode_string}"),
+                _ => {
+                    return Err(DatabaseError::Generic(format!(
+                        "Invalid 'sslmode' parameter value {ssl_mode_string}"
+                    )))
+                }
             }
         }
 
@@ -168,11 +179,9 @@ impl<'a> Database {
             .ok()
             .map(|env_str| match env_str.parse::<bool>() {
                 Ok(b) => Ok(b),
-                Err(_) => Err(anyhow!(
-                    "Invalid {} value: {}. It must be set to 'true' or 'false'",
-                    SSL_VERIFY_PARAM,
-                    env_str,
-                )),
+                Err(_) => Err(DatabaseError::Generic(format!(
+                    "Invalid {SSL_VERIFY_PARAM} value: {env_str}. It must be set to 'true' or 'false'",
+                ))),
             })
             .unwrap_or(Ok(true))?;
 

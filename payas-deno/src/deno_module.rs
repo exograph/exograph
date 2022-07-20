@@ -23,8 +23,11 @@ use std::fs;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::deno_error::DenoDiagnosticError;
+use crate::deno_error::DenoError;
+use crate::deno_error::DenoInternalError;
+
 use super::embedded_module_loader::EmbeddedModuleLoader;
-use anyhow::{anyhow, Result};
 
 fn get_error_class_name(e: &AnyError) -> &'static str {
     deno_runtime::errors::get_error_class_name(e).unwrap_or("Error")
@@ -182,19 +185,26 @@ impl DenoModule {
         level = "debug"
         skip_all
         )]
-    pub async fn execute_function(&mut self, function_name: &str, args: Vec<Arg>) -> Result<Value> {
+    pub async fn execute_function(
+        &mut self,
+        function_name: &str,
+        args: Vec<Arg>,
+    ) -> Result<Value, DenoError> {
         let worker = &mut self.worker;
         let runtime = &mut worker.js_runtime;
 
         let func_value_string = format!("mod.{function_name}");
 
-        let func_value = runtime.execute_script("", &func_value_string)?;
+        let func_value = runtime
+            .execute_script("", &func_value_string)
+            .map_err(DenoInternalError::Any)?;
 
         let shim_objects_vals: Vec<_> = self
             .shim_object_names
             .iter()
             .map(|name| runtime.execute_script("", name))
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, _>>()
+            .map_err(DenoInternalError::Any)?;
 
         let shim_objects: HashMap<_, _> = self
             .shim_object_names
@@ -211,31 +221,34 @@ impl DenoModule {
             let args: Vec<_> = args
                 .into_iter()
                 .map(|v| match v {
-                    Arg::Serde(v) => Ok(serde_v8::to_v8(tc_scope_ref, v)?),
+                    Arg::Serde(v) => {
+                        Ok(serde_v8::to_v8(tc_scope_ref, v).map_err(DenoInternalError::Serde)?)
+                    }
                     Arg::Shim(name) => Ok(shim_objects
                         .get(&name)
-                        .ok_or_else(|| anyhow!("Missing shim {}", &name))?
+                        .ok_or(DenoDiagnosticError::MissingShim(name))?
                         .open(tc_scope_ref)
                         .to_object(tc_scope_ref)
                         .unwrap()
                         .into()),
                 })
-                .collect::<Result<Vec<_>, AnyError>>()?;
+                .collect::<Result<Vec<_>, DenoError>>()?;
 
             let func_obj = func_value
                 .open(tc_scope_ref)
                 .to_object(tc_scope_ref)
                 .ok_or_else(|| {
-                    anyhow!(
-                        "no function named {} exported from {}",
-                        function_name,
+                    DenoDiagnosticError::MissingFunction(
+                        function_name.to_owned(),
                         match &self.user_code {
                             UserCode::LoadFromMemory { path, .. } => path,
                             UserCode::LoadFromFs(path) => path.to_str().unwrap(),
                         }
+                        .to_owned(),
                     )
                 })?;
-            let func = v8::Local::<v8::Function>::try_from(func_obj)?;
+            let func = v8::Local::<v8::Function>::try_from(func_obj)
+                .map_err(DenoInternalError::DataError)?;
 
             let undefined = v8::undefined(tc_scope_ref);
             let local = func.call(tc_scope_ref, undefined.into(), &args);
@@ -249,19 +262,16 @@ impl DenoModule {
                     error!(%js_error, "Exception executing function");
 
                     match self.explicit_error_class_name {
-                        Some(explicit_error_class_name)
-                            if js_error.name.as_ref().unwrap_or(&("".to_string()))
-                                == explicit_error_class_name =>
-                        {
+                        Some(_) if js_error.name.as_deref() == self.explicit_error_class_name => {
                             // code threw an explicit Error(...), expose to user
                             let message = js_error
                                 .message
                                 .unwrap_or_else(|| "Unknown error".to_string());
-                            return Err(anyhow!(message));
+                            return Err(DenoError::Explicit(message));
                         }
                         _ => {
                             // generic error message
-                            return Err(anyhow!("Internal server error"));
+                            return Err(DenoError::Explicit("Internal server error".into()));
                         }
                     }
                 }
@@ -274,29 +284,35 @@ impl DenoModule {
             let value = runtime.resolve_value(global).await.map_err(|err| {
                 // got some AnyError from Deno internals...
                 error!(%err);
-                anyhow!("Internal server error")
+                DenoError::Explicit("Internal server error".into())
             })?;
 
             let scope = &mut runtime.handle_scope();
             let res = v8::Local::new(scope, value);
-            let res: Value = serde_v8::from_v8(scope, res)?;
+            let res: Value = serde_v8::from_v8(scope, res).map_err(DenoInternalError::Serde)?;
             Ok(res)
         }
     }
 
     /// Put a single instance of a type into Deno's op_state
-    pub fn put<T: 'static>(&mut self, val: T) -> Result<()> {
-        self.worker.js_runtime.op_state().try_borrow_mut()?.put(val);
+    pub fn put<T: 'static>(&mut self, val: T) -> Result<(), DenoError> {
+        self.worker
+            .js_runtime
+            .op_state()
+            .try_borrow_mut()
+            .map_err(DenoDiagnosticError::BorrowMutError)?
+            .put(val);
         Ok(())
     }
 
     /// Try to take a single instance of a type from Deno's op_state
-    pub fn take<T: 'static>(&mut self) -> Result<Option<T>> {
+    pub fn take<T: 'static>(&mut self) -> Result<Option<T>, DenoError> {
         Ok(self
             .worker
             .js_runtime
             .op_state()
-            .try_borrow_mut()?
+            .try_borrow_mut()
+            .map_err(DenoDiagnosticError::BorrowMutError)?
             .try_take())
     }
 }

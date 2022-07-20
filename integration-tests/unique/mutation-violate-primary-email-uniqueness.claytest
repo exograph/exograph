@@ -20,7 +20,7 @@ response: |
     {
       "errors": [
         {
-            "message": "ERROR: duplicate key value violates unique constraint unique_email_primary; DETAIL: Key (primary_email_id, email_domain)=(alice, example.com) already exists." 
+            "message": "Database operation failed" 
         }
       ]
     }

@@ -21,7 +21,7 @@ response: |
     {
       "errors": [
         {
-            "message": "ERROR: duplicate key value violates unique constraint one_rsvp_per_user; DETAIL: Key (event, user_id)=(Concert2, 2) already exists."
+            "message": "Database operation failed"
         }
       ]
     }
