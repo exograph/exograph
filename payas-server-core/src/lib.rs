@@ -5,6 +5,8 @@ use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 ///
 /// The `resolve` function is responsible for doing the work, using information
 /// extracted from an incoming request, and returning the response as a stream.
+
+use ::tracing::{error, instrument};
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bincode::deserialize_from;
@@ -19,7 +21,6 @@ use payas_sql::{Database, DatabaseExecutor};
 use request_context::RequestContext;
 use serde::Deserialize;
 use serde_json::{Map, Value};
-use tracing::instrument;
 
 use crate::{execution::system_context::QueryResponseBody, execution_error::ExecutionError};
 
@@ -30,6 +31,7 @@ mod execution_error;
 pub mod graphiql;
 pub mod initialization_error;
 mod introspection;
+mod logging_tracing;
 pub mod request_context;
 mod validation;
 mod validation_error;
@@ -57,7 +59,7 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
         Some(e) => match e.parse::<bool>() {
             Ok(e) => e,
             Err(_) => {
-                eprintln!("CLAY_INTROSPECTION env var must be set to either true or false");
+                error!("CLAY_INTROSPECTION env var must be set to either true or false");
                 std::process::exit(1);
             }
         },
@@ -90,6 +92,11 @@ pub struct OperationsPayload {
 }
 
 pub type Headers = Vec<(String, String)>;
+
+/// Initializes logging for payas-server-core.
+pub fn init() {
+    logging_tracing::init()
+}
 
 /// Resolves an incoming query, returning a response stream containing JSON and a set
 /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
