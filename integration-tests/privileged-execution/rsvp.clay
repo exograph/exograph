@@ -1,0 +1,22 @@
+context AuthContext {
+  role: String @jwt("role")
+}
+
+// Non-admins cannot use the rsvp APIs (a service with priviledged Claytip will be able to escalate the role and thus use the APIs)
+// Later, we will allow to not even export this APIs
+@access(AuthContext.role == "admin")
+model Rsvp {
+  id: Int = autoincrement() @pk
+  email: String
+  count: Int
+}
+
+@external("rsvp-service.ts")
+service RsvpService {
+  type RsvpConfirmation {
+    email: String
+    count: Int
+  }
+
+  mutation processRsvp(email: String, count: Int, @inject claytip: ClaytipPriv): RsvpConfirmation
+}

@@ -2,11 +2,11 @@ use async_graphql_parser::types::{BaseType, Type, TypeDefinition};
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
+use crate::execution::resolver::{FieldResolver, Resolver};
+use crate::execution_error::ExecutionError;
 use crate::introspection::definition::type_introspection::TypeDefinitionIntrospection;
 use crate::request_context::RequestContext;
 use crate::{execution::system_context::SystemContext, validation::field::ValidatedField};
-use anyhow::{anyhow, Result};
 
 #[derive(Debug)]
 struct BoxedType<'a> {
@@ -21,7 +21,7 @@ impl FieldResolver<Value> for TypeDefinition {
         field: &ValidatedField,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         match field.name.as_str() {
             "name" => Ok(Value::String(self.name())),
             "kind" => Ok(Value::String(self.kind())),
@@ -46,10 +46,10 @@ impl FieldResolver<Value> for TypeDefinition {
             "ofType" => Ok(Value::Null),
             "specifiedByUrl" => Ok(Value::Null),
             "__typename" => Ok(Value::String("__Type".to_string())),
-            field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
+            field_name => Err(ExecutionError::InvalidField(
                 field_name.to_owned(),
                 "TypeDefinition",
-            ))),
+            )),
         }
     }
 }
@@ -61,7 +61,7 @@ impl FieldResolver<Value> for Type {
         field: &ValidatedField,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         let base_type = &self.base;
 
         if !self.nullable {
@@ -114,7 +114,7 @@ impl<'a> FieldResolver<Value> for BoxedType<'a> {
         field: &ValidatedField,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         match field.name.as_str() {
             "kind" => Ok(Value::String(self.type_kind.to_owned())),
             "ofType" => {
@@ -124,10 +124,10 @@ impl<'a> FieldResolver<Value> for BoxedType<'a> {
             }
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"
             | "possibleTypes" | "enumValues" | "inoutFields" => Ok(Value::Null),
-            field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
+            field_name => Err(ExecutionError::InvalidField(
                 field_name.to_owned(),
                 "List/NonNull type",
-            ))),
+            )),
         }
     }
 }

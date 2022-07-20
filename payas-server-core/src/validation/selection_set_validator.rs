@@ -10,11 +10,11 @@ use async_graphql_parser::{
 use async_graphql_value::{ConstValue, Name};
 
 use crate::{
-    error::ExecutionError,
     introspection::{
         definition::type_introspection::TypeDefinitionIntrospection,
         schema::{Schema, QUERY_ROOT_TYPENAME},
     },
+    validation_error::ValidationError,
 };
 
 use super::{arguments_validator::ArgumentValidator, field::ValidatedField, underlying_type};
@@ -57,7 +57,7 @@ impl<'a> SelectionSetValidator<'a> {
     pub(super) fn validate(
         &self,
         selection_set: &Positioned<SelectionSet>,
-    ) -> Result<Vec<ValidatedField>, ExecutionError> {
+    ) -> Result<Vec<ValidatedField>, ValidationError> {
         selection_set
             .node
             .items
@@ -70,24 +70,24 @@ impl<'a> SelectionSetValidator<'a> {
     fn validate_selection(
         &self,
         selection: &Positioned<Selection>,
-    ) -> Result<Vec<ValidatedField>, ExecutionError> {
+    ) -> Result<Vec<ValidatedField>, ValidationError> {
         match &selection.node {
             Selection::Field(field) => self.validate_field(field).map(|field| vec![field]),
             Selection::FragmentSpread(fragment_spread) => self
                 .fragment_definition(fragment_spread)
                 .and_then(|fragment_definition| self.validate(&fragment_definition.selection_set)),
             Selection::InlineFragment(inline_fragment) => Err(
-                ExecutionError::InlineFragmentNotSupported(inline_fragment.pos),
+                ValidationError::InlineFragmentNotSupported(inline_fragment.pos),
             ),
         }
     }
 
-    fn validate_field(&self, field: &Positioned<Field>) -> Result<ValidatedField, ExecutionError> {
+    fn validate_field(&self, field: &Positioned<Field>) -> Result<ValidatedField, ValidationError> {
         // Special treatment for the __typename field, since we are not supposed to expose it as
         // a normal field (for example, we should not declare that the "Concert" type has a __typename field")
         if field.node.name.node.as_str() == "__typename" {
             if !field.node.arguments.is_empty() {
-                Err(ExecutionError::StrayArguments(
+                Err(ValidationError::StrayArguments(
                     field
                         .node
                         .arguments
@@ -98,7 +98,7 @@ impl<'a> SelectionSetValidator<'a> {
                     field.pos,
                 ))
             } else if !field.node.selection_set.node.items.is_empty() {
-                Err(ExecutionError::ScalarWithField(
+                Err(ValidationError::ScalarWithField(
                     field.node.name.to_string(),
                     field.pos,
                 ))
@@ -160,12 +160,12 @@ impl<'a> SelectionSetValidator<'a> {
     fn fragment_definition(
         &self,
         fragment: &Positioned<FragmentSpread>,
-    ) -> Result<&FragmentDefinition, ExecutionError> {
+    ) -> Result<&FragmentDefinition, ValidationError> {
         self.fragment_definitions
             .get(&fragment.node.fragment_name.node)
             .map(|v| &v.node)
             .ok_or_else(|| {
-                ExecutionError::FragmentDefinitionNotFound(
+                ValidationError::FragmentDefinitionNotFound(
                     fragment.node.fragment_name.node.as_str().to_string(),
                     fragment.pos,
                 )
@@ -176,14 +176,14 @@ impl<'a> SelectionSetValidator<'a> {
         &self,
         field_type: &Positioned<Type>,
         field: &Positioned<Field>,
-    ) -> Result<&TypeDefinition, ExecutionError> {
+    ) -> Result<&TypeDefinition, ValidationError> {
         let field_underlying_type_name = underlying_type(&field_type.node);
         let field_underlying_type = self
             .schema
             .get_type_definition(field_underlying_type_name.as_str());
 
         match field_underlying_type {
-            None => Err(ExecutionError::InvalidFieldType(
+            None => Err(ValidationError::InvalidFieldType(
                 field_underlying_type_name.as_str().to_string(),
                 field.pos,
             )),
@@ -194,7 +194,7 @@ impl<'a> SelectionSetValidator<'a> {
     fn get_field_definition(
         &'a self,
         field: &Positioned<Field>,
-    ) -> Result<&FieldDefinition, ExecutionError> {
+    ) -> Result<&FieldDefinition, ValidationError> {
         let field_definition = &self
             .container_type
             .fields()
@@ -202,7 +202,7 @@ impl<'a> SelectionSetValidator<'a> {
             .map(|f| &f.node);
 
         match field_definition {
-            None => Err(ExecutionError::InvalidField(
+            None => Err(ValidationError::InvalidField(
                 field.node.name.node.as_str().to_string(),
                 self.container_type.name.node.to_string(),
                 field.pos,

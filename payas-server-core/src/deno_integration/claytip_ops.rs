@@ -15,11 +15,11 @@ pub struct InterceptedOperationInfo {
     pub query: Value,
 }
 
-#[op]
-pub async fn op_claytip_execute_query(
+pub async fn op_claytip_execute_query_helper(
     state: Rc<RefCell<OpState>>,
     query_string: Value,
     variables: Option<Value>,
+    context_override: Value,
 ) -> Result<Value, AnyError> {
     let mut state = state.borrow_mut();
     let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
@@ -29,6 +29,7 @@ pub async fn op_claytip_execute_query(
         .send(RequestFromDenoMessage::ClaytipExecute {
             query_string: query_string.as_str().unwrap().to_string(),
             variables: variables.as_ref().map(|o| o.as_object().unwrap().clone()),
+            context_override,
             response_sender,
         })
         .await
@@ -57,6 +58,25 @@ pub async fn op_claytip_execute_query(
     } else {
         bail!("Wrong response type for op_claytip_execute_query")
     }
+}
+
+#[op]
+pub async fn op_claytip_execute_query(
+    state: Rc<RefCell<OpState>>,
+    query_string: Value,
+    variables: Option<Value>,
+) -> Result<Value, AnyError> {
+    op_claytip_execute_query_helper(state, query_string, variables, Value::Null).await
+}
+
+#[op]
+pub async fn op_claytip_execute_query_priv(
+    state: Rc<RefCell<OpState>>,
+    query_string: Value,
+    variables: Option<Value>,
+    context_override: Value,
+) -> Result<Value, AnyError> {
+    op_claytip_execute_query_helper(state, query_string, variables, context_override).await
 }
 
 #[op]

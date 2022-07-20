@@ -559,7 +559,8 @@ fn determine_column_type<'a>(
             PrimitiveType::Blob => PhysicalColumnType::Blob,
             PrimitiveType::Uuid => PhysicalColumnType::Uuid,
             PrimitiveType::Array(_)
-            | PrimitiveType::ClaytipInjected
+            | PrimitiveType::Claytip
+            | PrimitiveType::ClaytipPriv
             | PrimitiveType::Interception(_) => {
                 panic!()
             }

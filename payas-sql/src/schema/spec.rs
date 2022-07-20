@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
-use crate::PhysicalTable;
-use anyhow::{anyhow, Result};
+use crate::{database_error::DatabaseError, PhysicalTable};
 use deadpool_postgres::Client;
 
 use super::{issue::WithIssues, op::SchemaOp};
@@ -70,7 +69,7 @@ impl SchemaSpec {
     }
 
     /// Creates a new schema specification from an SQL database.
-    pub async fn from_db(client: &Client) -> Result<WithIssues<SchemaSpec>> {
+    pub async fn from_db(client: &Client) -> Result<WithIssues<SchemaSpec>, DatabaseError> {
         // Query to get a list of all the tables in the database
         const QUERY: &str =
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
@@ -79,7 +78,11 @@ impl SchemaSpec {
         let mut tables = Vec::new();
         let mut required_extensions = HashSet::new();
 
-        for row in client.query(QUERY, &[]).await.map_err(|e| anyhow!(e))? {
+        for row in client
+            .query(QUERY, &[])
+            .await
+            .map_err(DatabaseError::Delegate)?
+        {
             let name: String = row.get("table_name");
             let mut table = PhysicalTable::from_db(client, &name).await?;
             issues.append(&mut table.issues);

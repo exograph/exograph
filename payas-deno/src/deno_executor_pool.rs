@@ -4,7 +4,7 @@ use deno_core::Extension;
 use serde_json::Value;
 use tokio::sync::Mutex;
 
-use crate::Arg;
+use crate::{deno_error::DenoError, Arg};
 
 use super::{
     deno_actor::DenoActor,
@@ -12,7 +12,6 @@ use super::{
     deno_module::{DenoModule, DenoModuleSharedState, UserCode},
 };
 
-use anyhow::Result;
 use std::fmt::Debug;
 
 type DenoActorPoolMap<C, M, R> = HashMap<String, DenoActorPool<C, M, R>>;
@@ -20,7 +19,7 @@ type DenoActorPool<C, M, R> = Vec<DenoActor<C, M, R>>;
 
 pub struct DenoExecutorConfig<C> {
     user_agent_name: &'static str,
-    shims: Vec<(&'static str, &'static str)>,
+    shims: Vec<(&'static str, &'static [&'static str])>,
     additional_code: Vec<&'static str>,
     explicit_error_class_name: Option<&'static str>,
     create_extensions: fn() -> Vec<Extension>,
@@ -31,7 +30,7 @@ pub struct DenoExecutorConfig<C> {
 impl<C> DenoExecutorConfig<C> {
     pub fn new(
         user_agent_name: &'static str,
-        shims: Vec<(&'static str, &'static str)>,
+        shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         explicit_error_class_name: Option<&'static str>,
         create_extensions: fn() -> Vec<Extension>,
@@ -82,7 +81,7 @@ impl<
 {
     pub fn new(
         user_agent_name: &'static str,
-        shims: Vec<(&'static str, &'static str)>,
+        shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         explicit_error_class_name: Option<&'static str>,
         create_extensions: fn() -> Vec<Extension>,
@@ -117,7 +116,7 @@ impl<
         arguments: Vec<Arg>,
         call_context: C,
         callback_processor: impl CallbackProcessor<M>,
-    ) -> Result<Value> {
+    ) -> Result<Value, DenoError> {
         let (result, _) = self
             .execute_and_get_r(
                 script_path,
@@ -140,7 +139,7 @@ impl<
         arguments: Vec<Arg>,
         call_context: C,
         callback_processor: impl CallbackProcessor<M>,
-    ) -> Result<(Value, Option<R>)> {
+    ) -> Result<(Value, Option<R>), DenoError> {
         let executor = self.get_executor(script_path, script).await?;
         executor
             .execute(method_name, arguments, call_context, callback_processor)
@@ -148,7 +147,11 @@ impl<
     }
 
     // TODO: look at passing a fn pointer struct as an argument
-    async fn get_executor(&self, script_path: &str, script: &str) -> Result<DenoExecutor<C, M, R>> {
+    async fn get_executor(
+        &self,
+        script_path: &str,
+        script: &str,
+    ) -> Result<DenoExecutor<C, M, R>, DenoError> {
         // find or allocate a free actor in our pool
         let actor = {
             let mut actor_pool_map = self.actor_pool_map.lock().await;
@@ -176,7 +179,11 @@ impl<
         })
     }
 
-    fn create_actor(&self, script_path: &str, script: &str) -> Result<DenoActor<C, M, R>> {
+    fn create_actor(
+        &self,
+        script_path: &str,
+        script: &str,
+    ) -> Result<DenoActor<C, M, R>, DenoError> {
         DenoActor::new(
             UserCode::LoadFromMemory {
                 path: script_path.to_owned(),
@@ -255,7 +262,7 @@ mod tests {
             script: &str,
             method_name: &str,
             arguments: Vec<Arg>,
-        ) -> Result<Value> {
+        ) -> Result<Value, DenoError> {
             pool.execute(script_path, script, method_name, arguments, (), ())
                 .await
         }

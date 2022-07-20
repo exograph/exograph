@@ -1,4 +1,3 @@
-use anyhow::Result;
 use async_trait::async_trait;
 use lambda_http::http::HeaderMap;
 use payas_server_core::{

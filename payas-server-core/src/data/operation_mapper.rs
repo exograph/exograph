@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::deno_integration::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use crate::execution::system_context::QueryResponseBody;
+use crate::execution_error::{DatabaseExecutionError, ExecutionError, ServiceExecutionError};
 use crate::request_context::RequestContext;
-use anyhow::{anyhow, bail, Result};
 use async_trait::async_trait;
 use futures::FutureExt;
 use futures::StreamExt;
@@ -23,7 +23,7 @@ use crate::{
 
 use super::access_solver;
 use super::interception::InterceptedOperation;
-use crate::execution::resolver::{FieldResolver, GraphQLExecutionError};
+use crate::execution::resolver::FieldResolver;
 use async_graphql_value::ConstValue;
 use payas_model::model::{
     mapped_arena::SerializableSlabIndex,
@@ -38,7 +38,7 @@ pub trait SQLMapper<'a, R> {
         &'a self,
         argument: &'a ConstValue,
         system_context: &'a SystemContext,
-    ) -> Result<R>;
+    ) -> Result<R, ExecutionError>;
 }
 
 pub trait SQLInsertMapper<'a> {
@@ -48,7 +48,7 @@ pub trait SQLInsertMapper<'a> {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         system_context: &'a SystemContext,
-    ) -> Result<AbstractInsert>;
+    ) -> Result<AbstractInsert, ExecutionError>;
 }
 
 pub trait SQLUpdateMapper<'a> {
@@ -59,7 +59,7 @@ pub trait SQLUpdateMapper<'a> {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         system_context: &'a SystemContext,
-    ) -> Result<AbstractUpdate>;
+    ) -> Result<AbstractUpdate, ExecutionError>;
 }
 
 #[async_trait]
@@ -69,25 +69,24 @@ pub trait OperationResolver<'a> {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<OperationResolverResult<'a>>;
+    ) -> Result<OperationResolverResult<'a>, ExecutionError>;
 
     async fn execute(
         &'a self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<QueryResponse> {
-        let resolver_result = self
-            .resolve_operation(field, system_context, request_context)
-            .await?;
-        let interceptors = self.interceptors().ordered();
-
-        let op_name = &self.name();
+    ) -> Result<QueryResponse, ExecutionError> {
+        let resolve = move |field: &'a ValidatedField,
+                            system_context: &'a SystemContext,
+                            request_context: &'a RequestContext<'a>| {
+            self.resolve_operation(field, system_context, request_context)
+        };
 
         let intercepted_operation =
-            InterceptedOperation::new(op_name, resolver_result, interceptors);
+            InterceptedOperation::new(self.name(), self.interceptors().ordered());
         let QueryResponse { body, headers } = intercepted_operation
-            .execute(field, system_context, request_context)
+            .execute(field, system_context, request_context, &resolve)
             .await?;
 
         // A proceed call in an around interceptor may have returned more fields that necessary (just like a normal service),
@@ -202,28 +201,26 @@ impl<'a> OperationResolverResult<'a> {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<QueryResponse> {
+    ) -> Result<QueryResponse, ExecutionError> {
         match self {
             OperationResolverResult::SQLOperation(abstract_operation) => {
                 let mut result = system_context
                     .database_executor
                     .execute(abstract_operation)
-                    .await?;
+                    .await
+                    .map_err(DatabaseExecutionError::Database)?;
 
-                let body: Result<QueryResponseBody> = if result.len() == 1 {
+                let body = if result.len() == 1 {
                     let string_result = extractor(result.swap_remove(0))?;
                     Ok(QueryResponseBody::Raw(Some(string_result)))
                 } else if result.is_empty() {
                     Ok(QueryResponseBody::Raw(None))
                 } else {
-                    bail!(format!(
-                        "Result has {} entries; expected only zero or one",
-                        result.len()
-                    ))
-                };
+                    Err(DatabaseExecutionError::NonUniqueResult(result.len()))
+                }?;
 
                 Ok(QueryResponse {
-                    body: body?,
+                    body,
                     headers: vec![], // we shouldn't get any HTTP headers from a SQL op
                 })
             }
@@ -240,7 +237,7 @@ impl<'a> OperationResolverResult<'a> {
                 .await;
 
                 if access_predicate == &Predicate::False {
-                    bail!(anyhow!(GraphQLExecutionError::Authorization))
+                    return Err(ExecutionError::Authorization);
                 }
 
                 resolve_deno(
@@ -261,7 +258,7 @@ pub async fn construct_arg_sequence(
     args: &[Argument],
     system_context: &SystemContext,
     request_context: &RequestContext<'_>,
-) -> Result<Vec<Arg>> {
+) -> Result<Vec<Arg>, ServiceExecutionError> {
     let system = &system_context.system;
     let mapped_args = field_args
         .iter()
@@ -307,13 +304,13 @@ pub async fn construct_arg_sequence(
                 // regular argument
                 Ok(Arg::Serde(val.clone()))
             } else {
-                Err(anyhow!("Invalid argument {}", arg.name))
+                Err(ServiceExecutionError::InvalidArgument(arg.name.clone()))
             }
         })
-        .collect::<Vec<Result<_>>>()
+        .collect::<Vec<Result<_, _>>>()
         .await
         .into_iter()
-        .collect::<Result<_>>()
+        .collect::<Result<_, _>>()
 }
 
 async fn resolve_deno<'a>(
@@ -322,7 +319,7 @@ async fn resolve_deno<'a>(
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     system_context: &SystemContext,
     request_context: &RequestContext<'_>,
-) -> Result<QueryResponse> {
+) -> Result<QueryResponse, ExecutionError> {
     let script = &system_context.system.deno_scripts[method.script];
 
     // construct a sequence of arguments to pass to the Deno method
@@ -349,7 +346,8 @@ async fn resolve_deno<'a>(
             None,
             callback_processor,
         )
-        .await?;
+        .await
+        .map_err(ServiceExecutionError::Deno)?;
 
     Ok(QueryResponse {
         body: QueryResponseBody::Json(result),
@@ -357,9 +355,9 @@ async fn resolve_deno<'a>(
     })
 }
 
-fn extractor<T: FromSqlOwned>(row: Row) -> Result<T> {
+fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, DatabaseExecutionError> {
     match row.try_get(0) {
         Ok(col) => Ok(col),
-        Err(err) => bail!("Got row without any columns {}", err),
+        Err(err) => Err(DatabaseExecutionError::EmptyRow(err)),
     }
 }

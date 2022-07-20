@@ -1,7 +1,6 @@
 use deno_core::Extension;
 use tokio::sync::oneshot;
 
-use anyhow::Result;
 use async_trait::async_trait;
 use futures::future::BoxFuture;
 use serde_json::Value;
@@ -12,7 +11,9 @@ use payas_deno::{
     deno_module::{DenoModule, DenoModuleSharedState},
 };
 
-use crate::{deno_integration, execution::system_context::QueryResponse};
+use crate::{
+    deno_integration, execution::system_context::QueryResponse, execution_error::ExecutionError,
+};
 
 use super::claytip_ops::InterceptedOperationInfo;
 
@@ -28,21 +29,26 @@ pub enum RequestFromDenoMessage {
     ClaytipExecute {
         query_string: String,
         variables: Option<serde_json::Map<String, Value>>,
+        context_override: Value,
         response_sender: oneshot::Sender<ResponseForDenoMessage>,
     },
 }
 
 pub enum ResponseForDenoMessage {
-    InterceptedOperationProceed(Result<QueryResponse>),
-    ClaytipExecute(Result<QueryResponse>),
+    InterceptedOperationProceed(Result<QueryResponse, ExecutionError>),
+    ClaytipExecute(Result<QueryResponse, ExecutionError>),
 }
 
-pub type FnClaytipExecuteQuery<'a> = (dyn Fn(String, Option<serde_json::Map<String, Value>>) -> BoxFuture<'a, Result<QueryResponse>>
+pub type FnClaytipExecuteQuery<'a> = (dyn Fn(
+    String,
+    Option<serde_json::Map<String, Value>>,
+    Value,
+) -> BoxFuture<'a, Result<QueryResponse, ExecutionError>>
      + 'a
      + Send
      + Sync);
 pub type FnClaytipInterceptorProceed<'a> =
-    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse>> + 'a + Send + Sync);
+    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, ExecutionError>> + 'a + Send + Sync);
 
 pub struct ClayCallbackProcessor<'a> {
     pub claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
@@ -65,10 +71,12 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a>
             RequestFromDenoMessage::ClaytipExecute {
                 query_string,
                 variables,
+                context_override,
                 response_sender,
             } => {
                 let query_result =
-                    self.claytip_execute_query.unwrap()(query_string, variables).await;
+                    self.claytip_execute_query.unwrap()(query_string, variables, context_override)
+                        .await;
                 response_sender
                     .send(ResponseForDenoMessage::ClaytipExecute(query_result))
                     .ok()
@@ -78,10 +86,18 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a>
     }
 }
 
-const SHIMS: [(&str, &str); 2] = [
-    ("ClaytipInjected", include_str!("claytip_shim.js")),
-    ("Operation", include_str!("operation_shim.js")),
-];
+const SHIMS: [(&str, &[&str]); 3] = {
+    let claytip_shim = include_str!("claytip_shim.js");
+    [
+        ("Claytip", &[claytip_shim]),
+        (
+            "ClaytipPriv",
+            // Pass both the shim and the private shim so that in effect we get `ClaytipPriv extends Claytip`.
+            &[claytip_shim, include_str!("claytip_priv_shim.js")],
+        ),
+        ("Operation", &[include_str!("operation_shim.js")]),
+    ]
+};
 
 const USER_AGENT: &str = "Claytip";
 const ADDITIONAL_CODE: &[&str] = &[include_str!("./claytip_error.js")];
@@ -103,6 +119,7 @@ pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
         let ext = Extension::builder()
             .ops(vec![
                 deno_integration::claytip_ops::op_claytip_execute_query::decl(),
+                deno_integration::claytip_ops::op_claytip_execute_query_priv::decl(),
                 deno_integration::claytip_ops::op_intercepted_operation_name::decl(),
                 deno_integration::claytip_ops::op_intercepted_operation_query::decl(),
                 deno_integration::claytip_ops::op_intercepted_proceed::decl(),

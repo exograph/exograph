@@ -3,14 +3,14 @@ use crate::{
         operation_mapper::{compute_sql_access_predicate, SQLOperationKind},
         query_resolver::QuerySQLOperations,
     },
-    execution::{resolver::GraphQLExecutionError, system_context::SystemContext},
+    execution::system_context::SystemContext,
+    execution_error::{ExecutionError, WithContext},
     request_context::RequestContext,
     validation::field::ValidatedField,
 };
 use async_trait::async_trait;
 use payas_sql::PhysicalTable;
 
-use anyhow::{anyhow, bail, Context, Result};
 use payas_model::model::{
     operation::{
         CreateDataParameter, Interceptors, Mutation, MutationKind, Query, UpdateDataParameter,
@@ -34,7 +34,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<OperationResolverResult<'a>> {
+    ) -> Result<OperationResolverResult<'a>, ExecutionError> {
         if let MutationKind::Service { method_id, .. } = &self.kind {
             Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
         } else {
@@ -114,7 +114,7 @@ async fn create_operation<'a>(
     select: AbstractSelect<'a>,
     system_context: &'a SystemContext,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractInsert<'a>> {
+) -> Result<AbstractInsert<'a>, ExecutionError> {
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
@@ -128,7 +128,7 @@ async fn create_operation<'a>(
     // See issue #69
     if access_predicate == AbstractPredicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
-        bail!(anyhow!(GraphQLExecutionError::Authorization))
+        return Err(ExecutionError::Authorization);
     }
 
     let argument_value = super::find_arg(&field.arguments, &data_param.name).unwrap();
@@ -143,7 +143,7 @@ async fn delete_operation<'a>(
     select: AbstractSelect<'a>,
     system_context: &'a SystemContext,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractDelete<'a>> {
+) -> Result<AbstractDelete<'a>, ExecutionError> {
     let (table, _, _) = return_type_info(mutation, system_context);
 
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -157,7 +157,7 @@ async fn delete_operation<'a>(
 
     if access_predicate == AbstractPredicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
-        bail!(anyhow!(GraphQLExecutionError::Authorization))
+        return Err(ExecutionError::Authorization);
     }
 
     let predicate = super::compute_predicate(
@@ -166,12 +166,10 @@ async fn delete_operation<'a>(
         AbstractPredicate::True,
         system_context,
     )
-    .with_context(|| {
-        format!(
-            "During predicate computation for parameter {}",
-            predicate_param.name
-        )
-    })?;
+    .with_context(format!(
+        "During predicate computation for parameter {}",
+        predicate_param.name
+    ))?;
 
     Ok(AbstractDelete {
         table,
@@ -188,7 +186,7 @@ async fn update_operation<'a>(
     select: AbstractSelect<'a>,
     system_context: &'a SystemContext,
     request_context: &'a RequestContext<'a>,
-) -> Result<AbstractUpdate<'a>> {
+) -> Result<AbstractUpdate<'a>, ExecutionError> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
     // nested predicates aren't working.
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -202,7 +200,7 @@ async fn update_operation<'a>(
 
     if access_predicate == AbstractPredicate::False {
         // Hard failure, no need to proceed to restrict the predicate in SQL
-        bail!(anyhow!(GraphQLExecutionError::Authorization))
+        return Err(ExecutionError::Authorization);
     }
 
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -212,12 +210,10 @@ async fn update_operation<'a>(
         AbstractPredicate::True,
         system_context,
     )
-    .with_context(|| {
-        format!(
-            "During predicate computation for parameter {}",
-            predicate_param.name
-        )
-    })?;
+    .with_context(format!(
+        "During predicate computation for parameter {}",
+        predicate_param.name
+    ))?;
 
     let argument_value = super::find_arg(&field.arguments, &data_param.name);
     argument_value

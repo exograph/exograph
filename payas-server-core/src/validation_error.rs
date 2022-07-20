@@ -2,7 +2,7 @@ use async_graphql_parser::Pos;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum ExecutionError {
+pub enum ValidationError {
     #[error("{0}")]
     QueryParsingFailed(String, Pos, Option<Pos>),
 
@@ -56,30 +56,30 @@ pub enum ExecutionError {
     MultipleOperationsUnmatchedOperationName(String),
 }
 
-impl ExecutionError {
+impl ValidationError {
     pub fn position1(&self) -> Pos {
         match self {
-            ExecutionError::QueryParsingFailed(_, pos, _) => *pos,
-            ExecutionError::VariableNotFound(_, pos) => *pos,
-            ExecutionError::MalformedVariable(_, pos, _) => *pos,
-            ExecutionError::FragmentDefinitionNotFound(_, pos) => *pos,
-            ExecutionError::InlineFragmentNotSupported(pos) => *pos,
-            ExecutionError::OperationNotFound(_, pos) => *pos,
-            ExecutionError::InvalidField(_, _, pos) => *pos,
-            ExecutionError::InvalidFieldType(_, pos) => *pos,
-            ExecutionError::ScalarWithField(_, pos) => *pos,
-            ExecutionError::RequiredArgumentNotFound(_, pos) => *pos,
-            ExecutionError::StrayArguments(_, _, pos) => *pos,
-            ExecutionError::NoOperationFound => Pos::default(),
-            ExecutionError::MultipleOperationsNoOperationName => Pos::default(),
-            ExecutionError::MultipleOperationsUnmatchedOperationName(_) => Pos::default(),
-            ExecutionError::InvalidArgumentType { pos, .. } => *pos,
+            ValidationError::QueryParsingFailed(_, pos, _) => *pos,
+            ValidationError::VariableNotFound(_, pos) => *pos,
+            ValidationError::MalformedVariable(_, pos, _) => *pos,
+            ValidationError::FragmentDefinitionNotFound(_, pos) => *pos,
+            ValidationError::InlineFragmentNotSupported(pos) => *pos,
+            ValidationError::OperationNotFound(_, pos) => *pos,
+            ValidationError::InvalidField(_, _, pos) => *pos,
+            ValidationError::InvalidFieldType(_, pos) => *pos,
+            ValidationError::ScalarWithField(_, pos) => *pos,
+            ValidationError::RequiredArgumentNotFound(_, pos) => *pos,
+            ValidationError::StrayArguments(_, _, pos) => *pos,
+            ValidationError::NoOperationFound => Pos::default(),
+            ValidationError::MultipleOperationsNoOperationName => Pos::default(),
+            ValidationError::MultipleOperationsUnmatchedOperationName(_) => Pos::default(),
+            ValidationError::InvalidArgumentType { pos, .. } => *pos,
         }
     }
 
     pub fn position2(&self) -> Option<Pos> {
         match self {
-            ExecutionError::QueryParsingFailed(_, _, pos) => *pos,
+            ValidationError::QueryParsingFailed(_, _, pos) => *pos,
             _ => None,
         }
     }

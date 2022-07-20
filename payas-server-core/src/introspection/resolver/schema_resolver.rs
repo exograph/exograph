@@ -1,3 +1,4 @@
+use crate::execution_error::ExecutionError;
 use crate::introspection::schema::{
     Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
 };
@@ -6,9 +7,8 @@ use crate::validation::field::ValidatedField;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
+use crate::execution::resolver::{FieldResolver, Resolver};
 use crate::execution::system_context::SystemContext;
-use anyhow::{anyhow, Result};
 
 #[async_trait]
 impl FieldResolver<Value> for Schema {
@@ -17,7 +17,7 @@ impl FieldResolver<Value> for Schema {
         field: &ValidatedField,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         let schema = &system_context.schema;
         match field.name.as_str() {
             "types" => {
@@ -46,10 +46,10 @@ impl FieldResolver<Value> for Schema {
             "directives" => Ok(Value::Array(vec![])), // TODO
             "description" => Ok(Value::String("Top-level schema".to_string())),
             "__typename" => Ok(Value::String("__Schema".to_string())),
-            field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
+            field_name => Err(ExecutionError::InvalidField(
                 field_name.to_owned(),
                 "Schema",
-            ))),
+            )),
         }
     }
 }

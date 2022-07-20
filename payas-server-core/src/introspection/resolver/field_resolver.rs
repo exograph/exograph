@@ -2,10 +2,10 @@ use async_graphql_parser::types::FieldDefinition;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::execution::resolver::{FieldResolver, GraphQLExecutionError, Resolver};
+use crate::execution::resolver::{FieldResolver, Resolver};
+use crate::execution_error::ExecutionError;
 use crate::request_context::RequestContext;
 use crate::{execution::system_context::SystemContext, validation::field::ValidatedField};
-use anyhow::{anyhow, Result};
 
 #[async_trait]
 impl FieldResolver<Value> for FieldDefinition {
@@ -14,7 +14,7 @@ impl FieldResolver<Value> for FieldDefinition {
         field: &ValidatedField,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         match field.name.as_str() {
             "name" => Ok(Value::String(self.name.node.as_str().to_owned())),
             "description" => Ok(self
@@ -35,10 +35,7 @@ impl FieldResolver<Value> for FieldDefinition {
             "isDeprecated" => Ok(Value::Bool(false)), // TODO
             "deprecationReason" => Ok(Value::Null),   // TODO
             "__typename" => Ok(Value::String("__Field".to_string())),
-            field_name => Err(anyhow!(GraphQLExecutionError::InvalidField(
-                field_name.to_owned(),
-                "Field",
-            ))),
+            field_name => Err(ExecutionError::InvalidField(field_name.to_owned(), "Field")),
         }
     }
 }

@@ -15,10 +15,12 @@ use std::collections::HashMap;
 use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 use predicate_mapper::PredicateParameterMapper;
 
-use anyhow::{Context, Result};
 use async_graphql_value::ConstValue;
 
-use crate::execution::system_context::SystemContext;
+use crate::{
+    execution::system_context::SystemContext,
+    execution_error::{ExecutionError, WithContext},
+};
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -44,7 +46,7 @@ fn compute_predicate<'a>(
     arguments: &'a Arguments,
     additional_predicate: AbstractPredicate<'a>,
     system_context: &'a SystemContext,
-) -> Result<AbstractPredicate<'a>> {
+) -> Result<AbstractPredicate<'a>, ExecutionError> {
     let mapped = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
@@ -54,7 +56,7 @@ fn compute_predicate<'a>(
             })
         })
         .transpose()
-        .context("While mapping predicate parameters to SQL")?;
+        .with_context("While mapping predicate parameters to SQL".into())?;
 
     let res = match mapped {
         Some(predicate) => {
@@ -128,44 +130,46 @@ pub fn to_column_path<'a>(
 
 macro_rules! claytip_execute_query {
     ($system_context:ident, $request_context:ident) => {
-        Some(
-            &move |query_string: String, variables: Option<serde_json::Map<String, Value>>| {
-                async move {
-                    // execute query
-                    let result = $system_context
-                        .execute_with_request_context(
-                            OperationsPayload {
-                                operation_name: None,
-                                query: query_string,
-                                variables,
-                            },
-                            $request_context.clone(),
-                        )
-                        .await?;
+        Some(&move |query_string: String,
+                    variables: Option<serde_json::Map<String, Value>>,
+                    context_override: Value| {
+            let new_request_context =
+                RequestContext::with_override($request_context, context_override);
+            async move {
+                // execute query
+                let result = $system_context
+                    .execute(
+                        OperationsPayload {
+                            operation_name: None,
+                            query: query_string,
+                            variables,
+                        },
+                        &new_request_context,
+                    )
+                    .await?;
 
-                    // collate result into a single QueryResponse
+                // collate result into a single QueryResponse
 
-                    // since query execution results in a Vec<(String, QueryResponse)>, we want to
-                    // extract and collect all HTTP headers generated in QueryResponses
-                    let headers = result
-                        .iter()
-                        .flat_map(|(_, response)| response.headers.clone())
-                        .collect::<Vec<_>>();
+                // since query execution results in a Vec<(String, QueryResponse)>, we want to
+                // extract and collect all HTTP headers generated in QueryResponses
+                let headers = result
+                    .iter()
+                    .flat_map(|(_, response)| response.headers.clone())
+                    .collect::<Vec<_>>();
 
-                    // generate the body
-                    let body = result
-                        .into_iter()
-                        .map(|(name, response)| (name, response.body.to_json().unwrap()))
-                        .collect::<Map<_, _>>();
+                // generate the body
+                let body = result
+                    .into_iter()
+                    .map(|(name, response)| (name, response.body.to_json().unwrap()))
+                    .collect::<Map<_, _>>();
 
-                    Ok(QueryResponse {
-                        body: QueryResponseBody::Json(serde_json::Value::Object(body)),
-                        headers,
-                    })
-                }
-                .boxed()
-            },
-        )
+                Ok(QueryResponse {
+                    body: QueryResponseBody::Json(serde_json::Value::Object(body)),
+                    headers,
+                })
+            }
+            .boxed()
+        })
     };
 }
 
