@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use bytes::Bytes;
 use maybe_owned::MaybeOwned;
 use std::{
@@ -6,6 +5,8 @@ use std::{
     fmt::{Debug, Display},
 };
 use tokio_postgres::types::{to_sql_checked, FromSql, ToSql, Type};
+
+use crate::database_error::DatabaseError;
 
 #[macro_use]
 #[cfg(test)]
@@ -105,7 +106,7 @@ impl ToSql for SQLValue {
             out.extend(self.value.as_slice());
             Ok(tokio_postgres::types::IsNull::No)
         } else {
-            Err(anyhow!("Type mismatch").into())
+            Err(DatabaseError::Generic("Type mismatch".into()).into())
         }
     }
 

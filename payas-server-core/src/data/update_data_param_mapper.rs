@@ -1,4 +1,3 @@
-use anyhow::Result;
 use async_graphql_value::ConstValue;
 use payas_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, ColumnPath, ColumnPathLink,
@@ -9,6 +8,7 @@ use payas_sql::{
 use crate::{
     data::mutation_resolver::return_type_info,
     execution::system_context::{self, SystemContext},
+    execution_error::ExecutionError,
 };
 
 use payas_model::model::{
@@ -31,7 +31,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         system_context: &'a SystemContext,
-    ) -> Result<AbstractUpdate<'a>> {
+    ) -> Result<AbstractUpdate<'a>, ExecutionError> {
         let system = &system_context.system;
         let data_type = &system.mutation_types[self.type_id];
 
@@ -309,7 +309,7 @@ fn compute_nested_inserts<'a>(
         argument: &'a ConstValue,
         container_model_type: &'a GqlType,
         system_context: &'a SystemContext,
-    ) -> Result<NestedAbstractInsert<'a>> {
+    ) -> Result<NestedAbstractInsert<'a>, ExecutionError> {
         let nested_reference_col = compute_nested_reference_column(
             field_model_type,
             container_model_type,

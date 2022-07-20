@@ -1,5 +1,4 @@
 use actix_web::cookie::Cookie;
-use anyhow::Result;
 use async_trait::async_trait;
 use payas_server_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},

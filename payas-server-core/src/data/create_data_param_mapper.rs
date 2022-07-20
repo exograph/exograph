@@ -1,11 +1,13 @@
-use anyhow::{anyhow, bail, Context, Result};
 use async_graphql_value::ConstValue;
 use payas_sql::{
     AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
     NestedElementRelation, NestedInsertion,
 };
 
-use crate::execution::system_context::{self, SystemContext};
+use crate::{
+    execution::system_context::{self, SystemContext},
+    execution_error::{ExecutionError, WithContext},
+};
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -25,7 +27,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         system_context: &'a SystemContext,
-    ) -> Result<AbstractInsert> {
+    ) -> Result<AbstractInsert, ExecutionError> {
         let system = &system_context.system;
 
         let table = mutation.return_type.physical_table(system);
@@ -48,12 +50,12 @@ pub fn map_argument<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
     system_context: &'a SystemContext,
-) -> Result<Vec<InsertionRow<'a>>> {
+) -> Result<Vec<InsertionRow<'a>>, ExecutionError> {
     match argument {
         ConstValue::List(arguments) => arguments
             .iter()
             .map(|argument| map_single(input_data_type, argument, system_context))
-            .collect::<Result<Vec<_>>>(),
+            .collect::<Result<Vec<_>, _>>(),
         _ => vec![map_single(input_data_type, argument, system_context)]
             .into_iter()
             .collect(),
@@ -65,13 +67,17 @@ fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
     system_context: &'a SystemContext,
-) -> Result<InsertionRow<'a>> {
+) -> Result<InsertionRow<'a>, ExecutionError> {
     let fields = match &input_data_type.kind {
-        GqlTypeKind::Primitive => bail!("Query attempted on a primitive type"),
+        GqlTypeKind::Primitive => {
+            return Err(ExecutionError::Generic(
+                "Query attempted on a primitive type".into(),
+            ))
+        }
         GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields,
     };
 
-    let row: Result<Vec<_>> = fields
+    let row: Result<Vec<_>, _> = fields
         .iter()
         .flat_map(|field| {
             // Process fields that map to a column in the current table
@@ -95,7 +101,7 @@ fn map_self_column<'a>(
     field: &'a GqlField,
     argument: &'a ConstValue,
     system_context: &'a SystemContext,
-) -> Result<InsertionElement<'a>> {
+) -> Result<InsertionElement<'a>, ExecutionError> {
     let system = &system_context.system;
 
     let key_column = key_column_id.get_column(system);
@@ -107,11 +113,10 @@ fn map_self_column<'a>(
                 .pk_column_id()
                 .map(|column_id| &column_id.get_column(system).column_name)
                 .ok_or_else(|| {
-                    anyhow!(
+                    ExecutionError::Generic(format!(
                         "{} did not have a primary key field when computing many-to-one for {}",
-                        other_type.name,
-                        field.name
-                    )
+                        other_type.name, field.name
+                    ))
                 })?;
             match system_context::get_argument_field(argument, other_type_pk_field_name) {
                 Some(other_type_pk_arg) => other_type_pk_arg,
@@ -122,12 +127,10 @@ fn map_self_column<'a>(
     };
 
     let value_column =
-        system_context::literal_column(argument_value, key_column).with_context(|| {
-            format!(
-                "While trying to get literal column for {}.{}",
-                key_column.table_name, key_column.column_name
-            )
-        })?;
+        system_context::literal_column(argument_value, key_column).with_context(format!(
+            "While trying to get literal column for {}.{}",
+            key_column.table_name, key_column.column_name
+        ))?;
 
     Ok(InsertionElement::SelfInsert(ColumnValuePair::new(
         key_column,
@@ -143,7 +146,7 @@ fn map_foreign<'a>(
     argument: &'a ConstValue,
     parent_data_type: &'a GqlType,
     system_context: &'a SystemContext,
-) -> Result<InsertionElement<'a>> {
+) -> Result<InsertionElement<'a>, ExecutionError> {
     let system = &system_context.system;
 
     fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {

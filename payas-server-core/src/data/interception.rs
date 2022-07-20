@@ -6,6 +6,7 @@ use crate::{
         FnClaytipInterceptorProceed, InterceptedOperationInfo,
     },
     execution::system_context::QueryResponseBody,
+    execution_error::{ExecutionError, ServiceExecutionError},
     request_context::RequestContext,
 };
 use async_recursion::async_recursion;
@@ -18,7 +19,6 @@ use crate::{
     validation::field::ValidatedField,
     OperationsPayload,
 };
-use anyhow::Result;
 use serde_json::{Map, Value};
 
 /// Determine the order and nesting for interceptors.
@@ -101,7 +101,7 @@ pub type FnResolve<'a> = (dyn Fn(
     &'a ValidatedField,
     &'a SystemContext,
     &'a RequestContext<'a>,
-) -> BoxFuture<'a, Result<OperationResolverResult<'a>>>
+) -> BoxFuture<'a, Result<OperationResolverResult<'a>, ExecutionError>>
      + 'a
      + Send
      + Sync);
@@ -173,7 +173,7 @@ impl<'a> InterceptedOperation<'a> {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
         resolve: &FnResolve<'a>,
-    ) -> Result<QueryResponse> {
+    ) -> Result<QueryResponse, ExecutionError> {
         match self {
             InterceptedOperation::Intercepted {
                 operation_name,
@@ -263,7 +263,7 @@ async fn execute_interceptor<'a>(
     operation_name: Option<String>,
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-) -> Result<(Value, Option<ClaytipMethodResponse>)> {
+) -> Result<(Value, Option<ClaytipMethodResponse>), ServiceExecutionError> {
     let script = &system_context.system.deno_scripts[interceptor.script];
 
     let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
@@ -281,7 +281,7 @@ async fn execute_interceptor<'a>(
         claytip_proceed: claytip_proceed_operation,
     };
 
-    system_context
+    Ok(system_context
         .deno_execution_pool
         .execute_and_get_r(
             &script.path,
@@ -294,5 +294,5 @@ async fn execute_interceptor<'a>(
             }),
             callback_processor,
         )
-        .await
+        .await?)
 }

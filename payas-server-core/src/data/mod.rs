@@ -15,10 +15,12 @@ use std::collections::HashMap;
 use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 use predicate_mapper::PredicateParameterMapper;
 
-use anyhow::{Context, Result};
 use async_graphql_value::ConstValue;
 
-use crate::execution::system_context::SystemContext;
+use crate::{
+    execution::system_context::SystemContext,
+    execution_error::{ExecutionError, WithContext},
+};
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -44,7 +46,7 @@ fn compute_predicate<'a>(
     arguments: &'a Arguments,
     additional_predicate: AbstractPredicate<'a>,
     system_context: &'a SystemContext,
-) -> Result<AbstractPredicate<'a>> {
+) -> Result<AbstractPredicate<'a>, ExecutionError> {
     let mapped = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
@@ -54,7 +56,7 @@ fn compute_predicate<'a>(
             })
         })
         .transpose()
-        .context("While mapping predicate parameters to SQL")?;
+        .with_context("While mapping predicate parameters to SQL".into())?;
 
     let res = match mapped {
         Some(predicate) => {
