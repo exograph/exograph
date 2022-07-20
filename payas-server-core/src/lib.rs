@@ -5,7 +5,6 @@ use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 ///
 /// The `resolve` function is responsible for doing the work, using information
 /// extracted from an incoming request, and returning the response as a stream.
-
 use ::tracing::{error, instrument};
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
