@@ -41,6 +41,8 @@ pub fn init() {
         let mut builder = pretty_env_logger::formatted_builder();
         let mut builder = builder
             .filter_level(LevelFilter::Warn)
+            // produces a number of traces that are not too relevant to claytip
+            // suppress INFO traces
             .filter_module("tracing_actix_web", LevelFilter::Warn)
             .filter_module("actix_server::worker", LevelFilter::Warn);
 

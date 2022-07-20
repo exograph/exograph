@@ -101,6 +101,8 @@ The code is instrumented using the [tracing](https://crates.io/crates/tracing) l
 
 The `RUST_LOG` environment variable can be used to configure the level(s) of spans and events which are recorded. It defaults to `info` but can be set to other standard log levels such as `debug` (which will also show logging from libraries such as `tokio-postgres`). More [sophisticated settings](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/struct.EnvFilter.html) can also be used to tune the output for specific crates and modules.
 
-By default, if `CLAY_TELEMETRY` is not set, Claytip will log warnings and errors to the console. Log levels for console logging can be set through the `CLAY_CONSOLE_LOG` variable.
-
 As an example, if we wanted to run the integration tests at debug level with the Jaeger integration, we would prefix the command above with `RUST_LOG=debug CLAY_TELEMETRY=jaeger`.
+
+By default, if `CLAY_TELEMETRY` is not set, Claytip will log warnings and errors to the console. Log levels for console logging can be set through the `CLAY_CONSOLE_LOG` variable. Log levels may be set per-module; by default, `tracing_actix_web` and `actix_server::worker` are both set to `warn` (even if `CLAY_CONSOLE_LOG` is set to be more verbose than `warn`). This may be overriden through the following directive:
+
+`CLAY_CONSOLE_LOG="tracing_actix_web=info,actix_server::worker=info"`
