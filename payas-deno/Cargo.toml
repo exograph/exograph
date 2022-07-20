@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
+thiserror = "1.0.31"
 async-trait = "0.1.53"
 deno_runtime = "0.63.0"
 deno_core = "0.137.0"

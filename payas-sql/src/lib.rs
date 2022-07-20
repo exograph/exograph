@@ -30,6 +30,8 @@ mod sql;
 mod asql;
 mod transform;
 
+pub mod database_error;
+
 /// Public types at the root level of this crate
 pub use asql::{
     abstract_operation::AbstractOperation,

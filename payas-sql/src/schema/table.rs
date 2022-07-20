@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::database_error::DatabaseError;
 use crate::sql::column::PhysicalColumnType;
 use crate::{PhysicalColumn, PhysicalTable};
-use anyhow::Result;
 use deadpool_postgres::Client;
 
 use super::constraint::Constraints;
@@ -100,7 +100,7 @@ impl PhysicalTable {
     pub(super) async fn from_db(
         client: &Client,
         table_name: &str,
-    ) -> Result<WithIssues<PhysicalTable>> {
+    ) -> Result<WithIssues<PhysicalTable>, DatabaseError> {
         // Query to get a list of columns in the table
         let columns_query = format!(
             "SELECT column_name FROM information_schema.columns WHERE table_name = '{}'",

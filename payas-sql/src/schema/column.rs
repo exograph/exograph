@@ -1,3 +1,4 @@
+use crate::database_error::DatabaseError;
 use crate::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
 use super::issue::{Issue, WithIssues};
@@ -6,8 +7,6 @@ use super::statement::SchemaStatement;
 use deadpool_postgres::Client;
 use std::collections::HashSet;
 use std::fmt::Write;
-
-use anyhow::Result;
 
 impl PhysicalColumn {
     pub fn diff<'a>(&'a self, new: &'a Self) -> Vec<SchemaOp<'a>> {
@@ -56,7 +55,7 @@ impl PhysicalColumn {
         is_pk: bool,
         explicit_type: Option<PhysicalColumnType>,
         unique_constraints: Vec<String>,
-    ) -> Result<WithIssues<Option<PhysicalColumn>>> {
+    ) -> Result<WithIssues<Option<PhysicalColumn>>, DatabaseError> {
         // Find all sequences in the database that are used for SERIAL (autoincrement) columns
         // e.g. an autoincrement column `id` in the table `users` will create a sequence called
         // `users_id_seq`

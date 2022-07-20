@@ -95,7 +95,12 @@ pub fn evaluate_using_deno(
     let mut deno_module = runtime.block_on(deno_module_future)?;
 
     // run method
-    runtime.block_on(deno_module.execute_function("evaluate", vec![Arg::Serde(testvariables_json)]))
+    runtime.block_on(async {
+        deno_module
+            .execute_function("evaluate", vec![Arg::Serde(testvariables_json)])
+            .await
+            .map_err(|e| anyhow!(e))
+    })
 }
 
 #[cfg(test)]

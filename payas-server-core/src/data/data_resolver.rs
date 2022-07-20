@@ -3,11 +3,10 @@ use crate::{
         resolver::FieldResolver,
         system_context::{QueryResponse, SystemContext},
     },
+    execution_error::ExecutionError,
     request_context::RequestContext,
     validation::field::ValidatedField,
 };
-use anyhow::Context;
-use anyhow::{anyhow, Result};
 use async_graphql_parser::types::OperationType;
 use async_trait::async_trait;
 
@@ -24,7 +23,7 @@ pub trait DataResolver {
         operation_type: &'e OperationType,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<QueryResponse>;
+    ) -> Result<QueryResponse, ExecutionError>;
 }
 
 #[async_trait]
@@ -34,18 +33,18 @@ impl FieldResolver<Value> for Value {
         field: &ValidatedField,
         _system_context: &'a SystemContext,
         _request_context: &'a RequestContext<'a>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         let field_name = field.name.as_str();
 
         if let Value::Object(map) = self {
-            map.get(field_name)
-                .cloned()
-                .ok_or_else(|| anyhow!("No field named {} in Object", field_name))
+            map.get(field_name).cloned().ok_or_else(|| {
+                ExecutionError::Generic(format!("No field named {} in Object", field_name))
+            })
         } else {
-            Err(anyhow!(
+            Err(ExecutionError::Generic(format!(
                 "{} is not an Object and doesn't have any fields",
                 field_name
-            ))
+            )))
         }
     }
 }
@@ -58,7 +57,7 @@ impl DataResolver for ModelSystem {
         operation_type: &'e OperationType,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<QueryResponse> {
+    ) -> Result<QueryResponse, ExecutionError> {
         let name = &field.name;
 
         match operation_type {
@@ -66,7 +65,7 @@ impl DataResolver for ModelSystem {
                 let operation = self
                     .queries
                     .get_by_key(name)
-                    .with_context(|| format!("No such query {}", name))?;
+                    .ok_or_else(|| ExecutionError::Generic(format!("No such query {}", name)))?;
                 operation
                     .execute(field, system_context, request_context)
                     .await
@@ -75,7 +74,7 @@ impl DataResolver for ModelSystem {
                 let operation = self
                     .mutations
                     .get_by_key(name)
-                    .with_context(|| format!("No such mutation {}", name))?;
+                    .ok_or_else(|| ExecutionError::Generic(format!("No such mutation {}", name)))?;
                 operation
                     .execute(field, system_context, request_context)
                     .await

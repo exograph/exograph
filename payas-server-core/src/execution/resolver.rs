@@ -1,12 +1,12 @@
 use std::iter::FromIterator;
 
-use anyhow::Result;
 use async_graphql_parser::Positioned;
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::Value;
 
 use crate::{
+    execution_error::ExecutionError,
     request_context::{self, RequestContext},
     validation::field::ValidatedField,
 };
@@ -20,7 +20,7 @@ pub trait Resolver<R> {
         fields: &'e [ValidatedField],
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<R>;
+    ) -> Result<R, ExecutionError>;
 }
 
 #[async_trait]
@@ -38,49 +38,24 @@ where
         field: &ValidatedField,
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<R>;
+    ) -> Result<R, ExecutionError>;
 
     async fn resolve_fields(
         &self,
         fields: &[ValidatedField],
         system_context: &SystemContext,
         request_context: &request_context::RequestContext<'_>,
-    ) -> Result<Vec<(String, R)>> {
+    ) -> Result<Vec<(String, R)>, ExecutionError> {
         futures::stream::iter(fields.iter())
             .then(|field| async {
                 self.resolve_field(field, system_context, request_context)
                     .await
                     .map(|value| (field.output_name(), value))
             })
-            .collect::<Vec<Result<_>>>()
+            .collect::<Vec<Result<_, _>>>()
             .await
             .into_iter()
             .collect()
-    }
-}
-
-#[derive(Debug)]
-pub enum GraphQLExecutionError {
-    InvalidField(String, &'static str), // (field name, container type)
-    Authorization,
-}
-
-impl std::error::Error for GraphQLExecutionError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
-}
-
-impl std::fmt::Display for GraphQLExecutionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            GraphQLExecutionError::InvalidField(field_name, container_name) => {
-                write!(f, "Invalid field {} for {}", field_name, container_name)
-            }
-            GraphQLExecutionError::Authorization => {
-                write!(f, "Not authorized")
-            }
-        }
     }
 }
 
@@ -107,7 +82,7 @@ where
         fields: &'e [ValidatedField],
         system_context: &'e SystemContext,
         request_context: &'e request_context::RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         Ok(Value::Object(FromIterator::from_iter(
             self.resolve_fields(fields, system_context, request_context)
                 .await?,
@@ -125,7 +100,7 @@ where
         fields: &'e [ValidatedField],
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         match self {
             Some(elem) => {
                 elem.resolve_value(fields, system_context, request_context)
@@ -146,7 +121,7 @@ where
         fields: &'e [ValidatedField],
         system_context: &'e SystemContext,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         self.node
             .resolve_value(fields, system_context, request_context)
             .await
@@ -163,13 +138,13 @@ where
         fields: &'e [ValidatedField],
         system_context: &'e SystemContext,
         request_context: &'e request_context::RequestContext<'e>,
-    ) -> Result<Value> {
+    ) -> Result<Value, ExecutionError> {
         let resolved: Vec<_> = futures::stream::iter(self.iter())
             .then(|elem| elem.resolve_value(fields, system_context, request_context))
             .collect()
             .await;
 
-        let resolved: Result<Vec<Value>> = resolved.into_iter().collect();
+        let resolved: Result<Vec<Value>, ExecutionError> = resolved.into_iter().collect();
 
         Ok(Value::Array(resolved?))
     }

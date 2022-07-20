@@ -4,6 +4,7 @@
 /// embedding.
 ///
 mod deno_actor;
+pub mod deno_error;
 pub mod deno_executor;
 pub mod deno_executor_pool;
 
