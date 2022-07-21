@@ -24,6 +24,7 @@ use serde_json::{Map, Value};
 use crate::{execution::system_context::QueryResponseBody, execution_error::ExecutionError};
 
 mod data;
+mod deno;
 mod deno_integration;
 mod execution;
 mod execution_error;

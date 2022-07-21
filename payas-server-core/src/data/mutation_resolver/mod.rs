@@ -24,7 +24,7 @@ use payas_sql::{
 };
 
 use super::operation_mapper::{
-    OperationResolver, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
+    DenoOperation, OperationResolver, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
 };
 
 #[async_trait]
@@ -36,7 +36,9 @@ impl<'a> OperationResolver<'a> for Mutation {
         request_context: &'a RequestContext<'a>,
     ) -> Result<OperationResolverResult<'a>, ExecutionError> {
         if let MutationKind::Service { method_id, .. } = &self.kind {
-            Ok(OperationResolverResult::DenoOperation(method_id.unwrap()))
+            Ok(OperationResolverResult::DenoOperation(DenoOperation(
+                method_id.unwrap(),
+            )))
         } else {
             let abstract_select = {
                 let (_, pk_query, collection_query) = return_type_info(self, system_context);

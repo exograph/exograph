@@ -1,25 +1,21 @@
+use async_recursion::async_recursion;
+use futures::{future::BoxFuture, FutureExt};
+use serde_json::{Map, Value};
 use std::collections::HashMap;
+
+use payas_deno::Arg;
+use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::{
     deno_integration::{
         clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
         FnClaytipInterceptorProceed, InterceptedOperationInfo,
     },
-    execution::system_context::QueryResponseBody,
+    execution::system_context::{QueryResponse, QueryResponseBody, SystemContext},
     execution_error::{ExecutionError, ServiceExecutionError},
     request_context::RequestContext,
-};
-use async_recursion::async_recursion;
-use futures::{future::BoxFuture, FutureExt};
-use payas_deno::Arg;
-use payas_model::model::interceptor::{Interceptor, InterceptorKind};
-
-use crate::{
-    execution::system_context::{QueryResponse, SystemContext},
     validation::field::ValidatedField,
-    OperationsPayload,
 };
-use serde_json::{Map, Value};
 
 /// Determine the order and nesting for interceptors.
 ///
@@ -95,7 +91,9 @@ use serde_json::{Map, Value};
 ///     ]
 /// )
 /// ```
-use super::operation_mapper::{construct_arg_sequence, OperationResolverResult};
+use crate::data::operation_mapper::OperationResolverResult;
+
+use super::deno_resolver::construct_arg_sequence;
 
 pub type FnResolve<'a> = (dyn Fn(
     &'a ValidatedField,

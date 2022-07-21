@@ -18,7 +18,9 @@ use payas_sql::{ColumnSelection, SelectionCardinality, SelectionElement};
 use payas_sql::{Limit, Offset};
 
 use super::{
-    operation_mapper::{compute_sql_access_predicate, OperationResolverResult, SQLOperationKind},
+    operation_mapper::{
+        compute_sql_access_predicate, DenoOperation, OperationResolverResult, SQLOperationKind,
+    },
     order_by_mapper::OrderByParameterMapper,
 };
 use super::{
@@ -51,7 +53,7 @@ impl<'a> OperationResolver<'a> for Query {
             }
 
             QueryKind::Service { method_id, .. } => {
-                OperationResolverResult::DenoOperation(method_id.unwrap())
+                OperationResolverResult::DenoOperation(DenoOperation(method_id.unwrap()))
             }
         })
     }
