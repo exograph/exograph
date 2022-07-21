@@ -391,9 +391,21 @@ version = "3.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0302764f05e0e50fd3b381646d4a0ed07d4ce5c9fc1eaf79bbd7745bd4893adb"
 dependencies = [
- "async-graphql-value",
+ "async-graphql-value 3.0.38",
  "pest",
  "pest_derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "async-graphql-parser"
+version = "4.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a73c90d34c7456bf28a764bfa201c41ac1929b3c376af1815d5f6b176bf74fe4"
+dependencies = [
+ "async-graphql-value 4.0.5",
+ "pest",
  "serde",
  "serde_json",
 ]
@@ -403,6 +415,18 @@ name = "async-graphql-value"
 version = "3.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba2e19876bcd2068f597fd0182f4ba602ce3c89cb04c4b8810d7c36f44724e92"
+dependencies = [
+ "bytes",
+ "indexmap",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "async-graphql-value"
+version = "4.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b79f082786fccd251a8e9615df7f8d45dc8c5305f89062e79a9be570bcd08585"
 dependencies = [
  "bytes",
  "indexmap",
@@ -1107,7 +1131,7 @@ dependencies = [
  "async-trait",
  "deno_core",
  "tokio",
- "uuid 1.1.0",
+ "uuid 1.1.2",
 ]
 
 [[package]]
@@ -1173,7 +1197,7 @@ dependencies = [
  "sha2",
  "spki",
  "tokio",
- "uuid 1.1.0",
+ "uuid 1.1.2",
 ]
 
 [[package]]
@@ -1307,7 +1331,7 @@ dependencies = [
  "sys-info",
  "termcolor",
  "tokio",
- "uuid 1.1.0",
+ "uuid 1.1.2",
  "winapi 0.3.9",
  "winres",
 ]
@@ -1353,7 +1377,7 @@ dependencies = [
  "flate2",
  "serde",
  "tokio",
- "uuid 1.1.0",
+ "uuid 1.1.2",
 ]
 
 [[package]]
@@ -3390,8 +3414,8 @@ name = "payas-server-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
+ "async-graphql-parser 4.0.5",
+ "async-graphql-value 4.0.5",
  "async-recursion",
  "async-stream",
  "async-trait",
@@ -3456,8 +3480,8 @@ version = "0.1.0"
 dependencies = [
  "ansi_term",
  "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
+ "async-graphql-parser 3.0.38",
+ "async-graphql-value 3.0.38",
  "insta",
  "isahc",
  "jsonwebtoken",
@@ -5238,9 +5262,9 @@ dependencies = [
 
 [[package]]
 name = "uuid"
-version = "1.1.0"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93bbc61e655a4833cf400d0d15bf3649313422fa7572886ad6dab16d79886365"
+checksum = "dd6469f4314d5f1ffec476e05f17cc9a78bc7a27a6a857842170bdf8d6f98d2f"
 dependencies = [
  "getrandom",
  "serde",
