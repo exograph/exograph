@@ -11,7 +11,7 @@ use payas_model::model::{
 use crate::builder::mutation_builder::{create_data_type_name, update_data_type_name};
 use crate::builder::query_builder;
 
-use payas_model::model::operation::{MutationKind, UpdateDataParameter};
+use payas_model::model::operation::{DatabaseMutationKind, UpdateDataParameter};
 
 use super::mutation_builder::{DataParamBuilder, MutationBuilder};
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
@@ -74,8 +74,8 @@ impl MutationBuilder for UpdateMutationBuilder {
         model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
-    ) -> MutationKind {
-        MutationKind::Update {
+    ) -> DatabaseMutationKind {
+        DatabaseMutationKind::Update {
             data_param: Self::data_param(model_type, building, false),
             predicate_param: query_builder::pk_predicate_param(model_type_id, model_type, building),
         }
@@ -89,8 +89,8 @@ impl MutationBuilder for UpdateMutationBuilder {
         model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
-    ) -> MutationKind {
-        MutationKind::Update {
+    ) -> DatabaseMutationKind {
+        DatabaseMutationKind::Update {
             data_param: Self::data_param(model_type, building, true),
             predicate_param: query_builder::collection_predicate_param(
                 model_type_id,

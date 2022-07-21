@@ -3,7 +3,8 @@ use async_graphql_parser::types::FieldDefinition;
 
 use payas_model::model::{
     operation::{
-        DatabaseQueryParameter, Mutation, MutationKind, OperationReturnType, Query, QueryKind,
+        DatabaseMutationKind, DatabaseQueryParameter, Mutation, MutationKind, OperationReturnType,
+        Query, QueryKind,
     },
     system::ModelSystem,
 };
@@ -70,12 +71,15 @@ impl Operation for Mutation {
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
         match &self.kind {
-            MutationKind::Create(data_param) => vec![data_param],
-            MutationKind::Delete(predicate_param) => vec![predicate_param],
-            MutationKind::Update {
-                data_param,
-                predicate_param,
-            } => vec![predicate_param, data_param],
+            MutationKind::Database { kind } => match kind {
+                DatabaseMutationKind::Create(data_param) => vec![data_param],
+                DatabaseMutationKind::Delete(predicate_param) => vec![predicate_param],
+                DatabaseMutationKind::Update {
+                    data_param,
+                    predicate_param,
+                } => vec![predicate_param, data_param],
+            },
+
             MutationKind::Service { argument_param, .. } => argument_param
                 .iter()
                 .map(|param| {

@@ -14,7 +14,8 @@ use payas_sql::PhysicalTable;
 
 use payas_model::model::{
     operation::{
-        CreateDataParameter, Interceptors, Mutation, MutationKind, Query, UpdateDataParameter,
+        CreateDataParameter, DatabaseMutationKind, Interceptors, Mutation, MutationKind, Query,
+        UpdateDataParameter,
     },
     predicate::PredicateParameter,
     types::{GqlTypeKind, GqlTypeModifier},
@@ -36,68 +37,69 @@ impl<'a> OperationResolver<'a> for Mutation {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<OperationResolverResult<'a>, ExecutionError> {
-        if let MutationKind::Service { method_id, .. } = &self.kind {
-            Ok(OperationResolverResult::DenoOperation(DenoOperation(
-                method_id.unwrap(),
-            )))
-        } else {
-            let abstract_select = {
-                let (_, pk_query, collection_query) = return_type_info(self, system_context);
-                let selection_query = match &self.return_type.type_modifier {
-                    GqlTypeModifier::List => collection_query,
-                    GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
+        match &self.kind {
+            MutationKind::Database { kind } => {
+                let abstract_select = {
+                    let (_, pk_query, collection_query) = return_type_info(self, system_context);
+                    let selection_query = match &self.return_type.type_modifier {
+                        GqlTypeModifier::List => collection_query,
+                        GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
+                    };
+
+                    selection_query
+                        .operation(
+                            field,
+                            AbstractPredicate::True,
+                            system_context,
+                            request_context,
+                        )
+                        .await?
                 };
 
-                selection_query
-                    .operation(
-                        field,
-                        AbstractPredicate::True,
-                        system_context,
-                        request_context,
-                    )
-                    .await?
-            };
+                Ok(OperationResolverResult::SQLOperation(match kind {
+                    DatabaseMutationKind::Create(data_param) => AbstractOperation::Insert(
+                        create_operation(
+                            self,
+                            data_param,
+                            field,
+                            abstract_select,
+                            system_context,
+                            request_context,
+                        )
+                        .await?,
+                    ),
+                    DatabaseMutationKind::Delete(predicate_param) => AbstractOperation::Delete(
+                        delete_operation(
+                            self,
+                            predicate_param,
+                            field,
+                            abstract_select,
+                            system_context,
+                            request_context,
+                        )
+                        .await?,
+                    ),
+                    DatabaseMutationKind::Update {
+                        data_param,
+                        predicate_param,
+                    } => AbstractOperation::Update(
+                        update_operation(
+                            self,
+                            data_param,
+                            predicate_param,
+                            field,
+                            abstract_select,
+                            system_context,
+                            request_context,
+                        )
+                        .await?,
+                    ),
+                }))
+            }
 
-            Ok(OperationResolverResult::SQLOperation(match &self.kind {
-                MutationKind::Create(data_param) => AbstractOperation::Insert(
-                    create_operation(
-                        self,
-                        data_param,
-                        field,
-                        abstract_select,
-                        system_context,
-                        request_context,
-                    )
-                    .await?,
-                ),
-                MutationKind::Delete(predicate_param) => AbstractOperation::Delete(
-                    delete_operation(
-                        self,
-                        predicate_param,
-                        field,
-                        abstract_select,
-                        system_context,
-                        request_context,
-                    )
-                    .await?,
-                ),
-                MutationKind::Update {
-                    data_param,
-                    predicate_param,
-                } => AbstractOperation::Update(
-                    update_operation(
-                        self,
-                        data_param,
-                        predicate_param,
-                        field,
-                        abstract_select,
-                        system_context,
-                        request_context,
-                    )
-                    .await?,
-                ),
-                MutationKind::Service { .. } => panic!(),
-            }))
+            MutationKind::Service { method_id, .. } => Ok(OperationResolverResult::DenoOperation(
+                DenoOperation(method_id.unwrap()),
+            )),
         }
     }
 
