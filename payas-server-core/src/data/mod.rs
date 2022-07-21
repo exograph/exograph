@@ -19,15 +19,42 @@ use async_graphql_value::ConstValue;
 use crate::{
     execution::system_context::SystemContext,
     execution_error::{ExecutionError, WithContext},
+    request_context::RequestContext,
 };
 
 use payas_model::model::{
     column_id::ColumnId,
+    operation::OperationReturnType,
     predicate::{ColumnIdPath, ColumnIdPathLink, PredicateParameter},
     system::ModelSystem,
+    GqlCompositeType, GqlTypeKind,
 };
 
+use self::operation_mapper::SQLOperationKind;
+
 pub type Arguments = HashMap<String, ConstValue>;
+
+pub async fn compute_sql_access_predicate<'a>(
+    return_type: &OperationReturnType,
+    kind: &SQLOperationKind,
+    system_context: &'a SystemContext,
+    request_context: &'a RequestContext<'a>,
+) -> AbstractPredicate<'a> {
+    let return_type = return_type.typ(&system_context.system);
+
+    match &return_type.kind {
+        GqlTypeKind::Primitive => AbstractPredicate::True,
+        GqlTypeKind::Composite(GqlCompositeType { access, .. }) => {
+            let access_expr = match kind {
+                SQLOperationKind::Create => &access.creation,
+                SQLOperationKind::Retrieve => &access.read,
+                SQLOperationKind::Update => &access.update,
+                SQLOperationKind::Delete => &access.delete,
+            };
+            access_solver::solve_access(access_expr, request_context, &system_context.system).await
+        }
+    }
+}
 
 fn find_arg<'a>(arguments: &'a Arguments, arg_name: &str) -> Option<&'a ConstValue> {
     arguments.iter().find_map(|argument| {

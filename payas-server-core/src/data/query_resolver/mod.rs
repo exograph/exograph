@@ -2,6 +2,7 @@ use crate::{
     execution::system_context::SystemContext,
     execution_error::{ExecutionError, WithContext},
     request_context::RequestContext,
+    resolver::OperationResolver,
     validation::field::ValidatedField,
 };
 
@@ -18,15 +19,11 @@ use payas_sql::{ColumnSelection, SelectionCardinality, SelectionElement};
 use payas_sql::{Limit, Offset};
 
 use super::{
-    operation_mapper::{
-        compute_sql_access_predicate, DenoOperation, OperationResolverResult, SQLOperationKind,
-    },
+    compute_sql_access_predicate,
+    operation_mapper::{DenoOperation, OperationResolverResult, SQLOperationKind},
     order_by_mapper::OrderByParameterMapper,
 };
-use super::{
-    operation_mapper::{OperationResolver, SQLMapper},
-    Arguments,
-};
+use super::{operation_mapper::SQLMapper, Arguments};
 
 // TODO: deal with panics at the type level
 

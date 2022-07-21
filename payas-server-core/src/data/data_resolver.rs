@@ -13,7 +13,7 @@ use async_trait::async_trait;
 use payas_model::model::system::ModelSystem;
 use serde_json::Value;
 
-use super::operation_mapper::OperationResolver;
+use crate::resolver::OperationResolver;
 
 #[async_trait]
 pub trait DataResolver {

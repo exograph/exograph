@@ -1,11 +1,12 @@
 use crate::{
     data::{
-        operation_mapper::{compute_sql_access_predicate, SQLOperationKind},
+        compute_sql_access_predicate, operation_mapper::SQLOperationKind,
         query_resolver::QuerySQLOperations,
     },
     execution::system_context::SystemContext,
     execution_error::{ExecutionError, WithContext},
     request_context::RequestContext,
+    resolver::OperationResolver,
     validation::field::ValidatedField,
 };
 use async_trait::async_trait;
@@ -24,7 +25,7 @@ use payas_sql::{
 };
 
 use super::operation_mapper::{
-    DenoOperation, OperationResolver, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
+    DenoOperation, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
 };
 
 #[async_trait]
