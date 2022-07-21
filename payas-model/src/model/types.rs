@@ -126,13 +126,9 @@ impl GqlCompositeType {
     }
 
     pub fn pk_field(&self) -> Option<&GqlField> {
-        self.fields.iter().find_map(|field| {
-            if let GqlRelation::Pk { .. } = &field.relation {
-                Some(field)
-            } else {
-                None
-            }
-        })
+        self.fields
+            .iter()
+            .find(|field| matches!(&field.relation, GqlRelation::Pk { .. }))
     }
 
     pub fn pk_column_id(&self) -> Option<ColumnId> {

@@ -292,7 +292,7 @@ pub enum Column<'a> {
     Null,
 }
 
-impl<'a> Expression for PhysicalColumn {
+impl Expression for PhysicalColumn {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         let col_stmt = if expression_context.plain {
             format!("\"{}\"", self.column_name)

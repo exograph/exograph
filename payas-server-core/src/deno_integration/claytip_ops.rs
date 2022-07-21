@@ -21,9 +21,12 @@ pub async fn op_claytip_execute_query_helper(
     variables: Option<Value>,
     context_override: Value,
 ) -> Result<Value, AnyError> {
-    let mut state = state.borrow_mut();
-    let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+
+    let sender = {
+        let state = state.borrow();
+        state.borrow::<Sender<RequestFromDenoMessage>>().to_owned()
+    };
 
     sender
         .send(RequestFromDenoMessage::ClaytipExecute {
@@ -51,6 +54,8 @@ pub async fn op_claytip_execute_query_helper(
         let result = result?;
 
         for (header, value) in result.headers.into_iter() {
+            let mut state = state.borrow_mut();
+
             add_header(&mut state, header, value)?
         }
 
@@ -100,9 +105,12 @@ pub fn op_intercepted_operation_query(state: &mut OpState) -> Result<Value, AnyE
 
 #[op]
 pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value, AnyError> {
-    let mut state = state.borrow_mut();
-    let sender = state.borrow::<Sender<RequestFromDenoMessage>>().to_owned();
     let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
+
+    let sender = {
+        let state = state.borrow();
+        state.borrow::<Sender<RequestFromDenoMessage>>().to_owned()
+    };
 
     sender
         .send(RequestFromDenoMessage::InterceptedOperationProceed { response_sender })
@@ -125,6 +133,7 @@ pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value
         let result = result?;
 
         for (header, value) in result.headers.into_iter() {
+            let mut state = state.borrow_mut();
             add_header(&mut state, header, value)?
         }
 

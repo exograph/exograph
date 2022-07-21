@@ -133,7 +133,7 @@ pub(crate) fn run_testfile(
         let port: String = line
             .trim_start_matches(MAGIC_STRING)
             .chars()
-            .take_while(|c| c.is_digit(10))
+            .take_while(|c| c.is_ascii_digit())
             .collect();
         let endpoint = format!("http://127.0.0.1:{}/graphql", port);
 
