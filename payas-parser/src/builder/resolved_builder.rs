@@ -1120,7 +1120,9 @@ fn compute_column_info(
                 .unwrap_or_else(|| field_name.to_snake_case())
         };
 
-        let unique_constraint_computed_name = format!("unique_constraint_{}", field.name);
+        let unique_constraint_computed_name =
+            format!("unique_constraint_{}_{}", enclosing_type.name, field.name)
+                .to_ascii_lowercase();
         let unique_constraints = field
             .annotations
             .get("unique")

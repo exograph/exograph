@@ -328,7 +328,7 @@ mod tests {
                     false,
                 ),
                 (
-                    r#"ALTER TABLE "memberships" ADD CONSTRAINT "unique_constraint_user" UNIQUE ("user_id");"#,
+                    r#"ALTER TABLE "memberships" ADD CONSTRAINT "unique_constraint_membership_user" UNIQUE ("user_id");"#,
                     false,
                 ),
             ],
@@ -338,7 +338,7 @@ mod tests {
                     false,
                 ),
                 (
-                    r#"ALTER TABLE "memberships" ADD CONSTRAINT "unique_constraint_user" UNIQUE (user_id);"#,
+                    r#"ALTER TABLE "memberships" ADD CONSTRAINT "unique_constraint_membership_user" UNIQUE (user_id);"#,
                     false,
                 ),
                 (
@@ -349,7 +349,7 @@ mod tests {
             vec![
                 (r#"ALTER TABLE "memberships" DROP COLUMN "user_id";"#, true),
                 (
-                    r#"ALTER TABLE "memberships" DROP CONSTRAINT "unique_constraint_user";"#,
+                    r#"ALTER TABLE "memberships" DROP CONSTRAINT "unique_constraint_membership_user";"#,
                     false,
                 ),
             ],
