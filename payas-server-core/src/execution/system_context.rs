@@ -2,12 +2,10 @@ use std::str::FromStr;
 
 use crate::execution_error::{CastError, ExecutionError};
 use crate::request_context::RequestContext;
-use crate::validation::operation::ValidatedOperation;
+use crate::validation::{document_validator::DocumentValidator, operation::ValidatedOperation};
+use crate::validation_error::ValidationError;
 use crate::OperationsPayload;
-use crate::{
-    introspection::schema::Schema, validation::document_validator::DocumentValidator,
-    validation_error::ValidationError,
-};
+use crate::{introspection::definition::root_element::RootElement, introspection::schema::Schema};
 use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
 use payas_sql::database_error::DatabaseError;
@@ -17,8 +15,7 @@ use payas_model::model::system::ModelSystem;
 use payas_sql::DatabaseExecutor;
 use tracing::{error, instrument};
 
-use async_graphql_parser::types::{BaseType, OperationType, Type};
-use async_graphql_value::{ConstValue, Name, Number};
+use async_graphql_value::{ConstValue, Number};
 use async_trait::async_trait;
 use chrono::prelude::*;
 use chrono::DateTime;
@@ -30,15 +27,9 @@ use payas_sql::{
 use pg_bigdecimal::{BigDecimal, PgNumeric};
 use serde_json::Value as JsonValue;
 
-use super::resolver::{FieldResolver, Resolver};
+use super::resolver::FieldResolver;
 
-use crate::{
-    data::data_resolver::DataResolver,
-    introspection::schema::{
-        MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
-    },
-    validation::field::ValidatedField,
-};
+use crate::{data::data_resolver::DataResolver, validation::field::ValidatedField};
 
 const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
@@ -132,30 +123,6 @@ impl SystemContext {
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
-    }
-
-    async fn resolve_type<'b>(
-        &self,
-        field: &ValidatedField,
-        request_context: &'b RequestContext<'b>,
-    ) -> Result<JsonValue, ExecutionError> {
-        let type_name = &field
-            .arguments
-            .iter()
-            .find(|arg| arg.0 == "name")
-            .unwrap()
-            .1;
-
-        if let ConstValue::String(name_specified) = &type_name {
-            let tpe: Type = Type {
-                base: BaseType::Named(Name::new(name_specified)),
-                nullable: true,
-            };
-            tpe.resolve_value(&field.subfields, self, request_context)
-                .await
-        } else {
-            Ok(JsonValue::Null)
-        }
     }
 }
 
@@ -482,43 +449,17 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
         let name = field.name.as_str();
 
         if name.starts_with("__") {
-            let body: Result<QueryResponseBody, ExecutionError> =
-                if system_context.allow_introspection {
-                    match name {
-                        "__type" => Ok(QueryResponseBody::Json(
-                            system_context.resolve_type(field, request_context).await?,
-                        )),
-                        "__schema" => Ok(QueryResponseBody::Json(
-                            system_context
-                                .schema
-                                .resolve_value(&field.subfields, system_context, request_context)
-                                .await?,
-                        )),
-                        "__typename" => {
-                            let typename = match self.typ {
-                                OperationType::Query => QUERY_ROOT_TYPENAME,
-                                OperationType::Mutation => MUTATION_ROOT_TYPENAME,
-                                OperationType::Subscription => SUBSCRIPTION_ROOT_TYPENAME,
-                            };
-                            Ok(QueryResponseBody::Json(JsonValue::String(
-                                typename.to_string(),
-                            )))
-                        }
-                        _ => {
-                            return Err(ExecutionError::Generic(format!(
-                                "No such introspection field {}",
-                                name
-                            )))
-                        }
-                    }
-                } else {
-                    return Err(ExecutionError::Generic(
-                        "Introspection is not allowed".into(),
-                    ));
-                };
+            let introspection_root = RootElement {
+                operation_type: &self.typ,
+                name,
+            };
+
+            let body = introspection_root
+                .resolve_field(field, system_context, request_context)
+                .await?;
 
             Ok(QueryResponse {
-                body: body?,
+                body: QueryResponseBody::Json(body),
                 headers: vec![],
             })
         } else {
