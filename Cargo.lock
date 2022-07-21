@@ -3449,7 +3449,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typed-generational-arena",
- "uuid 0.8.2",
+ "uuid 1.1.2",
 ]
 
 [[package]]
@@ -3764,7 +3764,7 @@ dependencies = [
  "postgres-protocol",
  "serde",
  "serde_json",
- "uuid 0.8.2",
+ "uuid 1.1.2",
 ]
 
 [[package]]
