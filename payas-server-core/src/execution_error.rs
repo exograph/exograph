@@ -1,10 +1,9 @@
 use std::error::Error;
 
-use base64::DecodeError;
 use payas_deno::deno_error::DenoError;
 use thiserror::Error;
 
-use crate::validation_error::ValidationError;
+use crate::{execution::cast::CastError, validation_error::ValidationError};
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {
@@ -86,25 +85,4 @@ impl<T> WithContext for Result<T, ExecutionError> {
     fn with_context(self, context: String) -> Result<T, ExecutionError> {
         self.map_err(|e| e.with_context(context))
     }
-}
-
-#[derive(Debug, Error)]
-pub enum CastError {
-    #[error("{0}")]
-    Generic(String),
-
-    #[error("{0}")]
-    Date(String, #[source] chrono::format::ParseError),
-
-    #[error(transparent)]
-    Blob(#[from] DecodeError),
-
-    #[error(transparent)]
-    Uuid(#[from] uuid::Error),
-
-    #[error("{0}")]
-    BigDecimal(String),
-
-    #[error(transparent)]
-    Database(#[from] payas_sql::database_error::DatabaseError),
 }

@@ -5,7 +5,10 @@ use payas_sql::{
 };
 
 use crate::{
-    execution::system_context::{self, SystemContext},
+    execution::{
+        cast,
+        system_context::{self, SystemContext},
+    },
     execution_error::{ExecutionError, WithContext},
 };
 
@@ -126,11 +129,10 @@ fn map_self_column<'a>(
         _ => argument,
     };
 
-    let value_column =
-        system_context::literal_column(argument_value, key_column).with_context(format!(
-            "While trying to get literal column for {}.{}",
-            key_column.table_name, key_column.column_name
-        ))?;
+    let value_column = cast::literal_column(argument_value, key_column).with_context(format!(
+        "While trying to get literal column for {}.{}",
+        key_column.table_name, key_column.column_name
+    ))?;
 
     Ok(InsertionElement::SelfInsert(ColumnValuePair::new(
         key_column,

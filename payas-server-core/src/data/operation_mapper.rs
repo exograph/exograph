@@ -1,4 +1,4 @@
-use crate::execution::system_context::QueryResponseBody;
+use crate::execution::query_response::{QueryResponse, QueryResponseBody};
 use crate::execution_error::{DatabaseExecutionError, ExecutionError};
 use crate::request_context::RequestContext;
 
@@ -8,10 +8,7 @@ use payas_sql::{
 
 use tokio_postgres::{types::FromSqlOwned, Row};
 
-use crate::{
-    execution::system_context::{QueryResponse, SystemContext},
-    validation::field::ValidatedField,
-};
+use crate::{execution::system_context::SystemContext, validation::field::ValidatedField};
 
 use async_graphql_value::ConstValue;
 use payas_model::model::{

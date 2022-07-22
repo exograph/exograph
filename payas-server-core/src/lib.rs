@@ -21,7 +21,7 @@ use request_context::RequestContext;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use crate::{execution::system_context::QueryResponseBody, execution_error::ExecutionError};
+use crate::{execution::query_response::QueryResponseBody, execution_error::ExecutionError};
 
 mod data;
 mod deno;

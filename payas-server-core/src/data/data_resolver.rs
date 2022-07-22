@@ -1,8 +1,6 @@
+use crate::execution::query_response::QueryResponse;
 use crate::{
-    execution::{
-        resolver::FieldResolver,
-        system_context::{QueryResponse, SystemContext},
-    },
+    execution::{resolver::FieldResolver, system_context::SystemContext},
     execution_error::ExecutionError,
     request_context::RequestContext,
     validation::field::ValidatedField,

@@ -7,7 +7,10 @@ use payas_sql::{
 
 use crate::{
     data::mutation_resolver::return_type_info,
-    execution::system_context::{self, SystemContext},
+    execution::{
+        cast,
+        system_context::{self, SystemContext},
+    },
     execution_error::ExecutionError,
 };
 
@@ -91,8 +94,7 @@ fn compute_update_columns<'a>(
                                 _ => argument_value,
                             };
 
-                            let value_column =
-                                system_context::literal_column(argument_value, key_column);
+                            let value_column = cast::literal_column(argument_value, key_column);
                             (key_column, value_column.unwrap())
                         },
                     )

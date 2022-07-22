@@ -12,7 +12,7 @@ use payas_deno::{
 };
 
 use crate::{
-    deno_integration, execution::system_context::QueryResponse, execution_error::ExecutionError,
+    deno_integration, execution::query_response::QueryResponse, execution_error::ExecutionError,
 };
 
 use super::claytip_ops::InterceptedOperationInfo;

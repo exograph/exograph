@@ -5,8 +5,8 @@ use crate::{
     data::operation_mapper::OperationResolverResult,
     deno::interception::InterceptedOperation,
     execution::{
+        query_response::{QueryResponse, QueryResponseBody},
         resolver::FieldResolver,
-        system_context::{QueryResponse, QueryResponseBody},
     },
     execution_error::ExecutionError,
     request_context::RequestContext,
