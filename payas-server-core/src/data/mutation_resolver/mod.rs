@@ -1,8 +1,5 @@
 use crate::{
-    data::{
-        compute_sql_access_predicate, operation_mapper::SQLOperationKind,
-        query_resolver::QuerySQLOperations,
-    },
+    data::{compute_sql_access_predicate, operation_mapper::SQLOperationKind},
     execution::system_context::SystemContext,
     execution_error::{ExecutionError, WithContext},
     request_context::RequestContext,
@@ -25,8 +22,9 @@ use payas_sql::{
     AbstractUpdate,
 };
 
-use super::operation_mapper::{
-    DenoOperation, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
+use super::{
+    operation_mapper::{DenoOperation, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper},
+    query_resolver::DatabaseQuery,
 };
 
 #[async_trait]
@@ -46,7 +44,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                         GqlTypeModifier::NonNull | GqlTypeModifier::Optional => pk_query,
                     };
 
-                    selection_query
+                    DatabaseQuery::from(selection_query)
                         .operation(
                             field,
                             AbstractPredicate::True,

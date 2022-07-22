@@ -6,10 +6,11 @@ use crate::{
     validation::field::ValidatedField,
 };
 
+use async_recursion::async_recursion;
 use async_trait::async_trait;
 use futures::StreamExt;
 use payas_model::model::{
-    operation::{DatabaseQueryParameter, Interceptors, Query, QueryKind},
+    operation::{DatabaseQueryParameter, Interceptors, OperationReturnType, Query, QueryKind},
     relation::{GqlRelation, RelationCardinality},
     types::{GqlTypeKind, GqlTypeModifier},
 };
@@ -36,8 +37,12 @@ impl<'a> OperationResolver<'a> for Query {
         request_context: &'a RequestContext<'a>,
     ) -> Result<OperationResolverResult<'a>, ExecutionError> {
         Ok(match &self.kind {
-            QueryKind::Database(_) => {
-                let operation = self
+            QueryKind::Database(query_params) => {
+                let database_query = DatabaseQuery {
+                    return_type: &self.return_type,
+                    query_params,
+                };
+                let operation = database_query
                     .operation(
                         field,
                         AbstractPredicate::True,
@@ -64,73 +69,49 @@ impl<'a> OperationResolver<'a> for Query {
     }
 }
 
-#[async_trait]
-pub trait QuerySQLOperations<'a> {
-    fn compute_order_by(
-        &'a self,
-        arguments: &'a Arguments,
-        system_context: &'a SystemContext,
-    ) -> Option<AbstractOrderBy<'a>>;
-
-    fn compute_limit(
-        &'a self,
-        arguments: &'a Arguments,
-        system_context: &'a SystemContext,
-    ) -> Option<Limit>;
-
-    fn compute_offset(
-        &'a self,
-        arguments: &'a Arguments,
-        system_context: &'a SystemContext,
-    ) -> Option<Offset>;
-
-    async fn content_select(
-        &'a self,
-        fields: &'a [ValidatedField],
-        system_context: &'a SystemContext,
-        request_context: &'a RequestContext<'a>,
-    ) -> Result<Vec<ColumnSelection<'a>>, ExecutionError>;
-
-    async fn operation(
-        &'a self,
-        field: &'a ValidatedField,
-        additional_predicate: AbstractPredicate<'a>,
-        system_context: &'a SystemContext,
-        request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractSelect<'a>, ExecutionError>;
+pub struct DatabaseQuery<'a> {
+    pub return_type: &'a OperationReturnType,
+    pub query_params: &'a DatabaseQueryParameter,
 }
 
-#[async_trait]
-impl<'a> QuerySQLOperations<'a> for Query {
-    fn compute_order_by(
-        &'a self,
-        arguments: &'a Arguments,
-        system_context: &'a SystemContext,
-    ) -> Option<AbstractOrderBy<'a>> {
-        match &self.kind {
-            QueryKind::Database(db_query_param) => {
-                let DatabaseQueryParameter { order_by_param, .. } = db_query_param.as_ref();
-                order_by_param
-                    .as_ref()
-                    .and_then(|order_by_param| {
-                        let argument_value = super::find_arg(arguments, &order_by_param.name);
-                        argument_value.map(|argument_value| {
-                            order_by_param.map_to_order_by(argument_value, &None, system_context)
-                        })
-                    })
-                    .transpose()
-                    .unwrap() // TODO: handle properly
-            }
-            QueryKind::Service { .. } => panic!(),
+impl<'content> DatabaseQuery<'content> {
+    pub fn from(query: &Query) -> DatabaseQuery {
+        let query_params = match &query.kind {
+            QueryKind::Database(query_params) => query_params,
+            _ => panic!("DatabaseQuery::from called on non-database query"),
+        };
+
+        DatabaseQuery {
+            return_type: &query.return_type,
+            query_params,
         }
     }
 
+    fn compute_order_by(
+        &self,
+        arguments: &'content Arguments,
+        system_context: &'content SystemContext,
+    ) -> Option<AbstractOrderBy<'content>> {
+        let DatabaseQueryParameter { order_by_param, .. } = self.query_params;
+        order_by_param
+            .as_ref()
+            .and_then(|order_by_param| {
+                let argument_value = super::find_arg(arguments, &order_by_param.name);
+                argument_value.map(|argument_value| {
+                    order_by_param.map_to_order_by(argument_value, &None, system_context)
+                })
+            })
+            .transpose()
+            .unwrap() // TODO: handle properly
+    }
+
+    #[async_recursion]
     async fn content_select(
-        &'a self,
-        fields: &'a [ValidatedField],
-        system_context: &'a SystemContext,
-        request_context: &'a RequestContext<'a>,
-    ) -> Result<Vec<ColumnSelection<'a>>, ExecutionError> {
+        &self,
+        fields: &'content [ValidatedField],
+        system_context: &'content SystemContext,
+        request_context: &'content RequestContext<'content>,
+    ) -> Result<Vec<ColumnSelection<'content>>, ExecutionError> {
         futures::stream::iter(fields.iter())
             .then(|field| async { map_field(self, field, system_context, request_context).await })
             .collect::<Vec<Result<_, _>>>()
@@ -140,138 +121,116 @@ impl<'a> QuerySQLOperations<'a> for Query {
     }
 
     fn compute_limit(
-        &'a self,
-        arguments: &'a Arguments,
-        system_context: &'a SystemContext,
+        &self,
+        arguments: &Arguments,
+        system_context: &SystemContext,
     ) -> Option<Limit> {
-        match &self.kind {
-            QueryKind::Database(db_query_param) => {
-                let DatabaseQueryParameter { limit_param, .. } = db_query_param.as_ref();
-                limit_param
-                    .as_ref()
-                    .and_then(|limit_param| {
-                        let argument_value = super::find_arg(arguments, &limit_param.name);
-                        argument_value.map(|argument_value| {
-                            limit_param.map_to_sql(argument_value, system_context)
-                        })
-                    })
-                    .transpose()
-                    .unwrap()
-            }
-            QueryKind::Service { .. } => panic!(),
-        }
+        let DatabaseQueryParameter { limit_param, .. } = self.query_params;
+        limit_param
+            .as_ref()
+            .and_then(|limit_param| {
+                let argument_value = super::find_arg(arguments, &limit_param.name);
+                argument_value
+                    .map(|argument_value| limit_param.map_to_sql(argument_value, system_context))
+            })
+            .transpose()
+            .unwrap()
     }
 
     fn compute_offset(
-        &'a self,
-        arguments: &'a Arguments,
-        system_context: &'a SystemContext,
+        &self,
+        arguments: &Arguments,
+        system_context: &SystemContext,
     ) -> Option<Offset> {
-        match &self.kind {
-            QueryKind::Database(db_query_param) => {
-                let DatabaseQueryParameter { offset_param, .. } = db_query_param.as_ref();
-                offset_param
-                    .as_ref()
-                    .and_then(|offset_param| {
-                        let argument_value = super::find_arg(arguments, &offset_param.name);
-                        argument_value.map(|argument_value| {
-                            offset_param.map_to_sql(argument_value, system_context)
-                        })
-                    })
-                    .transpose()
-                    .unwrap()
-            }
-            QueryKind::Service { .. } => panic!(),
-        }
+        let DatabaseQueryParameter { offset_param, .. } = self.query_params;
+        offset_param
+            .as_ref()
+            .and_then(|offset_param| {
+                let argument_value = super::find_arg(arguments, &offset_param.name);
+                argument_value
+                    .map(|argument_value| offset_param.map_to_sql(argument_value, system_context))
+            })
+            .transpose()
+            .unwrap()
     }
 
-    async fn operation(
-        &'a self,
-        field: &'a ValidatedField,
-        additional_predicate: AbstractPredicate<'a>,
-        system_context: &'a SystemContext,
-        request_context: &'a RequestContext<'a>,
-    ) -> Result<AbstractSelect<'a>, ExecutionError> {
-        match &self.kind {
-            QueryKind::Database(db_query_param) => {
-                let DatabaseQueryParameter {
-                    predicate_param, ..
-                } = db_query_param.as_ref();
-                let access_predicate = compute_sql_access_predicate(
-                    &self.return_type,
-                    &SQLOperationKind::Retrieve,
-                    system_context,
-                    request_context,
-                )
-                .await;
+    pub async fn operation(
+        &self,
+        field: &'content ValidatedField,
+        additional_predicate: AbstractPredicate<'content>,
+        system_context: &'content SystemContext,
+        request_context: &'content RequestContext<'content>,
+    ) -> Result<AbstractSelect<'content>, ExecutionError> {
+        let DatabaseQueryParameter {
+            predicate_param, ..
+        } = self.query_params;
+        let access_predicate = compute_sql_access_predicate(
+            self.return_type,
+            &SQLOperationKind::Retrieve,
+            system_context,
+            request_context,
+        )
+        .await;
 
-                if access_predicate == AbstractPredicate::False {
-                    return Err(ExecutionError::Authorization);
-                }
-
-                let predicate = super::compute_predicate(
-                    predicate_param.as_ref(),
-                    &field.arguments,
-                    additional_predicate,
-                    system_context,
-                )
-                .with_context(format!(
-                    "While computing predicate for field {}",
-                    field.name
-                ))?;
-
-                let order_by = self.compute_order_by(&field.arguments, system_context);
-
-                let predicate = AbstractPredicate::and(predicate, access_predicate);
-
-                let content_object = self
-                    .content_select(&field.subfields, system_context, request_context)
-                    .await?;
-
-                // Apply the join logic only for top-level selections
-                let system = &system_context.system;
-
-                let limit = self.compute_limit(&field.arguments, system_context);
-                let offset = self.compute_offset(&field.arguments, system_context);
-
-                let root_physical_table = if let GqlTypeKind::Composite(composite_root_type) =
-                    &self.return_type.typ(system).kind
-                {
-                    &system.tables[composite_root_type.get_table_id()]
-                } else {
-                    return Err(ExecutionError::Generic("Expected a composite type".into()));
-                };
-
-                let selection_cardinality = match self.return_type.type_modifier {
-                    GqlTypeModifier::Optional | GqlTypeModifier::NonNull => {
-                        SelectionCardinality::One
-                    }
-                    GqlTypeModifier::List => SelectionCardinality::Many,
-                };
-                let aselect = AbstractSelect {
-                    table: root_physical_table,
-                    selection: payas_sql::Selection::Json(content_object, selection_cardinality),
-                    predicate: Some(predicate),
-                    order_by,
-                    offset,
-                    limit,
-                };
-                Ok(aselect)
-            }
-
-            QueryKind::Service { .. } => {
-                todo!()
-            }
+        if access_predicate == AbstractPredicate::False {
+            return Err(ExecutionError::Authorization);
         }
+
+        let predicate = super::compute_predicate(
+            predicate_param.as_ref(),
+            &field.arguments,
+            additional_predicate,
+            system_context,
+        )
+        .with_context(format!(
+            "While computing predicate for field {}",
+            field.name
+        ))?;
+
+        let order_by = self.compute_order_by(&field.arguments, system_context);
+
+        let predicate = AbstractPredicate::and(predicate, access_predicate);
+
+        let content_object = self
+            .content_select(&field.subfields, system_context, request_context)
+            .await?;
+
+        let system = &system_context.system;
+
+        let limit = self.compute_limit(&field.arguments, system_context);
+        let offset = self.compute_offset(&field.arguments, system_context);
+
+        let root_physical_table = if let GqlTypeKind::Composite(composite_root_type) =
+            &self.return_type.typ(system).kind
+        {
+            &system.tables[composite_root_type.get_table_id()]
+        } else {
+            return Err(ExecutionError::Generic("Expected a composite type".into()));
+        };
+
+        let selection_cardinality = match self.return_type.type_modifier {
+            GqlTypeModifier::Optional | GqlTypeModifier::NonNull => SelectionCardinality::One,
+            GqlTypeModifier::List => SelectionCardinality::Many,
+        };
+        let aselect = AbstractSelect {
+            table: root_physical_table,
+            selection: payas_sql::Selection::Json(content_object, selection_cardinality),
+            predicate: Some(predicate),
+            order_by,
+            offset,
+            limit,
+        };
+
+        Ok(aselect)
     }
 }
 
-async fn map_field<'a>(
-    query: &'a Query,
-    field: &'a ValidatedField,
-    system_context: &'a SystemContext,
-    request_context: &'a RequestContext<'a>,
-) -> Result<ColumnSelection<'a>, ExecutionError> {
+async fn map_field<'content>(
+    query: &DatabaseQuery<'content>,
+    field: &'content ValidatedField,
+    system_context: &'content SystemContext,
+    request_context: &'content RequestContext<'content>,
+) -> Result<ColumnSelection<'content>, ExecutionError> {
     let system = &system_context.system;
     let return_type = query.return_type.typ(system);
 
@@ -295,7 +254,9 @@ async fn map_field<'a>(
 
                 let other_table_pk_query = match &other_type.kind {
                     GqlTypeKind::Primitive => panic!(""),
-                    GqlTypeKind::Composite(kind) => &system.queries[kind.get_pk_query()],
+                    GqlTypeKind::Composite(kind) => {
+                        DatabaseQuery::from(&system.queries[kind.get_pk_query()])
+                    }
                 };
                 let self_table = &system.tables[return_type
                     .table_id()
@@ -331,11 +292,11 @@ async fn map_field<'a>(
                         GqlTypeKind::Primitive => panic!(""),
                         GqlTypeKind::Composite(kind) => {
                             // Get an appropriate query based on the cardinality of the relation
-                            if cardinality == &RelationCardinality::Unbounded {
+                            DatabaseQuery::from(if cardinality == &RelationCardinality::Unbounded {
                                 &system.queries[kind.get_collection_query()]
                             } else {
                                 &system.queries[kind.get_pk_query()]
-                            }
+                            })
                         }
                     }
                 };
