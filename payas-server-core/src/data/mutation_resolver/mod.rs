@@ -22,10 +22,10 @@ use payas_sql::{
     AbstractUpdate,
 };
 
-use super::{
-    operation_mapper::{DenoOperation, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper},
-    query_resolver::DatabaseQuery,
+use super::operation_mapper::{
+    DenoOperation, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
 };
+use crate::data::query_resolver::DatabaseQuery;
 
 #[async_trait]
 impl<'a> OperationResolver<'a> for Mutation {
@@ -226,6 +226,9 @@ async fn update_operation<'a>(
         .unwrap()
 }
 
+///
+/// # Returns
+/// - A (table associated with the return type, pk query, collection query) tuple.
 pub fn return_type_info<'a>(
     mutation: &'a Mutation,
     system_context: &'a SystemContext,
