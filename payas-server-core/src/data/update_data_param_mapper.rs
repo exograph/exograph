@@ -7,10 +7,7 @@ use payas_sql::{
 
 use crate::{
     data::mutation_resolver::return_type_info,
-    execution::{
-        cast,
-        system_context::{self, SystemContext},
-    },
+    execution::{cast, system_context::SystemContext},
     execution_error::ExecutionError,
 };
 
@@ -73,31 +70,29 @@ fn compute_update_columns<'a>(
             .iter()
             .flat_map(|field| {
                 field.relation.self_column().and_then(|key_column_id| {
-                    system_context::get_argument_field(argument, &field.name).map(
-                        |argument_value| {
-                            let key_column = key_column_id.get_column(system);
-                            let argument_value = match &field.relation {
-                                GqlRelation::ManyToOne { other_type_id, .. } => {
-                                    let other_type = &system.types[*other_type_id];
-                                    let other_type_pk_field_name = other_type
-                                        .pk_column_id()
-                                        .map(|column_id| &column_id.get_column(system).column_name)
-                                        .unwrap();
-                                    match system_context::get_argument_field(
-                                        argument_value,
-                                        other_type_pk_field_name,
-                                    ) {
-                                        Some(other_type_pk_arg) => other_type_pk_arg,
-                                        None => todo!(),
-                                    }
+                    super::get_argument_field(argument, &field.name).map(|argument_value| {
+                        let key_column = key_column_id.get_column(system);
+                        let argument_value = match &field.relation {
+                            GqlRelation::ManyToOne { other_type_id, .. } => {
+                                let other_type = &system.types[*other_type_id];
+                                let other_type_pk_field_name = other_type
+                                    .pk_column_id()
+                                    .map(|column_id| &column_id.get_column(system).column_name)
+                                    .unwrap();
+                                match super::get_argument_field(
+                                    argument_value,
+                                    other_type_pk_field_name,
+                                ) {
+                                    Some(other_type_pk_arg) => other_type_pk_arg,
+                                    None => todo!(),
                                 }
-                                _ => argument_value,
-                            };
+                            }
+                            _ => argument_value,
+                        };
 
-                            let value_column = cast::literal_column(argument_value, key_column);
-                            (key_column, value_column.unwrap())
-                        },
-                    )
+                        let value_column = cast::literal_column(argument_value, key_column);
+                        (key_column, value_column.unwrap())
+                    })
                 })
             })
             .collect(),
@@ -132,9 +127,7 @@ fn compute_nested_ops<'a>(
                 if let GqlRelation::OneToMany { other_type_id, .. } = &field.relation {
                     let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
 
-                    if let Some(argument) =
-                        system_context::get_argument_field(argument, &field.name)
-                    {
+                    if let Some(argument) = super::get_argument_field(argument, &field.name) {
                         nested_updates.extend(compute_nested_update(
                             field_model_type,
                             argument,
@@ -208,7 +201,7 @@ fn compute_nested_update<'a>(
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-    let update_arg = system_context::get_argument_field(argument, "update");
+    let update_arg = super::get_argument_field(argument, "update");
 
     match update_arg {
         Some(update_arg) => match update_arg {
@@ -348,7 +341,7 @@ fn compute_nested_inserts<'a>(
         })
     }
 
-    let create_arg = system_context::get_argument_field(argument, "create");
+    let create_arg = super::get_argument_field(argument, "create");
 
     match create_arg {
         Some(create_arg) => match create_arg {
@@ -385,7 +378,7 @@ fn compute_nested_delete<'a>(
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-    let delete_arg = system_context::get_argument_field(argument, "delete");
+    let delete_arg = super::get_argument_field(argument, "delete");
 
     match delete_arg {
         Some(update_arg) => match update_arg {

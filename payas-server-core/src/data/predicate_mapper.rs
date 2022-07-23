@@ -1,8 +1,5 @@
 use crate::execution::cast::cast_value;
-use crate::{
-    execution::system_context::{self, SystemContext},
-    execution_error::ExecutionError,
-};
+use crate::{execution::system_context::SystemContext, execution_error::ExecutionError};
 use async_graphql_value::ConstValue;
 
 use payas_model::model::predicate::{ColumnIdPath, PredicateParameter, PredicateParameterTypeKind};
@@ -44,8 +41,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     parameters
                         .iter()
                         .fold(AbstractPredicate::True, |acc, parameter| {
-                            let arg =
-                                system_context::get_argument_field(argument_value, &parameter.name);
+                            let arg = super::get_argument_field(argument_value, &parameter.name);
                             let new_predicate = match arg {
                                 Some(op_value) => {
                                     let (op_key_column, op_value_column) = operands(
@@ -79,7 +75,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .map(|parameter| {
                         (
                             parameter.name.as_str(),
-                            system_context::get_argument_field(argument_value, &parameter.name),
+                            super::get_argument_field(argument_value, &parameter.name),
                         )
                     })
                     .fold(Ok(("", None)), |acc, (name, result)| {
@@ -166,8 +162,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                         let mut new_predicate = AbstractPredicate::True;
 
                         for parameter in field_params.iter() {
-                            let arg =
-                                system_context::get_argument_field(argument_value, &parameter.name);
+                            let arg = super::get_argument_field(argument_value, &parameter.name);
 
                             let new_column_path =
                                 to_column_id_path(&parent_column_path, &self.column_path_link);

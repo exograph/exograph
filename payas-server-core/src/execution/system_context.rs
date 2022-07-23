@@ -12,7 +12,6 @@ use payas_model::model::system::ModelSystem;
 use payas_sql::DatabaseExecutor;
 use tracing::{error, instrument};
 
-use async_graphql_value::ConstValue;
 use async_trait::async_trait;
 
 use super::query_response::{QueryResponse, QueryResponseBody};
@@ -115,16 +114,6 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
 
         ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
-}
-
-pub fn get_argument_field<'a>(
-    argument_value: &'a ConstValue,
-    field_name: &str,
-) -> Option<&'a ConstValue> {
-    match argument_value {
-        ConstValue::Object(value) => value.get(field_name),
-        _ => None,
-    }
 }
 
 /**

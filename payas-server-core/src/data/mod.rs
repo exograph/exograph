@@ -153,3 +153,13 @@ pub fn to_column_path<'a>(
 
     ColumnPath::Physical(path)
 }
+
+pub fn get_argument_field<'a>(
+    argument_value: &'a ConstValue,
+    field_name: &str,
+) -> Option<&'a ConstValue> {
+    match argument_value {
+        ConstValue::Object(value) => value.get(field_name),
+        _ => None,
+    }
+}
