@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use payas_model::model::operation::Interceptors;
+use serde_json::Value;
 
 use crate::{
     data::operation_mapper::OperationResolverResult,
@@ -13,6 +14,29 @@ use crate::{
     validation::field::ValidatedField,
     SystemContext,
 };
+
+#[async_trait]
+impl FieldResolver<Value> for Value {
+    async fn resolve_field<'a>(
+        &'a self,
+        field: &ValidatedField,
+        _system_context: &'a SystemContext,
+        _request_context: &'a RequestContext<'a>,
+    ) -> Result<Value, ExecutionError> {
+        let field_name = field.name.as_str();
+
+        if let Value::Object(map) = self {
+            map.get(field_name).cloned().ok_or_else(|| {
+                ExecutionError::Generic(format!("No field named {} in Object", field_name))
+            })
+        } else {
+            Err(ExecutionError::Generic(format!(
+                "{} is not an Object and doesn't have any fields",
+                field_name
+            )))
+        }
+    }
+}
 
 #[async_trait]
 pub trait OperationResolver<'a> {
