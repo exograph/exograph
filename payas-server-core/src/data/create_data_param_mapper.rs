@@ -5,9 +5,11 @@ use payas_sql::{
 };
 
 use crate::{
-    execution::{cast, system_context::SystemContext},
+    execution::system_context::SystemContext,
     execution_error::{ExecutionError, WithContext},
 };
+
+use super::cast;
 
 use payas_model::model::{
     column_id::ColumnId,

@@ -5,9 +5,9 @@ use payas_sql::{
     Selection,
 };
 
+use super::cast;
 use crate::{
-    data::mutation_resolver::return_type_info,
-    execution::{cast, system_context::SystemContext},
+    data::mutation_resolver::return_type_info, execution::system_context::SystemContext,
     execution_error::ExecutionError,
 };
 

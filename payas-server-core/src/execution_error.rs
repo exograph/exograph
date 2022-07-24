@@ -3,7 +3,7 @@ use std::error::Error;
 use payas_deno::deno_error::DenoError;
 use thiserror::Error;
 
-use crate::{execution::cast::CastError, validation_error::ValidationError};
+use crate::{data::cast::CastError, validation_error::ValidationError};
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {
