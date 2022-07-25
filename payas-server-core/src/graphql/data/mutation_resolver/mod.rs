@@ -1,5 +1,5 @@
 use crate::graphql::{
-    database::database_mutation::DatabaseMutation, execution::system_context::SystemContext,
+    data::database::database_mutation::DatabaseMutation, execution::system_context::SystemContext,
     execution_error::ExecutionError, request_context::RequestContext,
     validation::field::ValidatedField,
 };

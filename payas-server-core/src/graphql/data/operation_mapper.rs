@@ -31,7 +31,8 @@ impl<'a> OperationResolverResult<'a> {
                     .map_err(DatabaseExecutionError::Database)?;
 
                 let body = if result.len() == 1 {
-                    let string_result = crate::graphql::database::extractor(result.swap_remove(0))?;
+                    let string_result =
+                        crate::graphql::data::database::extractor(result.swap_remove(0))?;
                     Ok(QueryResponseBody::Raw(Some(string_result)))
                 } else if result.is_empty() {
                     Ok(QueryResponseBody::Raw(None))

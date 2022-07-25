@@ -17,7 +17,7 @@ use std::ops::Not;
 use crate::graphql::request_context::RequestContext;
 
 pub fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelSystem) -> ColumnPath<'a> {
-    crate::graphql::database::to_column_path(&Some(column_id.clone()), &None, system)
+    crate::graphql::data::database::to_column_path(&Some(column_id.clone()), &None, system)
 }
 
 /// Solve access control logic.

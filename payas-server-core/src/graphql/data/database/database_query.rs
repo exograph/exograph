@@ -64,7 +64,7 @@ impl<'content> DatabaseQuery<'content> {
             return Err(ExecutionError::Authorization);
         }
 
-        let predicate = crate::graphql::database::compute_predicate(
+        let predicate = super::compute_predicate(
             predicate_param.as_ref(),
             &field.arguments,
             additional_predicate,

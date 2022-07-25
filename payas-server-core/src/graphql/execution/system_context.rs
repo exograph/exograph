@@ -2,14 +2,14 @@ use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
 use tracing::{error, instrument};
 
-use crate::graphql::deno::ClayDenoExecutorPool;
+use crate::graphql::data::deno::ClayDenoExecutorPool;
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::introspection::schema::Schema;
 use crate::graphql::request_context::RequestContext;
 use crate::graphql::validation::{
     document_validator::DocumentValidator, operation::ValidatedOperation,
+    validation_error::ValidationError,
 };
-use crate::graphql::validation_error::ValidationError;
 use crate::OperationsPayload;
 
 use payas_model::model::system::ModelSystem;

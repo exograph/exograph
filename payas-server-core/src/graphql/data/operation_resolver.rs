@@ -3,8 +3,8 @@ use payas_model::model::operation::Interceptors;
 use serde_json::Value;
 
 use crate::graphql::{
+    data::deno::interception::InterceptedOperation,
     data::operation_mapper::OperationResolverResult,
-    deno::interception::InterceptedOperation,
     execution::system_context::SystemContext,
     execution::{
         query_response::{QueryResponse, QueryResponseBody},

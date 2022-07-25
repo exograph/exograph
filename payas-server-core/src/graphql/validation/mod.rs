@@ -13,6 +13,7 @@ pub mod document_validator;
 mod arguments_validator;
 mod operation_validator;
 mod selection_set_validator;
+pub mod validation_error;
 
 fn underlying_type(typ: &Type) -> &Name {
     match &typ.base {

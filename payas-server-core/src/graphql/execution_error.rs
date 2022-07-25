@@ -3,7 +3,9 @@ use std::error::Error;
 use payas_deno::deno_error::DenoError;
 use thiserror::Error;
 
-use crate::graphql::{database::cast::CastError, validation_error::ValidationError};
+use crate::graphql::{
+    data::database::cast::CastError, validation::validation_error::ValidationError,
+};
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {

@@ -94,7 +94,7 @@ impl<'content> DatabaseMutation<'content> {
         })
     }
 
-    pub async fn create_operation(
+    async fn create_operation(
         &self,
         data_param: &'content CreateDataParameter,
         field: &'content ValidatedField,
@@ -128,7 +128,7 @@ impl<'content> DatabaseMutation<'content> {
         )
     }
 
-    pub async fn delete_operation(
+    async fn delete_operation(
         &self,
         predicate_param: &'content PredicateParameter,
         field: &'content ValidatedField,
@@ -170,7 +170,7 @@ impl<'content> DatabaseMutation<'content> {
         })
     }
 
-    pub async fn update_operation(
+    async fn update_operation(
         &self,
         data_param: &'content UpdateDataParameter,
         predicate_param: &'content PredicateParameter,

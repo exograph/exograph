@@ -36,7 +36,7 @@ use payas_model::model::{
 
 use self::sql_mapper::SQLOperationKind;
 
-use super::{data::access_solver, execution_error::DatabaseExecutionError};
+use crate::graphql::{data::access_solver, execution_error::DatabaseExecutionError};
 
 pub type Arguments = HashMap<String, ConstValue>;
 

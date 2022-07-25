@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 
 use crate::graphql::{
     introspection::schema::{Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME},
-    validation_error::ValidationError,
+    validation::validation_error::ValidationError,
 };
 
 use super::{operation::ValidatedOperation, selection_set_validator::SelectionSetValidator};
