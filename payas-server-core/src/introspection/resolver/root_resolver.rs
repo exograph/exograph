@@ -2,7 +2,7 @@ use crate::execution_error::ExecutionError;
 
 use crate::execution::resolver::{FieldResolver, Resolver};
 use crate::execution::system_context::SystemContext;
-use crate::introspection::definition::root_element::RootElement;
+use crate::introspection::definition::root_element::IntrospectionRootElement;
 use crate::introspection::schema::{
     MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
 };
@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 #[async_trait]
-impl<'a> FieldResolver<Value> for RootElement<'a> {
+impl<'a> FieldResolver<Value> for IntrospectionRootElement<'a> {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

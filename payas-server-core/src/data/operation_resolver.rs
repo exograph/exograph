@@ -1,15 +1,14 @@
 use async_trait::async_trait;
 
-use crate::data::data_resolver::DataResolver;
+use crate::data::root_element::DataRootElement;
+use crate::execution::query_response::{QueryResponse, QueryResponseBody};
+use crate::execution::resolver::FieldResolver;
 use crate::execution_error::ExecutionError;
-use crate::introspection::definition::root_element::RootElement;
+use crate::introspection::definition::root_element::IntrospectionRootElement;
 use crate::request_context::RequestContext;
 use crate::validation::field::ValidatedField;
 use crate::validation::operation::ValidatedOperation;
-
-use super::query_response::{QueryResponse, QueryResponseBody};
-use super::resolver::FieldResolver;
-use super::system_context::SystemContext;
+use crate::SystemContext;
 
 #[async_trait]
 impl FieldResolver<QueryResponse> for ValidatedOperation {
@@ -22,7 +21,7 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
         let name = field.name.as_str();
 
         if name.starts_with("__") {
-            let introspection_root = RootElement {
+            let introspection_root = IntrospectionRootElement {
                 operation_type: &self.typ,
                 name,
             };
@@ -36,9 +35,12 @@ impl FieldResolver<QueryResponse> for ValidatedOperation {
                 headers: vec![],
             })
         } else {
-            system_context
-                .system
-                .resolve(field, &self.typ, system_context, request_context)
+            let data_root = DataRootElement {
+                system: &system_context.system,
+                operation_type: &self.typ,
+            };
+            data_root
+                .resolve(field, system_context, request_context)
                 .await
         }
     }

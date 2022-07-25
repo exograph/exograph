@@ -11,7 +11,7 @@ macro_rules! claytip_execute_query {
             async move {
                 // execute query
                 let result = $system_context
-                    .execute(
+                    .resolve(
                         crate::OperationsPayload {
                             operation_name: None,
                             query: query_string,

@@ -104,7 +104,7 @@ pub fn init() {
 /// if something went wrong.
 ///
 /// In a typical use case (for example payas-server-actix), the caller will
-/// first call `create_system_context` to create an `OperationsExecutor` object, and
+/// first call `create_system_context` to create a [SystemContext] object, and
 /// then call `resolve` with that object.
 #[instrument(
     name = "payas-server-core::resolve"
@@ -116,7 +116,7 @@ pub async fn resolve<'a, E: 'static>(
     request_context: RequestContext<'a>,
 ) -> (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers) {
     let response = system_context
-        .execute(operations_payload, &request_context)
+        .resolve(operations_payload, &request_context)
         .await;
 
     let headers = if let Ok(ref response) = response {

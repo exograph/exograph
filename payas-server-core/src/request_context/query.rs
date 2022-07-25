@@ -21,7 +21,7 @@ impl ParsedContext for QueryExtractor {
         let query = format!("query {{ {} }}", value.to_owned());
 
         let result = system_context
-            .execute(
+            .resolve(
                 OperationsPayload {
                     operation_name: None,
                     query,

@@ -1,13 +1,14 @@
 pub mod access_solver;
 pub mod cast;
 mod create_data_param_mapper;
-pub mod data_resolver;
 pub mod limit_offset_mapper;
 pub mod mutation_resolver;
 pub mod operation_mapper;
+mod operation_resolver;
 pub mod order_by_mapper;
 pub mod predicate_mapper;
 pub mod query_resolver;
+pub mod root_element;
 mod update_data_param_mapper;
 
 use std::collections::HashMap;

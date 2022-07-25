@@ -32,39 +32,39 @@ pub struct SystemContext {
 }
 
 impl SystemContext {
+    /// Resolve the provided top-level operation.
+    ///
+    /// Goes through the FieldResolver for ValidatedOperation (thus through the generic support offered by Resolver) and
+    /// so that we can support fragments in top-level queries in such as:
+
+    /// ```graphql
+    /// {
+    ///   ...query_info
+    /// }
+
+    /// fragment query_info on Query {
+    ///   __type(name: "Concert") {
+    ///     name
+    ///   }
+
+    ///   __schema {
+    ///       types {
+    ///       name
+    ///     }
+    ///   }
+    /// }
+    /// ```
     #[instrument(
-        name = "OperationsExecutor::execute"
+        name = "OperationsExecutor::resolve"
         skip_all
         )]
-    pub async fn execute<'e>(
+    pub async fn resolve<'e>(
         &'e self,
         operations_payload: OperationsPayload,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Vec<(String, QueryResponse)>, ExecutionError> {
         let operation = self.validate_operation(operations_payload)?;
 
-        /*
-        Go through the FieldResolver for ValidatedOperation (thus through the generic support offered by Resolver) and
-        so that we can support fragments in top-level queries in such as:
-
-        ```graphql
-        {
-          ...query_info
-        }
-
-        fragment query_info on Query {
-          __type(name: "Concert") {
-            name
-          }
-
-          __schema {
-              types {
-              name
-            }
-          }
-        }
-        ```
-        */
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
