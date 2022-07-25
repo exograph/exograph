@@ -42,7 +42,7 @@ impl<'content> DatabaseQuery<'content> {
         }
     }
 
-    pub async fn operation(
+    pub async fn compute_select(
         &self,
         field: &'content ValidatedField,
         additional_predicate: AbstractPredicate<'content>,
@@ -226,7 +226,7 @@ impl<'content> DatabaseQuery<'content> {
                     };
 
                     let nested_abstract_select = other_table_pk_query
-                        .operation(
+                        .compute_select(
                             field,
                             AbstractPredicate::True,
                             system_context,
@@ -268,7 +268,7 @@ impl<'content> DatabaseQuery<'content> {
                         )),
                     };
                     let nested_abstract_select = other_table_query
-                        .operation(
+                        .compute_select(
                             field,
                             AbstractPredicate::True,
                             system_context,

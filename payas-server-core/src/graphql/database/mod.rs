@@ -5,6 +5,7 @@ mod limit_offset_mapper;
 mod order_by_mapper;
 pub mod predicate_mapper;
 
+pub mod database_mutation;
 pub mod database_query;
 pub mod sql_mapper;
 mod update_data_param_mapper;
@@ -14,16 +15,10 @@ use std::collections::HashMap;
 use postgres_types::FromSqlOwned;
 use predicate_mapper::PredicateParameterMapper;
 
-use crate::graphql::validation::field::ValidatedField;
 use async_graphql_value::ConstValue;
 use tokio_postgres::Row;
 
-use sql_mapper::{SQLInsertMapper, SQLUpdateMapper};
-
-use payas_sql::{
-    AbstractDelete, AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate, ColumnPath,
-    ColumnPathLink, PhysicalColumn, PhysicalTable,
-};
+use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 
 use crate::graphql::{
     execution::system_context::SystemContext,
@@ -33,7 +28,7 @@ use crate::graphql::{
 
 use payas_model::model::{
     column_id::ColumnId,
-    operation::{CreateDataParameter, Mutation, OperationReturnType, Query, UpdateDataParameter},
+    operation::{OperationReturnType, Query},
     predicate::{ColumnIdPath, ColumnIdPathLink, PredicateParameter},
     system::ModelSystem,
     GqlCompositeType, GqlTypeKind,
@@ -182,131 +177,15 @@ pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, DatabaseExecutionError>
     }
 }
 
-pub async fn create_operation<'a>(
-    mutation: &'a Mutation,
-    data_param: &'a CreateDataParameter,
-    field: &'a ValidatedField,
-    select: AbstractSelect<'a>,
-    system_context: &'a SystemContext,
-    request_context: &'a RequestContext<'a>,
-) -> Result<AbstractInsert<'a>, ExecutionError> {
-    // TODO: https://github.com/payalabs/payas/issues/343
-    let access_predicate = compute_sql_access_predicate(
-        &mutation.return_type,
-        &SQLOperationKind::Create,
-        system_context,
-        request_context,
-    )
-    .await;
-
-    // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
-    // See issue #69
-    if access_predicate == AbstractPredicate::False {
-        // Hard failure, no need to proceed to restrict the predicate in SQL
-        return Err(ExecutionError::Authorization);
-    }
-
-    let argument_value = find_arg(&field.arguments, &data_param.name).unwrap();
-
-    data_param.insert_operation(mutation, select, argument_value, system_context)
-}
-
-pub async fn delete_operation<'a>(
-    mutation: &'a Mutation,
-    predicate_param: &'a PredicateParameter,
-    field: &'a ValidatedField,
-    select: AbstractSelect<'a>,
-    system_context: &'a SystemContext,
-    request_context: &'a RequestContext<'a>,
-) -> Result<AbstractDelete<'a>, ExecutionError> {
-    let (table, _, _) = return_type_info(mutation, system_context);
-
-    // TODO: https://github.com/payalabs/payas/issues/343
-    let access_predicate = compute_sql_access_predicate(
-        &mutation.return_type,
-        &SQLOperationKind::Delete,
-        system_context,
-        request_context,
-    )
-    .await;
-
-    if access_predicate == AbstractPredicate::False {
-        // Hard failure, no need to proceed to restrict the predicate in SQL
-        return Err(ExecutionError::Authorization);
-    }
-
-    let predicate = compute_predicate(
-        Some(predicate_param),
-        &field.arguments,
-        AbstractPredicate::True,
-        system_context,
-    )
-    .with_context(format!(
-        "During predicate computation for parameter {}",
-        predicate_param.name
-    ))?;
-
-    Ok(AbstractDelete {
-        table,
-        predicate: Some(predicate),
-        selection: select,
-    })
-}
-
-pub async fn update_operation<'a>(
-    mutation: &'a Mutation,
-    data_param: &'a UpdateDataParameter,
-    predicate_param: &'a PredicateParameter,
-    field: &'a ValidatedField,
-    select: AbstractSelect<'a>,
-    system_context: &'a SystemContext,
-    request_context: &'a RequestContext<'a>,
-) -> Result<AbstractUpdate<'a>, ExecutionError> {
-    // Access control as well as predicate computation isn't working fully yet. Specifically,
-    // nested predicates aren't working.
-    // TODO: https://github.com/payalabs/payas/issues/343
-    let access_predicate = compute_sql_access_predicate(
-        &mutation.return_type,
-        &SQLOperationKind::Update,
-        system_context,
-        request_context,
-    )
-    .await;
-
-    if access_predicate == AbstractPredicate::False {
-        // Hard failure, no need to proceed to restrict the predicate in SQL
-        return Err(ExecutionError::Authorization);
-    }
-
-    // TODO: https://github.com/payalabs/payas/issues/343
-    let predicate = compute_predicate(
-        Some(predicate_param),
-        &field.arguments,
-        AbstractPredicate::True,
-        system_context,
-    )
-    .with_context(format!(
-        "During predicate computation for parameter {}",
-        predicate_param.name
-    ))?;
-
-    let argument_value = find_arg(&field.arguments, &data_param.name);
-    argument_value
-        .map(|argument_value| {
-            data_param.update_operation(mutation, predicate, select, argument_value, system_context)
-        })
-        .unwrap()
-}
-
 ///
 /// # Returns
 /// - A (table associated with the return type, pk query, collection query) tuple.
 pub fn return_type_info<'a>(
-    mutation: &'a Mutation,
+    return_type: &'a OperationReturnType,
     system_context: &'a SystemContext,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
     let system = &system_context.system;
-    let typ = mutation.return_type.typ(system);
+    let typ = return_type.typ(system);
 
     match &typ.kind {
         GqlTypeKind::Primitive => panic!(""),

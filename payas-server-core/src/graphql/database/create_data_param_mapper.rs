@@ -13,7 +13,7 @@ use super::cast;
 
 use payas_model::model::{
     column_id::ColumnId,
-    operation::{CreateDataParameter, Mutation},
+    operation::{CreateDataParameter, OperationReturnType},
     relation::GqlRelation,
     system::ModelSystem,
     types::GqlTypeKind,
@@ -25,14 +25,14 @@ use super::sql_mapper::SQLInsertMapper;
 impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
     fn insert_operation(
         &'a self,
-        mutation: &'a Mutation,
+        return_type: OperationReturnType,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         system_context: &'a SystemContext,
     ) -> Result<AbstractInsert, ExecutionError> {
         let system = &system_context.system;
 
-        let table = mutation.return_type.physical_table(system);
+        let table = return_type.physical_table(system);
 
         let data_type = &system.mutation_types[self.type_id];
 

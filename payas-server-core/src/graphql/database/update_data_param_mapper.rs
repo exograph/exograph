@@ -9,7 +9,7 @@ use super::cast;
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
 use payas_model::model::{
-    operation::{Mutation, UpdateDataParameter},
+    operation::{OperationReturnType, UpdateDataParameter},
     relation::GqlRelation,
     system::ModelSystem,
     types::GqlTypeKind,
@@ -23,7 +23,7 @@ use super::sql_mapper::SQLUpdateMapper;
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
     fn update_operation(
         &'a self,
-        mutation: &'a Mutation,
+        return_type: &'a OperationReturnType,
         predicate: AbstractPredicate<'a>,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
@@ -33,9 +33,9 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         let data_type = &system.mutation_types[self.type_id];
 
         let self_update_columns = compute_update_columns(data_type, argument, system_context);
-        let (table, _, _) = super::return_type_info(mutation, system_context);
+        let (table, _, _) = super::return_type_info(return_type, system_context);
 
-        let container_model_type = mutation.return_type.typ(system);
+        let container_model_type = return_type.typ(system);
 
         let (nested_updates, nested_inserts, nested_deletes) =
             compute_nested_ops(data_type, argument, container_model_type, system_context);

@@ -30,7 +30,7 @@ impl<'a> OperationResolver<'a> for Query {
                     query_params,
                 };
                 let operation = database_query
-                    .operation(
+                    .compute_select(
                         field,
                         AbstractPredicate::True,
                         system_context,
