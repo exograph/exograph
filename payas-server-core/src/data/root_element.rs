@@ -3,9 +3,10 @@ use payas_model::model::system::ModelSystem;
 
 use crate::{
     execution::query_response::QueryResponse, execution_error::ExecutionError,
-    request_context::RequestContext, resolver::OperationResolver,
-    validation::field::ValidatedField, SystemContext,
+    request_context::RequestContext, validation::field::ValidatedField, SystemContext,
 };
+
+use super::operation_resolver::OperationResolver;
 
 pub struct DataRootElement<'a> {
     pub system: &'a ModelSystem,

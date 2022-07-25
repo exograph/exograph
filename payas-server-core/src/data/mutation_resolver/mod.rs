@@ -3,7 +3,6 @@ use crate::{
     execution::system_context::SystemContext,
     execution_error::{ExecutionError, WithContext},
     request_context::RequestContext,
-    resolver::OperationResolver,
     validation::field::ValidatedField,
 };
 use async_trait::async_trait;
@@ -22,8 +21,9 @@ use payas_sql::{
     AbstractUpdate,
 };
 
-use super::operation_mapper::{
-    DenoOperation, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper,
+use super::{
+    operation_mapper::{DenoOperation, OperationResolverResult, SQLInsertMapper, SQLUpdateMapper},
+    operation_resolver::OperationResolver,
 };
 use crate::data::query_resolver::DatabaseQuery;
 

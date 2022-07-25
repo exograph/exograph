@@ -33,7 +33,6 @@ pub mod initialization_error;
 mod introspection;
 mod logging_tracing;
 pub mod request_context;
-mod resolver;
 mod validation;
 mod validation_error;
 

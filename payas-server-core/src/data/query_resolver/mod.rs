@@ -1,7 +1,6 @@
 use crate::{
     execution::system_context::SystemContext, execution_error::ExecutionError,
-    request_context::RequestContext, resolver::OperationResolver,
-    validation::field::ValidatedField,
+    request_context::RequestContext, validation::field::ValidatedField,
 };
 
 use async_trait::async_trait;
@@ -13,6 +12,7 @@ pub use database_query::DatabaseQuery;
 use super::{
     compute_sql_access_predicate,
     operation_mapper::{DenoOperation, OperationResolverResult},
+    operation_resolver::OperationResolver,
 };
 
 pub(crate) mod database_query;
