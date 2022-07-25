@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Write},
     path::PathBuf,
     process::Stdio,
     sync::atomic::Ordering,
@@ -9,7 +9,7 @@ use std::{
 use crate::util::watcher;
 
 use super::{command::Command, schema::migration_helper::migration_statements};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use payas_sql::{schema::spec::SchemaSpec, Database};
 use rand::Rng;
 
@@ -47,44 +47,87 @@ impl Command for YoloCommand {
         let jwt_secret = generate_random_string();
 
         let prestart_callback = || {
-            rt.block_on(async {
-                // set envs for server
-                std::env::set_var("CLAY_DATABASE_URL", &db.connection_url);
-                std::env::remove_var("CLAY_DATABASE_USER");
-                std::env::remove_var("CLAY_DATABASE_PASSWORD");
-                std::env::set_var("CLAY_INTROSPECTION", "true");
-                std::env::set_var("CLAY_JWT_SECRET", &jwt_secret);
-                std::env::set_var("CLAY_CORS_DOMAINS", "*");
+            // set envs for server
+            std::env::set_var("CLAY_DATABASE_URL", &db.connection_url);
+            std::env::remove_var("CLAY_DATABASE_USER");
+            std::env::remove_var("CLAY_DATABASE_PASSWORD");
+            std::env::set_var("CLAY_INTROSPECTION", "true");
+            std::env::set_var("CLAY_JWT_SECRET", &jwt_secret);
+            std::env::set_var("CLAY_CORS_DOMAINS", "*");
 
-                println!("JWT secret is {}", &jwt_secret);
-                println!("Database URL is {}", &db.connection_url);
+            println!("JWT secret is {}", &jwt_secret);
+            println!("Database URL is {}", &db.connection_url);
 
-                // generate migrations for current database
-                println!("Generating migrations...");
-                let database = Database::from_env(None)?;
-                let mut client = database.get_client().await?;
+            // generate migrations for current database
+            println!("Generating migrations...");
+            let database = Database::from_env(None)?;
 
-                let old_schema = SchemaSpec::from_db(&client).await?;
+            let old_schema = rt.block_on(async {
+                let client = database.get_client().await?;
+                SchemaSpec::from_db(&client).await
+            })?;
 
-                for issue in &old_schema.issues {
-                    println!("{}", issue);
-                }
+            for issue in &old_schema.issues {
+                println!("{}", issue);
+            }
 
-                let new_system = payas_parser::build_system(&self.model)?;
-                let new_schema = SchemaSpec::from_model(new_system.tables.into_iter().collect());
+            let new_system = payas_parser::build_system(&self.model)?;
+            let new_schema = SchemaSpec::from_model(new_system.tables.into_iter().collect());
 
-                let statements = migration_statements(&old_schema.value, &new_schema);
+            let statements = migration_statements(&old_schema.value, &new_schema);
 
-                // execute migration
+            // execute migration
+            let result: Result<()> = rt.block_on(async {
                 println!("Running migrations...");
+                let mut client = database.get_client().await?;
                 let transaction = client.transaction().await?;
                 for (statement, _) in statements {
                     transaction.execute(&statement, &[]).await?;
                 }
-                transaction.commit().await?;
+                transaction.commit().await.map_err(|e| anyhow!(e))
+            });
 
-                Ok(())
-            })
+            if let Err(e) = result {
+                println!("Error while applying migration: {}", e);
+                println!("Choose an option:");
+                print!("[c]ontinue without applying, (r)ebuild docker, (p)ause for manual repair, or (e)xit: ");
+                std::io::stdout().flush()?;
+
+                let mut input: String = String::new();
+                let result = std::io::stdin().read_line(&mut input).map(|_| input.trim());
+
+                match result {
+                    // rebuild docker
+                    Ok("r") => {
+                        self.run(_system_start_time)?;
+                    }
+
+                    // pause for manual repair
+                    Ok("p") => {
+                        println!("=====");
+                        println!(
+                            "Pausing for manual repair. Database URL is {}",
+                            db.connection_url
+                        );
+                        println!("Press enter to continue.");
+                        println!("=====");
+                        std::io::stdin().read_line(&mut input)?;
+                    }
+
+                    // exit
+                    Ok("e") => {
+                        println!("Exiting...");
+                        crate::SIGINT.store(true, Ordering::SeqCst);
+                    }
+
+                    // continue, do nothing
+                    _ => {
+                        println!("Continuing...");
+                    }
+                }
+            }
+
+            Ok(())
         };
 
         watcher::start_watcher(&self.model, self.port, prestart_callback)
