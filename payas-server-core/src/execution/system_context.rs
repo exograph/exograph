@@ -1,23 +1,20 @@
+use async_graphql_parser::types::ExecutableDocument;
+use async_graphql_parser::Pos;
+use tracing::{error, instrument};
+
+use crate::deno_integration::ClayDenoExecutorPool;
 use crate::execution_error::ExecutionError;
+use crate::introspection::schema::Schema;
 use crate::request_context::RequestContext;
 use crate::validation::{document_validator::DocumentValidator, operation::ValidatedOperation};
 use crate::validation_error::ValidationError;
 use crate::OperationsPayload;
-use crate::{introspection::definition::root_element::RootElement, introspection::schema::Schema};
-use async_graphql_parser::types::ExecutableDocument;
-use async_graphql_parser::Pos;
 
-use crate::deno_integration::ClayDenoExecutorPool;
 use payas_model::model::system::ModelSystem;
 use payas_sql::DatabaseExecutor;
-use tracing::{error, instrument};
 
-use async_trait::async_trait;
-
-use super::query_response::{QueryResponse, QueryResponseBody};
+use super::query_response::QueryResponse;
 use super::resolver::FieldResolver;
-
-use crate::{data::data_resolver::DataResolver, validation::field::ValidatedField};
 
 /// Encapsulates the information required by the [crate::resolve] function.
 ///
@@ -46,6 +43,28 @@ impl SystemContext {
     ) -> Result<Vec<(String, QueryResponse)>, ExecutionError> {
         let operation = self.validate_operation(operations_payload)?;
 
+        /*
+        Go through the FieldResolver for ValidatedOperation (thus through the generic support offered by Resolver) and
+        so that we can support fragments in top-level queries in such as:
+
+        ```graphql
+        {
+          ...query_info
+        }
+
+        fragment query_info on Query {
+          __type(name: "Concert") {
+            name
+          }
+
+          __schema {
+              types {
+              name
+            }
+          }
+        }
+        ```
+        */
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
@@ -114,59 +133,4 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
 
         ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
-}
-
-/**
-Go through the FieldResolver (thus through the generic support offered by Resolver) and
-so that we can support fragments in top-level queries in such as:
-
-```graphql
-{
-  ...query_info
-}
-
-fragment query_info on Query {
-  __type(name: "Concert") {
-    name
-  }
-
-  __schema {
-      types {
-      name
-    }
-  }
-}
-```
-*/
-#[async_trait]
-impl FieldResolver<QueryResponse> for ValidatedOperation {
-    async fn resolve_field<'e>(
-        &'e self,
-        field: &ValidatedField,
-        system_context: &'e SystemContext,
-        request_context: &'e RequestContext<'e>,
-    ) -> Result<QueryResponse, ExecutionError> {
-        let name = field.name.as_str();
-
-        if name.starts_with("__") {
-            let introspection_root = RootElement {
-                operation_type: &self.typ,
-                name,
-            };
-
-            let body = introspection_root
-                .resolve_field(field, system_context, request_context)
-                .await?;
-
-            Ok(QueryResponse {
-                body: QueryResponseBody::Json(body),
-                headers: vec![],
-            })
-        } else {
-            system_context
-                .system
-                .resolve(field, &self.typ, system_context, request_context)
-                .await
-        }
-    }
 }
