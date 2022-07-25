@@ -1,5 +1,6 @@
 use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 
+use crate::graphql::introspection::schema::Schema;
 /// Provides core functionality for handling incoming queries without depending
 /// on any specific web framework.
 ///
@@ -10,31 +11,27 @@ use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
-pub use execution::system_context::SystemContext;
 use futures::Stream;
+use graphql::request_context::RequestContext;
 use initialization_error::InitializationError;
-use introspection::schema::Schema;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
 use payas_sql::{Database, DatabaseExecutor};
-use request_context::RequestContext;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use crate::{execution::query_response::QueryResponseBody, execution_error::ExecutionError};
+use crate::graphql::{
+    execution::query_response::QueryResponseBody, execution_error::ExecutionError,
+};
 
-mod data;
-mod deno;
-mod deno_integration;
-mod execution;
-mod execution_error;
 pub mod graphiql;
 pub mod initialization_error;
-mod introspection;
+
 mod logging_tracing;
-pub mod request_context;
-mod validation;
-mod validation_error;
+
+mod graphql;
+
+pub use graphql::{execution::system_context::SystemContext, request_context};
 
 fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
     if !Path::new(&claypot_file).exists() {
@@ -68,7 +65,8 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
 
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
-    let deno_execution_config = DenoExecutorPool::new_from_config(deno_integration::clay_config());
+    let deno_execution_config =
+        DenoExecutorPool::new_from_config(graphql::deno_integration::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 
