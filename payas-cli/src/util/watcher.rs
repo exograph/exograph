@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
 
 use crate::commands::build::build;
@@ -23,12 +23,11 @@ pub fn start_watcher<F>(
 where
     F: Fn() -> Result<()>,
 {
-    let absolute_path = model_path
-        .canonicalize()
-        .expect("Couldn't get model as canonical path");
+    let absolute_path = model_path.canonicalize()?;
     let parent_dir = absolute_path
         .parent()
-        .expect("Couldn't get parent directory");
+        .ok_or_else(|| anyhow!("Could not get parent directory"))?;
+
     println!("Watching: {:?}", &parent_dir);
     let (tx, rx) = channel();
     let mut watcher: RecommendedWatcher = Watcher::new(tx, std::time::Duration::from_millis(200))?;
