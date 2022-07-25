@@ -65,8 +65,7 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
 
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
-    let deno_execution_config =
-        DenoExecutorPool::new_from_config(graphql::deno_integration::clay_config());
+    let deno_execution_config = DenoExecutorPool::new_from_config(graphql::deno::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 

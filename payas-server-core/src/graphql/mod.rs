@@ -1,7 +1,6 @@
 mod data;
 mod database;
-mod deno;
-pub mod deno_integration;
+pub mod deno;
 pub mod execution;
 pub mod execution_error;
 pub mod introspection;

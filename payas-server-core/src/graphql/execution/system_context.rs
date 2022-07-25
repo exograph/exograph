@@ -2,7 +2,7 @@ use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
 use tracing::{error, instrument};
 
-use crate::graphql::deno_integration::ClayDenoExecutorPool;
+use crate::graphql::deno::ClayDenoExecutorPool;
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::introspection::schema::Schema;
 use crate::graphql::request_context::RequestContext;

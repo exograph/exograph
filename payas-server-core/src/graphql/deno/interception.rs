@@ -7,7 +7,7 @@ use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 
 use crate::graphql::{
-    deno_integration::{
+    deno::{
         clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
         FnClaytipInterceptorProceed, InterceptedOperationInfo,
     },

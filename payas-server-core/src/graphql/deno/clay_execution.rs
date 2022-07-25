@@ -11,9 +11,7 @@ use payas_deno::{
     deno_module::{DenoModule, DenoModuleSharedState},
 };
 
-use crate::graphql::{
-    deno_integration, execution::query_response::QueryResponse, execution_error::ExecutionError,
-};
+use crate::graphql::{execution::query_response::QueryResponse, execution_error::ExecutionError};
 
 use super::claytip_ops::InterceptedOperationInfo;
 
@@ -118,12 +116,12 @@ pub fn clay_config() -> DenoExecutorConfig<Option<InterceptedOperationInfo>> {
         // create a Deno extension that provides these ops
         let ext = Extension::builder()
             .ops(vec![
-                deno_integration::claytip_ops::op_claytip_execute_query::decl(),
-                deno_integration::claytip_ops::op_claytip_execute_query_priv::decl(),
-                deno_integration::claytip_ops::op_intercepted_operation_name::decl(),
-                deno_integration::claytip_ops::op_intercepted_operation_query::decl(),
-                deno_integration::claytip_ops::op_intercepted_proceed::decl(),
-                deno_integration::claytip_ops::op_add_header::decl(),
+                super::claytip_ops::op_claytip_execute_query::decl(),
+                super::claytip_ops::op_claytip_execute_query_priv::decl(),
+                super::claytip_ops::op_intercepted_operation_name::decl(),
+                super::claytip_ops::op_intercepted_operation_query::decl(),
+                super::claytip_ops::op_intercepted_proceed::decl(),
+                super::claytip_ops::op_add_header::decl(),
             ])
             .build();
         vec![ext]

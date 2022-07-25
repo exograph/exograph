@@ -1,6 +1,20 @@
 pub mod deno_resolver;
 pub mod interception;
 
+pub mod clay_execution;
+pub mod claytip_ops;
+
+pub use clay_execution::{
+    clay_config, ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,
+};
+pub use claytip_ops::InterceptedOperationInfo;
+use payas_deno::DenoExecutorPool;
+pub type ClayDenoExecutorPool = DenoExecutorPool<
+    Option<InterceptedOperationInfo>,
+    clay_execution::RequestFromDenoMessage,
+    clay_execution::ClaytipMethodResponse,
+>;
+
 macro_rules! claytip_execute_query {
     ($system_context:ident, $request_context:ident) => {
         Some(&move |query_string: String,
