@@ -1,4 +1,4 @@
-//! Build mutation input types associatd with creation (<Type>CreationInput) and
+//! Build mutation input types associated with creation (<Type>CreationInput) and
 //! the create mutations (create<Type>, and create<Type>s)
 
 use super::naming::{ToGqlMutationNames, ToGqlTypeNames};
@@ -6,7 +6,7 @@ use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
-use payas_model::model::operation::{CreateDataParameter, MutationKind};
+use payas_model::model::operation::{CreateDataParameter, DatabaseMutationKind};
 
 use super::mutation_builder::{DataParamBuilder, MutationBuilder};
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
@@ -66,8 +66,8 @@ impl MutationBuilder for CreateMutationBuilder {
         _model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
-    ) -> MutationKind {
-        MutationKind::Create(Self::data_param(model_type, building, false))
+    ) -> DatabaseMutationKind {
+        DatabaseMutationKind::Create(Self::data_param(model_type, building, false))
     }
 
     fn multi_mutation_name(model_type: &GqlType) -> String {
@@ -78,8 +78,8 @@ impl MutationBuilder for CreateMutationBuilder {
         _model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
-    ) -> MutationKind {
-        MutationKind::Create(Self::data_param(model_type, building, true))
+    ) -> DatabaseMutationKind {
+        DatabaseMutationKind::Create(Self::data_param(model_type, building, true))
     }
 }
 
