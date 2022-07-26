@@ -73,17 +73,24 @@ pub struct Mutation {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MutationKind {
     // mutations for persistent queries
-    Create(CreateDataParameter),
-    Delete(PredicateParameter),
-    Update {
-        data_param: UpdateDataParameter,
-        predicate_param: PredicateParameter,
+    Database {
+        kind: DatabaseMutationKind,
     },
 
     // mutation for service
     Service {
         method_id: Option<SerializableSlabIndex<ServiceMethod>>,
         argument_param: Vec<ArgumentParameter>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum DatabaseMutationKind {
+    Create(CreateDataParameter),
+    Delete(PredicateParameter),
+    Update {
+        data_param: UpdateDataParameter,
+        predicate_param: PredicateParameter,
     },
 }
 
