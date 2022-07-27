@@ -36,19 +36,19 @@ pub struct SystemContext {
 impl SystemContext {
     /// Resolve the provided top-level operation.
     ///
-    /// Goes through the FieldResolver for ValidatedOperation (thus through the generic support offered by Resolver) and
+    /// Goes through the FieldResolver for ValidatedOperation (and thus get free support for `resolve_fields`)
     /// so that we can support fragments in top-level queries in such as:
-
+    ///
     /// ```graphql
     /// {
     ///   ...query_info
     /// }
-
+    ///
     /// fragment query_info on Query {
     ///   __type(name: "Concert") {
     ///     name
     ///   }
-
+    ///
     ///   __schema {
     ///       types {
     ///       name

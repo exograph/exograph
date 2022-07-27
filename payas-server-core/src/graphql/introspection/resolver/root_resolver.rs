@@ -1,6 +1,6 @@
 use crate::graphql::execution_error::ExecutionError;
 
-use crate::graphql::execution::resolver::{FieldResolver, Resolver};
+use crate::graphql::execution::resolver::FieldResolver;
 use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::introspection::definition::root_element::IntrospectionRootElement;
 use crate::graphql::introspection::schema::{
@@ -12,6 +12,8 @@ use async_graphql_parser::types::{BaseType, OperationType, Type};
 use async_graphql_value::{ConstValue, Name};
 use async_trait::async_trait;
 use serde_json::Value;
+
+use super::resolver_support::Resolver;
 
 #[async_trait]
 impl<'a> FieldResolver<Value> for IntrospectionRootElement<'a> {
