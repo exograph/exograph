@@ -15,12 +15,13 @@ use crate::graphql::data::operation_mapper::DenoOperation;
 
 use crate::graphql::data::deno::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use crate::graphql::execution::query_response::{QueryResponse, QueryResponseBody};
-use crate::graphql::execution_error::{ExecutionError, ServiceExecutionError};
 use crate::graphql::request_context::RequestContext;
 
 use crate::graphql::{execution::system_context::SystemContext, validation::field::ValidatedField};
 
 use payas_sql::{AbstractPredicate, Predicate};
+
+use super::DenoExecutionError;
 
 impl DenoOperation {
     pub async fn execute<'a>(
@@ -28,7 +29,7 @@ impl DenoOperation {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<QueryResponse, ExecutionError> {
+    ) -> Result<QueryResponse, DenoExecutionError> {
         let method = &system_context.system.methods[self.0];
 
         let access_predicate = compute_service_access_predicate(
@@ -40,7 +41,7 @@ impl DenoOperation {
         .await;
 
         if access_predicate == &Predicate::False {
-            return Err(ExecutionError::Authorization);
+            return Err(DenoExecutionError::Authorization);
         }
 
         resolve_deno(
@@ -104,7 +105,7 @@ pub async fn construct_arg_sequence(
     args: &[Argument],
     system_context: &SystemContext,
     request_context: &RequestContext<'_>,
-) -> Result<Vec<Arg>, ServiceExecutionError> {
+) -> Result<Vec<Arg>, DenoExecutionError> {
     let system = &system_context.system;
     let mapped_args = field_args
         .iter()
@@ -150,7 +151,7 @@ pub async fn construct_arg_sequence(
                 // regular argument
                 Ok(Arg::Serde(val.clone()))
             } else {
-                Err(ServiceExecutionError::InvalidArgument(arg.name.clone()))
+                Err(DenoExecutionError::InvalidArgument(arg.name.clone()))
             }
         })
         .collect::<Vec<Result<_, _>>>()
@@ -165,7 +166,7 @@ async fn resolve_deno<'a>(
     claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
     system_context: &SystemContext,
     request_context: &RequestContext<'_>,
-) -> Result<QueryResponse, ExecutionError> {
+) -> Result<QueryResponse, DenoExecutionError> {
     let script = &system_context.system.deno_scripts[method.script];
 
     // construct a sequence of arguments to pass to the Deno method
@@ -193,7 +194,7 @@ async fn resolve_deno<'a>(
             callback_processor,
         )
         .await
-        .map_err(ServiceExecutionError::Deno)?;
+        .map_err(DenoExecutionError::Deno)?;
 
     Ok(QueryResponse {
         body: QueryResponseBody::Json(result),

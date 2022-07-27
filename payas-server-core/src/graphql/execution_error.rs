@@ -1,11 +1,10 @@
 use std::error::Error;
 
-use payas_deno::deno_error::DenoError;
 use thiserror::Error;
 
 use crate::graphql::validation::validation_error::ValidationError;
 
-use super::data::database::DatabaseExecutionError;
+use super::data::{database::DatabaseExecutionError, deno::DenoExecutionError};
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {
@@ -16,7 +15,7 @@ pub enum ExecutionError {
     Database(#[from] DatabaseExecutionError),
 
     #[error(transparent)]
-    Service(#[from] ServiceExecutionError),
+    Deno(#[from] DenoExecutionError),
 
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
@@ -34,15 +33,6 @@ pub enum ExecutionError {
     WithContext(String, #[source] Box<ExecutionError>),
 }
 
-#[derive(Error, Debug)]
-pub enum ServiceExecutionError {
-    #[error(transparent)]
-    Deno(#[from] DenoError),
-
-    #[error("Invalid argument {0}")]
-    InvalidArgument(String),
-}
-
 impl ExecutionError {
     pub fn with_context(self, context: String) -> ExecutionError {
         ExecutionError::WithContext(context, Box::new(self))
@@ -52,7 +42,6 @@ impl ExecutionError {
     // This should hide any internal details of the error.
     // TODO: Log the details of the error.
     pub fn user_error_message(&self) -> String {
-        println!("---------- {:?}", self);
         match self {
             ExecutionError::WithContext(_message, source) => source.user_error_message(),
             // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).

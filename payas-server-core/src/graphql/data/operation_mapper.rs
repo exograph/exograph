@@ -8,6 +8,7 @@ use payas_model::model::{mapped_arena::SerializableSlabIndex, service::ServiceMe
 use payas_sql::AbstractOperation;
 
 use super::database::DatabaseExecutionError;
+use super::deno::DenoExecutionError;
 
 #[allow(clippy::large_enum_variant)]
 pub enum OperationResolverResult<'a> {
@@ -47,11 +48,13 @@ impl<'a> OperationResolverResult<'a> {
                 })
             }
 
-            OperationResolverResult::DenoOperation(operation) => {
-                operation
-                    .execute(field, system_context, request_context)
-                    .await
-            }
+            OperationResolverResult::DenoOperation(operation) => operation
+                .execute(field, system_context, request_context)
+                .await
+                .map_err(|e| match e {
+                    DenoExecutionError::Authorization => ExecutionError::Authorization,
+                    e => ExecutionError::Deno(e),
+                }),
         }
     }
 }
