@@ -8,7 +8,7 @@ response: |
   {
     "errors": [
       {
-        "message": "Logical operation predicate does not have any arguments"
+        "message": "Error computing predicate for field 'logs': Logical operation predicate does not have any arguments"
       }
     ]
   }

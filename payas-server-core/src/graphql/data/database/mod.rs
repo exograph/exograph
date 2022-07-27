@@ -1,30 +1,31 @@
-pub mod cast;
+pub use database_execution_error::DatabaseExecutionError;
+pub use database_mutation::DatabaseMutation;
+pub use database_query::DatabaseQuery;
+pub use database_system_context::DatabaseSystemContext;
+
+mod cast;
 mod create_data_param_mapper;
+mod database_execution_error;
+mod database_mutation;
+mod database_query;
+mod database_system_context;
 mod limit_offset_mapper;
-
 mod order_by_mapper;
-pub mod predicate_mapper;
-
-pub mod database_mutation;
-pub mod database_query;
-pub mod database_system_context;
-pub mod sql_mapper;
+mod predicate_mapper;
+mod sql_mapper;
 mod update_data_param_mapper;
 
 use std::collections::HashMap;
 
-use postgres_types::FromSqlOwned;
-use predicate_mapper::PredicateParameterMapper;
-
 use async_graphql_value::ConstValue;
+use postgres_types::FromSqlOwned;
 use tokio_postgres::Row;
 
 use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 
-use crate::graphql::{
-    execution_error::{ExecutionError, WithContext},
-    request_context::RequestContext,
-};
+use crate::graphql::request_context::RequestContext;
+
+use predicate_mapper::PredicateParameterMapper;
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -34,9 +35,9 @@ use payas_model::model::{
     GqlCompositeType, GqlTypeKind,
 };
 
-use self::{database_system_context::DatabaseSystemContext, sql_mapper::SQLOperationKind};
+use self::sql_mapper::SQLOperationKind;
 
-use crate::graphql::{data::access_solver, execution_error::DatabaseExecutionError};
+use crate::graphql::data::access_solver;
 
 pub type Arguments = HashMap<String, ConstValue>;
 
@@ -78,7 +79,7 @@ fn compute_predicate<'a>(
     arguments: &'a Arguments,
     additional_predicate: AbstractPredicate<'a>,
     system_context: &DatabaseSystemContext<'a>,
-) -> Result<AbstractPredicate<'a>, ExecutionError> {
+) -> Result<AbstractPredicate<'a>, DatabaseExecutionError> {
     let mapped = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
@@ -87,8 +88,7 @@ fn compute_predicate<'a>(
                 predicate_parameter.map_to_predicate(argument_value, None, system_context)
             })
         })
-        .transpose()
-        .with_context("While mapping predicate parameters to SQL".into())?;
+        .transpose()?;
 
     let res = match mapped {
         Some(predicate) => {

@@ -1,5 +1,5 @@
 use crate::graphql::{
-    data::database::database_query::DatabaseQuery, execution::system_context::SystemContext,
+    data::database::DatabaseQuery, execution::system_context::SystemContext,
     execution_error::ExecutionError, request_context::RequestContext,
     validation::field::ValidatedField,
 };
@@ -9,7 +9,7 @@ use payas_model::model::operation::{Interceptors, Query, QueryKind};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
 use super::{
-    database::database_system_context::DatabaseSystemContext,
+    database::{DatabaseExecutionError, DatabaseSystemContext},
     operation_mapper::{DenoOperation, OperationResolverResult},
     operation_resolver::OperationResolver,
 };
@@ -41,7 +41,14 @@ impl<'a> OperationResolver<'a> for Query {
                         &database_system_context,
                         request_context,
                     )
-                    .await?;
+                    .await
+                    .map_err(|database_execution_error| match database_execution_error {
+                        DatabaseExecutionError::Authorization => ExecutionError::Authorization,
+                        DatabaseExecutionError::Generic(messages) => {
+                            ExecutionError::Generic(messages)
+                        }
+                        e => ExecutionError::Database(e),
+                    })?;
 
                 OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
             }

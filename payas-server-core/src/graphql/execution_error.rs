@@ -3,9 +3,9 @@ use std::error::Error;
 use payas_deno::deno_error::DenoError;
 use thiserror::Error;
 
-use crate::graphql::{
-    data::database::cast::CastError, validation::validation_error::ValidationError,
-};
+use crate::graphql::validation::validation_error::ValidationError;
+
+use super::data::database::DatabaseExecutionError;
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {
@@ -24,9 +24,6 @@ pub enum ExecutionError {
     #[error(transparent)]
     Validation(#[from] ValidationError),
 
-    #[error(transparent)]
-    CastError(#[from] CastError),
-
     #[error("Invalid field {0} for {1}")]
     InvalidField(String, &'static str), // (field name, container type)
 
@@ -35,18 +32,6 @@ pub enum ExecutionError {
 
     #[error("{0} {1}")]
     WithContext(String, #[source] Box<ExecutionError>),
-}
-
-#[derive(Error, Debug)]
-pub enum DatabaseExecutionError {
-    #[error(transparent)]
-    Database(#[from] payas_sql::database_error::DatabaseError),
-
-    #[error(transparent)]
-    EmptyRow(#[from] tokio_postgres::Error),
-
-    #[error("Result has {0} entries; expected only zero or one")]
-    NonUniqueResult(usize),
 }
 
 #[derive(Error, Debug)]
@@ -67,6 +52,7 @@ impl ExecutionError {
     // This should hide any internal details of the error.
     // TODO: Log the details of the error.
     pub fn user_error_message(&self) -> String {
+        println!("---------- {:?}", self);
         match self {
             ExecutionError::WithContext(_message, source) => source.user_error_message(),
             // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).

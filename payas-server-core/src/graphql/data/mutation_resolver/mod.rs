@@ -1,5 +1,5 @@
 use crate::graphql::{
-    data::database::database_mutation::DatabaseMutation, execution::system_context::SystemContext,
+    data::database::DatabaseMutation, execution::system_context::SystemContext,
     execution_error::ExecutionError, request_context::RequestContext,
     validation::field::ValidatedField,
 };
@@ -12,7 +12,7 @@ use crate::graphql::data::{
     operation_resolver::OperationResolver,
 };
 
-use super::database::database_system_context::DatabaseSystemContext;
+use super::database::{DatabaseExecutionError, DatabaseSystemContext};
 
 #[async_trait]
 impl<'a> OperationResolver<'a> for Mutation {
@@ -35,6 +35,13 @@ impl<'a> OperationResolver<'a> for Mutation {
                 database_mutation
                     .operation(field, &database_system_context, request_context)
                     .await
+                    .map_err(|database_execution_error| match database_execution_error {
+                        DatabaseExecutionError::Authorization => ExecutionError::Authorization,
+                        DatabaseExecutionError::Generic(message) => {
+                            ExecutionError::Generic(message)
+                        }
+                        e => ExecutionError::Database(e),
+                    })
                     .map(OperationResolverResult::SQLOperation)
             }
 

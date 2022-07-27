@@ -1,11 +1,12 @@
-use super::{cast::cast_value, database_system_context::DatabaseSystemContext};
-use crate::graphql::execution_error::ExecutionError;
 use async_graphql_value::ConstValue;
 
 use payas_model::model::predicate::{ColumnIdPath, PredicateParameter, PredicateParameterTypeKind};
 use payas_sql::{AbstractPredicate, ColumnPath};
 
-use super::{to_column_id_path, to_column_path};
+use super::{
+    cast::cast_value, database_execution_error::DatabaseExecutionError,
+    database_system_context::DatabaseSystemContext, to_column_id_path, to_column_path,
+};
 
 pub trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
@@ -13,7 +14,7 @@ pub trait PredicateParameterMapper<'a> {
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
         system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<AbstractPredicate<'a>, ExecutionError>;
+    ) -> Result<AbstractPredicate<'a>, DatabaseExecutionError>;
 }
 
 impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
@@ -22,7 +23,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
         system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<AbstractPredicate<'a>, ExecutionError> {
+    ) -> Result<AbstractPredicate<'a>, DatabaseExecutionError> {
         let system = &system_context.system;
         let parameter_type = &system.predicate_types[self.type_id];
 
@@ -81,7 +82,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .fold(Ok(("", None)), |acc, (name, result)| {
                         acc.and_then(|(acc_name, acc_result)| {
                                     if acc_result.is_some() && result.is_some() {
-                                        Err(ExecutionError::Generic("Cannot specify more than one logical operation on the same level".into()))
+                                        Err(DatabaseExecutionError::Generic("Cannot specify more than one logical operation on the same level".into()))
                                     } else if acc_result.is_some() && result.is_none() {
                                         Ok((acc_name, acc_result))
                                     } else {
@@ -103,7 +104,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 if let ConstValue::List(arguments) = logical_op_argument_value {
                                     // first make sure we have arguments
                                     if arguments.is_empty() {
-                                        return Err(ExecutionError::Generic("Logical operation predicate does not have any arguments".into()));
+                                        return Err(DatabaseExecutionError::Generic("Logical operation predicate does not have any arguments".into()));
                                     }
 
                                     // build our predicate chain from the array of arguments provided
@@ -135,7 +136,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
 
                                     Ok(new_predicate)
                                 } else {
-                                    Err(ExecutionError::Generic(
+                                    Err(DatabaseExecutionError::Generic(
                                         "This logical operation predicate needs a list of queries"
                                             .into(),
                                     ))
@@ -195,7 +196,7 @@ fn operands<'a>(
     op_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
     system_context: &DatabaseSystemContext<'a>,
-) -> Result<(ColumnPath<'a>, ColumnPath<'a>), ExecutionError> {
+) -> Result<(ColumnPath<'a>, ColumnPath<'a>), DatabaseExecutionError> {
     let system = &system_context.system;
 
     let op_physical_column = &param
@@ -213,5 +214,5 @@ fn operands<'a>(
                 ColumnPath::Literal(op_value.unwrap().into()),
             )
         })
-        .map_err(ExecutionError::CastError)
+        .map_err(DatabaseExecutionError::CastError)
 }

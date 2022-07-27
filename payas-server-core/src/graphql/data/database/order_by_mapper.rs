@@ -1,11 +1,14 @@
-use crate::graphql::execution_error::{ExecutionError, WithContext};
 use async_graphql_value::ConstValue;
-use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
-use payas_model::model::predicate::ColumnIdPath;
+
+use payas_model::model::{
+    order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
+    predicate::ColumnIdPath,
+};
 use payas_sql::{AbstractOrderBy, ColumnPath, Ordering};
 
-use super::database_system_context::DatabaseSystemContext;
-use super::to_column_path;
+use crate::graphql::execution_error::{ExecutionError, WithContext};
+
+use super::{database_system_context::DatabaseSystemContext, to_column_path};
 
 pub trait OrderByParameterMapper<'a> {
     fn map_to_order_by(

@@ -1,12 +1,4 @@
 use async_graphql_value::ConstValue;
-use payas_sql::{
-    AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, ColumnPath, ColumnPathLink,
-    NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate, NestedElementRelation,
-    Selection,
-};
-
-use super::{cast, database_system_context::DatabaseSystemContext};
-use crate::graphql::execution_error::ExecutionError;
 
 use payas_model::model::{
     operation::{OperationReturnType, UpdateDataParameter},
@@ -15,10 +7,16 @@ use payas_model::model::{
     types::GqlTypeKind,
     GqlCompositeType, GqlType,
 };
+use payas_sql::{
+    AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
+    ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
+    NestedElementRelation, PhysicalColumn, PhysicalColumnType, Selection,
+};
 
-use payas_sql::{Column, PhysicalColumn, PhysicalColumnType};
-
-use super::sql_mapper::SQLUpdateMapper;
+use super::{
+    cast, database_execution_error::DatabaseExecutionError,
+    database_system_context::DatabaseSystemContext, sql_mapper::SQLUpdateMapper,
+};
 
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
     fn update_operation(
@@ -28,7 +26,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<AbstractUpdate<'a>, ExecutionError> {
+    ) -> Result<AbstractUpdate<'a>, DatabaseExecutionError> {
         let system = &system_context.system;
         let data_type = &system.mutation_types[self.type_id];
 
@@ -301,7 +299,7 @@ fn compute_nested_inserts<'a>(
         argument: &'a ConstValue,
         container_model_type: &'a GqlType,
         system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<NestedAbstractInsert<'a>, ExecutionError> {
+    ) -> Result<NestedAbstractInsert<'a>, DatabaseExecutionError> {
         let nested_reference_col = compute_nested_reference_column(
             field_model_type,
             container_model_type,

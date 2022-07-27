@@ -1,16 +1,19 @@
-use crate::graphql::execution_error::ExecutionError;
-
-use super::{database_system_context::DatabaseSystemContext, sql_mapper::SQLMapper};
 use async_graphql_value::ConstValue;
+
 use payas_model::model::limit_offset::{LimitParameter, OffsetParameter};
 use payas_sql::{Limit, Offset};
 
-fn cast_to_i64(argument: &ConstValue) -> Result<i64, ExecutionError> {
+use super::{
+    database_execution_error::DatabaseExecutionError,
+    database_system_context::DatabaseSystemContext, sql_mapper::SQLMapper,
+};
+
+fn cast_to_i64(argument: &ConstValue) -> Result<i64, DatabaseExecutionError> {
     match argument {
         ConstValue::Number(n) => n
             .as_i64()
-            .ok_or_else(|| ExecutionError::Generic(format!("Could not cast {} to i64", n))),
-        _ => Err(ExecutionError::Generic("Not a number".into())),
+            .ok_or_else(|| DatabaseExecutionError::Generic(format!("Could not cast {} to i64", n))),
+        _ => Err(DatabaseExecutionError::Generic("Not a number".into())),
     }
 }
 
@@ -19,7 +22,7 @@ impl<'a> SQLMapper<'a, Limit> for LimitParameter {
         &self,
         argument: &'a ConstValue,
         _system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<Limit, ExecutionError> {
+    ) -> Result<Limit, DatabaseExecutionError> {
         cast_to_i64(argument).map(Limit)
     }
 }
@@ -29,7 +32,7 @@ impl<'a> SQLMapper<'a, Offset> for OffsetParameter {
         &self,
         argument: &'a ConstValue,
         _system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<Offset, ExecutionError> {
+    ) -> Result<Offset, DatabaseExecutionError> {
         cast_to_i64(argument).map(Offset)
     }
 }

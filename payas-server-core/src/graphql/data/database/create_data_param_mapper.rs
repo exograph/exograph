@@ -1,12 +1,4 @@
 use async_graphql_value::ConstValue;
-use payas_sql::{
-    AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
-    NestedElementRelation, NestedInsertion,
-};
-
-use crate::graphql::execution_error::{ExecutionError, WithContext};
-
-use super::{cast, database_system_context::DatabaseSystemContext};
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -16,8 +8,17 @@ use payas_model::model::{
     types::GqlTypeKind,
     GqlCompositeType, GqlField, GqlType,
 };
+use payas_sql::{
+    AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
+    NestedElementRelation, NestedInsertion,
+};
 
-use super::sql_mapper::SQLInsertMapper;
+use super::{
+    cast,
+    database_execution_error::{DatabaseExecutionError, WithContext},
+    database_system_context::DatabaseSystemContext,
+    sql_mapper::SQLInsertMapper,
+};
 
 impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
     fn insert_operation(
@@ -26,7 +27,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<AbstractInsert, ExecutionError> {
+    ) -> Result<AbstractInsert, DatabaseExecutionError> {
         let system = &system_context.system;
 
         let table = return_type.physical_table(system);
@@ -49,7 +50,7 @@ pub fn map_argument<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
-) -> Result<Vec<InsertionRow<'a>>, ExecutionError> {
+) -> Result<Vec<InsertionRow<'a>>, DatabaseExecutionError> {
     match argument {
         ConstValue::List(arguments) => arguments
             .iter()
@@ -66,10 +67,10 @@ fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
-) -> Result<InsertionRow<'a>, ExecutionError> {
+) -> Result<InsertionRow<'a>, DatabaseExecutionError> {
     let fields = match &input_data_type.kind {
         GqlTypeKind::Primitive => {
-            return Err(ExecutionError::Generic(
+            return Err(DatabaseExecutionError::Generic(
                 "Query attempted on a primitive type".into(),
             ))
         }
@@ -100,7 +101,7 @@ fn map_self_column<'a>(
     field: &'a GqlField,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
-) -> Result<InsertionElement<'a>, ExecutionError> {
+) -> Result<InsertionElement<'a>, DatabaseExecutionError> {
     let system = &system_context.system;
 
     let key_column = key_column_id.get_column(system);
@@ -112,7 +113,7 @@ fn map_self_column<'a>(
                 .pk_column_id()
                 .map(|column_id| &column_id.get_column(system).column_name)
                 .ok_or_else(|| {
-                    ExecutionError::Generic(format!(
+                    DatabaseExecutionError::Generic(format!(
                         "{} did not have a primary key field when computing many-to-one for {}",
                         other_type.name, field.name
                     ))
@@ -144,7 +145,7 @@ fn map_foreign<'a>(
     argument: &'a ConstValue,
     parent_data_type: &'a GqlType,
     system_context: &DatabaseSystemContext<'a>,
-) -> Result<InsertionElement<'a>, ExecutionError> {
+) -> Result<InsertionElement<'a>, DatabaseExecutionError> {
     let system = &system_context.system;
 
     fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
