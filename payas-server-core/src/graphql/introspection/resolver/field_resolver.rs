@@ -2,10 +2,12 @@ use async_graphql_parser::types::FieldDefinition;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::graphql::execution::resolver::{FieldResolver, Resolver};
+use crate::graphql::execution::resolver::FieldResolver;
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::request_context::RequestContext;
 use crate::graphql::{execution::system_context::SystemContext, validation::field::ValidatedField};
+
+use super::resolver_support::Resolver;
 
 #[async_trait]
 impl FieldResolver<Value> for FieldDefinition {
