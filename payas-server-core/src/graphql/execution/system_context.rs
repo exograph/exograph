@@ -15,8 +15,8 @@ use crate::OperationsPayload;
 use payas_model::model::system::ModelSystem;
 use payas_sql::DatabaseExecutor;
 
+use super::field_resolver::FieldResolver;
 use super::query_response::QueryResponse;
-use super::resolver::FieldResolver;
 
 /// Encapsulates the information required by the [crate::resolve] function.
 ///

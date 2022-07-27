@@ -2,7 +2,7 @@ use async_graphql_parser::types::{BaseType, Type, TypeDefinition};
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::graphql::execution::resolver::FieldResolver;
+use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::introspection::definition::type_introspection::TypeDefinitionIntrospection;
 use crate::graphql::request_context::RequestContext;
@@ -17,7 +17,7 @@ struct BoxedType<'a> {
 }
 
 #[async_trait]
-impl FieldResolver<Value> for TypeDefinition {
+impl FieldResolver<'static, Value, ExecutionError, SystemContext> for TypeDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
@@ -57,7 +57,7 @@ impl FieldResolver<Value> for TypeDefinition {
 }
 
 #[async_trait]
-impl FieldResolver<Value> for Type {
+impl FieldResolver<'static, Value, ExecutionError, SystemContext> for Type {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
@@ -110,7 +110,7 @@ impl FieldResolver<Value> for Type {
 /// determines the `ofType` value and the type_kind determines the `kind`, all
 /// other fields evaluate to null
 #[async_trait]
-impl<'a> FieldResolver<Value> for BoxedType<'a> {
+impl<'a> FieldResolver<'static, Value, ExecutionError, SystemContext> for BoxedType<'a> {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

@@ -3,6 +3,7 @@ pub use database_mutation::DatabaseMutation;
 pub use database_query::DatabaseQuery;
 pub use database_system_context::DatabaseSystemContext;
 
+mod abstract_operation_resolver;
 mod cast;
 mod create_data_param_mapper;
 mod database_execution_error;

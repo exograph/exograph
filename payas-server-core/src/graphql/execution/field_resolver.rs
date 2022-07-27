@@ -1,18 +1,15 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 
-use crate::graphql::{
-    execution_error::ExecutionError, request_context::RequestContext,
-    validation::field::ValidatedField,
-};
-
-use super::system_context::SystemContext;
+use crate::graphql::{request_context::RequestContext, validation::field::ValidatedField};
 
 #[async_trait]
-pub trait FieldResolver<R>
+pub trait FieldResolver<'content, R, E, SC>
 where
     Self: std::fmt::Debug,
     R: Send + Sync,
+    E: Send + Sync,
+    SC: 'content + Send + Sync,
 {
     // {
     //   name: ???
@@ -21,16 +18,16 @@ where
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        system_context: &'e SystemContext,
+        system_context: &'e SC,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<R, ExecutionError>;
+    ) -> Result<R, E>;
 
     async fn resolve_fields(
         &self,
         fields: &[ValidatedField],
-        system_context: &SystemContext,
+        system_context: &SC,
         request_context: &RequestContext<'_>,
-    ) -> Result<Vec<(String, R)>, ExecutionError> {
+    ) -> Result<Vec<(String, R)>, E> {
         futures::stream::iter(fields.iter())
             .then(|field| async {
                 self.resolve_field(field, system_context, request_context)

@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::{
     graphql::{
-        execution::resolver::FieldResolver, execution_error::ExecutionError,
+        execution::field_resolver::FieldResolver, execution_error::ExecutionError,
         validation::field::ValidatedField,
     },
     request_context::RequestContext,
@@ -47,7 +47,7 @@ where
 #[async_trait]
 impl<T> Resolver for T
 where
-    T: FieldResolver<Value> + std::fmt::Debug + Send + Sync,
+    T: FieldResolver<'static, Value, ExecutionError, SystemContext> + std::fmt::Debug + Send + Sync,
 {
     async fn resolve_value<'e>(
         &self,

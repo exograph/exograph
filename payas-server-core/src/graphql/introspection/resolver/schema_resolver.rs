@@ -7,13 +7,13 @@ use crate::graphql::validation::field::ValidatedField;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::graphql::execution::resolver::FieldResolver;
+use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution::system_context::SystemContext;
 
 use super::resolver_support::Resolver;
 
 #[async_trait]
-impl FieldResolver<Value> for Schema {
+impl FieldResolver<'static, Value, ExecutionError, SystemContext> for Schema {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

@@ -1,4 +1,5 @@
-use crate::graphql::execution::query_response::{QueryResponse, QueryResponseBody};
+use crate::graphql::execution::field_resolver::FieldResolver;
+use crate::graphql::execution::query_response::QueryResponse;
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::request_context::RequestContext;
 
@@ -26,27 +27,13 @@ impl<'a> OperationResolverResult<'a> {
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, ExecutionError> {
         match self {
-            OperationResolverResult::SQLOperation(abstract_operation) => {
-                let mut result = system_context
-                    .database_executor
-                    .execute(abstract_operation)
-                    .await
-                    .map_err(DatabaseExecutionError::Database)?;
-
-                let body = if result.len() == 1 {
-                    let string_result = super::database::extractor(result.swap_remove(0))?;
-                    Ok(QueryResponseBody::Raw(Some(string_result)))
-                } else if result.is_empty() {
-                    Ok(QueryResponseBody::Raw(None))
-                } else {
-                    Err(DatabaseExecutionError::NonUniqueResult(result.len()))
-                }?;
-
-                Ok(QueryResponse {
-                    body,
-                    headers: vec![], // we shouldn't get any HTTP headers from a SQL op
-                })
-            }
+            OperationResolverResult::SQLOperation(abstract_operation) => abstract_operation
+                .resolve_field(field, system_context, request_context)
+                .await
+                .map_err(|e| match e {
+                    DatabaseExecutionError::Authorization => ExecutionError::Authorization,
+                    e => ExecutionError::Database(e),
+                }),
 
             OperationResolverResult::DenoOperation(operation) => operation
                 .execute(field, system_context, request_context)

@@ -7,8 +7,8 @@ use crate::graphql::{
     data::operation_mapper::OperationResolverResult,
     execution::system_context::SystemContext,
     execution::{
+        field_resolver::FieldResolver,
         query_response::{QueryResponse, QueryResponseBody},
-        resolver::FieldResolver,
     },
     execution_error::ExecutionError,
     request_context::RequestContext,
@@ -16,7 +16,7 @@ use crate::graphql::{
 };
 
 #[async_trait]
-impl FieldResolver<Value> for Value {
+impl FieldResolver<'static, Value, ExecutionError, SystemContext> for Value {
     async fn resolve_field<'a>(
         &'a self,
         field: &ValidatedField,
