@@ -8,7 +8,7 @@ use crate::graphql::request_context::RequestContext;
 use crate::graphql::{execution::system_context::SystemContext, validation::field::ValidatedField};
 
 #[async_trait]
-impl FieldResolver<'static, Value, ExecutionError, SystemContext> for Directive {
+impl FieldResolver<Value, ExecutionError, SystemContext> for Directive {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

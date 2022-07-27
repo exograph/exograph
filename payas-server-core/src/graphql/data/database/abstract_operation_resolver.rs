@@ -11,19 +11,18 @@ use crate::{
         validation::field::ValidatedField,
     },
     request_context::RequestContext,
-    SystemContext,
 };
 
-use super::DatabaseExecutionError;
+use super::{DatabaseExecutionError, DatabaseSystemContext};
 
 #[async_trait]
-impl<'a> FieldResolver<'static, QueryResponse, DatabaseExecutionError, SystemContext>
+impl<'a> FieldResolver<QueryResponse, DatabaseExecutionError, DatabaseSystemContext<'a>>
     for AbstractOperation<'a>
 {
     async fn resolve_field<'e>(
         &'e self,
         _field: &ValidatedField,
-        system_context: &'e SystemContext,
+        system_context: &'e DatabaseSystemContext<'e>,
         _request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse, DatabaseExecutionError> {
         let mut result = system_context

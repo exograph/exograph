@@ -10,7 +10,7 @@ use crate::graphql::{execution::system_context::SystemContext, validation::field
 use super::resolver_support::Resolver;
 
 #[async_trait]
-impl FieldResolver<'static, Value, ExecutionError, SystemContext> for FieldDefinition {
+impl FieldResolver<Value, ExecutionError, SystemContext> for FieldDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

@@ -8,7 +8,7 @@ use crate::graphql::request_context::RequestContext;
 use crate::graphql::{execution::system_context::SystemContext, validation::field::ValidatedField};
 
 #[async_trait]
-impl FieldResolver<'static, Value, ExecutionError, SystemContext> for EnumValueDefinition {
+impl FieldResolver<Value, ExecutionError, SystemContext> for EnumValueDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

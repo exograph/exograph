@@ -47,7 +47,7 @@ where
 #[async_trait]
 impl<T> Resolver for T
 where
-    T: FieldResolver<'static, Value, ExecutionError, SystemContext> + std::fmt::Debug + Send + Sync,
+    T: FieldResolver<Value, ExecutionError, SystemContext> + std::fmt::Debug + Send + Sync,
 {
     async fn resolve_value<'e>(
         &self,

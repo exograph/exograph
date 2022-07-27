@@ -11,7 +11,7 @@ use crate::graphql::validation::field::ValidatedField;
 use crate::graphql::validation::operation::ValidatedOperation;
 
 #[async_trait]
-impl FieldResolver<'static, QueryResponse, ExecutionError, SystemContext> for ValidatedOperation {
+impl FieldResolver<QueryResponse, ExecutionError, SystemContext> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

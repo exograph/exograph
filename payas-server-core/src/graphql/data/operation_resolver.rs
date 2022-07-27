@@ -16,7 +16,7 @@ use crate::graphql::{
 };
 
 #[async_trait]
-impl FieldResolver<'static, Value, ExecutionError, SystemContext> for Value {
+impl FieldResolver<Value, ExecutionError, SystemContext> for Value {
     async fn resolve_field<'a>(
         &'a self,
         field: &ValidatedField,

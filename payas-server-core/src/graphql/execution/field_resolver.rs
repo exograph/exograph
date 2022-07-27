@@ -4,12 +4,12 @@ use futures::StreamExt;
 use crate::graphql::{request_context::RequestContext, validation::field::ValidatedField};
 
 #[async_trait]
-pub trait FieldResolver<'content, R, E, SC>
+pub trait FieldResolver<R, E, SC>
 where
     Self: std::fmt::Debug,
     R: Send + Sync,
     E: Send + Sync,
-    SC: 'content + Send + Sync,
+    SC: Send + Sync,
 {
     // {
     //   name: ???

@@ -17,7 +17,7 @@ struct BoxedType<'a> {
 }
 
 #[async_trait]
-impl FieldResolver<'static, Value, ExecutionError, SystemContext> for TypeDefinition {
+impl FieldResolver<Value, ExecutionError, SystemContext> for TypeDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
@@ -57,7 +57,7 @@ impl FieldResolver<'static, Value, ExecutionError, SystemContext> for TypeDefini
 }
 
 #[async_trait]
-impl FieldResolver<'static, Value, ExecutionError, SystemContext> for Type {
+impl FieldResolver<Value, ExecutionError, SystemContext> for Type {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
@@ -110,7 +110,7 @@ impl FieldResolver<'static, Value, ExecutionError, SystemContext> for Type {
 /// determines the `ofType` value and the type_kind determines the `kind`, all
 /// other fields evaluate to null
 #[async_trait]
-impl<'a> FieldResolver<'static, Value, ExecutionError, SystemContext> for BoxedType<'a> {
+impl<'a> FieldResolver<Value, ExecutionError, SystemContext> for BoxedType<'a> {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

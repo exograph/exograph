@@ -16,9 +16,7 @@ use serde_json::Value;
 use super::resolver_support::Resolver;
 
 #[async_trait]
-impl<'a> FieldResolver<'static, Value, ExecutionError, SystemContext>
-    for IntrospectionRootElement<'a>
-{
+impl<'a> FieldResolver<Value, ExecutionError, SystemContext> for IntrospectionRootElement<'a> {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

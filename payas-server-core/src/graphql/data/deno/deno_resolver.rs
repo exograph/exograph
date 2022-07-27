@@ -12,12 +12,13 @@ use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
 use crate::graphql::data::access_solver;
 use crate::graphql::data::operation_mapper::DenoOperation;
+use crate::SystemContext;
 
 use crate::graphql::data::deno::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use crate::graphql::execution::query_response::{QueryResponse, QueryResponseBody};
 use crate::graphql::request_context::RequestContext;
 
-use crate::graphql::{execution::system_context::SystemContext, validation::field::ValidatedField};
+use crate::graphql::validation::field::ValidatedField;
 
 use payas_sql::{AbstractPredicate, Predicate};
 
