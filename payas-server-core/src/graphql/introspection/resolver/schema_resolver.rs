@@ -7,8 +7,10 @@ use crate::graphql::validation::field::ValidatedField;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::graphql::execution::resolver::{FieldResolver, Resolver};
+use crate::graphql::execution::resolver::FieldResolver;
 use crate::graphql::execution::system_context::SystemContext;
+
+use super::resolver_support::Resolver;
 
 #[async_trait]
 impl FieldResolver<Value> for Schema {
