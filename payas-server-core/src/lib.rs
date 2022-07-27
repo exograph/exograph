@@ -1,5 +1,8 @@
 use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 
+#[macro_use]
+extern crate fix_hidden_lifetime_bug;
+
 use crate::graphql::introspection::schema::Schema;
 /// Provides core functionality for handling incoming queries without depending
 /// on any specific web framework.

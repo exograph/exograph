@@ -1,5 +1,4 @@
 use crate::graphql::{
-    execution::system_context::SystemContext,
     execution_error::{ExecutionError, WithContext},
     request_context::RequestContext,
     validation::field::ValidatedField,
@@ -19,6 +18,7 @@ use payas_sql::{Limit, Offset};
 
 use super::{
     compute_sql_access_predicate,
+    database_system_context::DatabaseSystemContext,
     order_by_mapper::OrderByParameterMapper,
     sql_mapper::{SQLMapper, SQLOperationKind},
     Arguments,
@@ -46,7 +46,7 @@ impl<'content> DatabaseQuery<'content> {
         &self,
         field: &'content ValidatedField,
         additional_predicate: AbstractPredicate<'content>,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
     ) -> Result<AbstractSelect<'content>, ExecutionError> {
         let DatabaseQueryParameter {
@@ -115,7 +115,7 @@ impl<'content> DatabaseQuery<'content> {
     fn compute_order_by(
         &self,
         arguments: &'content Arguments,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
     ) -> Option<AbstractOrderBy<'content>> {
         let DatabaseQueryParameter { order_by_param, .. } = self.query_params;
         order_by_param
@@ -134,7 +134,7 @@ impl<'content> DatabaseQuery<'content> {
     async fn content_select(
         &self,
         fields: &'content [ValidatedField],
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
     ) -> Result<Vec<ColumnSelection<'content>>, ExecutionError> {
         futures::stream::iter(fields.iter())
@@ -148,7 +148,7 @@ impl<'content> DatabaseQuery<'content> {
     fn compute_limit(
         &self,
         arguments: &Arguments,
-        system_context: &SystemContext,
+        system_context: &DatabaseSystemContext,
     ) -> Option<Limit> {
         let DatabaseQueryParameter { limit_param, .. } = self.query_params;
         limit_param
@@ -165,7 +165,7 @@ impl<'content> DatabaseQuery<'content> {
     fn compute_offset(
         &self,
         arguments: &Arguments,
-        system_context: &SystemContext,
+        system_context: &DatabaseSystemContext,
     ) -> Option<Offset> {
         let DatabaseQueryParameter { offset_param, .. } = self.query_params;
         offset_param
@@ -182,7 +182,7 @@ impl<'content> DatabaseQuery<'content> {
     async fn map_field(
         &self,
         field: &'content ValidatedField,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
     ) -> Result<ColumnSelection<'content>, ExecutionError> {
         let system = &system_context.system;

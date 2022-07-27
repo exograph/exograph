@@ -1,10 +1,10 @@
-use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::execution_error::{ExecutionError, WithContext};
 use async_graphql_value::ConstValue;
 use payas_model::model::order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind};
 use payas_model::model::predicate::ColumnIdPath;
 use payas_sql::{AbstractOrderBy, ColumnPath, Ordering};
 
+use super::database_system_context::DatabaseSystemContext;
 use super::to_column_path;
 
 pub trait OrderByParameterMapper<'a> {
@@ -12,7 +12,7 @@ pub trait OrderByParameterMapper<'a> {
         &'a self,
         argument: &'a ConstValue,
         parent_column_path: &'a Option<ColumnIdPath>,
-        system_context: &'a SystemContext,
+        system_context: &DatabaseSystemContext<'a>,
     ) -> Result<AbstractOrderBy<'a>, ExecutionError>;
 }
 
@@ -21,7 +21,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
         &'a self,
         argument: &'a ConstValue,
         parent_column_path: &'a Option<ColumnIdPath>,
-        system_context: &'a SystemContext,
+        system_context: &DatabaseSystemContext<'a>,
     ) -> Result<AbstractOrderBy<'a>, ExecutionError> {
         let parameter_type = &system_context.system.order_by_types[self.type_id];
 
@@ -67,7 +67,7 @@ fn order_by_pair<'a>(
     parameter_name: &str,
     parameter_value: &ConstValue,
     parent_column_path: &Option<ColumnIdPath>,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Result<(ColumnPath<'a>, Ordering), ExecutionError> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
@@ -82,7 +82,7 @@ fn order_by_pair<'a>(
     let new_column_path = to_column_path(
         parent_column_path,
         &next_column_id_path_link,
-        &system_context.system,
+        system_context.system,
     );
 
     ordering(parameter_value).map(|ordering| (new_column_path, ordering))

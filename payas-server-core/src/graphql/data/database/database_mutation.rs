@@ -16,12 +16,12 @@ use crate::{
         validation::field::ValidatedField,
     },
     request_context::RequestContext,
-    SystemContext,
 };
 
 use super::{
     compute_sql_access_predicate,
     database_query::DatabaseQuery,
+    database_system_context::DatabaseSystemContext,
     sql_mapper::{SQLInsertMapper, SQLOperationKind, SQLUpdateMapper},
 };
 
@@ -34,7 +34,7 @@ impl<'content> DatabaseMutation<'content> {
     pub async fn operation(
         &self,
         field: &'content ValidatedField,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
     ) -> Result<AbstractOperation<'content>, ExecutionError> {
         let abstract_select = {
@@ -94,12 +94,14 @@ impl<'content> DatabaseMutation<'content> {
         })
     }
 
+    #[allow(clippy::manual_async_fn)]
+    #[fix_hidden_lifetime_bug]
     async fn create_operation(
         &self,
         data_param: &'content CreateDataParameter,
         field: &'content ValidatedField,
         select: AbstractSelect<'content>,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
     ) -> Result<AbstractInsert<'content>, ExecutionError> {
         // TODO: https://github.com/payalabs/payas/issues/343
@@ -128,12 +130,14 @@ impl<'content> DatabaseMutation<'content> {
         )
     }
 
+    #[allow(clippy::manual_async_fn)]
+    #[fix_hidden_lifetime_bug]
     async fn delete_operation(
         &self,
         predicate_param: &'content PredicateParameter,
         field: &'content ValidatedField,
         select: AbstractSelect<'content>,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
     ) -> Result<AbstractDelete<'content>, ExecutionError> {
         let (table, _, _) = super::return_type_info(self.return_type, system_context);
@@ -170,13 +174,15 @@ impl<'content> DatabaseMutation<'content> {
         })
     }
 
+    #[allow(clippy::manual_async_fn)]
+    #[fix_hidden_lifetime_bug]
     async fn update_operation(
         &self,
         data_param: &'content UpdateDataParameter,
         predicate_param: &'content PredicateParameter,
         field: &'content ValidatedField,
         select: AbstractSelect<'content>,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
     ) -> Result<AbstractUpdate<'content>, ExecutionError> {
         // Access control as well as predicate computation isn't working fully yet. Specifically,

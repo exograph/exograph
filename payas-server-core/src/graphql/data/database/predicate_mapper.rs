@@ -1,5 +1,5 @@
-use super::cast::cast_value;
-use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
+use super::{cast::cast_value, database_system_context::DatabaseSystemContext};
+use crate::graphql::execution_error::ExecutionError;
 use async_graphql_value::ConstValue;
 
 use payas_model::model::predicate::{ColumnIdPath, PredicateParameter, PredicateParameterTypeKind};
@@ -12,7 +12,7 @@ pub trait PredicateParameterMapper<'a> {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        system_context: &'a SystemContext,
+        system_context: &DatabaseSystemContext<'a>,
     ) -> Result<AbstractPredicate<'a>, ExecutionError>;
 }
 
@@ -21,7 +21,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        system_context: &'a SystemContext,
+        system_context: &DatabaseSystemContext<'a>,
     ) -> Result<AbstractPredicate<'a>, ExecutionError> {
         let system = &system_context.system;
         let parameter_type = &system.predicate_types[self.type_id];
@@ -194,7 +194,7 @@ fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Result<(ColumnPath<'a>, ColumnPath<'a>), ExecutionError> {
     let system = &system_context.system;
 

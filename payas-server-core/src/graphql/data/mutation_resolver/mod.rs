@@ -12,6 +12,8 @@ use crate::graphql::data::{
     operation_resolver::OperationResolver,
 };
 
+use super::database::database_system_context::DatabaseSystemContext;
+
 #[async_trait]
 impl<'a> OperationResolver<'a> for Mutation {
     async fn resolve_operation(
@@ -26,8 +28,12 @@ impl<'a> OperationResolver<'a> for Mutation {
                     kind,
                     return_type: &self.return_type,
                 };
+                let database_system_context = DatabaseSystemContext {
+                    system: &system_context.system,
+                    database_executor: &system_context.database_executor,
+                };
                 database_mutation
-                    .operation(field, system_context, request_context)
+                    .operation(field, &database_system_context, request_context)
                     .await
                     .map(OperationResolverResult::SQLOperation)
             }

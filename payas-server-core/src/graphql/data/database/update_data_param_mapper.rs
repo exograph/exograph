@@ -5,8 +5,8 @@ use payas_sql::{
     Selection,
 };
 
-use super::cast;
-use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
+use super::{cast, database_system_context::DatabaseSystemContext};
+use crate::graphql::execution_error::ExecutionError;
 
 use payas_model::model::{
     operation::{OperationReturnType, UpdateDataParameter},
@@ -27,7 +27,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         predicate: AbstractPredicate<'a>,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        system_context: &'a SystemContext,
+        system_context: &DatabaseSystemContext<'a>,
     ) -> Result<AbstractUpdate<'a>, ExecutionError> {
         let system = &system_context.system;
         let data_type = &system.mutation_types[self.type_id];
@@ -57,7 +57,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 fn compute_update_columns<'a>(
     data_type: &'a GqlType,
     argument: &'a ConstValue,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
     let system = &system_context.system;
 
@@ -105,7 +105,7 @@ fn compute_nested_ops<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     container_model_type: &'a GqlType,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
     Vec<NestedAbstractInsert<'a>>,
@@ -191,7 +191,7 @@ fn compute_nested_update<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     container_model_type: &'a GqlType,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Vec<NestedAbstractUpdate<'a>> {
     let system = &system_context.system;
 
@@ -232,7 +232,7 @@ fn compute_nested_update_object_arg<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> NestedAbstractUpdate<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
@@ -294,18 +294,18 @@ fn compute_nested_inserts<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     container_model_type: &'a GqlType,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Vec<NestedAbstractInsert<'a>> {
     fn create_nested<'a>(
         field_model_type: &'a GqlType,
         argument: &'a ConstValue,
         container_model_type: &'a GqlType,
-        system_context: &'a SystemContext,
+        system_context: &DatabaseSystemContext<'a>,
     ) -> Result<NestedAbstractInsert<'a>, ExecutionError> {
         let nested_reference_col = compute_nested_reference_column(
             field_model_type,
             container_model_type,
-            &system_context.system,
+            system_context.system,
         )
         .unwrap();
         let system = &system_context.system;
@@ -365,7 +365,7 @@ fn compute_nested_inserts<'a>(
 fn compute_nested_delete<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
     container_model_type: &'a GqlType,
 ) -> Vec<NestedAbstractDelete<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
@@ -409,7 +409,7 @@ fn compute_nested_delete_object_arg<'a>(
     field_model_type: &'a GqlType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> NestedAbstractDelete<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 

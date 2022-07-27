@@ -9,6 +9,7 @@ use payas_model::model::operation::{Interceptors, Query, QueryKind};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
 use super::{
+    database::database_system_context::DatabaseSystemContext,
     operation_mapper::{DenoOperation, OperationResolverResult},
     operation_resolver::OperationResolver,
 };
@@ -29,11 +30,15 @@ impl<'a> OperationResolver<'a> for Query {
                     return_type: &self.return_type,
                     query_params,
                 };
+                let database_system_context = DatabaseSystemContext {
+                    system: &system_context.system,
+                    database_executor: &system_context.database_executor,
+                };
                 let operation = database_query
                     .compute_select(
                         field,
                         AbstractPredicate::True,
-                        system_context,
+                        &database_system_context,
                         request_context,
                     )
                     .await?;

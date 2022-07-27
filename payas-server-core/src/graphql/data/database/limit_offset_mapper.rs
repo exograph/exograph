@@ -1,6 +1,6 @@
-use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
+use crate::graphql::execution_error::ExecutionError;
 
-use super::sql_mapper::SQLMapper;
+use super::{database_system_context::DatabaseSystemContext, sql_mapper::SQLMapper};
 use async_graphql_value::ConstValue;
 use payas_model::model::limit_offset::{LimitParameter, OffsetParameter};
 use payas_sql::{Limit, Offset};
@@ -18,7 +18,7 @@ impl<'a> SQLMapper<'a, Limit> for LimitParameter {
     fn map_to_sql(
         &self,
         argument: &'a ConstValue,
-        _system_context: &'a SystemContext,
+        _system_context: &DatabaseSystemContext<'a>,
     ) -> Result<Limit, ExecutionError> {
         cast_to_i64(argument).map(Limit)
     }
@@ -28,7 +28,7 @@ impl<'a> SQLMapper<'a, Offset> for OffsetParameter {
     fn map_to_sql(
         &self,
         argument: &'a ConstValue,
-        _system_context: &'a SystemContext,
+        _system_context: &DatabaseSystemContext<'a>,
     ) -> Result<Offset, ExecutionError> {
         cast_to_i64(argument).map(Offset)
     }

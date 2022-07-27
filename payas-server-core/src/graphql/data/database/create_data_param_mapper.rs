@@ -4,12 +4,9 @@ use payas_sql::{
     NestedElementRelation, NestedInsertion,
 };
 
-use crate::graphql::{
-    execution::system_context::SystemContext,
-    execution_error::{ExecutionError, WithContext},
-};
+use crate::graphql::execution_error::{ExecutionError, WithContext};
 
-use super::cast;
+use super::{cast, database_system_context::DatabaseSystemContext};
 
 use payas_model::model::{
     column_id::ColumnId,
@@ -28,7 +25,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
         return_type: OperationReturnType,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        system_context: &'a SystemContext,
+        system_context: &DatabaseSystemContext<'a>,
     ) -> Result<AbstractInsert, ExecutionError> {
         let system = &system_context.system;
 
@@ -51,7 +48,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
 pub fn map_argument<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Result<Vec<InsertionRow<'a>>, ExecutionError> {
     match argument {
         ConstValue::List(arguments) => arguments
@@ -68,7 +65,7 @@ pub fn map_argument<'a>(
 fn map_single<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Result<InsertionRow<'a>, ExecutionError> {
     let fields = match &input_data_type.kind {
         GqlTypeKind::Primitive => {
@@ -102,7 +99,7 @@ fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a GqlField,
     argument: &'a ConstValue,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Result<InsertionElement<'a>, ExecutionError> {
     let system = &system_context.system;
 
@@ -146,7 +143,7 @@ fn map_foreign<'a>(
     field: &'a GqlField,
     argument: &'a ConstValue,
     parent_data_type: &'a GqlType,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Result<InsertionElement<'a>, ExecutionError> {
     let system = &system_context.system;
 

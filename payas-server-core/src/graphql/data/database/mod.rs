@@ -7,6 +7,7 @@ pub mod predicate_mapper;
 
 pub mod database_mutation;
 pub mod database_query;
+pub mod database_system_context;
 pub mod sql_mapper;
 mod update_data_param_mapper;
 
@@ -21,7 +22,6 @@ use tokio_postgres::Row;
 use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 
 use crate::graphql::{
-    execution::system_context::SystemContext,
     execution_error::{ExecutionError, WithContext},
     request_context::RequestContext,
 };
@@ -34,7 +34,7 @@ use payas_model::model::{
     GqlCompositeType, GqlTypeKind,
 };
 
-use self::sql_mapper::SQLOperationKind;
+use self::{database_system_context::DatabaseSystemContext, sql_mapper::SQLOperationKind};
 
 use crate::graphql::{data::access_solver, execution_error::DatabaseExecutionError};
 
@@ -43,10 +43,10 @@ pub type Arguments = HashMap<String, ConstValue>;
 pub async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> AbstractPredicate<'a> {
-    let return_type = return_type.typ(&system_context.system);
+    let return_type = return_type.typ(system_context.system);
 
     match &return_type.kind {
         GqlTypeKind::Primitive => AbstractPredicate::True,
@@ -57,7 +57,7 @@ pub async fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver::solve_access(access_expr, request_context, &system_context.system).await
+            access_solver::solve_access(access_expr, request_context, system_context.system).await
         }
     }
 }
@@ -77,7 +77,7 @@ fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     additional_predicate: AbstractPredicate<'a>,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> Result<AbstractPredicate<'a>, ExecutionError> {
     let mapped = predicate_param
         .as_ref()
@@ -182,7 +182,7 @@ pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, DatabaseExecutionError>
 /// - A (table associated with the return type, pk query, collection query) tuple.
 pub fn return_type_info<'a>(
     return_type: &'a OperationReturnType,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
     let system = &system_context.system;
     let typ = return_type.typ(system);
