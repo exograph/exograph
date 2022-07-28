@@ -23,10 +23,15 @@ pub fn start_watcher<F>(
 where
     F: Fn() -> Result<()>,
 {
-    let absolute_path = model_path.canonicalize()?;
-    let parent_dir = absolute_path
-        .parent()
-        .ok_or_else(|| anyhow!("Could not get parent directory"))?;
+    let absolute_path = model_path
+        .canonicalize()
+        .map_err(|e| anyhow!("Could not find {}: {}", model_path.to_string_lossy(), e))?;
+    let parent_dir = absolute_path.parent().ok_or_else(|| {
+        anyhow!(
+            "Could not get parent directory of {}",
+            model_path.to_string_lossy()
+        )
+    })?;
 
     println!("Watching: {:?}", &parent_dir);
     let (tx, rx) = channel();
