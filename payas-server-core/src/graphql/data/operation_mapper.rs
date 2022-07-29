@@ -1,4 +1,3 @@
-use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution::query_response::QueryResponse;
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::request_context::RequestContext;
@@ -33,8 +32,7 @@ impl<'a> OperationResolverResult<'a> {
                     database_executor: &system_context.database_executor,
                 };
 
-                abstract_operation
-                    .resolve_field(field, &database_system_context, request_context)
+                super::database::resolve_operation(abstract_operation, &database_system_context)
                     .await
                     .map_err(|e| match e {
                         DatabaseExecutionError::Authorization => ExecutionError::Authorization,

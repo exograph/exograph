@@ -14,7 +14,7 @@ pub enum SQLOperationKind {
     Delete,
 }
 
-pub(crate) trait SQLMapper<'a, R> {
+pub trait SQLMapper<'a, R> {
     fn map_to_sql(
         &'a self,
         argument: &'a ConstValue,

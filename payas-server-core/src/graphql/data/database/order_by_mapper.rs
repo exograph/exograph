@@ -6,9 +6,10 @@ use payas_model::model::{
 };
 use payas_sql::{AbstractOrderBy, ColumnPath, Ordering};
 
-use crate::graphql::execution_error::{ExecutionError, WithContext};
-
-use super::{database_system_context::DatabaseSystemContext, to_column_path};
+use super::{
+    database_execution_error::WithContext, database_system_context::DatabaseSystemContext,
+    to_column_path, DatabaseExecutionError,
+};
 
 pub trait OrderByParameterMapper<'a> {
     fn map_to_order_by(
@@ -16,7 +17,7 @@ pub trait OrderByParameterMapper<'a> {
         argument: &'a ConstValue,
         parent_column_path: &'a Option<ColumnIdPath>,
         system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<AbstractOrderBy<'a>, ExecutionError>;
+    ) -> Result<AbstractOrderBy<'a>, DatabaseExecutionError>;
 }
 
 impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
@@ -25,7 +26,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
         argument: &'a ConstValue,
         parent_column_path: &'a Option<ColumnIdPath>,
         system_context: &DatabaseSystemContext<'a>,
-    ) -> Result<AbstractOrderBy<'a>, ExecutionError> {
+    ) -> Result<AbstractOrderBy<'a>, DatabaseExecutionError> {
         let parameter_type = &system_context.system.order_by_types[self.type_id];
 
         match argument {
@@ -71,7 +72,7 @@ fn order_by_pair<'a>(
     parameter_value: &ConstValue,
     parent_column_path: &Option<ColumnIdPath>,
     system_context: &DatabaseSystemContext<'a>,
-) -> Result<(ColumnPath<'a>, Ordering), ExecutionError> {
+) -> Result<(ColumnPath<'a>, Ordering), DatabaseExecutionError> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
             parameters.iter().find(|p| p.name == parameter_name)
@@ -91,14 +92,14 @@ fn order_by_pair<'a>(
     ordering(parameter_value).map(|ordering| (new_column_path, ordering))
 }
 
-fn ordering(argument: &ConstValue) -> Result<Ordering, ExecutionError> {
-    fn str_ordering(value: &str) -> Result<Ordering, ExecutionError> {
+fn ordering(argument: &ConstValue) -> Result<Ordering, DatabaseExecutionError> {
+    fn str_ordering(value: &str) -> Result<Ordering, DatabaseExecutionError> {
         if value == "ASC" {
             Ok(Ordering::Asc)
         } else if value == "DESC" {
             Ok(Ordering::Desc)
         } else {
-            Err(ExecutionError::Generic(format!(
+            Err(DatabaseExecutionError::Generic(format!(
                 "Cannot match {} as valid ordering",
                 value
             )))
@@ -108,7 +109,7 @@ fn ordering(argument: &ConstValue) -> Result<Ordering, ExecutionError> {
     match argument {
         ConstValue::Enum(value) => str_ordering(value.as_str()),
         ConstValue::String(value) => str_ordering(value.as_str()), // Needed when processing values from variables (that don't get mapped to the Enum type)
-        arg => Err(ExecutionError::Generic(format!(
+        arg => Err(DatabaseExecutionError::Generic(format!(
             "Unable to process ordering argument {}",
             arg
         ))), // return an error

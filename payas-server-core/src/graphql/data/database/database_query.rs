@@ -28,7 +28,7 @@ pub struct DatabaseQuery<'a> {
 }
 
 impl<'content> DatabaseQuery<'content> {
-    pub(crate) fn from(query: &Query) -> DatabaseQuery {
+    pub(super) fn from(query: &Query) -> DatabaseQuery {
         let query_params = match &query.kind {
             QueryKind::Database(query_params) => query_params,
             _ => panic!("DatabaseQuery::from called on non-database query"),
@@ -40,7 +40,7 @@ impl<'content> DatabaseQuery<'content> {
         }
     }
 
-    pub(crate) async fn compute_select(
+    pub async fn compute_select(
         &self,
         field: &'content ValidatedField,
         additional_predicate: AbstractPredicate<'content>,
@@ -76,7 +76,7 @@ impl<'content> DatabaseQuery<'content> {
             e => e,
         })?;
 
-        let order_by = self.compute_order_by(&field.arguments, system_context);
+        let order_by = self.compute_order_by(&field.arguments, system_context)?;
 
         let predicate = AbstractPredicate::and(predicate, access_predicate);
 
@@ -119,7 +119,7 @@ impl<'content> DatabaseQuery<'content> {
         &self,
         arguments: &'content Arguments,
         system_context: &DatabaseSystemContext<'content>,
-    ) -> Option<AbstractOrderBy<'content>> {
+    ) -> Result<Option<AbstractOrderBy<'content>>, DatabaseExecutionError> {
         let DatabaseQueryParameter { order_by_param, .. } = self.query_params;
         order_by_param
             .as_ref()
@@ -130,7 +130,6 @@ impl<'content> DatabaseQuery<'content> {
                 })
             })
             .transpose()
-            .unwrap() // TODO: handle properly
     }
 
     #[async_recursion]

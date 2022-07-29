@@ -42,6 +42,8 @@ use crate::graphql::data::access_solver;
 
 pub type Arguments = HashMap<String, ConstValue>;
 
+pub use abstract_operation_resolver::resolve_operation;
+
 pub async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
