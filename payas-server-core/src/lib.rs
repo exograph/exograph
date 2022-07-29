@@ -23,9 +23,9 @@ use payas_sql::{Database, DatabaseExecutor};
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use crate::graphql::{
-    execution::query_response::QueryResponseBody, execution_error::ExecutionError,
-};
+use crate::graphql::execution_error::ExecutionError;
+
+use payas_resolver_core::query_response::QueryResponseBody;
 
 pub mod graphiql;
 pub mod initialization_error;

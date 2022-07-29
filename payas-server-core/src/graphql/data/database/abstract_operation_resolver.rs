@@ -1,6 +1,6 @@
 use payas_sql::AbstractOperation;
 
-use crate::graphql::execution::query_response::{QueryResponse, QueryResponseBody};
+use payas_resolver_core::query_response::{QueryResponse, QueryResponseBody};
 
 use super::{DatabaseExecutionError, DatabaseSystemContext};
 

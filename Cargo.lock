@@ -3396,6 +3396,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-resolver-core"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "payas-server-actix"
 version = "0.1.0"
 dependencies = [
@@ -3455,6 +3462,7 @@ dependencies = [
  "payas-deno",
  "payas-model",
  "payas-parser",
+ "payas-resolver-core",
  "payas-sql",
  "pg_bigdecimal",
  "postgres-types",

@@ -15,8 +15,8 @@ use crate::graphql::data::operation_mapper::DenoOperation;
 use crate::SystemContext;
 
 use crate::graphql::data::deno::{ClayCallbackProcessor, FnClaytipExecuteQuery};
-use crate::graphql::execution::query_response::{QueryResponse, QueryResponseBody};
 use crate::graphql::request_context::RequestContext;
+use payas_resolver_core::query_response::{QueryResponse, QueryResponseBody};
 
 use crate::graphql::validation::field::ValidatedField;
 

@@ -6,13 +6,13 @@ use serde_json::{Map, Value};
 
 use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
+use payas_resolver_core::query_response::{QueryResponse, QueryResponseBody};
 
 use crate::graphql::{
     data::deno::{
         clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
         FnClaytipInterceptorProceed, InterceptedOperationInfo,
     },
-    execution::query_response::{QueryResponse, QueryResponseBody},
     execution::system_context::SystemContext,
     execution_error::ExecutionError,
     request_context::RequestContext,

@@ -43,6 +43,7 @@ fix-hidden-lifetime-bug = "0.2.5"
 payas-sql = { path = "../payas-sql" }
 payas-model = { path = "../payas-model" }
 payas-deno = { path = "../payas-deno" }
+payas-resolver-core = { path = "../payas-resolver-core" }
 
 [dev-dependencies]
 insta = "1.14.0"

@@ -10,8 +10,9 @@ use payas_deno::{
     deno_executor_pool::DenoExecutorConfig,
     deno_module::{DenoModule, DenoModuleSharedState},
 };
+use payas_resolver_core::query_response::QueryResponse;
 
-use crate::graphql::{execution::query_response::QueryResponse, execution_error::ExecutionError};
+use crate::graphql::execution_error::ExecutionError;
 
 use super::claytip_ops::InterceptedOperationInfo;
 

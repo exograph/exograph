@@ -1,0 +1,10 @@
+[package]
+name = "payas-resolver-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde_json = { version = "1.0", features = ["preserve_order"] }
+
+
+[lib]

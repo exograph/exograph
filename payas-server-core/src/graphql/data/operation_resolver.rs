@@ -2,17 +2,13 @@ use async_trait::async_trait;
 use payas_model::model::operation::Interceptors;
 use serde_json::Value;
 
+use payas_resolver_core::query_response::{QueryResponse, QueryResponseBody};
+
 use crate::graphql::{
     data::deno::interception::InterceptedOperation,
-    data::operation_mapper::OperationResolverResult,
-    execution::system_context::SystemContext,
-    execution::{
-        field_resolver::FieldResolver,
-        query_response::{QueryResponse, QueryResponseBody},
-    },
-    execution_error::ExecutionError,
-    request_context::RequestContext,
-    validation::field::ValidatedField,
+    data::operation_mapper::OperationResolverResult, execution::field_resolver::FieldResolver,
+    execution::system_context::SystemContext, execution_error::ExecutionError,
+    request_context::RequestContext, validation::field::ValidatedField,
 };
 
 #[async_trait]
