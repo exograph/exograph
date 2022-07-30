@@ -173,10 +173,7 @@ impl<
             }
         };
 
-        Ok(DenoExecutor {
-            actor,
-            return_type: self.return_type,
-        })
+        Ok(DenoExecutor { actor })
     }
 
     fn create_actor(
