@@ -6,7 +6,7 @@ use super::{DatabaseExecutionError, DatabaseSystemContext};
 
 pub async fn resolve_operation<'e>(
     op: &'e AbstractOperation<'e>,
-    system_context: &'e DatabaseSystemContext<'e>,
+    system_context: DatabaseSystemContext<'e>,
 ) -> Result<QueryResponse, DatabaseExecutionError> {
     let mut result = system_context
         .database_executor

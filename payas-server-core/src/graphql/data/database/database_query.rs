@@ -149,8 +149,8 @@ impl<'content> DatabaseQuery<'content> {
 
     fn compute_limit(
         &self,
-        arguments: &Arguments,
-        system_context: &DatabaseSystemContext,
+        arguments: &'content Arguments,
+        system_context: &DatabaseSystemContext<'content>,
     ) -> Option<Limit> {
         let DatabaseQueryParameter { limit_param, .. } = self.query_params;
         limit_param
@@ -166,8 +166,8 @@ impl<'content> DatabaseQuery<'content> {
 
     fn compute_offset(
         &self,
-        arguments: &Arguments,
-        system_context: &DatabaseSystemContext,
+        arguments: &'content Arguments,
+        system_context: &DatabaseSystemContext<'content>,
     ) -> Option<Offset> {
         let DatabaseQueryParameter { offset_param, .. } = self.query_params;
         offset_param

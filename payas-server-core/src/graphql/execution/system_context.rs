@@ -95,10 +95,18 @@ impl SystemContext {
         document_validator.validate(document)
     }
 
-    pub fn curried_resolve<'s, 'r>(&'s self) -> ResolveFn<'s, 'r>
-    where
-        's: 'r,
-    {
+    // pub fn curried_resolve<'s, 'r>(&'s self) -> ResolveFn<'s, 'r>
+    // where
+    //     's: 'r,
+    // {
+    //     Box::new(
+    //         move |input: OperationsPayload, request_context: &'r RequestContext<'r>| {
+    //             Box::pin(async move { self.resolve(input, request_context).await })
+    //         },
+    //     )
+    // }
+
+    pub fn curried_resolve<'r>(&'r self) -> ResolveFn<'r, 'r> {
         Box::new(
             move |input: OperationsPayload, request_context: &'r RequestContext<'r>| {
                 Box::pin(async move { self.resolve(input, request_context).await })

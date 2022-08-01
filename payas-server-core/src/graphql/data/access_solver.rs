@@ -31,9 +31,9 @@ pub async fn solve_access<'s, 'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
-    resolve: &'s ResolveFn<'s, 'a>,
+    resolve: &ResolveFn<'a, 'a>,
 ) -> AbstractPredicate<'a> {
-    solve_predicate_expression(expr, request_context, system).await
+    solve_predicate_expression(expr, request_context, system, resolve).await
 }
 
 #[async_recursion]
@@ -41,13 +41,14 @@ async fn solve_predicate_expression<'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
+    resolve: &ResolveFn<'a, 'a>,
 ) -> AbstractPredicate<'a> {
     match expr {
         AccessPredicateExpression::LogicalOp(op) => {
-            solve_logical_op(op, request_context, system).await
+            solve_logical_op(op, request_context, system, resolve).await
         }
         AccessPredicateExpression::RelationalOp(op) => {
-            solve_relational_op(op, request_context, system).await
+            solve_relational_op(op, request_context, system, resolve).await
         }
         AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
         AccessPredicateExpression::BooleanColumn(column_path) => {
@@ -59,7 +60,8 @@ async fn solve_predicate_expression<'a>(
             )
         }
         AccessPredicateExpression::BooleanContextSelection(selection) => {
-            let context_value = solve_context_selection(selection, request_context, system).await;
+            let context_value =
+                solve_context_selection(selection, request_context, system, resolve).await;
             context_value
                 .map(|value| {
                     match value {
@@ -78,15 +80,18 @@ async fn solve_context_selection<'a>(
     context_selection: &AccessContextSelection,
     value: &'a RequestContext<'a>,
     system: &'a ModelSystem,
+    resolve: &ResolveFn<'a, 'a>,
 ) -> Option<Value> {
     match context_selection {
         AccessContextSelection::Context(context_name) => {
             let context_type = system.contexts.get_by_key(context_name).unwrap();
-            value.extract_context(context_type, todo!()).await.ok()
+            value.extract_context(context_type, resolve).await.ok()
         }
-        AccessContextSelection::Select(path, key) => solve_context_selection(path, value, system)
-            .await
-            .and_then(|value| value.get(key).cloned()),
+        AccessContextSelection::Select(path, key) => {
+            solve_context_selection(path, value, system, resolve)
+                .await
+                .and_then(|value| value.get(key).cloned())
+        }
     }
 }
 
@@ -108,6 +113,7 @@ async fn solve_relational_op<'a>(
     op: &'a AccessRelationalOp,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
+    resolve: &ResolveFn<'a, 'a>,
 ) -> AbstractPredicate<'a> {
     #[derive(Debug)]
     enum SolvedPrimitiveExpression<'a> {
@@ -120,10 +126,11 @@ async fn solve_relational_op<'a>(
         expr: &'a AccessPrimitiveExpression,
         request_context: &'a RequestContext<'a>,
         system: &'a ModelSystem,
+        resolve: &ResolveFn<'a, 'a>,
     ) -> SolvedPrimitiveExpression<'a> {
         match expr {
             AccessPrimitiveExpression::ContextSelection(selection) => {
-                solve_context_selection(selection, request_context, system)
+                solve_context_selection(selection, request_context, system, resolve)
                     .await
                     .map(SolvedPrimitiveExpression::Value)
                     .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection))
@@ -144,8 +151,8 @@ async fn solve_relational_op<'a>(
     }
 
     let (left, right) = op.sides();
-    let left = reduce_primitive_expression(left, request_context, system).await;
-    let right = reduce_primitive_expression(right, request_context, system).await;
+    let left = reduce_primitive_expression(left, request_context, system, resolve).await;
+    let right = reduce_primitive_expression(right, request_context, system, resolve).await;
 
     type ColumnPredicateFn<'a> =
         fn(MaybeOwned<'a, ColumnPath<'a>>, MaybeOwned<'a, ColumnPath<'a>>) -> AbstractPredicate<'a>;
@@ -231,16 +238,19 @@ async fn solve_logical_op<'a>(
     op: &'a AccessLogicalExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
+    resolve: &ResolveFn<'a, 'a>,
 ) -> AbstractPredicate<'a> {
     match op {
         AccessLogicalExpression::Not(underlying) => {
             let underlying_predicate =
-                solve_predicate_expression(underlying, request_context, system).await;
+                solve_predicate_expression(underlying, request_context, system, resolve).await;
             underlying_predicate.not()
         }
         AccessLogicalExpression::And(left, right) => {
-            let left_predicate = solve_predicate_expression(left, request_context, system).await;
-            let right_predicate = solve_predicate_expression(right, request_context, system).await;
+            let left_predicate =
+                solve_predicate_expression(left, request_context, system, resolve).await;
+            let right_predicate =
+                solve_predicate_expression(right, request_context, system, resolve).await;
 
             match (left_predicate, right_predicate) {
                 (AbstractPredicate::False, _) | (_, AbstractPredicate::False) => {
@@ -255,8 +265,10 @@ async fn solve_logical_op<'a>(
             }
         }
         AccessLogicalExpression::Or(left, right) => {
-            let left_predicate = solve_predicate_expression(left, request_context, system).await;
-            let right_predicate = solve_predicate_expression(right, request_context, system).await;
+            let left_predicate =
+                solve_predicate_expression(left, request_context, system, resolve).await;
+            let right_predicate =
+                solve_predicate_expression(right, request_context, system, resolve).await;
 
             match (left_predicate, right_predicate) {
                 (AbstractPredicate::True, _) | (_, AbstractPredicate::True) => {

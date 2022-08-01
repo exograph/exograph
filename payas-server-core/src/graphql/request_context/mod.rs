@@ -10,8 +10,6 @@ use serde_json::Value;
 
 use super::execution::system_context::ResolveFn;
 
-#[cfg(test)]
-use std::marker::PhantomData;
 
 #[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
@@ -66,7 +64,7 @@ impl UserRequestContext {
     }
 
     #[cfg(test)]
-    pub fn test_request_context(test_values: serde_json::Value) -> UserRequestContext<'a> {
+    pub fn test_request_context(test_values: serde_json::Value) -> UserRequestContext {
         UserRequestContext { test_values }
     }
 }

@@ -6,5 +6,5 @@ use crate::ResolveFn;
 pub struct DatabaseSystemContext<'a> {
     pub system: &'a ModelSystem,
     pub database_executor: &'a DatabaseExecutor,
-    pub resolve: &'a ResolveFn<'a, 'a>,
+    pub resolve: ResolveFn<'a, 'a>,
 }

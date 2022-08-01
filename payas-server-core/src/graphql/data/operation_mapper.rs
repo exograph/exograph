@@ -33,10 +33,10 @@ impl<'a> OperationResolverResult<'a> {
                 let database_system_context = DatabaseSystemContext {
                     system: &system_context.system,
                     database_executor: &system_context.database_executor,
-                    resolve: &resolve,
+                    resolve,
                 };
 
-                super::database::resolve_operation(abstract_operation, &database_system_context)
+                super::database::resolve_operation(abstract_operation, database_system_context)
                     .await
                     .map_err(|e| match e {
                         DatabaseExecutionError::Authorization => ExecutionError::Authorization,

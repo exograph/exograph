@@ -20,8 +20,7 @@ pub async fn resolve(
     system_context: web::Data<SystemContext>,
     context_processor: web::Data<ActixRequestContextProducer>,
 ) -> impl Responder {
-    let resolve_fn = system_context.curried_resolve();
-    let request_context = context_processor.generate_request_context(&req, &resolve_fn);
+    let request_context = context_processor.generate_request_context(&req);
 
     match request_context {
         Ok(request_context) => {
