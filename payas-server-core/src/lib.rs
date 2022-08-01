@@ -34,7 +34,10 @@ mod logging_tracing;
 
 mod graphql;
 
-pub use graphql::{execution::system_context::SystemContext, request_context};
+pub use graphql::{
+    execution::system_context::{ResolveFn, SystemContext},
+    request_context,
+};
 
 fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
     if !Path::new(&claypot_file).exists() {

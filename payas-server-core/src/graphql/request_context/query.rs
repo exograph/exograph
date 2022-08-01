@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::graphql::execution::system_context::SystemContext;
+use crate::graphql::execution::system_context::ResolveFn;
 use crate::OperationsPayload;
 
 use super::{ParsedContext, RequestContext};
@@ -13,25 +13,24 @@ impl ParsedContext for QueryExtractor {
         "query"
     }
 
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'s, 'r>(
+        &self,
         value: &str,
-        system_context: &'e SystemContext,
-        request_context: &'e RequestContext,
+        resolver: &'s ResolveFn<'s, 'r>,
+        request_context: &'r RequestContext<'r>,
     ) -> Option<serde_json::Value> {
         let query = format!("query {{ {} }}", value.to_owned());
 
-        let result = system_context
-            .resolve(
-                OperationsPayload {
-                    operation_name: None,
-                    query,
-                    variables: None,
-                },
-                request_context,
-            )
-            .await
-            .ok()?;
+        let result = resolver.as_ref()(
+            OperationsPayload {
+                operation_name: None,
+                query,
+                variables: None,
+            },
+            request_context,
+        )
+        .await
+        .ok()?;
 
         let (_, query_result) = result.iter().find(|(k, _)| k == value).unwrap_or_else(|| {
             panic!(

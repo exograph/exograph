@@ -24,7 +24,7 @@ use tokio_postgres::Row;
 
 use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
 
-use crate::graphql::request_context::RequestContext;
+use crate::{graphql::request_context::RequestContext};
 
 use predicate_mapper::PredicateParameterMapper;
 
@@ -61,7 +61,13 @@ pub async fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver::solve_access(access_expr, request_context, system_context.system).await
+            access_solver::solve_access(
+                access_expr,
+                request_context,
+                system_context.system,
+                system_context.resolve,
+            )
+            .await
         }
     }
 }

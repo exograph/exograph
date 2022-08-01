@@ -31,6 +31,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                 let database_system_context = DatabaseSystemContext {
                     system: &system_context.system,
                     database_executor: &system_context.database_executor,
+                    resolve: &system_context.curried_resolve(),
                 };
                 database_mutation
                     .operation(field, &database_system_context, request_context)

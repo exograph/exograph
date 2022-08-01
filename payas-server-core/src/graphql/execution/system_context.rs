@@ -1,5 +1,8 @@
+use std::pin::Pin;
+
 use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
+use std::future::Future;
 use tracing::{error, instrument};
 
 use payas_model::model::system::ModelSystem;
@@ -91,6 +94,17 @@ impl SystemContext {
 
         document_validator.validate(document)
     }
+
+    pub fn curried_resolve<'s, 'r>(&'s self) -> ResolveFn<'s, 'r>
+    where
+        's: 'r,
+    {
+        Box::new(
+            move |input: OperationsPayload, request_context: &'r RequestContext<'r>| {
+                Box::pin(async move { self.resolve(input, request_context).await })
+            },
+        )
+    }
 }
 
 #[instrument(name = "system_context::parse_query")]
@@ -140,3 +154,65 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
         ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
 }
+
+// pub type FnClaytipInterceptorProceed<'a> =
+//     (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, ExecutionError>> + 'a + Send + Sync);
+
+// #[allow(clippy::manual_async_fn)]
+// #[fix_hidden_lifetime_bug]
+// pub fn create_resolve_fn<'e>() -> impl Fn(
+//     &'e SystemContext,
+// ) -> Box<
+//     dyn Fn(
+//             OperationsPayload,
+//             &'e RequestContext,
+//         )
+//             -> futures::future::BoxFuture<'e, Result<Vec<(String, QueryResponse)>, ExecutionError>>
+//         + 'e
+//         + Send
+//         + Sync,
+// > {
+//     |system_context: &'e SystemContext| {
+//         |operations_payload: OperationsPayload, request_context: &'e RequestContext| {
+//             async move {
+//                 resolve(system_context, operations_payload, &request_context).await;
+//             }
+//             .boxed()
+//         }
+//     }
+
+//     // const xx: impl Fn<'e> |&'e SystemContext| -> Result<Vec<(String, QueryResponse)>, ExecutionError> = (system_context) ->  {
+//     //     todo!()
+//     // };
+// }
+
+// pub fn curried_resolve<'r>(
+//     system_context: &'r SystemContext,
+// ) -> impl Fn(
+//     &'r RequestContext<'r>,
+//     OperationsPayload,
+// ) -> std::pin::Pin<
+//     Box<
+//         dyn std::future::Future<Output = Result<Vec<(String, QueryResponse)>, ExecutionError>> + 'r,
+//     >,
+// > {
+//     |request_context: &'r RequestContext<'r>, input: OperationsPayload| {
+//         Box::pin(resolve(system_context, input, request_context))
+//     }
+// }
+
+pub type ResolveFn<'s, 'r> = Box<
+    dyn Fn(
+            OperationsPayload,
+            &'r RequestContext<'r>,
+        ) -> Pin<
+            Box<
+                dyn Future<Output = Result<Vec<(String, QueryResponse)>, ExecutionError>>
+                    + 'r
+                    + Send,
+            >,
+        >
+        + 's
+        + Send
+        + Sync,
+>;

@@ -27,11 +27,13 @@ impl<'a> OperationResolverResult<'a> {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, ExecutionError> {
+        let resolve = system_context.curried_resolve();
         match self {
             OperationResolverResult::SQLOperation(abstract_operation) => {
                 let database_system_context = DatabaseSystemContext {
                     system: &system_context.system,
                     database_executor: &system_context.database_executor,
+                    resolve: &resolve,
                 };
 
                 super::database::resolve_operation(abstract_operation, &database_system_context)

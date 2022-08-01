@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::graphql::execution::system_context::SystemContext;
+use crate::graphql::execution::system_context::ResolveFn;
 
 use super::{ParsedContext, RequestContext};
 
@@ -13,11 +13,11 @@ impl ParsedContext for EnvironmentContextExtractor {
         "env"
     }
 
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'s, 'r>(
+        &self,
         key: &str,
-        _system_context: &'e SystemContext,
-        _rc: &'e RequestContext,
+        _resolver: &'s ResolveFn<'s, 'r>,
+        _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         std::env::var(&key).ok().map(|v| v.into())
     }

@@ -14,7 +14,7 @@ use serde_json::Value;
 
 use std::ops::Not;
 
-use crate::graphql::request_context::RequestContext;
+use crate::{graphql::request_context::RequestContext, ResolveFn};
 
 pub fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelSystem) -> ColumnPath<'a> {
     crate::graphql::data::database::to_column_path(&Some(column_id.clone()), &None, system)
@@ -22,15 +22,16 @@ pub fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelSystem) -> 
 
 /// Solve access control logic.
 /// The access control logic is expressed as a predicate expression. This method
-/// tried to produce a simplest possible `Predicate` given the request context. It tries
+/// tries to produce a simplest possible `Predicate` given the request context. It tries
 /// to produce `Predicate::True` or `Predicate::False` when sufficient information is available
 /// to make such determination. This allows (in case of `Predicate::True`) to skip the database
 /// filtering and (in case of `Predicate::False`) to return a "Not authorized" error (instead of an
 /// empty/null result).
-pub async fn solve_access<'a>(
+pub async fn solve_access<'s, 'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
+    resolve: &'s ResolveFn<'s, 'a>,
 ) -> AbstractPredicate<'a> {
     solve_predicate_expression(expr, request_context, system).await
 }
@@ -81,7 +82,7 @@ async fn solve_context_selection<'a>(
     match context_selection {
         AccessContextSelection::Context(context_name) => {
             let context_type = system.contexts.get_by_key(context_name).unwrap();
-            value.extract_context(context_type).await.ok()
+            value.extract_context(context_type, todo!()).await.ok()
         }
         AccessContextSelection::Select(path, key) => solve_context_selection(path, value, system)
             .await

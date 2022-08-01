@@ -63,6 +63,7 @@ pub async fn compute_service_access_predicate<'a>(
     request_context: &'a RequestContext<'a>,
 ) -> &'a Predicate<'a> {
     let return_type = return_type.typ(&system_context.system);
+    let resolve = system_context.curried_resolve();
 
     let type_level_access = match &return_type.kind {
         GqlTypeKind::Primitive => Predicate::True,
@@ -76,7 +77,13 @@ pub async fn compute_service_access_predicate<'a>(
                 ServiceMethodType::Mutation(_) => &access.creation, // mutation
             };
 
-            access_solver::solve_access(access_expr, request_context, &system_context.system).await
+            access_solver::solve_access(
+                access_expr,
+                request_context,
+                &system_context.system,
+                &resolve,
+            )
+            .await
         }
         _ => panic!(),
     };
@@ -86,9 +93,13 @@ pub async fn compute_service_access_predicate<'a>(
         ServiceMethodType::Mutation(_) => &method.access.creation, // mutation
     };
 
-    let method_level_access =
-        access_solver::solve_access(method_access_expr, request_context, &system_context.system)
-            .await;
+    let method_level_access = access_solver::solve_access(
+        method_access_expr,
+        request_context,
+        &system_context.system,
+        &resolve,
+    )
+    .await;
 
     let method_level_access = method_level_access.predicate();
 
@@ -125,6 +136,7 @@ pub async fn construct_arg_sequence(
 
                 let arg_type = &system.types[arg.type_id];
 
+                let resolve = system_context.curried_resolve();
                 // what kind of injected argument is it?
                 // first check if it's a context
                 if let Some(context) = system
@@ -135,7 +147,7 @@ pub async fn construct_arg_sequence(
                 {
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = request_context
-                        .extract_context(context)
+                        .extract_context(context, &resolve)
                         .await
                         .unwrap_or_else(|_| {
                             panic!(
