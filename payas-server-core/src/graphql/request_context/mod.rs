@@ -10,7 +10,6 @@ use serde_json::Value;
 
 use super::execution::system_context::ResolveFn;
 
-
 #[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
 
@@ -137,7 +136,7 @@ impl<'a> RequestContext<'a> {
                 let field_value = self
                     .extract_context_field_from_source(
                         parsed_context_map,
-                        &resolver,
+                        resolver,
                         &field.source.annotation_name,
                         &field.source.value,
                     )

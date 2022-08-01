@@ -35,7 +35,7 @@ impl ActixRequestContextProducer {
     }
 
     /// Generates request context
-    pub fn generate_request_context<'s, 'a>(
+    pub fn generate_request_context<'a>(
         &self,
         request: &HttpRequest,
     ) -> Result<RequestContext<'a>, ContextProducerError> {
