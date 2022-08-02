@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 
-use crate::graphql::{request_context::RequestContext, validation::field::ValidatedField};
+use payas_resolver_core::request_context::RequestContext;
+
+use crate::graphql::validation::field::ValidatedField;
 
 #[async_trait]
 pub trait FieldResolver<R, E, SC>

@@ -9,15 +9,15 @@ use payas_model::model::{
     system::ModelSystem,
 };
 
+use crate::{column_path_util, request_context::RequestContext, ResolveFn};
 use payas_sql::{AbstractPredicate, ColumnPath};
+
 use serde_json::Value;
 
 use std::ops::Not;
 
-use crate::{graphql::request_context::RequestContext, ResolveFn};
-
 pub fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelSystem) -> ColumnPath<'a> {
-    crate::graphql::data::database::to_column_path(&Some(column_id.clone()), &None, system)
+    column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
 }
 
 /// Solve access control logic.
@@ -287,12 +287,13 @@ async fn solve_logical_op<'a>(
 
 #[cfg(test)]
 mod tests {
+    use crate::request_context::{RequestContext, UserRequestContext};
     use payas_model::model::{
         column_id::ColumnId, predicate::ColumnIdPathLink, system::ModelSystem,
     };
     use serde_json::json;
 
-    use crate::{request_context::UserRequestContext, OperationsPayload};
+    use crate::OperationsPayload;
 
     use super::*;
 

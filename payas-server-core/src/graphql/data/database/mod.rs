@@ -22,23 +22,19 @@ use async_graphql_value::ConstValue;
 use postgres_types::FromSqlOwned;
 use tokio_postgres::Row;
 
-use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
-
-use crate::graphql::request_context::RequestContext;
+use payas_resolver_core::access_solver;
+use payas_resolver_core::request_context::RequestContext;
+use payas_sql::{AbstractPredicate, PhysicalTable};
 
 use predicate_mapper::PredicateParameterMapper;
 
 use payas_model::model::{
-    column_id::ColumnId,
     operation::{OperationReturnType, Query},
     predicate::{ColumnIdPath, ColumnIdPathLink, PredicateParameter},
-    system::ModelSystem,
     GqlCompositeType, GqlTypeKind,
 };
 
 use self::sql_mapper::SQLOperationKind;
-
-use crate::graphql::data::access_solver;
 
 pub type Arguments = HashMap<String, ConstValue>;
 
@@ -125,48 +121,6 @@ pub fn to_column_id_path(
         }),
         (None, None) => None,
     }
-}
-
-fn to_column_table(column_id: ColumnId, system: &ModelSystem) -> (&PhysicalColumn, &PhysicalTable) {
-    let column = column_id.get_column(system);
-    let table = &system
-        .tables
-        .iter()
-        .find(|(_, table)| table.name == column.table_name)
-        .map(|(_, table)| table)
-        .unwrap_or_else(|| panic!("Table {} not found", column.table_name));
-
-    (column, table)
-}
-
-fn to_column_path_link<'a>(link: &ColumnIdPathLink, system: &'a ModelSystem) -> ColumnPathLink<'a> {
-    ColumnPathLink {
-        self_column: to_column_table(link.self_column_id, system),
-        linked_column: link
-            .linked_column_id
-            .map(|linked_column_id| to_column_table(linked_column_id, system)),
-    }
-}
-
-pub fn to_column_path<'a>(
-    parent_column_id_path: &Option<ColumnIdPath>,
-    next_column_id_path_link: &Option<ColumnIdPathLink>,
-    system: &'a ModelSystem,
-) -> ColumnPath<'a> {
-    let mut path: Vec<_> = match parent_column_id_path {
-        Some(parent_column_id_path) => parent_column_id_path
-            .path
-            .iter()
-            .map(|link| to_column_path_link(link, system))
-            .collect(),
-        None => vec![],
-    };
-
-    if let Some(next_column_id_path_link) = next_column_id_path_link {
-        path.push(to_column_path_link(next_column_id_path_link, system));
-    }
-
-    ColumnPath::Physical(path)
 }
 
 pub fn get_argument_field<'a>(

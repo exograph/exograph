@@ -1,3 +1,5 @@
+use payas_resolver_core::request_context::RequestContext;
+
 use async_graphql_parser::types::{BaseType, Type, TypeDefinition};
 use async_trait::async_trait;
 use serde_json::Value;
@@ -5,7 +7,6 @@ use serde_json::Value;
 use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::introspection::definition::type_introspection::TypeDefinitionIntrospection;
-use crate::graphql::request_context::RequestContext;
 use crate::graphql::{execution::system_context::SystemContext, validation::field::ValidatedField};
 
 use super::resolver_support::Resolver;

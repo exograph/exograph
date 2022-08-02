@@ -3,7 +3,9 @@ pub mod header;
 pub mod jwt;
 
 use actix_web::HttpRequest;
-use payas_server_core::request_context::{BoxedParsedContext, RequestContext, UserRequestContext};
+use payas_resolver_core::request_context::{
+    BoxedParsedContext, RequestContext, UserRequestContext,
+};
 
 use self::{cookie::CookieProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
 

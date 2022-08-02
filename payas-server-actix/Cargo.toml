@@ -16,6 +16,7 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 tracing = "0.1"
 tracing-actix-web = "0.5"
 payas-server-core = { path = "../payas-server-core" }
+payas-resolver-core = { path = "../payas-resolver-core" }
 
 [[bin]]
 name = "clay-server"

@@ -1,11 +1,12 @@
 use async_graphql_value::ConstValue;
 
 use payas_model::model::predicate::{ColumnIdPath, PredicateParameter, PredicateParameterTypeKind};
+use payas_resolver_core::column_path_util::to_column_path;
 use payas_sql::{AbstractPredicate, ColumnPath};
 
 use super::{
     cast::cast_value, database_execution_error::DatabaseExecutionError,
-    database_system_context::DatabaseSystemContext, to_column_id_path, to_column_path,
+    database_system_context::DatabaseSystemContext, to_column_id_path,
 };
 
 pub trait PredicateParameterMapper<'a> {

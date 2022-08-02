@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use lambda_http::http::HeaderMap;
-use payas_server_core::{
+use payas_resolver_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
     ResolveFn,
 };

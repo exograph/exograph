@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use payas_resolver_core::{QueryResponse, QueryResponseBody};
+use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
 use super::system_context::SystemContext;
 use crate::graphql::{
@@ -8,7 +8,6 @@ use crate::graphql::{
     execution::field_resolver::FieldResolver,
     execution_error::ExecutionError,
     introspection::definition::root_element::IntrospectionRootElement,
-    request_context::RequestContext,
     validation::{field::ValidatedField, operation::ValidatedOperation},
 };
 

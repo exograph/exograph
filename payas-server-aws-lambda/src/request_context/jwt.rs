@@ -3,9 +3,10 @@ use std::env;
 use async_trait::async_trait;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
-use payas_server_core::request_context::ParsedContext;
-use payas_server_core::request_context::{BoxedParsedContext, RequestContext};
-use payas_server_core::ResolveFn;
+use payas_resolver_core::{
+    request_context::{BoxedParsedContext, ParsedContext, RequestContext},
+    ResolveFn,
+};
 use serde_json::json;
 use serde_json::Value;
 

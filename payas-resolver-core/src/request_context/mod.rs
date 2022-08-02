@@ -1,14 +1,14 @@
 mod environment;
 mod query;
 
-use crate::graphql::execution_error::ExecutionError;
 use async_trait::async_trait;
 use futures::StreamExt;
 use payas_model::model::ContextField;
 use payas_model::model::ContextType;
 use serde_json::Value;
+use thiserror::Error;
 
-use super::execution::system_context::ResolveFn;
+use crate::ResolveFn;
 
 #[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
@@ -17,6 +17,15 @@ use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
 use std::collections::HashMap;
 
 use async_recursion::async_recursion;
+
+#[derive(Debug, Error)]
+pub enum ContextParsingError {
+    #[error("Could not find source `{0}`")]
+    SourceNotFound(String),
+
+    #[error(transparent)]
+    Delegate(#[from] Box<dyn std::error::Error + Send + Sync>),
+}
 
 pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
@@ -90,7 +99,7 @@ impl<'a> RequestContext<'a> {
         &'a self,
         context: &ContextType,
         resolver: &ResolveFn<'s, 'a>,
-    ) -> Result<Value, ExecutionError> {
+    ) -> Result<Value, ContextParsingError> {
         Ok(Value::Object(
             futures::stream::iter(context.fields.iter())
                 .then(|field| async { self.extract_context_field(context, field, resolver).await })
@@ -113,10 +122,10 @@ impl<'a> RequestContext<'a> {
         resolver: &'s ResolveFn<'s, 'a>,
         annotation_name: &str,
         value: &str,
-    ) -> Result<Option<Value>, ExecutionError> {
-        let parsed_context = parsed_context_map.get(annotation_name).ok_or_else(|| {
-            ExecutionError::Generic(format!("Could not find source `{}`", annotation_name))
-        })?;
+    ) -> Result<Option<Value>, ContextParsingError> {
+        let parsed_context = parsed_context_map
+            .get(annotation_name)
+            .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
 
         Ok(parsed_context
             .extract_context_field(value, resolver, self)
@@ -130,7 +139,7 @@ impl<'a> RequestContext<'a> {
         context: &ContextType,
         field: &ContextField,
         resolver: &'s ResolveFn<'s, 'a>,
-    ) -> Result<Option<(String, Value)>, ExecutionError> {
+    ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
             RequestContext::User(UserRequestContext { parsed_context_map }) => {
                 let field_value = self
@@ -172,7 +181,7 @@ impl<'a> RequestContext<'a> {
         context: &ContextType,
         field: &ContextField,
         resolver: &ResolveFn,
-    ) -> Result<Option<(String, Value)>, ExecutionError> {
+    ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
             RequestContext::User(UserRequestContext { test_values, .. }) => {
                 let context_value: Option<Value> = test_values.get(&context.name).cloned();

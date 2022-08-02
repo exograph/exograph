@@ -1,12 +1,11 @@
-use std::pin::Pin;
-
 use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
-use std::future::Future;
 use tracing::{error, instrument};
 
 use payas_model::model::system::ModelSystem;
-use payas_resolver_core::{OperationsPayload, QueryResponse};
+use payas_resolver_core::{
+    request_context::RequestContext, OperationsPayload, QueryResponse, ResolveFn,
+};
 
 use payas_sql::DatabaseExecutor;
 
@@ -14,7 +13,6 @@ use crate::graphql::{
     data::deno::ClayDenoExecutorPool,
     execution_error::ExecutionError,
     introspection::schema::Schema,
-    request_context::RequestContext,
     validation::{
         document_validator::DocumentValidator, operation::ValidatedOperation,
         validation_error::ValidationError,
@@ -153,21 +151,3 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
         ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
 }
-
-pub type ResolveFn<'s, 'r> = Box<
-    dyn Fn(
-            OperationsPayload,
-            &'r RequestContext<'r>,
-        ) -> Pin<
-            Box<
-                dyn Future<
-                        Output = Result<Vec<(String, QueryResponse)>, Box<dyn std::error::Error>>,
-                    >
-                    + 'r
-                    + Send,
-            >,
-        >
-        + 's
-        + Send
-        + Sync,
->;

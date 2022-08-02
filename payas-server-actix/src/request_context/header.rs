@@ -1,6 +1,6 @@
 use actix_web::http::header::HeaderMap;
 use async_trait::async_trait;
-use payas_server_core::{
+use payas_resolver_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
     ResolveFn,
 };

@@ -4,11 +4,12 @@ use payas_model::model::{
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
     predicate::ColumnIdPath,
 };
+use payas_resolver_core::column_path_util::to_column_path;
 use payas_sql::{AbstractOrderBy, ColumnPath, Ordering};
 
 use super::{
     database_execution_error::WithContext, database_system_context::DatabaseSystemContext,
-    to_column_path, DatabaseExecutionError,
+    DatabaseExecutionError,
 };
 
 pub trait OrderByParameterMapper<'a> {

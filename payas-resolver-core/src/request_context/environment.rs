@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::graphql::execution::system_context::ResolveFn;
+use crate::ResolveFn;
 
 use super::{ParsedContext, RequestContext};
 

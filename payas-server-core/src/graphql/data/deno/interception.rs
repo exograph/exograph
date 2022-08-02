@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 
 use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
-use payas_resolver_core::{QueryResponse, QueryResponseBody};
+use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
 use crate::graphql::{
     data::deno::{
@@ -15,7 +15,6 @@ use crate::graphql::{
     },
     execution::system_context::SystemContext,
     execution_error::ExecutionError,
-    request_context::RequestContext,
     validation::field::ValidatedField,
 };
 
