@@ -34,7 +34,6 @@ tracing-opentelemetry = "0.17.2"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 pretty_env_logger = "0.4"
 
-fix-hidden-lifetime-bug = "0.2.5"
 
 payas-sql = { path = "../payas-sql" }
 payas-model = { path = "../payas-model" }

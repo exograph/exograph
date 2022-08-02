@@ -3488,7 +3488,6 @@ dependencies = [
  "bincode",
  "bytes",
  "deno_core",
- "fix-hidden-lifetime-bug",
  "futures",
  "futures-util",
  "include_dir",
