@@ -1,10 +1,10 @@
 use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::introspection::schema::{
     Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
 };
-use crate::graphql::validation::field::ValidatedField;
 use async_trait::async_trait;
 use serde_json::Value;
 

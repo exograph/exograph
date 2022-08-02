@@ -7,12 +7,12 @@ use payas_model::model::{
     types::{GqlTypeKind, GqlTypeModifier},
 };
 use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
+
 use payas_sql::{
     AbstractOrderBy, AbstractPredicate, AbstractSelect, ColumnPathLink, ColumnSelection, Limit,
     Offset, SelectionCardinality, SelectionElement,
 };
-
-use crate::graphql::validation::field::ValidatedField;
 
 use super::{
     compute_sql_access_predicate,

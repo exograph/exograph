@@ -3,6 +3,7 @@ pub mod column_path_util;
 mod operation_payload;
 mod query_response;
 pub mod request_context;
+pub mod validation;
 
 use std::{future::Future, pin::Pin};
 

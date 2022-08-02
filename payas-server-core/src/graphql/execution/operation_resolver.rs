@@ -1,14 +1,14 @@
 use async_trait::async_trait;
 
+use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
 use super::system_context::SystemContext;
 use crate::graphql::{
-    data::root_element::DataRootElement,
-    execution::field_resolver::FieldResolver,
+    data::root_element::DataRootElement, execution::field_resolver::FieldResolver,
     execution_error::ExecutionError,
     introspection::definition::root_element::IntrospectionRootElement,
-    validation::{field::ValidatedField, operation::ValidatedOperation},
+    validation::operation::ValidatedOperation,
 };
 
 #[async_trait]

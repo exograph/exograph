@@ -3399,6 +3399,7 @@ dependencies = [
 name = "payas-resolver-core"
 version = "0.1.0"
 dependencies = [
+ "async-graphql-value 4.0.5",
  "async-recursion",
  "async-trait",
  "futures",

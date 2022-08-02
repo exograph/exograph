@@ -6,12 +6,11 @@ use payas_model::model::{
     GqlTypeModifier,
 };
 use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
 use payas_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
     AbstractUpdate,
 };
-
-use crate::graphql::validation::field::ValidatedField;
 
 use super::{
     compute_sql_access_predicate,

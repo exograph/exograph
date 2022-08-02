@@ -1,11 +1,10 @@
 use payas_model::model::{mapped_arena::SerializableSlabIndex, service::ServiceMethod};
+use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse};
+
 use payas_sql::AbstractOperation;
 
-use crate::graphql::{
-    execution::system_context::SystemContext, execution_error::ExecutionError,
-    validation::field::ValidatedField,
-};
+use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
 use super::{
     database::{DatabaseExecutionError, DatabaseSystemContext},

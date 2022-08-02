@@ -11,14 +11,13 @@ use payas_deno::Arg;
 use payas_model::model::operation::OperationReturnType;
 use payas_model::model::service::{Argument, ServiceMethod, ServiceMethodType};
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
+use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::graphql::data::operation_mapper::DenoOperation;
 use crate::SystemContext;
 
 use crate::graphql::data::deno::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use payas_resolver_core::{QueryResponse, QueryResponseBody};
-
-use crate::graphql::validation::field::ValidatedField;
 
 use payas_sql::{AbstractPredicate, Predicate};
 

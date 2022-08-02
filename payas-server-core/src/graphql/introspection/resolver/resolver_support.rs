@@ -4,12 +4,10 @@ use futures::StreamExt;
 use serde_json::Value;
 
 use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::{
-    graphql::{
-        execution::field_resolver::FieldResolver, execution_error::ExecutionError,
-        validation::field::ValidatedField,
-    },
+    graphql::{execution::field_resolver::FieldResolver, execution_error::ExecutionError},
     SystemContext,
 };
 

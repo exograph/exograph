@@ -6,6 +6,7 @@ use serde_json::{Map, Value};
 
 use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
+use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
 use crate::graphql::{
@@ -15,7 +16,6 @@ use crate::graphql::{
     },
     execution::system_context::SystemContext,
     execution_error::ExecutionError,
-    validation::field::ValidatedField,
 };
 
 /// Determine the order and nesting for interceptors.
