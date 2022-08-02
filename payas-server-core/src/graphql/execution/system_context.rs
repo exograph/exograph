@@ -6,21 +6,19 @@ use std::future::Future;
 use tracing::{error, instrument};
 
 use payas_model::model::system::ModelSystem;
-use payas_resolver_core::query_response::QueryResponse;
+use payas_resolver_core::{OperationsPayload, QueryResponse};
+
 use payas_sql::DatabaseExecutor;
 
-use crate::{
-    graphql::{
-        data::deno::ClayDenoExecutorPool,
-        execution_error::ExecutionError,
-        introspection::schema::Schema,
-        request_context::RequestContext,
-        validation::{
-            document_validator::DocumentValidator, operation::ValidatedOperation,
-            validation_error::ValidationError,
-        },
+use crate::graphql::{
+    data::deno::ClayDenoExecutorPool,
+    execution_error::ExecutionError,
+    introspection::schema::Schema,
+    request_context::RequestContext,
+    validation::{
+        document_validator::DocumentValidator, operation::ValidatedOperation,
+        validation_error::ValidationError,
     },
-    OperationsPayload,
 };
 
 use super::field_resolver::FieldResolver;
@@ -98,7 +96,11 @@ impl SystemContext {
     pub fn curried_resolve<'r>(&'r self) -> ResolveFn<'r, 'r> {
         Box::new(
             move |input: OperationsPayload, request_context: &'r RequestContext<'r>| {
-                Box::pin(async move { self.resolve(input, request_context).await })
+                Box::pin(async move {
+                    self.resolve(input, request_context)
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                })
             },
         )
     }
@@ -158,7 +160,9 @@ pub type ResolveFn<'s, 'r> = Box<
             &'r RequestContext<'r>,
         ) -> Pin<
             Box<
-                dyn Future<Output = Result<Vec<(String, QueryResponse)>, ExecutionError>>
+                dyn Future<
+                        Output = Result<Vec<(String, QueryResponse)>, Box<dyn std::error::Error>>,
+                    >
                     + 'r
                     + Send,
             >,

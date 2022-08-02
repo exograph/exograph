@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use payas_resolver_core::query_response::{QueryResponse, QueryResponseBody};
+use payas_resolver_core::{QueryResponse, QueryResponseBody};
 
 use super::system_context::SystemContext;
 use crate::graphql::{

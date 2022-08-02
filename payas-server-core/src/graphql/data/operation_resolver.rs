@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use payas_model::model::operation::Interceptors;
 use serde_json::Value;
 
-use payas_resolver_core::query_response::{QueryResponse, QueryResponseBody};
+use payas_resolver_core::{QueryResponse, QueryResponseBody};
 
 use crate::graphql::{
     data::deno::interception::InterceptedOperation,

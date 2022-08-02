@@ -20,12 +20,11 @@ use initialization_error::InitializationError;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
 use payas_sql::{Database, DatabaseExecutor};
-use serde::Deserialize;
-use serde_json::{Map, Value};
 
 use crate::graphql::execution_error::ExecutionError;
 
-use payas_resolver_core::query_response::QueryResponseBody;
+pub use payas_resolver_core::OperationsPayload;
+use payas_resolver_core::QueryResponseBody;
 
 pub mod graphiql;
 pub mod initialization_error;
@@ -85,14 +84,6 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
     };
 
     Ok(executor)
-}
-
-#[derive(Debug, Deserialize)]
-pub struct OperationsPayload {
-    #[serde(rename = "operationName")]
-    operation_name: Option<String>,
-    query: String,
-    variables: Option<Map<String, Value>>,
 }
 
 pub type Headers = Vec<(String, String)>;

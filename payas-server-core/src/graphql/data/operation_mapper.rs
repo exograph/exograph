@@ -1,5 +1,5 @@
 use payas_model::model::{mapped_arena::SerializableSlabIndex, service::ServiceMethod};
-use payas_resolver_core::query_response::QueryResponse;
+use payas_resolver_core::QueryResponse;
 use payas_sql::AbstractOperation;
 
 use crate::graphql::{

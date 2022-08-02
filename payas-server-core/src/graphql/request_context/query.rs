@@ -1,7 +1,7 @@
 use async_trait::async_trait;
+use payas_resolver_core::OperationsPayload;
 
 use crate::graphql::execution::system_context::ResolveFn;
-use crate::OperationsPayload;
 
 use super::{ParsedContext, RequestContext};
 

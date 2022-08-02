@@ -1,7 +1,7 @@
 use async_graphql_parser::types::OperationType;
 use payas_model::model::system::ModelSystem;
 
-use payas_resolver_core::query_response::QueryResponse;
+use payas_resolver_core::QueryResponse;
 
 use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::{
