@@ -3038,9 +3038,9 @@ dependencies = [
 
 [[package]]
 name = "num-complex"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97fbc387afefefd5e9e39493299f3069e14a140dd34dc19b4c1c1a8fddb6a790"
+checksum = "7ae39348c8bc5fbd7f40c727a9925f03517afd2ab27d46702108b6a7e5414c19"
 dependencies = [
  "num-traits",
 ]
@@ -3068,9 +3068,9 @@ dependencies = [
 
 [[package]]
 name = "num-rational"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d41702bd167c2df5520b384281bc111a4b5efcf7fbc4c9c222c815b07e0a6a6a"
+checksum = "0638a1c9d0a3c0914158145bc76cff373a75a627e6ecbfb71cbe6f453a5a19b0"
 dependencies = [
  "autocfg",
  "num-bigint",
@@ -3414,6 +3414,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-resolver-database"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-value 4.0.5",
+ "async-recursion",
+ "async-trait",
+ "base64 0.13.0",
+ "chrono",
+ "fix-hidden-lifetime-bug",
+ "futures",
+ "maybe-owned",
+ "payas-model",
+ "payas-parser",
+ "payas-resolver-core",
+ "payas-sql",
+ "pg_bigdecimal",
+ "postgres-types",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "uuid 1.1.2",
+]
+
+[[package]]
 name = "payas-server-actix"
 version = "0.1.0"
 dependencies = [
@@ -3459,10 +3485,8 @@ dependencies = [
  "async-recursion",
  "async-stream",
  "async-trait",
- "base64 0.13.0",
  "bincode",
  "bytes",
- "chrono",
  "deno_core",
  "fix-hidden-lifetime-bug",
  "futures",
@@ -3476,9 +3500,8 @@ dependencies = [
  "payas-model",
  "payas-parser",
  "payas-resolver-core",
+ "payas-resolver-database",
  "payas-sql",
- "pg_bigdecimal",
- "postgres-types",
  "pretty_env_logger",
  "serde",
  "serde_json",
@@ -3491,7 +3514,6 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typed-generational-arena",
- "uuid 1.1.2",
 ]
 
 [[package]]

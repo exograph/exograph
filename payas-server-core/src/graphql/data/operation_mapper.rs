@@ -1,15 +1,13 @@
 use payas_model::model::{mapped_arena::SerializableSlabIndex, service::ServiceMethod};
 use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse};
+use payas_resolver_database::{DatabaseExecutionError, DatabaseSystemContext};
 
 use payas_sql::AbstractOperation;
 
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
-use super::{
-    database::{DatabaseExecutionError, DatabaseSystemContext},
-    deno::DenoExecutionError,
-};
+use super::deno::DenoExecutionError;
 
 #[allow(clippy::large_enum_variant)]
 pub enum OperationResolverResult<'a> {
@@ -35,12 +33,15 @@ impl<'a> OperationResolverResult<'a> {
                     resolve,
                 };
 
-                super::database::resolve_operation(abstract_operation, database_system_context)
-                    .await
-                    .map_err(|e| match e {
-                        DatabaseExecutionError::Authorization => ExecutionError::Authorization,
-                        e => ExecutionError::Database(e),
-                    })
+                payas_resolver_database::resolve_operation(
+                    abstract_operation,
+                    database_system_context,
+                )
+                .await
+                .map_err(|e| match e {
+                    DatabaseExecutionError::Authorization => ExecutionError::Authorization,
+                    e => ExecutionError::Database(e),
+                })
             }
 
             OperationResolverResult::DenoOperation(operation) => operation

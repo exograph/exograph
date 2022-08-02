@@ -1,10 +1,11 @@
 use std::error::Error;
 
+use payas_resolver_database::DatabaseExecutionError;
 use thiserror::Error;
 
 use crate::graphql::validation::validation_error::ValidationError;
 
-use super::data::{database::DatabaseExecutionError, deno::DenoExecutionError};
+use super::data::deno::DenoExecutionError;
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {

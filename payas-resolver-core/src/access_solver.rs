@@ -20,6 +20,9 @@ pub fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelSystem) -> 
     column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
 }
 
+// TODO: This doesn't really belong in this crate, but currently both database and deno uses it.
+//       We will separate this out.
+
 /// Solve access control logic.
 /// The access control logic is expressed as a predicate expression. This method
 /// tries to produce a simplest possible `Predicate` given the request context. It tries

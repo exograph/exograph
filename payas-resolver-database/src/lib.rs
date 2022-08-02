@@ -28,6 +28,9 @@ use payas_sql::{AbstractPredicate, PhysicalTable};
 
 use predicate_mapper::PredicateParameterMapper;
 
+#[macro_use]
+extern crate fix_hidden_lifetime_bug;
+
 use payas_model::model::{
     operation::{OperationReturnType, Query},
     predicate::{ColumnIdPath, ColumnIdPathLink, PredicateParameter},

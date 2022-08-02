@@ -1,17 +1,14 @@
-use crate::graphql::{
-    data::database::DatabaseQuery, execution::system_context::SystemContext,
-    execution_error::ExecutionError,
-};
+use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
 use async_trait::async_trait;
 use payas_model::model::operation::{Interceptors, Query, QueryKind};
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
 
+use payas_resolver_database::{DatabaseExecutionError, DatabaseQuery, DatabaseSystemContext};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
 use super::{
-    database::{DatabaseExecutionError, DatabaseSystemContext},
     operation_mapper::{DenoOperation, OperationResolverResult},
     operation_resolver::OperationResolver,
 };

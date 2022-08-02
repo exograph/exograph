@@ -1,7 +1,4 @@
-use crate::graphql::{
-    data::database::DatabaseMutation, execution::system_context::SystemContext,
-    execution_error::ExecutionError,
-};
+use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 use async_trait::async_trait;
 
 use payas_model::model::operation::{Interceptors, Mutation, MutationKind};
@@ -13,7 +10,7 @@ use crate::graphql::data::{
     operation_resolver::OperationResolver,
 };
 
-use super::database::{DatabaseExecutionError, DatabaseSystemContext};
+use payas_resolver_database::{DatabaseExecutionError, DatabaseMutation, DatabaseSystemContext};
 
 #[async_trait]
 impl<'a> OperationResolver<'a> for Mutation {
