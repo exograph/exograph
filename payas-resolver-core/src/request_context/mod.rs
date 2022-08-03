@@ -225,10 +225,10 @@ pub trait ParsedContext {
     fn annotation_name(&self) -> &str;
 
     // extract a context field from this struct
-    async fn extract_context_field<'s, 'r>(
+    async fn extract_context_field<'r>(
         &self,
         value: &str,
-        resolver: &'s ResolveFn<'r>,
+        resolver: &ResolveFn<'r>,
         request_context: &'r RequestContext<'r>,
     ) -> Option<Value>;
 }

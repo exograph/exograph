@@ -13,10 +13,10 @@ impl ParsedContext for EnvironmentContextExtractor {
         "env"
     }
 
-    async fn extract_context_field<'s, 'r>(
+    async fn extract_context_field<'r>(
         &self,
         key: &str,
-        _resolver: &'s ResolveFn<'r>,
+        _resolver: &ResolveFn<'r>,
         _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         std::env::var(&key).ok().map(|v| v.into())
