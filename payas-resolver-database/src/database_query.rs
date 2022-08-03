@@ -1,24 +1,23 @@
-use crate::graphql::{
-    execution::system_context::SystemContext,
-    execution_error::{ExecutionError, WithContext},
-    request_context::RequestContext,
-    validation::field::ValidatedField,
-};
-
 use async_recursion::async_recursion;
 use futures::StreamExt;
+
 use payas_model::model::{
     operation::{DatabaseQueryParameter, OperationReturnType, Query, QueryKind},
     relation::{GqlRelation, RelationCardinality},
     types::{GqlTypeKind, GqlTypeModifier},
 };
-use payas_sql::{AbstractOrderBy, AbstractSelect};
-use payas_sql::{AbstractPredicate, ColumnPathLink};
-use payas_sql::{ColumnSelection, SelectionCardinality, SelectionElement};
-use payas_sql::{Limit, Offset};
+use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
+
+use payas_sql::{
+    AbstractOrderBy, AbstractPredicate, AbstractSelect, ColumnPathLink, ColumnSelection, Limit,
+    Offset, SelectionCardinality, SelectionElement,
+};
 
 use super::{
     compute_sql_access_predicate,
+    database_execution_error::DatabaseExecutionError,
+    database_system_context::DatabaseSystemContext,
     order_by_mapper::OrderByParameterMapper,
     sql_mapper::{SQLMapper, SQLOperationKind},
     Arguments,
@@ -30,7 +29,7 @@ pub struct DatabaseQuery<'a> {
 }
 
 impl<'content> DatabaseQuery<'content> {
-    pub fn from(query: &Query) -> DatabaseQuery {
+    pub(super) fn from(query: &Query) -> DatabaseQuery {
         let query_params = match &query.kind {
             QueryKind::Database(query_params) => query_params,
             _ => panic!("DatabaseQuery::from called on non-database query"),
@@ -46,9 +45,9 @@ impl<'content> DatabaseQuery<'content> {
         &self,
         field: &'content ValidatedField,
         additional_predicate: AbstractPredicate<'content>,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
-    ) -> Result<AbstractSelect<'content>, ExecutionError> {
+    ) -> Result<AbstractSelect<'content>, DatabaseExecutionError> {
         let DatabaseQueryParameter {
             predicate_param, ..
         } = self.query_params;
@@ -61,7 +60,7 @@ impl<'content> DatabaseQuery<'content> {
         .await;
 
         if access_predicate == AbstractPredicate::False {
-            return Err(ExecutionError::Authorization);
+            return Err(DatabaseExecutionError::Authorization);
         }
 
         let predicate = super::compute_predicate(
@@ -70,12 +69,15 @@ impl<'content> DatabaseQuery<'content> {
             additional_predicate,
             system_context,
         )
-        .with_context(format!(
-            "While computing predicate for field {}",
-            field.name
-        ))?;
+        .map_err(|e| match e {
+            DatabaseExecutionError::Generic(message) => DatabaseExecutionError::Generic(format!(
+                "Error computing predicate for field '{}': {}",
+                field.name, message
+            )),
+            e => e,
+        })?;
 
-        let order_by = self.compute_order_by(&field.arguments, system_context);
+        let order_by = self.compute_order_by(&field.arguments, system_context)?;
 
         let predicate = AbstractPredicate::and(predicate, access_predicate);
 
@@ -93,7 +95,9 @@ impl<'content> DatabaseQuery<'content> {
         {
             &system.tables[composite_root_type.get_table_id()]
         } else {
-            return Err(ExecutionError::Generic("Expected a composite type".into()));
+            return Err(DatabaseExecutionError::Generic(
+                "Expected a composite type".into(),
+            ));
         };
 
         let selection_cardinality = match self.return_type.type_modifier {
@@ -115,8 +119,8 @@ impl<'content> DatabaseQuery<'content> {
     fn compute_order_by(
         &self,
         arguments: &'content Arguments,
-        system_context: &'content SystemContext,
-    ) -> Option<AbstractOrderBy<'content>> {
+        system_context: &DatabaseSystemContext<'content>,
+    ) -> Result<Option<AbstractOrderBy<'content>>, DatabaseExecutionError> {
         let DatabaseQueryParameter { order_by_param, .. } = self.query_params;
         order_by_param
             .as_ref()
@@ -127,16 +131,15 @@ impl<'content> DatabaseQuery<'content> {
                 })
             })
             .transpose()
-            .unwrap() // TODO: handle properly
     }
 
     #[async_recursion]
     async fn content_select(
         &self,
         fields: &'content [ValidatedField],
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
-    ) -> Result<Vec<ColumnSelection<'content>>, ExecutionError> {
+    ) -> Result<Vec<ColumnSelection<'content>>, DatabaseExecutionError> {
         futures::stream::iter(fields.iter())
             .then(|field| async { self.map_field(field, system_context, request_context).await })
             .collect::<Vec<Result<_, _>>>()
@@ -147,8 +150,8 @@ impl<'content> DatabaseQuery<'content> {
 
     fn compute_limit(
         &self,
-        arguments: &Arguments,
-        system_context: &SystemContext,
+        arguments: &'content Arguments,
+        system_context: &DatabaseSystemContext<'content>,
     ) -> Option<Limit> {
         let DatabaseQueryParameter { limit_param, .. } = self.query_params;
         limit_param
@@ -164,8 +167,8 @@ impl<'content> DatabaseQuery<'content> {
 
     fn compute_offset(
         &self,
-        arguments: &Arguments,
-        system_context: &SystemContext,
+        arguments: &'content Arguments,
+        system_context: &DatabaseSystemContext<'content>,
     ) -> Option<Offset> {
         let DatabaseQueryParameter { offset_param, .. } = self.query_params;
         offset_param
@@ -182,9 +185,9 @@ impl<'content> DatabaseQuery<'content> {
     async fn map_field(
         &self,
         field: &'content ValidatedField,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
-    ) -> Result<ColumnSelection<'content>, ExecutionError> {
+    ) -> Result<ColumnSelection<'content>, DatabaseExecutionError> {
         let system = &system_context.system;
         let return_type = self.return_type.typ(system);
 

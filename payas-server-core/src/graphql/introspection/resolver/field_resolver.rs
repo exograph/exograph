@@ -2,15 +2,17 @@ use async_graphql_parser::types::FieldDefinition;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::graphql::execution::resolver::FieldResolver;
+use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
+
+use crate::graphql::execution::field_resolver::FieldResolver;
+use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::execution_error::ExecutionError;
-use crate::graphql::request_context::RequestContext;
-use crate::graphql::{execution::system_context::SystemContext, validation::field::ValidatedField};
 
 use super::resolver_support::Resolver;
 
 #[async_trait]
-impl FieldResolver<Value> for FieldDefinition {
+impl FieldResolver<Value, ExecutionError, SystemContext> for FieldDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

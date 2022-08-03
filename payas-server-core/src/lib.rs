@@ -12,17 +12,15 @@ use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
 use futures::Stream;
-use graphql::request_context::RequestContext;
 use initialization_error::InitializationError;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
 use payas_sql::{Database, DatabaseExecutor};
-use serde::Deserialize;
-use serde_json::{Map, Value};
 
-use crate::graphql::{
-    execution::query_response::QueryResponseBody, execution_error::ExecutionError,
-};
+use crate::graphql::execution_error::ExecutionError;
+
+pub use payas_resolver_core::OperationsPayload;
+use payas_resolver_core::{request_context::RequestContext, QueryResponseBody};
 
 pub mod graphiql;
 pub mod initialization_error;
@@ -31,7 +29,7 @@ mod logging_tracing;
 
 mod graphql;
 
-pub use graphql::{execution::system_context::SystemContext, request_context};
+pub use graphql::execution::system_context::SystemContext;
 
 fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
     if !Path::new(&claypot_file).exists() {
@@ -79,14 +77,6 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
     };
 
     Ok(executor)
-}
-
-#[derive(Debug, Deserialize)]
-pub struct OperationsPayload {
-    #[serde(rename = "operationName")]
-    operation_name: Option<String>,
-    query: String,
-    variables: Option<Map<String, Value>>,
 }
 
 pub type Headers = Vec<(String, String)>;

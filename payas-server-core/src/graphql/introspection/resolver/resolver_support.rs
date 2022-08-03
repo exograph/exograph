@@ -3,12 +3,11 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::Value;
 
+use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
+
 use crate::{
-    graphql::{
-        execution::resolver::FieldResolver, execution_error::ExecutionError,
-        validation::field::ValidatedField,
-    },
-    request_context::RequestContext,
+    graphql::{execution::field_resolver::FieldResolver, execution_error::ExecutionError},
     SystemContext,
 };
 
@@ -47,7 +46,7 @@ where
 #[async_trait]
 impl<T> Resolver for T
 where
-    T: FieldResolver<Value> + std::fmt::Debug + Send + Sync,
+    T: FieldResolver<Value, ExecutionError, SystemContext> + std::fmt::Debug + Send + Sync,
 {
     async fn resolve_value<'e>(
         &self,

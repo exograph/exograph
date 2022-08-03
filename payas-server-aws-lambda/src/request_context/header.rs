@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use lambda_http::http::HeaderMap;
-use payas_server_core::{
+use payas_resolver_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
-    SystemContext,
+    ResolveFn,
 };
 use serde_json::Value;
 
@@ -31,11 +31,11 @@ impl ParsedContext for ParsedHeaderContext {
         "header"
     }
 
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'s, 'r>(
+        &self,
         value: &str,
-        _system_context: &'e SystemContext,
-        _request_context: &'e RequestContext<'e>,
+        _resolver: &'s ResolveFn<'s, 'r>,
+        _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         self.headers
             .get(&value.to_ascii_lowercase())

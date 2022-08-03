@@ -1,52 +1,55 @@
-pub mod cast;
+pub use database_execution_error::DatabaseExecutionError;
+pub use database_mutation::DatabaseMutation;
+pub use database_query::DatabaseQuery;
+pub use database_system_context::DatabaseSystemContext;
+
+mod abstract_operation_resolver;
+mod cast;
 mod create_data_param_mapper;
+mod database_execution_error;
+mod database_mutation;
+mod database_query;
+mod database_system_context;
 mod limit_offset_mapper;
-
 mod order_by_mapper;
-pub mod predicate_mapper;
-
-pub mod database_mutation;
-pub mod database_query;
-pub mod sql_mapper;
+mod predicate_mapper;
+mod sql_mapper;
 mod update_data_param_mapper;
 
 use std::collections::HashMap;
 
-use postgres_types::FromSqlOwned;
-use predicate_mapper::PredicateParameterMapper;
-
 use async_graphql_value::ConstValue;
+use postgres_types::FromSqlOwned;
 use tokio_postgres::Row;
 
-use payas_sql::{AbstractPredicate, ColumnPath, ColumnPathLink, PhysicalColumn, PhysicalTable};
+use payas_resolver_core::access_solver;
+use payas_resolver_core::request_context::RequestContext;
+use payas_sql::{AbstractPredicate, PhysicalTable};
 
-use crate::graphql::{
-    execution::system_context::SystemContext,
-    execution_error::{ExecutionError, WithContext},
-    request_context::RequestContext,
-};
+use predicate_mapper::PredicateParameterMapper;
+
+#[macro_use]
+extern crate fix_hidden_lifetime_bug;
 
 use payas_model::model::{
-    column_id::ColumnId,
     operation::{OperationReturnType, Query},
     predicate::{ColumnIdPath, ColumnIdPathLink, PredicateParameter},
-    system::ModelSystem,
     GqlCompositeType, GqlTypeKind,
 };
 
 use self::sql_mapper::SQLOperationKind;
 
-use crate::graphql::{data::access_solver, execution_error::DatabaseExecutionError};
-
 pub type Arguments = HashMap<String, ConstValue>;
+
+pub use abstract_operation_resolver::resolve_operation;
 
 pub async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> AbstractPredicate<'a> {
-    let return_type = return_type.typ(&system_context.system);
+    let return_type = return_type.typ(system_context.system);
 
     match &return_type.kind {
         GqlTypeKind::Primitive => AbstractPredicate::True,
@@ -57,7 +60,13 @@ pub async fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver::solve_access(access_expr, request_context, &system_context.system).await
+            access_solver::solve_access(
+                access_expr,
+                request_context,
+                system_context.system,
+                &system_context.resolve,
+            )
+            .await
         }
     }
 }
@@ -77,8 +86,8 @@ fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     additional_predicate: AbstractPredicate<'a>,
-    system_context: &'a SystemContext,
-) -> Result<AbstractPredicate<'a>, ExecutionError> {
+    system_context: &DatabaseSystemContext<'a>,
+) -> Result<AbstractPredicate<'a>, DatabaseExecutionError> {
     let mapped = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
@@ -87,8 +96,7 @@ fn compute_predicate<'a>(
                 predicate_parameter.map_to_predicate(argument_value, None, system_context)
             })
         })
-        .transpose()
-        .with_context("While mapping predicate parameters to SQL".into())?;
+        .transpose()?;
 
     let res = match mapped {
         Some(predicate) => {
@@ -118,48 +126,6 @@ pub fn to_column_id_path(
     }
 }
 
-fn to_column_table(column_id: ColumnId, system: &ModelSystem) -> (&PhysicalColumn, &PhysicalTable) {
-    let column = column_id.get_column(system);
-    let table = &system
-        .tables
-        .iter()
-        .find(|(_, table)| table.name == column.table_name)
-        .map(|(_, table)| table)
-        .unwrap_or_else(|| panic!("Table {} not found", column.table_name));
-
-    (column, table)
-}
-
-fn to_column_path_link<'a>(link: &ColumnIdPathLink, system: &'a ModelSystem) -> ColumnPathLink<'a> {
-    ColumnPathLink {
-        self_column: to_column_table(link.self_column_id, system),
-        linked_column: link
-            .linked_column_id
-            .map(|linked_column_id| to_column_table(linked_column_id, system)),
-    }
-}
-
-pub fn to_column_path<'a>(
-    parent_column_id_path: &Option<ColumnIdPath>,
-    next_column_id_path_link: &Option<ColumnIdPathLink>,
-    system: &'a ModelSystem,
-) -> ColumnPath<'a> {
-    let mut path: Vec<_> = match parent_column_id_path {
-        Some(parent_column_id_path) => parent_column_id_path
-            .path
-            .iter()
-            .map(|link| to_column_path_link(link, system))
-            .collect(),
-        None => vec![],
-    };
-
-    if let Some(next_column_id_path_link) = next_column_id_path_link {
-        path.push(to_column_path_link(next_column_id_path_link, system));
-    }
-
-    ColumnPath::Physical(path)
-}
-
 pub fn get_argument_field<'a>(
     argument_value: &'a ConstValue,
     field_name: &str,
@@ -182,7 +148,7 @@ pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, DatabaseExecutionError>
 /// - A (table associated with the return type, pk query, collection query) tuple.
 pub fn return_type_info<'a>(
     return_type: &'a OperationReturnType,
-    system_context: &'a SystemContext,
+    system_context: &DatabaseSystemContext<'a>,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {
     let system = &system_context.system;
     let typ = return_type.typ(system);

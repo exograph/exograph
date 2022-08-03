@@ -1,16 +1,14 @@
 mod environment;
 mod query;
 
-use crate::graphql::execution::system_context::SystemContext;
-use crate::graphql::execution_error::ExecutionError;
 use async_trait::async_trait;
 use futures::StreamExt;
 use payas_model::model::ContextField;
 use payas_model::model::ContextType;
 use serde_json::Value;
+use thiserror::Error;
 
-#[cfg(test)]
-use std::marker::PhantomData;
+use crate::ResolveFn;
 
 #[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
@@ -19,6 +17,15 @@ use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
 use std::collections::HashMap;
 
 use async_recursion::async_recursion;
+
+#[derive(Debug, Error)]
+pub enum ContextParsingError {
+    #[error("Could not find source `{0}`")]
+    SourceNotFound(String),
+
+    #[error(transparent)]
+    Delegate(#[from] Box<dyn std::error::Error + Send + Sync>),
+}
 
 pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
@@ -35,26 +42,19 @@ pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 /// let context = UserRequestContext::test_request_context(
 ///     serde_json::json!({ "AccessContext": {"token1": "token_value", "token2": "token_value"} }),
 /// );
-pub struct UserRequestContext<'a> {
+pub struct UserRequestContext {
     #[cfg(not(test))]
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedParsedContext>,
-    #[cfg(not(test))]
-    system_context: &'a SystemContext,
 
     #[cfg(test)]
     test_values: serde_json::Value,
-    #[cfg(test)]
-    phantom: PhantomData<&'a ()>,
 }
 
-impl<'a> UserRequestContext<'a> {
+impl UserRequestContext {
     // Constructs a UserRequestContext from a vector of parsed contexts.
     #[cfg(not(test))]
-    pub fn from_parsed_contexts(
-        contexts: Vec<BoxedParsedContext>,
-        system_context: &'a SystemContext,
-    ) -> UserRequestContext<'a> {
+    pub fn from_parsed_contexts(contexts: Vec<BoxedParsedContext>) -> UserRequestContext {
         // a list of backend-agnostic contexts to also include
 
         let generic_contexts: Vec<BoxedParsedContext> = vec![
@@ -68,21 +68,17 @@ impl<'a> UserRequestContext<'a> {
                 .chain(generic_contexts.into_iter()) // include agnostic contexts
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
-            system_context,
         }
     }
 
     #[cfg(test)]
-    pub fn test_request_context(test_values: serde_json::Value) -> UserRequestContext<'a> {
-        UserRequestContext {
-            test_values,
-            phantom: PhantomData,
-        }
+    pub fn test_request_context(test_values: serde_json::Value) -> UserRequestContext {
+        UserRequestContext { test_values }
     }
 }
 
 pub enum RequestContext<'a> {
-    User(UserRequestContext<'a>),
+    User(UserRequestContext),
 
     // The recursive nature allows stacking overrides
     Overridden {
@@ -99,10 +95,14 @@ impl<'a> RequestContext<'a> {
         }
     }
 
-    pub async fn extract_context(&self, context: &ContextType) -> Result<Value, ExecutionError> {
+    pub async fn extract_context<'s>(
+        &'a self,
+        context: &ContextType,
+        resolver: &ResolveFn<'s, 'a>,
+    ) -> Result<Value, ContextParsingError> {
         Ok(Value::Object(
             futures::stream::iter(context.fields.iter())
-                .then(|field| async { self.extract_context_field(context, field).await })
+                .then(|field| async { self.extract_context_field(context, field, resolver).await })
                 .collect::<Vec<Result<_, _>>>()
                 .await
                 .into_iter()
@@ -116,38 +116,36 @@ impl<'a> RequestContext<'a> {
     // Given an annotation name and its value,
     // extract a context field from the request context
     #[cfg(not(test))]
-    async fn extract_context_field_from_source(
-        &self,
+    async fn extract_context_field_from_source<'s>(
+        &'a self,
         parsed_context_map: &HashMap<String, BoxedParsedContext>,
-        system_context: &'a SystemContext,
+        resolver: &'s ResolveFn<'s, 'a>,
         annotation_name: &str,
         value: &str,
-    ) -> Result<Option<Value>, ExecutionError> {
-        let parsed_context = parsed_context_map.get(annotation_name).ok_or_else(|| {
-            ExecutionError::Generic(format!("Could not find source `{}`", annotation_name))
-        })?;
+    ) -> Result<Option<Value>, ContextParsingError> {
+        let parsed_context = parsed_context_map
+            .get(annotation_name)
+            .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(value, system_context, self)
+            .extract_context_field(value, resolver, self)
             .await)
     }
 
     #[cfg(not(test))]
     #[async_recursion]
-    pub async fn extract_context_field(
-        &self,
+    pub async fn extract_context_field<'s>(
+        &'a self,
         context: &ContextType,
         field: &ContextField,
-    ) -> Result<Option<(String, Value)>, ExecutionError> {
+        resolver: &'s ResolveFn<'s, 'a>,
+    ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
-            RequestContext::User(UserRequestContext {
-                parsed_context_map,
-                system_context,
-            }) => {
+            RequestContext::User(UserRequestContext { parsed_context_map }) => {
                 let field_value = self
                     .extract_context_field_from_source(
                         parsed_context_map,
-                        system_context,
+                        resolver,
                         &field.source.annotation_name,
                         &field.source.value,
                     )
@@ -164,7 +162,11 @@ impl<'a> RequestContext<'a> {
 
                 match overridden {
                     Some(value) => Ok(Some((field.name.clone(), value.clone()))),
-                    None => base_context.extract_context_field(context, field).await,
+                    None => {
+                        base_context
+                            .extract_context_field(context, field, resolver)
+                            .await
+                    }
                 }
             }
         }
@@ -178,7 +180,8 @@ impl<'a> RequestContext<'a> {
         &self,
         context: &ContextType,
         field: &ContextField,
-    ) -> Result<Option<(String, Value)>, ExecutionError> {
+        resolver: &ResolveFn,
+    ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
             RequestContext::User(UserRequestContext { test_values, .. }) => {
                 let context_value: Option<Value> = test_values.get(&context.name).cloned();
@@ -200,7 +203,11 @@ impl<'a> RequestContext<'a> {
 
                 match overridden {
                     Some(value) => Ok(Some((field.name.clone(), value.clone()))),
-                    None => base_context.extract_context_field(context, field).await,
+                    None => {
+                        base_context
+                            .extract_context_field(context, field, resolver)
+                            .await
+                    }
                 }
             }
         }
@@ -218,10 +225,10 @@ pub trait ParsedContext {
     fn annotation_name(&self) -> &str;
 
     // extract a context field from this struct
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'s, 'r>(
+        &self,
         value: &str,
-        system_context: &'e SystemContext,
-        request_context: &'e RequestContext,
+        resolver: &'s ResolveFn<'s, 'r>,
+        request_context: &'r RequestContext<'r>,
     ) -> Option<Value>;
 }

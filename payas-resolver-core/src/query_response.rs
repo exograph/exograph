@@ -1,7 +1,5 @@
 use serde_json::Value as JsonValue;
 
-use crate::graphql::execution_error::ExecutionError;
-
 #[derive(Debug, Clone)]
 pub struct QueryResponse {
     pub body: QueryResponseBody,
@@ -15,12 +13,12 @@ pub enum QueryResponseBody {
 }
 
 impl QueryResponseBody {
-    pub fn to_json(&self) -> Result<JsonValue, ExecutionError> {
+    pub fn to_json(&self) -> Result<JsonValue, serde_json::Error> {
         match &self {
             QueryResponseBody::Json(val) => Ok(val.clone()),
             QueryResponseBody::Raw(raw) => {
                 if let Some(raw) = raw {
-                    Ok(serde_json::from_str(raw)?)
+                    serde_json::from_str(raw)
                 } else {
                     Ok(JsonValue::Null)
                 }

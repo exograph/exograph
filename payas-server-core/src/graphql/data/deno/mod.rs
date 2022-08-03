@@ -1,8 +1,11 @@
+pub use deno_execution_error::DenoExecutionError;
+
 pub mod deno_resolver;
 pub mod interception;
 
 pub mod clay_execution;
 pub mod claytip_ops;
+mod deno_execution_error;
 
 pub use clay_execution::{
     clay_config, ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,

@@ -1,11 +1,11 @@
-use crate::graphql::{
-    data::database::database_query::DatabaseQuery, execution::system_context::SystemContext,
-    execution_error::ExecutionError, request_context::RequestContext,
-    validation::field::ValidatedField,
-};
+use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
 use async_trait::async_trait;
 use payas_model::model::operation::{Interceptors, Query, QueryKind};
+use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
+
+use payas_resolver_database::{DatabaseExecutionError, DatabaseQuery, DatabaseSystemContext};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
 use super::{
@@ -29,14 +29,26 @@ impl<'a> OperationResolver<'a> for Query {
                     return_type: &self.return_type,
                     query_params,
                 };
+                let database_system_context = DatabaseSystemContext {
+                    system: &system_context.system,
+                    database_executor: &system_context.database_executor,
+                    resolve: system_context.curried_resolve(),
+                };
                 let operation = database_query
                     .compute_select(
                         field,
                         AbstractPredicate::True,
-                        system_context,
+                        &database_system_context,
                         request_context,
                     )
-                    .await?;
+                    .await
+                    .map_err(|database_execution_error| match database_execution_error {
+                        DatabaseExecutionError::Authorization => ExecutionError::Authorization,
+                        DatabaseExecutionError::Generic(messages) => {
+                            ExecutionError::Generic(messages)
+                        }
+                        e => ExecutionError::Database(e),
+                    })?;
 
                 OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
             }

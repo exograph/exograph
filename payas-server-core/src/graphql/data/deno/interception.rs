@@ -1,21 +1,21 @@
+use std::collections::HashMap;
+
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, FutureExt};
 use serde_json::{Map, Value};
-use std::collections::HashMap;
 
 use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
+use payas_resolver_core::validation::field::ValidatedField;
+use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
 use crate::graphql::{
     data::deno::{
         clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
         FnClaytipInterceptorProceed, InterceptedOperationInfo,
     },
-    execution::query_response::{QueryResponse, QueryResponseBody},
     execution::system_context::SystemContext,
-    execution_error::{ExecutionError, ServiceExecutionError},
-    request_context::RequestContext,
-    validation::field::ValidatedField,
+    execution_error::ExecutionError,
 };
 
 /// Determine the order and nesting for interceptors.
@@ -94,7 +94,7 @@ use crate::graphql::{
 /// ```
 use crate::graphql::data::operation_mapper::OperationResolverResult;
 
-use super::deno_resolver::construct_arg_sequence;
+use super::{deno_resolver::construct_arg_sequence, DenoExecutionError};
 
 pub type FnResolve<'a> = (dyn Fn(
     &'a ValidatedField,
@@ -262,7 +262,7 @@ async fn execute_interceptor<'a>(
     operation_name: Option<String>,
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-) -> Result<(Value, Option<ClaytipMethodResponse>), ServiceExecutionError> {
+) -> Result<(Value, Option<ClaytipMethodResponse>), ExecutionError> {
     let script = &system_context.system.deno_scripts[interceptor.script];
 
     let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
@@ -293,5 +293,6 @@ async fn execute_interceptor<'a>(
             }),
             callback_processor,
         )
-        .await?)
+        .await
+        .map_err(DenoExecutionError::Deno)?)
 }
