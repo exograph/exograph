@@ -10,7 +10,7 @@ use std::{future::Future, pin::Pin};
 pub use operation_payload::OperationsPayload;
 pub use query_response::{QueryResponse, QueryResponseBody};
 
-pub type ResolveFn<'s, 'r> = Box<
+pub type ResolveFn<'r> = Box<
     dyn Fn(
             OperationsPayload,
             &'r request_context::RequestContext<'r>,
@@ -23,7 +23,7 @@ pub type ResolveFn<'s, 'r> = Box<
                     + Send,
             >,
         >
-        + 's
+        + 'r
         + Send
         + Sync,
 >;
