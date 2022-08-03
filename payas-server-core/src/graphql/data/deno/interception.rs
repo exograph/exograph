@@ -9,14 +9,11 @@ use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
-use crate::graphql::{
-    data::deno::{
-        clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
-        FnClaytipInterceptorProceed, InterceptedOperationInfo,
-    },
-    execution::system_context::SystemContext,
-    execution_error::ExecutionError,
+use super::{
+    clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
+    FnClaytipInterceptorProceed, InterceptedOperationInfo,
 };
+use crate::graphql::execution::system_context::SystemContext;
 
 /// Determine the order and nesting for interceptors.
 ///
@@ -92,15 +89,13 @@ use crate::graphql::{
 ///     ]
 /// )
 /// ```
-use crate::graphql::data::operation_mapper::OperationResolverResult;
-
 use super::{deno_resolver::construct_arg_sequence, DenoExecutionError};
 
 pub type FnResolve<'a> = (dyn Fn(
     &'a ValidatedField,
     &'a SystemContext,
     &'a RequestContext<'a>,
-) -> BoxFuture<'a, Result<OperationResolverResult<'a>, ExecutionError>>
+) -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>>
      + 'a
      + Send
      + Sync);
@@ -172,7 +167,7 @@ impl<'a> InterceptedOperation<'a> {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
         resolve: &FnResolve<'a>,
-    ) -> Result<QueryResponse, ExecutionError> {
+    ) -> Result<QueryResponse, DenoExecutionError> {
         match self {
             InterceptedOperation::Intercepted {
                 operation_name,
@@ -243,13 +238,7 @@ impl<'a> InterceptedOperation<'a> {
                 })
             }
 
-            InterceptedOperation::Plain => {
-                let resolver_result = resolve(field, system_context, request_context).await?;
-
-                resolver_result
-                    .execute(field, system_context, request_context)
-                    .await
-            }
+            InterceptedOperation::Plain => resolve(field, system_context, request_context).await,
         }
     }
 }
@@ -262,7 +251,7 @@ async fn execute_interceptor<'a>(
     operation_name: Option<String>,
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-) -> Result<(Value, Option<ClaytipMethodResponse>), ExecutionError> {
+) -> Result<(Value, Option<ClaytipMethodResponse>), DenoExecutionError> {
     let script = &system_context.system.deno_scripts[interceptor.script];
 
     let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
@@ -280,7 +269,7 @@ async fn execute_interceptor<'a>(
         claytip_proceed: claytip_proceed_operation,
     };
 
-    Ok(system_context
+    system_context
         .deno_execution_pool
         .execute_and_get_r(
             &script.path,
@@ -294,5 +283,5 @@ async fn execute_interceptor<'a>(
             callback_processor,
         )
         .await
-        .map_err(DenoExecutionError::Deno)?)
+        .map_err(DenoExecutionError::Deno)
 }

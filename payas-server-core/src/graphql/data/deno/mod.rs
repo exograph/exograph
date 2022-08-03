@@ -36,7 +36,8 @@ macro_rules! claytip_execute_query {
                         },
                         &new_request_context,
                     )
-                    .await?;
+                    .await
+                    .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))?;
 
                 // collate result into a single QueryResponse
 

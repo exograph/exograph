@@ -16,7 +16,7 @@ use payas_resolver_core::validation::field::ValidatedField;
 use crate::graphql::data::operation_mapper::DenoOperation;
 use crate::SystemContext;
 
-use crate::graphql::data::deno::{ClayCallbackProcessor, FnClaytipExecuteQuery};
+use super::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use payas_resolver_core::{QueryResponse, QueryResponseBody};
 
 use payas_sql::{AbstractPredicate, Predicate};

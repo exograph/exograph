@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use futures::FutureExt;
 use payas_model::model::operation::Interceptors;
 use serde_json::Value;
 
@@ -10,6 +11,8 @@ use crate::graphql::{
     data::operation_mapper::OperationResolverResult, execution::field_resolver::FieldResolver,
     execution::system_context::SystemContext, execution_error::ExecutionError,
 };
+
+use super::deno::DenoExecutionError;
 
 #[async_trait]
 impl FieldResolver<Value, ExecutionError, SystemContext> for Value {
@@ -52,7 +55,18 @@ pub trait OperationResolver<'a> {
         let resolve = move |field: &'a ValidatedField,
                             system_context: &'a SystemContext,
                             request_context: &'a RequestContext<'a>| {
-            self.resolve_operation(field, system_context, request_context)
+            async move {
+                let resolver_result = self
+                    .resolve_operation(field, system_context, request_context)
+                    .await
+                    .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))?;
+
+                resolver_result
+                    .execute(field, system_context, request_context)
+                    .await
+                    .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))
+            }
+            .boxed()
         };
 
         let intercepted_operation =
