@@ -3,9 +3,8 @@ pub mod header;
 pub mod jwt;
 
 use actix_web::HttpRequest;
-use payas_server_core::{
-    request_context::{BoxedParsedContext, RequestContext, UserRequestContext},
-    SystemContext,
+use payas_resolver_core::request_context::{
+    BoxedParsedContext, RequestContext, UserRequestContext,
 };
 
 use self::{cookie::CookieProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
@@ -41,7 +40,6 @@ impl ActixRequestContextProducer {
     pub fn generate_request_context<'a>(
         &self,
         request: &HttpRequest,
-        system_context: &'a SystemContext,
     ) -> Result<RequestContext<'a>, ContextProducerError> {
         let parsed_contexts = self
             .producers
@@ -53,7 +51,7 @@ impl ActixRequestContextProducer {
             .collect::<Result<Vec<_>, ContextProducerError>>()?; // emit errors if we encounter any while gathering context
 
         Ok(RequestContext::User(
-            UserRequestContext::from_parsed_contexts(parsed_contexts, system_context),
+            UserRequestContext::from_parsed_contexts(parsed_contexts),
         ))
     }
 }

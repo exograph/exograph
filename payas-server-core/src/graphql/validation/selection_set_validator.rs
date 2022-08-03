@@ -9,6 +9,8 @@ use async_graphql_parser::{
 };
 use async_graphql_value::{ConstValue, Name};
 
+use payas_resolver_core::validation::field::ValidatedField;
+
 use crate::graphql::{
     introspection::{
         definition::type_introspection::TypeDefinitionIntrospection,
@@ -17,7 +19,7 @@ use crate::graphql::{
     validation::validation_error::ValidationError,
 };
 
-use super::{arguments_validator::ArgumentValidator, field::ValidatedField, underlying_type};
+use super::{arguments_validator::ArgumentValidator, underlying_type};
 
 /// Context for validating a selection set.
 #[derive(Debug)]

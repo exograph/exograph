@@ -1,11 +1,11 @@
 use std::error::Error;
 
-use payas_deno::deno_error::DenoError;
+use payas_resolver_database::DatabaseExecutionError;
 use thiserror::Error;
 
-use crate::graphql::{
-    data::database::cast::CastError, validation::validation_error::ValidationError,
-};
+use crate::graphql::validation::validation_error::ValidationError;
+
+use super::data::deno::DenoExecutionError;
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {
@@ -16,16 +16,13 @@ pub enum ExecutionError {
     Database(#[from] DatabaseExecutionError),
 
     #[error(transparent)]
-    Service(#[from] ServiceExecutionError),
+    Deno(#[from] DenoExecutionError),
 
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
 
     #[error(transparent)]
     Validation(#[from] ValidationError),
-
-    #[error(transparent)]
-    CastError(#[from] CastError),
 
     #[error("Invalid field {0} for {1}")]
     InvalidField(String, &'static str), // (field name, container type)
@@ -35,27 +32,6 @@ pub enum ExecutionError {
 
     #[error("{0} {1}")]
     WithContext(String, #[source] Box<ExecutionError>),
-}
-
-#[derive(Error, Debug)]
-pub enum DatabaseExecutionError {
-    #[error(transparent)]
-    Database(#[from] payas_sql::database_error::DatabaseError),
-
-    #[error(transparent)]
-    EmptyRow(#[from] tokio_postgres::Error),
-
-    #[error("Result has {0} entries; expected only zero or one")]
-    NonUniqueResult(usize),
-}
-
-#[derive(Error, Debug)]
-pub enum ServiceExecutionError {
-    #[error(transparent)]
-    Deno(#[from] DenoError),
-
-    #[error("Invalid argument {0}")]
-    InvalidArgument(String),
 }
 
 impl ExecutionError {

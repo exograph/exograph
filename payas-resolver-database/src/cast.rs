@@ -11,10 +11,11 @@ use payas_sql::{
 };
 use pg_bigdecimal::{BigDecimal, PgNumeric};
 
-use crate::graphql::execution_error::ExecutionError;
 use std::str::FromStr;
 
 use thiserror::Error;
+
+use super::database_execution_error::DatabaseExecutionError;
 
 const NAIVE_DATE_FORMAT: &str = "%Y-%m-%d";
 const NAIVE_TIME_FORMAT: &str = "%H:%M:%S%.f";
@@ -43,14 +44,14 @@ pub enum CastError {
 pub fn literal_column<'a>(
     value: &ConstValue,
     associated_column: &PhysicalColumn,
-) -> Result<Column<'a>, ExecutionError> {
+) -> Result<Column<'a>, DatabaseExecutionError> {
     cast_value(value, &associated_column.typ)
         .map(|value| {
             value
                 .map(|v| Column::Literal(MaybeOwned::Owned(v)))
                 .unwrap_or(Column::Null)
         })
-        .map_err(ExecutionError::CastError)
+        .map_err(DatabaseExecutionError::CastError)
 }
 
 pub fn cast_value(

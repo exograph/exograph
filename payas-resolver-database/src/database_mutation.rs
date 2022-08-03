@@ -5,23 +5,18 @@ use payas_model::model::{
     predicate::PredicateParameter,
     GqlTypeModifier,
 };
+use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::validation::field::ValidatedField;
 use payas_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
     AbstractUpdate,
 };
 
-use crate::{
-    graphql::{
-        execution_error::{ExecutionError, WithContext},
-        validation::field::ValidatedField,
-    },
-    request_context::RequestContext,
-    SystemContext,
-};
-
 use super::{
     compute_sql_access_predicate,
+    database_execution_error::{DatabaseExecutionError, WithContext},
     database_query::DatabaseQuery,
+    database_system_context::DatabaseSystemContext,
     sql_mapper::{SQLInsertMapper, SQLOperationKind, SQLUpdateMapper},
 };
 
@@ -34,9 +29,9 @@ impl<'content> DatabaseMutation<'content> {
     pub async fn operation(
         &self,
         field: &'content ValidatedField,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
-    ) -> Result<AbstractOperation<'content>, ExecutionError> {
+    ) -> Result<AbstractOperation<'content>, DatabaseExecutionError> {
         let abstract_select = {
             let return_type = &self.return_type;
             let (_, pk_query, collection_query) =
@@ -94,14 +89,16 @@ impl<'content> DatabaseMutation<'content> {
         })
     }
 
+    #[allow(clippy::manual_async_fn)]
+    #[fix_hidden_lifetime_bug]
     async fn create_operation(
         &self,
         data_param: &'content CreateDataParameter,
         field: &'content ValidatedField,
         select: AbstractSelect<'content>,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
-    ) -> Result<AbstractInsert<'content>, ExecutionError> {
+    ) -> Result<AbstractInsert<'content>, DatabaseExecutionError> {
         // TODO: https://github.com/payalabs/payas/issues/343
         let access_predicate = compute_sql_access_predicate(
             self.return_type,
@@ -115,7 +112,7 @@ impl<'content> DatabaseMutation<'content> {
         // See issue #69
         if access_predicate == AbstractPredicate::False {
             // Hard failure, no need to proceed to restrict the predicate in SQL
-            return Err(ExecutionError::Authorization);
+            return Err(DatabaseExecutionError::Authorization);
         }
 
         let argument_value = super::find_arg(&field.arguments, &data_param.name).unwrap();
@@ -128,14 +125,16 @@ impl<'content> DatabaseMutation<'content> {
         )
     }
 
+    #[allow(clippy::manual_async_fn)]
+    #[fix_hidden_lifetime_bug]
     async fn delete_operation(
         &self,
         predicate_param: &'content PredicateParameter,
         field: &'content ValidatedField,
         select: AbstractSelect<'content>,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
-    ) -> Result<AbstractDelete<'content>, ExecutionError> {
+    ) -> Result<AbstractDelete<'content>, DatabaseExecutionError> {
         let (table, _, _) = super::return_type_info(self.return_type, system_context);
 
         // TODO: https://github.com/payalabs/payas/issues/343
@@ -149,7 +148,7 @@ impl<'content> DatabaseMutation<'content> {
 
         if access_predicate == AbstractPredicate::False {
             // Hard failure, no need to proceed to restrict the predicate in SQL
-            return Err(ExecutionError::Authorization);
+            return Err(DatabaseExecutionError::Authorization);
         }
 
         let predicate = super::compute_predicate(
@@ -170,15 +169,17 @@ impl<'content> DatabaseMutation<'content> {
         })
     }
 
+    #[allow(clippy::manual_async_fn)]
+    #[fix_hidden_lifetime_bug]
     async fn update_operation(
         &self,
         data_param: &'content UpdateDataParameter,
         predicate_param: &'content PredicateParameter,
         field: &'content ValidatedField,
         select: AbstractSelect<'content>,
-        system_context: &'content SystemContext,
+        system_context: &DatabaseSystemContext<'content>,
         request_context: &'content RequestContext<'content>,
-    ) -> Result<AbstractUpdate<'content>, ExecutionError> {
+    ) -> Result<AbstractUpdate<'content>, DatabaseExecutionError> {
         // Access control as well as predicate computation isn't working fully yet. Specifically,
         // nested predicates aren't working.
         // TODO: https://github.com/payalabs/payas/issues/343
@@ -192,7 +193,7 @@ impl<'content> DatabaseMutation<'content> {
 
         if access_predicate == AbstractPredicate::False {
             // Hard failure, no need to proceed to restrict the predicate in SQL
-            return Err(ExecutionError::Authorization);
+            return Err(DatabaseExecutionError::Authorization);
         }
 
         // TODO: https://github.com/payalabs/payas/issues/343

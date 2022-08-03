@@ -2,21 +2,24 @@ use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
 use tracing::{error, instrument};
 
-use crate::graphql::data::deno::ClayDenoExecutorPool;
-use crate::graphql::execution_error::ExecutionError;
-use crate::graphql::introspection::schema::Schema;
-use crate::graphql::request_context::RequestContext;
-use crate::graphql::validation::{
-    document_validator::DocumentValidator, operation::ValidatedOperation,
-    validation_error::ValidationError,
-};
-use crate::OperationsPayload;
-
 use payas_model::model::system::ModelSystem;
+use payas_resolver_core::{
+    request_context::RequestContext, OperationsPayload, QueryResponse, ResolveFn,
+};
+
 use payas_sql::DatabaseExecutor;
 
-use super::query_response::QueryResponse;
-use super::resolver::FieldResolver;
+use crate::graphql::{
+    data::deno::ClayDenoExecutorPool,
+    execution_error::ExecutionError,
+    introspection::schema::Schema,
+    validation::{
+        document_validator::DocumentValidator, operation::ValidatedOperation,
+        validation_error::ValidationError,
+    },
+};
+
+use super::field_resolver::FieldResolver;
 
 /// Encapsulates the information required by the [crate::resolve] function.
 ///
@@ -86,6 +89,18 @@ impl SystemContext {
         );
 
         document_validator.validate(document)
+    }
+
+    pub fn curried_resolve<'r>(&'r self) -> ResolveFn<'r, 'r> {
+        Box::new(
+            move |input: OperationsPayload, request_context: &'r RequestContext<'r>| {
+                Box::pin(async move {
+                    self.resolve(input, request_context)
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                })
+            },
+        )
     }
 }
 

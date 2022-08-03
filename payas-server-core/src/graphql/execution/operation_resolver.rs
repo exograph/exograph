@@ -1,17 +1,18 @@
 use async_trait::async_trait;
 
+use payas_resolver_core::validation::field::ValidatedField;
+use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
+
 use super::system_context::SystemContext;
-use crate::graphql::data::root_element::DataRootElement;
-use crate::graphql::execution::query_response::{QueryResponse, QueryResponseBody};
-use crate::graphql::execution::resolver::FieldResolver;
-use crate::graphql::execution_error::ExecutionError;
-use crate::graphql::introspection::definition::root_element::IntrospectionRootElement;
-use crate::graphql::request_context::RequestContext;
-use crate::graphql::validation::field::ValidatedField;
-use crate::graphql::validation::operation::ValidatedOperation;
+use crate::graphql::{
+    data::root_element::DataRootElement, execution::field_resolver::FieldResolver,
+    execution_error::ExecutionError,
+    introspection::definition::root_element::IntrospectionRootElement,
+    validation::operation::ValidatedOperation,
+};
 
 #[async_trait]
-impl FieldResolver<QueryResponse> for ValidatedOperation {
+impl FieldResolver<QueryResponse, ExecutionError, SystemContext> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,

@@ -1,0 +1,33 @@
+[package]
+name = "payas-resolver-database"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-graphql-value = "4.0.5"
+async-recursion = "1.0.0"
+async-trait = "0.1.53"
+futures = "0.3"
+maybe-owned = "0.3.4"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0.30"
+tokio-postgres = "0.7.6"
+postgres-types = "0.2"
+base64 = "0.13"
+chrono = "0.4.19"
+pg_bigdecimal = "0.1.4"
+uuid = "1.1.2"
+
+fix-hidden-lifetime-bug = "0.2.5"
+
+payas-model = { path = "../payas-model" }
+payas-sql = { path = "../payas-sql" }
+payas-resolver-core = { path = "../payas-resolver-core" }
+
+[dev-dependencies]
+tokio = "1"
+payas-parser = { path = "../payas-parser" }
+
+
+[lib]
