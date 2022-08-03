@@ -91,7 +91,7 @@ impl SystemContext {
         document_validator.validate(document)
     }
 
-    pub fn curried_resolve<'r>(&'r self) -> ResolveFn<'r, 'r> {
+    pub fn curried_resolve<'r>(&'r self) -> ResolveFn<'r> {
         Box::new(
             move |input: OperationsPayload, request_context: &'r RequestContext<'r>| {
                 Box::pin(async move {

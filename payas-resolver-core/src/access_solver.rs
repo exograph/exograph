@@ -34,7 +34,7 @@ pub async fn solve_access<'s, 'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
-    resolve: &ResolveFn<'a, 'a>,
+    resolve: &ResolveFn<'a>,
 ) -> AbstractPredicate<'a> {
     solve_predicate_expression(expr, request_context, system, resolve).await
 }
@@ -44,7 +44,7 @@ async fn solve_predicate_expression<'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
-    resolve: &ResolveFn<'a, 'a>,
+    resolve: &ResolveFn<'a>,
 ) -> AbstractPredicate<'a> {
     match expr {
         AccessPredicateExpression::LogicalOp(op) => {
@@ -83,7 +83,7 @@ async fn solve_context_selection<'a>(
     context_selection: &AccessContextSelection,
     value: &'a RequestContext<'a>,
     system: &'a ModelSystem,
-    resolve: &ResolveFn<'a, 'a>,
+    resolve: &ResolveFn<'a>,
 ) -> Option<Value> {
     match context_selection {
         AccessContextSelection::Context(context_name) => {
@@ -116,7 +116,7 @@ async fn solve_relational_op<'a>(
     op: &'a AccessRelationalOp,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
-    resolve: &ResolveFn<'a, 'a>,
+    resolve: &ResolveFn<'a>,
 ) -> AbstractPredicate<'a> {
     #[derive(Debug)]
     enum SolvedPrimitiveExpression<'a> {
@@ -129,7 +129,7 @@ async fn solve_relational_op<'a>(
         expr: &'a AccessPrimitiveExpression,
         request_context: &'a RequestContext<'a>,
         system: &'a ModelSystem,
-        resolve: &ResolveFn<'a, 'a>,
+        resolve: &ResolveFn<'a>,
     ) -> SolvedPrimitiveExpression<'a> {
         match expr {
             AccessPrimitiveExpression::ContextSelection(selection) => {
@@ -241,7 +241,7 @@ async fn solve_logical_op<'a>(
     op: &'a AccessLogicalExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelSystem,
-    resolve: &ResolveFn<'a, 'a>,
+    resolve: &ResolveFn<'a>,
 ) -> AbstractPredicate<'a> {
     match op {
         AccessLogicalExpression::Not(underlying) => {
@@ -327,7 +327,7 @@ mod tests {
     }
 
     // An implementation of curried_resolve that doesn't not depend on SystemContext (we don't construct it in the tests)
-    pub fn test_curried_resolve<'r>() -> ResolveFn<'r, 'r> {
+    pub fn test_curried_resolve<'r>() -> ResolveFn<'r> {
         Box::new(
             move |_input: OperationsPayload, _request_context: &'r RequestContext<'r>| {
                 Box::pin(async move { Ok(vec![]) })

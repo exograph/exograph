@@ -98,7 +98,7 @@ impl<'a> RequestContext<'a> {
     pub async fn extract_context<'s>(
         &'a self,
         context: &ContextType,
-        resolver: &ResolveFn<'s, 'a>,
+        resolver: &ResolveFn<'a>,
     ) -> Result<Value, ContextParsingError> {
         Ok(Value::Object(
             futures::stream::iter(context.fields.iter())
@@ -119,7 +119,7 @@ impl<'a> RequestContext<'a> {
     async fn extract_context_field_from_source<'s>(
         &'a self,
         parsed_context_map: &HashMap<String, BoxedParsedContext>,
-        resolver: &'s ResolveFn<'s, 'a>,
+        resolver: &'s ResolveFn<'a>,
         annotation_name: &str,
         value: &str,
     ) -> Result<Option<Value>, ContextParsingError> {
@@ -138,7 +138,7 @@ impl<'a> RequestContext<'a> {
         &'a self,
         context: &ContextType,
         field: &ContextField,
-        resolver: &'s ResolveFn<'s, 'a>,
+        resolver: &'s ResolveFn<'a>,
     ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
             RequestContext::User(UserRequestContext { parsed_context_map }) => {
@@ -225,10 +225,10 @@ pub trait ParsedContext {
     fn annotation_name(&self) -> &str;
 
     // extract a context field from this struct
-    async fn extract_context_field<'s, 'r>(
+    async fn extract_context_field<'r>(
         &self,
         value: &str,
-        resolver: &'s ResolveFn<'s, 'r>,
+        resolver: &ResolveFn<'r>,
         request_context: &'r RequestContext<'r>,
     ) -> Option<Value>;
 }
