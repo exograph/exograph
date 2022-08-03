@@ -37,7 +37,7 @@ impl ParsedContext for ParsedCookieContext {
     async fn extract_context_field<'s, 'r>(
         &self,
         value: &str,
-        _resolver: &'s ResolveFn<'s, 'r>,
+        _resolver: &'s ResolveFn<'r>,
         _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         self.cookies

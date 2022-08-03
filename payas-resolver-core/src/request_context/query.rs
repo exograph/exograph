@@ -16,7 +16,7 @@ impl ParsedContext for QueryExtractor {
     async fn extract_context_field<'s, 'r>(
         &self,
         value: &str,
-        resolver: &'s ResolveFn<'s, 'r>,
+        resolver: &'s ResolveFn<'r>,
         request_context: &'r RequestContext<'r>,
     ) -> Option<serde_json::Value> {
         let query = format!("query {{ {} }}", value.to_owned());
