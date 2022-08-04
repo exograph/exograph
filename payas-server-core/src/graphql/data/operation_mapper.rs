@@ -54,7 +54,7 @@ impl<'a> OperationResolverResult<'a> {
                 };
 
                 operation
-                    .execute(field, system_context, &deno_system_context, request_context)
+                    .execute(field, &deno_system_context, request_context)
                     .await
                     .map_err(|e| match e {
                         DenoExecutionError::Authorization => ExecutionError::Authorization,

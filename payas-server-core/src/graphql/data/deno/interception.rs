@@ -123,8 +123,8 @@ impl<'a> InterceptedOperation<'a> {
         if interceptors.is_empty() {
             Self::Plain
         } else {
-            let mut before = Vec::new();
-            let mut after = Vec::new();
+            let mut before = vec![];
+            let mut after = vec![];
             let mut around = vec![];
 
             interceptors
