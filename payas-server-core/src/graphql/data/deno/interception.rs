@@ -277,11 +277,13 @@ async fn execute_interceptor<'a>(
     let script = &system_context.system.deno_scripts[interceptor.script];
 
     let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
+    let resolve_query = system_context.curried_resolve();
 
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &HashMap::new(),
         &interceptor.arguments,
-        system_context,
+        &system_context.system,
+        &resolve_query,
         request_context,
     )
     .await?;

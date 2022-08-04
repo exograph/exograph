@@ -2,8 +2,10 @@ use async_graphql_value::ConstValue;
 use futures::FutureExt;
 use futures::StreamExt;
 use payas_model::model::mapped_arena::SerializableSlabIndex;
+use payas_model::model::system::ModelSystem;
 use payas_resolver_core::access_solver;
 use payas_resolver_core::request_context::RequestContext;
+use payas_resolver_core::ResolveFn;
 use std::collections::HashMap;
 
 use serde_json::{Map, Value};
@@ -29,8 +31,8 @@ pub struct DenoOperation(pub SerializableSlabIndex<ServiceMethod>);
 impl DenoOperation {
     pub async fn execute<'a>(
         &self,
-        field: &'a ValidatedField,
-        system_context: &'a SystemContext,
+        field: &ValidatedField,
+        system_context: &SystemContext,
         deno_system_context: &DenoSystemContext<'_, 'a>,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {
@@ -48,6 +50,8 @@ impl DenoOperation {
             return Err(DenoExecutionError::Authorization);
         }
 
+        let resolve_query = system_context.curried_resolve();
+
         resolve_deno(
             method,
             field,
@@ -57,6 +61,7 @@ impl DenoOperation {
             ),
             system_context,
             deno_system_context,
+            &resolve_query,
             request_context,
         )
         .await
@@ -119,13 +124,13 @@ pub async fn compute_service_access_predicate<'a>(
     }
 }
 
-pub async fn construct_arg_sequence(
+pub async fn construct_arg_sequence<'a>(
     field_args: &HashMap<String, ConstValue>,
     args: &[Argument],
-    system_context: &SystemContext,
-    request_context: &RequestContext<'_>,
+    system: &'a ModelSystem,
+    resolve_query: &ResolveFn<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
-    let system = &system_context.system;
     let mapped_args = field_args
         .iter()
         .map(|(gql_name, gql_value)| {
@@ -143,7 +148,6 @@ pub async fn construct_arg_sequence(
 
                 let arg_type = &system.types[arg.type_id];
 
-                let resolve = system_context.curried_resolve();
                 // what kind of injected argument is it?
                 // first check if it's a context
                 if let Some(context) = system
@@ -154,7 +158,7 @@ pub async fn construct_arg_sequence(
                 {
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = request_context
-                        .extract_context(context, &resolve)
+                        .extract_context(context, resolve_query)
                         .await
                         .unwrap_or_else(|_| {
                             panic!(
@@ -184,17 +188,20 @@ async fn resolve_deno<'a>(
     method: &ServiceMethod,
     field: &ValidatedField,
     claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
-    system_context: &SystemContext,
+    system_context: &'a SystemContext,
     deno_system_context: &DenoSystemContext<'_, '_>,
-    request_context: &RequestContext<'_>,
+    resolve_query: &ResolveFn<'a>,
+    request_context: &'a RequestContext<'a>,
 ) -> Result<QueryResponse, DenoExecutionError> {
     let script = &deno_system_context.system.deno_scripts[method.script];
+    // let resolve_query = system_context.curried_resolve();
 
     // construct a sequence of arguments to pass to the Deno method
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &field.arguments,
         &method.arguments,
-        system_context,
+        &system_context.system,
+        resolve_query,
         request_context,
     )
     .await?;
