@@ -71,14 +71,13 @@ pub trait OperationResolver<'a> {
         let intercepted_operation =
             InterceptedOperation::new(self.name(), self.interceptors().ordered());
         let resolve_query_owned_fn = system_context.curried_resolve_owned();
-        let resolve_query_owned_fn = resolve_query_owned_fn.as_ref();
 
         let resolve_query_fn = system_context.curried_resolve();
 
         let deno_system_context = DenoSystemContext {
             system: &system_context.system,
             deno_execution_pool: &system_context.deno_execution_pool,
-            resolve_query_fn: &resolve_query_fn,
+            resolve_query_fn,
             resolve_query_owned_fn,
         };
 

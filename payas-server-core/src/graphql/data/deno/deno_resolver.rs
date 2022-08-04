@@ -33,7 +33,7 @@ impl DenoOperation {
         &self,
         field: &ValidatedField,
         system_context: &SystemContext,
-        deno_system_context: &DenoSystemContext<'_, 'a>,
+        deno_system_context: &DenoSystemContext<'a, 'a>,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {
         let method = &deno_system_context.system.methods[self.0];
@@ -59,7 +59,6 @@ impl DenoOperation {
                 deno_system_context.resolve_query_owned_fn,
                 request_context
             ),
-            system_context,
             deno_system_context,
             &resolve_query,
             request_context,
@@ -71,11 +70,11 @@ impl DenoOperation {
 pub async fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
-    system_context: &DenoSystemContext<'_, 'a>,
+    system_context: &DenoSystemContext<'a, 'a>,
     request_context: &'a RequestContext<'a>,
 ) -> &'a Predicate<'a> {
     let return_type = return_type.typ(system_context.system);
-    let resolve = system_context.resolve_query_fn;
+    let resolve = &system_context.resolve_query_fn;
 
     let type_level_access = match &return_type.kind {
         GqlTypeKind::Primitive => Predicate::True,
@@ -184,12 +183,13 @@ pub async fn construct_arg_sequence<'a>(
         .collect::<Result<_, _>>()
 }
 
+#[allow(clippy::manual_async_fn)]
+#[fix_hidden_lifetime_bug]
 async fn resolve_deno<'a>(
     method: &ServiceMethod,
     field: &ValidatedField,
     claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
-    system_context: &'a SystemContext,
-    deno_system_context: &DenoSystemContext<'_, '_>,
+    deno_system_context: &DenoSystemContext<'a, '_>,
     resolve_query: &ResolveFn<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> Result<QueryResponse, DenoExecutionError> {
@@ -200,7 +200,7 @@ async fn resolve_deno<'a>(
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &field.arguments,
         &method.arguments,
-        &system_context.system,
+        deno_system_context.system,
         resolve_query,
         request_context,
     )

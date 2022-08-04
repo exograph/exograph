@@ -165,7 +165,7 @@ impl<'a> InterceptedOperation<'a> {
         &self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
-        deno_system_context: &DenoSystemContext<'_, 'a>,
+        deno_system_context: &DenoSystemContext<'a, 'a>,
         request_context: &'a RequestContext<'a>,
         resolve_field: &ResolveFieldFn<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {

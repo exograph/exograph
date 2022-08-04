@@ -31,6 +31,9 @@ mod graphql;
 
 pub use graphql::execution::system_context::SystemContext;
 
+#[macro_use]
+extern crate fix_hidden_lifetime_bug;
+
 fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
     if !Path::new(&claypot_file).exists() {
         return Err(InitializationError::FileNotFound(claypot_file.to_string()));
