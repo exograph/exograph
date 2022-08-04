@@ -52,9 +52,7 @@ pub trait OperationResolver<'a> {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, ExecutionError> {
-        let resolve = move |field: &'a ValidatedField,
-                            system_context: &'a SystemContext,
-                            request_context: &'a RequestContext<'a>| {
+        let resolve = move |field: &'a ValidatedField, request_context: &'a RequestContext<'a>| {
             async move {
                 let resolver_result = self
                     .resolve_operation(field, system_context, request_context)

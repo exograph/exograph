@@ -93,7 +93,6 @@ use super::{deno_resolver::construct_arg_sequence, DenoExecutionError};
 
 pub type FnResolve<'a> = (dyn Fn(
     &'a ValidatedField,
-    &'a SystemContext,
     &'a RequestContext<'a>,
 ) -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>>
      + 'a
@@ -241,7 +240,7 @@ impl<'a> InterceptedOperation<'a> {
                 })
             }
 
-            InterceptedOperation::Plain => resolve(field, system_context, request_context).await,
+            InterceptedOperation::Plain => resolve(field, request_context).await,
         }
     }
 }
