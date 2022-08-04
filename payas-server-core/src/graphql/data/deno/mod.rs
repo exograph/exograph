@@ -20,9 +20,9 @@ pub type ClayDenoExecutorPool = DenoExecutorPool<
 
 macro_rules! claytip_execute_query {
     ($resolve_fn:expr, $request_context:ident) => {
-        Some(&move |query_string: String,
-                    variables: Option<serde_json::Map<String, Value>>,
-                    context_override: Value| {
+        &move |query_string: String,
+               variables: Option<serde_json::Map<String, Value>>,
+               context_override: Value| {
             let new_request_context =
                 RequestContext::with_override($request_context, context_override);
             async move {
@@ -59,7 +59,7 @@ macro_rules! claytip_execute_query {
                 })
             }
             .boxed()
-        })
+        }
     };
 }
 

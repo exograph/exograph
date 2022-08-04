@@ -179,7 +179,7 @@ pub async fn construct_arg_sequence(
 async fn resolve_deno<'a>(
     method: &ServiceMethod,
     field: &ValidatedField,
-    claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
+    claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
     system_context: &SystemContext,
     request_context: &RequestContext<'_>,
 ) -> Result<QueryResponse, DenoExecutionError> {

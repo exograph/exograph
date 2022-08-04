@@ -48,7 +48,7 @@ pub type FnClaytipInterceptorProceed<'a> =
     (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>> + 'a + Send + Sync);
 
 pub struct ClayCallbackProcessor<'a> {
-    pub claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
+    pub claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
     pub claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
 }
 
@@ -72,8 +72,7 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a>
                 response_sender,
             } => {
                 let query_result =
-                    self.claytip_execute_query.unwrap()(query_string, variables, context_override)
-                        .await;
+                    (self.claytip_execute_query)(query_string, variables, context_override).await;
                 response_sender
                     .send(ResponseForDenoMessage::ClaytipExecute(query_result))
                     .ok()

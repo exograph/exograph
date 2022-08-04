@@ -249,7 +249,7 @@ async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
     system_context: &'a SystemContext,
     request_context: &'a RequestContext<'a>,
-    claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
+    claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
     operation_name: Option<String>,
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
