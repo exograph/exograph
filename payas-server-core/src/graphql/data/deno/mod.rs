@@ -6,6 +6,7 @@ pub mod interception;
 pub mod clay_execution;
 pub mod claytip_ops;
 mod deno_execution_error;
+pub mod deno_system_context;
 
 pub use clay_execution::{
     clay_config, ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,

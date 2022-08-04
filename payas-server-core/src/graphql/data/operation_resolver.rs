@@ -12,6 +12,7 @@ use crate::graphql::{
     execution::system_context::SystemContext, execution_error::ExecutionError,
 };
 
+use super::deno::deno_system_context::DenoSystemContext;
 use super::deno::DenoExecutionError;
 
 #[async_trait]
@@ -69,8 +70,26 @@ pub trait OperationResolver<'a> {
 
         let intercepted_operation =
             InterceptedOperation::new(self.name(), self.interceptors().ordered());
+        let resolve_query_owned_fn = system_context.curried_resolve_owned();
+        let resolve_query_owned_fn = resolve_query_owned_fn.as_ref();
+
+        let resolve_query_fn = system_context.curried_resolve();
+
+        let deno_system_context = DenoSystemContext {
+            system: &system_context.system,
+            deno_execution_pool: &system_context.deno_execution_pool,
+            resolve_query_fn: &resolve_query_fn,
+            resolve_query_owned_fn,
+        };
+
         let QueryResponse { body, headers } = intercepted_operation
-            .execute(field, system_context, request_context, &resolve)
+            .execute(
+                field,
+                system_context,
+                &deno_system_context,
+                request_context,
+                &resolve,
+            )
             .await?;
 
         // A proceed call in an around interceptor may have returned more fields that necessary (just like a normal service),

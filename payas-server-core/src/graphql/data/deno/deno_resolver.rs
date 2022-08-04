@@ -16,6 +16,7 @@ use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::SystemContext;
 
+use super::deno_system_context::DenoSystemContext;
 use super::{ClayCallbackProcessor, FnClaytipExecuteQuery};
 use payas_resolver_core::{QueryResponse, QueryResponseBody};
 
@@ -30,14 +31,15 @@ impl DenoOperation {
         &self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
+        deno_system_context: &DenoSystemContext<'_, 'a>,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {
-        let method = &system_context.system.methods[self.0];
+        let method = &deno_system_context.system.methods[self.0];
 
         let access_predicate = compute_service_access_predicate(
             &method.return_type,
             method,
-            system_context,
+            deno_system_context,
             request_context,
         )
         .await;
@@ -46,13 +48,15 @@ impl DenoOperation {
             return Err(DenoExecutionError::Authorization);
         }
 
-        let resolve_query_fn = system_context.curried_resolve_owned();
-        let resolve_query_fn = resolve_query_fn.as_ref();
         resolve_deno(
             method,
             field,
-            super::claytip_execute_query!(resolve_query_fn, request_context),
+            super::claytip_execute_query!(
+                deno_system_context.resolve_query_owned_fn,
+                request_context
+            ),
             system_context,
+            deno_system_context,
             request_context,
         )
         .await
@@ -62,11 +66,11 @@ impl DenoOperation {
 pub async fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
-    system_context: &'a SystemContext,
+    system_context: &DenoSystemContext<'_, 'a>,
     request_context: &'a RequestContext<'a>,
 ) -> &'a Predicate<'a> {
-    let return_type = return_type.typ(&system_context.system);
-    let resolve = system_context.curried_resolve();
+    let return_type = return_type.typ(system_context.system);
+    let resolve = system_context.resolve_query_fn;
 
     let type_level_access = match &return_type.kind {
         GqlTypeKind::Primitive => Predicate::True,
@@ -83,8 +87,8 @@ pub async fn compute_service_access_predicate<'a>(
             access_solver::solve_access(
                 access_expr,
                 request_context,
-                &system_context.system,
-                &resolve,
+                system_context.system,
+                resolve,
             )
             .await
         }
@@ -99,8 +103,8 @@ pub async fn compute_service_access_predicate<'a>(
     let method_level_access = access_solver::solve_access(
         method_access_expr,
         request_context,
-        &system_context.system,
-        &resolve,
+        system_context.system,
+        resolve,
     )
     .await;
 
@@ -181,9 +185,10 @@ async fn resolve_deno<'a>(
     field: &ValidatedField,
     claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
     system_context: &SystemContext,
+    deno_system_context: &DenoSystemContext<'_, '_>,
     request_context: &RequestContext<'_>,
 ) -> Result<QueryResponse, DenoExecutionError> {
-    let script = &system_context.system.deno_scripts[method.script];
+    let script = &deno_system_context.system.deno_scripts[method.script];
 
     // construct a sequence of arguments to pass to the Deno method
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
@@ -199,7 +204,7 @@ async fn resolve_deno<'a>(
         claytip_proceed: None,
     };
 
-    let (result, response) = system_context
+    let (result, response) = deno_system_context
         .deno_execution_pool
         .execute_and_get_r(
             &script.path,

@@ -6,6 +6,7 @@ use payas_sql::AbstractOperation;
 
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
+use super::deno::deno_system_context::DenoSystemContext;
 use super::deno::{deno_resolver::DenoOperation, DenoExecutionError};
 
 #[allow(clippy::large_enum_variant)]
@@ -41,13 +42,26 @@ impl<'a> OperationResolverResult<'a> {
                 })
             }
 
-            OperationResolverResult::DenoOperation(operation) => operation
-                .execute(field, system_context, request_context)
-                .await
-                .map_err(|e| match e {
-                    DenoExecutionError::Authorization => ExecutionError::Authorization,
-                    e => ExecutionError::Deno(e),
-                }),
+            OperationResolverResult::DenoOperation(operation) => {
+                let resolve_query_owned_fn = system_context.curried_resolve_owned();
+                let resolve_query_owned_fn = resolve_query_owned_fn.as_ref();
+                let resolve_query_fn = system_context.curried_resolve();
+
+                let deno_system_context = DenoSystemContext {
+                    system: &system_context.system,
+                    deno_execution_pool: &system_context.deno_execution_pool,
+                    resolve_query_fn: &resolve_query_fn,
+                    resolve_query_owned_fn,
+                };
+
+                operation
+                    .execute(field, system_context, &deno_system_context, request_context)
+                    .await
+                    .map_err(|e| match e {
+                        DenoExecutionError::Authorization => ExecutionError::Authorization,
+                        e => ExecutionError::Deno(e),
+                    })
+            }
         }
     }
 }

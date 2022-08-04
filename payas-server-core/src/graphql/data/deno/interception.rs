@@ -9,6 +9,7 @@ use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
+use super::deno_system_context::DenoSystemContext;
 use super::{
     clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
     FnClaytipInterceptorProceed, InterceptedOperationInfo,
@@ -164,12 +165,10 @@ impl<'a> InterceptedOperation<'a> {
         &self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
+        deno_system_context: &DenoSystemContext<'_, 'a>,
         request_context: &'a RequestContext<'a>,
         resolve_field: &ResolveFieldFn<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {
-        let resolve_query_fn = system_context.curried_resolve_owned();
-        let resolve_query_fn = resolve_query_fn.as_ref();
-
         match self {
             InterceptedOperation::Intercepted {
                 operation_name,
@@ -182,7 +181,10 @@ impl<'a> InterceptedOperation<'a> {
                         before_interceptor,
                         system_context,
                         request_context,
-                        super::claytip_execute_query!(resolve_query_fn, request_context),
+                        super::claytip_execute_query!(
+                            deno_system_context.resolve_query_owned_fn,
+                            request_context
+                        ),
                         Some(operation_name.to_string()),
                         field,
                         None,
@@ -190,14 +192,23 @@ impl<'a> InterceptedOperation<'a> {
                     .await?;
                 }
                 let res = core
-                    .execute(field, system_context, request_context, resolve_field)
+                    .execute(
+                        field,
+                        system_context,
+                        deno_system_context,
+                        request_context,
+                        resolve_field,
+                    )
                     .await?;
                 for after_interceptor in after {
                     execute_interceptor(
                         after_interceptor,
                         system_context,
                         request_context,
-                        super::claytip_execute_query!(resolve_query_fn, request_context),
+                        super::claytip_execute_query!(
+                            deno_system_context.resolve_query_owned_fn,
+                            request_context
+                        ),
                         Some(operation_name.to_string()),
                         field,
                         None,
@@ -217,13 +228,22 @@ impl<'a> InterceptedOperation<'a> {
                     interceptor,
                     system_context,
                     request_context,
-                    super::claytip_execute_query!(resolve_query_fn, request_context),
+                    super::claytip_execute_query!(
+                        deno_system_context.resolve_query_owned_fn,
+                        request_context
+                    ),
                     Some(operation_name.to_string()),
                     field,
                     Some(&|| {
                         async move {
-                            core.execute(field, system_context, request_context, resolve_field)
-                                .await
+                            core.execute(
+                                field,
+                                system_context,
+                                deno_system_context,
+                                request_context,
+                                resolve_field,
+                            )
+                            .await
                         }
                         .boxed()
                     }),
