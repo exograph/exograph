@@ -103,6 +103,7 @@ impl SystemContext {
         )
     }
 
+    // TODO: Combine with curried_resolve through may be the MaybeOwned type
     pub fn curried_resolve_owned<'r>(&'r self) -> ResolveFnOwned<'r> {
         Box::new(
             move |input: OperationsPayload, request_context: RequestContext<'r>| {

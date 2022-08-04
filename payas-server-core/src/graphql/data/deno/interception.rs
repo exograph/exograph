@@ -91,7 +91,7 @@ use crate::graphql::execution::system_context::SystemContext;
 /// ```
 use super::{deno_resolver::construct_arg_sequence, DenoExecutionError};
 
-pub type FnResolve<'a> = (dyn Fn(
+pub type ResolveFieldFn<'a> = (dyn Fn(
     &'a ValidatedField,
     &'a RequestContext<'a>,
 ) -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>>
@@ -165,10 +165,10 @@ impl<'a> InterceptedOperation<'a> {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-        resolve: &FnResolve<'a>,
+        resolve_field: &ResolveFieldFn<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {
-        let resolve_fn = system_context.curried_resolve_owned();
-        let resolve_fn = resolve_fn.as_ref();
+        let resolve_query_fn = system_context.curried_resolve_owned();
+        let resolve_query_fn = resolve_query_fn.as_ref();
 
         match self {
             InterceptedOperation::Intercepted {
@@ -182,7 +182,7 @@ impl<'a> InterceptedOperation<'a> {
                         before_interceptor,
                         system_context,
                         request_context,
-                        super::claytip_execute_query!(resolve_fn, request_context),
+                        super::claytip_execute_query!(resolve_query_fn, request_context),
                         Some(operation_name.to_string()),
                         field,
                         None,
@@ -190,14 +190,14 @@ impl<'a> InterceptedOperation<'a> {
                     .await?;
                 }
                 let res = core
-                    .execute(field, system_context, request_context, resolve)
+                    .execute(field, system_context, request_context, resolve_field)
                     .await?;
                 for after_interceptor in after {
                     execute_interceptor(
                         after_interceptor,
                         system_context,
                         request_context,
-                        super::claytip_execute_query!(resolve_fn, request_context),
+                        super::claytip_execute_query!(resolve_query_fn, request_context),
                         Some(operation_name.to_string()),
                         field,
                         None,
@@ -217,12 +217,12 @@ impl<'a> InterceptedOperation<'a> {
                     interceptor,
                     system_context,
                     request_context,
-                    super::claytip_execute_query!(resolve_fn, request_context),
+                    super::claytip_execute_query!(resolve_query_fn, request_context),
                     Some(operation_name.to_string()),
                     field,
                     Some(&|| {
                         async move {
-                            core.execute(field, system_context, request_context, resolve)
+                            core.execute(field, system_context, request_context, resolve_field)
                                 .await
                         }
                         .boxed()
@@ -240,7 +240,7 @@ impl<'a> InterceptedOperation<'a> {
                 })
             }
 
-            InterceptedOperation::Plain => resolve(field, request_context).await,
+            InterceptedOperation::Plain => resolve_field(field, request_context).await,
         }
     }
 }
