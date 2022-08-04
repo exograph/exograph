@@ -168,6 +168,9 @@ impl<'a> InterceptedOperation<'a> {
         request_context: &'a RequestContext<'a>,
         resolve: &FnResolve<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {
+        let resolve_fn = system_context.curried_resolve_owned();
+        let resolve_fn = resolve_fn.as_ref();
+
         match self {
             InterceptedOperation::Intercepted {
                 operation_name,
@@ -180,7 +183,7 @@ impl<'a> InterceptedOperation<'a> {
                         before_interceptor,
                         system_context,
                         request_context,
-                        super::claytip_execute_query!(system_context, request_context),
+                        super::claytip_execute_query!(resolve_fn, request_context),
                         Some(operation_name.to_string()),
                         field,
                         None,
@@ -195,7 +198,7 @@ impl<'a> InterceptedOperation<'a> {
                         after_interceptor,
                         system_context,
                         request_context,
-                        super::claytip_execute_query!(system_context, request_context),
+                        super::claytip_execute_query!(resolve_fn, request_context),
                         Some(operation_name.to_string()),
                         field,
                         None,
@@ -215,7 +218,7 @@ impl<'a> InterceptedOperation<'a> {
                     interceptor,
                     system_context,
                     request_context,
-                    super::claytip_execute_query!(system_context, request_context),
+                    super::claytip_execute_query!(resolve_fn, request_context),
                     Some(operation_name.to_string()),
                     field,
                     Some(&|| {

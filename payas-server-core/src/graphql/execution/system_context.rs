@@ -4,7 +4,7 @@ use tracing::{error, instrument};
 
 use payas_model::model::system::ModelSystem;
 use payas_resolver_core::{
-    request_context::RequestContext, OperationsPayload, QueryResponse, ResolveFn,
+    request_context::RequestContext, OperationsPayload, QueryResponse, ResolveFn, ResolveFnOwned,
 };
 
 use payas_sql::DatabaseExecutor;
@@ -97,7 +97,19 @@ impl SystemContext {
                 Box::pin(async move {
                     self.resolve(input, request_context)
                         .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+                })
+            },
+        )
+    }
+
+    pub fn curried_resolve_owned<'r>(&'r self) -> ResolveFnOwned<'r> {
+        Box::new(
+            move |input: OperationsPayload, request_context: RequestContext<'r>| {
+                Box::pin(async move {
+                    self.resolve(input, &request_context)
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
                 })
             },
         )

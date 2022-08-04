@@ -19,7 +19,7 @@ pub type ClayDenoExecutorPool = DenoExecutorPool<
 >;
 
 macro_rules! claytip_execute_query {
-    ($system_context:ident, $request_context:ident) => {
+    ($resolve_fn:expr, $request_context:ident) => {
         Some(&move |query_string: String,
                     variables: Option<serde_json::Map<String, Value>>,
                     context_override: Value| {
@@ -27,17 +27,16 @@ macro_rules! claytip_execute_query {
                 RequestContext::with_override($request_context, context_override);
             async move {
                 // execute query
-                let result = $system_context
-                    .resolve(
-                        crate::OperationsPayload {
-                            operation_name: None,
-                            query: query_string,
-                            variables,
-                        },
-                        &new_request_context,
-                    )
-                    .await
-                    .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))?;
+                let result = $resolve_fn(
+                    crate::OperationsPayload {
+                        operation_name: None,
+                        query: query_string,
+                        variables,
+                    },
+                    new_request_context,
+                )
+                .await
+                .map_err(|e| DenoExecutionError::Delegate(e))?;
 
                 // collate result into a single QueryResponse
 

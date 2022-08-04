@@ -46,10 +46,12 @@ impl DenoOperation {
             return Err(DenoExecutionError::Authorization);
         }
 
+        let resolve_fn = system_context.curried_resolve_owned();
+        let resolve_fn = resolve_fn.as_ref();
         resolve_deno(
             method,
             field,
-            super::claytip_execute_query!(system_context, request_context),
+            super::claytip_execute_query!(resolve_fn, request_context),
             system_context,
             request_context,
         )

@@ -17,7 +17,31 @@ pub type ResolveFn<'r> = Box<
         ) -> Pin<
             Box<
                 dyn Future<
-                        Output = Result<Vec<(String, QueryResponse)>, Box<dyn std::error::Error>>,
+                        Output = Result<
+                            Vec<(String, QueryResponse)>,
+                            Box<dyn std::error::Error + Send + Sync>,
+                        >,
+                    >
+                    + 'r
+                    + Send,
+            >,
+        >
+        + 'r
+        + Send
+        + Sync,
+>;
+
+pub type ResolveFnOwned<'r> = Box<
+    dyn Fn(
+            OperationsPayload,
+            request_context::RequestContext<'r>,
+        ) -> Pin<
+            Box<
+                dyn Future<
+                        Output = Result<
+                            Vec<(String, QueryResponse)>,
+                            Box<dyn std::error::Error + Send + Sync>,
+                        >,
                     >
                     + 'r
                     + Send,
