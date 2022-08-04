@@ -47,6 +47,12 @@ impl ExecutionError {
             ExecutionError::WithContext(_message, source) => source.user_error_message(),
             // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).
             ExecutionError::Database(_error) => "Database operation failed".to_string(),
+            ExecutionError::Deno(DenoExecutionError::Delegate(error)) => {
+                match error.downcast_ref::<ExecutionError>() {
+                    Some(error) => error.user_error_message(),
+                    None => error.to_string(),
+                }
+            }
             _ => match self.source() {
                 Some(source) => source.to_string(),
                 None => self.to_string(),

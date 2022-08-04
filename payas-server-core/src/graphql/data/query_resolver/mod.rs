@@ -9,7 +9,7 @@ use payas_resolver_database::{DatabaseExecutionError, DatabaseQuery, DatabaseSys
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
 use super::{
-    operation_mapper::{DenoOperation, OperationResolverResult},
+    deno::deno_resolver::DenoOperation, operation_mapper::OperationResolverResult,
     operation_resolver::OperationResolver,
 };
 

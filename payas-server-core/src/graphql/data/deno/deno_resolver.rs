@@ -1,6 +1,7 @@
 use async_graphql_value::ConstValue;
 use futures::FutureExt;
 use futures::StreamExt;
+use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_resolver_core::access_solver;
 use payas_resolver_core::request_context::RequestContext;
 use std::collections::HashMap;
@@ -13,7 +14,6 @@ use payas_model::model::service::{Argument, ServiceMethod, ServiceMethodType};
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 use payas_resolver_core::validation::field::ValidatedField;
 
-use crate::graphql::data::operation_mapper::DenoOperation;
 use crate::SystemContext;
 
 use super::{ClayCallbackProcessor, FnClaytipExecuteQuery};
@@ -22,6 +22,8 @@ use payas_resolver_core::{QueryResponse, QueryResponseBody};
 use payas_sql::{AbstractPredicate, Predicate};
 
 use super::DenoExecutionError;
+
+pub struct DenoOperation(pub SerializableSlabIndex<ServiceMethod>);
 
 impl DenoOperation {
     pub async fn execute<'a>(

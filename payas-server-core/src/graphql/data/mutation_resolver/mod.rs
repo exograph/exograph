@@ -6,11 +6,12 @@ use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::graphql::data::{
-    operation_mapper::{DenoOperation, OperationResolverResult},
-    operation_resolver::OperationResolver,
+    operation_mapper::OperationResolverResult, operation_resolver::OperationResolver,
 };
 
 use payas_resolver_database::{DatabaseExecutionError, DatabaseMutation, DatabaseSystemContext};
+
+use super::deno::deno_resolver::DenoOperation;
 
 #[async_trait]
 impl<'a> OperationResolver<'a> for Mutation {

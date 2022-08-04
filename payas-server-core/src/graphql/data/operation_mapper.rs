@@ -1,4 +1,3 @@
-use payas_model::model::{mapped_arena::SerializableSlabIndex, service::ServiceMethod};
 use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse};
 use payas_resolver_database::{DatabaseExecutionError, DatabaseSystemContext};
@@ -7,15 +6,13 @@ use payas_sql::AbstractOperation;
 
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
-use super::deno::DenoExecutionError;
+use super::deno::{deno_resolver::DenoOperation, DenoExecutionError};
 
 #[allow(clippy::large_enum_variant)]
 pub enum OperationResolverResult<'a> {
     SQLOperation(AbstractOperation<'a>),
     DenoOperation(DenoOperation),
 }
-
-pub struct DenoOperation(pub SerializableSlabIndex<ServiceMethod>);
 
 impl<'a> OperationResolverResult<'a> {
     pub async fn execute(
