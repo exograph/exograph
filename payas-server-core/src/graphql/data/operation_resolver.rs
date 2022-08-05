@@ -5,14 +5,13 @@ use serde_json::Value;
 
 use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
+use payas_resolver_deno::{DenoExecutionError, DenoSystemContext};
 
 use crate::graphql::{
     data::interception::InterceptedOperation, data::operation_mapper::OperationResolverResult,
     execution::field_resolver::FieldResolver, execution::system_context::SystemContext,
     execution_error::ExecutionError,
 };
-
-use payas_resolver_deno::{deno_system_context::DenoSystemContext, DenoExecutionError};
 
 #[async_trait]
 impl FieldResolver<Value, ExecutionError, SystemContext> for Value {

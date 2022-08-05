@@ -8,16 +8,16 @@ use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::ResolveFn;
 use std::collections::HashMap;
 
-use serde_json::{Map, Value};
-
 use payas_deno::Arg;
 use payas_model::model::operation::OperationReturnType;
 use payas_model::model::service::{Argument, ServiceMethod, ServiceMethodType};
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 use payas_resolver_core::validation::field::ValidatedField;
 
+use crate::clay_execution::ClayCallbackProcessor;
+
 use super::deno_system_context::DenoSystemContext;
-use super::ClayCallbackProcessor;
+
 use payas_resolver_core::{QueryResponse, QueryResponseBody};
 
 use payas_sql::{AbstractPredicate, Predicate};

@@ -9,7 +9,7 @@ use payas_resolver_database::{DatabaseExecutionError, DatabaseQuery, DatabaseSys
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
 use super::{operation_mapper::OperationResolverResult, operation_resolver::OperationResolver};
-use payas_resolver_deno::deno_resolver::DenoOperation;
+use payas_resolver_deno::DenoOperation;
 
 // TODO: deal with panics at the type level
 

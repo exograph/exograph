@@ -1,22 +1,23 @@
+pub use clay_execution::clay_config;
 pub use deno_execution_error::DenoExecutionError;
-
-pub mod deno_resolver;
-
-pub mod clay_execution;
-pub mod claytip_ops;
-mod deno_execution_error;
-pub mod deno_system_context;
-
-pub use clay_execution::{
-    clay_config, ClayCallbackProcessor, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,
-};
-pub use claytip_ops::InterceptedOperationInfo;
-use payas_deno::DenoExecutorPool;
+pub use deno_resolver::DenoOperation;
+pub use deno_system_context::DenoSystemContext;
+pub use interceptor_execution::execute_interceptor;
 pub type ClayDenoExecutorPool = DenoExecutorPool<
     Option<InterceptedOperationInfo>,
     clay_execution::RequestFromDenoMessage,
     clay_execution::ClaytipMethodResponse,
 >;
+
+mod clay_execution;
+mod claytip_ops;
+mod deno_execution_error;
+mod deno_resolver;
+mod deno_system_context;
+mod interceptor_execution;
+
+use claytip_ops::InterceptedOperationInfo;
+use payas_deno::DenoExecutorPool;
 
 #[macro_use]
 extern crate fix_hidden_lifetime_bug;
@@ -25,8 +26,8 @@ extern crate fix_hidden_lifetime_bug;
 macro_rules! claytip_execute_query {
     ($resolve_query_fn:expr, $request_context:ident) => {
         &move |query_string: String,
-               variables: Option<serde_json::Map<String, Value>>,
-               context_override: Value| {
+               variables: Option<serde_json::Map<String, serde_json::Value>>,
+               context_override: serde_json::Value| {
             let new_request_context =
                 RequestContext::with_override($request_context, context_override);
             async move {
@@ -55,7 +56,7 @@ macro_rules! claytip_execute_query {
                 let body = result
                     .into_iter()
                     .map(|(name, response)| (name, response.body.to_json().unwrap()))
-                    .collect::<Map<_, _>>();
+                    .collect::<serde_json::Map<_, _>>();
 
                 Ok(QueryResponse {
                     body: QueryResponseBody::Json(serde_json::Value::Object(body)),
