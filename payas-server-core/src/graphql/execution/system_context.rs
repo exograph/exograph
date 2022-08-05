@@ -1,10 +1,11 @@
 use async_graphql_parser::types::ExecutableDocument;
 use async_graphql_parser::Pos;
+use maybe_owned::MaybeOwned;
 use tracing::{error, instrument};
 
 use payas_model::model::system::ModelSystem;
 use payas_resolver_core::{
-    request_context::RequestContext, OperationsPayload, QueryResponse, ResolveFn, ResolveFnOwned,
+    request_context::RequestContext, OperationsPayload, QueryResponse, ResolveOperationFn,
 };
 
 use payas_sql::DatabaseExecutor;
@@ -91,22 +92,18 @@ impl SystemContext {
         document_validator.validate(document)
     }
 
-    pub fn curried_resolve<'r>(&'r self) -> ResolveFn<'r> {
+    /// Resolve the provided top-level operation.
+    ///
+    /// # Returns
+    /// A function that captures the SystemContext and returns a function that takes the operation and request
+    /// context and returns a future that resolves the operation.
+    ///
+    /// # Implementation notes
+    /// We use MaybeOwned<RequestContext> since in a few cases (see claytip_execute_query) we need to pass a owned object and in
+    /// most other cases we need to pass a reference.
+    pub fn resolve_operation_fn<'r>(&'r self) -> ResolveOperationFn<'r> {
         Box::new(
-            move |input: OperationsPayload, request_context: &'r RequestContext<'r>| {
-                Box::pin(async move {
-                    self.resolve(input, request_context)
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-                })
-            },
-        )
-    }
-
-    // TODO: Combine with curried_resolve through may be the MaybeOwned type
-    pub fn curried_resolve_owned<'r>(&'r self) -> ResolveFnOwned<'r> {
-        Box::new(
-            move |input: OperationsPayload, request_context: RequestContext<'r>| {
+            move |input: OperationsPayload, request_context: MaybeOwned<'r, RequestContext<'r>>| {
                 Box::pin(async move {
                     self.resolve(input, &request_context)
                         .await

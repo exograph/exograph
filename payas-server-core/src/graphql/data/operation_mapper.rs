@@ -21,13 +21,13 @@ impl<'a> OperationResolverResult<'a> {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, ExecutionError> {
-        let resolve = system_context.curried_resolve();
+        let resolve_operation_fn = system_context.resolve_operation_fn();
         match self {
             OperationResolverResult::SQLOperation(abstract_operation) => {
                 let database_system_context = DatabaseSystemContext {
                     system: &system_context.system,
                     database_executor: &system_context.database_executor,
-                    resolve,
+                    resolve_operation_fn,
                 };
 
                 payas_resolver_database::resolve_operation(
@@ -42,14 +42,12 @@ impl<'a> OperationResolverResult<'a> {
             }
 
             OperationResolverResult::DenoOperation(operation) => {
-                let resolve_query_owned_fn = system_context.curried_resolve_owned();
-                let resolve_query_fn = system_context.curried_resolve();
+                let resolve_operation_fn = system_context.resolve_operation_fn();
 
                 let deno_system_context = DenoSystemContext {
                     system: &system_context.system,
                     deno_execution_pool: &system_context.deno_execution_pool,
-                    resolve_query_fn,
-                    resolve_query_owned_fn,
+                    resolve_operation_fn,
                 };
 
                 operation

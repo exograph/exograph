@@ -28,6 +28,7 @@ macro_rules! claytip_execute_query {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                context_override: serde_json::Value| {
+            use maybe_owned::MaybeOwned;
             let new_request_context =
                 RequestContext::with_override($request_context, context_override);
             async move {
@@ -38,7 +39,7 @@ macro_rules! claytip_execute_query {
                         query: query_string,
                         variables,
                     },
-                    new_request_context,
+                    MaybeOwned::Owned(new_request_context),
                 )
                 .await
                 .map_err(|e| DenoExecutionError::Delegate(e))?;

@@ -5,7 +5,7 @@ use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::system::ModelSystem;
 use payas_resolver_core::access_solver;
 use payas_resolver_core::request_context::RequestContext;
-use payas_resolver_core::ResolveFn;
+use payas_resolver_core::ResolveOperationFn;
 use std::collections::HashMap;
 
 use payas_deno::Arg;
@@ -58,7 +58,7 @@ async fn compute_service_access_predicate<'a>(
     request_context: &'a RequestContext<'a>,
 ) -> &'a Predicate<'a> {
     let return_type = return_type.typ(system_context.system);
-    let resolve = &system_context.resolve_query_fn;
+    let resolve = &system_context.resolve_operation_fn;
 
     let type_level_access = match &return_type.kind {
         GqlTypeKind::Primitive => Predicate::True,
@@ -111,7 +111,7 @@ pub async fn construct_arg_sequence<'a>(
     field_args: &HashMap<String, ConstValue>,
     args: &[Argument],
     system: &'a ModelSystem,
-    resolve_query: &ResolveFn<'a>,
+    resolve_query: &ResolveOperationFn<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
     let mapped_args = field_args
@@ -178,13 +178,13 @@ async fn resolve_deno<'a>(
     let script = &deno_system_context.system.deno_scripts[method.script];
 
     let claytip_execute_query =
-        super::claytip_execute_query!(deno_system_context.resolve_query_owned_fn, request_context);
+        super::claytip_execute_query!(deno_system_context.resolve_operation_fn, request_context);
 
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &field.arguments,
         &method.arguments,
         deno_system_context.system,
-        &deno_system_context.resolve_query_fn,
+        &deno_system_context.resolve_operation_fn,
         request_context,
     )
     .await?;

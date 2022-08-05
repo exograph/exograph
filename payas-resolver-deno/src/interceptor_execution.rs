@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use payas_deno::Arg;
 use payas_model::model::{interceptor::Interceptor, system::ModelSystem};
 use payas_resolver_core::{
-    request_context::RequestContext, validation::field::ValidatedField, ResolveFn,
+    request_context::RequestContext, validation::field::ValidatedField, ResolveOperationFn,
 };
 use serde_json::Value;
 
@@ -25,10 +25,10 @@ pub async fn execute_interceptor<'a>(
     deno_execution_pool: &'a ClayDenoExecutorPool,
     request_context: &'a RequestContext<'a>,
     claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
-    operation_name: Option<String>,
+    operation_name: String,
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-    resolve_query: ResolveFn<'a>,
+    resolve_operation: ResolveOperationFn<'a>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>), DenoExecutionError> {
     let script = &system.deno_scripts[interceptor.script];
 
@@ -36,7 +36,7 @@ pub async fn execute_interceptor<'a>(
         &HashMap::new(),
         &interceptor.arguments,
         system,
-        &resolve_query,
+        &resolve_operation,
         request_context,
     )
     .await?;
@@ -52,8 +52,8 @@ pub async fn execute_interceptor<'a>(
             &script.script,
             &interceptor.name,
             arg_sequence,
-            operation_name.map(|name| InterceptedOperationInfo {
-                name,
+            Some(InterceptedOperationInfo {
+                name: operation_name,
                 query: serde_json::to_value(operation_query).unwrap(),
             }),
             callback_processor,

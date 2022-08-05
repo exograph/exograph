@@ -180,13 +180,13 @@ impl<'a> InterceptedOperation<'a> {
                         deno_execution_pool,
                         request_context,
                         claytip_execute_query!(
-                            deno_system_context.resolve_query_owned_fn,
+                            deno_system_context.resolve_operation_fn,
                             request_context
                         ),
-                        Some(operation_name.to_string()),
+                        operation_name.to_string(),
                         field,
                         None,
-                        system_context.curried_resolve(),
+                        system_context.resolve_operation_fn(),
                     )
                     .await?;
                 }
@@ -206,13 +206,13 @@ impl<'a> InterceptedOperation<'a> {
                         deno_execution_pool,
                         request_context,
                         claytip_execute_query!(
-                            deno_system_context.resolve_query_owned_fn,
+                            deno_system_context.resolve_operation_fn,
                             request_context
                         ),
-                        Some(operation_name.to_string()),
+                        operation_name.to_string(),
                         field,
                         None,
-                        system_context.curried_resolve(),
+                        system_context.resolve_operation_fn(),
                     )
                     .await?;
                 }
@@ -231,10 +231,10 @@ impl<'a> InterceptedOperation<'a> {
                     deno_execution_pool,
                     request_context,
                     claytip_execute_query!(
-                        deno_system_context.resolve_query_owned_fn,
+                        deno_system_context.resolve_operation_fn,
                         request_context
                     ),
-                    Some(operation_name.to_string()),
+                    operation_name.to_string(),
                     field,
                     Some(&|| {
                         async move {
@@ -249,7 +249,7 @@ impl<'a> InterceptedOperation<'a> {
                         }
                         .boxed()
                     }),
-                    system_context.curried_resolve(),
+                    system_context.resolve_operation_fn(),
                 )
                 .await?;
                 let body = match result {

@@ -30,7 +30,7 @@ impl<'a> OperationResolver<'a> for Query {
                 let database_system_context = DatabaseSystemContext {
                     system: &system_context.system,
                     database_executor: &system_context.database_executor,
-                    resolve: system_context.curried_resolve(),
+                    resolve_operation_fn: system_context.resolve_operation_fn(),
                 };
                 let operation = database_query
                     .compute_select(
