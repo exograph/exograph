@@ -1,4 +1,4 @@
-pub mod deno;
+pub mod interception;
 pub mod mutation_resolver;
 pub mod operation_mapper;
 mod operation_resolver;

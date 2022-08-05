@@ -1,7 +1,6 @@
 pub use deno_execution_error::DenoExecutionError;
 
 pub mod deno_resolver;
-pub mod interception;
 
 pub mod clay_execution;
 pub mod claytip_ops;
@@ -19,6 +18,10 @@ pub type ClayDenoExecutorPool = DenoExecutorPool<
     clay_execution::ClaytipMethodResponse,
 >;
 
+#[macro_use]
+extern crate fix_hidden_lifetime_bug;
+
+#[macro_export]
 macro_rules! claytip_execute_query {
     ($resolve_query_fn:expr, $request_context:ident) => {
         &move |query_string: String,
@@ -29,7 +32,7 @@ macro_rules! claytip_execute_query {
             async move {
                 // execute query
                 let result = $resolve_query_fn(
-                    crate::OperationsPayload {
+                    payas_resolver_core::OperationsPayload {
                         operation_name: None,
                         query: query_string,
                         variables,
@@ -63,5 +66,3 @@ macro_rules! claytip_execute_query {
         }
     };
 }
-
-pub(crate) use claytip_execute_query;

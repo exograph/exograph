@@ -8,10 +8,8 @@ use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_database::{DatabaseExecutionError, DatabaseQuery, DatabaseSystemContext};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
-use super::{
-    deno::deno_resolver::DenoOperation, operation_mapper::OperationResolverResult,
-    operation_resolver::OperationResolver,
-};
+use super::{operation_mapper::OperationResolverResult, operation_resolver::OperationResolver};
+use payas_resolver_deno::deno_resolver::DenoOperation;
 
 // TODO: deal with panics at the type level
 

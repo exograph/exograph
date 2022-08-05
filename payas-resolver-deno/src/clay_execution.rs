@@ -16,7 +16,7 @@ use super::{claytip_ops::InterceptedOperationInfo, DenoExecutionError};
 
 #[derive(Default, Debug)]
 pub struct ClaytipMethodResponse {
-    pub(crate) headers: Vec<(String, String)>,
+    pub headers: Vec<(String, String)>,
 }
 
 pub enum RequestFromDenoMessage {

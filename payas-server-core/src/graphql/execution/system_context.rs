@@ -10,7 +10,6 @@ use payas_resolver_core::{
 use payas_sql::DatabaseExecutor;
 
 use crate::graphql::{
-    data::deno::ClayDenoExecutorPool,
     execution_error::ExecutionError,
     introspection::schema::Schema,
     validation::{
@@ -18,6 +17,7 @@ use crate::graphql::{
         validation_error::ValidationError,
     },
 };
+use payas_resolver_deno::ClayDenoExecutorPool;
 
 use super::field_resolver::FieldResolver;
 

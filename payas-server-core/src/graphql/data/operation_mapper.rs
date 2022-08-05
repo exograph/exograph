@@ -6,8 +6,9 @@ use payas_sql::AbstractOperation;
 
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
-use super::deno::deno_system_context::DenoSystemContext;
-use super::deno::{deno_resolver::DenoOperation, DenoExecutionError};
+use payas_resolver_deno::{
+    deno_resolver::DenoOperation, deno_system_context::DenoSystemContext, DenoExecutionError,
+};
 
 #[allow(clippy::large_enum_variant)]
 pub enum OperationResolverResult<'a> {

@@ -9,12 +9,13 @@ use payas_model::model::interceptor::{Interceptor, InterceptorKind};
 use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
-use super::deno_system_context::DenoSystemContext;
-use super::{
-    clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
-    FnClaytipInterceptorProceed, InterceptedOperationInfo,
-};
 use crate::graphql::execution::system_context::SystemContext;
+use payas_resolver_deno::{
+    clay_execution::ClaytipMethodResponse, claytip_execute_query,
+    deno_resolver::construct_arg_sequence, deno_system_context::DenoSystemContext,
+    ClayCallbackProcessor, DenoExecutionError, FnClaytipExecuteQuery, FnClaytipInterceptorProceed,
+    InterceptedOperationInfo,
+};
 
 /// Determine the order and nesting for interceptors.
 ///
@@ -90,7 +91,6 @@ use crate::graphql::execution::system_context::SystemContext;
 ///     ]
 /// )
 /// ```
-use super::{deno_resolver::construct_arg_sequence, DenoExecutionError};
 
 pub type ResolveFieldFn<'a> = (dyn Fn(
     &'a ValidatedField,
@@ -181,7 +181,7 @@ impl<'a> InterceptedOperation<'a> {
                         before_interceptor,
                         system_context,
                         request_context,
-                        super::claytip_execute_query!(
+                        claytip_execute_query!(
                             deno_system_context.resolve_query_owned_fn,
                             request_context
                         ),
@@ -205,7 +205,7 @@ impl<'a> InterceptedOperation<'a> {
                         after_interceptor,
                         system_context,
                         request_context,
-                        super::claytip_execute_query!(
+                        claytip_execute_query!(
                             deno_system_context.resolve_query_owned_fn,
                             request_context
                         ),
@@ -228,7 +228,7 @@ impl<'a> InterceptedOperation<'a> {
                     interceptor,
                     system_context,
                     request_context,
-                    super::claytip_execute_query!(
+                    claytip_execute_query!(
                         deno_system_context.resolve_query_owned_fn,
                         request_context
                     ),

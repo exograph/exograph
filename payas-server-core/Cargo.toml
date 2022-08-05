@@ -41,6 +41,7 @@ payas-model = { path = "../payas-model" }
 payas-deno = { path = "../payas-deno" }
 payas-resolver-core = { path = "../payas-resolver-core" }
 payas-resolver-database = { path = "../payas-resolver-database" }
+payas-resolver-deno = { path = "../payas-resolver-deno" }
 
 [dev-dependencies]
 insta = "1.14.0"

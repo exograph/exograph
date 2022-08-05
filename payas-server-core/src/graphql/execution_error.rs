@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::graphql::validation::validation_error::ValidationError;
 
-use super::data::deno::DenoExecutionError;
+use payas_resolver_deno::DenoExecutionError;
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {

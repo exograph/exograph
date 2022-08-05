@@ -11,7 +11,7 @@ use crate::graphql::data::{
 
 use payas_resolver_database::{DatabaseExecutionError, DatabaseMutation, DatabaseSystemContext};
 
-use super::deno::deno_resolver::DenoOperation;
+use payas_resolver_deno::deno_resolver::DenoOperation;
 
 #[async_trait]
 impl<'a> OperationResolver<'a> for Mutation {

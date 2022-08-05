@@ -31,9 +31,6 @@ mod graphql;
 
 pub use graphql::execution::system_context::SystemContext;
 
-#[macro_use]
-extern crate fix_hidden_lifetime_bug;
-
 fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
     if !Path::new(&claypot_file).exists() {
         return Err(InitializationError::FileNotFound(claypot_file.to_string()));
@@ -67,7 +64,7 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
     let deno_execution_config =
-        DenoExecutorPool::new_from_config(graphql::data::deno::clay_config());
+        DenoExecutorPool::new_from_config(payas_resolver_deno::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 
