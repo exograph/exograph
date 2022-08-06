@@ -8,7 +8,7 @@ use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_database::{DatabaseExecutionError, DatabaseQuery, DatabaseSystemContext};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
-use super::{operation_mapper::OperationResolverResult, operation_resolver::OperationResolver};
+use super::{data_operation::DataOperation, operation_resolver::OperationResolver};
 use payas_resolver_deno::DenoOperation;
 
 // TODO: deal with panics at the type level
@@ -20,7 +20,7 @@ impl<'a> OperationResolver<'a> for Query {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<OperationResolverResult<'a>, ExecutionError> {
+    ) -> Result<DataOperation<'a>, ExecutionError> {
         Ok(match &self.kind {
             QueryKind::Database(query_params) => {
                 let database_query = DatabaseQuery {
@@ -48,12 +48,14 @@ impl<'a> OperationResolver<'a> for Query {
                         e => ExecutionError::Database(e),
                     })?;
 
-                OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
+                DataOperation::SQLOperation(AbstractOperation::Select(operation))
             }
 
-            QueryKind::Service { method_id, .. } => {
-                OperationResolverResult::DenoOperation(DenoOperation(method_id.unwrap()))
-            }
+            QueryKind::Service { method_id, .. } => DataOperation::DenoOperation(DenoOperation {
+                service_method: method_id.unwrap(),
+                field,
+                request_context,
+            }),
         })
     }
 

@@ -19,9 +19,6 @@ mod interceptor_execution;
 use claytip_ops::InterceptedOperationInfo;
 use payas_deno::DenoExecutorPool;
 
-#[macro_use]
-extern crate fix_hidden_lifetime_bug;
-
 #[macro_export]
 macro_rules! claytip_execute_query {
     ($resolve_query_fn:expr, $request_context:ident) => {

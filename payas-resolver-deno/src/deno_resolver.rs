@@ -24,22 +24,24 @@ use payas_sql::{AbstractPredicate, Predicate};
 
 use super::DenoExecutionError;
 
-pub struct DenoOperation(pub SerializableSlabIndex<ServiceMethod>);
+pub struct DenoOperation<'a> {
+    pub service_method: SerializableSlabIndex<ServiceMethod>,
+    pub field: &'a ValidatedField,
+    pub request_context: &'a RequestContext<'a>,
+}
 
-impl DenoOperation {
-    pub async fn execute<'a>(
+impl<'a> DenoOperation<'a> {
+    pub async fn execute(
         &self,
-        field: &ValidatedField,
-        deno_system_context: &DenoSystemContext<'a, 'a>,
-        request_context: &'a RequestContext<'a>,
+        deno_system_context: &DenoSystemContext<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {
-        let method = &deno_system_context.system.methods[self.0];
+        let method = &deno_system_context.system.methods[self.service_method];
 
         let access_predicate = compute_service_access_predicate(
             &method.return_type,
             method,
             deno_system_context,
-            request_context,
+            self.request_context,
         )
         .await;
 
@@ -47,14 +49,20 @@ impl DenoOperation {
             return Err(DenoExecutionError::Authorization);
         }
 
-        resolve_deno(method, field, deno_system_context, request_context).await
+        resolve_deno(
+            method,
+            self.field,
+            deno_system_context,
+            self.request_context,
+        )
+        .await
     }
 }
 
 async fn compute_service_access_predicate<'a>(
     return_type: &OperationReturnType,
     method: &'a ServiceMethod,
-    system_context: &DenoSystemContext<'a, 'a>,
+    system_context: &DenoSystemContext<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> &'a Predicate<'a> {
     let return_type = return_type.typ(system_context.system);
@@ -167,12 +175,10 @@ pub async fn construct_arg_sequence<'a>(
         .collect::<Result<_, _>>()
 }
 
-#[allow(clippy::manual_async_fn)]
-#[fix_hidden_lifetime_bug]
 async fn resolve_deno<'a>(
     method: &ServiceMethod,
     field: &ValidatedField,
-    deno_system_context: &DenoSystemContext<'a, 'a>,
+    deno_system_context: &DenoSystemContext<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> Result<QueryResponse, DenoExecutionError> {
     let script = &deno_system_context.system.deno_scripts[method.script];

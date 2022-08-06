@@ -5,9 +5,7 @@ use payas_model::model::operation::{Interceptors, Mutation, MutationKind};
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
 
-use crate::graphql::data::{
-    operation_mapper::OperationResolverResult, operation_resolver::OperationResolver,
-};
+use crate::graphql::data::{data_operation::DataOperation, operation_resolver::OperationResolver};
 
 use payas_resolver_database::{DatabaseExecutionError, DatabaseMutation, DatabaseSystemContext};
 
@@ -20,7 +18,7 @@ impl<'a> OperationResolver<'a> for Mutation {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<OperationResolverResult<'a>, ExecutionError> {
+    ) -> Result<DataOperation<'a>, ExecutionError> {
         match &self.kind {
             MutationKind::Database { kind } => {
                 let database_mutation = DatabaseMutation {
@@ -42,12 +40,16 @@ impl<'a> OperationResolver<'a> for Mutation {
                         }
                         e => ExecutionError::Database(e),
                     })
-                    .map(OperationResolverResult::SQLOperation)
+                    .map(DataOperation::SQLOperation)
             }
 
-            MutationKind::Service { method_id, .. } => Ok(OperationResolverResult::DenoOperation(
-                DenoOperation(method_id.unwrap()),
-            )),
+            MutationKind::Service { method_id, .. } => {
+                Ok(DataOperation::DenoOperation(DenoOperation {
+                    service_method: method_id.unwrap(),
+                    field,
+                    request_context,
+                }))
+            }
         }
     }
 

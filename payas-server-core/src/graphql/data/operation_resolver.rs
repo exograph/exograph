@@ -8,7 +8,7 @@ use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryR
 use payas_resolver_deno::{DenoExecutionError, DenoSystemContext};
 
 use crate::graphql::{
-    data::interception::InterceptedOperation, data::operation_mapper::OperationResolverResult,
+    data::data_operation::DataOperation, data::interception::InterceptedOperation,
     execution::field_resolver::FieldResolver, execution::system_context::SystemContext,
     execution_error::ExecutionError,
 };
@@ -43,7 +43,11 @@ pub trait OperationResolver<'a> {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<OperationResolverResult<'a>, ExecutionError>;
+    ) -> Result<DataOperation<'a>, ExecutionError>;
+
+    fn name(&self) -> &str;
+
+    fn interceptors(&self) -> &Interceptors;
 
     async fn execute(
         &'a self,
@@ -53,13 +57,13 @@ pub trait OperationResolver<'a> {
     ) -> Result<QueryResponse, ExecutionError> {
         let resolve = move |field: &'a ValidatedField, request_context: &'a RequestContext<'a>| {
             async move {
-                let resolver_result = self
+                let data_operation = self
                     .resolve_operation(field, system_context, request_context)
                     .await
                     .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))?;
 
-                resolver_result
-                    .execute(field, system_context, request_context)
+                data_operation
+                    .execute(system_context)
                     .await
                     .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))
             }
@@ -107,8 +111,4 @@ pub trait OperationResolver<'a> {
             headers,
         })
     }
-
-    fn name(&self) -> &str;
-
-    fn interceptors(&self) -> &Interceptors;
 }
