@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use futures::FutureExt;
-use payas_model::model::operation::Interceptors;
+use payas_model::model::operation::GraphQLOperation;
 use serde_json::Value;
 
 use payas_resolver_core::validation::field::ValidatedField;
@@ -37,17 +37,13 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for Value {
 }
 
 #[async_trait]
-pub trait OperationResolver<'a> {
+pub trait OperationResolver<'a>: GraphQLOperation {
     async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<DataOperation<'a>, ExecutionError>;
-
-    fn name(&self) -> &str;
-
-    fn interceptors(&self) -> &Interceptors;
 
     async fn execute(
         &'a self,

@@ -39,8 +39,6 @@ impl<'a> DataOperation<'a> {
             }
 
             DataOperation::DenoOperation(operation) => {
-                let resolve_operation_fn = system_context.resolve_operation_fn();
-
                 let deno_system_context = DenoSystemContext {
                     system: &system_context.system,
                     deno_execution_pool: &system_context.deno_execution_pool,

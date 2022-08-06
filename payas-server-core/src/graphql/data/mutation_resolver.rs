@@ -1,7 +1,7 @@
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 use async_trait::async_trait;
 
-use payas_model::model::operation::{Interceptors, Mutation, MutationKind};
+use payas_model::model::operation::{Mutation, MutationKind};
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
 
@@ -51,13 +51,5 @@ impl<'a> OperationResolver<'a> for Mutation {
                 }))
             }
         }
-    }
-
-    fn interceptors(&self) -> &Interceptors {
-        &self.interceptors
-    }
-
-    fn name(&self) -> &str {
-        &self.name
     }
 }
