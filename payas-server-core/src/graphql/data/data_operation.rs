@@ -1,11 +1,11 @@
 use payas_resolver_core::QueryResponse;
-use payas_resolver_database::{DatabaseExecutionError, DatabaseSystemContext};
+use payas_resolver_database::DatabaseSystemContext;
 
 use payas_sql::AbstractOperation;
 
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
-use payas_resolver_deno::{DenoExecutionError, DenoOperation, DenoSystemContext};
+use payas_resolver_deno::{DenoOperation, DenoSystemContext};
 
 #[allow(clippy::large_enum_variant)]
 pub enum DataOperation<'a> {
@@ -32,10 +32,7 @@ impl<'a> DataOperation<'a> {
                     database_system_context,
                 )
                 .await
-                .map_err(|e| match e {
-                    DatabaseExecutionError::Authorization => ExecutionError::Authorization,
-                    e => ExecutionError::Database(e),
-                })
+                .map_err(ExecutionError::Database)
             }
 
             DataOperation::DenoOperation(operation) => {
@@ -48,10 +45,7 @@ impl<'a> DataOperation<'a> {
                 operation
                     .execute(&deno_system_context)
                     .await
-                    .map_err(|e| match e {
-                        DenoExecutionError::Authorization => ExecutionError::Authorization,
-                        e => ExecutionError::Deno(e),
-                    })
+                    .map_err(ExecutionError::Deno)
             }
         }
     }

@@ -5,7 +5,7 @@ use payas_model::model::operation::{Query, QueryKind};
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
 
-use payas_resolver_database::{DatabaseExecutionError, DatabaseQuery, DatabaseSystemContext};
+use payas_resolver_database::{DatabaseQuery, DatabaseSystemContext};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
 use super::{data_operation::DataOperation, operation_resolver::OperationResolver};
@@ -40,13 +40,7 @@ impl<'a> OperationResolver<'a> for Query {
                         request_context,
                     )
                     .await
-                    .map_err(|database_execution_error| match database_execution_error {
-                        DatabaseExecutionError::Authorization => ExecutionError::Authorization,
-                        DatabaseExecutionError::Generic(messages) => {
-                            ExecutionError::Generic(messages)
-                        }
-                        e => ExecutionError::Database(e),
-                    })?;
+                    .map_err(ExecutionError::Database)?;
 
                 DataOperation::SQLOperation(AbstractOperation::Select(operation))
             }

@@ -7,7 +7,7 @@ use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::graphql::data::{data_operation::DataOperation, operation_resolver::OperationResolver};
 
-use payas_resolver_database::{DatabaseExecutionError, DatabaseMutation, DatabaseSystemContext};
+use payas_resolver_database::{DatabaseMutation, DatabaseSystemContext};
 
 use payas_resolver_deno::DenoOperation;
 
@@ -33,13 +33,7 @@ impl<'a> OperationResolver<'a> for Mutation {
                 database_mutation
                     .operation(field, &database_system_context, request_context)
                     .await
-                    .map_err(|database_execution_error| match database_execution_error {
-                        DatabaseExecutionError::Authorization => ExecutionError::Authorization,
-                        DatabaseExecutionError::Generic(message) => {
-                            ExecutionError::Generic(message)
-                        }
-                        e => ExecutionError::Database(e),
-                    })
+                    .map_err(ExecutionError::Database)
                     .map(DataOperation::SQLOperation)
             }
 
