@@ -83,7 +83,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .fold(Ok(("", None)), |acc, (name, result)| {
                         acc.and_then(|(acc_name, acc_result)| {
                                     if acc_result.is_some() && result.is_some() {
-                                        Err(DatabaseExecutionError::Generic("Cannot specify more than one logical operation on the same level".into()))
+                                        Err(DatabaseExecutionError::Validation("Cannot specify more than one logical operation on the same level".into()))
                                     } else if acc_result.is_some() && result.is_none() {
                                         Ok((acc_name, acc_result))
                                     } else {
@@ -105,7 +105,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 if let ConstValue::List(arguments) = logical_op_argument_value {
                                     // first make sure we have arguments
                                     if arguments.is_empty() {
-                                        return Err(DatabaseExecutionError::Generic("Logical operation predicate does not have any arguments".into()));
+                                        return Err(DatabaseExecutionError::Validation("Logical operation predicate does not have any arguments".into()));
                                     }
 
                                     // build our predicate chain from the array of arguments provided
@@ -137,7 +137,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
 
                                     Ok(new_predicate)
                                 } else {
-                                    Err(DatabaseExecutionError::Generic(
+                                    Err(DatabaseExecutionError::Validation(
                                         "This logical operation predicate needs a list of queries"
                                             .into(),
                                     ))

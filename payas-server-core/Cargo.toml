@@ -34,12 +34,14 @@ tracing-opentelemetry = "0.17.2"
 tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
 pretty_env_logger = "0.4"
 
+fix-hidden-lifetime-bug = "0.2.5"
 
 payas-sql = { path = "../payas-sql" }
 payas-model = { path = "../payas-model" }
 payas-deno = { path = "../payas-deno" }
 payas-resolver-core = { path = "../payas-resolver-core" }
 payas-resolver-database = { path = "../payas-resolver-database" }
+payas-resolver-deno = { path = "../payas-resolver-deno" }
 
 [dev-dependencies]
 insta = "1.14.0"

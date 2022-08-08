@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::ResolveFn;
+use crate::ResolveOperationFn;
 
 use super::{ParsedContext, RequestContext};
 
@@ -16,7 +16,7 @@ impl ParsedContext for EnvironmentContextExtractor {
     async fn extract_context_field<'r>(
         &self,
         key: &str,
-        _resolver: &ResolveFn<'r>,
+        _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         std::env::var(&key).ok().map(|v| v.into())

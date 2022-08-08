@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::OperationsPayload;
-use crate::ResolveFn;
+use crate::ResolveOperationFn;
 
 use super::{ParsedContext, RequestContext};
 
@@ -16,7 +16,7 @@ impl ParsedContext for QueryExtractor {
     async fn extract_context_field<'r>(
         &self,
         value: &str,
-        resolver: &ResolveFn<'r>,
+        resolver: &ResolveOperationFn<'r>,
         request_context: &'r RequestContext<'r>,
     ) -> Option<serde_json::Value> {
         let query = format!("query {{ {} }}", value.to_owned());
@@ -27,7 +27,7 @@ impl ParsedContext for QueryExtractor {
                 query,
                 variables: None,
             },
-            request_context,
+            request_context.into(),
         )
         .await
         .ok()?;

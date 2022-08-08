@@ -12,13 +12,11 @@ use payas_deno::{
 };
 use payas_resolver_core::QueryResponse;
 
-use crate::graphql::execution_error::ExecutionError;
-
-use super::claytip_ops::InterceptedOperationInfo;
+use super::{claytip_ops::InterceptedOperationInfo, DenoExecutionError};
 
 #[derive(Default, Debug)]
 pub struct ClaytipMethodResponse {
-    pub(crate) headers: Vec<(String, String)>,
+    pub headers: Vec<(String, String)>,
 }
 
 pub enum RequestFromDenoMessage {
@@ -34,23 +32,23 @@ pub enum RequestFromDenoMessage {
 }
 
 pub enum ResponseForDenoMessage {
-    InterceptedOperationProceed(Result<QueryResponse, ExecutionError>),
-    ClaytipExecute(Result<QueryResponse, ExecutionError>),
+    InterceptedOperationProceed(Result<QueryResponse, DenoExecutionError>),
+    ClaytipExecute(Result<QueryResponse, DenoExecutionError>),
 }
 
 pub type FnClaytipExecuteQuery<'a> = (dyn Fn(
     String,
     Option<serde_json::Map<String, Value>>,
     Value,
-) -> BoxFuture<'a, Result<QueryResponse, ExecutionError>>
+) -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>>
      + 'a
      + Send
      + Sync);
 pub type FnClaytipInterceptorProceed<'a> =
-    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, ExecutionError>> + 'a + Send + Sync);
+    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>> + 'a + Send + Sync);
 
 pub struct ClayCallbackProcessor<'a> {
-    pub claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
+    pub claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
     pub claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
 }
 
@@ -74,8 +72,7 @@ impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a>
                 response_sender,
             } => {
                 let query_result =
-                    self.claytip_execute_query.unwrap()(query_string, variables, context_override)
-                        .await;
+                    (self.claytip_execute_query)(query_string, variables, context_override).await;
                 response_sender
                     .send(ResponseForDenoMessage::ClaytipExecute(query_result))
                     .ok()

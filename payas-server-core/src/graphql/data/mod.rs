@@ -1,6 +1,7 @@
-pub mod deno;
-pub mod mutation_resolver;
-pub mod operation_mapper;
+pub mod data_root_element;
+
+mod data_operation;
+mod interception;
+mod mutation_resolver;
 mod operation_resolver;
-pub mod query_resolver;
-pub mod root_element;
+mod query_resolver;

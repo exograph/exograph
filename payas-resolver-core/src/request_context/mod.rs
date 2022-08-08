@@ -8,7 +8,7 @@ use payas_model::model::ContextType;
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::ResolveFn;
+use crate::ResolveOperationFn;
 
 #[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
@@ -98,7 +98,7 @@ impl<'a> RequestContext<'a> {
     pub async fn extract_context<'s>(
         &'a self,
         context: &ContextType,
-        resolver: &ResolveFn<'a>,
+        resolver: &ResolveOperationFn<'a>,
     ) -> Result<Value, ContextParsingError> {
         Ok(Value::Object(
             futures::stream::iter(context.fields.iter())
@@ -119,7 +119,7 @@ impl<'a> RequestContext<'a> {
     async fn extract_context_field_from_source<'s>(
         &'a self,
         parsed_context_map: &HashMap<String, BoxedParsedContext>,
-        resolver: &'s ResolveFn<'a>,
+        resolver: &'s ResolveOperationFn<'a>,
         annotation_name: &str,
         value: &str,
     ) -> Result<Option<Value>, ContextParsingError> {
@@ -138,7 +138,7 @@ impl<'a> RequestContext<'a> {
         &'a self,
         context: &ContextType,
         field: &ContextField,
-        resolver: &'s ResolveFn<'a>,
+        resolver: &'s ResolveOperationFn<'a>,
     ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
             RequestContext::User(UserRequestContext { parsed_context_map }) => {
@@ -180,7 +180,7 @@ impl<'a> RequestContext<'a> {
         &self,
         context: &ContextType,
         field: &ContextField,
-        resolver: &ResolveFn,
+        resolver: &ResolveOperationFn,
     ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
             RequestContext::User(UserRequestContext { test_values, .. }) => {
@@ -228,7 +228,7 @@ pub trait ParsedContext {
     async fn extract_context_field<'r>(
         &self,
         value: &str,
-        resolver: &ResolveFn<'r>,
+        resolver: &ResolveOperationFn<'r>,
         request_context: &'r RequestContext<'r>,
     ) -> Option<Value>;
 }

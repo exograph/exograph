@@ -3440,6 +3440,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-resolver-deno"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-graphql-value 4.0.5",
+ "async-recursion",
+ "async-trait",
+ "deno_core",
+ "fix-hidden-lifetime-bug",
+ "futures",
+ "maybe-owned",
+ "payas-deno",
+ "payas-model",
+ "payas-parser",
+ "payas-resolver-core",
+ "payas-sql",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "payas-server-actix"
 version = "0.1.0"
 dependencies = [
@@ -3488,6 +3511,7 @@ dependencies = [
  "bincode",
  "bytes",
  "deno_core",
+ "fix-hidden-lifetime-bug",
  "futures",
  "futures-util",
  "include_dir",
@@ -3500,6 +3524,7 @@ dependencies = [
  "payas-parser",
  "payas-resolver-core",
  "payas-resolver-database",
+ "payas-resolver-deno",
  "payas-sql",
  "pretty_env_logger",
  "serde",

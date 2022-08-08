@@ -7,6 +7,9 @@ pub enum DatabaseExecutionError {
     #[error("{0}")]
     Generic(String),
 
+    #[error("{0}")]
+    Validation(String),
+
     #[error(transparent)]
     Database(#[from] payas_sql::database_error::DatabaseError),
 
@@ -29,6 +32,15 @@ pub enum DatabaseExecutionError {
 impl DatabaseExecutionError {
     pub fn with_context(self, context: String) -> DatabaseExecutionError {
         DatabaseExecutionError::WithContext(context, Box::new(self))
+    }
+
+    pub fn user_error_message(&self) -> String {
+        match self {
+            DatabaseExecutionError::Authorization => "Not authorized".to_string(),
+            DatabaseExecutionError::Validation(message) => message.to_string(),
+            // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).
+            _ => "Database operation failed".to_string(),
+        }
     }
 }
 pub trait WithContext {

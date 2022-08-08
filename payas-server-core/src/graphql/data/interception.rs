@@ -1,22 +1,16 @@
-use std::collections::HashMap;
-
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, FutureExt};
-use serde_json::{Map, Value};
 
-use payas_deno::Arg;
 use payas_model::model::interceptor::{Interceptor, InterceptorKind};
-use payas_resolver_core::validation::field::ValidatedField;
-use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
-
-use crate::graphql::{
-    data::deno::{
-        clay_execution::ClaytipMethodResponse, ClayCallbackProcessor, FnClaytipExecuteQuery,
-        FnClaytipInterceptorProceed, InterceptedOperationInfo,
-    },
-    execution::system_context::SystemContext,
-    execution_error::ExecutionError,
+use payas_resolver_core::{
+    request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
+    QueryResponseBody,
 };
+use payas_resolver_deno::{
+    claytip_execute_query, execute_interceptor, DenoExecutionError, DenoSystemContext,
+};
+
+use crate::graphql::execution::system_context::SystemContext;
 
 /// Determine the order and nesting for interceptors.
 ///
@@ -92,15 +86,11 @@ use crate::graphql::{
 ///     ]
 /// )
 /// ```
-use crate::graphql::data::operation_mapper::OperationResolverResult;
 
-use super::{deno_resolver::construct_arg_sequence, DenoExecutionError};
-
-pub type FnResolve<'a> = (dyn Fn(
+pub type ResolveFieldFn<'a> = (dyn Fn(
     &'a ValidatedField,
-    &'a SystemContext,
     &'a RequestContext<'a>,
-) -> BoxFuture<'a, Result<OperationResolverResult<'a>, ExecutionError>>
+) -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>>
      + 'a
      + Send
      + Sync);
@@ -128,8 +118,8 @@ impl<'a> InterceptedOperation<'a> {
         if interceptors.is_empty() {
             Self::Plain
         } else {
-            let mut before = Vec::new();
-            let mut after = Vec::new();
+            let mut before = vec![];
+            let mut after = vec![];
             let mut around = vec![];
 
             interceptors
@@ -170,9 +160,12 @@ impl<'a> InterceptedOperation<'a> {
         &self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
+        deno_system_context: &DenoSystemContext<'a>,
         request_context: &'a RequestContext<'a>,
-        resolve: &FnResolve<'a>,
-    ) -> Result<QueryResponse, ExecutionError> {
+        resolve_field: &ResolveFieldFn<'a>,
+    ) -> Result<QueryResponse, DenoExecutionError> {
+        let system = &system_context.system;
+        let deno_execution_pool = &deno_system_context.deno_execution_pool;
         match self {
             InterceptedOperation::Intercepted {
                 operation_name,
@@ -183,27 +176,43 @@ impl<'a> InterceptedOperation<'a> {
                 for before_interceptor in before {
                     execute_interceptor(
                         before_interceptor,
-                        system_context,
+                        system,
+                        deno_execution_pool,
                         request_context,
-                        super::claytip_execute_query!(system_context, request_context),
-                        Some(operation_name.to_string()),
+                        claytip_execute_query!(
+                            deno_system_context.resolve_operation_fn,
+                            request_context
+                        ),
+                        operation_name.to_string(),
                         field,
                         None,
+                        system_context.resolve_operation_fn(),
                     )
                     .await?;
                 }
                 let res = core
-                    .execute(field, system_context, request_context, resolve)
+                    .execute(
+                        field,
+                        system_context,
+                        deno_system_context,
+                        request_context,
+                        resolve_field,
+                    )
                     .await?;
                 for after_interceptor in after {
                     execute_interceptor(
                         after_interceptor,
-                        system_context,
+                        system,
+                        deno_execution_pool,
                         request_context,
-                        super::claytip_execute_query!(system_context, request_context),
-                        Some(operation_name.to_string()),
+                        claytip_execute_query!(
+                            deno_system_context.resolve_operation_fn,
+                            request_context
+                        ),
+                        operation_name.to_string(),
                         field,
                         None,
+                        system_context.resolve_operation_fn(),
                     )
                     .await?;
                 }
@@ -218,18 +227,29 @@ impl<'a> InterceptedOperation<'a> {
             } => {
                 let (result, response) = execute_interceptor(
                     interceptor,
-                    system_context,
+                    system,
+                    deno_execution_pool,
                     request_context,
-                    super::claytip_execute_query!(system_context, request_context),
-                    Some(operation_name.to_string()),
+                    claytip_execute_query!(
+                        deno_system_context.resolve_operation_fn,
+                        request_context
+                    ),
+                    operation_name.to_string(),
                     field,
                     Some(&|| {
                         async move {
-                            core.execute(field, system_context, request_context, resolve)
-                                .await
+                            core.execute(
+                                field,
+                                system_context,
+                                deno_system_context,
+                                request_context,
+                                resolve_field,
+                            )
+                            .await
                         }
                         .boxed()
                     }),
+                    system_context.resolve_operation_fn(),
                 )
                 .await?;
                 let body = match result {
@@ -243,56 +263,7 @@ impl<'a> InterceptedOperation<'a> {
                 })
             }
 
-            InterceptedOperation::Plain => {
-                let resolver_result = resolve(field, system_context, request_context).await?;
-
-                resolver_result
-                    .execute(field, system_context, request_context)
-                    .await
-            }
+            InterceptedOperation::Plain => resolve_field(field, request_context).await,
         }
     }
-}
-
-async fn execute_interceptor<'a>(
-    interceptor: &'a Interceptor,
-    system_context: &'a SystemContext,
-    request_context: &'a RequestContext<'a>,
-    claytip_execute_query: Option<&'a FnClaytipExecuteQuery<'a>>,
-    operation_name: Option<String>,
-    operation_query: &'a ValidatedField,
-    claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-) -> Result<(Value, Option<ClaytipMethodResponse>), ExecutionError> {
-    let script = &system_context.system.deno_scripts[interceptor.script];
-
-    let serialized_operation_query = serde_json::to_value(operation_query).unwrap();
-
-    let arg_sequence: Vec<Arg> = construct_arg_sequence(
-        &HashMap::new(),
-        &interceptor.arguments,
-        system_context,
-        request_context,
-    )
-    .await?;
-
-    let callback_processor = ClayCallbackProcessor {
-        claytip_execute_query,
-        claytip_proceed: claytip_proceed_operation,
-    };
-
-    Ok(system_context
-        .deno_execution_pool
-        .execute_and_get_r(
-            &script.path,
-            &script.script,
-            &interceptor.name,
-            arg_sequence,
-            operation_name.map(|name| InterceptedOperationInfo {
-                name,
-                query: serialized_operation_query,
-            }),
-            callback_processor,
-        )
-        .await
-        .map_err(DenoExecutionError::Deno)?)
 }

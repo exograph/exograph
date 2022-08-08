@@ -12,4 +12,7 @@ pub enum DenoExecutionError {
 
     #[error("Not authorized")]
     Authorization,
+
+    #[error(transparent)]
+    Delegate(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
