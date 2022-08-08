@@ -57,7 +57,7 @@ impl JwtAuthenticator {
         match Authorization::<Bearer>::parse(req) {
             Ok(auth) => {
                 let scheme = auth.into_scheme();
-                let token = scheme.token().as_ref();
+                let token = scheme.token();
                 self.validate_jwt(token)
                     .map(|v| Some(v.claims))
                     .map_err(|err| match &err.kind() {
