@@ -64,7 +64,7 @@ pub async fn compute_sql_access_predicate<'a>(
                 access_expr,
                 request_context,
                 system_context.system,
-                &system_context.resolve,
+                &system_context.resolve_operation_fn,
             )
             .await
         }

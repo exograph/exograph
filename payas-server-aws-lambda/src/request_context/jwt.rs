@@ -5,7 +5,7 @@ use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use payas_resolver_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
-    ResolveFn,
+    ResolveOperationFn,
 };
 use serde_json::json;
 use serde_json::Value;
@@ -119,7 +119,7 @@ impl ParsedContext for ParsedJwtContext {
     async fn extract_context_field<'r>(
         &self,
         value: &str,
-        _resolver: &ResolveFn<'r>,
+        _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         self.jwt_claims.get(value).cloned()

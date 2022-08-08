@@ -5,12 +5,16 @@ use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryR
 
 use super::system_context::SystemContext;
 use crate::graphql::{
-    data::root_element::DataRootElement, execution::field_resolver::FieldResolver,
+    data::data_root_element::DataRootElement, execution::field_resolver::FieldResolver,
     execution_error::ExecutionError,
     introspection::definition::root_element::IntrospectionRootElement,
     validation::operation::ValidatedOperation,
 };
 
+/// Resolver for the root operation.
+///
+/// The operation may be a query or a mutation and may be for data or for introspection.
+///
 #[async_trait]
 impl FieldResolver<QueryResponse, ExecutionError, SystemContext> for ValidatedOperation {
     async fn resolve_field<'e>(
@@ -37,7 +41,6 @@ impl FieldResolver<QueryResponse, ExecutionError, SystemContext> for ValidatedOp
             })
         } else {
             let data_root = DataRootElement {
-                system: &system_context.system,
                 operation_type: &self.typ,
             };
             data_root

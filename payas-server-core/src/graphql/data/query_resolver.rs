@@ -1,17 +1,15 @@
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
 use async_trait::async_trait;
-use payas_model::model::operation::{Interceptors, Query, QueryKind};
+use payas_model::model::operation::{Query, QueryKind};
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
 
-use payas_resolver_database::{DatabaseExecutionError, DatabaseQuery, DatabaseSystemContext};
+use payas_resolver_database::{DatabaseQuery, DatabaseSystemContext};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
-use super::{
-    operation_mapper::{DenoOperation, OperationResolverResult},
-    operation_resolver::OperationResolver,
-};
+use super::{data_operation::DataOperation, operation_resolver::OperationResolver};
+use payas_resolver_deno::DenoOperation;
 
 // TODO: deal with panics at the type level
 
@@ -22,7 +20,7 @@ impl<'a> OperationResolver<'a> for Query {
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<OperationResolverResult<'a>, ExecutionError> {
+    ) -> Result<DataOperation<'a>, ExecutionError> {
         Ok(match &self.kind {
             QueryKind::Database(query_params) => {
                 let database_query = DatabaseQuery {
@@ -32,7 +30,7 @@ impl<'a> OperationResolver<'a> for Query {
                 let database_system_context = DatabaseSystemContext {
                     system: &system_context.system,
                     database_executor: &system_context.database_executor,
-                    resolve: system_context.curried_resolve(),
+                    resolve_operation_fn: system_context.resolve_operation_fn(),
                 };
                 let operation = database_query
                     .compute_select(
@@ -42,28 +40,16 @@ impl<'a> OperationResolver<'a> for Query {
                         request_context,
                     )
                     .await
-                    .map_err(|database_execution_error| match database_execution_error {
-                        DatabaseExecutionError::Authorization => ExecutionError::Authorization,
-                        DatabaseExecutionError::Generic(messages) => {
-                            ExecutionError::Generic(messages)
-                        }
-                        e => ExecutionError::Database(e),
-                    })?;
+                    .map_err(ExecutionError::Database)?;
 
-                OperationResolverResult::SQLOperation(AbstractOperation::Select(operation))
+                DataOperation::SQLOperation(AbstractOperation::Select(operation))
             }
 
-            QueryKind::Service { method_id, .. } => {
-                OperationResolverResult::DenoOperation(DenoOperation(method_id.unwrap()))
-            }
+            QueryKind::Service { method_id, .. } => DataOperation::DenoOperation(DenoOperation {
+                service_method: method_id.unwrap(),
+                field,
+                request_context,
+            }),
         })
-    }
-
-    fn interceptors(&self) -> &Interceptors {
-        &self.interceptors
-    }
-
-    fn name(&self) -> &str {
-        &self.name
     }
 }

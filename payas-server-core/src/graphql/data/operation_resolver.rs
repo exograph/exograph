@@ -1,14 +1,16 @@
 use async_trait::async_trait;
-use payas_model::model::operation::Interceptors;
+use futures::FutureExt;
+use payas_model::model::operation::GraphQLOperation;
 use serde_json::Value;
 
 use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
+use payas_resolver_deno::{DenoExecutionError, DenoSystemContext};
 
 use crate::graphql::{
-    data::deno::interception::InterceptedOperation,
-    data::operation_mapper::OperationResolverResult, execution::field_resolver::FieldResolver,
-    execution::system_context::SystemContext, execution_error::ExecutionError,
+    data::data_operation::DataOperation, data::interception::InterceptedOperation,
+    execution::field_resolver::FieldResolver, execution::system_context::SystemContext,
+    execution_error::ExecutionError,
 };
 
 #[async_trait]
@@ -35,13 +37,13 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for Value {
 }
 
 #[async_trait]
-pub trait OperationResolver<'a> {
+pub trait OperationResolver<'a>: GraphQLOperation {
     async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
-    ) -> Result<OperationResolverResult<'a>, ExecutionError>;
+    ) -> Result<DataOperation<'a>, ExecutionError>;
 
     async fn execute(
         &'a self,
@@ -49,16 +51,40 @@ pub trait OperationResolver<'a> {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, ExecutionError> {
-        let resolve = move |field: &'a ValidatedField,
-                            system_context: &'a SystemContext,
-                            request_context: &'a RequestContext<'a>| {
-            self.resolve_operation(field, system_context, request_context)
+        let resolve = move |field: &'a ValidatedField, request_context: &'a RequestContext<'a>| {
+            async move {
+                let data_operation = self
+                    .resolve_operation(field, system_context, request_context)
+                    .await
+                    .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))?;
+
+                data_operation
+                    .execute(system_context)
+                    .await
+                    .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))
+            }
+            .boxed()
         };
 
         let intercepted_operation =
             InterceptedOperation::new(self.name(), self.interceptors().ordered());
+
+        let resolve_operation_fn = system_context.resolve_operation_fn();
+
+        let deno_system_context = DenoSystemContext {
+            system: &system_context.system,
+            deno_execution_pool: &system_context.deno_execution_pool,
+            resolve_operation_fn,
+        };
+
         let QueryResponse { body, headers } = intercepted_operation
-            .execute(field, system_context, request_context, &resolve)
+            .execute(
+                field,
+                system_context,
+                &deno_system_context,
+                request_context,
+                &resolve,
+            )
             .await?;
 
         // A proceed call in an around interceptor may have returned more fields that necessary (just like a normal service),
@@ -81,8 +107,4 @@ pub trait OperationResolver<'a> {
             headers,
         })
     }
-
-    fn name(&self) -> &str;
-
-    fn interceptors(&self) -> &Interceptors;
 }

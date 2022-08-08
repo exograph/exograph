@@ -70,10 +70,12 @@ impl<'content> DatabaseQuery<'content> {
             system_context,
         )
         .map_err(|e| match e {
-            DatabaseExecutionError::Generic(message) => DatabaseExecutionError::Generic(format!(
-                "Error computing predicate for field '{}': {}",
-                field.name, message
-            )),
+            DatabaseExecutionError::Validation(message) => {
+                DatabaseExecutionError::Validation(format!(
+                    "Error computing predicate for field '{}': {}",
+                    field.name, message
+                ))
+            }
             e => e,
         })?;
 
