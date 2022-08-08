@@ -6,13 +6,13 @@ edition = "2021"
 [dependencies]
 thiserror = "1.0.31"
 async-trait = "0.1.53"
-deno_runtime = "0.69.0"
-deno_core = "0.143.0"
+deno_runtime = "0.72.0"
+deno_core = "0.146.0"
 tokio = "1"
 futures = "0.3"
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_v8 = "0.54.0"
+serde_v8 = "0.57.0"
 serde_json = "1.0"
 tracing = "0.1"
 

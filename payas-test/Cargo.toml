@@ -12,15 +12,15 @@ jsonwebtoken = "8.0.1"
 isahc = { version = "1.7", features = ["json", "cookies"] }
 num_cpus = "1.13.1"
 serde = { version = "1.0", features = ["derive"] }
-serde_yaml = "0.8.23"
+serde_yaml = "0.9.4"
 serde_json = "1.0"
 postgres = { version = "0.19.2", features = ["with-chrono-0_4"] }
 rand = "0.8"
 rayon = "1.5.1"
 regex = "1"
 tokio = "1"
-async-graphql-parser = "3.0.37"
-async-graphql-value = "3.0.37"
+async-graphql-parser = "4.0.6"
+async-graphql-value = "4.0.6"
 md5 = "0.7"
 wildmatch = "2.1.0"
 
