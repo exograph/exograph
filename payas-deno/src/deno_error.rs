@@ -1,4 +1,7 @@
-use deno_core::{error::AnyError, v8::DataError};
+use deno_core::{
+    error::{AnyError, JsError},
+    v8::DataError,
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -6,6 +9,13 @@ pub enum DenoError {
     // Explicit error thrown by a script (this should be propagated to the user)
     #[error("{0}")]
     Explicit(String),
+
+    // Non-explicit error thrown by the runtime (such as undefined variable)
+    #[error(transparent)]
+    JsError(#[from] JsError),
+
+    #[error(transparent)]
+    AnyError(#[from] AnyError),
 
     // Show it to developers (such as missing "await") so they may possibly fix it.
     #[error(transparent)]
