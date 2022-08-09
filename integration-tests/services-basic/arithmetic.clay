@@ -25,6 +25,7 @@ service MathService {
 
     export query add(x: Int, y: Int): Int
     export query divide(x: Int, y: Int): DivisionResult
+    export query asyncDivide(x: Int, y: Int): DivisionResult
     export query currentUnixEpoch(): Int
 
     export query shimQuery(@inject claytip: Claytip): Int 
