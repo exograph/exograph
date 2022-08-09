@@ -16,6 +16,10 @@ export function divide(x, y) {
     }
 }
 
+export async function asyncDivide(x, y) {
+    return divide(x, y);
+}
+
 export function currentUnixEpoch() {
     return Math.floor(Date.now() / 1000)
 }

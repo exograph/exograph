@@ -35,12 +35,15 @@ impl ExecutionError {
     pub fn user_error_message(&self) -> String {
         match self {
             ExecutionError::Database(error) => error.user_error_message(),
-            ExecutionError::Deno(DenoExecutionError::Delegate(error)) => {
-                match error.downcast_ref::<ExecutionError>() {
-                    Some(error) => error.user_error_message(),
-                    None => error.to_string(),
+            ExecutionError::Deno(error) => match error {
+                DenoExecutionError::Delegate(underlying) => {
+                    match underlying.downcast_ref::<ExecutionError>() {
+                        Some(error) => error.user_error_message(),
+                        None => error.user_error_message(),
+                    }
                 }
-            }
+                _ => error.user_error_message(),
+            },
             _ => match self.source() {
                 Some(source) => source.to_string(),
                 None => self.to_string(),
