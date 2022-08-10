@@ -46,6 +46,10 @@ interface Operation {
     proceed<T>(): Promise<T>;
     query(): Field;
 }
+
+declare class ClaytipError extends Error {
+    constructor(message: string);
+}
 "#;
 
 /// Generates a service skeleton based on service definitions in the clay file so that users can have a good starting point.
