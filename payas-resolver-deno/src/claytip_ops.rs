@@ -130,7 +130,14 @@ pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value
             )
         })?
     {
-        let result = result?;
+        // We need to propagate the explicit error if any. So here we check if the error has an explicit message (i.e. message
+        // thrown using ClaytipError) and if so, we throw a custom error with the message.
+        //
+        // Without this logic, the original error will be lost and a generic "Internal server error" will be sent to the client.
+        let result = result.map_err(|err| match err.explicit_message() {
+            Some(msg) => anyhow!(deno_core::error::custom_error("ClaytipError", msg)),
+            None => anyhow!(err),
+        })?;
 
         for (header, value) in result.headers.into_iter() {
             let mut state = state.borrow_mut();
