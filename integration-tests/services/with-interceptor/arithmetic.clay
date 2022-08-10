@@ -5,7 +5,6 @@ service MathService {
         remainder: Int
     }
 
-    export query add(x: Int, y: Int): Int
     export query divide(x: Int, y: Int): DivisionResult
     export query asyncDivide(x: Int, y: Int): DivisionResult
 }
