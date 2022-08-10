@@ -5,6 +5,8 @@ use serde_json::Value;
 use std::{cell::RefCell, rc::Rc};
 use tokio::sync::mpsc::Sender;
 
+use crate::DenoExecutionError;
+
 use super::clay_execution::{
     ClaytipMethodResponse, RequestFromDenoMessage, ResponseForDenoMessage,
 };
@@ -51,7 +53,7 @@ pub async fn op_claytip_execute_query_helper(
             )
         })?
     {
-        let result = result?;
+        let result = process_execution_error(result)?;
 
         for (header, value) in result.headers.into_iter() {
             let mut state = state.borrow_mut();
@@ -130,14 +132,7 @@ pub async fn op_intercepted_proceed(state: Rc<RefCell<OpState>>) -> Result<Value
             )
         })?
     {
-        // We need to propagate the explicit error if any. So here we check if the error has an explicit message (i.e. message
-        // thrown using ClaytipError) and if so, we throw a custom error with the message.
-        //
-        // Without this logic, the original error will be lost and a generic "Internal server error" will be sent to the client.
-        let result = result.map_err(|err| match err.explicit_message() {
-            Some(msg) => anyhow!(deno_core::error::custom_error("ClaytipError", msg)),
-            None => anyhow!(err),
-        })?;
+        let result = process_execution_error(result)?;
 
         for (header, value) in result.headers.into_iter() {
             let mut state = state.borrow_mut();
@@ -173,4 +168,15 @@ pub fn add_header(state: &mut OpState, header: String, value: String) -> Result<
 #[op]
 pub fn op_add_header(state: &mut OpState, header: String, value: String) -> Result<(), AnyError> {
     add_header(state, header, value)
+}
+
+// We need to propagate the explicit error if any. So here we check if the error has an explicit message (i.e. message
+// thrown using ClaytipError) and if so, we throw a custom error with the message.
+//
+// Without this logic, the original error will be lost and a generic "Internal server error" will be sent to the client.
+fn process_execution_error<T>(result: Result<T, DenoExecutionError>) -> Result<T, AnyError> {
+    result.map_err(|err| match err.explicit_message() {
+        Some(msg) => anyhow!(deno_core::error::custom_error("ClaytipError", msg)),
+        None => anyhow!(err),
+    })
 }
