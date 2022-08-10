@@ -10,16 +10,16 @@ pub enum DatabaseExecutionError {
     #[error("{0}")]
     Validation(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Database(#[from] payas_sql::database_error::DatabaseError),
 
-    #[error(transparent)]
+    #[error("{0}")]
     EmptyRow(#[from] tokio_postgres::Error),
 
     #[error("Result has {0} entries; expected only zero or one")]
     NonUniqueResult(usize),
 
-    #[error(transparent)]
+    #[error("{0}")]
     CastError(#[from] CastError),
 
     #[error("Not authorized")]

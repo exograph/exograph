@@ -1,0 +1,15 @@
+operation: |
+    query Foo {
+      asyncDivide(x: 10, y: 0) {
+        quotient
+        remainder
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Division by zero is not allowed"
+        }
+      ]
+    } 
