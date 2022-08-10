@@ -57,6 +57,7 @@ pub fn convert_root(
                             .utf8_text(source)
                             .unwrap();
 
+                        // Create a path relative to the current file
                         let mut import_path = filepath.to_owned();
                         import_path.pop();
                         import_path.push(path_str);
@@ -81,22 +82,37 @@ pub fn convert_root(
                             }])
                         }
 
+                        let check_existence =
+                            |import_path: PathBuf| -> Result<Option<PathBuf>, ParserError> {
+                                match import_path.canonicalize() {
+                                    Ok(path) if path.is_file() => Ok(Some(path)),
+                                    _ => Err(compute_diagnosis(
+                                        import_path,
+                                        source_span,
+                                        first_child,
+                                    )),
+                                }
+                            };
+
+                        // Resolve the import path
+                        // 1. If the path exists and it is a file, return the path
+                        // 2. If the path exists and it is a directory, check for <path>/index.clay
+                        // 3. If the path doesn't exist, check for <path>.clay
                         match import_path.canonicalize() {
                             Ok(path) if path.is_file() => Ok(Some(path)),
+                            Ok(path) if path.is_dir() => {
+                                // If the path is a directory, try to find <directory>/index.clay
+                                let with_index_clay = path.join("index.clay");
+                                check_existence(with_index_clay)
+                            }
                             _ => {
                                 // If no extension is given, try if a file with the same name but with ".clay" extension exists.
                                 if import_path.extension() == Some(OsStr::new("clay")) {
+                                    // Already has the .clay extension, so further checks are not necessary (it is a failure since the file does not exist).
                                     Err(compute_diagnosis(import_path, source_span, first_child))
                                 } else {
                                     let with_extension = import_path.with_extension("clay");
-                                    match with_extension.canonicalize() {
-                                        Ok(path) if path.is_file() => Ok(Some(path)),
-                                        _ => Err(compute_diagnosis(
-                                            with_extension,
-                                            source_span,
-                                            first_child,
-                                        )),
-                                    }
+                                    check_existence(with_extension)
                                 }
                             }
                         }
