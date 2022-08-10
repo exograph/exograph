@@ -15,6 +15,7 @@ use futures::Stream;
 use initialization_error::InitializationError;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
+use payas_resolver_wasm::WasmExecutorPool;
 use payas_sql::{Database, DatabaseExecutor};
 
 use crate::graphql::execution_error::ExecutionError;
@@ -71,6 +72,7 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
     let executor = SystemContext {
         database_executor,
         deno_execution_pool: deno_execution_config,
+        wasm_execution_pool: WasmExecutorPool::default(),
         system,
         schema,
         allow_introspection,
