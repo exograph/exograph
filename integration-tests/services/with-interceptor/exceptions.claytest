@@ -9,7 +9,7 @@ response: |
     {
       "errors": [
         {
-          "message": "Division by zero is not allowedx"
+          "message": "Division by zero is not allowed"
         }
       ]
     } 
