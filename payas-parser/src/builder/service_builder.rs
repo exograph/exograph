@@ -4,7 +4,7 @@ use payas_model::model::{
     interceptor::{Interceptor, InterceptorKind},
     mapped_arena::{MappedArena, SerializableSlabIndex},
     operation::{Interceptors, Mutation, MutationKind, OperationReturnType, Query, QueryKind},
-    service::{Argument, Script, ServiceMethod, ServiceMethodType},
+    service::{Argument, Script, ScriptKind, ServiceMethod, ServiceMethodType},
     GqlType,
 };
 
@@ -27,7 +27,7 @@ pub fn build_shallow(
             create_shallow_service(service, method, building);
         }
         for interceptor in service.interceptors.iter() {
-            create_shallow_intercetor(service, interceptor, building);
+            create_shallow_interceptor(service, interceptor, building);
         }
     }
 }
@@ -56,9 +56,10 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
-fn get_or_populate_deno_script(
+fn get_or_populate_script(
     script_path: &str,
-    script: &str,
+    script: &[u8],
+    script_kind: ScriptKind,
     building: &mut SystemContextBuilding,
 ) -> SerializableSlabIndex<Script> {
     match building.deno_scripts.get_id(script_path) {
@@ -68,6 +69,7 @@ fn get_or_populate_deno_script(
             Script {
                 path: script_path.to_owned(),
                 script: script.to_owned(),
+                script_kind,
             },
         ),
     }
@@ -78,9 +80,10 @@ pub fn create_shallow_service(
     resolved_method: &ResolvedMethod,
     building: &mut SystemContextBuilding,
 ) {
-    let script = get_or_populate_deno_script(
+    let script = get_or_populate_script(
         &resolved_service.script_path,
         &resolved_service.script,
+        ScriptKind::from_script_name(&resolved_service.script_path),
         building,
     );
 
@@ -214,14 +217,15 @@ fn argument_param(
         .collect()
 }
 
-pub fn create_shallow_intercetor(
+pub fn create_shallow_interceptor(
     resolved_service: &ResolvedService,
     resolved_interceptor: &ResolvedInterceptor,
     building: &mut SystemContextBuilding,
 ) {
-    let script = get_or_populate_deno_script(
+    let script = get_or_populate_script(
         &resolved_service.script_path,
         &resolved_service.script,
+        ScriptKind::from_script_name(&resolved_service.script_path),
         building,
     );
 
