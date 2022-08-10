@@ -1,11 +1,3 @@
-@table("foo")
-model Foo {
-    id: Int = autoincrement() @pk
-    bar: Int
-    baz: Int
-    qux: Int
-}
-
 @external("expection.ts")
 service ExceptionService {
     export query callThrowClaytipError(@inject claytip: Claytip): Int
