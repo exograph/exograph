@@ -1,4 +1,4 @@
-import "../mailing_list.clay"
+import "../mailing_list" // An example of not specifying the .clay extension
 
 model User {
     id: Int = autoincrement() @pk
