@@ -23,7 +23,7 @@ pub enum ContextParsingError {
     #[error("Could not find source `{0}`")]
     SourceNotFound(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Delegate(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 

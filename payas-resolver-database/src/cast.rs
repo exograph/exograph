@@ -28,16 +28,16 @@ pub enum CastError {
     #[error("{0}")]
     Date(String, #[source] chrono::format::ParseError),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Blob(#[from] DecodeError),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Uuid(#[from] uuid::Error),
 
     #[error("{0}")]
     BigDecimal(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Database(#[from] payas_sql::database_error::DatabaseError),
 }
 

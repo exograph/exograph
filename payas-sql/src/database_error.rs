@@ -5,19 +5,19 @@ pub enum DatabaseError {
     #[error("{0}")]
     Generic(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Delegate(#[from] tokio_postgres::Error),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Ssl(#[from] openssl::error::ErrorStack),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Pool(#[from] deadpool_postgres::PoolError),
 
     #[error("{0} {1}")]
     WithContext(String, #[source] Box<DatabaseError>),
 
-    #[error(transparent)]
+    #[error("{0}")]
     BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 }
 

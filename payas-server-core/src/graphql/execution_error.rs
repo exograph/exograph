@@ -12,16 +12,16 @@ pub enum ExecutionError {
     #[error("{0}")]
     Generic(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Database(#[from] DatabaseExecutionError),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Deno(#[from] DenoExecutionError),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Serde(#[from] serde_json::Error),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Validation(#[from] ValidationError),
 
     #[error("Invalid field {0} for {1}")]
