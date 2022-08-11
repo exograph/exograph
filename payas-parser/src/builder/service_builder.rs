@@ -62,9 +62,9 @@ fn get_or_populate_script(
     script_kind: ScriptKind,
     building: &mut SystemContextBuilding,
 ) -> SerializableSlabIndex<Script> {
-    match building.deno_scripts.get_id(script_path) {
+    match building.scripts.get_id(script_path) {
         Some(index) => index,
-        None => building.deno_scripts.add(
+        None => building.scripts.add(
             script_path,
             Script {
                 path: script_path.to_owned(),

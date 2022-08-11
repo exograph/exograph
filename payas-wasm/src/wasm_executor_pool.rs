@@ -13,7 +13,7 @@ pub struct WasmExecutorPool {
 }
 
 impl WasmExecutorPool {
-    pub fn execute(
+    pub async fn execute(
         &self,
         script_path: &str,
         script: &[u8],

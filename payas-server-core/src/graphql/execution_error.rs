@@ -1,6 +1,7 @@
 use std::error::Error;
 
 use payas_resolver_database::DatabaseExecutionError;
+use payas_resolver_wasm::WasmExecutionError;
 use thiserror::Error;
 
 use crate::graphql::validation::validation_error::ValidationError;
@@ -17,6 +18,9 @@ pub enum ExecutionError {
 
     #[error("{0}")]
     Deno(#[from] DenoExecutionError),
+
+    #[error("{0}")]
+    Wasm(#[from] WasmExecutionError),
 
     #[error("{0}")]
     Serde(#[from] serde_json::Error),
