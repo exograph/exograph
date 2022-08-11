@@ -13,7 +13,7 @@ use super::clay_execution::FnClaytipExecuteQuery;
 
 use super::{
     clay_execution::{ClaytipMethodResponse, FnClaytipInterceptorProceed},
-    deno_resolver::construct_arg_sequence,
+    deno_operation::construct_arg_sequence,
     ClayDenoExecutorPool, DenoExecutionError, InterceptedOperationInfo,
 };
 

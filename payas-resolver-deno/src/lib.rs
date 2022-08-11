@@ -1,6 +1,6 @@
 pub use clay_execution::clay_config;
 pub use deno_execution_error::DenoExecutionError;
-pub use deno_resolver::DenoOperation;
+pub use deno_operation::DenoOperation;
 pub use deno_system_context::DenoSystemContext;
 pub use interceptor_execution::execute_interceptor;
 pub type ClayDenoExecutorPool = DenoExecutorPool<
@@ -12,7 +12,7 @@ pub type ClayDenoExecutorPool = DenoExecutorPool<
 mod clay_execution;
 mod claytip_ops;
 mod deno_execution_error;
-mod deno_resolver;
+mod deno_operation;
 mod deno_system_context;
 mod interceptor_execution;
 
