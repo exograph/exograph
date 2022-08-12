@@ -45,9 +45,7 @@ pub async fn resolve(
 
                     builder.streaming(Box::pin(stream))
                 }
-                Err(_) => {
-                    return HttpResponse::BadRequest().body(error_msg!("Invalid query payload"));
-                }
+                Err(_) => HttpResponse::BadRequest().body(error_msg!("Invalid query payload")),
             }
         }
 

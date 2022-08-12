@@ -32,7 +32,7 @@ pub struct Scope {
     pub enclosing_model: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Typed;
 impl NodeTypedness for Typed {
     type FieldSelection = Type;
