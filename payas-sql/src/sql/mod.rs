@@ -81,7 +81,7 @@ impl PartialEq for dyn SQLParam {
 }
 
 /// An SQL value to transfer result of a step to another
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SQLValue {
     value: Vec<u8>,
     type_: Type,
@@ -135,7 +135,7 @@ impl<'a> FromSql<'a> for SQLValue {
 
 // Wrapper type for bytes::Bytes for use with BYTEA
 // Bytes does not implement ToSql.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SQLBytes(pub Bytes);
 
 impl SQLBytes {

@@ -1,6 +1,6 @@
 use super::{Expression, ExpressionContext, ParameterBinding};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Offset(pub i64);
 
 impl Expression for Offset {

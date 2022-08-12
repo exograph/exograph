@@ -68,7 +68,7 @@ pub struct ResolvedMethod {
     pub return_type: ResolvedFieldType,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedMethodType {
     Query,
     Mutation,
@@ -143,7 +143,7 @@ impl ResolvedCompositeType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedCompositeTypeKind {
     Persistent { table_name: String },
     NonPersistent { is_input: bool },
@@ -207,7 +207,7 @@ impl ResolvedField {
 // what kind of field is this?
 // some fields do not need to be persisted, and thus should not carry database-related
 // information
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedFieldKind {
     Persistent {
         column_name: String,
@@ -227,7 +227,7 @@ pub struct ResolvedContextField {
 }
 
 // For now, ResolvedContextSource and ContextSource have the same structure
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedContextSource {
     pub annotation: String,
     pub value: String,
@@ -265,7 +265,7 @@ impl ResolvedFieldType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedTypeHint {
     Explicit {
         dbtype: String,
