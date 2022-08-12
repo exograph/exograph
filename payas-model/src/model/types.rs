@@ -147,7 +147,7 @@ pub enum GqlCompositeTypeKind {
     NonPersistent,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum GqlTypeModifier {
     Optional,
     NonNull,

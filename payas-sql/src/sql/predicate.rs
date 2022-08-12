@@ -2,7 +2,7 @@ use maybe_owned::MaybeOwned;
 
 use super::{column::Column, Expression, ExpressionContext, ParameterBinding};
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum CaseSensitivity {
     Sensitive,
     Insensitive,
