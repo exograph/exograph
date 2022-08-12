@@ -17,7 +17,6 @@ use crate::commands::build::build;
 pub fn start_watcher<F>(
     model_path: &Path,
     server_port: Option<u32>,
-
     prestart_callback: F,
 ) -> Result<()>
 where

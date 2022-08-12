@@ -62,7 +62,7 @@ impl<'a> TransactionScript<'a> {
             .results
             .into_iter()
             .last()
-            .ok_or_else(|| DatabaseError::Generic("Failed to execute transaction".into()))
+            .ok_or_else(|| DatabaseError::Transaction("".into()))
     }
 
     pub fn add_step(&mut self, step: TransactionStep<'a>) -> TransactionStepId {

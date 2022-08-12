@@ -106,7 +106,7 @@ impl ToSql for SQLValue {
             out.extend(self.value.as_slice());
             Ok(tokio_postgres::types::IsNull::No)
         } else {
-            Err(DatabaseError::Generic("Type mismatch".into()).into())
+            Err(DatabaseError::Validation("Type mismatch".into()).into())
         }
     }
 

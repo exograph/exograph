@@ -1,3 +1,4 @@
+use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 
 use crate::graphql::introspection::schema::Schema;
@@ -6,7 +7,7 @@ use crate::graphql::introspection::schema::Schema;
 ///
 /// The `resolve` function is responsible for doing the work, using information
 /// extracted from an incoming request, and returning the response as a stream.
-use ::tracing::{error, instrument};
+use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bincode::deserialize_from;
@@ -48,19 +49,18 @@ fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationEr
     }
 }
 
-pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, InitializationError> {
-    let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
+fn create_system_context(claypot_file: &str) -> Result<SystemContext, InitializationError> {
+    let database = Database::from_env(None)?;
 
     let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
         Some(e) => match e.parse::<bool>() {
-            Ok(e) => e,
-            Err(_) => {
-                error!("CLAY_INTROSPECTION env var must be set to either true or false");
-                std::process::exit(1);
-            }
+            Ok(v) => Ok(v),
+            Err(_) => Err(InitializationError::Config(
+                "CLAY_INTROSPECTION env var must be set to either true or false".into(),
+            )),
         },
-        None => false,
-    };
+        None => Ok(false),
+    }?;
 
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
@@ -79,6 +79,16 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
     };
 
     Ok(executor)
+}
+
+pub fn create_system_context_or_exit(claypot_file: &str) -> SystemContext {
+    match create_system_context(claypot_file) {
+        Ok(system_context) => system_context,
+        Err(error) => {
+            println!("{}", error);
+            exit(1);
+        }
+    }
 }
 
 pub type Headers = Vec<(String, String)>;
