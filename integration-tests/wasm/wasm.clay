@@ -1,0 +1,4 @@
+@external("./wasm-source/target/wasm32-wasi/debug/wasi_add.wasm")
+service ArithmeticService {
+    query add(a: Int, b: Int): Int
+}

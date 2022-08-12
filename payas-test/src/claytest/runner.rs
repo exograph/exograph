@@ -9,7 +9,9 @@ use serde_json::{json, Map, Value};
 use std::{
     collections::HashMap,
     env,
+    ffi::OsStr,
     io::{BufRead, BufReader, Write},
+    path::Path,
     process::{Command, Stdio},
     sync::{Arc, Mutex},
     time::SystemTime,
@@ -356,13 +358,71 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
     }
 }
 
+// Run all scripts of the "build*.sh" form in the same directory as the model
+fn build_prerequisites(directory: &Path) -> Result<()> {
+    let mut build_files = vec![];
+
+    for dir_entry in directory.read_dir()? {
+        let dir_entry = dir_entry?;
+        let path = dir_entry.path();
+
+        if path.is_file() {
+            let file_name = path.file_name().unwrap().to_str().unwrap();
+            if file_name.starts_with("build") && path.extension().unwrap() == "sh" {
+                build_files.push(path);
+            }
+        }
+    }
+
+    build_files.sort();
+
+    for build_file in build_files {
+        run_command(
+            "sh",
+            vec![build_file.to_str().unwrap()],
+            Some(directory),
+            "Error building claypot file",
+        )?
+    }
+
+    Ok(())
+}
+
 pub(crate) fn build_claypot_file(path: &str) -> Result<()> {
-    let build_child = cmd("clay").args(["build", path]).output()?;
+    build_prerequisites(Path::new(path).parent().unwrap())?;
+
+    // Use std::env::current_exe() so that we run the same "clay" that invoked us (specifically, avoid using another clay on $PATH)
+    run_command(
+        std::env::current_exe()?.as_os_str().to_str().unwrap(),
+        ["build", path],
+        None,
+        "Could not build the claypot.",
+    )
+}
+
+// Helper to run a command and return an error if it fails
+fn run_command<I, S>(
+    program: &str,
+    args: I,
+    current_dir: Option<&Path>,
+    failure_message: &'static str,
+) -> Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let mut command = Command::new(program);
+    command.args(args);
+    if let Some(current_dir) = current_dir {
+        command.current_dir(current_dir);
+    }
+    let build_child = command.output()?;
 
     if !build_child.status.success() {
         std::io::stdout().write_all(&build_child.stdout).unwrap();
         std::io::stderr().write_all(&build_child.stderr).unwrap();
-        bail!("Could not build the claypot.");
+        bail!(failure_message);
     }
+
     Ok(())
 }

@@ -13,7 +13,7 @@ use std::pin::Pin;
 /// otherwise, loading it from an FsModuleLoader
 /// Based on https://deno.land/x/deno@v1.15.0/cli/standalone.rs
 pub(super) struct EmbeddedModuleLoader {
-    pub source_code_map: HashMap<String, String>,
+    pub source_code_map: HashMap<String, Vec<u8>>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {
@@ -41,12 +41,12 @@ impl ModuleLoader for EmbeddedModuleLoader {
         // If the specifier matches this modules specifier, return the source code
         if let Some(script) = self.source_code_map.get(module_specifier.as_str()) {
             let module_specifier = module_specifier.clone();
-            let script = script.to_string();
+            let script = script.to_owned();
             async move {
                 let specifier = module_specifier.to_string();
 
                 Ok(ModuleSource {
-                    code: script.into_bytes().into_boxed_slice(),
+                    code: script.into_boxed_slice(),
                     module_url_specified: specifier.clone(),
                     module_url_found: specifier,
                     module_type: ModuleType::JavaScript,

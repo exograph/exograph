@@ -1,7 +1,6 @@
 use async_graphql_value::ConstValue;
 use futures::FutureExt;
 use futures::StreamExt;
-use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::system::ModelSystem;
 use payas_resolver_core::access_solver;
 use payas_resolver_core::request_context::RequestContext;
@@ -25,7 +24,7 @@ use payas_sql::{AbstractPredicate, Predicate};
 use super::DenoExecutionError;
 
 pub struct DenoOperation<'a> {
-    pub service_method: SerializableSlabIndex<ServiceMethod>,
+    pub method: &'a ServiceMethod,
     pub field: &'a ValidatedField,
     pub request_context: &'a RequestContext<'a>,
 }
@@ -35,11 +34,9 @@ impl<'a> DenoOperation<'a> {
         &self,
         deno_system_context: &DenoSystemContext<'a>,
     ) -> Result<QueryResponse, DenoExecutionError> {
-        let method = &deno_system_context.system.methods[self.service_method];
-
         let access_predicate = compute_service_access_predicate(
-            &method.return_type,
-            method,
+            &self.method.return_type,
+            self.method,
             deno_system_context,
             self.request_context,
         )
@@ -50,7 +47,7 @@ impl<'a> DenoOperation<'a> {
         }
 
         resolve_deno(
-            method,
+            self.method,
             self.field,
             deno_system_context,
             self.request_context,
@@ -181,7 +178,7 @@ async fn resolve_deno<'a>(
     deno_system_context: &DenoSystemContext<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> Result<QueryResponse, DenoExecutionError> {
-    let script = &deno_system_context.system.deno_scripts[method.script];
+    let script = &deno_system_context.system.scripts[method.script];
 
     let claytip_execute_query =
         super::claytip_execute_query!(deno_system_context.resolve_operation_fn, request_context);

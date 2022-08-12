@@ -9,7 +9,7 @@ use crate::graphql::data::{data_operation::DataOperation, operation_resolver::Op
 
 use payas_resolver_database::{DatabaseMutation, DatabaseSystemContext};
 
-use payas_resolver_deno::DenoOperation;
+use super::service_util::create_service_operation;
 
 #[async_trait]
 impl<'a> OperationResolver<'a> for Mutation {
@@ -34,15 +34,11 @@ impl<'a> OperationResolver<'a> for Mutation {
                     .operation(field, &database_system_context, request_context)
                     .await
                     .map_err(ExecutionError::Database)
-                    .map(DataOperation::SQLOperation)
+                    .map(DataOperation::Sql)
             }
 
             MutationKind::Service { method_id, .. } => {
-                Ok(DataOperation::DenoOperation(DenoOperation {
-                    service_method: method_id.unwrap(),
-                    field,
-                    request_context,
-                }))
+                create_service_operation(&system_context.system, method_id, field, request_context)
             }
         }
     }

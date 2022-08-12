@@ -1,0 +1,11 @@
+[package]
+name = "wasi-add"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[lib]
+crate-type = ['cdylib']
+
+[workspace] # This avoids an error, where the top-level workspace thinks this could be a constituent project

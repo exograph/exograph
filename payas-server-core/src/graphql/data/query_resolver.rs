@@ -8,10 +8,10 @@ use payas_resolver_core::validation::field::ValidatedField;
 use payas_resolver_database::{DatabaseQuery, DatabaseSystemContext};
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
-use super::{data_operation::DataOperation, operation_resolver::OperationResolver};
-use payas_resolver_deno::DenoOperation;
-
-// TODO: deal with panics at the type level
+use super::{
+    data_operation::DataOperation, operation_resolver::OperationResolver,
+    service_util::create_service_operation,
+};
 
 #[async_trait]
 impl<'a> OperationResolver<'a> for Query {
@@ -21,7 +21,7 @@ impl<'a> OperationResolver<'a> for Query {
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<DataOperation<'a>, ExecutionError> {
-        Ok(match &self.kind {
+        match &self.kind {
             QueryKind::Database(query_params) => {
                 let database_query = DatabaseQuery {
                     return_type: &self.return_type,
@@ -42,14 +42,12 @@ impl<'a> OperationResolver<'a> for Query {
                     .await
                     .map_err(ExecutionError::Database)?;
 
-                DataOperation::SQLOperation(AbstractOperation::Select(operation))
+                Ok(DataOperation::Sql(AbstractOperation::Select(operation)))
             }
 
-            QueryKind::Service { method_id, .. } => DataOperation::DenoOperation(DenoOperation {
-                service_method: method_id.unwrap(),
-                field,
-                request_context,
-            }),
-        })
+            QueryKind::Service { method_id, .. } => {
+                create_service_operation(&system_context.system, method_id, field, request_context)
+            }
+        }
     }
 }

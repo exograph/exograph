@@ -13,7 +13,7 @@ use super::clay_execution::FnClaytipExecuteQuery;
 
 use super::{
     clay_execution::{ClaytipMethodResponse, FnClaytipInterceptorProceed},
-    deno_resolver::construct_arg_sequence,
+    deno_operation::construct_arg_sequence,
     ClayDenoExecutorPool, DenoExecutionError, InterceptedOperationInfo,
 };
 
@@ -30,7 +30,7 @@ pub async fn execute_interceptor<'a>(
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
     resolve_operation: ResolveOperationFn<'a>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>), DenoExecutionError> {
-    let script = &system.deno_scripts[interceptor.script];
+    let script = &system.scripts[interceptor.script];
 
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &HashMap::new(),

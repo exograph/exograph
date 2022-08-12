@@ -52,7 +52,7 @@ pub struct ResolvedContext {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedService {
     pub name: String,
-    pub script: String,
+    pub script: Vec<u8>,
     pub script_path: String,
     pub methods: Vec<ResolvedMethod>,
     pub interceptors: Vec<ResolvedInterceptor>,
@@ -435,34 +435,41 @@ fn build_shallow(
                 let mut module_fs_path = service.base_clayfile.clone();
                 module_fs_path.pop();
                 module_fs_path.push(module_path);
+                let extension = module_fs_path.extension().and_then(|e| e.to_str());
 
-                service_skeleton_generator::generate_service_skeleton(service, &module_fs_path)?;
+                let bundled_script = if extension == Some("ts") || extension == Some("js") {
+                    service_skeleton_generator::generate_service_skeleton(
+                        service,
+                        &module_fs_path,
+                    )?;
 
-                // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
-                let bundler_output = std::process::Command::new("deno")
-                    .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
-                    .output()
-                    .map_err(|err| {
+                    // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
+                    let bundler_output = std::process::Command::new("deno")
+                        .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
+                        .output()
+                        .map_err(|err| {
+                            ParserError::Generic(format!(
+                                "While trying to invoke `deno` in order to bundle .ts files: {}",
+                                err
+                            ))
+                        })?;
+
+                    if bundler_output.status.success() {
+                        bundler_output.stdout
+                    } else {
+                        std::io::stdout().write_all(&bundler_output.stderr).unwrap();
+                        return Err(ParserError::Generic(
+                            "Deno bundler did not exit successfully".to_string(),
+                        ));
+                    }
+                } else {
+                    std::fs::read(&module_fs_path).map_err(|err| {
                         ParserError::Generic(format!(
-                            "While trying to invoke `deno` in order to bundle .ts files: {}",
+                            "While trying to read bundled service module: {}",
                             err
                         ))
-                    })?;
-
-                let bundled_script = if bundler_output.status.success() {
-                    std::str::from_utf8(&bundler_output.stdout)
-                } else {
-                    std::io::stdout().write_all(&bundler_output.stderr).unwrap();
-                    return Err(ParserError::Generic(
-                        "Deno bundler did not exit successfully".to_string(),
-                    ));
-                }
-                .map_err(|_| {
-                    ParserError::Generic(format!(
-                        "Could not parse script file at \"{}\" into UTF-8",
-                        module_fs_path.to_str().unwrap()
-                    ))
-                })?;
+                    })?
+                };
 
                 let module_anonymized_path = module_fs_path
                     .strip_prefix(&service.base_clayfile.parent().unwrap())
@@ -479,7 +486,7 @@ fn build_shallow(
                     &service.name,
                     ResolvedService {
                         name: service.name.clone(),
-                        script: bundled_script.to_string(),
+                        script: bundled_script,
                         script_path: module_anonymized_path.to_str().expect("Script path was not UTF-8").to_string(),
                         methods: service
                             .methods

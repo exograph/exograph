@@ -111,7 +111,7 @@ impl<
     pub async fn execute(
         &self,
         script_path: &str,
-        script: &str,
+        script: &[u8],
         method_name: &str,
         arguments: Vec<Arg>,
         call_context: C,
@@ -134,7 +134,7 @@ impl<
     pub async fn execute_and_get_r(
         &self,
         script_path: &str,
-        script: &str,
+        script: &[u8],
         method_name: &str,
         arguments: Vec<Arg>,
         call_context: C,
@@ -150,7 +150,7 @@ impl<
     async fn get_executor(
         &self,
         script_path: &str,
-        script: &str,
+        script: &[u8],
     ) -> Result<DenoExecutor<C, M, R>, DenoError> {
         // find or allocate a free actor in our pool
         let actor = {
@@ -179,7 +179,7 @@ impl<
     fn create_actor(
         &self,
         script_path: &str,
-        script: &str,
+        script: &[u8],
     ) -> Result<DenoActor<C, M, R>, DenoError> {
         DenoActor::new(
             UserCode::LoadFromMemory {
@@ -208,7 +208,7 @@ mod tests {
     #[tokio::test]
     async fn test_actor_executor() {
         let module_path = "test_js/direct.js";
-        let module_script = include_str!("test_js/direct.js");
+        let module_script = include_bytes!("test_js/direct.js");
 
         let executor_pool = DenoExecutorPool::<(), (), ()>::new(
             "PayasDenoTest",
@@ -237,7 +237,7 @@ mod tests {
     #[tokio::test]
     async fn test_actor_executor_concurrent() {
         let module_path = "test_js/direct.js";
-        let module_script = include_str!("test_js/direct.js");
+        let module_script = include_bytes!("test_js/direct.js");
 
         let executor_pool = DenoExecutorPool::new(
             "PayasDenoTest",
@@ -256,7 +256,7 @@ mod tests {
         async fn execute_function(
             pool: &DenoExecutorPool<(), (), ()>,
             script_path: &str,
-            script: &str,
+            script: &[u8],
             method_name: &str,
             arguments: Vec<Arg>,
         ) -> Result<Value, DenoError> {
