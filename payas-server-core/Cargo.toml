@@ -41,6 +41,7 @@ payas-deno = { path = "../payas-deno" }
 payas-resolver-core = { path = "../payas-resolver-core" }
 payas-resolver-database = { path = "../payas-resolver-database" }
 payas-resolver-deno = { path = "../payas-resolver-deno" }
+payas-resolver-wasm = { path = "../payas-resolver-wasm" }
 
 [dev-dependencies]
 insta = "1.14.0"

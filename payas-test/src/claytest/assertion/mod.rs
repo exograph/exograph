@@ -34,7 +34,7 @@ pub fn dynamic_assert_using_deno(
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
-            script,
+            script: script.into(),
         },
         "ClaytipTest",
         vec![],
@@ -81,7 +81,7 @@ pub fn evaluate_using_deno(
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
-            script,
+            script: script.into(),
         },
         "ClaytipTest",
         vec![],

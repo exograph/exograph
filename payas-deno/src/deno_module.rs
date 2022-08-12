@@ -34,7 +34,7 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
 }
 
 pub enum UserCode {
-    LoadFromMemory { script: String, path: String },
+    LoadFromMemory { script: Vec<u8>, path: String },
     LoadFromFs(PathBuf),
 }
 
@@ -95,7 +95,8 @@ impl DenoModule {
 
         let source_code = format!(
             "import * as mod from '{user_module_path}'; globalThis.mod = mod; {shim_source_code}"
-        );
+        )
+        .into_bytes();
 
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
@@ -103,7 +104,7 @@ impl DenoModule {
                 UserCode::LoadFromFs(_) => vec![("file:///main.js".to_owned(), source_code)],
                 UserCode::LoadFromMemory { path, script } => vec![
                     ("file:///main.js".to_owned(), source_code),
-                    (format!("file:///{path}"), script.to_string()),
+                    (format!("file:///{path}"), script.to_owned()),
                 ],
             }
             .into_iter()

@@ -19,6 +19,7 @@ use crate::graphql::{
     },
 };
 use payas_resolver_deno::ClayDenoExecutorPool;
+use payas_resolver_wasm::WasmExecutorPool;
 
 use super::field_resolver::FieldResolver;
 
@@ -32,6 +33,7 @@ use super::field_resolver::FieldResolver;
 pub struct SystemContext {
     pub(crate) database_executor: DatabaseExecutor,
     pub(crate) deno_execution_pool: ClayDenoExecutorPool,
+    pub(crate) wasm_execution_pool: WasmExecutorPool,
     pub(crate) system: ModelSystem,
     pub(crate) schema: Schema,
     pub allow_introspection: bool,

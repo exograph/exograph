@@ -61,7 +61,7 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError>
         mutation_types: building.mutation_types.values,
         mutations: building.mutations,
         methods: building.methods.values,
-        deno_scripts: building.deno_scripts.values,
+        scripts: building.scripts.values,
     })
 }
 
@@ -135,7 +135,7 @@ pub struct SystemContextBuilding {
     pub tables: MappedArena<PhysicalTable>,
     pub methods: MappedArena<ServiceMethod>,
     pub interceptors: MappedArena<Interceptor>,
-    pub deno_scripts: MappedArena<Script>,
+    pub scripts: MappedArena<Script>,
 }
 
 #[cfg(test)]
