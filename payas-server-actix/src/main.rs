@@ -3,7 +3,7 @@ use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use payas_server_actix::request_context::ActixRequestContextProducer;
 use payas_server_actix::resolve;
-use payas_server_core::{create_system_context, SystemContext};
+use payas_server_core::{create_system_context_or_exit, SystemContext};
 use payas_server_core::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use tracing_actix_web::TracingLogger;
 
@@ -20,7 +20,7 @@ async fn main() -> std::io::Result<()> {
 
     payas_server_core::init();
 
-    let system_context = web::Data::new(create_system_context(&claypot_file).unwrap());
+    let system_context = web::Data::new(create_system_context_or_exit(&claypot_file));
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
 
     let server_port = env::var("CLAY_SERVER_PORT")

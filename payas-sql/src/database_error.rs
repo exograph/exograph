@@ -2,8 +2,14 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {
+    #[error("Configuration error: {0}")]
+    Config(String),
+
+    #[error("Failed to execute transaction {0}")]
+    Transaction(String),
+
     #[error("{0}")]
-    Generic(String),
+    Validation(String),
 
     #[error("{0}")]
     Delegate(#[from] tokio_postgres::Error),

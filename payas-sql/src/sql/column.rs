@@ -107,7 +107,7 @@ impl PhysicalColumnType {
                             dims = &dims[2..];
                             count += 1;
                         } else {
-                            return Err(DatabaseError::Generic(format!("unknown type {}", s)));
+                            return Err(DatabaseError::Validation(format!("unknown type {}", s)));
                         }
                     } else {
                         break;
@@ -179,7 +179,7 @@ impl PhysicalColumnType {
                         let regex =
                             Regex::new("NUMERIC\\((?P<precision>\\d+),?(?P<scale>\\d+)?\\)")
                                 .map_err(|_| {
-                                    DatabaseError::Generic("Invalid numeric column spec".into())
+                                    DatabaseError::Validation("Invalid numeric column spec".into())
                                 })?;
                         let captures = regex.captures(s).unwrap();
 
@@ -190,7 +190,7 @@ impl PhysicalColumnType {
 
                         PhysicalColumnType::Numeric { precision, scale }
                     } else {
-                        return Err(DatabaseError::Generic(format!("unknown type {}", s)));
+                        return Err(DatabaseError::Validation(format!("unknown type {}", s)));
                     }
                 }
             }),
