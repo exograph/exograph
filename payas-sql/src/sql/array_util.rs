@@ -105,7 +105,7 @@ fn process_array<T>(
         }
         Entry::Occupied(entry) => {
             if *entry.get() != len {
-                return Err(DatabaseError::Generic(format!(
+                return Err(DatabaseError::Validation(format!(
                     "Array dimensions do not match in dimension {}. Expected {}, got {}",
                     depth,
                     *entry.get(),
