@@ -5,7 +5,6 @@ use async_graphql_value::Name;
 ///
 /// Take a user submitted query along with the operation name and variables (from the request payload)
 /// and transform the query into a validated form (in the process, validate the query).
-pub mod field;
 pub mod operation;
 
 pub mod document_validator;

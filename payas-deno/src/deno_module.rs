@@ -34,7 +34,7 @@ fn get_error_class_name(e: &AnyError) -> &'static str {
 }
 
 pub enum UserCode {
-    LoadFromMemory { script: String, path: String },
+    LoadFromMemory { script: Vec<u8>, path: String },
     LoadFromFs(PathBuf),
 }
 
@@ -95,7 +95,8 @@ impl DenoModule {
 
         let source_code = format!(
             "import * as mod from '{user_module_path}'; globalThis.mod = mod; {shim_source_code}"
-        );
+        )
+        .into_bytes();
 
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
@@ -103,7 +104,7 @@ impl DenoModule {
                 UserCode::LoadFromFs(_) => vec![("file:///main.js".to_owned(), source_code)],
                 UserCode::LoadFromMemory { path, script } => vec![
                     ("file:///main.js".to_owned(), source_code),
-                    (format!("file:///{path}"), script.to_string()),
+                    (format!("file:///{path}"), script.to_owned()),
                 ],
             }
             .into_iter()
@@ -199,18 +200,18 @@ impl DenoModule {
             .execute_script("", &func_value_string)
             .map_err(DenoInternalError::Any)?;
 
-        let shim_objects_vals: Vec<_> = self
-            .shim_object_names
-            .iter()
-            .map(|name| runtime.execute_script("", name))
-            .collect::<Result<_, _>>()
-            .map_err(DenoInternalError::Any)?;
-
-        let shim_objects: HashMap<_, _> = self
-            .shim_object_names
-            .iter()
-            .zip(shim_objects_vals.into_iter())
-            .collect();
+        let shim_objects: HashMap<_, _> = {
+            let shim_objects_vals: Vec<_> = self
+                .shim_object_names
+                .iter()
+                .map(|name| runtime.execute_script("", name))
+                .collect::<Result<_, _>>()
+                .map_err(DenoInternalError::Any)?;
+            self.shim_object_names
+                .iter()
+                .zip(shim_objects_vals.into_iter())
+                .collect()
+        };
 
         let global = {
             let scope = &mut runtime.handle_scope();
@@ -256,24 +257,16 @@ impl DenoModule {
             let local = match local {
                 Some(value) => value,
                 None => {
+                    // We will get the exception here for sync functions
                     let exception = tc_scope_ref.exception().unwrap();
                     let js_error = JsError::from_v8_exception(tc_scope_ref, exception);
 
                     error!(%js_error, "Exception executing function");
 
-                    match self.explicit_error_class_name {
-                        Some(_) if js_error.name.as_deref() == self.explicit_error_class_name => {
-                            // code threw an explicit Error(...), expose to user
-                            let message = js_error
-                                .message
-                                .unwrap_or_else(|| "Unknown error".to_string());
-                            return Err(DenoError::Explicit(message));
-                        }
-                        _ => {
-                            // generic error message
-                            return Err(DenoError::Explicit("Internal server error".into()));
-                        }
-                    }
+                    return Err(Self::process_js_error(
+                        self.explicit_error_class_name,
+                        js_error,
+                    ));
                 }
             };
 
@@ -284,7 +277,13 @@ impl DenoModule {
             let value = runtime.resolve_value(global).await.map_err(|err| {
                 // got some AnyError from Deno internals...
                 error!(%err);
-                DenoError::Explicit("Internal server error".into())
+
+                // If the function is async, we will get access to the error here. If it is an JsError, we process
+                // it to define the error returned to the user (just like we do for the sync case above).
+                match err.downcast::<JsError>() {
+                    Ok(err) => Self::process_js_error(self.explicit_error_class_name, err),
+                    Err(err) => DenoError::AnyError(err),
+                }
             })?;
 
             let scope = &mut runtime.handle_scope();
@@ -314,6 +313,25 @@ impl DenoModule {
             .try_borrow_mut()
             .map_err(DenoDiagnosticError::BorrowMutError)?
             .try_take())
+    }
+
+    fn process_js_error(
+        explicit_error_class_name: Option<&'static str>,
+        js_error: JsError,
+    ) -> DenoError {
+        match explicit_error_class_name {
+            Some(_) if js_error.name.as_deref() == explicit_error_class_name => {
+                // code threw an explicit error, expose it to user
+                let message = js_error
+                    .message
+                    .unwrap_or_else(|| "Unknown error".to_string());
+                DenoError::Explicit(message)
+            }
+            _ => {
+                // generic error message
+                DenoError::JsError(js_error)
+            }
+        }
     }
 }
 

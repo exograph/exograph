@@ -1,4 +1,7 @@
-use deno_core::{error::AnyError, v8::DataError};
+use deno_core::{
+    error::{AnyError, JsError},
+    v8::DataError,
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -7,12 +10,19 @@ pub enum DenoError {
     #[error("{0}")]
     Explicit(String),
 
+    // Non-explicit error thrown by the runtime (such as undefined variable)
+    #[error("{0}")]
+    JsError(#[from] JsError),
+
+    #[error("{0}")]
+    AnyError(#[from] AnyError),
+
     // Show it to developers (such as missing "await") so they may possibly fix it.
-    #[error(transparent)]
+    #[error("{0}")]
     Diagnostic(#[from] DenoDiagnosticError),
 
     // An issue with this crate or a dependency
-    #[error(transparent)]
+    #[error("{0}")]
     Internal(#[from] DenoInternalError),
 }
 
@@ -23,7 +33,7 @@ pub enum DenoDiagnosticError {
     #[error("No function named {0} exported from {1}")]
     MissingFunction(String, String), // (function name, module name)
 
-    #[error(transparent)]
+    #[error("{0}")]
     BorrowMutError(#[from] core::cell::BorrowMutError), // Diagnostic for now: possibly missing "await"
 }
 
@@ -32,10 +42,10 @@ pub enum DenoInternalError {
     #[error("{0}")]
     Channel(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Any(#[from] AnyError),
-    #[error(transparent)]
+    #[error("{0}")]
     Serde(#[from] serde_v8::Error),
-    #[error(transparent)]
+    #[error("{0}")]
     DataError(#[from] DataError),
 }

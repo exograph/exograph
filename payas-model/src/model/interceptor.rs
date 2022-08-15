@@ -13,7 +13,7 @@ pub struct Interceptor {
     pub arguments: Vec<Argument>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum InterceptorKind {
     Before,
     After,

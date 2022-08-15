@@ -1,4 +1,4 @@
-import "users/users.clay"
+import "users"  // Example of not specifying the index.clay file in a directory
 
 model MailingList {
     id: Int = autoincrement() @pk

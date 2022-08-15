@@ -3,9 +3,10 @@ use std::env;
 use async_trait::async_trait;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
-use payas_server_core::request_context::ParsedContext;
-use payas_server_core::request_context::{BoxedParsedContext, RequestContext};
-use payas_server_core::SystemContext;
+use payas_resolver_core::{
+    request_context::{BoxedParsedContext, ParsedContext, RequestContext},
+    ResolveOperationFn,
+};
 use serde_json::json;
 use serde_json::Value;
 
@@ -115,11 +116,11 @@ impl ParsedContext for ParsedJwtContext {
         "jwt"
     }
 
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'r>(
+        &self,
         value: &str,
-        _system_context: &'e SystemContext,
-        _request_context: &'e RequestContext<'e>,
+        _resolver: &ResolveOperationFn<'r>,
+        _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         self.jwt_claims.get(value).cloned()
     }

@@ -46,6 +46,10 @@ interface Operation {
     proceed<T>(): Promise<T>;
     query(): Field;
 }
+
+declare class ClaytipError extends Error {
+    constructor(message: string);
+}
 "#;
 
 /// Generates a service skeleton based on service definitions in the clay file so that users can have a good starting point.
@@ -104,8 +108,8 @@ pub fn generate_service_skeleton(
 
     let out_file = Path::new(out_file.as_ref());
 
-    // Generated a typescript definition file even for Javscript, so that user can know
-    // the exepected interface and IDEs can assist with code completion (if they use jsdoc, for).
+    // Generated a typescript definition file even for Javascript, so that user can know
+    // the expected interface and IDEs can assist with code completion (if they use jsdoc, for).
     let claytip_d_path = out_file.parent().unwrap().join("claytip.d.ts");
     if !claytip_d_path.exists() {
         let mut claytip_d_file = File::create(&claytip_d_path)?;

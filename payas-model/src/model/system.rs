@@ -29,7 +29,7 @@ pub struct ModelSystem {
     pub mutations: MappedArena<Mutation>,
     pub tables: SerializableSlab<PhysicalTable>,
     pub methods: SerializableSlab<ServiceMethod>,
-    pub deno_scripts: SerializableSlab<Script>,
+    pub scripts: SerializableSlab<Script>,
 }
 
 impl Default for ModelSystem {
@@ -45,7 +45,7 @@ impl Default for ModelSystem {
             tables: SerializableSlab::new(),
             methods: SerializableSlab::new(),
             argument_types: SerializableSlab::new(),
-            deno_scripts: SerializableSlab::new(),
+            scripts: SerializableSlab::new(),
         }
     }
 }

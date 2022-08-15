@@ -34,12 +34,12 @@ pub fn dynamic_assert_using_deno(
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
-            script,
+            script: script.into(),
         },
         "ClaytipTest",
         vec![],
         vec![include_str!(
-            "../../../../payas-server-core/src/graphql/data/deno/claytip_error.js"
+            "../../../../payas-resolver-deno/src/claytip_error.js"
         )],
         vec![],
         DenoModuleSharedState::default(),
@@ -81,7 +81,7 @@ pub fn evaluate_using_deno(
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
-            script,
+            script: script.into(),
         },
         "ClaytipTest",
         vec![],

@@ -17,7 +17,7 @@ pub async fn resolve(
     system_context: Arc<SystemContext>,
     context_processor: Arc<LambdaRequestContextProducer>,
 ) -> Result<Response<String>, Error> {
-    let request_context = context_processor.generate_request_context(&req, &system_context);
+    let request_context = context_processor.generate_request_context(&req);
 
     let (_, body) = req.into_parts();
 

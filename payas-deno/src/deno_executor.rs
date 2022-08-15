@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use futures::pin_mut;
 
 use crate::deno_error::DenoError;
@@ -18,7 +16,6 @@ use std::fmt::Debug;
 /// `callback_processor` to resolve callbacks and responding with the final result.
 pub struct DenoExecutor<C, M, R> {
     pub(crate) actor: DenoActor<C, M, R>,
-    pub(crate) return_type: PhantomData<R>,
 }
 
 #[async_trait]

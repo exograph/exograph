@@ -1,0 +1,23 @@
+@external("arithmetic.js")
+service MathService {
+    type DivisionResult {
+        quotient: Int
+        remainder: Int
+    }
+
+    export query divide(x: Int, y: Int): DivisionResult
+    export query asyncDivide(x: Int, y: Int): DivisionResult
+}
+
+@external("time.ts")
+service TimeService {
+    @around("query *")
+    interceptor time(operation: Operation)
+}
+
+// Apply the interceptor twice to ensure that exception still propagates.
+@external("time.ts")
+service Time2Service {
+    @around("query *")
+    interceptor time(operation: Operation)
+}

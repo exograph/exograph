@@ -4,18 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-async-trait = "0.1.52"
-actix-web = { version = "4.0.1", default-features = false, features = ["macros", "cookies"] }
-actix-cors = "0.6.1"
-actix-files = "0.6.0"
-actix-web-httpauth = "0.6.0"
+async-trait = "0.1.57"
+actix-web = { version = "4.1.0", default-features = false, features = ["macros", "cookies"] }
+actix-cors = "0.6.2"
+actix-files = "0.6.2"
+actix-web-httpauth = "0.8.0"
 futures = "0.3"
-jsonwebtoken = "8.0.1"
+jsonwebtoken = "8.1.1"
 
 serde_json = { version = "1.0", features = ["preserve_order"] }
 tracing = "0.1"
-tracing-actix-web = "0.5"
+tracing-actix-web = "0.6.0"
 payas-server-core = { path = "../payas-server-core" }
+payas-resolver-core = { path = "../payas-resolver-core" }
 
 [[bin]]
 name = "clay-server"

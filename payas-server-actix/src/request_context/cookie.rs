@@ -1,8 +1,8 @@
 use actix_web::cookie::Cookie;
 use async_trait::async_trait;
-use payas_server_core::{
+use payas_resolver_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
-    SystemContext,
+    ResolveOperationFn,
 };
 use serde_json::Value;
 
@@ -34,11 +34,11 @@ impl ParsedContext for ParsedCookieContext {
         "cookie"
     }
 
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'r>(
+        &self,
         value: &str,
-        _system_context: &'e SystemContext,
-        _rc: &'e RequestContext,
+        _resolver: &ResolveOperationFn<'r>,
+        _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         self.cookies
             .iter()

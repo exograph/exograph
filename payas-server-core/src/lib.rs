@@ -1,3 +1,4 @@
+use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 
 use crate::graphql::introspection::schema::Schema;
@@ -6,23 +7,22 @@ use crate::graphql::introspection::schema::Schema;
 ///
 /// The `resolve` function is responsible for doing the work, using information
 /// extracted from an incoming request, and returning the response as a stream.
-use ::tracing::{error, instrument};
+use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
 use futures::Stream;
-use graphql::request_context::RequestContext;
 use initialization_error::InitializationError;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
+use payas_resolver_wasm::WasmExecutorPool;
 use payas_sql::{Database, DatabaseExecutor};
-use serde::Deserialize;
-use serde_json::{Map, Value};
 
-use crate::graphql::{
-    execution::query_response::QueryResponseBody, execution_error::ExecutionError,
-};
+use crate::graphql::execution_error::ExecutionError;
+
+pub use payas_resolver_core::OperationsPayload;
+use payas_resolver_core::{request_context::RequestContext, QueryResponseBody};
 
 pub mod graphiql;
 pub mod initialization_error;
@@ -31,7 +31,7 @@ mod logging_tracing;
 
 mod graphql;
 
-pub use graphql::{execution::system_context::SystemContext, request_context};
+pub use graphql::execution::system_context::SystemContext;
 
 fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
     if !Path::new(&claypot_file).exists() {
@@ -49,30 +49,30 @@ fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationEr
     }
 }
 
-pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, InitializationError> {
-    let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
+fn create_system_context(claypot_file: &str) -> Result<SystemContext, InitializationError> {
+    let database = Database::from_env(None)?;
 
     let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
         Some(e) => match e.parse::<bool>() {
-            Ok(e) => e,
-            Err(_) => {
-                error!("CLAY_INTROSPECTION env var must be set to either true or false");
-                std::process::exit(1);
-            }
+            Ok(v) => Ok(v),
+            Err(_) => Err(InitializationError::Config(
+                "CLAY_INTROSPECTION env var must be set to either true or false".into(),
+            )),
         },
-        None => false,
-    };
+        None => Ok(false),
+    }?;
 
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
     let deno_execution_config =
-        DenoExecutorPool::new_from_config(graphql::data::deno::clay_config());
+        DenoExecutorPool::new_from_config(payas_resolver_deno::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 
     let executor = SystemContext {
         database_executor,
         deno_execution_pool: deno_execution_config,
+        wasm_execution_pool: WasmExecutorPool::default(),
         system,
         schema,
         allow_introspection,
@@ -81,12 +81,14 @@ pub fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initia
     Ok(executor)
 }
 
-#[derive(Debug, Deserialize)]
-pub struct OperationsPayload {
-    #[serde(rename = "operationName")]
-    operation_name: Option<String>,
-    query: String,
-    variables: Option<Map<String, Value>>,
+pub fn create_system_context_or_exit(claypot_file: &str) -> SystemContext {
+    match create_system_context(claypot_file) {
+        Ok(system_context) => system_context,
+        Err(error) => {
+            println!("{}", error);
+            exit(1);
+        }
+    }
 }
 
 pub type Headers = Vec<(String, String)>;

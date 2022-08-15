@@ -20,7 +20,7 @@ pub async fn resolve(
     system_context: web::Data<SystemContext>,
     context_processor: web::Data<ActixRequestContextProducer>,
 ) -> impl Responder {
-    let request_context = context_processor.generate_request_context(&req, &system_context);
+    let request_context = context_processor.generate_request_context(&req);
 
     match request_context {
         Ok(request_context) => {
@@ -45,9 +45,7 @@ pub async fn resolve(
 
                     builder.streaming(Box::pin(stream))
                 }
-                Err(_) => {
-                    return HttpResponse::BadRequest().body(error_msg!("Invalid query payload"));
-                }
+                Err(_) => HttpResponse::BadRequest().body(error_msg!("Invalid query payload")),
             }
         }
 
