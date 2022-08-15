@@ -20,10 +20,12 @@ pub(crate) fn migration_statements(
             SchemaOp::CreateColumn { .. }
             | SchemaOp::CreateTable { .. }
             | SchemaOp::CreateExtension { .. }
-            | SchemaOp::CreateConstraint { .. }
-            | SchemaOp::RemoveConstraint { .. }
+            | SchemaOp::CreateUniqueConstraint { .. }
+            | SchemaOp::RemoveUniqueConstraint { .. }
             | SchemaOp::SetColumnDefaultValue { .. }
-            | SchemaOp::UnsetColumnDefaultValue { .. } => false,
+            | SchemaOp::UnsetColumnDefaultValue { .. }
+            | SchemaOp::SetNotNull { .. }
+            | SchemaOp::UnsetNotNull { .. } => false,
         };
 
         let statement = diff.to_sql();

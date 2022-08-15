@@ -54,7 +54,7 @@ impl PhysicalTable {
         for (constraint_name, _column_names) in self.named_unique_constraints().iter() {
             if !new.named_unique_constraints().contains_key(constraint_name) {
                 // constraint deletion
-                changes.push(SchemaOp::RemoveConstraint {
+                changes.push(SchemaOp::RemoveUniqueConstraint {
                     table: new,
                     constraint: constraint_name.to_string(),
                 });
@@ -71,11 +71,11 @@ impl PhysicalTable {
                 Some(existing_constraint_column_names) => {
                     if existing_constraint_column_names != new_constraint_column_names {
                         // constraint modification, so remove the old constraint and add the new one
-                        changes.push(SchemaOp::RemoveConstraint {
+                        changes.push(SchemaOp::RemoveUniqueConstraint {
                             table: new,
                             constraint: new_constraint_name.to_string(),
                         });
-                        changes.push(SchemaOp::CreateConstraint {
+                        changes.push(SchemaOp::CreateUniqueConstraint {
                             table: new,
                             constraint_name: new_constraint_name.to_string(),
                             columns: new_constraint_column_names.clone(),
@@ -84,7 +84,7 @@ impl PhysicalTable {
                 }
                 None => {
                     // new constraint
-                    changes.push(SchemaOp::CreateConstraint {
+                    changes.push(SchemaOp::CreateUniqueConstraint {
                         table: new,
                         constraint_name: new_constraint_name.to_string(),
                         columns: new_constraint_column_names.clone(),
