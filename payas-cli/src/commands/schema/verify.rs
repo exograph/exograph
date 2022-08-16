@@ -50,7 +50,7 @@ impl Command for VerifyCommand {
                     SchemaOp::UnsetColumnDefaultValue { column } => println!("The column `{}` in table `{}` is not set in the model.", column.column_name, column.table_name),
                     SchemaOp::CreateExtension { extension } => println!("The model requires the extension `{}`.", extension),
                     SchemaOp::CreateUniqueConstraint { table, columns, constraint_name } => println!("The model requires a unique constraint named `{}` for the following columns in table `{}`: {}", constraint_name, table.name, columns.join(", ")),
-                    SchemaOp::SetNotNull { column } => println!("The model requires that the column `{}` in table `{}` is not nullable.", column.column_name, column.table_name),
+                    SchemaOp::SetNotNull { column } => println!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.column_name, column.table_name),
                     _ => {
                         pass = true;
                     }
@@ -60,9 +60,9 @@ impl Command for VerifyCommand {
             }
 
             if !is_compatible {
-                Err(anyhow!("=== This model is not compatible with the database schema! ==="))
+                Err(anyhow!("This model is not compatible with the current database schema. You may need to update your model to match, or perform a migration to update it."))
             } else {
-                println!("This model is compatible with the database schema.");
+                println!("This model is compatible with the database schema!");
                 Ok(())
             }
 
