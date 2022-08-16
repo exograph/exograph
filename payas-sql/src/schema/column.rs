@@ -24,9 +24,17 @@ impl PhysicalColumn {
             panic!("Diffing columns must have the same table name and column name");
         }
 
-        if !(type_same || is_pk_same || is_autoincrement_same || is_nullable_same) {
+        if !(type_same || is_pk_same || is_autoincrement_same) {
             changes.push(SchemaOp::DeleteColumn { column: self });
             changes.push(SchemaOp::CreateColumn { column: new });
+        } else if !is_nullable_same {
+            if new.is_nullable && !self.is_nullable {
+                // drop NOT NULL constraint
+                changes.push(SchemaOp::UnsetNotNull { column: self })
+            } else {
+                // add NOT NULL constraint
+                changes.push(SchemaOp::SetNotNull { column: self })
+            }
         } else if !default_value_same {
             match &new.default_value {
                 Some(default_value) => {

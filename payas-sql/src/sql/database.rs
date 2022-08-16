@@ -43,13 +43,17 @@ impl<'a> Database {
             .map(|pool_str| pool_str.parse::<bool>().unwrap())
             .unwrap_or(true);
 
-        Self::from_env_helper(pool_size, check_connection, url, user, password)
+        Self::from_helper(pool_size, check_connection, &url, user, password)
     }
 
-    fn from_env_helper(
+    pub fn from_db_url(url: &str) -> Result<Self, DatabaseError> {
+        Self::from_helper(1, true, url, None, None)
+    }
+
+    fn from_helper(
         pool_size: usize,
         _check_connection: bool,
-        url: String,
+        url: &str,
         user: Option<String>,
         password: Option<String>,
     ) -> Result<Self, DatabaseError> {
@@ -110,8 +114,8 @@ impl<'a> Database {
         Ok(self.pool.get().await?)
     }
 
-    fn create_ssl_config(url: String) -> Result<(String, Option<SslConfig>), DatabaseError> {
-        let url = url::Url::parse(&url)
+    fn create_ssl_config(url: &str) -> Result<(String, Option<SslConfig>), DatabaseError> {
+        let url = url::Url::parse(url)
             .map_err(|_| DatabaseError::Config("Invalid database URL".into()))?;
 
         let mut ssl_param_string: Option<String> = None;
