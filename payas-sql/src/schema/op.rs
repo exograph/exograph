@@ -33,14 +33,21 @@ pub enum SchemaOp<'a> {
         extension: String,
     },
 
-    CreateConstraint {
+    CreateUniqueConstraint {
         table: &'a PhysicalTable,
         constraint_name: String,
         columns: Vec<String>,
     },
-    RemoveConstraint {
+    RemoveUniqueConstraint {
         table: &'a PhysicalTable,
         constraint: String,
+    },
+
+    SetNotNull {
+        column: &'a PhysicalColumn,
+    },
+    UnsetNotNull {
+        column: &'a PhysicalColumn,
     },
 }
 
@@ -93,7 +100,7 @@ impl SchemaOp<'_> {
                 statement: format!("DROP EXTENSION \"{}\";", extension),
                 ..Default::default()
             },
-            SchemaOp::CreateConstraint {
+            SchemaOp::CreateUniqueConstraint {
                 table,
                 constraint_name,
                 columns,
@@ -106,10 +113,24 @@ impl SchemaOp<'_> {
                 ),
                 ..Default::default()
             },
-            SchemaOp::RemoveConstraint { table, constraint } => SchemaStatement {
+            SchemaOp::RemoveUniqueConstraint { table, constraint } => SchemaStatement {
                 statement: format!(
                     "ALTER TABLE \"{}\" DROP CONSTRAINT \"{}\";",
                     table.name, constraint
+                ),
+                ..Default::default()
+            },
+            SchemaOp::SetNotNull { column } => SchemaStatement {
+                statement: format!(
+                    "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" SET NOT NULL;",
+                    column.table_name, column.column_name,
+                ),
+                ..Default::default()
+            },
+            SchemaOp::UnsetNotNull { column } => SchemaStatement {
+                statement: format!(
+                    "ALTER TABLE \"{}\" ALTER COLUMN \"{}\" DROP NOT NULL;",
+                    column.table_name, column.column_name
                 ),
                 ..Default::default()
             },

@@ -20,10 +20,12 @@ pub(crate) fn migration_statements(
             SchemaOp::CreateColumn { .. }
             | SchemaOp::CreateTable { .. }
             | SchemaOp::CreateExtension { .. }
-            | SchemaOp::CreateConstraint { .. }
-            | SchemaOp::RemoveConstraint { .. }
+            | SchemaOp::CreateUniqueConstraint { .. }
+            | SchemaOp::RemoveUniqueConstraint { .. }
             | SchemaOp::SetColumnDefaultValue { .. }
-            | SchemaOp::UnsetColumnDefaultValue { .. } => false,
+            | SchemaOp::UnsetColumnDefaultValue { .. }
+            | SchemaOp::SetNotNull { .. }
+            | SchemaOp::UnsetNotNull { .. } => false,
         };
 
         let statement = diff.to_sql();
@@ -539,6 +541,50 @@ mod tests {
                     false,
                 ),
             ],
+        )
+    }
+
+    #[test]
+    fn not_null() {
+        assert_changes(
+            r#"
+                model Log {
+                    id: Int @pk
+                    level: String?
+                    message: String
+                }
+            "#,
+            r#"
+                model Log {
+                    id: Int @pk
+                    level: String
+                    message: String
+                }
+            "#,
+            vec![(
+                r#"CREATE TABLE "logs" (
+                |    "id" INT PRIMARY KEY,
+                |    "level" TEXT,
+                |    "message" TEXT NOT NULL
+                |);"#,
+                false,
+            )],
+            vec![(
+                r#"CREATE TABLE "logs" (
+                |    "id" INT PRIMARY KEY,
+                |    "level" TEXT NOT NULL,
+                |    "message" TEXT NOT NULL
+                |);"#,
+                false,
+            )],
+            vec![(
+                r#"ALTER TABLE "logs" ALTER COLUMN "level" SET NOT NULL;"#,
+                false,
+            )],
+            vec![(
+                r#"ALTER TABLE "logs" ALTER COLUMN "level" DROP NOT NULL;"#,
+                false,
+            )],
         )
     }
 
