@@ -1,6 +1,8 @@
 mod environment;
 mod query;
 
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use futures::StreamExt;
 use payas_model::model::ContextField;
@@ -10,11 +12,7 @@ use thiserror::Error;
 
 use crate::ResolveOperationFn;
 
-#[cfg(not(test))]
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
-
-#[cfg(not(test))]
-use std::collections::HashMap;
 
 use async_recursion::async_recursion;
 
@@ -30,30 +28,13 @@ pub enum ContextParsingError {
 pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
 /// Represent a request context extracted for a particular request
-///
-/// UserRequestContext has two variants available: a regular version for normal use, and a test version
-/// for payas-server-core unit tests. As we do not have a full OperationsExecutor to test functionality
-/// like the access solver, a more basic RequestContext is used during `cargo test`. This test variant
-/// may be constructed with RequestContext::test_request_context(value), `value` being a serde_json::Value
-/// that represents the complete request context.
-///
-/// For example:
-///
-/// let context = UserRequestContext::test_request_context(
-///     serde_json::json!({ "AccessContext": {"token1": "token_value", "token2": "token_value"} }),
-/// );
 pub struct UserRequestContext {
-    #[cfg(not(test))]
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedParsedContext>,
-
-    #[cfg(test)]
-    test_values: serde_json::Value,
 }
 
 impl UserRequestContext {
     // Constructs a UserRequestContext from a vector of parsed contexts.
-    #[cfg(not(test))]
     pub fn from_parsed_contexts(contexts: Vec<BoxedParsedContext>) -> UserRequestContext {
         // a list of backend-agnostic contexts to also include
 
@@ -69,11 +50,6 @@ impl UserRequestContext {
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
         }
-    }
-
-    #[cfg(test)]
-    pub fn test_request_context(test_values: serde_json::Value) -> UserRequestContext {
-        UserRequestContext { test_values }
     }
 }
 
@@ -115,7 +91,6 @@ impl<'a> RequestContext<'a> {
 
     // Given an annotation name and its value,
     // extract a context field from the request context
-    #[cfg(not(test))]
     async fn extract_context_field_from_source<'s>(
         &'a self,
         parsed_context_map: &HashMap<String, BoxedParsedContext>,
@@ -132,7 +107,6 @@ impl<'a> RequestContext<'a> {
             .await)
     }
 
-    #[cfg(not(test))]
     #[async_recursion]
     pub async fn extract_context_field<'s>(
         &'a self,
@@ -151,47 +125,6 @@ impl<'a> RequestContext<'a> {
                     )
                     .await?;
                 Ok(field_value.map(|value| (field.name.clone(), value)))
-            }
-            RequestContext::Overridden {
-                base_context,
-                context_override,
-            } => {
-                let overridden: Option<&Value> = context_override
-                    .get(&context.name)
-                    .and_then(|value| value.as_object().and_then(|value| value.get(&field.name)));
-
-                match overridden {
-                    Some(value) => Ok(Some((field.name.clone(), value.clone()))),
-                    None => {
-                        base_context
-                            .extract_context_field(context, field, resolver)
-                            .await
-                    }
-                }
-            }
-        }
-    }
-
-    // ### BELOW USED ONLY DURING UNIT TESTS ###
-
-    #[cfg(test)]
-    #[async_recursion]
-    pub async fn extract_context_field(
-        &self,
-        context: &ContextType,
-        field: &ContextField,
-        resolver: &ResolveOperationFn,
-    ) -> Result<Option<(String, Value)>, ContextParsingError> {
-        match self {
-            RequestContext::User(UserRequestContext { test_values, .. }) => {
-                let context_value: Option<Value> = test_values.get(&context.name).cloned();
-
-                Ok(context_value.and_then(|value| {
-                    value.as_object().and_then(|context_value| {
-                        let field_value = context_value.get(&field.name).cloned();
-                        field_value.map(|field_value| (field.name.clone(), field_value))
-                    })
-                }))
             }
             RequestContext::Overridden {
                 base_context,
@@ -231,4 +164,26 @@ pub trait ParsedContext {
         resolver: &ResolveOperationFn<'r>,
         request_context: &'r RequestContext<'r>,
     ) -> Option<Value>;
+}
+
+#[cfg(test)]
+pub struct TestRequestContext {
+    pub test_values: Value,
+}
+
+#[cfg(test)]
+#[async_trait]
+impl ParsedContext for TestRequestContext {
+    fn annotation_name(&self) -> &str {
+        "test"
+    }
+
+    async fn extract_context_field<'r>(
+        &self,
+        key: &str,
+        _resolver: &ResolveOperationFn<'r>,
+        _request_context: &'r RequestContext<'r>,
+    ) -> Option<Value> {
+        self.test_values.get(key).cloned()
+    }
 }

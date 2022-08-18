@@ -340,15 +340,15 @@ mod tests {
         let system = payas_parser::build_system_from_str(
             r#"
                 context AccessContext {
-                    role: String @jwt("role")
-                    token1: String @jwt("token1")
-                    token2: String @jwt("token2")
-                    is_admin: Boolean @jwt("is_admin")
-                    user_id: String @jwt("user_id")
-                    v1: Boolean @jwt("v1")
-                    v2: Boolean @jwt("v2")
-                    v1_clone: Boolean @jwt("v1_clone")
-                    v2_clone: Boolean @jwt("v2_clone")
+                    role: String @test("role")
+                    token1: String @test("token1")
+                    token2: String @test("token2")
+                    is_admin: Boolean @test("is_admin")
+                    user_id: String @test("user_id")
+                    v1: Boolean @test("v1")
+                    v2: Boolean @test("v2")
+                    v1_clone: Boolean @test("v1_clone")
+                    v2_clone: Boolean @test("v2_clone")
                 }
 
                 model Article {
@@ -471,9 +471,8 @@ mod tests {
                 context_selection_expr("AccessContext", &["token2"]),
             ));
 
-            let context = test_request_context(
-                json!({ "AccessContext": {"token1": "token_value", "token2": "token_value"} }),
-            );
+            let context =
+                test_request_context(json!({"token1": "token_value", "token2": "token_value"}));
             let solved_predicate =
                 solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
             assert_eq!(
@@ -490,9 +489,8 @@ mod tests {
             // (to reduce obvious matches such as 5 < 6 => Predicate::True/False) in those cases,
             // the unoptimized predicate created works for both match and mismatch cases.
 
-            let context = test_request_context(
-                json!({ "AccessContext": {"token1": "token_value1", "token2": "token_value2"} }),
-            );
+            let context =
+                test_request_context(json!({"token1": "token_value1", "token2": "token_value2"}));
             let solved_predicate =
                 solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
             assert_eq!(
@@ -510,7 +508,7 @@ mod tests {
         {
             let test_context_column = |test_ae: AccessPredicateExpression| async {
                 let test_ae = test_ae;
-                let context = test_request_context(json!({ "AccessContext": {"user_id": "u1"} }));
+                let context = test_request_context(json!({"user_id": "u1"}));
                 let solved_predicate =
                     solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
                 assert_eq!(
@@ -522,7 +520,7 @@ mod tests {
                 );
 
                 // No user_id, so we can definitely declare it Predicate::False
-                let context = test_request_context(json!({ "AccessContext": {} }));
+                let context = test_request_context(json!({}));
                 let solved_predicate =
                     solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
                 assert_eq!(&solved_predicate, &context_missing_predicate);
@@ -705,7 +703,7 @@ mod tests {
         {
             // Two context values
             let context = test_request_context(
-                json!({ "AccessContext": {"v1": true, "v1_clone": true, "v2": false, "v2_clone": false} }),
+                json!({"v1": true, "v1_clone": true, "v2": false, "v2_clone": false}),
             );
 
             let scenarios = [
@@ -873,8 +871,7 @@ mod tests {
         }
         {
             // A context value
-            let context =
-                test_request_context(json!({ "AccessContext": {"v1": true, "v2": false} }));
+            let context = test_request_context(json!({"v1": true, "v2": false})); // context is irrelevant
 
             let scenarios = [
                 ("v1", AbstractPredicate::False),
@@ -930,12 +927,12 @@ mod tests {
             )),
         ));
 
-        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_ADMIN"} }));
+        let context = test_request_context(json!({"role": "ROLE_ADMIN"} ));
         let solved_predicate =
             solve_access(&test_ae, &context, &system, &test_curried_resolve()).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
+        let context = test_request_context(json!({"role": "ROLE_USER"} ));
         let solved_predicate =
             solve_access(&test_ae, &context, &system, &test_curried_resolve()).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
@@ -972,12 +969,12 @@ mod tests {
             ))
         };
 
-        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_ADMIN"} }));
+        let context = test_request_context(json!({"role": "ROLE_ADMIN"} ));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
+        let context = test_request_context(json!({"role": "ROLE_USER"} ));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(
@@ -1007,7 +1004,7 @@ mod tests {
             )),
         ));
 
-        let context = test_request_context(json!({ "AccessContext": {"user_id": "1"} }));
+        let context = test_request_context(json!({"user_id": "1"}));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(
@@ -1018,7 +1015,7 @@ mod tests {
             )
         );
 
-        let context = test_request_context(json!({ "AccessContext": {"user_id": "2"} }));
+        let context = test_request_context(json!({"user_id": "2"}));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(
@@ -1075,13 +1072,13 @@ mod tests {
         ));
 
         // For admins, allow access without any further restrictions
-        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_ADMIN"} }));
+        let context = test_request_context(json!({"role": "ROLE_ADMIN"}));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         // For users, allow only if the article is published
-        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_USER"} }));
+        let context = test_request_context(json!({"role": "ROLE_USER"}));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(
@@ -1093,7 +1090,7 @@ mod tests {
         );
 
         // For other roles, do not allow
-        let context = test_request_context(json!({ "AccessContext": {"role": "ROLE_GUEST"} }));
+        let context = test_request_context(json!({"role": "ROLE_GUEST"}));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
@@ -1166,12 +1163,12 @@ mod tests {
             &["is_admin"],
         ));
 
-        let context = test_request_context(json!({ "AccessContext": {"is_admin": true} }));
+        let context = test_request_context(json!({"is_admin": true}));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
-        let context = test_request_context(json!({ "AccessContext": {"is_admin": false} }));
+        let context = test_request_context(json!({"is_admin": false}));
         let solved_predicate =
             solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
@@ -1183,6 +1180,8 @@ mod tests {
     }
 
     fn test_request_context<'a>(test_values: Value) -> RequestContext<'a> {
-        RequestContext::User(UserRequestContext::test_request_context(test_values))
+        RequestContext::User(UserRequestContext::from_parsed_contexts(vec![Box::new(
+            crate::request_context::TestRequestContext { test_values },
+        )]))
     }
 }
