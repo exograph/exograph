@@ -21,6 +21,7 @@ impl<'a> DataOperation<'a> {
         system_context: &'a SystemContext,
     ) -> Result<QueryResponse, ExecutionError> {
         let resolve_operation_fn = system_context.resolve_operation_fn();
+
         match self {
             DataOperation::Sql(abstract_operation) => {
                 let database_system_context = DatabaseSystemContext {

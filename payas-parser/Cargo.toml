@@ -3,6 +3,9 @@ name = "payas-parser"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+test-context = []
+
 [dependencies]
 heck = "0.4.0"
 tree-sitter = "0.20.6"
