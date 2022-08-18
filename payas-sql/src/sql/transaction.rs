@@ -40,7 +40,7 @@ impl TransactionContext {
 impl<'a> TransactionScript<'a> {
     /// Returns the result of the last step
     #[instrument(
-        name = "TansactionScript::execute"
+        name = "TransactionScript::execute"
         skip(self, client)
         )]
     pub async fn execute(

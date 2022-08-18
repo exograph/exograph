@@ -178,6 +178,16 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
                 mapped_params: None,
             },
         ),
+        #[cfg(feature = "test-context")]
+        (
+            "test",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
         (
             "external",
             AnnotationSpec {
