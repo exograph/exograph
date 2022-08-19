@@ -25,17 +25,22 @@ pub enum ContextParsingError {
     Delegate(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
-pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
-
-/// Represent a request context extracted for a particular request
-pub struct UserRequestContext {
-    // maps from an annotation to a parsed context
-    parsed_context_map: HashMap<String, BoxedParsedContext>,
+/// Represents a HTTP request from which information can be extracted
+pub trait Request {
+    // we return a Vec here instead of a map because headers can be present multiple times in a request
+    fn headers(&self) -> Vec<(String, String)>;
 }
 
-impl UserRequestContext {
-    // Constructs a UserRequestContext from a vector of parsed contexts.
-    pub fn from_parsed_contexts(contexts: Vec<BoxedParsedContext>) -> UserRequestContext {
+/// Represent a request context extracted for a particular request
+pub struct UserRequestContext<'a> {
+    // maps from an annotation to a parsed context
+    parsed_context_map: HashMap<String, BoxedParsedContext>,
+    request: &'a (dyn Request + Send + Sync)
+}
+
+impl<'a> UserRequestContext<'a> {
+    // Constructs a UserRequestContext from a vector of parsed contexts and a request.
+    pub fn from_parsed_contexts(contexts: Vec<BoxedParsedContext>, request: &'a (dyn Request + Send + Sync)) -> UserRequestContext<'a> {
         // a list of backend-agnostic contexts to also include
 
         let generic_contexts: Vec<BoxedParsedContext> = vec![
@@ -49,12 +54,13 @@ impl UserRequestContext {
                 .chain(generic_contexts.into_iter()) // include agnostic contexts
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
+            request
         }
     }
 }
 
 pub enum RequestContext<'a> {
-    User(UserRequestContext),
+    User(UserRequestContext<'a>),
 
     // The recursive nature allows stacking overrides
     Overridden {
@@ -115,7 +121,7 @@ impl<'a> RequestContext<'a> {
         resolver: &'s ResolveOperationFn<'a>,
     ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
-            RequestContext::User(UserRequestContext { parsed_context_map }) => {
+            RequestContext::User(UserRequestContext { parsed_context_map, request }) => {
                 let field_value = self
                     .extract_context_field_from_source(
                         parsed_context_map,
@@ -165,6 +171,7 @@ pub trait ParsedContext {
         request_context: &'r RequestContext<'r>,
     ) -> Option<Value>;
 }
+pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
 #[cfg(test)]
 pub struct TestRequestContext {
