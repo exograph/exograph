@@ -1,3 +1,5 @@
+use tokio_postgres::Client;
+
 use crate::{
     database_error::DatabaseError,
     sql::{database::Database, transaction::TransactionStepResult},
@@ -19,10 +21,16 @@ impl DatabaseExecutor {
         operation: &'a AbstractOperation<'a>,
     ) -> Result<TransactionStepResult, DatabaseError> {
         let mut client = self.database.get_client().await?;
+        let client: &mut Client = &mut client;
 
         let database_kind = Postgres {};
 
         let transaction_script = Transformer::to_transaction_script(&database_kind, operation);
-        transaction_script.execute(&mut client).await
+
+        let mut tx = client.transaction().await?;
+        let result = transaction_script.execute(&mut tx).await;
+        tx.commit().await?;
+
+        result
     }
 }
