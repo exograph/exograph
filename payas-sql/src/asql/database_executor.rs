@@ -25,7 +25,7 @@ impl DatabaseExecutor {
 
         let database_kind = Postgres {};
 
-        let transaction_script = Transformer::to_transaction_script(&database_kind, operation);
+        let transaction_script = database_kind.to_transaction_script(operation);
 
         let mut tx = client.transaction().await?;
         let result = transaction_script.execute(&mut tx).await;

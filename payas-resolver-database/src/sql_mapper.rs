@@ -7,14 +7,14 @@ use super::{
     database_execution_error::DatabaseExecutionError,
     database_system_context::DatabaseSystemContext,
 };
-pub enum SQLOperationKind {
+pub(crate) enum SQLOperationKind {
     Create,
     Retrieve,
     Update,
     Delete,
 }
 
-pub trait SQLMapper<'a, R> {
+pub(crate) trait SQLMapper<'a, R> {
     fn map_to_sql(
         &'a self,
         argument: &'a ConstValue,
@@ -32,7 +32,7 @@ pub trait SQLInsertMapper<'a> {
     ) -> Result<AbstractInsert, DatabaseExecutionError>;
 }
 
-pub trait SQLUpdateMapper<'a> {
+pub(crate) trait SQLUpdateMapper<'a> {
     fn update_operation(
         &'a self,
         return_type: &'a OperationReturnType,

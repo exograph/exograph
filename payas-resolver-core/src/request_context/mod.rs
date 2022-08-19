@@ -108,7 +108,7 @@ impl<'a> RequestContext<'a> {
     }
 
     #[async_recursion]
-    pub async fn extract_context_field<'s>(
+    async fn extract_context_field<'s>(
         &'a self,
         context: &ContextType,
         field: &ContextField,

@@ -12,7 +12,7 @@ use super::{
     DatabaseExecutionError,
 };
 
-pub trait OrderByParameterMapper<'a> {
+pub(crate) trait OrderByParameterMapper<'a> {
     fn map_to_order_by(
         &'a self,
         argument: &'a ConstValue,
