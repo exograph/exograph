@@ -181,6 +181,7 @@ mod tests {
         },
         sql::ExpressionContext,
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
+        AbstractOrderBy, Ordering,
     };
 
     use super::AbstractSelect;
@@ -470,6 +471,89 @@ mod tests {
                     binding,
                     r#"select coalesce(json_agg(json_build_object('id', "concerts"."id")), '[]'::json)::text from "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" WHERE "venues"."name" = $1"#,
                     "v1".to_string()
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn simple_order_by() {
+        TestSetup::with_setup(
+            |TestSetup {
+                 concerts_table,
+                 concerts_id_column,
+                 concerts_name_column,
+                 ..
+             }| {
+                let concert_name_path = ColumnPath::Physical(vec![ColumnPathLink {
+                    self_column: (concerts_name_column, concerts_table),
+                    linked_column: None,
+                }]);
+
+                let aselect = AbstractSelect {
+                    table: concerts_table,
+                    selection: Selection::Seq(vec![ColumnSelection::new(
+                        "id".to_string(),
+                        SelectionElement::Physical(concerts_id_column),
+                    )]),
+                    predicate: None,
+                    order_by: Some(AbstractOrderBy(vec![(concert_name_path, Ordering::Asc)])),
+                    offset: None,
+                    limit: None,
+                };
+
+                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let mut expr = ExpressionContext::default();
+                let binding = select.binding(&mut expr);
+                assert_binding!(
+                    binding,
+                    r#"select "concerts"."id" from (select "concerts".* from "concerts" ORDER BY "concerts"."name" ASC) as "concerts""#
+                );
+            },
+        );
+    }
+
+    #[test]
+    fn nested_order_by() {
+        TestSetup::with_setup(
+            |TestSetup {
+                 concerts_table,
+                 venues_table,
+                 concerts_id_column,
+                 venues_name_column,
+                 concerts_venue_id_column,
+                 venues_id_column,
+                 ..
+             }| {
+                let venues_name_path = ColumnPath::Physical(vec![
+                    ColumnPathLink {
+                        self_column: (concerts_venue_id_column, concerts_table),
+                        linked_column: Some((venues_id_column, venues_table)),
+                    },
+                    ColumnPathLink {
+                        self_column: (venues_name_column, venues_table),
+                        linked_column: None,
+                    },
+                ]);
+
+                let aselect = AbstractSelect {
+                    table: concerts_table,
+                    selection: Selection::Seq(vec![ColumnSelection::new(
+                        "id".to_string(),
+                        SelectionElement::Physical(concerts_id_column),
+                    )]),
+                    predicate: None,
+                    order_by: Some(AbstractOrderBy(vec![(venues_name_path, Ordering::Asc)])),
+                    offset: None,
+                    limit: None,
+                };
+
+                let select = Postgres {}.to_select(&aselect, None, SelectionLevel::TopLevel);
+                let mut expr = ExpressionContext::default();
+                let binding = select.binding(&mut expr);
+                assert_binding!(
+                    binding,
+                    r#"select "concerts"."id" from (select "concerts".* from "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id" ORDER BY "venues"."name" ASC) as "concerts" LEFT JOIN "venues" ON "concerts"."venue_id" = "venues"."id""#
                 );
             },
         );

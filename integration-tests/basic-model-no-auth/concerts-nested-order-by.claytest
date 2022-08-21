@@ -1,0 +1,202 @@
+operation: |
+    fragment ConcertInfo on Concert {
+      id
+      venue {
+        id
+        name
+        latitude
+      }
+    }
+
+    query {
+      concerts {
+        ...ConcertInfo
+      }
+      concerts_oder_by_venue_id_asc: concerts(orderBy: {venue: {id: ASC}}) {
+        ...ConcertInfo
+      }
+      concerts_oder_by_venue_id_desc: concerts(orderBy: {venue: {id: DESC}}) {
+        ...ConcertInfo
+      }
+      concerts_oder_by_venue_latitude_asc: concerts(orderBy: {venue: {latitude: ASC}}) {
+        ...ConcertInfo
+      }
+      concerts_oder_by_venue_latitude_desc: concerts(orderBy: {venue: {latitude: DESC}}) {
+        ...ConcertInfo
+      }
+    }
+response: |
+    {
+      "data": {
+        "concerts": [
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          }
+        ],
+        "concerts_oder_by_venue_id_asc": [
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          }
+        ],
+        "concerts_oder_by_venue_id_desc": [
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          }
+        ],
+        "concerts_oder_by_venue_latitude_asc": [
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          }
+        ],
+        "concerts_oder_by_venue_latitude_desc": [
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          }
+        ]
+      }
+    }
