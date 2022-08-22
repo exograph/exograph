@@ -23,6 +23,12 @@ operation: |
         }
         adminDoc4: createAdminDoc(data: {content: "adminDoc4"}) {
             id
+        }
+        users: createUsers(data: [{name: "u1"}, {name: "u2"}]) {
+            id
+        }
+        memberships: createMemberships(data: [{kind: "k1", user: {id: 1}}, {kind: "k1", user: {id: 2}}]) {
+            id
         }                       
     }  
 auth: |

@@ -1,0 +1,27 @@
+operation: |
+    fragment MembershipInfo on Membership {
+      id
+      kind
+      user {
+        id
+      }
+    }
+    query {
+      # Asked too much info about own membership ("user" can't be accessed by non-admins)
+      membership(id: 1) {
+        ...MembershipInfo
+      }
+    }
+auth: |
+    {
+        "sub": 1,
+        "roles": ["USER"]
+    }   
+response: |
+    {
+      "errors": [
+        {
+          "message": "Not authorized"
+        }
+      ]
+    }
