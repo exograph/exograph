@@ -1,10 +1,8 @@
-use anyhow::{anyhow, Result};
 use deno_core::Extension;
 use futures::pin_mut;
 use serde_json::Value;
 use std::fmt::Debug;
 use std::{
-    marker::PhantomData,
     panic,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -17,6 +15,7 @@ use tokio::sync::{
 };
 use tracing::instrument;
 
+use crate::deno_error::{DenoError, DenoInternalError};
 use crate::deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};
 
 struct DenoCall<C, R> {
@@ -24,7 +23,7 @@ struct DenoCall<C, R> {
     arguments: Vec<Arg>,
     call_context: C,
     /// The sender to communicate the final result
-    final_response_sender: oneshot::Sender<Result<(Value, Option<R>)>>,
+    final_response_sender: oneshot::Sender<Result<(Value, Option<R>), DenoError>>,
 }
 
 /// An actor-like wrapper for `DenoModule`.
@@ -71,7 +70,6 @@ pub(crate) struct DenoActor<C, M, R> {
     // Sender to ask the actor to execute a JS/TS call. The actor will poll for messages on the corresponding receiver.
     call_sender: Sender<DenoCall<C, R>>,
     busy: Arc<std::sync::atomic::AtomicBool>,
-    return_type: PhantomData<R>,
 }
 
 impl<C, M, R> DenoActor<C, M, R>
@@ -84,13 +82,13 @@ where
     pub fn new(
         code: UserCode,
         user_agent_name: &'static str,
-        shims: Vec<(&'static str, &'static str)>,
+        shims: Vec<(&'static str, &'static [&'static str])>,
         additional_code: Vec<&'static str>,
         extension_ops: fn() -> Vec<Extension>,
         explicit_error_class_name: Option<&'static str>,
         shared_state: DenoModuleSharedState,
         process_call_context: fn(&mut DenoModule, C) -> (),
-    ) -> Result<DenoActor<C, M, R>> {
+    ) -> Result<DenoActor<C, M, R>, DenoError> {
         let (callback_sender, callback_receiver) = tokio::sync::mpsc::channel(1);
 
         // we will receive DenoCall messages through this channel from call_method
@@ -173,7 +171,6 @@ where
             callback_receiver: Arc::new(Mutex::new(callback_receiver)),
             call_sender: deno_call_sender,
             busy,
-            return_type: PhantomData,
         })
     }
 
@@ -202,7 +199,7 @@ where
         arguments: Vec<Arg>,
         call_context: C,
         callback_sender: tokio::sync::mpsc::Sender<M>,
-    ) -> Result<(Value, Option<R>)> {
+    ) -> Result<(Value, Option<R>), DenoError> {
         // Channel to communicate the final result
         let (final_response_sender, final_result_receiver) = oneshot::channel();
 
@@ -214,10 +211,10 @@ where
         };
         // send it to the DenoModule thread
         self.call_sender.send(deno_call).await.map_err(|err| {
-            anyhow!(
-                "Could not send method call request to DenoActor thread ({})",
+            DenoInternalError::Channel(format!(
+                "Could not send method call request to DenoActor thread: {}",
                 err
-            )
+            ))
         })?;
 
         pin_mut!(final_result_receiver);
@@ -233,13 +230,13 @@ where
                 message = on_recv_request => {
                     // forward callback message from Deno to the caller through the channel they gave us
                     callback_sender.send(
-                        message.ok_or_else(|| anyhow!("Channel was dropped before completion while calling method"))?
-                    ).await.map_err(|err| anyhow!("Could not send request result to DenoActor in call_method ({})", err))?;
+                        message.ok_or_else(|| DenoInternalError::Channel("Channel was dropped before completion while calling method".into()))?
+                    ).await.map_err(|err| DenoInternalError::Channel(format!("Could not send request result to DenoActor in call_method ({err})")))?;
                 }
 
                 final_result = &mut final_result_receiver => {
                     // final result is received, break the loop with the result
-                    break final_result.map_err(|err| anyhow!("Could not receive result from DenoActor thread ({})", err))?;
+                    break final_result.map_err(|err| DenoInternalError::Channel(format!("Could not receive result from DenoActor thread ({err})")))?;
                 }
             };
         }
@@ -253,7 +250,6 @@ impl<C, M, R> Clone for DenoActor<C, M, R> {
             callback_receiver: self.callback_receiver.clone(),
             call_sender: self.call_sender.clone(),
             busy: self.busy.clone(),
-            return_type: PhantomData,
         }
     }
 }
@@ -264,7 +260,7 @@ mod tests {
     use std::path::Path;
     use tokio::sync::mpsc::channel;
 
-    const USER_AGENT_NAME: &str = "Claytip";
+    const USER_AGENT_NAME: &str = "TestDenoAgent";
     const ADDITIONAL_CODE: &str = "";
     const EXPLICIT_ERROR_CLASS_NAME: Option<&str> = None;
 

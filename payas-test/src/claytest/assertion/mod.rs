@@ -34,12 +34,12 @@ pub fn dynamic_assert_using_deno(
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
-            script,
+            script: script.into(),
         },
         "ClaytipTest",
         vec![],
         vec![include_str!(
-            "../../../../payas-server-core/src/deno_integration/claytip_error.js"
+            "../../../../payas-resolver-deno/src/claytip_error.js"
         )],
         vec![],
         DenoModuleSharedState::default(),
@@ -81,7 +81,7 @@ pub fn evaluate_using_deno(
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
             path: "internal/assert.js".to_owned(),
-            script,
+            script: script.into(),
         },
         "ClaytipTest",
         vec![],
@@ -95,7 +95,12 @@ pub fn evaluate_using_deno(
     let mut deno_module = runtime.block_on(deno_module_future)?;
 
     // run method
-    runtime.block_on(deno_module.execute_function("evaluate", vec![Arg::Serde(testvariables_json)]))
+    runtime.block_on(async {
+        deno_module
+            .execute_function("evaluate", vec![Arg::Serde(testvariables_json)])
+            .await
+            .map_err(|e| anyhow!(e))
+    })
 }
 
 #[cfg(test)]

@@ -15,7 +15,7 @@ response: |
   {
     "errors": [
       {
-        "message": "Cannot specify more than one logical operation on the same level"
+        "message": "Error computing predicate for field 'logs': Cannot specify more than one logical operation on the same level"
       }
     ]
   }

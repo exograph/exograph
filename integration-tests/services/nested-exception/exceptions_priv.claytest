@@ -1,0 +1,12 @@
+operation: |
+    query Foo {
+      callThrowClaytipError
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "user message"
+        }
+      ]
+    } 

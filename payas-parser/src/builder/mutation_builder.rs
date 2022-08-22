@@ -1,10 +1,12 @@
 //! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
+use super::naming::ToGqlTypeNames;
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::naming::ToGqlTypeNames;
-use payas_model::model::operation::{Interceptors, Mutation, MutationKind, OperationReturnType};
+use payas_model::model::operation::{
+    DatabaseMutationKind, Interceptors, Mutation, MutationKind, OperationReturnType,
+};
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::{
     GqlCompositeType, GqlField, GqlFieldType, GqlType, GqlTypeKind, GqlTypeModifier,
@@ -46,14 +48,14 @@ pub trait MutationBuilder {
         model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
-    ) -> MutationKind;
+    ) -> DatabaseMutationKind;
 
     fn multi_mutation_name(model_type: &GqlType) -> String;
     fn multi_mutation_kind(
         model_type_id: SerializableSlabIndex<GqlType>,
         model_type: &GqlType,
         building: &SystemContextBuilding,
-    ) -> MutationKind;
+    ) -> DatabaseMutationKind;
 
     fn build_mutations(
         &self,
@@ -63,7 +65,9 @@ pub trait MutationBuilder {
     ) -> Vec<Mutation> {
         let single_mutation = Mutation {
             name: Self::single_mutation_name(model_type),
-            kind: Self::single_mutation_kind(model_type_id, model_type, building),
+            kind: MutationKind::Database {
+                kind: Self::single_mutation_kind(model_type_id, model_type, building),
+            },
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
@@ -74,7 +78,9 @@ pub trait MutationBuilder {
 
         let multi_mutation = Mutation {
             name: Self::multi_mutation_name(model_type),
-            kind: Self::multi_mutation_kind(model_type_id, model_type, building),
+            kind: MutationKind::Database {
+                kind: Self::multi_mutation_kind(model_type_id, model_type, building),
+            },
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),

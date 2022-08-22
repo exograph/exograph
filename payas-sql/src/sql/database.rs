@@ -1,4 +1,3 @@
-use anyhow::{anyhow, bail, Context, Result};
 use std::env;
 
 use deadpool_postgres::{Client, Manager, ManagerConfig, Pool, RecyclingMethod};
@@ -6,22 +5,30 @@ use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use postgres_openssl::MakeTlsConnector;
 use tokio_postgres::{config::SslMode, Config};
 
+use crate::database_error::DatabaseError;
+
 const URL_PARAM: &str = "CLAY_DATABASE_URL";
 const USER_PARAM: &str = "CLAY_DATABASE_USER";
 const PASSWORD_PARAM: &str = "CLAY_DATABASE_PASSWORD";
 const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
 const CHECK_CONNECTION_ON_STARTUP: &str = "CLAY_CHECK_CONNECTION_ON_STARTUP";
-const SSL_METHOD_PARAM: &str = "CLAY_SSL_METHOD"; // Possible values: "tls" and "dtls"
-const SSL_NO_VERIFY_PARAM: &str = "CLAY_SSL_NO_VERIFY"; // boolean (default: false)
+const SSL_VERIFY_PARAM: &str = "CLAY_SSL_VERIFY"; // boolean (default: true)
 
 pub struct Database {
     pool: Pool,
 }
 
+struct SslConfig {
+    mode: SslMode,
+    verify_mode: SslVerifyMode,
+    cert_path: Option<String>,
+}
+
 impl<'a> Database {
     // pool_size_override useful when we want to explicitly control the pool size (for example, to 1, when importing database schema)
-    pub fn from_env(pool_size_override: Option<usize>) -> Result<Self> {
-        let url = env::var(URL_PARAM).context("CLAY_DATABASE_URL must be provided")?;
+    pub fn from_env(pool_size_override: Option<usize>) -> Result<Self, DatabaseError> {
+        let url = env::var(URL_PARAM)
+            .map_err(|_| DatabaseError::Config(format!("Env {URL_PARAM} must be provided")))?;
         let user = env::var(USER_PARAM).ok();
         let password = env::var(PASSWORD_PARAM).ok();
         let pool_size = pool_size_override.unwrap_or_else(|| {
@@ -31,57 +38,33 @@ impl<'a> Database {
                 .unwrap_or(10)
         });
 
-        let ssl_config = Self::create_ssl_config()?;
-
         let check_connection = env::var(CHECK_CONNECTION_ON_STARTUP)
             .ok()
             .map(|pool_str| pool_str.parse::<bool>().unwrap())
             .unwrap_or(true);
 
-        Self::from_env_helper(pool_size, check_connection, url, user, password, ssl_config)
+        Self::from_helper(pool_size, check_connection, &url, user, password)
     }
 
-    fn from_env_helper(
+    pub fn from_db_url(url: &str) -> Result<Self, DatabaseError> {
+        Self::from_helper(1, true, url, None, None)
+    }
+
+    fn from_helper(
         pool_size: usize,
         _check_connection: bool,
-        url_string: String,
+        url: &str,
         user: Option<String>,
         password: Option<String>,
-        ssl_config: Option<(SslMethod, SslVerifyMode)>,
-    ) -> Result<Self> {
+    ) -> Result<Self, DatabaseError> {
         use std::str::FromStr;
 
-        let url = url::Url::parse(&url_string).context("Invalid URL")?;
+        let (url, ssl_config) = Self::create_ssl_config(url)?;
 
-        let mut ssl_param: Option<String> = None;
-        let mut ssl_mode: Option<String> = None;
-        let mut ssl_root_cert = None;
-
-        // Remove parameters from the url that typical postgres URL includes (for example, with YugabyteDB),
-        // but the tokio-rust-postgres driver doesn't support yet.
-        // Instead capture those parameters and use them later in the connection/ssl config.
-        let query = url.query_pairs().filter(|(name, value)| {
-            if name == "ssl" {
-                ssl_param = Some(value.to_string());
-                false
-            } else if name == "sslmode" {
-                ssl_mode = Some(value.to_string());
-                false
-            } else if name == "sslrootcert" {
-                ssl_root_cert = Some(value.to_string());
-                false
-            } else {
-                true
-            }
-        });
-
-        let mut cleaned_url = url.clone();
-        cleaned_url.query_pairs_mut().clear().extend_pairs(query);
-
-        // We need to replace '+' (encoded from a space character) with '%20' since the tokio-rust-postgres driver doesn't seem to support
-        // the encoding that uses '+' for a space.
-        let mut config = Config::from_str(cleaned_url.as_str().replace('+', "%20").as_str())
-            .context("Failed to parse PostgreSQL connection string")?;
+        let mut config = Config::from_str(&url).map_err(|e| {
+            DatabaseError::Delegate(e)
+                .with_context("Failed to parse PostgreSQL connection string".into())
+        })?;
 
         if let Some(user) = &user {
             config.user(user);
@@ -91,33 +74,7 @@ impl<'a> Database {
         }
 
         if config.get_user() == None {
-            bail!("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER")
-        }
-
-        // See: https://jdbc.postgresql.org/documentation/head/ssl-client.html
-        // 1. "ssl" parameter is a quick way to specify SSL mode. If it is true, then it has the same effect as setting "sslmode" to "verify-full".
-        //    So we process this first.
-        if let Some(ssl_param) = ssl_param {
-            let ssl_param_parsed = ssl_param.as_str().parse();
-            let ssl_mode = match ssl_param_parsed {
-                Ok(true) => SslMode::Require,
-                Ok(false) => SslMode::Disable,
-                _ => {
-                    bail!("Invalid 'ssl' parameter value {ssl_param}. Must be a 'true' or 'false'")
-                }
-            };
-            config.ssl_mode(ssl_mode);
-        }
-        // 2. The tokio-postgres library doesn't have a way to map all possible values of "sslmode", so we pick the nearest stricter mode.
-        //    We process this the next to allow any refinement of the SSL mode set through the simpler "ssl" parameter.
-        if let Some(ssl_mode) = ssl_mode {
-            let ssl_mode = match ssl_mode.as_str() {
-                "verify-full" | "verify-ca" | "require" => SslMode::Require,
-                "prefer" | "allow" => SslMode::Prefer,
-                "disable" => SslMode::Disable,
-                _ => bail!("Invalid 'sslmode' parameter value {ssl_mode}"),
-            };
-            config.ssl_mode(ssl_mode);
+            return Err(DatabaseError::Config("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER".into()));
         }
 
         let manager_config = ManagerConfig {
@@ -125,10 +82,15 @@ impl<'a> Database {
         };
 
         let manager = match ssl_config {
-            Some((ssl_method, ssl_verify_mode)) => {
-                let mut builder = SslConnector::builder(ssl_method)?;
-                builder.set_verify(ssl_verify_mode);
-                if let Some(ssl_root_cert) = ssl_root_cert {
+            Some(SslConfig {
+                mode,
+                verify_mode,
+                cert_path,
+            }) => {
+                config.ssl_mode(mode);
+                let mut builder = SslConnector::builder(SslMethod::tls())?;
+                builder.set_verify(verify_mode);
+                if let Some(ssl_root_cert) = cert_path {
                     builder.set_ca_file(&ssl_root_cert)?;
                 }
                 let connector = MakeTlsConnector::new(builder.build());
@@ -148,52 +110,99 @@ impl<'a> Database {
         Ok(db)
     }
 
-    pub async fn get_client(&self) -> Result<Client> {
+    pub async fn get_client(&self) -> Result<Client, DatabaseError> {
         Ok(self.pool.get().await?)
     }
 
-    fn create_ssl_config() -> Result<Option<(SslMethod, SslVerifyMode)>> {
-        let ssl_method = env::var(SSL_METHOD_PARAM)
-            .ok()
-            .map(
-                |env_str| match env_str.as_str().to_ascii_lowercase().as_str() {
-                    "tls" => Ok(Some(SslMethod::tls())),
-                    "dtls" => Ok(Some(SslMethod::dtls())),
-                    _ => Err(anyhow!(
-                        "Invalid SSL method: {}. Env {} must be set to either 'tls' or 'dtls'",
-                        env_str,
-                        SSL_METHOD_PARAM
-                    )),
-                },
-            )
-            .unwrap_or_else(|| Ok(None))?;
+    fn create_ssl_config(url: &str) -> Result<(String, Option<SslConfig>), DatabaseError> {
+        let url = url::Url::parse(url)
+            .map_err(|_| DatabaseError::Config("Invalid database URL".into()))?;
 
-        let ssl_no_verify = env::var(SSL_NO_VERIFY_PARAM)
-            .ok()
-            .map(|env_str| match env_str.parse::<bool>() {
-                Ok(b) => Ok(Some(b)),
-                Err(_) => Err(anyhow!(
-                    "Invalid {} value: {}. It must be set to 'true' or 'false'",
-                    SSL_NO_VERIFY_PARAM,
-                    env_str,
-                )),
-            })
-            .unwrap_or_else(|| Ok(None))?;
+        let mut ssl_param_string: Option<String> = None;
+        let mut ssl_mode_string: Option<String> = None;
+        let mut ssl_root_cert_string = None;
 
-        if ssl_method.is_none() && ssl_no_verify == Some(false) {
-            bail!(
-                "{} must be set to 'tls' or 'dtls' when {} is set to 'false'",
-                SSL_METHOD_PARAM,
-                SSL_NO_VERIFY_PARAM
-            )
+        // Remove parameters from the url that typical postgres URL includes (for example, with YugabyteDB),
+        // but the tokio-rust-postgres driver doesn't support yet.
+        // Instead capture those parameters and use them later in the connection/ssl config.
+        let query = url.query_pairs().filter(|(name, value)| {
+            if name == "ssl" {
+                ssl_param_string = Some(value.to_string());
+                false
+            } else if name == "sslmode" {
+                ssl_mode_string = Some(value.to_string());
+                false
+            } else if name == "sslrootcert" {
+                ssl_root_cert_string = Some(value.to_string());
+                false
+            } else {
+                true
+            }
+        });
+
+        let mut cleaned_url = url.clone();
+        cleaned_url.query_pairs_mut().clear().extend_pairs(query);
+
+        // We need to replace '+' (encoded from a space character) with '%20' since the tokio-rust-postgres driver doesn't seem to support
+        // the encoding that uses '+' for a space.
+        let url = cleaned_url.as_str().replace('+', "%20");
+
+        let mut ssl_mode = SslMode::Disable;
+
+        // See: https://jdbc.postgresql.org/documentation/head/ssl-client.html
+        // 1. "ssl" parameter is a quick way to specify SSL mode. If it is true, then it has the same effect as setting "sslmode" to "verify-full".
+        //    So we process this first.
+        if let Some(ssl_param) = ssl_param_string {
+            let ssl_param_parsed = ssl_param.as_str().parse();
+            match ssl_param_parsed {
+                Ok(true) => ssl_mode = SslMode::Require,
+                Ok(false) => ssl_mode = SslMode::Disable,
+                _ => {
+                    return Err(DatabaseError::Config(format!(
+                        "Invalid 'ssl' parameter value {ssl_param}. Must be a 'true' or 'false'",
+                    )));
+                }
+            }
+        }
+        // 2. The tokio-postgres library doesn't have a way to map all possible values of "sslmode", so we pick the nearest stricter mode.
+        //    We process this the next to allow any refinement of the SSL mode set through the simpler "ssl" parameter.
+        if let Some(ssl_mode_string) = ssl_mode_string {
+            match ssl_mode_string.as_str() {
+                "verify-full" | "verify-ca" | "require" => ssl_mode = SslMode::Require,
+                "prefer" | "allow" => ssl_mode = SslMode::Prefer,
+                "disable" => ssl_mode = SslMode::Disable,
+                _ => {
+                    return Err(DatabaseError::Config(format!(
+                        "Invalid 'sslmode' parameter value {ssl_mode_string}"
+                    )))
+                }
+            }
         }
 
-        let ssl_config = match (ssl_method, ssl_no_verify) {
-            (Some(ssl_method), Some(false)) => Some((ssl_method, SslVerifyMode::PEER)),
-            (Some(ssl_method), Some(true)) => Some((ssl_method, SslVerifyMode::NONE)),
-            _ => None,
+        let ssl_verify = env::var(SSL_VERIFY_PARAM)
+            .ok()
+            .map(|env_str| match env_str.parse::<bool>() {
+                Ok(b) => Ok(b),
+                Err(_) => Err(DatabaseError::Config(format!(
+                    "Invalid {SSL_VERIFY_PARAM} value: {env_str}. It must be set to 'true' or 'false'",
+                ))),
+            })
+            .unwrap_or(Ok(true))?;
+
+        let ssl_config = if ssl_mode == SslMode::Disable {
+            None
+        } else {
+            Some(SslConfig {
+                mode: ssl_mode,
+                verify_mode: if ssl_verify {
+                    SslVerifyMode::PEER
+                } else {
+                    SslVerifyMode::NONE
+                },
+                cert_path: ssl_root_cert_string,
+            })
         };
 
-        Ok(ssl_config)
+        Ok((url, ssl_config))
     }
 }

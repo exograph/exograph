@@ -9,7 +9,7 @@ pub enum ParserError {
     #[error("File '{0}' not found")]
     FileNotFound(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
     IO(#[from] std::io::Error),
 
     #[error("{0}")]

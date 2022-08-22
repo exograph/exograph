@@ -1,9 +1,8 @@
-use std::marker::PhantomData;
-
 use futures::pin_mut;
 
+use crate::deno_error::DenoError;
+
 use super::{deno_actor::DenoActor, deno_module::Arg};
-use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
 use std::fmt::Debug;
@@ -17,7 +16,6 @@ use std::fmt::Debug;
 /// `callback_processor` to resolve callbacks and responding with the final result.
 pub struct DenoExecutor<C, M, R> {
     pub(crate) actor: DenoActor<C, M, R>,
-    pub(crate) return_type: PhantomData<R>,
 }
 
 #[async_trait]
@@ -43,7 +41,7 @@ impl<
         arguments: Vec<Arg>,
         call_context: C,
         callback_processor: impl CallbackProcessor<M>,
-    ) -> Result<(Value, Option<R>)> {
+    ) -> Result<(Value, Option<R>), DenoError> {
         // set up a channel for Deno to talk to use through
         let (to_user_sender, mut to_user_receiver) = tokio::sync::mpsc::channel(1);
 

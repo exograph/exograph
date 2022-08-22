@@ -28,7 +28,7 @@ where
     type Type;
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Untyped;
 impl NodeTypedness for Untyped {
     type FieldSelection = ();
@@ -85,7 +85,7 @@ pub struct AstMethod<T: NodeTypedness> {
     pub annotations: T::Annotations,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum AstMethodType {
     Query,
     Mutation,
@@ -113,7 +113,7 @@ pub struct AstInterceptor<T: NodeTypedness> {
     pub span: Span,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum AstModelKind {
     Persistent,         // a model intended to be persisted inside the database
     Context,            // defines contextual models for authorization
@@ -348,7 +348,7 @@ impl<T: NodeTypedness> RelationalOp<T> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Identifier(
     pub String,
     #[serde(skip_serializing)]

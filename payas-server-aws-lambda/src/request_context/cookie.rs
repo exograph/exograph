@@ -1,9 +1,8 @@
-use anyhow::Result;
 use async_trait::async_trait;
 use cookie::Cookie;
-use payas_server_core::{
+use payas_resolver_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
-    OperationsExecutor,
+    ResolveOperationFn,
 };
 use serde_json::Value;
 
@@ -53,11 +52,11 @@ impl ParsedContext for ParsedCookieContext {
         "cookie"
     }
 
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'r>(
+        &self,
         value: &str,
-        _executor: &'e OperationsExecutor,
-        _request_context: &'e RequestContext<'e>,
+        _resolver: &ResolveOperationFn<'r>,
+        _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         self.cookies
             .iter()

@@ -2,9 +2,8 @@ pub mod cookie;
 pub mod header;
 pub mod jwt;
 
-use payas_server_core::{
-    request_context::{BoxedParsedContext, RequestContext},
-    OperationsExecutor,
+use payas_resolver_core::request_context::{
+    BoxedParsedContext, RequestContext, UserRequestContext,
 };
 
 use self::{cookie::CookieProcessor, header::HeaderProcessor, jwt::JwtAuthenticator};
@@ -40,7 +39,6 @@ impl LambdaRequestContextProducer {
     pub fn generate_request_context<'a>(
         &'a self,
         request: &lambda_http::Request,
-        executor: &'a OperationsExecutor,
     ) -> Result<RequestContext, ContextProducerError> {
         let parsed_contexts = self
             .producers
@@ -51,9 +49,8 @@ impl LambdaRequestContextProducer {
             })
             .collect::<Result<Vec<_>, ContextProducerError>>()?; // emit errors if we encounter any while gathering context
 
-        Ok(RequestContext::from_parsed_contexts(
-            parsed_contexts,
-            executor,
+        Ok(RequestContext::User(
+            UserRequestContext::from_parsed_contexts(parsed_contexts),
         ))
     }
 }

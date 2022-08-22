@@ -32,7 +32,7 @@ pub struct Scope {
     pub enclosing_model: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Typed;
 impl NodeTypedness for Typed {
     type FieldSelection = Type;
@@ -88,7 +88,8 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     env.add("Blob", Type::Primitive(PrimitiveType::Blob));
     env.add("Uuid", Type::Primitive(PrimitiveType::Uuid));
 
-    env.add("Claytip", Type::Primitive(PrimitiveType::ClaytipInjected));
+    env.add("Claytip", Type::Primitive(PrimitiveType::Claytip));
+    env.add("ClaytipPriv", Type::Primitive(PrimitiveType::ClaytipPriv));
 
     env.add(
         "Operation",
@@ -170,6 +171,16 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
         ),
         (
             "env",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: true,
+                mapped_params: None,
+            },
+        ),
+        #[cfg(feature = "test-context")]
+        (
+            "test",
             AnnotationSpec {
                 targets: &[AnnotationTarget::Field],
                 no_params: true,

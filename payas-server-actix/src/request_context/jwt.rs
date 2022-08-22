@@ -7,10 +7,10 @@ use actix_web_httpauth::headers::authorization::Bearer;
 use async_trait::async_trait;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
-use payas_server_core::request_context::BoxedParsedContext;
-use payas_server_core::request_context::ParsedContext;
-use payas_server_core::request_context::RequestContext;
-use payas_server_core::OperationsExecutor;
+use payas_resolver_core::{
+    request_context::{BoxedParsedContext, ParsedContext, RequestContext},
+    ResolveOperationFn,
+};
 use serde_json::json;
 use serde_json::Value;
 
@@ -57,7 +57,7 @@ impl JwtAuthenticator {
         match Authorization::<Bearer>::parse(req) {
             Ok(auth) => {
                 let scheme = auth.into_scheme();
-                let token = scheme.token().as_ref();
+                let token = scheme.token();
                 self.validate_jwt(token)
                     .map(|v| Some(v.claims))
                     .map_err(|err| match &err.kind() {
@@ -105,11 +105,11 @@ impl ParsedContext for ParsedJwtContext {
         "jwt"
     }
 
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'r>(
+        &self,
         key: &str,
-        _executor: &'e OperationsExecutor,
-        _rc: &'e RequestContext,
+        _resolver: &ResolveOperationFn<'r>,
+        _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         self.jwt_claims.get(key).cloned()
     }

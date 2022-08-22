@@ -6,10 +6,10 @@
 
 use std::io::Write;
 
+use super::naming::{ToPlural, ToTableName};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
-use payas_model::model::naming::{ToPlural, ToTableName};
 use payas_model::model::GqlTypeModifier;
 
 use crate::ast::ast_types::{
@@ -52,7 +52,7 @@ pub struct ResolvedContext {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedService {
     pub name: String,
-    pub script: String,
+    pub script: Vec<u8>,
     pub script_path: String,
     pub methods: Vec<ResolvedMethod>,
     pub interceptors: Vec<ResolvedInterceptor>,
@@ -68,7 +68,7 @@ pub struct ResolvedMethod {
     pub return_type: ResolvedFieldType,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedMethodType {
     Query,
     Mutation,
@@ -143,7 +143,7 @@ impl ResolvedCompositeType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedCompositeTypeKind {
     Persistent { table_name: String },
     NonPersistent { is_input: bool },
@@ -207,7 +207,7 @@ impl ResolvedField {
 // what kind of field is this?
 // some fields do not need to be persisted, and thus should not carry database-related
 // information
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedFieldKind {
     Persistent {
         column_name: String,
@@ -227,7 +227,7 @@ pub struct ResolvedContextField {
 }
 
 // For now, ResolvedContextSource and ContextSource have the same structure
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedContextSource {
     pub annotation: String,
     pub value: String,
@@ -265,7 +265,7 @@ impl ResolvedFieldType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ResolvedTypeHint {
     Explicit {
         dbtype: String,
@@ -435,34 +435,41 @@ fn build_shallow(
                 let mut module_fs_path = service.base_clayfile.clone();
                 module_fs_path.pop();
                 module_fs_path.push(module_path);
+                let extension = module_fs_path.extension().and_then(|e| e.to_str());
 
-                service_skeleton_generator::generate_service_skeleton(service, &module_fs_path)?;
+                let bundled_script = if extension == Some("ts") || extension == Some("js") {
+                    service_skeleton_generator::generate_service_skeleton(
+                        service,
+                        &module_fs_path,
+                    )?;
 
-                // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
-                let bundler_output = std::process::Command::new("deno")
-                    .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
-                    .output()
-                    .map_err(|err| {
+                    // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
+                    let bundler_output = std::process::Command::new("deno")
+                        .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
+                        .output()
+                        .map_err(|err| {
+                            ParserError::Generic(format!(
+                                "While trying to invoke `deno` in order to bundle .ts files: {}",
+                                err
+                            ))
+                        })?;
+
+                    if bundler_output.status.success() {
+                        bundler_output.stdout
+                    } else {
+                        std::io::stdout().write_all(&bundler_output.stderr).unwrap();
+                        return Err(ParserError::Generic(
+                            "Deno bundler did not exit successfully".to_string(),
+                        ));
+                    }
+                } else {
+                    std::fs::read(&module_fs_path).map_err(|err| {
                         ParserError::Generic(format!(
-                            "While trying to invoke `deno` in order to bundle .ts files: {}",
+                            "While trying to read bundled service module: {}",
                             err
                         ))
-                    })?;
-
-                let bundled_script = if bundler_output.status.success() {
-                    std::str::from_utf8(&bundler_output.stdout)
-                } else {
-                    std::io::stdout().write_all(&bundler_output.stderr).unwrap();
-                    return Err(ParserError::Generic(
-                        "Deno bundler did not exit successfully".to_string(),
-                    ));
-                }
-                .map_err(|_| {
-                    ParserError::Generic(format!(
-                        "Could not parse script file at \"{}\" into UTF-8",
-                        module_fs_path.to_str().unwrap()
-                    ))
-                })?;
+                    })?
+                };
 
                 let module_anonymized_path = module_fs_path
                     .strip_prefix(&service.base_clayfile.parent().unwrap())
@@ -479,7 +486,7 @@ fn build_shallow(
                     &service.name,
                     ResolvedService {
                         name: service.name.clone(),
-                        script: bundled_script.to_string(),
+                        script: bundled_script,
                         script_path: module_anonymized_path.to_str().expect("Script path was not UTF-8").to_string(),
                         methods: service
                             .methods
@@ -779,7 +786,7 @@ fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> Resolve
         }
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
             DEFAULT_FN_AUTOINCREMENT => ResolvedFieldDefault::Autoincrement,
-            DEFAULT_FN_CURRENT_TIME => ResolvedFieldDefault::DatabaseFunction("NOW()".to_string()),
+            DEFAULT_FN_CURRENT_TIME => ResolvedFieldDefault::DatabaseFunction("now()".to_string()),
             DEFAULT_FN_GENERATE_UUID => {
                 ResolvedFieldDefault::DatabaseFunction("gen_random_uuid()".to_string())
             }
@@ -1120,7 +1127,9 @@ fn compute_column_info(
                 .unwrap_or_else(|| field_name.to_snake_case())
         };
 
-        let unique_constraint_computed_name = format!("unique_constraint_{}", field.name);
+        let unique_constraint_computed_name =
+            format!("unique_constraint_{}_{}", enclosing_type.name, field.name)
+                .to_ascii_lowercase();
         let unique_constraints = field
             .annotations
             .get("unique")

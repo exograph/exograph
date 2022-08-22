@@ -1,19 +1,40 @@
-use std::{env, path::PathBuf, time::SystemTime};
+use std::{
+    env,
+    path::PathBuf,
+    sync::atomic::{AtomicBool, Ordering},
+    time::SystemTime,
+};
 
 use anyhow::Result;
 use clap::{Arg, Command};
-use commands::{
-    migrate::MigrateCommand, serve::ServeCommand, test::TestCommand, yolo::YoloCommand,
-};
+use commands::{serve::ServeCommand, test::TestCommand, yolo::YoloCommand};
 
-use crate::commands::{build::BuildCommand, import, schema};
+use crate::commands::{build::BuildCommand, schema};
 
 mod commands;
+pub(crate) mod util;
 
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
+pub static SIGINT: AtomicBool = AtomicBool::new(false);
+pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
+
 fn main() -> Result<()> {
     let system_start_time = SystemTime::now();
+
+    // register a sigint handler
+    ctrlc::set_handler(move || {
+        // set SIGINT flag when receiving signal
+        SIGINT.store(true, Ordering::SeqCst);
+
+        // exit if EXIT_ON_SIGINT is set
+        // code may set this to be false if they have resources to
+        // clean up before exiting
+        if EXIT_ON_SIGINT.load(Ordering::SeqCst) {
+            std::process::exit(0);
+        }
+    })
+    .expect("Error setting Ctrl-C handler");
 
     let matches = Command::new("Claytip")
         .version(env!("CARGO_PKG_VERSION"))
@@ -31,43 +52,8 @@ fn main() -> Result<()> {
                 ),
         )
         .subcommand(
-            Command::new("migrate")
-                .about("Perform a database migration for a claytip model")
-                .arg(
-                    Arg::new("model")
-                        .help("Claytip model file")
-                        .required(true)
-                        .index(1),
-                )
-                .arg(
-                    Arg::new("database")
-                        .help("Database source (postgres, git)")
-                        .required(true)
-                        .index(2),
-                ),
-        )
-        .subcommand(
-            Command::new("model")
-                .about("Claytip model utilities")
-                .subcommand_required(true)
-                .arg_required_else_help(true)
-                .subcommand(
-                    Command::new("import")
-                        .about("Create claytip model file based on a database schema")
-                        .arg(
-                            Arg::new("output")
-                                .help("Claytip model output file")
-                                .short('o')
-                                .long("output")
-                                .takes_value(true)
-                                .value_name("output")
-                                .default_value(DEFAULT_MODEL_FILE),
-                        ),
-                ),
-        )
-        .subcommand(
             Command::new("schema")
-                .about("Database schema utilities")
+                .about("Create, migrate, import, and verify database schema")
                 .subcommand_required(true)
                 .arg_required_else_help(true)
                 .subcommand(
@@ -95,11 +81,41 @@ fn main() -> Result<()> {
                                 .required(true)
                                 .index(2),
                         ),
+                )
+                .subcommand(
+                    Command::new("migrate")
+                        .about("Produces a SQL migration script for a claytip model and the provided database")
+                        .arg(
+                            Arg::new("allow-destructive-changes")
+                                .help("Allow destructive changes (otherwise commented for manual review)")
+                                .long("allow-destructive-changes")
+                                .required(false)
+                                .takes_value(false),
+                        )
+                        .arg(
+                            Arg::new("model")
+                                .help("Claytip model file")
+                                .default_value(DEFAULT_MODEL_FILE)
+                                .index(1),
+                        ),
+                )
+                .subcommand(
+                    Command::new("import")
+                        .about("Create claytip model file based on a database schema")
+                        .arg(
+                            Arg::new("output")
+                                .help("Claytip model output file")
+                                .short('o')
+                                .long("output")
+                                .takes_value(true)
+                                .value_name("output")
+                                .default_value(DEFAULT_MODEL_FILE),
+                        ),
                 ),
         )
         .subcommand(
             Command::new("serve")
-                .about("Run local claytip server")
+                .about("Run claytip server in development mode")
                 .arg(
                     Arg::new("model")
                         .help("Claytip model file")
@@ -140,6 +156,15 @@ fn main() -> Result<()> {
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
+
+                ).arg(
+                    Arg::new("port")
+                        .help("Port to start the server")
+                        .short('p')
+                        .long("port")
+                        .value_parser(clap::value_parser!(u32))
+                        .takes_value(true)
+                        .value_name("port"),
                 ),
         )
         .get_matches();
@@ -153,27 +178,23 @@ fn main() -> Result<()> {
         Some(("build", matches)) => Box::new(BuildCommand {
             model: get_path(matches, "model"),
         }),
-        Some(("migrate", matches)) => Box::new(MigrateCommand {
-            model: get_path(matches, "model"),
-            database: matches.get_one::<String>("database").unwrap().to_owned(),
-        }),
-        Some(("model", matches)) => match matches.subcommand() {
-            Some(("import", matches)) => Box::new(import::ImportCommand {
-                output: get_path(matches, "output"),
-            }),
-            _ => panic!("Unhandled command name"),
-        },
         Some(("schema", matches)) => match matches.subcommand() {
-            Some(("create", matches)) => Box::new(schema::CreateCommand {
+            Some(("create", matches)) => Box::new(schema::create::CreateCommand {
                 model: get_path(matches, "model"),
             }),
-            Some(("verify", matches)) => Box::new(schema::VerifyCommand {
+            Some(("verify", matches)) => Box::new(schema::verify::VerifyCommand {
                 model: get_path(matches, "model"),
                 database: matches.get_one::<String>("database").unwrap().to_owned(),
             }),
+            Some(("import", matches)) => Box::new(schema::import::ImportCommand {
+                output: get_path(matches, "output"),
+            }),
+            Some(("migrate", matches)) => Box::new(schema::migrate::MigrateCommand {
+                model: get_path(matches, "model"),
+                comment_destructive_changes: !matches.contains_id("allow-destructive-changes"),
+            }),
             _ => panic!("Unhandled command name"),
         },
-
         Some(("serve", matches)) => Box::new(ServeCommand {
             model: get_path(matches, "model"),
             port: matches.get_one::<u32>("port").copied(),
@@ -184,6 +205,7 @@ fn main() -> Result<()> {
         }),
         Some(("yolo", matches)) => Box::new(YoloCommand {
             model: get_path(matches, "model"),
+            port: matches.get_one::<u32>("port").copied(),
         }),
         _ => panic!("Unhandled command name"),
     };

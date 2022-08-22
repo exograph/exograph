@@ -1,0 +1,49 @@
+---
+source: payas-server-core/src/graphql/validation/document_validator.rs
+expression: validator.validate(create_query_document(query))
+---
+Ok(
+    ValidatedOperation {
+        name: Some(
+            "concert2",
+        ),
+        typ: Query,
+        fields: [
+            ValidatedField {
+                alias: None,
+                name: Name(
+                    "concert",
+                ),
+                arguments: {
+                    "id": Number(
+                        Number(
+                            2,
+                        ),
+                    ),
+                },
+                subfields: [
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "id",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: Some(
+                            Name(
+                                "headLine",
+                            ),
+                        ),
+                        name: Name(
+                            "title",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                ],
+            },
+        ],
+    },
+)

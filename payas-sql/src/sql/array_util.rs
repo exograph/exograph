@@ -1,6 +1,6 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use anyhow::{anyhow, Result};
+use crate::database_error::DatabaseError;
 
 use super::{column::PhysicalColumnType, SQLParam};
 use postgres_array::{Array, Dimension};
@@ -26,8 +26,8 @@ pub fn to_sql_param<T>(
     elems: &[T],
     destination_type: &PhysicalColumnType,
     array_entry: fn(&T) -> ArrayEntry<T>,
-    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam>,
-) -> Result<Option<Box<dyn SQLParam>>> {
+    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam, DatabaseError>,
+) -> Result<Option<Box<dyn SQLParam>>, DatabaseError> {
     to_sql_array(elems, destination_type, array_entry, to_sql_param)
         .map(|array| Some(Box::new(array) as Box<dyn SQLParam>))
 }
@@ -37,8 +37,8 @@ fn to_sql_array<T>(
     elems: &[T],
     destination_type: &PhysicalColumnType,
     array_entry: fn(&T) -> ArrayEntry<T>,
-    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam>,
-) -> Result<Array<Box<dyn SQLParam>>> {
+    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam, DatabaseError>,
+) -> Result<Array<Box<dyn SQLParam>>, DatabaseError> {
     let mut result = (Vec::new(), HashMap::new());
     process_array(
         elems,
@@ -72,8 +72,8 @@ fn process_array<T>(
     result: &mut (Vec<Box<dyn SQLParam>>, HashMap<usize, i32>),
     depth: usize,
     array_entry: fn(&T) -> ArrayEntry<T>,
-    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam>,
-) -> Result<()> {
+    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam, DatabaseError>,
+) -> Result<(), DatabaseError> {
     let mut len = 0;
 
     for elem in elems {
@@ -105,12 +105,12 @@ fn process_array<T>(
         }
         Entry::Occupied(entry) => {
             if *entry.get() != len {
-                return Err(anyhow!(
+                return Err(DatabaseError::Validation(format!(
                     "Array dimensions do not match in dimension {}. Expected {}, got {}",
                     depth,
                     *entry.get(),
                     len
-                ));
+                )));
             }
         }
     }
@@ -128,11 +128,17 @@ mod tests {
         List(Vec<Element>),
     }
 
-    fn i32_to_sql_param(i: &i32, _: &PhysicalColumnType) -> Result<OptionalSQLParam> {
+    fn i32_to_sql_param(
+        i: &i32,
+        _: &PhysicalColumnType,
+    ) -> Result<OptionalSQLParam, DatabaseError> {
         Ok(Some(Box::new(*i) as Box<dyn SQLParam>))
     }
 
-    fn element_to_sql_param(entry: &Element, typ: &PhysicalColumnType) -> Result<OptionalSQLParam> {
+    fn element_to_sql_param(
+        entry: &Element,
+        typ: &PhysicalColumnType,
+    ) -> Result<OptionalSQLParam, DatabaseError> {
         match entry {
             Element::Single(i) => Ok(Some(Box::new(*i) as Box<dyn SQLParam>)),
             Element::List(entries) => {

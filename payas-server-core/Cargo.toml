@@ -6,34 +6,42 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0"
 async-recursion = "1.0.0"
-async-graphql-parser = "3.0.37"
-async-graphql-value = "3.0.37"
+async-graphql-parser = "4.0.5"
+async-graphql-value = "4.0.5"
 async-stream = "0.3.3"
 async-trait = "0.1.53"
-base64 = "0.13"
 bytes = "1"
 futures = "0.3"
 futures-util = "0.3"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
-tokio-postgres = { version = "0.7.5"}
-tracing = "0.1"
-pg_bigdecimal = "0.1.4"
-chrono = "0.4.19"
-postgres-types = "0.2"
+tokio-postgres = "0.7.6"
+
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 maybe-owned = "0.3.4"
 thiserror = "1.0.30"
-uuid = "0.8"
 include_dir = "0.7.2"
 bincode = "1.3.3"
 tokio = "1"
-deno_core = "0.137.0"
 
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.16"
+tracing = { version = "0.1", features = ["log"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.1"
+tracing-opentelemetry = "0.17.2"
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+pretty_env_logger = "0.4"
+
+fix-hidden-lifetime-bug = "0.2.5"
 
 payas-sql = { path = "../payas-sql" }
 payas-model = { path = "../payas-model" }
 payas-deno = { path = "../payas-deno" }
+payas-resolver-core = { path = "../payas-resolver-core" }
+payas-resolver-database = { path = "../payas-resolver-database" }
+payas-resolver-deno = { path = "../payas-resolver-deno" }
+payas-resolver-wasm = { path = "../payas-resolver-wasm" }
 
 [dev-dependencies]
 insta = "1.14.0"

@@ -1,0 +1,15 @@
+operation: |
+    query add($a: Int!, $b: Int!) {
+      add(a: $a, b: $b)
+    }
+variable: |
+    {
+        "a": 5,
+        "b": 6,
+    }
+response: |
+    {
+      "data": {
+        "add": 11
+      }
+    } 

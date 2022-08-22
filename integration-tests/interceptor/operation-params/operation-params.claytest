@@ -1,0 +1,39 @@
+operation: |
+  query {
+    serve(intArg: 1, stringArg: "foo") {
+      name @bind(name: "name")
+      query @bind(name: "query")
+    }
+  }
+response: |
+  {
+    "data": {
+      "serve": {
+        "name": "serve",
+        "query": () => {
+          const expected = {
+            alias: null,
+            name: "serve",
+            arguments: {
+              stringArg: "foo",
+              intArg:1
+            },
+            subfields: [
+              { alias: null, name: "name", arguments: {}, subfields: [] },
+              { alias:null, name: "query", arguments: {}, subfields: [] }
+            ]
+          };
+          const actual = JSON.parse($.query);
+
+          // Arguments may come in any order, so we need to match them individually.
+
+          const aliasMatch = Object.is(expected.alias, actual.alias);
+          const nameMatch = Object.is(expected.name, actual.name);
+          const stringArgMatch = Object.is(expected.arguments.stringArg, actual.arguments.stringArg);
+          const intArgMatch = Object.is(expected.arguments.intArg, actual.arguments.intArg);
+          const subfieldsMatch = Object.is(JSON.stringify(expected.subfields), JSON.stringify(actual.subfields));
+          return aliasMatch && nameMatch && stringArgMatch && intArgMatch && subfieldsMatch;
+        }
+      }
+    }
+  }

@@ -1,9 +1,8 @@
 use actix_web::http::header::HeaderMap;
-use anyhow::Result;
 use async_trait::async_trait;
-use payas_server_core::{
+use payas_resolver_core::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
-    OperationsExecutor,
+    ResolveOperationFn,
 };
 use serde_json::Value;
 
@@ -32,11 +31,11 @@ impl ParsedContext for ParsedHeaderContext {
         "header"
     }
 
-    async fn extract_context_field<'e>(
-        &'e self,
+    async fn extract_context_field<'r>(
+        &self,
         key: &str,
-        _executor: &'e OperationsExecutor,
-        _rc: &'e RequestContext,
+        _resolver: &ResolveOperationFn<'r>,
+        _request_context: &'r RequestContext<'r>,
     ) -> Option<Value> {
         self.headers
             .get(&key.to_ascii_lowercase())

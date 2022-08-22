@@ -2,7 +2,6 @@ use payas_model::model::{
     access::Access,
     column_id::ColumnId,
     mapped_arena::{MappedArena, SerializableSlabIndex},
-    naming::ToGqlQueryName,
     relation::{GqlRelation, RelationCardinality},
     GqlCompositeType, GqlCompositeTypeKind, GqlFieldType,
 };
@@ -10,6 +9,7 @@ use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, Physical
 
 use super::{
     access_utils,
+    naming::ToGqlQueryName,
     resolved_builder::{
         ResolvedAccess, ResolvedField, ResolvedFieldDefault, ResolvedFieldKind, ResolvedFieldType,
         ResolvedMethod, ResolvedType, ResolvedTypeHint,
@@ -307,10 +307,10 @@ fn create_column(
             .and_then(|default_value| match default_value {
                 ResolvedFieldDefault::Value(val) => Some(match &**val {
                     AstExpr::StringLiteral(string, _) => {
-                        format!("'{}'", string.replace('\'', "''"))
+                        format!("'{}'::text", string.replace('\'', "''"))
                     }
                     AstExpr::BooleanLiteral(boolean, _) => {
-                        format!("{}", boolean).to_ascii_uppercase()
+                        format!("{}", boolean)
                     }
                     AstExpr::NumberLiteral(val, _) => {
                         format!("{}", val)
@@ -559,7 +559,8 @@ fn determine_column_type<'a>(
             PrimitiveType::Blob => PhysicalColumnType::Blob,
             PrimitiveType::Uuid => PhysicalColumnType::Uuid,
             PrimitiveType::Array(_)
-            | PrimitiveType::ClaytipInjected
+            | PrimitiveType::Claytip
+            | PrimitiveType::ClaytipPriv
             | PrimitiveType::Interception(_) => {
                 panic!()
             }

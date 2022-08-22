@@ -1,10 +1,10 @@
 use actix_cors::Cors;
 use actix_web::http::header::{CacheControl, CacheDirective};
-use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use payas_server_actix::request_context::ActixRequestContextProducer;
-use payas_server_actix::{resolve, telemetry};
-use payas_server_core::graphiql;
-use payas_server_core::{create_operations_executor, OperationsExecutor};
+use payas_server_actix::resolve;
+use payas_server_core::{create_system_context_or_exit, SystemContext};
+use payas_server_core::{get_endpoint_http_path, get_playground_http_path, graphiql};
 use tracing_actix_web::TracingLogger;
 
 use std::io::ErrorKind;
@@ -18,10 +18,9 @@ async fn main() -> std::io::Result<()> {
     let start_time = time::SystemTime::now();
     let claypot_file = get_claypot_file_name();
 
-    let subscriber_name = claypot_file.trim_end_matches(".claypot");
-    telemetry::init(subscriber_name);
+    payas_server_core::init();
 
-    let operations_executor = web::Data::new(create_operations_executor(&claypot_file).unwrap());
+    let system_context = web::Data::new(create_system_context_or_exit(&claypot_file));
     let request_context_processor = web::Data::new(ActixRequestContextProducer::new());
 
     let server_port = env::var("CLAY_SERVER_PORT")
@@ -33,16 +32,24 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or(9876);
     let server_url = format!("0.0.0.0:{}", server_port);
 
+    let resolve_path = get_endpoint_http_path();
+    let playground_path = get_playground_http_path();
+    let playground_path_subpaths = format!("{}/{{path:.*}}", playground_path);
+
     let server = HttpServer::new(move || {
         let cors = cors_from_env();
 
         App::new()
             .wrap(TracingLogger::default())
+            .wrap(middleware::NormalizePath::new(
+                middleware::TrailingSlash::Trim,
+            ))
             .wrap(cors)
-            .app_data(operations_executor.clone())
+            .app_data(system_context.clone())
             .app_data(request_context_processor.clone())
-            .service(playground)
-            .service(resolve)
+            .route(&resolve_path, web::post().to(resolve))
+            .route(&playground_path, web::get().to(playground))
+            .route(&playground_path_subpaths, web::get().to(playground))
     })
     .bind(&server_url);
 
@@ -53,6 +60,19 @@ async fn main() -> std::io::Result<()> {
                 server.addrs()[0],
                 start_time.elapsed().unwrap().as_micros() as f64 / 1000.0
             );
+
+            let print_all_addrs = |suffix| {
+                for addr in server.addrs() {
+                    println!("\thttp://{}{}", addr, suffix);
+                }
+            };
+
+            println!("- Playground hosted at:");
+            print_all_addrs(get_playground_http_path());
+
+            println!("- Endpoint hosted at:");
+            print_all_addrs(get_endpoint_http_path());
+
             server.run().await
         }
         Err(e) => {
@@ -94,8 +114,7 @@ fn get_claypot_file_name() -> String {
     }
 }
 
-#[get("/{path:.*}")]
-async fn playground(req: HttpRequest, executor: web::Data<OperationsExecutor>) -> impl Responder {
+async fn playground(req: HttpRequest, executor: web::Data<SystemContext>) -> impl Responder {
     if !executor.allow_introspection {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }
@@ -103,36 +122,34 @@ async fn playground(req: HttpRequest, executor: web::Data<OperationsExecutor>) -
     let asset_path = req.match_info().get("path");
 
     // Adjust the path for "index.html" (which is requested with and empty path)
-    let asset_path = asset_path.map(|path| if path.is_empty() { "index.html" } else { path });
+    let index = "index.html";
+    let asset_path = asset_path
+        .map(|path| if path.is_empty() { index } else { path })
+        .unwrap_or(index);
 
-    match asset_path {
-        Some(asset_path) => {
-            let asset_path = Path::new(asset_path);
-            let extension = asset_path
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or(""); // If no extension, set it to an empty string, to use `actix_files::file_extension_to_mime`'s default behavior
+    let asset_path = Path::new(asset_path);
+    let extension = asset_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or(""); // If no extension, set it to an empty string, to use `actix_files::file_extension_to_mime`'s default behavior
 
-            let content_type = actix_files::file_extension_to_mime(extension);
+    let content_type = actix_files::file_extension_to_mime(extension);
 
-            // js/cs files in the static folder have content-hashed names, so we can cache them for a long duration
-            let cache_control = if asset_path.starts_with("static/") {
-                CacheControl(vec![
-                    CacheDirective::Public,
-                    CacheDirective::MaxAge(60 * 60 * 24 * 365), // seconds in one year
-                ])
-            } else {
-                CacheControl(vec![CacheDirective::NoCache])
-            };
+    // we shouldn't cache the index page, as we substitute in the endpoint path dynamically
+    let cache_control = if index == "index.html" {
+        CacheControl(vec![CacheDirective::NoCache])
+    } else {
+        CacheControl(vec![
+            CacheDirective::Public,
+            CacheDirective::MaxAge(60 * 60 * 24 * 365), // seconds in one year
+        ])
+    };
 
-            match graphiql::get_asset_bytes(asset_path) {
-                Some(asset) => HttpResponse::Ok()
-                    .content_type(content_type)
-                    .insert_header(cache_control)
-                    .body(asset),
-                None => HttpResponse::NotFound().body(""),
-            }
-        }
+    match graphiql::get_asset_bytes(asset_path) {
+        Some(asset) => HttpResponse::Ok()
+            .content_type(content_type)
+            .insert_header(cache_control)
+            .body(asset),
         None => HttpResponse::NotFound().body("Not found"),
     }
 }

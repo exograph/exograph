@@ -24,11 +24,13 @@
 ///
 /// This crate also contains, but doesn't expose, lower level primitives for SQL
 /// operations.
-pub mod spec;
+pub mod schema;
 #[macro_use]
 mod sql;
 mod asql;
 mod transform;
+
+pub mod database_error;
 
 /// Public types at the root level of this crate
 pub use asql::{

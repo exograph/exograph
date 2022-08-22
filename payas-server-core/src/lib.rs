@@ -1,78 +1,78 @@
+use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 
+use crate::graphql::introspection::schema::Schema;
 /// Provides core functionality for handling incoming queries without depending
 /// on any specific web framework.
 ///
 /// The `resolve` function is responsible for doing the work, using information
 /// extracted from an incoming request, and returning the response as a stream.
-use anyhow::{Context, Result};
+use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
-use error::ExecutionError;
-pub use execution::operations_executor::OperationsExecutor;
 use futures::Stream;
-use introspection::schema::Schema;
+use initialization_error::InitializationError;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
+use payas_resolver_wasm::WasmExecutorPool;
 use payas_sql::{Database, DatabaseExecutor};
-use request_context::RequestContext;
-use serde::Deserialize;
-use serde_json::{Map, Value};
-use tracing::instrument;
 
-use crate::execution::operations_context::QueryResponseBody;
+use crate::graphql::execution_error::ExecutionError;
 
-mod data;
-mod deno_integration;
-mod error;
-mod execution;
+pub use payas_resolver_core::OperationsPayload;
+use payas_resolver_core::{request_context::RequestContext, QueryResponseBody};
+
 pub mod graphiql;
-mod introspection;
-pub mod request_context;
-mod validation;
+pub mod initialization_error;
 
-fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem> {
+mod logging_tracing;
+
+mod graphql;
+
+pub use graphql::execution::system_context::SystemContext;
+
+fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
     if !Path::new(&claypot_file).exists() {
-        anyhow::bail!("File '{}' not found", claypot_file);
+        return Err(InitializationError::FileNotFound(claypot_file.to_string()));
     }
     match File::open(&claypot_file) {
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
             let in_file = BufReader::new(claypot_file_buffer);
-            deserialize_from(in_file)
-                .with_context(|| format!("Failed to read claypot file {}", claypot_file))
+            deserialize_from(in_file).map_err(|err| {
+                InitializationError::ClaypotDeserialization(claypot_file.into(), err)
+            })
         }
-        Err(e) => {
-            anyhow::bail!("Failed to open claypot file {}: {}", claypot_file, e)
-        }
+        Err(e) => Err(InitializationError::FileOpen(claypot_file.into(), e)),
     }
 }
 
-pub fn create_operations_executor(claypot_file: &str) -> Result<OperationsExecutor> {
-    let database = Database::from_env(None).expect("Failed to access database"); // TODO: error handling here
+fn create_system_context(claypot_file: &str) -> Result<SystemContext, InitializationError> {
+    let database = Database::from_env(None)?;
 
     let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
         Some(e) => match e.parse::<bool>() {
-            Ok(e) => e,
-            Err(_) => {
-                eprintln!("CLAY_INTROSPECTION env var must be set to either true or false");
-                std::process::exit(1);
-            }
+            Ok(v) => Ok(v),
+            Err(_) => Err(InitializationError::Config(
+                "CLAY_INTROSPECTION env var must be set to either true or false".into(),
+            )),
         },
-        None => false,
-    };
+        None => Ok(false),
+    }?;
 
     let system = open_claypot_file(claypot_file)?;
     let schema = Schema::new(&system);
-    let deno_execution_config = DenoExecutorPool::new_from_config(deno_integration::clay_config());
+    let deno_execution_config =
+        DenoExecutorPool::new_from_config(payas_resolver_deno::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 
-    let executor = OperationsExecutor {
+    let executor = SystemContext {
         database_executor,
         deno_execution_pool: deno_execution_config,
+        wasm_execution_pool: WasmExecutorPool::default(),
         system,
         schema,
         allow_introspection,
@@ -81,33 +81,42 @@ pub fn create_operations_executor(claypot_file: &str) -> Result<OperationsExecut
     Ok(executor)
 }
 
-#[derive(Debug, Deserialize)]
-pub struct OperationsPayload {
-    #[serde(rename = "operationName")]
-    operation_name: Option<String>,
-    query: String,
-    variables: Option<Map<String, Value>>,
+pub fn create_system_context_or_exit(claypot_file: &str) -> SystemContext {
+    match create_system_context(claypot_file) {
+        Ok(system_context) => system_context,
+        Err(error) => {
+            println!("{}", error);
+            exit(1);
+        }
+    }
 }
 
 pub type Headers = Vec<(String, String)>;
+
+/// Initializes logging for payas-server-core.
+pub fn init() {
+    logging_tracing::init()
+}
 
 /// Resolves an incoming query, returning a response stream containing JSON and a set
 /// of HTTP headers. The JSON may be either the data returned by the query, or a list of errors
 /// if something went wrong.
 ///
 /// In a typical use case (for example payas-server-actix), the caller will
-/// first call `create_operations_executor` to create an `OperationsExecutor` object, and
+/// first call `create_system_context` to create a [SystemContext] object, and
 /// then call `resolve` with that object.
 #[instrument(
     name = "payas-server-core::resolve"
-    skip(executor, request_context)
+    skip(system_context, request_context)
     )]
 pub async fn resolve<'a, E: 'static>(
-    executor: &OperationsExecutor,
     operations_payload: OperationsPayload,
+    system_context: &SystemContext,
     request_context: RequestContext<'a>,
 ) -> (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers) {
-    let response = executor.execute(operations_payload, &request_context).await;
+    let response = system_context
+        .resolve(operations_payload, &request_context)
+        .await;
 
     let headers = if let Ok(ref response) = response {
         response
@@ -154,12 +163,12 @@ pub async fn resolve<'a, E: 'static>(
                 yield Bytes::from_static(br#"{"errors": [{"message":""#);
                 yield Bytes::from(
                     // TODO: escape PostgreSQL errors properly here
-                    format!("{}", err.chain().last().unwrap())
+                    format!("{}", err.user_error_message())
                         .replace("\"", "")
                         .replace("\n", "; ")
                 );
                 yield Bytes::from_static(br#"""#);
-                if let Some(err) = err.downcast_ref::<ExecutionError>() {
+                if let ExecutionError::Validation(err) = err {
                     yield Bytes::from_static(br#", "locations": ["#);
                     report_position!(err.position1());
                     if let Some(position2) = err.position2() {
@@ -177,4 +186,12 @@ pub async fn resolve<'a, E: 'static>(
     let boxed_stream = Box::pin(stream) as Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>;
 
     (boxed_stream, headers)
+}
+
+pub fn get_playground_http_path() -> String {
+    std::env::var("CLAY_PLAYGROUND_HTTP_PATH").unwrap_or_else(|_| "/playground".to_string())
+}
+
+pub fn get_endpoint_http_path() -> String {
+    std::env::var("CLAY_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
 }

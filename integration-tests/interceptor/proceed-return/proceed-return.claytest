@@ -1,0 +1,51 @@
+operation: |
+  query {
+    todo(id: 1) {
+      id
+      title
+    }
+    # Get only id field (the interesting returns the whole object, so this allows testing if we receive only the id)
+    todo_id: todo(id: 1) {
+      id
+    }
+    # Ensure that aliasing has no effect on the filtering logic
+    todo_title_aliased: todo(id: 1) {
+      title_alias: title
+    }
+    getInfo {
+      id
+      title
+    }
+    # Same as above, but for Deno-implemented services
+    info_id: getInfo {
+      id
+    }
+    info_title_aliased: getInfo {
+      id_alias: id
+    }
+  }
+response: |
+  {
+    "data": {
+      "todo": {
+        "id": 1,
+        "title": "Test"
+      },
+      "todo_id": {
+        "id": 1
+      },
+      "todo_title_aliased": {
+        "title_alias": "Test"
+      },
+      "getInfo": {
+        "id": 1,
+        "title": "Test"
+      },
+      "info_id": {
+        "id": 1
+      },
+      "info_title_aliased": {
+        "id_alias": 1
+      }
+    }
+  }

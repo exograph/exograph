@@ -1,8 +1,7 @@
-use anyhow::{anyhow, Context, Result};
 use tokio_postgres::{types::ToSql, Client, GenericClient, Row};
 use tracing::{error, instrument};
 
-use crate::sql::ExpressionContext;
+use crate::{database_error::DatabaseError, sql::ExpressionContext};
 
 use super::{
     sql_operation::SQLOperation, sql_operation::TemplateSQLOperation, OperationExpression, SQLValue,
@@ -41,10 +40,13 @@ impl TransactionContext {
 impl<'a> TransactionScript<'a> {
     /// Returns the result of the last step
     #[instrument(
-        name = "TansactionScript::execute"
+        name = "TransactionScript::execute"
         skip(self, client)
         )]
-    pub async fn execute(&'a self, client: &mut Client) -> Result<TransactionStepResult> {
+    pub async fn execute(
+        &'a self,
+        client: &mut Client,
+    ) -> Result<TransactionStepResult, DatabaseError> {
         let mut tx = client.transaction().await?;
 
         let mut transaction_context = TransactionContext { results: vec![] };
@@ -60,7 +62,7 @@ impl<'a> TransactionScript<'a> {
             .results
             .into_iter()
             .last()
-            .ok_or_else(|| anyhow!(""))
+            .ok_or_else(|| DatabaseError::Transaction("".into()))
     }
 
     pub fn add_step(&mut self, step: TransactionStep<'a>) -> TransactionStepId {
@@ -86,7 +88,7 @@ impl<'a> TransactionStep<'a> {
         &self,
         client: &mut impl GenericClient,
         transaction_context: &TransactionContext,
-    ) -> Result<TransactionStepResult> {
+    ) -> Result<TransactionStepResult, DatabaseError> {
         match self {
             Self::Concrete(step) => step.execute(client).await,
             Self::Template(step) => {
@@ -127,11 +129,14 @@ impl<'a> ConcreteTransactionStep<'a> {
     pub async fn execute(
         &'a self,
         client: &mut impl GenericClient,
-    ) -> Result<TransactionStepResult> {
+    ) -> Result<TransactionStepResult, DatabaseError> {
         self.run_query(client).await
     }
 
-    async fn run_query(&'a self, client: &mut impl GenericClient) -> Result<Vec<Row>> {
+    async fn run_query(
+        &'a self,
+        client: &mut impl GenericClient,
+    ) -> Result<Vec<Row>, DatabaseError> {
         let sql_operation = &self.operation;
         let mut context = ExpressionContext::default();
         let binding = sql_operation.binding(&mut context);
@@ -144,9 +149,8 @@ impl<'a> ConcreteTransactionStep<'a> {
             .await
             .map_err(|e| {
                 error!("Failed to execute query: {e:?}");
-                e
+                DatabaseError::Delegate(e).with_context("Database operation failed".into())
             })
-            .context("PostgreSQL query failed")
     }
 }
 

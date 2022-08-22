@@ -26,10 +26,29 @@ interface Claytip {
     sameSite: "Lax" | "Strict" | "None"
   }): Promise<void>;
 }
- 
+
+interface ClaytipPriv extends Claytip {
+  executeQueryPriv(query: string, variable?: { [key: string]: any }, contextOverride?: { [key: string]: any }): Promise<any>;
+}
+
+type JsonObject = { [Key in string]?: JsonValue };
+type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
+
+interface Field {
+    alias: string | null;
+    name: string;
+    arguments: JsonObject;
+    subfields: Field[];
+}
+
 interface Operation {
-  name(): Promise<string>;
-  proceed<T>(): Promise<T>;
+    name(): string;
+    proceed<T>(): Promise<T>;
+    query(): Field;
+}
+
+declare class ClaytipError extends Error {
+    constructor(message: string);
 }
 "#;
 
@@ -89,8 +108,8 @@ pub fn generate_service_skeleton(
 
     let out_file = Path::new(out_file.as_ref());
 
-    // Generated a typescript definition file even for Javscript, so that user can know
-    // the exepected interface and IDEs can assist with code completion (if they use jsdoc, for).
+    // Generated a typescript definition file even for Javascript, so that user can know
+    // the expected interface and IDEs can assist with code completion (if they use jsdoc, for).
     let claytip_d_path = out_file.parent().unwrap().join("claytip.d.ts");
     if !claytip_d_path.exists() {
         let mut claytip_d_file = File::create(&claytip_d_path)?;
@@ -225,7 +244,8 @@ fn typescript_base_type(clay_type_name: &str) -> String {
         "Float" => "number".to_string(),
         "Boolean" => "boolean".to_string(),
         "DateTime" => "Date".to_string(),
-        "ClaytipInjected" => "Claytip".to_string(),
+        "Claytip" => "Claytip".to_string(),
+        "ClaytipPriv" => "ClaytipPriv".to_string(),
         t => t.to_string(),
     }
 }
