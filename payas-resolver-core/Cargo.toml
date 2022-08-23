@@ -12,6 +12,7 @@ maybe-owned = "0.3.4"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0.30"
+tokio = "1"
 
 payas-model = { path = "../payas-model" }
 payas-sql = { path = "../payas-sql" }

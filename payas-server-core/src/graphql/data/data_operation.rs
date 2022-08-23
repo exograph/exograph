@@ -1,4 +1,4 @@
-use payas_resolver_core::QueryResponse;
+use payas_resolver_core::{request_context::RequestContext, QueryResponse};
 use payas_resolver_database::DatabaseSystemContext;
 
 use payas_resolver_wasm::{WasmOperation, WasmSystemContext};
@@ -19,20 +19,24 @@ impl<'a> DataOperation<'a> {
     pub async fn execute(
         &self,
         system_context: &'a SystemContext,
+        request_context: &'a RequestContext<'a>,
     ) -> Result<QueryResponse, ExecutionError> {
         let resolve_operation_fn = system_context.resolve_operation_fn();
 
         match self {
             DataOperation::Sql(abstract_operation) => {
+                let executor = &system_context.database_executor;
+
                 let database_system_context = DatabaseSystemContext {
                     system: &system_context.system,
-                    database_executor: &system_context.database_executor,
+                    database_executor: executor,
                     resolve_operation_fn,
                 };
 
                 payas_resolver_database::resolve_operation(
                     abstract_operation,
                     database_system_context,
+                    request_context,
                 )
                 .await
                 .map_err(ExecutionError::Database)

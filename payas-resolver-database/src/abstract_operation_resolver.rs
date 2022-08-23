@@ -1,6 +1,6 @@
 use payas_sql::AbstractOperation;
 
-use payas_resolver_core::{QueryResponse, QueryResponseBody};
+use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 use postgres_types::FromSqlOwned;
 use tokio_postgres::Row;
 
@@ -9,10 +9,14 @@ use super::{DatabaseExecutionError, DatabaseSystemContext};
 pub async fn resolve_operation<'e>(
     op: &'e AbstractOperation<'e>,
     system_context: DatabaseSystemContext<'e>,
+    request_context: &'e RequestContext<'e>,
 ) -> Result<QueryResponse, DatabaseExecutionError> {
+    let ctx = request_context.get_base_context();
+    let mut tx = ctx.transaction_holder.try_lock().unwrap();
+
     let mut result = system_context
         .database_executor
-        .execute(op)
+        .execute(op, &mut tx)
         .await
         .map_err(DatabaseExecutionError::Database)?;
 

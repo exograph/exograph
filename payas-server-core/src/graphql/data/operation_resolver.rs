@@ -59,7 +59,7 @@ pub trait OperationResolver<'a>: GraphQLOperation {
                     .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))?;
 
                 data_operation
-                    .execute(system_context)
+                    .execute(system_context, request_context)
                     .await
                     .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))
             }
