@@ -25,16 +25,29 @@ fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
     source_span.subspan(node.start_byte() as u64, node.end_byte() as u64)
 }
 
-pub fn parse_file<P: AsRef<Path>>(
-    input_file: P,
+/// Parse a file and return the AST
+///
+/// # Arguments
+/// * `input_file` - The file to parse
+/// * `codemap` - The codemap to accumulate errors
+pub fn parse_file(
+    input_file: impl AsRef<Path>,
     codemap: &mut CodeMap,
 ) -> Result<AstSystem<Untyped>, ParserError> {
     let mut already_parsed = vec![];
     _parse_file(input_file, codemap, &mut already_parsed)
 }
 
-fn _parse_file<P: AsRef<Path>>(
-    input_file: P,
+/// Parse a file and return the AST.
+///
+/// Takes care of dealing with potentially recursive imports.
+///
+/// # Arguments
+/// * `input_file` - The file to parse
+/// * `codemap` - The codemap to accumulate errors
+/// * already_parsed - a vector of files that have already been parsed. Used to ensure that recursive imports do not cause an infinite loop
+fn _parse_file(
+    input_file: impl AsRef<Path>,
     codemap: &mut CodeMap,
     already_parsed: &mut Vec<PathBuf>,
 ) -> Result<AstSystem<Untyped>, ParserError> {
@@ -67,10 +80,10 @@ fn _parse_file<P: AsRef<Path>>(
     Ok(system)
 }
 
-pub fn parse_str<P: AsRef<Path>>(
+pub fn parse_str(
     source: &str,
     codemap: &mut CodeMap,
-    input_file_name: P,
+    input_file_name: impl AsRef<Path>,
 ) -> Result<AstSystem<Untyped>, ParserError> {
     let source_span = codemap
         .add_file(
