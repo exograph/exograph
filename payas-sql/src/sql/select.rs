@@ -74,6 +74,7 @@ impl<'a> Expression for Select<'a> {
             format!(" {}", binding.stmt)
         });
 
+        let table_binding_stmt = table_binding.stmt;
         let stmt = if order_by_part.is_some() || limit_part.is_some() || offset_part.is_some() {
             let conditions = format!(
                 "{}{}{}{}",
@@ -83,15 +84,17 @@ impl<'a> Expression for Select<'a> {
                 offset_part.unwrap_or_default()
             );
 
+            let base_table_stmt = self
+                .underlying
+                .base_table()
+                .binding(expression_context)
+                .stmt;
+            // If we just "select *", we may get duplicated columns from a join statement, so we only pick the columns of the base table (left-most table in the join)
             format!(
-                "select {} from (select * from {}{}) as {}",
-                cols_stmts, table_binding.stmt, conditions, table_binding.stmt
+                "select {cols_stmts} from (select {base_table_stmt}.* from {table_binding_stmt}{conditions}) as {table_binding_stmt}",
             )
         } else {
-            format!(
-                "select {} from {}{}",
-                cols_stmts, table_binding.stmt, predicate_part
-            )
+            format!("select {cols_stmts} from {table_binding_stmt}{predicate_part}",)
         };
 
         ParameterBinding::new(stmt, params)
@@ -143,7 +146,7 @@ mod tests {
 
         assert_binding!(
             binding,
-            r#"select "people"."age" from (select * from "people" WHERE "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
+            r#"select "people"."age" from (select "people".* from "people" WHERE "people"."age" = $1 LIMIT $2 OFFSET $3) as "people""#,
             5,
             20i64,
             10i64

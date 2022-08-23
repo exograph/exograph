@@ -129,7 +129,7 @@ impl<'content> DatabaseQuery<'content> {
             .and_then(|order_by_param| {
                 let argument_value = super::find_arg(arguments, &order_by_param.name);
                 argument_value.map(|argument_value| {
-                    order_by_param.map_to_order_by(argument_value, &None, system_context)
+                    order_by_param.map_to_order_by(argument_value, None, system_context)
                 })
             })
             .transpose()

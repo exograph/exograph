@@ -1,5 +1,5 @@
 use tokio_postgres::{types::ToSql, Client, GenericClient, Row};
-use tracing::{error, instrument};
+use tracing::{debug, error, instrument};
 
 use crate::{database_error::DatabaseError, sql::ExpressionContext};
 
@@ -143,6 +143,8 @@ impl<'a> ConcreteTransactionStep<'a> {
 
         let params: Vec<&(dyn ToSql + Sync)> =
             binding.params.iter().map(|p| (*p).as_pg()).collect();
+
+        debug!("Executing SQL operation: {}", binding.stmt.as_str());
 
         client
             .query(binding.stmt.as_str(), &params[..])

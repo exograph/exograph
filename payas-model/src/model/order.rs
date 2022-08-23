@@ -14,7 +14,6 @@ pub struct OrderByParameter {
 
     /// How does this parameter relates with the parent parameter?
     /// For example for parameter used as {order_by: {venue1: {id: Desc}}}, we will have following column links:
-    /// eq: None
     /// id: Some((<the venues.id column>, None))
     /// venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     /// order_by: None

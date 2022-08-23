@@ -43,6 +43,13 @@ impl<'a> TableQuery<'a> {
     ) -> TableQuery<'a> {
         TableQuery::Join(Join::new(self, other_table, predicate))
     }
+
+    pub fn base_table(&self) -> &PhysicalTable {
+        match self {
+            TableQuery::Physical(table) => table,
+            TableQuery::Join(join) => join.left().base_table(),
+        }
+    }
 }
 
 impl<'a> Expression for TableQuery<'a> {
