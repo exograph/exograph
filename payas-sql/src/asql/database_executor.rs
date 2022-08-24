@@ -1,4 +1,5 @@
 use deadpool_postgres::Transaction;
+use std::sync::atomic::AtomicBool;
 
 use crate::{
     database_error::DatabaseError,
@@ -44,6 +45,7 @@ impl DatabaseExecutor {
 pub struct TransactionHolder {
     client: Option<*mut deadpool_postgres::Client>,
     transaction: Option<*mut Transaction<'static>>,
+    finalized: AtomicBool,
 }
 
 unsafe impl Sync for TransactionHolder {}
@@ -69,6 +71,8 @@ impl TransactionHolder {
         database: &Database,
         work: &TransactionScript<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
+        assert!(!self.finalized.load(std::sync::atomic::Ordering::SeqCst));
+
         let tx = unsafe { self.transaction.map(|ptr| ptr.as_mut().unwrap()) };
 
         match tx {
@@ -114,6 +118,10 @@ impl TransactionHolder {
             Some(boxed) => boxed.commit().await,
 
             None => Ok(()),
-        }
+        }?;
+
+        self.finalized
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        Ok(())
     }
 }
