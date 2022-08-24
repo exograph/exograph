@@ -107,7 +107,7 @@ impl TransactionHolder {
         }
     }
 
-    pub async fn finalize(&mut self) -> Result<(), tokio_postgres::Error> {
+    pub async fn finalize(&mut self, commit: bool) -> Result<(), tokio_postgres::Error> {
         let tx_owned = unsafe {
             let mut tx_owned: Option<*mut Transaction> = None;
             std::mem::swap(&mut self.transaction, &mut tx_owned);
@@ -115,7 +115,13 @@ impl TransactionHolder {
         };
 
         match tx_owned {
-            Some(boxed) => boxed.commit().await,
+            Some(boxed) => {
+                if commit {
+                    boxed.commit().await
+                } else {
+                    boxed.rollback().await
+                }
+            }
 
             None => Ok(()),
         }?;

@@ -127,20 +127,14 @@ pub async fn resolve<'a, E: 'static>(
         vec![]
     };
 
-    let response = if response.is_ok() {
-        let ctx = request_context.get_base_context();
-        let mut tx_holder = ctx.transaction_holder.try_lock().unwrap();
+    let ctx = request_context.get_base_context();
+    let mut tx_holder = ctx.transaction_holder.try_lock().unwrap();
 
-        tx_holder
-            .finalize()
-            .await
-            .map_err(|e| {
-                ExecutionError::Generic(format!("Error while finalizing transaction: {}", e))
-            })
-            .and(response)
-    } else {
-        response
-    };
+    let response = tx_holder
+        .finalize(response.is_ok())
+        .await
+        .map_err(|e| ExecutionError::Generic(format!("Error while finalizing transaction: {}", e)))
+        .and(response);
 
     let stream = try_stream! {
         macro_rules! report_position {
