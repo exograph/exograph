@@ -30,15 +30,6 @@ impl DatabaseExecutor {
 
         tx_holder.with_tx(&self.database, &transaction_script).await
     }
-
-    // pub async fn create_transaction(&self) -> Result<Transaction<'_>, DatabaseError> {
-    //     let mut client = self.database.get_client().await?;
-    //     let client: &mut Client = &mut client;
-
-    //     let tx = client.transaction().await?;
-
-    //     Ok(tx)
-    // }
 }
 
 #[derive(Default)]
