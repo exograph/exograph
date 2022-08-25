@@ -22,6 +22,10 @@ impl<'a> Join<'a> {
             predicate,
         }
     }
+
+    pub fn left(&self) -> &TableQuery<'a> {
+        &self.left
+    }
 }
 
 impl Expression for Join<'_> {

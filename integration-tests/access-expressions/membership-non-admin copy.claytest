@@ -1,0 +1,37 @@
+operation: |
+    fragment MembershipInfo on Membership {
+      id
+      kind
+    }
+    query {
+      own_membership: membership(id: 1) {
+        ...MembershipInfo
+      }
+      other_membership: membership(id: 2) {
+        ...MembershipInfo
+      }
+      memberships {
+        ...MembershipInfo
+      }
+    }
+auth: |
+    {
+        "sub": 1,
+        "roles": ["USER"]
+    }   
+response: |
+    {
+      "data": {
+        "own_membership": {
+          "id": 1,
+          "kind": "k1",
+        },
+        "other_membership": null,
+        "memberships": [
+          {
+            "id": 1,
+            "kind": "k1",
+          }
+        ]        
+      }
+    }
