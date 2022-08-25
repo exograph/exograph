@@ -1,0 +1,33 @@
+stages:
+    # attempt to create
+    - operation: |
+        mutation ($username: String!, $email: String!) {
+            result: registerUser(username: $username, email: $email)
+        }
+      variable: |
+        {
+            "username": "john",
+            "email": "john@example.org"
+        }
+      response: |
+        {
+          "errors": [
+            {
+              "message": "some user error"
+            }
+          ]
+        }
+    
+    # check to make sure queries have been rolled back
+    - operation: |
+        query {
+            users {
+                id
+            }
+        }
+      response: |
+        {
+            "data": {
+                "users": []
+            }
+        }

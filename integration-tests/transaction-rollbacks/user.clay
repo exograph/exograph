@@ -1,0 +1,15 @@
+@table("user")
+model User {
+    id: Int = autoincrement() @pk
+    username: String
+    email: String?
+}
+
+@external("user.ts")
+service RegistrationService {
+    export mutation registerUser(
+        @inject claytip: Claytip,
+        username: String,
+        email: String
+    ): Boolean
+}
