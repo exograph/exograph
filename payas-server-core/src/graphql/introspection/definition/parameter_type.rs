@@ -1,15 +1,11 @@
-use async_graphql_parser::{
-    types::{
-        EnumType, EnumValueDefinition, InputObjectType, InputValueDefinition, TypeDefinition,
-        TypeKind,
-    },
-    Pos, Positioned,
-};
 use async_graphql_value::Name;
 
 use crate::graphql::introspection::{
     definition::type_introspection::TypeDefinitionIntrospection,
-    util::{default_positioned, default_positioned_name},
+    schema::{
+        SchemaEnumType, SchemaEnumValueDefinition, SchemaInputObjectType,
+        SchemaInputValueDefinition, SchemaTypeDefinition, SchemaTypeKind,
+    },
 };
 use payas_model::model::{
     argument::{ArgumentParameter, ArgumentParameterType},
@@ -40,39 +36,31 @@ impl ParameterType for PredicateParameterType {
 pub const PRIMITIVE_ORDERING_OPTIONS: [&str; 2] = ["ASC", "DESC"];
 
 impl TypeDefinitionProvider for OrderByParameterType {
-    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
+    fn type_definition(&self, _system: &ModelSystem) -> SchemaTypeDefinition {
         match &self.kind {
             OrderByParameterTypeKind::Composite { parameters } => {
                 let fields = parameters
                     .iter()
-                    .map(|parameter| default_positioned(parameter.input_value()))
+                    .map(|parameter| parameter.input_value())
                     .collect();
 
-                TypeDefinition {
+                SchemaTypeDefinition {
                     extend: false,
                     description: None,
-                    name: default_positioned_name(self.name()),
-                    directives: vec![],
-                    kind: TypeKind::InputObject(InputObjectType { fields }),
+                    name: Name::new(self.name()),
+                    kind: SchemaTypeKind::InputObject(SchemaInputObjectType { fields }),
                 }
             }
-            OrderByParameterTypeKind::Primitive => TypeDefinition {
+            OrderByParameterTypeKind::Primitive => SchemaTypeDefinition {
                 extend: false,
                 description: None,
-                name: Positioned::new(Name::new(self.name()), Pos::default()),
-                directives: vec![],
-                kind: TypeKind::Enum(EnumType {
+                name: Name::new(self.name()),
+                kind: SchemaTypeKind::Enum(SchemaEnumType {
                     values: PRIMITIVE_ORDERING_OPTIONS
                         .iter()
-                        .map(|value| {
-                            Positioned::new(
-                                EnumValueDefinition {
-                                    description: None,
-                                    value: Positioned::new(Name::new(value), Pos::default()),
-                                    directives: vec![],
-                                },
-                                Pos::default(),
-                            )
+                        .map(|value| SchemaEnumValueDefinition {
+                            description: None,
+                            value: Name::new(value),
                         })
                         .collect(),
                 }),
@@ -83,20 +71,19 @@ impl TypeDefinitionProvider for OrderByParameterType {
 
 // TODO: Reduce duplication from the above impl
 impl TypeDefinitionProvider for PredicateParameterType {
-    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
+    fn type_definition(&self, _system: &ModelSystem) -> SchemaTypeDefinition {
         match &self.kind {
             PredicateParameterTypeKind::Operator(parameters) => {
                 let fields = parameters
                     .iter()
-                    .map(|parameter| default_positioned(parameter.input_value()))
+                    .map(|parameter| parameter.input_value())
                     .collect();
 
-                TypeDefinition {
+                SchemaTypeDefinition {
                     extend: false,
                     description: None,
-                    name: default_positioned_name(self.name()),
-                    directives: vec![],
-                    kind: TypeKind::InputObject(InputObjectType { fields }),
+                    name: Name::new(self.name()),
+                    kind: SchemaTypeKind::InputObject(SchemaInputObjectType { fields }),
                 }
             }
             PredicateParameterTypeKind::Composite {
@@ -107,23 +94,21 @@ impl TypeDefinitionProvider for PredicateParameterType {
 
                 let fields = parameters
                     .iter()
-                    .map(|parameter| default_positioned(parameter.input_value()))
+                    .map(|parameter| parameter.input_value())
                     .collect();
 
-                TypeDefinition {
+                SchemaTypeDefinition {
                     extend: false,
                     description: None,
-                    name: default_positioned_name(self.name()),
-                    directives: vec![],
-                    kind: TypeKind::InputObject(InputObjectType { fields }),
+                    name: Name::new(self.name()),
+                    kind: SchemaTypeKind::InputObject(SchemaInputObjectType { fields }),
                 }
             }
-            PredicateParameterTypeKind::ImplicitEqual => TypeDefinition {
+            PredicateParameterTypeKind::ImplicitEqual => SchemaTypeDefinition {
                 extend: false,
                 description: None,
-                name: default_positioned_name(self.name()),
-                directives: vec![],
-                kind: TypeKind::Scalar,
+                name: Name::new(self.name()),
+                kind: SchemaTypeKind::Scalar,
             },
         }
     }
@@ -131,7 +116,7 @@ impl TypeDefinitionProvider for PredicateParameterType {
 
 // TODO: Reduce duplication from the above impl
 impl TypeDefinitionProvider for ArgumentParameterType {
-    fn type_definition(&self, system: &ModelSystem) -> TypeDefinition {
+    fn type_definition(&self, system: &ModelSystem) -> SchemaTypeDefinition {
         let type_def = system
             .types
             .get(self.actual_type_id.unwrap())
@@ -139,70 +124,58 @@ impl TypeDefinitionProvider for ArgumentParameterType {
             .type_definition(system);
 
         let kind = match type_def.fields() {
-            Some(fields) => TypeKind::InputObject(InputObjectType {
+            Some(fields) => SchemaTypeKind::InputObject(SchemaInputObjectType {
                 fields: fields
                     .iter()
-                    .map(|positioned| {
-                        let field_definition = &positioned.node;
-
-                        Positioned {
-                            pos: positioned.pos,
-                            node: InputValueDefinition {
-                                description: field_definition.description.clone(),
-                                name: field_definition.name.clone(),
-                                ty: field_definition.ty.clone(),
-                                default_value: None,
-                                directives: vec![],
-                            },
-                        }
+                    .map(|field_definition| SchemaInputValueDefinition {
+                        description: field_definition.description.clone(),
+                        name: field_definition.name.clone(),
+                        ty: field_definition.ty.clone(),
+                        default_value: None,
                     })
                     .collect(),
             }),
-            None => TypeKind::Scalar,
+            None => SchemaTypeKind::Scalar,
         };
 
-        TypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
-            name: default_positioned_name(&self.name),
+            name: Name::new(&self.name),
             description: None,
-            directives: vec![],
             kind,
         }
     }
 }
 
 impl TypeDefinitionProvider for LimitParameter {
-    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
-        TypeDefinition {
+    fn type_definition(&self, _system: &ModelSystem) -> SchemaTypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
             description: None,
-            name: default_positioned_name(&self.name),
-            directives: vec![],
-            kind: TypeKind::Scalar,
+            name: Name::new(&self.name),
+            kind: SchemaTypeKind::Scalar,
         }
     }
 }
 
 impl TypeDefinitionProvider for OffsetParameter {
-    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
-        TypeDefinition {
+    fn type_definition(&self, _system: &ModelSystem) -> SchemaTypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
             description: None,
-            name: default_positioned_name(&self.name),
-            directives: vec![],
-            kind: TypeKind::Scalar,
+            name: Name::new(&self.name),
+            kind: SchemaTypeKind::Scalar,
         }
     }
 }
 
 impl TypeDefinitionProvider for ArgumentParameter {
-    fn type_definition(&self, _system: &ModelSystem) -> TypeDefinition {
-        TypeDefinition {
+    fn type_definition(&self, _system: &ModelSystem) -> SchemaTypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
             description: None,
-            name: default_positioned_name(&self.name),
-            directives: vec![],
-            kind: TypeKind::Scalar,
+            name: Name::new(&self.name),
+            kind: SchemaTypeKind::Scalar,
         }
     }
 }

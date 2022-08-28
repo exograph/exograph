@@ -1,6 +1,8 @@
-use crate::graphql::introspection::definition::parameter::Parameter;
-use async_graphql_parser::types::FieldDefinition;
+use crate::graphql::introspection::{
+    definition::parameter::Parameter, schema::SchemaFieldDefinition,
+};
 
+use async_graphql_value::Name;
 use payas_model::model::{
     operation::{
         DatabaseMutationKind, DatabaseQueryParameter, Mutation, MutationKind, OperationReturnType,
@@ -11,7 +13,6 @@ use payas_model::model::{
 
 use super::provider::{FieldDefinitionProvider, InputValueProvider};
 use crate::graphql::introspection::util;
-use util::{default_positioned, default_positioned_name};
 
 pub trait Operation {
     fn name(&self) -> &String;
@@ -98,22 +99,21 @@ impl Operation for Mutation {
 // Field definition for the query such as `venue(id: Int!): Venue`, combining such fields will form
 // the Query, Mutation, and Subscription object definition
 impl<T: Operation> FieldDefinitionProvider for T {
-    fn field_definition(&self, _system: &ModelSystem) -> FieldDefinition {
+    fn field_definition(&self, _system: &ModelSystem) -> SchemaFieldDefinition {
         let fields = self
             .parameters()
             .iter()
-            .map(|parameter| default_positioned(parameter.input_value()))
+            .map(|parameter| parameter.input_value())
             .collect();
 
-        FieldDefinition {
+        SchemaFieldDefinition {
             description: None,
-            name: default_positioned_name(self.name()),
+            name: Name::new(self.name()),
             arguments: fields,
-            directives: vec![],
-            ty: default_positioned(util::value_type(
+            ty: util::value_type(
                 &self.return_type().type_name,
                 &self.return_type().type_modifier,
-            )),
+            ),
         }
     }
 }

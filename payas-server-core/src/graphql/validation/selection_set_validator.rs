@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{
-        Field, FieldDefinition, FragmentDefinition, FragmentSpread, Selection, SelectionSet, Type,
-        TypeDefinition,
-    },
+    types::{Field, FragmentDefinition, FragmentSpread, Selection, SelectionSet, Type},
     Positioned,
 };
 use async_graphql_value::{ConstValue, Name};
@@ -14,7 +11,7 @@ use payas_resolver_core::validation::field::ValidatedField;
 use crate::graphql::{
     introspection::{
         definition::type_introspection::TypeDefinitionIntrospection,
-        schema::{Schema, QUERY_ROOT_TYPENAME},
+        schema::{Schema, SchemaFieldDefinition, SchemaTypeDefinition, QUERY_ROOT_TYPENAME},
     },
     validation::validation_error::ValidationError,
 };
@@ -26,7 +23,7 @@ use super::{arguments_validator::ArgumentValidator, underlying_type};
 pub struct SelectionSetValidator<'a> {
     schema: &'a Schema,
     /// The parent type of this field.
-    container_type: &'a TypeDefinition,
+    container_type: &'a SchemaTypeDefinition,
     variables: &'a HashMap<Name, ConstValue>,
     fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
 }
@@ -35,7 +32,7 @@ impl<'a> SelectionSetValidator<'a> {
     #[must_use]
     pub fn new(
         schema: &'a Schema,
-        container_type: &'a TypeDefinition,
+        container_type: &'a SchemaTypeDefinition,
         variables: &'a HashMap<Name, ConstValue>,
         fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
     ) -> Self {
@@ -113,8 +110,7 @@ impl<'a> SelectionSetValidator<'a> {
                 })
             }
         } else {
-            let field_definition = if self.container_type.name.node.as_str() == QUERY_ROOT_TYPENAME
-            {
+            let field_definition = if self.container_type.name.as_str() == QUERY_ROOT_TYPENAME {
                 // We have to treat the query root type specially, since its __schema and __type fields are not
                 // "ordinary" fields, but are instead special-cased in the introspection query (much the same way
                 // as the __typename field).
@@ -142,13 +138,8 @@ impl<'a> SelectionSetValidator<'a> {
 
             let field_validator = ArgumentValidator::new(self.schema, self.variables, field);
 
-            let arguments = field_validator.validate(
-                &field_definition
-                    .arguments
-                    .iter()
-                    .map(|d| &d.node)
-                    .collect::<Vec<_>>(),
-            )?;
+            let arguments =
+                field_validator.validate(&field_definition.arguments.iter().collect::<Vec<_>>())?;
 
             Ok(ValidatedField {
                 alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
@@ -176,10 +167,10 @@ impl<'a> SelectionSetValidator<'a> {
 
     fn get_type_definition(
         &self,
-        field_type: &Positioned<Type>,
+        field_type: &Type,
         field: &Positioned<Field>,
-    ) -> Result<&TypeDefinition, ValidationError> {
-        let field_underlying_type_name = underlying_type(&field_type.node);
+    ) -> Result<&SchemaTypeDefinition, ValidationError> {
+        let field_underlying_type_name = underlying_type(field_type);
         let field_underlying_type = self
             .schema
             .get_type_definition(field_underlying_type_name.as_str());
@@ -196,17 +187,16 @@ impl<'a> SelectionSetValidator<'a> {
     fn get_field_definition(
         &'a self,
         field: &Positioned<Field>,
-    ) -> Result<&FieldDefinition, ValidationError> {
+    ) -> Result<&SchemaFieldDefinition, ValidationError> {
         let field_definition = &self
             .container_type
             .fields()
-            .and_then(|fields| fields.iter().find(|f| f.node.name == field.node.name))
-            .map(|f| &f.node);
+            .and_then(|fields| fields.iter().find(|f| f.name == field.node.name.node));
 
         match field_definition {
             None => Err(ValidationError::InvalidField(
                 field.node.name.node.as_str().to_string(),
-                self.container_type.name.node.to_string(),
+                self.container_type.name.to_string(),
                 field.pos,
             )),
             Some(field_definition) => Ok(field_definition),

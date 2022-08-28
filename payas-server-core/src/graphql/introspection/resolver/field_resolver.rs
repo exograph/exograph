@@ -1,4 +1,3 @@
-use async_graphql_parser::types::FieldDefinition;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -8,11 +7,12 @@ use payas_resolver_core::validation::field::ValidatedField;
 use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::execution_error::ExecutionError;
+use crate::graphql::introspection::schema::SchemaFieldDefinition;
 
 use super::resolver_support::Resolver;
 
 #[async_trait]
-impl FieldResolver<Value, ExecutionError, SystemContext> for FieldDefinition {
+impl FieldResolver<Value, ExecutionError, SystemContext> for SchemaFieldDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
@@ -20,11 +20,11 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for FieldDefinition {
         request_context: &'e RequestContext<'e>,
     ) -> Result<Value, ExecutionError> {
         match field.name.as_str() {
-            "name" => Ok(Value::String(self.name.node.as_str().to_owned())),
+            "name" => Ok(Value::String(self.name.as_str().to_owned())),
             "description" => Ok(self
                 .description
                 .clone()
-                .map(|v| Value::String(v.node))
+                .map(Value::String)
                 .unwrap_or(Value::Null)),
             "type" => {
                 self.ty

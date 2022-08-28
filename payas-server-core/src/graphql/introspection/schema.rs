@@ -1,23 +1,17 @@
-use async_graphql_parser::{
-    types::{
-        BaseType, FieldDefinition, InputValueDefinition, ObjectType, Type, TypeDefinition, TypeKind,
-    },
-    Positioned,
-};
+use async_graphql_parser::types::{BaseType, Type};
 
-use async_graphql_value::Name;
+use async_graphql_value::{ConstValue, Name};
 use payas_model::model::system::ModelSystem;
 
 use super::definition::{
     provider::{FieldDefinitionProvider, TypeDefinitionProvider},
     type_introspection::TypeDefinitionIntrospection,
 };
-use crate::graphql::introspection::util::{default_positioned, default_positioned_name};
 #[derive(Debug, Clone)]
 pub struct Schema {
-    pub type_definitions: Vec<TypeDefinition>,
-    pub(crate) schema_field_definition: FieldDefinition,
-    pub(crate) type_field_definition: FieldDefinition,
+    pub type_definitions: Vec<SchemaTypeDefinition>,
+    pub(crate) schema_field_definition: SchemaFieldDefinition,
+    pub(crate) type_field_definition: SchemaFieldDefinition,
 }
 
 pub const QUERY_ROOT_TYPENAME: &str = "Query";
@@ -26,31 +20,31 @@ pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
 impl Schema {
     pub fn new(system: &ModelSystem) -> Schema {
-        let mut type_definitions: Vec<TypeDefinition> = system
+        let mut type_definitions: Vec<SchemaTypeDefinition> = system
             .types
             .iter()
             .map(|model_type| model_type.1.type_definition(system))
             .collect();
 
-        let argument_type_definitions: Vec<TypeDefinition> = system
+        let argument_type_definitions: Vec<SchemaTypeDefinition> = system
             .argument_types
             .iter()
             .map(|m| m.1.type_definition(system))
             .collect();
 
-        let order_by_param_type_definitions: Vec<TypeDefinition> = system
+        let order_by_param_type_definitions: Vec<SchemaTypeDefinition> = system
             .order_by_types
             .iter()
             .map(|parameter_type| parameter_type.1.type_definition(system))
             .collect();
 
-        let predicate_param_type_definitions: Vec<TypeDefinition> = system
+        let predicate_param_type_definitions: Vec<SchemaTypeDefinition> = system
             .predicate_types
             .iter()
             .map(|parameter_type| parameter_type.1.type_definition(system))
             .collect();
 
-        let mutation_param_type_definitions: Vec<TypeDefinition> = system
+        let mutation_param_type_definitions: Vec<SchemaTypeDefinition> = system
             .mutation_types
             .iter()
             .map(|parameter_type| parameter_type.1.type_definition(system))
@@ -61,19 +55,18 @@ impl Schema {
                 .queries
                 .values
                 .iter()
-                .map(|query| default_positioned(query.1.field_definition(system)))
+                .map(|query| query.1.field_definition(system))
                 .collect();
 
             // Even though we resolve __type and __schema fields for the Query
             // type, GraphQL spec doesn't allow them to be exposed as an
             // ordinary field. Therefore, we have to treat them specially (see
             // SelectionSetValidator::validate_field)
-            TypeDefinition {
+            SchemaTypeDefinition {
                 extend: false,
                 description: None,
-                name: default_positioned_name(QUERY_ROOT_TYPENAME),
-                directives: vec![],
-                kind: TypeKind::Object(ObjectType {
+                name: Name::new(QUERY_ROOT_TYPENAME),
+                kind: SchemaTypeKind::Object(SchemaObjectType {
                     implements: vec![],
                     fields,
                 }),
@@ -85,15 +78,14 @@ impl Schema {
                 .mutations
                 .values
                 .iter()
-                .map(|mutation| default_positioned(mutation.1.field_definition(system)))
+                .map(|mutation| mutation.1.field_definition(system))
                 .collect();
 
-            TypeDefinition {
+            SchemaTypeDefinition {
                 extend: false,
                 description: None,
-                name: default_positioned_name(MUTATION_ROOT_TYPENAME),
-                directives: vec![],
-                kind: TypeKind::Object(ObjectType {
+                name: Name::new(MUTATION_ROOT_TYPENAME),
+                kind: SchemaTypeKind::Object(SchemaObjectType {
                     implements: vec![],
                     fields,
                 }),
@@ -122,35 +114,32 @@ impl Schema {
                 Some("Access the current type schema of this server."),
                 "__Schema",
                 vec![],
-            )
-            .node,
+            ),
             type_field_definition: Self::create_field(
                 "__type",
                 true,
                 None,
                 "__Type",
-                vec![default_positioned(InputValueDefinition {
+                vec![SchemaInputValueDefinition {
                     description: None,
-                    name: default_positioned_name("name"),
-                    directives: vec![],
+                    name: Name::new("name"),
                     default_value: None,
-                    ty: default_positioned(Type {
+                    ty: Type {
                         base: BaseType::Named(Name::new("String")),
                         nullable: true,
-                    }),
-                })],
-            )
-            .node,
+                    },
+                }],
+            ),
         }
     }
 
-    pub fn get_type_definition(&self, type_name: &str) -> Option<&TypeDefinition> {
+    pub fn get_type_definition(&self, type_name: &str) -> Option<&SchemaTypeDefinition> {
         self.type_definitions
             .iter()
             .find(|td| td.name().as_str() == type_name)
     }
 
-    fn create_schema_type_definition() -> TypeDefinition {
+    fn create_schema_type_definition() -> SchemaTypeDefinition {
         let directives_field = Self::create_list_field(
             "directives",
             false,
@@ -169,17 +158,14 @@ impl Schema {
 
         let mut fields: Vec<_> = ["queryType", "mutationType", "subscriptionType"]
             .into_iter()
-            .map(|field_name| {
-                default_positioned(FieldDefinition {
-                    description: None,
-                    name: default_positioned_name(field_name),
-                    arguments: vec![],
-                    ty: default_positioned(Type {
-                        base: BaseType::Named(Name::new("__Type")),
-                        nullable: false,
-                    }),
-                    directives: vec![],
-                })
+            .map(|field_name| SchemaFieldDefinition {
+                description: None,
+                name: Name::new(field_name),
+                arguments: vec![],
+                ty: Type {
+                    base: BaseType::Named(Name::new("__Type")),
+                    nullable: false,
+                },
             })
             .collect();
 
@@ -193,31 +179,27 @@ impl Schema {
         fields.push(directives_field);
         fields.push(types_field);
 
-        TypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
-            description: Some(default_positioned(
-                "The current type schema of this server.".to_string(),
-            )),
-            name: default_positioned_name("__Schema"),
-            directives: vec![],
-            kind: TypeKind::Object(ObjectType {
+            description: Some("The current type schema of this server.".to_string()),
+            name: Name::new("__Schema"),
+            kind: SchemaTypeKind::Object(SchemaObjectType {
                 implements: vec![],
                 fields,
             }),
         }
     }
 
-    fn create_type_definition() -> TypeDefinition {
-        let fields_arguments = vec![default_positioned(InputValueDefinition {
+    fn create_type_definition() -> SchemaTypeDefinition {
+        let fields_arguments = vec![SchemaInputValueDefinition {
             description: None,
-            name: default_positioned_name("includeDeprecated"),
-            directives: vec![],
+            name: Name::new("includeDeprecated"),
             default_value: None,
-            ty: default_positioned(Type {
+            ty: Type {
                 base: BaseType::Named(Name::new("Boolean")),
                 nullable: true,
-            }),
-        })];
+            },
+        }];
 
         let fields = vec![
             Self::create_field("name", true, None, "String", vec![]),
@@ -238,25 +220,23 @@ impl Schema {
             Self::create_list_field("possibleTypes", false, None, "__Type", vec![]),
         ];
 
-        TypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
             description: None,
-            name: default_positioned_name("__Type"),
-            directives: vec![],
-            kind: TypeKind::Object(ObjectType {
+            name: Name::new("__Type"),
+            kind: SchemaTypeKind::Object(SchemaObjectType {
                 implements: vec![],
                 fields,
             }),
         }
     }
 
-    fn create_field_definition() -> TypeDefinition {
-        TypeDefinition {
+    fn create_field_definition() -> SchemaTypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
             description: None,
-            name: default_positioned_name("__Field"),
-            directives: vec![],
-            kind: TypeKind::Object(ObjectType {
+            name: Name::new("__Field"),
+            kind: SchemaTypeKind::Object(SchemaObjectType {
                 implements: vec![],
                 fields: vec![
                     Self::create_field("name", true, None, "String", vec![]),
@@ -270,13 +250,12 @@ impl Schema {
         }
     }
 
-    fn create_directive_definition() -> TypeDefinition {
-        TypeDefinition {
+    fn create_directive_definition() -> SchemaTypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
             description: None,
-            name: default_positioned_name("__Directive"),
-            directives: vec![],
-            kind: TypeKind::Object(ObjectType {
+            name: Name::new("__Directive"),
+            kind: SchemaTypeKind::Object(SchemaObjectType {
                 implements: vec![],
                 fields: vec![
                     Self::create_field("name", false, None, "String", vec![]),
@@ -295,23 +274,21 @@ impl Schema {
         }
     }
 
-    fn create_directive_location_definition() -> TypeDefinition {
-        TypeDefinition {
+    fn create_directive_location_definition() -> SchemaTypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
             description: None,
-            name: default_positioned_name("__DirectiveLocation"),
-            directives: vec![],
-            kind: TypeKind::Scalar,
+            name: Name::new("__DirectiveLocation"),
+            kind: SchemaTypeKind::Scalar,
         }
     }
 
-    fn create_input_value_definition() -> TypeDefinition {
-        TypeDefinition {
+    fn create_input_value_definition() -> SchemaTypeDefinition {
+        SchemaTypeDefinition {
             extend: false,
             description: None,
-            name: default_positioned_name("__InputValue"),
-            directives: vec![],
-            kind: TypeKind::Object(ObjectType {
+            name: Name::new("__InputValue"),
+            kind: SchemaTypeKind::Object(SchemaObjectType {
                 implements: vec![],
                 fields: vec![
                     Self::create_field("name", false, None, "String", vec![]),
@@ -330,18 +307,17 @@ impl Schema {
         nullable: bool,
         description: Option<&str>,
         element_type: &str,
-        arguments: Vec<Positioned<InputValueDefinition>>,
-    ) -> Positioned<FieldDefinition> {
-        default_positioned(FieldDefinition {
-            description: description.map(|d| default_positioned(d.to_string())),
-            name: default_positioned_name(name),
+        arguments: Vec<SchemaInputValueDefinition>,
+    ) -> SchemaFieldDefinition {
+        SchemaFieldDefinition {
+            description: description.map(|d| d.to_string()),
+            name: Name::new(name),
             arguments,
-            ty: default_positioned(Type {
+            ty: Type {
                 base: BaseType::Named(Name::new(element_type)),
                 nullable,
-            }),
-            directives: vec![],
-        })
+            },
+        }
     }
 
     fn create_list_field(
@@ -349,20 +325,99 @@ impl Schema {
         nullable: bool,
         description: Option<&str>,
         element_type: &str,
-        arguments: Vec<Positioned<InputValueDefinition>>,
-    ) -> Positioned<FieldDefinition> {
-        default_positioned(FieldDefinition {
-            description: description.map(|d| default_positioned(d.to_string())),
-            name: default_positioned_name(name),
+        arguments: Vec<SchemaInputValueDefinition>,
+    ) -> SchemaFieldDefinition {
+        SchemaFieldDefinition {
+            description: description.map(|d| d.to_string()),
+            name: Name::new(name),
             arguments,
-            ty: default_positioned(Type {
+            ty: Type {
                 base: BaseType::List(Box::new(Type {
                     base: BaseType::Named(Name::new(element_type)),
                     nullable,
                 })),
                 nullable,
-            }),
-            directives: vec![],
-        })
+            },
+        }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemaTypeDefinition {
+    /// Whether the type is an extension of another type.
+    pub extend: bool,
+    /// The description of the type, if present. This is never present on an
+    /// extension type.
+    pub description: Option<String>,
+    /// The name of the type.
+    pub name: Name,
+    /// Which kind of type is being defined; scalar, object, enum, etc.
+    pub kind: SchemaTypeKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum SchemaTypeKind {
+    /// A scalar type.
+    Scalar,
+    /// An object type.
+    Object(SchemaObjectType),
+    /// An enum type.
+    Enum(SchemaEnumType),
+    /// An input object type.
+    InputObject(SchemaInputObjectType),
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemaEnumType {
+    /// The possible values of the enum.
+    pub values: Vec<SchemaEnumValueDefinition>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemaEnumValueDefinition {
+    /// The description of the argument.
+    pub description: Option<String>,
+    /// The value name.
+    pub value: Name,
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemaObjectType {
+    /// The interfaces implemented by the object.
+    pub implements: Vec<Name>,
+    /// The fields of the object type.
+    pub fields: Vec<SchemaFieldDefinition>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemaInputObjectType {
+    /// The fields of the input object.
+    pub fields: Vec<SchemaInputValueDefinition>,
+}
+
+/// The definition of an input value inside the arguments of a field.
+///
+/// [Reference](https://spec.graphql.org/October2021/#InputValueDefinition).
+#[derive(Debug, Clone)]
+pub struct SchemaInputValueDefinition {
+    /// The description of the argument.
+    pub description: Option<String>,
+    /// The name of the argument.
+    pub name: Name,
+    /// The type of the argument.
+    pub ty: Type,
+    /// The default value of the argument, if there is one.
+    pub default_value: Option<ConstValue>,
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemaFieldDefinition {
+    /// The description of the field.
+    pub description: Option<String>,
+    /// The name of the field.
+    pub name: Name,
+    /// The arguments of the field.
+    pub arguments: Vec<SchemaInputValueDefinition>,
+    /// The type of the field.
+    pub ty: Type,
 }

@@ -1,21 +1,10 @@
-use async_graphql_parser::{
-    types::{BaseType, Type},
-    Pos, Positioned,
-};
+use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::Name;
 
 use payas_model::model::{
     types::{GqlTypeModifier, GqlTypeModifier::*},
     GqlFieldType,
 };
-
-pub fn default_positioned<T>(value: T) -> Positioned<T> {
-    Positioned::new(value, Pos::default())
-}
-
-pub fn default_positioned_name(value: &str) -> Positioned<Name> {
-    default_positioned(Name::new(value))
-}
 
 pub fn compute_type(typ: &GqlFieldType) -> Type {
     fn compute_base_type(typ: &GqlFieldType) -> BaseType {

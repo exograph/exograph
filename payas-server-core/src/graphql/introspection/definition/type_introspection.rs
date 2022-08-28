@@ -1,79 +1,75 @@
-use async_graphql_parser::{
-    types::{EnumValueDefinition, FieldDefinition, InputValueDefinition, TypeDefinition, TypeKind},
-    Positioned,
-};
 use async_graphql_value::Name;
+
+use crate::graphql::introspection::schema::{
+    SchemaEnumValueDefinition, SchemaFieldDefinition, SchemaInputValueDefinition,
+    SchemaTypeDefinition, SchemaTypeKind,
+};
 
 /// Deal with variants of `TypeDefinition` to give a uniform view suitable for introspection
 pub trait TypeDefinitionIntrospection {
     fn name(&self) -> String;
     fn kind(&self) -> String;
     fn description(&self) -> Option<String>;
-    fn fields(&self) -> Option<&Vec<Positioned<FieldDefinition>>>;
-    fn interfaces(&self) -> Option<&Vec<Positioned<Name>>>;
-    fn possible_types(&self) -> Option<&Vec<Positioned<Name>>>;
-    fn enum_values(&self) -> Option<&Vec<Positioned<EnumValueDefinition>>>;
-    fn input_fields(&self) -> Option<&Vec<Positioned<InputValueDefinition>>>;
+    fn fields(&self) -> Option<&Vec<SchemaFieldDefinition>>;
+    fn interfaces(&self) -> Option<&Vec<Name>>;
+    fn possible_types(&self) -> Option<&Vec<Name>>;
+    fn enum_values(&self) -> Option<&Vec<SchemaEnumValueDefinition>>;
+    fn input_fields(&self) -> Option<&Vec<SchemaInputValueDefinition>>;
 }
 
-impl TypeDefinitionIntrospection for TypeDefinition {
+impl TypeDefinitionIntrospection for SchemaTypeDefinition {
     fn name(&self) -> String {
-        self.name.node.to_string()
+        self.name.to_string()
     }
 
     fn kind(&self) -> String {
         match self.kind {
-            TypeKind::Scalar => "SCALAR".to_owned(),
-            TypeKind::Object(_) => "OBJECT".to_owned(),
-            TypeKind::Interface(_) => "INTERFACE".to_owned(),
-            TypeKind::Union(_) => "UNION".to_owned(),
-            TypeKind::Enum(_) => "ENUM".to_owned(),
-            TypeKind::InputObject(_) => "INPUT_OBJECT".to_owned(),
+            SchemaTypeKind::Scalar => "SCALAR".to_owned(),
+            SchemaTypeKind::Object(_) => "OBJECT".to_owned(),
+            SchemaTypeKind::Enum(_) => "ENUM".to_owned(),
+            SchemaTypeKind::InputObject(_) => "INPUT_OBJECT".to_owned(),
         }
     }
 
     fn description(&self) -> Option<String> {
-        self.description.as_ref().map(|d| d.node.to_owned())
+        self.description.as_ref().map(|d| d.to_owned())
     }
 
-    fn fields(&self) -> Option<&Vec<Positioned<FieldDefinition>>> {
+    fn fields(&self) -> Option<&Vec<SchemaFieldDefinition>> {
         // Spec: return null except for ObjectType
         // TODO: includeDeprecated arg
         match &self.kind {
-            TypeKind::Object(value) => Some(&value.fields),
+            SchemaTypeKind::Object(value) => Some(&value.fields),
             _ => None,
         }
     }
 
-    fn interfaces(&self) -> Option<&Vec<Positioned<Name>>> {
+    fn interfaces(&self) -> Option<&Vec<Name>> {
         // Spec: return null except for ObjectType
         match &self.kind {
-            TypeKind::Object(value) => Some(&value.implements),
+            SchemaTypeKind::Object(value) => Some(&value.implements),
             _ => None,
         }
     }
 
-    fn possible_types(&self) -> Option<&Vec<Positioned<Name>>> {
+    fn possible_types(&self) -> Option<&Vec<Name>> {
         // Spec: return null except for UnionType and Interface
-        match &self.kind {
-            TypeKind::Union(value) => Some(&value.members),
-            TypeKind::Interface(_value) => todo!(),
-            _ => None,
-        }
+        // Since we don't (need to) support unions and interfaces, this is always None
+        None
     }
 
-    fn enum_values(&self) -> Option<&Vec<Positioned<EnumValueDefinition>>> {
+    fn enum_values(&self) -> Option<&Vec<SchemaEnumValueDefinition>> {
         // Spec: return null except for EnumType
         match &self.kind {
-            TypeKind::Enum(value) => Some(&value.values),
+            SchemaTypeKind::Enum(value) => Some(&value.values),
             _ => None,
         }
     }
 
-    fn input_fields(&self) -> Option<&Vec<Positioned<InputValueDefinition>>> {
+    fn input_fields(&self) -> Option<&Vec<SchemaInputValueDefinition>> {
         // Spec: return null except for InputObjectType
         match &self.kind {
-            TypeKind::InputObject(value) => Some(&value.fields),
+            SchemaTypeKind::InputObject(value) => Some(&value.fields),
             _ => None,
         }
     }

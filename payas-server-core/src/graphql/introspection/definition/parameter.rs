@@ -1,8 +1,7 @@
-use crate::graphql::introspection::util::default_positioned_name;
-use async_graphql_parser::types::InputValueDefinition;
-
+use crate::graphql::introspection::schema::SchemaInputValueDefinition;
 use crate::graphql::introspection::util;
 
+use async_graphql_value::Name;
 use payas_model::model::{
     argument::ArgumentParameter,
     limit_offset::{LimitParameter, OffsetParameter},
@@ -125,16 +124,14 @@ impl Parameter for ArgumentParameter {
 
 macro_rules! parameter_input_value_provider {
     () => {
-        fn input_value(&self) -> InputValueDefinition {
-            let field_type =
-                util::default_positioned(util::value_type(self.type_name(), self.type_modifier()));
+        fn input_value(&self) -> SchemaInputValueDefinition {
+            let field_type = util::value_type(self.type_name(), self.type_modifier());
 
-            InputValueDefinition {
+            SchemaInputValueDefinition {
                 description: None,
-                name: default_positioned_name(self.name()),
+                name: Name::new(self.name()),
                 ty: field_type,
                 default_value: None,
-                directives: vec![],
             }
         }
     };
@@ -153,15 +150,14 @@ impl InputValueProvider for &dyn Parameter {
 // created nested types such as Optional(List(List(String))). The blanket impl
 // above will not work for nested types like these.
 impl InputValueProvider for GqlField {
-    fn input_value(&self) -> InputValueDefinition {
-        let field_type = util::default_positioned(util::compute_type(&self.typ));
+    fn input_value(&self) -> SchemaInputValueDefinition {
+        let field_type = util::compute_type(&self.typ);
 
-        InputValueDefinition {
+        SchemaInputValueDefinition {
             description: None,
-            name: default_positioned_name(&self.name),
+            name: Name::new(&self.name),
             ty: field_type,
             default_value: None,
-            directives: vec![],
         }
     }
 }

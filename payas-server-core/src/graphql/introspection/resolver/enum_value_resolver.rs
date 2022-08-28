@@ -1,4 +1,3 @@
-use async_graphql_parser::types::EnumValueDefinition;
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -8,9 +7,10 @@ use payas_resolver_core::validation::field::ValidatedField;
 use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::execution_error::ExecutionError;
+use crate::graphql::introspection::schema::SchemaEnumValueDefinition;
 
 #[async_trait]
-impl FieldResolver<Value, ExecutionError, SystemContext> for EnumValueDefinition {
+impl FieldResolver<Value, ExecutionError, SystemContext> for SchemaEnumValueDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
@@ -18,11 +18,11 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for EnumValueDefinition
         _request_context: &'e RequestContext<'e>,
     ) -> Result<Value, ExecutionError> {
         match field.name.as_str() {
-            "name" => Ok(Value::String(self.value.node.as_str().to_owned())),
+            "name" => Ok(Value::String(self.value.as_str().to_owned())),
             "description" => Ok(self
                 .description
                 .clone()
-                .map(|v| Value::String(v.node))
+                .map(Value::String)
                 .unwrap_or(Value::Null)),
             "isDeprecated" => Ok(Value::Bool(false)), // TODO
             "deprecationReason" => Ok(Value::Null),   // TODO

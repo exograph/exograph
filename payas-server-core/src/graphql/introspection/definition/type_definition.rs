@@ -1,7 +1,12 @@
-use crate::graphql::introspection::{definition::provider::InputValueProvider, util};
-use async_graphql_parser::types::{
-    FieldDefinition, InputObjectType, ObjectType, TypeDefinition, TypeKind,
+use crate::graphql::introspection::{
+    definition::provider::InputValueProvider,
+    schema::{
+        SchemaFieldDefinition, SchemaInputObjectType, SchemaObjectType, SchemaTypeDefinition,
+        SchemaTypeKind,
+    },
+    util,
 };
+use async_graphql_value::Name;
 use payas_model::model::{
     operation::{DatabaseQueryParameter, QueryKind},
     relation::GqlRelation,
@@ -10,17 +15,15 @@ use payas_model::model::{
 };
 
 use super::provider::{FieldDefinitionProvider, TypeDefinitionProvider};
-use crate::graphql::introspection::util::{default_positioned, default_positioned_name};
 
 impl TypeDefinitionProvider for GqlType {
-    fn type_definition(&self, system: &ModelSystem) -> TypeDefinition {
+    fn type_definition(&self, system: &ModelSystem) -> SchemaTypeDefinition {
         match &self.kind {
-            GqlTypeKind::Primitive => TypeDefinition {
+            GqlTypeKind::Primitive => SchemaTypeDefinition {
                 extend: false,
                 description: None,
-                name: default_positioned_name(&self.name),
-                directives: vec![],
-                kind: TypeKind::Scalar,
+                name: Name::new(&self.name),
+                kind: SchemaTypeKind::Scalar,
             },
             GqlTypeKind::Composite(GqlCompositeType {
                 fields: model_fields,
@@ -29,25 +32,24 @@ impl TypeDefinitionProvider for GqlType {
                 let kind = if self.is_input {
                     let fields = model_fields
                         .iter()
-                        .map(|model_field| default_positioned(model_field.input_value()))
+                        .map(|model_field| model_field.input_value())
                         .collect();
-                    TypeKind::InputObject(InputObjectType { fields })
+                    SchemaTypeKind::InputObject(SchemaInputObjectType { fields })
                 } else {
                     let fields: Vec<_> = model_fields
                         .iter()
-                        .map(|model_field| default_positioned(model_field.field_definition(system)))
+                        .map(|model_field| model_field.field_definition(system))
                         .collect();
 
-                    TypeKind::Object(ObjectType {
+                    SchemaTypeKind::Object(SchemaObjectType {
                         implements: vec![],
                         fields,
                     })
                 };
-                TypeDefinition {
+                SchemaTypeDefinition {
                     extend: false,
                     description: None,
-                    name: default_positioned_name(&self.name),
-                    directives: vec![],
+                    name: Name::new(&self.name),
                     kind,
                 }
             }
@@ -56,8 +58,8 @@ impl TypeDefinitionProvider for GqlType {
 }
 
 impl FieldDefinitionProvider for GqlField {
-    fn field_definition(&self, system: &ModelSystem) -> FieldDefinition {
-        let field_type = util::default_positioned(util::compute_type(&self.typ));
+    fn field_definition(&self, system: &ModelSystem) -> SchemaFieldDefinition {
+        let field_type = util::compute_type(&self.typ);
 
         let arguments = match self.relation {
             GqlRelation::Pk { .. }
@@ -98,7 +100,6 @@ impl FieldDefinitionProvider for GqlField {
                                 ]
                                 .into_iter()
                                 .flatten()
-                                .map(util::default_positioned)
                                 .collect()
                             }
                             QueryKind::Service { .. } => panic!(),
@@ -108,12 +109,11 @@ impl FieldDefinitionProvider for GqlField {
             }
         };
 
-        FieldDefinition {
+        SchemaFieldDefinition {
             description: None,
-            name: default_positioned_name(&self.name),
+            name: Name::new(&self.name),
             arguments,
             ty: field_type,
-            directives: vec![],
         }
     }
 }

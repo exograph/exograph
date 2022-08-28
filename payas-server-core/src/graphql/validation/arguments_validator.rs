@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{BaseType, Field, InputValueDefinition, TypeKind},
+    types::{BaseType, Field},
     Pos, Positioned,
 };
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
 use bytes::Bytes;
 
 use crate::graphql::{
-    introspection::schema::Schema, validation::validation_error::ValidationError,
+    introspection::schema::{Schema, SchemaInputValueDefinition, SchemaTypeKind},
+    validation::validation_error::ValidationError,
 };
 
 use super::underlying_type;
@@ -41,14 +42,14 @@ impl<'a> ArgumentValidator<'a> {
     ///          as a LocalTime argument is valid or the numbers fit the expected range).
     pub(super) fn validate(
         &self,
-        field_argument_definition: &[&InputValueDefinition],
+        field_argument_definition: &[&SchemaInputValueDefinition],
     ) -> Result<HashMap<String, ConstValue>, ValidationError> {
         self.validate_arguments(field_argument_definition, &self.field.node.arguments)
     }
 
     fn validate_arguments(
         &self,
-        field_argument_definitions: &[&InputValueDefinition],
+        field_argument_definitions: &[&SchemaInputValueDefinition],
         field_arguments: &[(Positioned<Name>, Positioned<Value>)],
     ) -> Result<HashMap<String, ConstValue>, ValidationError> {
         let field_name = self.field.node.name.node.as_str();
@@ -74,7 +75,7 @@ impl<'a> ArgumentValidator<'a> {
         let validated_arguments = field_argument_definitions
             .iter()
             .filter_map(|argument_definition| {
-                let argument_name = &argument_definition.name.node;
+                let argument_name = &argument_definition.name;
                 // Stray arguments tracking: 2. Remove the argument being processed
                 let argument_value = field_arguments.remove(argument_name);
 
@@ -112,7 +113,7 @@ impl<'a> ArgumentValidator<'a> {
     /// - Lists match the expected shape
     fn validate_argument(
         &self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         argument_value: Option<&Positioned<Value>>,
     ) -> Option<Result<ConstValue, ValidationError>> {
         match argument_value {
@@ -155,11 +156,11 @@ impl<'a> ArgumentValidator<'a> {
                 }
             },
             None => {
-                if argument_definition.ty.node.nullable {
+                if argument_definition.ty.nullable {
                     None
                 } else {
                     Some(Err(ValidationError::RequiredArgumentNotFound(
-                        argument_definition.name.node.to_string(),
+                        argument_definition.name.to_string(),
                         self.field.pos,
                     )))
                 }
@@ -169,16 +170,16 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_null_argument(
         &self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        let ty = &argument_definition.ty.node;
+        let ty = &argument_definition.ty;
 
         if ty.nullable {
             Ok(ConstValue::Null)
         } else {
             Err(ValidationError::RequiredArgumentNotFound(
-                argument_definition.name.node.to_string(),
+                argument_definition.name.to_string(),
                 pos,
             ))
         }
@@ -186,7 +187,7 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_number_argument(
         &self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         number: &Number,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
@@ -202,7 +203,7 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_boolean_argument(
         &self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         boolean: &bool,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
@@ -218,7 +219,7 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_string_argument(
         &self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         string: &str,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
@@ -244,7 +245,7 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_binary_argument(
         &self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         bytes: &Bytes,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
@@ -264,17 +265,17 @@ impl<'a> ArgumentValidator<'a> {
         argument_typename: &str,
         acceptable_destination_types: &[&str; N],
         to_const_value: impl FnOnce() -> ConstValue,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        let ty = &argument_definition.ty.node;
+        let ty = &argument_definition.ty;
         let underlying = underlying_type(ty);
 
         if acceptable_destination_types.contains(&underlying.as_str()) {
             Ok(to_const_value())
         } else {
             Err(ValidationError::InvalidArgumentType {
-                argument_name: argument_definition.name.node.to_string(),
+                argument_name: argument_definition.name.to_string(),
                 expected_type: underlying.to_string(),
                 actual_type: argument_typename.to_string(),
                 pos,
@@ -285,11 +286,11 @@ impl<'a> ArgumentValidator<'a> {
     /// Recursively validate an object argument
     fn validate_object_argument(
         &self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         entires: &IndexMap<Name, Value>,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        let ty = &argument_definition.ty.node;
+        let ty = &argument_definition.ty;
         let underlying = underlying_type(ty);
 
         if underlying.as_str() == "Json" {
@@ -309,9 +310,9 @@ impl<'a> ArgumentValidator<'a> {
             .get_type_definition(underlying.as_str())
             .unwrap();
         let input_object_type = match &td.kind {
-            TypeKind::InputObject(input_object_type) => Ok(input_object_type),
+            SchemaTypeKind::InputObject(input_object_type) => Ok(input_object_type),
             _ => Err(ValidationError::InvalidArgumentType {
-                argument_name: argument_definition.name.node.to_string(),
+                argument_name: argument_definition.name.to_string(),
                 expected_type: ty.to_string(),
                 actual_type: td.name.to_string(),
                 pos,
@@ -329,11 +330,7 @@ impl<'a> ArgumentValidator<'a> {
             .collect::<Vec<_>>();
 
         let validated_arguments = self.validate_arguments(
-            &input_object_type
-                .fields
-                .iter()
-                .map(|d| &d.node)
-                .collect::<Vec<_>>(),
+            &input_object_type.fields.iter().collect::<Vec<_>>(),
             &field_arguments,
         )?;
 
@@ -347,11 +344,11 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_list_argument(
         &self,
-        argument_definition: &InputValueDefinition,
+        argument_definition: &SchemaInputValueDefinition,
         elems: &[Value],
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        let ty = &argument_definition.ty.node;
+        let ty = &argument_definition.ty;
         let underlying = underlying_type(ty);
 
         // If the expected type is json, treat it as an opaque object
@@ -366,7 +363,7 @@ impl<'a> ArgumentValidator<'a> {
 
         match &ty.base {
             BaseType::Named(name) => Err(ValidationError::InvalidArgumentType {
-                argument_name: argument_definition.name.node.to_string(),
+                argument_name: argument_definition.name.to_string(),
                 expected_type: underlying.to_string(),
                 actual_type: format!("[{name}]"),
                 pos,
@@ -374,8 +371,8 @@ impl<'a> ArgumentValidator<'a> {
             BaseType::List(elem_type) => {
                 // Peel off the list type to get the element type
 
-                let elem_argument_definition = InputValueDefinition {
-                    ty: Positioned::new(elem_type.as_ref().clone(), pos),
+                let elem_argument_definition = SchemaInputValueDefinition {
+                    ty: elem_type.as_ref().clone(),
                     ..argument_definition.clone()
                 };
 
