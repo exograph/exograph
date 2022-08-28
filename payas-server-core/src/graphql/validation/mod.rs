@@ -1,5 +1,6 @@
-use async_graphql_parser::types::{BaseType, Type};
-use async_graphql_value::Name;
+use payas_model::model::system::ModelSystem;
+
+use self::definition::GqlTypeDefinition;
 
 /// Validate the query payload.
 ///
@@ -10,13 +11,37 @@ pub mod operation;
 pub mod document_validator;
 
 mod arguments_validator;
+mod definition;
+mod gql_field_definition;
+mod gql_parameter_definition;
+mod gql_type_definition;
 mod operation_validator;
 mod selection_set_validator;
 pub mod validation_error;
 
-fn underlying_type(typ: &Type) -> &Name {
-    match &typ.base {
-        BaseType::Named(name) => name,
-        BaseType::List(typ) => underlying_type(typ),
-    }
+// fn underlying_type(typ: &GqlFieldType) -> &str {
+//     match &typ {
+//         GqlFieldType::Optional(underlying) | GqlFieldType::List(underlying) => {
+//             underlying_type(underlying)
+//         }
+//         GqlFieldType::Reference { type_id, type_name } => &type_name,
+//     }
+// }
+
+fn find_type<'a>(model: &'a ModelSystem, name: &str) -> Option<&'a dyn GqlTypeDefinition> {
+    model
+        .types
+        .iter()
+        .find(|t| t.1.name.as_str() == name)
+        .map(|t| t.1 as &dyn GqlTypeDefinition)
+}
+
+fn find_arg_type<'a>(model: &'a ModelSystem, name: &str) -> Option<&'a dyn GqlTypeDefinition> {
+    // model
+    //     .types
+    //     .iter()
+    //     .find(|t| t.1.name.as_str() == name)
+    //     .map(|t| t.1);
+
+    todo!()
 }

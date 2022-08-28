@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +17,7 @@ use super::{
     types::{GqlType, GqlTypeModifier},
 };
 
-pub trait GraphQLOperation {
+pub trait GraphQLOperation: Debug {
     fn name(&self) -> &str;
 
     fn interceptors(&self) -> &Interceptors;

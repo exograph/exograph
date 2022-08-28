@@ -1,32 +1,30 @@
 use std::collections::HashMap;
 
 use async_graphql_parser::{
-    types::{
-        Field, FieldDefinition, FragmentDefinition, FragmentSpread, Selection, SelectionSet, Type,
-        TypeDefinition,
-    },
-    Positioned,
+    types::{Field, FragmentDefinition, FragmentSpread, Selection, SelectionSet},
+    Pos, Positioned,
 };
 use async_graphql_value::{ConstValue, Name};
 
+use payas_model::model::system::ModelSystem;
 use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::graphql::{
-    introspection::{
-        definition::type_introspection::TypeDefinitionIntrospection,
-        schema::{Schema, QUERY_ROOT_TYPENAME},
-    },
-    validation::validation_error::ValidationError,
+    introspection::schema::QUERY_ROOT_TYPENAME, validation::validation_error::ValidationError,
 };
 
-use super::{arguments_validator::ArgumentValidator, underlying_type};
+use super::{
+    arguments_validator::ArgumentValidator,
+    definition::{GqlFieldDefinition, GqlFieldTypeDefinition, GqlTypeDefinition},
+    find_type,
+};
 
 /// Context for validating a selection set.
 #[derive(Debug)]
 pub struct SelectionSetValidator<'a> {
-    schema: &'a Schema,
+    model: &'a ModelSystem,
     /// The parent type of this field.
-    container_type: &'a TypeDefinition,
+    container_type_definition: &'a dyn GqlTypeDefinition,
     variables: &'a HashMap<Name, ConstValue>,
     fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
 }
@@ -34,14 +32,14 @@ pub struct SelectionSetValidator<'a> {
 impl<'a> SelectionSetValidator<'a> {
     #[must_use]
     pub fn new(
-        schema: &'a Schema,
-        container_type: &'a TypeDefinition,
+        model: &'a ModelSystem,
+        type_container: &'a dyn GqlTypeDefinition,
         variables: &'a HashMap<Name, ConstValue>,
         fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
     ) -> Self {
         Self {
-            schema,
-            container_type,
+            model,
+            container_type_definition: type_container,
             variables,
             fragment_definitions,
         }
@@ -84,7 +82,10 @@ impl<'a> SelectionSetValidator<'a> {
         }
     }
 
-    fn validate_field(&self, field: &Positioned<Field>) -> Result<ValidatedField, ValidationError> {
+    fn validate_field(
+        &'a self,
+        field: &Positioned<Field>,
+    ) -> Result<ValidatedField, ValidationError> {
         // Special treatment for the __typename field, since we are not supposed to expose it as
         // a normal field (for example, we should not declare that the "Concert" type has a __typename field")
         if field.node.name.node.as_str() == "__typename" {
@@ -113,15 +114,16 @@ impl<'a> SelectionSetValidator<'a> {
                 })
             }
         } else {
-            let field_definition = if self.container_type.name.node.as_str() == QUERY_ROOT_TYPENAME
-            {
+            let field_definition = if self.container_type_definition.name() == QUERY_ROOT_TYPENAME {
                 // We have to treat the query root type specially, since its __schema and __type fields are not
                 // "ordinary" fields, but are instead special-cased in the introspection query (much the same way
                 // as the __typename field).
                 if field.node.name.node.as_str() == "__schema" {
-                    &self.schema.schema_field_definition
+                    // &self.schema.schema_field_definition
+                    todo!("__schema")
                 } else if field.node.name.node.as_str() == "__type" {
-                    &self.schema.type_field_definition
+                    // &self.schema.type_field_definition
+                    todo!("__type")
                 } else {
                     self.get_field_definition(field)?
                 }
@@ -129,10 +131,11 @@ impl<'a> SelectionSetValidator<'a> {
                 self.get_field_definition(field)?
             };
 
-            let field_type_definition = self.get_type_definition(&field_definition.ty, field)?;
+            let field_type_definition =
+                self.get_type_definition(field_definition.ty(self.model), field.pos)?;
 
-            let subfield_validator = SelectionSetValidator::new(
-                self.schema,
+            let subfield_validator = Self::new(
+                self.model,
                 field_type_definition,
                 self.variables,
                 self.fragment_definitions,
@@ -140,15 +143,9 @@ impl<'a> SelectionSetValidator<'a> {
 
             let subfields = subfield_validator.validate(&field.node.selection_set)?;
 
-            let field_validator = ArgumentValidator::new(self.schema, self.variables, field);
+            let field_validator = ArgumentValidator::new(self.model, self.variables, field);
 
-            let arguments = field_validator.validate(
-                &field_definition
-                    .arguments
-                    .iter()
-                    .map(|d| &d.node)
-                    .collect::<Vec<_>>(),
-            )?;
+            let arguments = field_validator.validate(&field_definition.arguments(self.model))?;
 
             Ok(ValidatedField {
                 alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
@@ -176,18 +173,16 @@ impl<'a> SelectionSetValidator<'a> {
 
     fn get_type_definition(
         &self,
-        field_type: &Positioned<Type>,
-        field: &Positioned<Field>,
-    ) -> Result<&TypeDefinition, ValidationError> {
-        let field_underlying_type_name = underlying_type(&field_type.node);
-        let field_underlying_type = self
-            .schema
-            .get_type_definition(field_underlying_type_name.as_str());
+        field_type: &dyn GqlFieldTypeDefinition,
+        field_pos: Pos,
+    ) -> Result<&dyn GqlTypeDefinition, ValidationError> {
+        let field_underlying_type_name = &field_type.name();
+        let field_underlying_type = find_type(self.model, field_underlying_type_name);
 
         match field_underlying_type {
             None => Err(ValidationError::InvalidFieldType(
-                field_underlying_type_name.as_str().to_string(),
-                field.pos,
+                field_underlying_type_name.to_string(),
+                field_pos,
             )),
             Some(field_underlying_type) => Ok(field_underlying_type),
         }
@@ -196,20 +191,20 @@ impl<'a> SelectionSetValidator<'a> {
     fn get_field_definition(
         &'a self,
         field: &Positioned<Field>,
-    ) -> Result<&FieldDefinition, ValidationError> {
+    ) -> Result<&dyn GqlFieldDefinition, ValidationError> {
         let field_definition = &self
-            .container_type
+            .container_type_definition
             .fields()
-            .and_then(|fields| fields.iter().find(|f| f.node.name == field.node.name))
-            .map(|f| &f.node);
+            .into_iter()
+            .find(|f| f.name() == field.node.name.node.as_str());
 
         match field_definition {
             None => Err(ValidationError::InvalidField(
-                field.node.name.node.as_str().to_string(),
-                self.container_type.name.node.to_string(),
+                field.node.name.node.as_str().to_owned(),
+                self.container_type_definition.name().to_owned(),
                 field.pos,
             )),
-            Some(field_definition) => Ok(field_definition),
+            Some(field_definition) => Ok(*field_definition),
         }
     }
 }

@@ -86,7 +86,7 @@ impl SystemContext {
         let document = parse_query(operations_payload.query)?;
 
         let document_validator = DocumentValidator::new(
-            &self.schema,
+            &self.system,
             operations_payload.operation_name,
             operations_payload.variables,
         );

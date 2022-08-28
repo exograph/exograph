@@ -1,29 +1,28 @@
 use async_graphql_parser::types::{DocumentOperations, ExecutableDocument};
 use async_graphql_value::Name;
+use payas_model::model::system::ModelSystem;
 use serde_json::{Map, Value};
 use tracing::instrument;
 
-use crate::graphql::{
-    introspection::schema::Schema, validation::validation_error::ValidationError,
-};
+use crate::graphql::validation::validation_error::ValidationError;
 
 use super::{operation::ValidatedOperation, operation_validator::OperationValidator};
 
 /// Context for validating a document.
 pub struct DocumentValidator<'a> {
-    schema: &'a Schema,
+    system: &'a ModelSystem,
     operation_name: Option<String>,
     variables: Option<Map<String, Value>>,
 }
 
 impl<'a> DocumentValidator<'a> {
     pub fn new(
-        schema: &'a Schema,
+        system: &'a ModelSystem,
         operation_name: Option<String>,
         variables: Option<Map<String, Value>>,
     ) -> Self {
         Self {
-            schema,
+            system,
             operation_name,
             variables,
         }
@@ -80,7 +79,7 @@ impl<'a> DocumentValidator<'a> {
         }?;
 
         let operation_validator = OperationValidator::new(
-            self.schema,
+            self.system,
             operation_name,
             self.variables,
             document.fragments,
@@ -96,11 +95,37 @@ mod tests {
     use async_graphql_parser::parse_query;
 
     #[test]
-    fn argument_valid() {
-        let schema = create_test_schema();
+    fn no_arguments_valid() {
+        let system = create_test_system();
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
+            operation_name: None,
+            variables: None,
+        };
+
+        let query = r#"
+            query {
+                concerts {
+                    id
+                    title
+                    venue {
+                        id
+                        name
+                    }
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn argument_valid() {
+        let system = create_test_system();
+
+        let validator = DocumentValidator {
+            system: &system,
             operation_name: None,
             variables: None,
         };
@@ -123,10 +148,10 @@ mod tests {
 
     #[test]
     fn with_operation_name_valid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: None,
             variables: None,
         };
@@ -149,10 +174,10 @@ mod tests {
 
     #[test]
     fn stray_argument_invalid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: None,
             variables: None,
         };
@@ -175,10 +200,10 @@ mod tests {
 
     #[test]
     fn unspecified_required_argument_invalid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: None,
             variables: None,
         };
@@ -201,7 +226,7 @@ mod tests {
 
     #[test]
     fn variable_resolution_valid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let variables = create_variables(
             r#"
@@ -212,7 +237,7 @@ mod tests {
         );
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: None,
             variables: Some(variables),
         };
@@ -235,11 +260,11 @@ mod tests {
 
     #[test]
     fn variable_resolution_invalid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let variables = create_variables(r#"{ "concert_id": 2 }"#);
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: None,
             variables: Some(variables),
         };
@@ -262,10 +287,10 @@ mod tests {
 
     #[test]
     fn invalid_subfield() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: None,
             variables: None,
         };
@@ -285,10 +310,10 @@ mod tests {
 
     #[test]
     fn aliases_valid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: None,
             variables: None,
         };
@@ -307,7 +332,7 @@ mod tests {
 
     #[test]
     fn multi_operations_valid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let query = r#"
             query concert1 {
@@ -326,7 +351,7 @@ mod tests {
         "#;
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: Some("concert1".to_string()),
             variables: None,
         };
@@ -334,7 +359,7 @@ mod tests {
         insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: Some("concert2".to_string()),
             variables: None,
         };
@@ -344,7 +369,7 @@ mod tests {
 
     #[test]
     fn multi_operations_no_operation_name_invalid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let query = r#"
             query concert1 {
@@ -363,7 +388,7 @@ mod tests {
         "#;
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: None,
             variables: None,
         };
@@ -373,7 +398,7 @@ mod tests {
 
     #[test]
     fn multi_operations_mismatched_operation_name_invalid() {
-        let schema = create_test_schema();
+        let system = create_test_system();
 
         let query = r#"
             query concert1 {
@@ -392,7 +417,7 @@ mod tests {
         "#;
 
         let validator = DocumentValidator {
-            schema: &schema,
+            system: &system,
             operation_name: Some("foo".to_string()),
             variables: None,
         };
@@ -404,7 +429,7 @@ mod tests {
         serde_json::from_str(variables).unwrap()
     }
 
-    fn create_test_schema() -> Schema {
+    fn create_test_system() -> ModelSystem {
         let test_clay = r#"
             model Concert {
                 id: Int = autoincrement() @pk
@@ -418,9 +443,7 @@ mod tests {
                 concerts: Set<Concert>
             }
         "#;
-        let system =
-            payas_parser::build_system_from_str(test_clay, "test.clay".to_string()).unwrap();
-        Schema::new(&system)
+        payas_parser::build_system_from_str(test_clay, "test.clay".to_string()).unwrap()
     }
 
     fn create_query_document(query_str: &str) -> ExecutableDocument {
