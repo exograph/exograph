@@ -32,6 +32,15 @@ impl DatabaseExecutor {
     }
 }
 
+// TransactionHolder holds raw pointers to two objects: `client` and `transaction`.
+// `transaction` holds a reference to `client`, which makes initializing this struct properly difficult.
+// In addition, we must interact with async methods when using either of these objects, further complicating things
+// and preventing us from using libraries like self_cell and ouroboros.
+//
+// To simplify lifetime constraints, these are allocated and dropped manually through Box::leak
+// and a manual Drop impl. By doing so, this grants `transaction` a 'static lifetime that oversteps some lifetime
+// issues we encountered. Of course, we must manually make sure that the objects are tied to the lifetime of TransactionHolder.
+
 #[derive(Default)]
 pub struct TransactionHolder {
     client: Option<*mut deadpool_postgres::Client>,
@@ -39,7 +48,8 @@ pub struct TransactionHolder {
     finalized: AtomicBool,
 }
 
-unsafe impl Sync for TransactionHolder {}
+// needed to mark mut pointers in struct as Send
+// https://internals.rust-lang.org/t/shouldnt-pointers-be-send-sync-or/8818/4
 unsafe impl Send for TransactionHolder {}
 
 impl Drop for TransactionHolder {
@@ -62,8 +72,14 @@ impl TransactionHolder {
         database: &Database,
         work: &TransactionScript<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
-        assert!(!self.finalized.load(std::sync::atomic::Ordering::SeqCst));
+        if self.finalized.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(DatabaseError::Transaction(
+                "Transaction already finalized".into(),
+            ));
+        }
 
+        // this should be safe, we only really handle transaction in this function and it should
+        // always be de-referencable when it is a Some(_)
         let tx = unsafe { self.transaction.map(|ptr| ptr.as_mut().unwrap()) };
 
         match tx {
@@ -86,6 +102,7 @@ impl TransactionHolder {
 
                 // proceed with grabbing a transaction and execution
                 {
+                    // this should always be de-referencable when it is a Some(_)
                     let client = unsafe { self.client.map(|ptr| ptr.as_mut().unwrap()) }.unwrap();
                     let mut tx = Box::new(client.transaction().await?);
                     let res = work.execute(&mut tx).await;
