@@ -1,6 +1,9 @@
 use payas_model::model::{
+    argument::ArgumentParameterType,
     mapped_arena::MappedArena,
     operation::{Mutation, Query},
+    order::OrderByParameterType,
+    predicate::PredicateParameterType,
     GqlType, GqlTypeKind,
 };
 
@@ -48,5 +51,35 @@ impl GqlTypeDefinition for GqlType {
                 .map(|f| f as &dyn GqlFieldDefinition)
                 .collect(),
         }
+    }
+}
+
+impl GqlTypeDefinition for PredicateParameterType {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn fields(&self) -> Vec<&dyn GqlFieldDefinition> {
+        vec![]
+    }
+}
+
+impl GqlTypeDefinition for OrderByParameterType {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn fields(&self) -> Vec<&dyn GqlFieldDefinition> {
+        vec![]
+    }
+}
+
+impl GqlTypeDefinition for ArgumentParameterType {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn fields(&self) -> Vec<&dyn GqlFieldDefinition> {
+        vec![]
     }
 }

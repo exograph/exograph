@@ -70,10 +70,6 @@ impl<'a> ArgumentValidator<'a> {
             })
             .collect();
 
-        println!(
-            "field_argument_definitions: {:?}",
-            field_argument_definitions
-        );
         let validated_arguments = field_argument_definitions
             .iter()
             .filter_map(|argument_definition| {
@@ -118,6 +114,7 @@ impl<'a> ArgumentValidator<'a> {
         argument_definition: &dyn GqlFieldDefinition,
         argument_value: Option<&Positioned<Value>>,
     ) -> Option<Result<ConstValue, ValidationError>> {
+        println!("validate_argument: {argument_definition:?} {argument_value:?}",);
         match argument_value {
             Some(value) => match &value.node {
                 Value::Variable(name) => {
@@ -289,6 +286,7 @@ impl<'a> ArgumentValidator<'a> {
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
         let ty = &argument_definition.ty(self.model);
+        println!("validate_object_argument {:?} -- {:?}", ty, entires);
         let field_underlying_type_name = ty.name();
 
         if field_underlying_type_name == "Json" {

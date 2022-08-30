@@ -446,6 +446,28 @@ mod tests {
         payas_parser::build_system_from_str(test_clay, "test.clay".to_string()).unwrap()
     }
 
+    #[test]
+    fn basic_mutation() {
+        let system = create_test_system();
+
+        let validator = DocumentValidator {
+            system: &system,
+            operation_name: None,
+            variables: None,
+        };
+
+        let mutation = r#"
+            mutation {
+                createConcert(data: {title: "Concert 1", venue: {id: 1}}) {
+                    id
+                    title
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(mutation)));
+    }
+
     fn create_query_document(query_str: &str) -> ExecutableDocument {
         parse_query(query_str).unwrap()
     }

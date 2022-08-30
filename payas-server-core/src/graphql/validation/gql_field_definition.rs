@@ -1,5 +1,8 @@
 use payas_model::model::{
-    operation::{DatabaseQueryParameter, Mutation, OperationReturnType, Query, QueryKind},
+    operation::{
+        DatabaseMutationKind, DatabaseQueryParameter, Mutation, MutationKind, OperationReturnType,
+        Query, QueryKind,
+    },
     relation::GqlRelation,
     system::ModelSystem,
     GqlField, GqlFieldType, GqlTypeKind, GqlTypeModifier,
@@ -100,7 +103,7 @@ impl GqlFieldDefinition for Query {
         &self.name
     }
 
-    fn ty<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+    fn ty<'a>(&'a self, _model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
         &self.return_type
     }
 
@@ -121,18 +124,24 @@ impl GqlFieldDefinition for Mutation {
         &self.name
     }
 
-    fn ty<'a>(&self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
-        todo!()
-        //     match self.return_type.type_modifier {
-        //         GqlTypeModifier::Optional => todo!(),
-        //         GqlTypeModifier::NonNull => todo!(),
-        //         GqlTypeModifier::List => todo!(),
-        //     }
-        //     (&self.return_type).into()
+    fn ty<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+        &self.return_type
     }
 
     fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
-        todo!()
+        match &self.kind {
+            MutationKind::Database { kind } => match kind {
+                DatabaseMutationKind::Create(param) => vec![param],
+                DatabaseMutationKind::Delete(param) => vec![param],
+                DatabaseMutationKind::Update {
+                    data_param,
+                    predicate_param,
+                } => vec![data_param, predicate_param],
+            },
+            MutationKind::Service { .. } => {
+                todo!()
+            }
+        }
     }
 }
 

@@ -37,11 +37,32 @@ fn find_type<'a>(model: &'a ModelSystem, name: &str) -> Option<&'a dyn GqlTypeDe
 }
 
 fn find_arg_type<'a>(model: &'a ModelSystem, name: &str) -> Option<&'a dyn GqlTypeDefinition> {
-    // model
-    //     .types
-    //     .iter()
-    //     .find(|t| t.1.name.as_str() == name)
-    //     .map(|t| t.1);
+    if let Some(typ) = model
+        .predicate_types
+        .iter()
+        .find(|t| t.1.name.as_str() == name)
+        .map(|t| t.1 as &dyn GqlTypeDefinition)
+    {
+        return Some(typ);
+    }
 
-    todo!()
+    if let Some(typ) = model
+        .mutation_types
+        .iter()
+        .find(|t| t.1.name.as_str() == name)
+        .map(|t| t.1 as &dyn GqlTypeDefinition)
+    {
+        return Some(typ);
+    }
+
+    if let Some(typ) = model
+        .argument_types
+        .iter()
+        .find(|t| t.1.name.as_str() == name)
+        .map(|t| t.1 as &dyn GqlTypeDefinition)
+    {
+        return Some(typ);
+    }
+
+    None
 }

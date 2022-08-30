@@ -18,7 +18,7 @@ pub trait GqlTypeDefinition: Debug {
 /// The difference from a typical "struct" kind of type definition is that the fields take a list of arguments.
 ///
 /// GraphQL type system has a few intricacies:
-/// - An output field has a list of arguments (for example, `venues` inside `Concert`). May be empty.
+/// - An output field has a (possibly empty) list of arguments (for example, `venues` inside `Concert`).
 /// - An input field doesn't have that argument list
 ///
 /// Example: For a field such as: `concerts(where: ConcertWhereInput): [Concert]` (as a field in the `Query` root type),

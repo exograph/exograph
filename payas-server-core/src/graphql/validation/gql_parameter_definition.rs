@@ -1,7 +1,8 @@
 use payas_model::model::{
     limit_offset::{LimitParameter, OffsetParameter},
+    operation::{CreateDataParameter, UpdateDataParameter},
     order::{OrderByParameter, OrderByParameterType},
-    predicate::{PredicateParameter, PredicateParameterType},
+    predicate::{PredicateParameter, PredicateParameterType, PredicateParameterTypeKind},
     system::ModelSystem,
     GqlType, GqlTypeModifier,
 };
@@ -20,8 +21,8 @@ impl GqlFieldDefinition for PredicateParameter {
         &model.predicate_types[self.type_id]
     }
 
-    fn arguments<'a>(&'a self, model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
-        todo!()
+    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        vec![] // Input types don't have arguments
     }
 }
 
@@ -39,7 +40,11 @@ impl GqlFieldTypeDefinition for PredicateParameterType {
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
-        &GqlTypeModifier::Optional
+        match &self.kind {
+            PredicateParameterTypeKind::ImplicitEqual => &GqlTypeModifier::NonNull,
+            PredicateParameterTypeKind::Operator(_) => &GqlTypeModifier::Optional,
+            PredicateParameterTypeKind::Composite { .. } => &GqlTypeModifier::Optional,
+        }
     }
 }
 
@@ -52,8 +57,8 @@ impl GqlFieldDefinition for OrderByParameter {
         &model.order_by_types[self.type_id]
     }
 
-    fn arguments<'a>(&'a self, model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
-        todo!()
+    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        vec![] // Input types don't have arguments
     }
 }
 
@@ -84,8 +89,8 @@ impl GqlFieldDefinition for LimitParameter {
         &model.types[self.type_id]
     }
 
-    fn arguments<'a>(&'a self, model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
-        todo!()
+    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        vec![] // Input types don't have arguments
     }
 }
 
@@ -116,7 +121,35 @@ impl GqlFieldDefinition for OffsetParameter {
         &model.types[self.type_id]
     }
 
-    fn arguments<'a>(&'a self, model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
-        todo!()
+    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        vec![] // Input types don't have arguments
+    }
+}
+
+impl GqlFieldDefinition for CreateDataParameter {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn ty<'a>(&self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+        &model.types[self.type_id]
+    }
+
+    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        vec![] // Input types don't have arguments
+    }
+}
+
+impl GqlFieldDefinition for UpdateDataParameter {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn ty<'a>(&self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+        &model.types[self.type_id]
+    }
+
+    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        vec![] // Input types don't have arguments
     }
 }
