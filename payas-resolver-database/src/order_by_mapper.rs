@@ -11,7 +11,7 @@ use crate::to_column_id_path;
 
 use super::{database_system_context::DatabaseSystemContext, DatabaseExecutionError};
 
-pub trait OrderByParameterMapper<'a> {
+pub(crate) trait OrderByParameterMapper<'a> {
     fn map_to_order_by(
         &'a self,
         argument: &'a ConstValue,

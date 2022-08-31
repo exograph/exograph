@@ -36,7 +36,7 @@ pub mod database_error;
 pub use asql::{
     abstract_operation::AbstractOperation,
     column_path::{ColumnPath, ColumnPathLink},
-    database_executor::DatabaseExecutor,
+    database_executor::{DatabaseExecutor, TransactionHolder},
     delete::AbstractDelete,
     insert::{AbstractInsert, ColumnValuePair, InsertionElement, InsertionRow, NestedInsertion},
     order_by::AbstractOrderBy,

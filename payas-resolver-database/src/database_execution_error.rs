@@ -43,7 +43,7 @@ impl DatabaseExecutionError {
         }
     }
 }
-pub trait WithContext {
+pub(crate) trait WithContext {
     fn with_context(self, context: String) -> Self;
 }
 

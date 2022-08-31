@@ -46,7 +46,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
     }
 }
 
-pub fn map_argument<'a>(
+pub(crate) fn map_argument<'a>(
     input_data_type: &'a GqlType,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
