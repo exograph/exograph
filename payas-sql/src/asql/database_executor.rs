@@ -48,18 +48,24 @@ pub struct TransactionHolder {
     finalized: AtomicBool,
 }
 
-// needed to mark mut pointers in struct as Send
-// https://internals.rust-lang.org/t/shouldnt-pointers-be-send-sync-or/8818/4
+/// # Safety
+///
+/// This is needed to mark mut pointers in TransactionHolder as Send
+/// https://internals.rust-lang.org/t/shouldnt-pointers-be-send-sync-or/8818/4
+///
+/// As the base types are Send, this should not be a problem.
 unsafe impl Send for TransactionHolder {}
 
 impl Drop for TransactionHolder {
     fn drop(&mut self) {
         if let Some(client) = self.client {
+            // SAFETY: this should always be de-referenceable when it is a Some(_)
             let client = unsafe { Box::from_raw(client) };
             drop(client)
         }
 
         if let Some(transaction) = self.transaction {
+            // SAFETY: this should always be de-referenceable when it is a Some(_)
             let transaction = unsafe { Box::from_raw(transaction) };
             drop(transaction)
         }
@@ -78,7 +84,7 @@ impl TransactionHolder {
             ));
         }
 
-        // this should be safe, we only really handle transaction in this function and it should
+        // SAFETY: this should be safe, we only really handle transaction in this function and it should
         // always be de-referencable when it is a Some(_)
         let tx = unsafe { self.transaction.map(|ptr| ptr.as_mut().unwrap()) };
 
@@ -102,7 +108,7 @@ impl TransactionHolder {
 
                 // proceed with grabbing a transaction and execution
                 {
-                    // this should always be de-referencable when it is a Some(_)
+                    // SAFETY: this should always be de-referenceable when it is a Some(_)
                     let client = unsafe { self.client.map(|ptr| ptr.as_mut().unwrap()) }.unwrap();
                     let mut tx = Box::new(client.transaction().await?);
                     let res = work.execute(&mut tx).await;
@@ -116,6 +122,7 @@ impl TransactionHolder {
     }
 
     pub async fn finalize(&mut self, commit: bool) -> Result<(), tokio_postgres::Error> {
+        // SAFETY: this should always be de-referenceable when it is a Some(_)
         let tx_owned = unsafe {
             let mut tx_owned: Option<*mut Transaction> = None;
             std::mem::swap(&mut self.transaction, &mut tx_owned);
