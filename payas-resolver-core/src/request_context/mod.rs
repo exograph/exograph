@@ -2,11 +2,14 @@ mod environment;
 mod query;
 
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use async_trait::async_trait;
 use futures::StreamExt;
 use payas_model::model::ContextField;
 use payas_model::model::ContextType;
+use payas_sql::TransactionHolder;
 use serde_json::Value;
 use thiserror::Error;
 
@@ -31,6 +34,7 @@ pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 pub struct UserRequestContext {
     // maps from an annotation to a parsed context
     parsed_context_map: HashMap<String, BoxedParsedContext>,
+    pub transaction_holder: Arc<Mutex<TransactionHolder>>,
 }
 
 impl UserRequestContext {
@@ -49,6 +53,7 @@ impl UserRequestContext {
                 .chain(generic_contexts.into_iter()) // include agnostic contexts
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
+            transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
         }
     }
 }
@@ -68,6 +73,14 @@ impl<'a> RequestContext<'a> {
         RequestContext::Overridden {
             base_context: self,
             context_override,
+        }
+    }
+
+    pub fn get_base_context(&self) -> &UserRequestContext {
+        match &self {
+            RequestContext::User(req) => req,
+
+            RequestContext::Overridden { base_context, .. } => base_context.get_base_context(),
         }
     }
 
@@ -108,14 +121,16 @@ impl<'a> RequestContext<'a> {
     }
 
     #[async_recursion]
-    pub async fn extract_context_field<'s>(
+    async fn extract_context_field<'s>(
         &'a self,
         context: &ContextType,
         field: &ContextField,
         resolver: &'s ResolveOperationFn<'a>,
     ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
-            RequestContext::User(UserRequestContext { parsed_context_map }) => {
+            RequestContext::User(UserRequestContext {
+                parsed_context_map, ..
+            }) => {
                 let field_value = self
                     .extract_context_field_from_source(
                         parsed_context_map,
