@@ -41,7 +41,7 @@ pub enum CastError {
     Database(#[from] payas_sql::database_error::DatabaseError),
 }
 
-pub fn literal_column<'a>(
+pub(crate) fn literal_column<'a>(
     value: &ConstValue,
     associated_column: &PhysicalColumn,
 ) -> Result<Column<'a>, DatabaseExecutionError> {
@@ -54,7 +54,7 @@ pub fn literal_column<'a>(
         .map_err(DatabaseExecutionError::CastError)
 }
 
-pub fn cast_value(
+pub(crate) fn cast_value(
     value: &ConstValue,
     destination_type: &PhysicalColumnType,
 ) -> Result<Option<Box<dyn SQLParam>>, CastError> {

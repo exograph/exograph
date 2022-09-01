@@ -1,10 +1,11 @@
-use tokio_postgres::{types::ToSql, Client, GenericClient, Row};
+use tokio_postgres::{types::ToSql, GenericClient, Row, Transaction};
 use tracing::{debug, error, instrument};
 
 use crate::{database_error::DatabaseError, sql::ExpressionContext};
 
 use super::{
-    sql_operation::SQLOperation, sql_operation::TemplateSQLOperation, OperationExpression, SQLValue,
+    sql_operation::{SQLOperation, TemplateSQLOperation},
+    OperationExpression, SQLValue,
 };
 
 pub type TransactionStepResult = Vec<Row>;
@@ -41,22 +42,18 @@ impl<'a> TransactionScript<'a> {
     /// Returns the result of the last step
     #[instrument(
         name = "TransactionScript::execute"
-        skip(self, client)
+        skip(self, tx)
         )]
     pub async fn execute(
-        &'a self,
-        client: &mut Client,
+        &self,
+        tx: &mut Transaction<'_>,
     ) -> Result<TransactionStepResult, DatabaseError> {
-        let mut tx = client.transaction().await?;
-
         let mut transaction_context = TransactionContext { results: vec![] };
 
         for step in self.steps.iter() {
-            let result = step.execute(&mut tx, &transaction_context).await?;
+            let result = step.execute(tx, &transaction_context).await?;
             transaction_context.results.push(result)
         }
-
-        tx.commit().await?;
 
         transaction_context
             .results
