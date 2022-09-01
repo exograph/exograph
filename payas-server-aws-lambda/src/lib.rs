@@ -15,8 +15,7 @@ pub async fn resolve(
     req: lambda_http::Request,
     system_context: Arc<SystemContext>,
 ) -> Result<Response<String>, Error> {
-    let request = LambdaRequest { request: &req };
-
+    let request = LambdaRequest::new(&req);
     let request_context = RequestContext::parse_context(&request, vec![]);
 
     let body = req.body();
