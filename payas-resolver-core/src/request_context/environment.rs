@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use crate::ResolveOperationFn;
 
-use super::{ParsedContext, RequestContext};
+use super::{ParsedContext, Request, RequestContext};
 
 pub struct EnvironmentContextExtractor;
 
@@ -18,6 +18,7 @@ impl ParsedContext for EnvironmentContextExtractor {
         key: &str,
         _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
+        _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
         std::env::var(&key).ok().map(|v| v.into())
     }

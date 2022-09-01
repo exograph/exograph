@@ -1,11 +1,11 @@
-pub mod request_context;
+mod request;
 
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
+use payas_resolver_core::request_context::{ContextParsingError, RequestContext};
 use payas_server_core::{OperationsPayload, SystemContext};
-
-use request_context::{ActixRequestContextProducer, ContextProducerError};
+use request::ActixRequest;
 use serde_json::Value;
 
 macro_rules! error_msg {
@@ -18,9 +18,9 @@ pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
     system_context: web::Data<SystemContext>,
-    context_processor: web::Data<ActixRequestContextProducer>,
 ) -> impl Responder {
-    let request_context = context_processor.generate_request_context(&req);
+    let request = ActixRequest::from_request(req);
+    let request_context = RequestContext::parse_context(&request, vec![]);
 
     match request_context {
         Ok(request_context) => {
@@ -51,15 +51,13 @@ pub async fn resolve(
 
         Err(err) => {
             let (message, mut base_response) = match err {
-                ContextProducerError::Unauthorized => {
+                ContextParsingError::Unauthorized => {
                     (error_msg!("Unauthorized"), HttpResponse::Unauthorized())
                 }
-                ContextProducerError::Malformed => {
+                ContextParsingError::Malformed => {
                     (error_msg!("Malformed header"), HttpResponse::BadRequest())
                 }
-                ContextProducerError::Unknown => {
-                    (error_msg!("Unknown error"), HttpResponse::Unauthorized())
-                }
+                _ => (error_msg!("Unknown error"), HttpResponse::Unauthorized()),
             };
 
             let error_message: Result<Bytes, Error> = Ok(Bytes::from_static(message));
