@@ -1,12 +1,11 @@
-pub mod request_context;
-
-use std::sync::Arc;
+mod request;
 
 use futures::StreamExt;
 use lambda_http::{http::StatusCode, Error, Response};
+use payas_resolver_core::request_context::{ContextParsingError, RequestContext};
 use payas_server_core::{OperationsPayload, SystemContext};
-
-use request_context::{ContextProducerError, LambdaRequestContextProducer};
+use request::LambdaRequest;
+use std::sync::Arc;
 
 fn error_msg(message: &str) -> String {
     format!(r#"{{ "errors": [{{"message": "{message}"}}] }}"#)
@@ -15,11 +14,12 @@ fn error_msg(message: &str) -> String {
 pub async fn resolve(
     req: lambda_http::Request,
     system_context: Arc<SystemContext>,
-    context_processor: Arc<LambdaRequestContextProducer>,
 ) -> Result<Response<String>, Error> {
-    let request_context = context_processor.generate_request_context(&req);
+    let request = LambdaRequest { request: &req };
 
-    let (_, body) = req.into_parts();
+    let request_context = RequestContext::parse_context(&request, vec![]);
+
+    let body = req.body();
 
     let body_string = match body {
         lambda_http::Body::Empty => todo!(),
@@ -30,7 +30,7 @@ pub async fn resolve(
     match request_context {
         Ok(request_context) => {
             let operations_payload: Result<OperationsPayload, _> =
-                serde_json::from_str(&body_string);
+                serde_json::from_str(body_string);
 
             match operations_payload {
                 Ok(operations_payload) => {
@@ -74,15 +74,15 @@ pub async fn resolve(
 
         Err(err) => {
             let (message, base_response) = match err {
-                ContextProducerError::Unauthorized => (
+                ContextParsingError::Unauthorized => (
                     error_msg("Unauthorized"),
                     Response::builder().status(StatusCode::UNAUTHORIZED),
                 ),
-                ContextProducerError::Malformed => (
+                ContextParsingError::Malformed => (
                     error_msg("Malformed header"),
                     Response::builder().status(StatusCode::BAD_REQUEST),
                 ),
-                ContextProducerError::Unknown => (
+                _ => (
                     error_msg("Unknown error"),
                     Response::builder().status(StatusCode::UNAUTHORIZED),
                 ),

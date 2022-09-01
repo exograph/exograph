@@ -290,7 +290,7 @@ async fn solve_logical_op<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::request_context::{Request, RequestContext, UserRequestContext};
+    use crate::request_context::{Request, RequestContext};
     use payas_model::model::{
         column_id::ColumnId, predicate::ColumnIdPathLink, system::ModelSystem,
     };
@@ -311,12 +311,12 @@ mod tests {
     struct TestRequest {}
 
     impl Request for TestRequest {
-        fn headers(&self) -> Vec<(String, String)> {
+        fn get_headers(&self, _key: &str) -> Vec<String> {
             vec![]
         }
     }
 
-    static REQUEST: TestRequest = TestRequest {};
+    const REQUEST: TestRequest = TestRequest {};
 
     impl TestSystem {
         fn published_column(&self) -> MaybeOwned<ColumnPath> {
@@ -1190,11 +1190,12 @@ mod tests {
     }
 
     fn test_request_context<'a>(test_values: Value) -> RequestContext<'a> {
-        RequestContext::User(UserRequestContext::from_parsed_contexts(
+        RequestContext::parse_context(
+            &REQUEST,
             vec![Box::new(crate::request_context::TestRequestContext {
                 test_values,
             })],
-            &REQUEST,
-        ))
+        )
+        .unwrap()
     }
 }
