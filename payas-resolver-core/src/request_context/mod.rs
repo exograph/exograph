@@ -66,14 +66,12 @@ impl<'a> UserRequestContext<'a> {
         parsed_contexts: Vec<BoxedParsedContext>,
     ) -> Result<UserRequestContext<'a>, ContextParsingError> {
         // a list of backend-agnostic contexts to also include
-        let jwt_authenticator = JwtAuthenticator::new_from_env();
-
         let generic_contexts: Vec<BoxedParsedContext> = vec![
             Box::new(EnvironmentContextExtractor),
             Box::new(QueryExtractor),
             Box::new(HeaderExtractor),
             CookieExtractor::parse_context(request)?,
-            jwt_authenticator.parse_context(request)?,
+            JwtAuthenticator::parse_context(request)?,
         ];
 
         Ok(UserRequestContext {

@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use serde_json::Value;
+use tracing::warn;
 
 use super::{ContextParsingError, Request};
 
@@ -24,8 +25,8 @@ pub struct JwtAuthenticator {
 const JWT_SECRET_PARAM: &str = "CLAY_JWT_SECRET";
 
 impl JwtAuthenticator {
-    pub fn new_from_env() -> Self {
-        Self::new(env::var(JWT_SECRET_PARAM).ok().unwrap())
+    pub fn new_from_env() -> Option<Self> {
+        Some(Self::new(env::var(JWT_SECRET_PARAM).ok()?))
     }
 
     fn new(secret: String) -> Self {
@@ -70,17 +71,20 @@ impl JwtAuthenticator {
         }
     }
 
-    pub fn parse_context(
-        &self,
-        request: &dyn Request,
-    ) -> Result<BoxedParsedContext, ContextParsingError> {
-        let jwt_claims = self.extract_authentication(request).map_err(|e| match e {
-            JwtAuthenticationError::ExpiredToken | JwtAuthenticationError::TamperedToken => {
-                ContextParsingError::Unauthorized
-            }
+    pub fn parse_context(request: &dyn Request) -> Result<BoxedParsedContext, ContextParsingError> {
+        let jwt_claims = if let Some(jwt_authenticator) = JwtAuthenticator::new_from_env() {
+            jwt_authenticator
+                .extract_authentication(request)
+                .map_err(|e| match e {
+                    JwtAuthenticationError::ExpiredToken
+                    | JwtAuthenticationError::TamperedToken => ContextParsingError::Unauthorized,
 
-            JwtAuthenticationError::Unknown => ContextParsingError::Malformed,
-        })?;
+                    JwtAuthenticationError::Unknown => ContextParsingError::Malformed,
+                })?
+        } else {
+            warn!("{JWT_SECRET_PARAM} is not set, not parsing JWT tokens");
+            serde_json::Value::Null
+        };
 
         Ok(Box::new(ParsedJwtContext { jwt_claims }))
     }

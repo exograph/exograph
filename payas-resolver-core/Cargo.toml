@@ -16,6 +16,8 @@ jsonwebtoken = "8.1.1"
 cookie = "0.16"
 tokio = "1"
 
+tracing = "0.1"
+
 payas-model = { path = "../payas-model" }
 payas-sql = { path = "../payas-sql" }
 
