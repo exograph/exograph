@@ -1,7 +1,6 @@
 use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 
-use crate::graphql::introspection::schema::Schema;
 /// Provides core functionality for handling incoming queries without depending
 /// on any specific web framework.
 ///
@@ -13,6 +12,8 @@ use async_stream::try_stream;
 use bincode::deserialize_from;
 use bytes::Bytes;
 use futures::Stream;
+
+use graphql::introspection::definition::schema::Schema;
 use initialization_error::InitializationError;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;

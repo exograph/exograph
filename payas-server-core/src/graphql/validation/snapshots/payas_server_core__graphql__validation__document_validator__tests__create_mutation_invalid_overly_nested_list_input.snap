@@ -1,0 +1,12 @@
+---
+source: payas-server-core/src/graphql/validation/document_validator.rs
+expression: "validator.validate(create_query_document(r#\"\n                mutation {\n                    createConcerts(data: [[{title: \"Concert 1\", venue: {id: 1}}]]) {\n                        id\n                        title\n                    }\n                }\n            \"#))"
+---
+Err(
+    InvalidArgumentType {
+        argument_name: "data",
+        expected_type: "ConcertCreationInput",
+        actual_type: "[ConcertCreationInput]",
+        pos: Pos(3:42),
+    },
+)

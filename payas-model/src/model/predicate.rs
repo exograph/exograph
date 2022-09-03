@@ -46,10 +46,8 @@ pub struct PredicateParameter {
     /// For example, "ConcertFilter", "IntFilter". We need to keep this only for introspection, which doesn't have access to the ModelSystem.
     /// We might find a way to avoid this, since given the model system and type_id of the parameter, we can get the type name.
     pub type_name: String,
-    /// The type modifier of the parameter. For parameters such as "and", this will be a list.
-    pub type_modifier: GqlTypeModifier,
-    /// Type id of the parameter type. For example: IntFilter, StringFilter, etc.
-    pub type_id: SerializableSlabIndex<PredicateParameterType>,
+
+    pub typ: PredicateParameterTypeWithModifier,
 
     /// How does this parameter relates with the parent parameter?
     /// For example for parameter used as {where: {venue1: {id: {eq: 1}}}}, we will have following column links:
@@ -61,6 +59,14 @@ pub struct PredicateParameter {
 
     /// The type this parameter is filtering on. For example, for ConcertFilter, this will be (the index of) the Concert.
     pub underlying_type_id: SerializableSlabIndex<GqlType>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PredicateParameterTypeWithModifier {
+    /// The type modifier of the parameter. For parameters such as "and", this will be a list.
+    pub type_modifier: GqlTypeModifier,
+    /// Type id of the parameter type. For example: IntFilter, StringFilter, etc.
+    pub type_id: SerializableSlabIndex<PredicateParameterType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -26,7 +26,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         system_context: &DatabaseSystemContext<'a>,
     ) -> Result<AbstractPredicate<'a>, DatabaseExecutionError> {
         let system = &system_context.system;
-        let parameter_type = &system.predicate_types[self.type_id];
+        let parameter_type = &system.predicate_types[self.typ.type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {

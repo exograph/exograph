@@ -8,8 +8,9 @@ use async_graphql_value::{ConstValue, Name};
 use payas_model::model::system::ModelSystem;
 use serde_json::{Map, Value};
 
-use crate::graphql::validation::{
-    definition::GqlTypeDefinition, validation_error::ValidationError,
+use crate::graphql::{
+    introspection::definition::schema::Schema,
+    validation::{definition::GqlTypeDefinition, validation_error::ValidationError},
 };
 
 use super::{operation::ValidatedOperation, selection_set_validator::SelectionSetValidator};
@@ -17,6 +18,7 @@ use super::{operation::ValidatedOperation, selection_set_validator::SelectionSet
 /// Context for validating an operation.
 pub struct OperationValidator<'a> {
     model: &'a ModelSystem,
+    schema: &'a Schema,
     operation_name: Option<String>,
     variables: Option<Map<String, Value>>,
     fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
@@ -26,12 +28,14 @@ impl<'a> OperationValidator<'a> {
     #[must_use]
     pub fn new(
         model: &'a ModelSystem,
+        schema: &'a Schema,
         operation_name: Option<String>,
         variables: Option<Map<String, Value>>,
         fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
     ) -> Self {
         Self {
             model,
+            schema,
             operation_name,
             variables,
             fragment_definitions,
@@ -69,6 +73,7 @@ impl<'a> OperationValidator<'a> {
         let variables = self.validate_variables(operation.node.variable_definitions)?;
         let selection_set_validator = SelectionSetValidator::new(
             self.model,
+            self.schema,
             container_type_definition,
             &variables,
             &self.fragment_definitions,

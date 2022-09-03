@@ -19,26 +19,18 @@ mod operation_validator;
 mod selection_set_validator;
 pub mod validation_error;
 
-// fn underlying_type(typ: &GqlFieldType) -> &str {
-//     match &typ {
-//         GqlFieldType::Optional(underlying) | GqlFieldType::List(underlying) => {
-//             underlying_type(underlying)
-//         }
-//         GqlFieldType::Reference { type_id, type_name } => &type_name,
-//     }
-// }
-
-fn find_type<'a>(model: &'a ModelSystem, name: &str) -> Option<&'a dyn GqlTypeDefinition> {
-    model
-        .types
-        .iter()
-        .find(|t| t.1.name.as_str() == name)
-        .map(|t| t.1 as &dyn GqlTypeDefinition)
-}
-
 fn find_arg_type<'a>(model: &'a ModelSystem, name: &str) -> Option<&'a dyn GqlTypeDefinition> {
     if let Some(typ) = model
         .predicate_types
+        .iter()
+        .find(|t| t.1.name.as_str() == name)
+        .map(|t| t.1 as &dyn GqlTypeDefinition)
+    {
+        return Some(typ);
+    }
+
+    if let Some(typ) = model
+        .order_by_types
         .iter()
         .find(|t| t.1.name.as_str() == name)
         .map(|t| t.1 as &dyn GqlTypeDefinition)

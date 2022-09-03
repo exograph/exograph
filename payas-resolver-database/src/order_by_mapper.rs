@@ -27,7 +27,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
         parent_column_path: Option<ColumnIdPath>,
         system_context: &DatabaseSystemContext<'a>,
     ) -> Result<AbstractOrderBy<'a>, DatabaseExecutionError> {
-        let parameter_type = &system_context.system.order_by_types[self.type_id];
+        let parameter_type = &system_context.system.order_by_types[self.typ.type_id];
         fn flatten<E>(order_bys: Result<Vec<AbstractOrderBy>, E>) -> Result<AbstractOrderBy, E> {
             let mapped = order_bys?.into_iter().flat_map(|elem| elem.0).collect();
             Ok(AbstractOrderBy(mapped))

@@ -4,25 +4,25 @@ use async_graphql_parser::{
     types::{Field, FragmentDefinition, FragmentSpread, Selection, SelectionSet},
     Pos, Positioned,
 };
-use async_graphql_value::{ConstValue, Name};
+use async_graphql_value::{indexmap::IndexMap, ConstValue, Name};
 
 use payas_model::model::system::ModelSystem;
 use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::graphql::{
-    introspection::schema::QUERY_ROOT_TYPENAME, validation::validation_error::ValidationError,
+    introspection::definition::schema::Schema, validation::validation_error::ValidationError,
 };
 
 use super::{
     arguments_validator::ArgumentValidator,
     definition::{GqlFieldDefinition, GqlFieldTypeDefinition, GqlTypeDefinition},
-    find_type,
 };
 
 /// Context for validating a selection set.
 #[derive(Debug)]
 pub struct SelectionSetValidator<'a> {
     model: &'a ModelSystem,
+    schema: &'a Schema,
     /// The parent type of this field.
     container_type_definition: &'a dyn GqlTypeDefinition,
     variables: &'a HashMap<Name, ConstValue>,
@@ -33,12 +33,14 @@ impl<'a> SelectionSetValidator<'a> {
     #[must_use]
     pub fn new(
         model: &'a ModelSystem,
+        schema: &'a Schema,
         type_container: &'a dyn GqlTypeDefinition,
         variables: &'a HashMap<Name, ConstValue>,
         fragment_definitions: &'a HashMap<Name, Positioned<FragmentDefinition>>,
     ) -> Self {
         Self {
             model,
+            schema,
             container_type_definition: type_container,
             variables,
             fragment_definitions,
@@ -109,33 +111,19 @@ impl<'a> SelectionSetValidator<'a> {
                 Ok(ValidatedField {
                     alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
                     name: field.node.name.node.clone(),
-                    arguments: HashMap::new(),
+                    arguments: IndexMap::new(),
                     subfields: vec![],
                 })
             }
         } else {
-            let field_definition = if self.container_type_definition.name() == QUERY_ROOT_TYPENAME {
-                // We have to treat the query root type specially, since its __schema and __type fields are not
-                // "ordinary" fields, but are instead special-cased in the introspection query (much the same way
-                // as the __typename field).
-                if field.node.name.node.as_str() == "__schema" {
-                    // &self.schema.schema_field_definition
-                    todo!("__schema")
-                } else if field.node.name.node.as_str() == "__type" {
-                    // &self.schema.type_field_definition
-                    todo!("__type")
-                } else {
-                    self.get_field_definition(field)?
-                }
-            } else {
-                self.get_field_definition(field)?
-            };
+            let field_definition = self.get_field_definition(field)?;
 
             let field_type_definition =
-                self.get_type_definition(field_definition.ty(self.model), field.pos)?;
+                self.get_type_definition(field_definition.field_type(self.model), field.pos)?;
 
             let subfield_validator = Self::new(
                 self.model,
+                self.schema,
                 field_type_definition,
                 self.variables,
                 self.fragment_definitions,
@@ -176,8 +164,8 @@ impl<'a> SelectionSetValidator<'a> {
         field_type: &dyn GqlFieldTypeDefinition,
         field_pos: Pos,
     ) -> Result<&dyn GqlTypeDefinition, ValidationError> {
-        let field_underlying_type_name = &field_type.name();
-        let field_underlying_type = find_type(self.model, field_underlying_type_name);
+        let field_underlying_type_name = &field_type.name(self.model);
+        let field_underlying_type = self.find_type(field_underlying_type_name);
 
         match field_underlying_type {
             None => Err(ValidationError::InvalidFieldType(
@@ -194,9 +182,23 @@ impl<'a> SelectionSetValidator<'a> {
     ) -> Result<&dyn GqlFieldDefinition, ValidationError> {
         let field_definition = &self
             .container_type_definition
-            .fields()
+            .fields(self.model)
             .into_iter()
             .find(|f| f.name() == field.node.name.node.as_str());
+
+        let field_definition = match field_definition {
+            Some(field_definition) => Some(*field_definition),
+            // We have to treat the query root type specially, since its __schema and __type fields are not
+            // "ordinary" fields, but are instead special-cased in the introspection query (much the same way
+            // as the __typename field).
+            None if field.node.name.node.as_str() == "__schema" => {
+                Some(&self.schema.schema_field_definition as &dyn GqlFieldDefinition)
+            }
+            None if field.node.name.node.as_str() == "__type" => {
+                Some(&self.schema.type_field_definition as &dyn GqlFieldDefinition)
+            }
+            None => None,
+        };
 
         match field_definition {
             None => Err(ValidationError::InvalidField(
@@ -204,7 +206,26 @@ impl<'a> SelectionSetValidator<'a> {
                 self.container_type_definition.name().to_owned(),
                 field.pos,
             )),
-            Some(field_definition) => Ok(*field_definition),
+            Some(field_definition) => Ok(field_definition),
+        }
+    }
+
+    fn find_type(&'a self, name: &str) -> Option<&'a dyn GqlTypeDefinition> {
+        let core_type = self
+            .model
+            .types
+            .iter()
+            .find(|t| t.1.name.as_str() == name)
+            .map(|t| t.1 as &dyn GqlTypeDefinition);
+
+        match core_type {
+            Some(t) => Some(t),
+            None => self
+                .schema
+                .schema_type_definitions
+                .iter()
+                .find(|t| t.name() == name)
+                .map(|t| t as &dyn GqlTypeDefinition),
         }
     }
 }

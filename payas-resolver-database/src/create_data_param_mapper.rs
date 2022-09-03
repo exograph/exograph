@@ -32,7 +32,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
 
         let table = return_type.physical_table(system);
 
-        let data_type = &system.mutation_types[self.type_id];
+        let data_type = &system.mutation_types[self.typ.type_id];
 
         let rows = map_argument(data_type, argument, system_context)?;
 

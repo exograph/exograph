@@ -1,3 +1,4 @@
+use async_graphql_parser::types::{FieldDefinition, InputValueDefinition};
 use payas_model::model::{
     operation::{
         DatabaseMutationKind, DatabaseQueryParameter, Mutation, MutationKind, OperationReturnType,
@@ -8,58 +9,10 @@ use payas_model::model::{
     GqlField, GqlFieldType, GqlTypeKind, GqlTypeModifier,
 };
 
-use super::definition::{GqlFieldDefinition, GqlFieldTypeDefinition, GqlTypeDefinition};
-
-// pub enum GqlFieldTypeDefinitionY<'a> {
-//     Base(&'a dyn GqlTypeDefinition),
-//     Optional(&'a GqlFieldTypeDefinitionY<'a>),
-//     List(&'a GqlFieldTypeDefinitionY<'a>),
-// }
-
-// pub trait GqlFieldTypeDefinitionYProvider {
-//     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionY<'a>;
-// }
-
-// impl GqlFieldTypeDefinitionYProvider for OperationReturnType {
-//     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionY<'a> {
-//         match self.type_modifier {
-//             GqlTypeModifier::Optional => {
-//                 GqlFieldTypeDefinitionY::Optional(&self.typ(model).inner(model))
-//             }
-//             GqlTypeModifier::List => GqlFieldTypeDefinitionY::List(&self.typ(model).inner(model)),
-//             _ => GqlFieldTypeDefinitionY::Base(self.typ(model)),
-//         }
-//     }
-// }
-
-// impl GqlFieldTypeDefinitionYProvider for GqlType {
-//     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionY<'a> {
-//         GqlFieldTypeDefinitionY::Base(self)
-//     }
-// }
-
-// pub enum GqlFieldTypeDefinitionX<'a> {
-//     Base(&'a dyn GqlTypeDefinition),
-//     Optional(Box<GqlFieldTypeDefinitionX<'a>>),
-//     List(Box<GqlFieldTypeDefinitionX<'a>>),
-// }
-
-// impl<'a> From<&'a OperationReturnType> for GqlFieldTypeDefinitionX<'a> {
-//     fn from(ty: &'a OperationReturnType) -> Self {
-//         match ty.type_modifier {
-//             GqlTypeModifier::NonNull => GqlFieldTypeDefinitionX::Base(ty),
-//             GqlTypeModifier::Optional => {
-//                 GqlFieldTypeDefinitionX::Optional(Box::new(GqlFieldTypeDefinitionX::from(ty)))
-//             }
-//             GqlTypeModifier::List => {
-//                 GqlFieldTypeDefinitionX::List(Box::new(GqlFieldTypeDefinitionX::from(ty)))
-//             }
-//         }
-//     }
-// }
+use super::definition::{GqlFieldDefinition, GqlFieldTypeDefinition};
 
 impl GqlFieldTypeDefinition for OperationReturnType {
-    fn name(&self) -> &str {
+    fn name<'a>(&'a self, _model: &'a ModelSystem) -> &'a str {
         &self.type_name
     }
 
@@ -67,43 +20,17 @@ impl GqlFieldTypeDefinition for OperationReturnType {
         Some(self.typ(model))
     }
 
-    fn leaf<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlTypeDefinition {
-        self.typ(model)
-    }
-
     fn modifier(&self) -> &GqlTypeModifier {
         &self.type_modifier
     }
 }
-
-// impl<'a> From<&'a OperationReturnType> for GqlFieldTypeDefinition<'a> {
-//     fn from(ty: &'a OperationReturnType) -> Self {
-//         match ty.type_modifier {
-//             GqlTypeModifier::NonNull => GqlFieldTypeDefinition::Primitive(ty.),
-//             GqlTypeModifier::Optional => {
-//                 GqlFieldTypeDefinition::Optional(GqlFieldTypeDefinition::from(t))
-//             }
-//             GqlTypeModifier::List => GqlFieldTypeDefinition::List(GqlFieldTypeDefinition::from(t)),
-//         }
-//     }
-// }
-
-// impl<'a> From<&'a GqlFieldType> for GqlFieldTypeDefinition<'a> {
-//     fn from(ty: &'a GqlFieldType) -> Self {
-//         match ty {
-//             GqlFieldType::Optional(ty) => GqlFieldTypeDefinition::Optional(ty.as_ref().into()),
-//             GqlFieldType::List(ty) => GqlFieldTypeDefinition::List(ty.as_ref().into()),
-//             _ => GqlFieldTypeDefinition::Primitive(ty),
-//         }
-//     }
-// }
 
 impl GqlFieldDefinition for Query {
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn ty<'a>(&'a self, _model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+    fn field_type<'a>(&'a self, _model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
         &self.return_type
     }
 
@@ -112,9 +39,10 @@ impl GqlFieldDefinition for Query {
             QueryKind::Database(db_query_param) => {
                 compute_db_arg_definition(db_query_param.as_ref())
             }
-            QueryKind::Service { .. } => {
-                todo!()
-            }
+            QueryKind::Service { argument_param, .. } => argument_param
+                .iter()
+                .map(|arg| arg as &dyn GqlFieldDefinition)
+                .collect(),
         }
     }
 }
@@ -124,7 +52,7 @@ impl GqlFieldDefinition for Mutation {
         &self.name
     }
 
-    fn ty<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+    fn field_type<'a>(&'a self, _model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
         &self.return_type
     }
 
@@ -138,36 +66,29 @@ impl GqlFieldDefinition for Mutation {
                     predicate_param,
                 } => vec![data_param, predicate_param],
             },
-            MutationKind::Service { .. } => {
-                todo!()
-            }
+            MutationKind::Service { argument_param, .. } => argument_param
+                .iter()
+                .map(|p| p as &dyn GqlFieldDefinition)
+                .collect(),
         }
     }
 }
 
 impl GqlFieldTypeDefinition for GqlFieldType {
-    fn name(&self) -> &str {
+    fn name<'a>(&'a self, model: &'a ModelSystem) -> &'a str {
         match self {
             GqlFieldType::Optional(ty) | GqlFieldType::List(ty) => {
-                GqlFieldTypeDefinition::name(ty.as_ref())
+                GqlFieldTypeDefinition::name(ty.as_ref(), model)
             }
             GqlFieldType::Reference { type_name, .. } => type_name,
         }
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
+    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
         match self {
             GqlFieldType::Optional(ty) => Some(ty.as_ref()),
             GqlFieldType::List(ty) => Some(ty.as_ref()),
             _ => None,
-        }
-    }
-
-    fn leaf<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlTypeDefinition {
-        match self {
-            GqlFieldType::Optional(ty) => ty.leaf(model),
-            GqlFieldType::List(ty) => ty.leaf(model),
-            GqlFieldType::Reference { type_id, type_name } => &model.types[*type_id],
         }
     }
 
@@ -185,7 +106,7 @@ impl GqlFieldDefinition for GqlField {
         &self.name
     }
 
-    fn ty<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+    fn field_type<'a>(&'a self, _model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
         &self.typ
     }
 
@@ -215,6 +136,37 @@ impl GqlFieldDefinition for GqlField {
                 }
             }
         }
+    }
+}
+
+impl GqlFieldDefinition for FieldDefinition {
+    fn name(&self) -> &str {
+        self.name.node.as_str()
+    }
+
+    fn field_type<'a>(&'a self, _model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+        &self.ty.node
+    }
+
+    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        self.arguments
+            .iter()
+            .map(|arg| &arg.node as &dyn GqlFieldDefinition)
+            .collect()
+    }
+}
+
+impl GqlFieldDefinition for InputValueDefinition {
+    fn name(&self) -> &str {
+        self.name.node.as_str()
+    }
+
+    fn field_type<'a>(&'a self, _model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
+        &self.ty.node
+    }
+
+    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        vec![]
     }
 }
 

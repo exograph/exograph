@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct OrderByParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<OrderByParameterType>,
-    pub type_modifier: GqlTypeModifier,
+    pub typ: OrderByParameterTypeWithModifier,
 
     /// How does this parameter relates with the parent parameter?
     /// For example for parameter used as {order_by: {venue1: {id: Desc}}}, we will have following column links:
@@ -18,6 +17,12 @@ pub struct OrderByParameter {
     /// venue1: Some((<the concerts.venue1_id column>, <the venues.id column>))
     /// order_by: None
     pub column_path_link: Option<ColumnIdPathLink>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OrderByParameterTypeWithModifier {
+    pub type_id: SerializableSlabIndex<OrderByParameterType>,
+    pub type_modifier: GqlTypeModifier,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

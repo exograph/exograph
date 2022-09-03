@@ -1,0 +1,86 @@
+---
+source: payas-server-core/src/graphql/validation/document_validator.rs
+expression: "validator.validate(create_query_document(r#\"\n                mutation {\n                    createConcerts(data: [{title: \"Concert 1\", venue: {id: 1}}, {title: \"Concert 2\", venue: {id: 2}}]) {\n                        id\n                        title\n                    }\n                }\n            \"#))"
+---
+Ok(
+    ValidatedOperation {
+        name: None,
+        typ: Mutation,
+        fields: [
+            ValidatedField {
+                alias: None,
+                name: Name(
+                    "createConcerts",
+                ),
+                arguments: {
+                    "data": List(
+                        [
+                            Object(
+                                {
+                                    Name(
+                                        "title",
+                                    ): String(
+                                        "Concert 1",
+                                    ),
+                                    Name(
+                                        "venue",
+                                    ): Object(
+                                        {
+                                            Name(
+                                                "id",
+                                            ): Number(
+                                                Number(
+                                                    1,
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                            Object(
+                                {
+                                    Name(
+                                        "title",
+                                    ): String(
+                                        "Concert 2",
+                                    ),
+                                    Name(
+                                        "venue",
+                                    ): Object(
+                                        {
+                                            Name(
+                                                "id",
+                                            ): Number(
+                                                Number(
+                                                    2,
+                                                ),
+                                            ),
+                                        },
+                                    ),
+                                },
+                            ),
+                        ],
+                    ),
+                },
+                subfields: [
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "id",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "title",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                ],
+            },
+        ],
+    },
+)

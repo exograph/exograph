@@ -9,17 +9,17 @@ use payas_model::model::{system::ModelSystem, GqlTypeModifier};
 pub trait GqlTypeDefinition: Debug {
     fn name(&self) -> &str;
 
-    fn fields(&self) -> Vec<&dyn GqlFieldDefinition>;
+    fn fields<'a>(&'a self, model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition>;
 }
 
 /// Normalized representation of a field.
 /// A field has a name, a type, and a list of arguments.
 ///
-/// The difference from a typical "struct" kind of type definition is that the fields take a list of arguments.
+/// The difference from a typical "struct" kind of type definition is that the fields take a list of arguments (so they are more like a method definition).
 ///
 /// GraphQL type system has a few intricacies:
-/// - An output field has a (possibly empty) list of arguments (for example, `venues` inside `Concert`).
-/// - An input field doesn't have that argument list
+/// - An output field has a (possibly empty) list of arguments (for example, `venues` inside `Concert`). So more like a method.
+/// - An input field doesn't have that argument list. So more like a field in a struct.
 ///
 /// Example: For a field such as: `concerts(where: ConcertWhereInput): [Concert]` (as a field in the `Query` root type),
 /// the normalized representation has:
@@ -29,36 +29,18 @@ pub trait GqlTypeDefinition: Debug {
 pub trait GqlFieldDefinition: Debug {
     fn name(&self) -> &str;
 
-    fn ty<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition;
+    fn field_type<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition;
 
     fn arguments<'a>(&'a self, model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition>;
 }
 
 /// Normalized field type with a modifier such as optional, list, or non-null.
 pub trait GqlFieldTypeDefinition: Debug {
-    fn name(&self) -> &str;
+    fn name<'a>(&'a self, model: &'a ModelSystem) -> &'a str;
 
+    // Unwrap one level of modifier. For example, if the type is `[Concert]`, this will return `Concert`.
+    // If there is no modifier, this will return `None`.
     fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition>;
-
-    fn leaf<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlTypeDefinition;
 
     fn modifier(&self) -> &GqlTypeModifier;
 }
-
-// /// Normalized representation of a parameter.
-// pub trait GqlParameterDefinition: Debug {
-//     fn name(&self) -> &str;
-
-//     fn ty<'a>(&self, model: &'a ModelSystem) -> &'a dyn GqlParameterTypeDefinition;
-// }
-
-// pub trait GqlParameterTypeDefinition: Debug {
-//     fn name(&self) -> &str;
-
-//     fn underlying<'a>(
-//         &'a self,
-//         model: &'a ModelSystem,
-//     ) -> Option<&'a dyn GqlParameterTypeDefinition>;
-
-//     fn modifier(&self) -> &GqlTypeModifier;
-// }

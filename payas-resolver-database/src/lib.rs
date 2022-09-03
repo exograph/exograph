@@ -16,9 +16,7 @@ mod predicate_mapper;
 mod sql_mapper;
 mod update_data_param_mapper;
 
-use std::collections::HashMap;
-
-use async_graphql_value::ConstValue;
+use async_graphql_value::{indexmap::IndexMap, ConstValue};
 use postgres_types::FromSqlOwned;
 use tokio_postgres::Row;
 
@@ -39,7 +37,7 @@ use payas_model::model::{
 
 use self::sql_mapper::SQLOperationKind;
 
-pub type Arguments = HashMap<String, ConstValue>;
+pub type Arguments = IndexMap<String, ConstValue>;
 
 pub use abstract_operation_resolver::resolve_operation;
 
