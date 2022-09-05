@@ -1,4 +1,5 @@
 use async_graphql_parser::types::{BaseType, Type};
+use async_graphql_value::Name;
 use payas_model::model::{
     argument::{ArgumentParameter, ArgumentParameterType, ArgumentParameterTypeWithModifier},
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
@@ -9,7 +10,10 @@ use payas_model::model::{
     GqlType, GqlTypeModifier,
 };
 
-use super::{definition::GqlFieldDefinition, definition::GqlFieldTypeDefinition};
+use super::{
+    definition::GqlFieldDefinition,
+    definition::{GqlFieldTypeDefinition, GqlFieldTypeDefinitionNode, GqlTypeDefinition},
+};
 
 impl GqlFieldDefinition for PredicateParameter {
     fn name(&self) -> &str {
@@ -30,11 +34,12 @@ impl GqlFieldTypeDefinition for PredicateParameterTypeWithModifier {
         &model.predicate_types[self.type_id].name
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        let tpe = &model.predicate_types[self.type_id];
         if self.type_modifier == GqlTypeModifier::NonNull {
-            None
+            GqlFieldTypeDefinitionNode::Leaf(tpe)
         } else {
-            Some(&model.predicate_types[self.type_id])
+            GqlFieldTypeDefinitionNode::NonLeaf(tpe, &self.type_modifier)
         }
     }
 
@@ -48,8 +53,8 @@ impl GqlFieldTypeDefinition for PredicateParameterType {
         &self.name
     }
 
-    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
-        None
+    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        GqlFieldTypeDefinitionNode::Leaf(self)
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -76,11 +81,12 @@ impl GqlFieldTypeDefinition for OrderByParameterTypeWithModifier {
         &model.order_by_types[self.type_id].name
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        let tpe = &model.order_by_types[self.type_id];
         if self.type_modifier == GqlTypeModifier::NonNull {
-            None
+            GqlFieldTypeDefinitionNode::Leaf(tpe)
         } else {
-            Some(&model.order_by_types[self.type_id])
+            GqlFieldTypeDefinitionNode::NonLeaf(tpe, &self.type_modifier)
         }
     }
 
@@ -94,8 +100,8 @@ impl GqlFieldTypeDefinition for OrderByParameterType {
         &self.name
     }
 
-    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
-        None
+    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        GqlFieldTypeDefinitionNode::Leaf(self)
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -122,8 +128,8 @@ impl GqlFieldTypeDefinition for LimitParameterType {
         &self.type_name
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
-        Some(&model.types[self.type_id])
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        GqlFieldTypeDefinitionNode::NonLeaf(&model.types[self.type_id], &self.type_modifier)
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -136,8 +142,8 @@ impl GqlFieldTypeDefinition for GqlType {
         &self.name
     }
 
-    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
-        None
+    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        GqlFieldTypeDefinitionNode::Leaf(self)
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -164,8 +170,8 @@ impl GqlFieldTypeDefinition for OffsetParameterType {
         &self.type_name
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
-        Some(&model.types[self.type_id])
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        GqlFieldTypeDefinitionNode::NonLeaf(&model.types[self.type_id], &self.type_modifier)
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -192,11 +198,12 @@ impl GqlFieldTypeDefinition for CreateDataParameterTypeWithModifier {
         &self.type_name
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        let tpe = &model.mutation_types[self.type_id];
         if self.array_input {
-            Some(&model.mutation_types[self.type_id])
+            GqlFieldTypeDefinitionNode::NonLeaf(tpe, &GqlTypeModifier::List)
         } else {
-            None
+            GqlFieldTypeDefinitionNode::Leaf(tpe)
         }
     }
 
@@ -242,13 +249,26 @@ impl GqlFieldTypeDefinition for ArgumentParameterTypeWithModifier {
         &self.type_name
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
-        if self.type_modifier == GqlTypeModifier::NonNull {
-            None
-        } else {
-            self.type_id
-                .as_ref()
-                .map(|t| &model.argument_types[*t] as &dyn GqlFieldTypeDefinition)
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        let tpe = self.type_id.as_ref().map(|t| &model.argument_types[*t]);
+
+        match tpe {
+            Some(tpe) => {
+                if self.type_modifier == GqlTypeModifier::NonNull {
+                    GqlFieldTypeDefinitionNode::Leaf(tpe)
+                } else {
+                    GqlFieldTypeDefinitionNode::NonLeaf(tpe, &self.type_modifier)
+                }
+            }
+            None => {
+                let tpe = &model
+                    .types
+                    .iter()
+                    .find(|t| t.1.name == self.type_name)
+                    .unwrap()
+                    .1;
+                GqlFieldTypeDefinitionNode::Leaf(*tpe)
+            }
         }
     }
 
@@ -262,8 +282,8 @@ impl GqlFieldTypeDefinition for ArgumentParameterType {
         &self.name
     }
 
-    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
-        None
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        GqlFieldTypeDefinitionNode::Leaf(&model.types[self.actual_type_id.unwrap()])
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -279,9 +299,9 @@ impl GqlFieldTypeDefinition for Type {
         }
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
         if self.nullable {
-            Some(&self.base)
+            GqlFieldTypeDefinitionNode::NonLeaf(&self.base, &GqlTypeModifier::Optional)
         } else {
             self.base.inner(model)
         }
@@ -304,10 +324,12 @@ impl GqlFieldTypeDefinition for BaseType {
         }
     }
 
-    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
+    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
         match self {
-            BaseType::Named(_) => None,
-            BaseType::List(underlying) => Some(underlying.as_ref()),
+            BaseType::Named(name) => GqlFieldTypeDefinitionNode::Leaf(name),
+            BaseType::List(underlying) => {
+                GqlFieldTypeDefinitionNode::NonLeaf(underlying.as_ref(), &GqlTypeModifier::List)
+            }
         }
     }
 
@@ -316,5 +338,15 @@ impl GqlFieldTypeDefinition for BaseType {
             BaseType::Named(_) => &GqlTypeModifier::NonNull,
             BaseType::List(_) => &GqlTypeModifier::List,
         }
+    }
+}
+
+impl GqlTypeDefinition for Name {
+    fn name(&self) -> &str {
+        self.as_str()
+    }
+
+    fn fields<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
+        vec![]
     }
 }

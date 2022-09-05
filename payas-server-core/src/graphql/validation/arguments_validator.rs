@@ -8,7 +8,9 @@ use payas_model::model::{system::ModelSystem, GqlTypeModifier};
 use crate::graphql::validation::validation_error::ValidationError;
 
 use super::{
-    definition::{GqlFieldDefinition, GqlFieldTypeDefinition, GqlTypeDefinition},
+    definition::{
+        GqlFieldDefinition, GqlFieldTypeDefinition, GqlFieldTypeDefinitionNode, GqlTypeDefinition,
+    },
     find_arg_type,
 };
 
@@ -269,6 +271,7 @@ impl<'a> ArgumentValidator<'a> {
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
         let ty = &argument_definition.field_type(self.model);
+
         let underlying = ty.name(self.model);
 
         if acceptable_destination_types.contains(&underlying) {
@@ -398,8 +401,8 @@ fn get_inner_field_definition<'a>(
     let typ = field_definition.field_type(model);
 
     let inner_field_type_definition = match typ.inner(model) {
-        Some(inner) => inner,
-        None => field_definition.field_type(model),
+        GqlFieldTypeDefinitionNode::NonLeaf(inner, ..) => inner,
+        GqlFieldTypeDefinitionNode::Leaf(_) => field_definition.field_type(model),
     };
 
     InnerGqlFieldDefinition {

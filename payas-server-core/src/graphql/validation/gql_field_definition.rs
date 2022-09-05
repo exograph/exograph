@@ -9,15 +9,15 @@ use payas_model::model::{
     GqlField, GqlFieldType, GqlTypeKind, GqlTypeModifier,
 };
 
-use super::definition::{GqlFieldDefinition, GqlFieldTypeDefinition};
+use super::definition::{GqlFieldDefinition, GqlFieldTypeDefinition, GqlFieldTypeDefinitionNode};
 
 impl GqlFieldTypeDefinition for OperationReturnType {
     fn name<'a>(&'a self, _model: &'a ModelSystem) -> &'a str {
         &self.type_name
     }
 
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
-        Some(self.typ(model))
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
+        GqlFieldTypeDefinitionNode::NonLeaf(self.typ(model), &self.type_modifier)
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -84,11 +84,17 @@ impl GqlFieldTypeDefinition for GqlFieldType {
         }
     }
 
-    fn inner<'a>(&'a self, _model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition> {
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
         match self {
-            GqlFieldType::Optional(ty) => Some(ty.as_ref()),
-            GqlFieldType::List(ty) => Some(ty.as_ref()),
-            _ => None,
+            GqlFieldType::Optional(ty) => {
+                GqlFieldTypeDefinitionNode::NonLeaf(ty.as_ref(), &GqlTypeModifier::Optional)
+            }
+            GqlFieldType::List(ty) => {
+                GqlFieldTypeDefinitionNode::NonLeaf(ty.as_ref(), &GqlTypeModifier::List)
+            }
+            GqlFieldType::Reference { type_id, .. } => {
+                GqlFieldTypeDefinitionNode::Leaf(&model.types[*type_id])
+            }
         }
     }
 

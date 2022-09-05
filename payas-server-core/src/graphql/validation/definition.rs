@@ -40,7 +40,19 @@ pub trait GqlFieldTypeDefinition: Debug {
 
     // Unwrap one level of modifier. For example, if the type is `[Concert]`, this will return `Concert`.
     // If there is no modifier, this will return `None`.
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> Option<&'a dyn GqlFieldTypeDefinition>;
+    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a>;
 
     fn modifier(&self) -> &GqlTypeModifier;
+
+    fn leaf<'a>(&'a self, model: &'a ModelSystem) -> &'a dyn GqlTypeDefinition {
+        match self.inner(model) {
+            GqlFieldTypeDefinitionNode::Leaf(ty) => ty,
+            GqlFieldTypeDefinitionNode::NonLeaf(ft, _) => ft.leaf(model),
+        }
+    }
+}
+
+pub enum GqlFieldTypeDefinitionNode<'a> {
+    NonLeaf(&'a dyn GqlFieldTypeDefinition, &'a GqlTypeModifier),
+    Leaf(&'a dyn GqlTypeDefinition),
 }
