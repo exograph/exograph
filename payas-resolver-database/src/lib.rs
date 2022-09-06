@@ -17,8 +17,6 @@ mod sql_mapper;
 mod update_data_param_mapper;
 
 use async_graphql_value::{indexmap::IndexMap, ConstValue};
-use postgres_types::FromSqlOwned;
-use tokio_postgres::Row;
 
 use payas_resolver_core::access_solver;
 use payas_resolver_core::request_context::RequestContext;
@@ -41,7 +39,7 @@ pub type Arguments = IndexMap<String, ConstValue>;
 
 pub use abstract_operation_resolver::resolve_operation;
 
-pub async fn compute_sql_access_predicate<'a>(
+pub(crate) async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
     system_context: &DatabaseSystemContext<'a>,
@@ -106,7 +104,7 @@ fn compute_predicate<'a>(
     Ok(res)
 }
 
-pub fn to_column_id_path(
+pub(crate) fn to_column_id_path(
     parent_column_id_path: &Option<ColumnIdPath>,
     next_column_id_path_link: &Option<ColumnIdPathLink>,
 ) -> Option<ColumnIdPath> {
@@ -124,7 +122,7 @@ pub fn to_column_id_path(
     }
 }
 
-pub fn get_argument_field<'a>(
+pub(crate) fn get_argument_field<'a>(
     argument_value: &'a ConstValue,
     field_name: &str,
 ) -> Option<&'a ConstValue> {
@@ -134,17 +132,10 @@ pub fn get_argument_field<'a>(
     }
 }
 
-pub fn extractor<T: FromSqlOwned>(row: Row) -> Result<T, DatabaseExecutionError> {
-    match row.try_get(0) {
-        Ok(col) => Ok(col),
-        Err(err) => Err(DatabaseExecutionError::EmptyRow(err)),
-    }
-}
-
 ///
 /// # Returns
 /// - A (table associated with the return type, pk query, collection query) tuple.
-pub fn return_type_info<'a>(
+pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType,
     system_context: &DatabaseSystemContext<'a>,
 ) -> (&'a PhysicalTable, &'a Query, &'a Query) {

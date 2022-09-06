@@ -128,6 +128,15 @@ pub async fn resolve<'a, E: 'static>(
         vec![]
     };
 
+    let ctx = request_context.get_base_context();
+    let mut tx_holder = ctx.transaction_holder.try_lock().unwrap();
+
+    let response = tx_holder
+        .finalize(response.is_ok())
+        .await
+        .map_err(|e| ExecutionError::Generic(format!("Error while finalizing transaction: {}", e)))
+        .and(response);
+
     let stream = try_stream! {
         macro_rules! report_position {
             ($position:expr) => {

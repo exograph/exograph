@@ -9,7 +9,7 @@ use super::{
     database_system_context::DatabaseSystemContext, to_column_id_path,
 };
 
-pub trait PredicateParameterMapper<'a> {
+pub(crate) trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
         &'a self,
         argument_value: &'a ConstValue,

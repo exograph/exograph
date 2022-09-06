@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use crate::OperationsPayload;
 use crate::ResolveOperationFn;
 
+use super::Request;
 use super::{ParsedContext, RequestContext};
 
 pub struct QueryExtractor;
@@ -18,6 +19,7 @@ impl ParsedContext for QueryExtractor {
         value: &str,
         resolver: &ResolveOperationFn<'r>,
         request_context: &'r RequestContext<'r>,
+        _request: &'r (dyn Request + Send + Sync),
     ) -> Option<serde_json::Value> {
         let query = format!("query {{ {} }}", value.to_owned());
 

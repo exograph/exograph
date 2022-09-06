@@ -26,8 +26,7 @@ macro_rules! claytip_execute_query {
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                context_override: serde_json::Value| {
             use maybe_owned::MaybeOwned;
-            let new_request_context =
-                RequestContext::with_override($request_context, context_override);
+            let new_request_context = $request_context.with_override(context_override);
             async move {
                 // execute query
                 let result = $resolve_query_fn(

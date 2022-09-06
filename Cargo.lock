@@ -3690,7 +3690,9 @@ dependencies = [
  "async-graphql-value",
  "async-recursion",
  "async-trait",
+ "cookie",
  "futures",
+ "jsonwebtoken",
  "maybe-owned",
  "payas-model",
  "payas-parser",
@@ -3699,6 +3701,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -3865,6 +3868,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "tokio",
  "tokio-postgres",
  "tracing",
  "url",

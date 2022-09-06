@@ -1,17 +1,26 @@
+mod cookie;
 mod environment;
+mod header;
+mod jwt;
 mod query;
 
 use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use async_trait::async_trait;
 use futures::StreamExt;
 use payas_model::model::ContextField;
 use payas_model::model::ContextType;
+use payas_sql::TransactionHolder;
 use serde_json::Value;
 use thiserror::Error;
 
 use crate::ResolveOperationFn;
 
+use self::cookie::CookieExtractor;
+use self::header::HeaderExtractor;
+use self::jwt::JwtAuthenticator;
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
 
 use async_recursion::async_recursion;
@@ -21,40 +30,66 @@ pub enum ContextParsingError {
     #[error("Could not find source `{0}`")]
     SourceNotFound(String),
 
+    #[error("Unauthorized request")]
+    Unauthorized,
+
+    #[error("Malformed request")]
+    Malformed,
+
     #[error("{0}")]
     Delegate(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
-pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
+/// Represents a HTTP request from which information can be extracted
+pub trait Request {
+    // return all header values that have the following key
+    fn get_headers(&self, key: &str) -> Vec<String>;
 
-/// Represent a request context extracted for a particular request
-pub struct UserRequestContext {
-    // maps from an annotation to a parsed context
-    parsed_context_map: HashMap<String, BoxedParsedContext>,
+    // return the first header
+    fn get_header(&self, key: &str) -> Option<String> {
+        self.get_headers(&key.to_lowercase()).get(0).cloned()
+    }
 }
 
-impl UserRequestContext {
-    // Constructs a UserRequestContext from a vector of parsed contexts.
-    pub fn from_parsed_contexts(contexts: Vec<BoxedParsedContext>) -> UserRequestContext {
-        // a list of backend-agnostic contexts to also include
+/// Represent a request context extracted for a particular request
+pub struct UserRequestContext<'a> {
+    // maps from an annotation to a parsed context
+    parsed_context_map: HashMap<String, BoxedParsedContext>,
+    pub transaction_holder: Arc<Mutex<TransactionHolder>>,
+    request: &'a (dyn Request + Send + Sync),
+}
 
+impl<'a> UserRequestContext<'a> {
+    // Constructs a UserRequestContext from a vector of parsed contexts and a request.
+    pub fn parse_context(
+        request: &'a (dyn Request + Send + Sync),
+        parsed_contexts: Vec<BoxedParsedContext>,
+    ) -> Result<UserRequestContext<'a>, ContextParsingError> {
+        // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedParsedContext> = vec![
             Box::new(EnvironmentContextExtractor),
             Box::new(QueryExtractor),
+            Box::new(HeaderExtractor),
+            CookieExtractor::parse_context(request)?,
+            JwtAuthenticator::parse_context(request)?,
         ];
 
-        UserRequestContext {
-            parsed_context_map: contexts
+        Ok(UserRequestContext {
+            parsed_context_map: parsed_contexts
                 .into_iter()
-                .chain(generic_contexts.into_iter()) // include agnostic contexts
+                .chain(
+                    generic_contexts.into_iter(), // include agnostic contexts
+                )
                 .map(|context| (context.annotation_name().to_owned(), context))
                 .collect(),
-        }
+            transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
+            request,
+        })
     }
 }
 
 pub enum RequestContext<'a> {
-    User(UserRequestContext),
+    User(UserRequestContext<'a>),
 
     // The recursive nature allows stacking overrides
     Overridden {
@@ -64,10 +99,28 @@ pub enum RequestContext<'a> {
 }
 
 impl<'a> RequestContext<'a> {
+    pub fn parse_context(
+        request: &'a (dyn Request + Send + Sync),
+        parsed_contexts: Vec<BoxedParsedContext>,
+    ) -> Result<RequestContext<'a>, ContextParsingError> {
+        Ok(RequestContext::User(UserRequestContext::parse_context(
+            request,
+            parsed_contexts,
+        )?))
+    }
+
     pub fn with_override(&'a self, context_override: Value) -> RequestContext<'a> {
         RequestContext::Overridden {
             base_context: self,
             context_override,
+        }
+    }
+
+    pub fn get_base_context(&self) -> &UserRequestContext {
+        match &self {
+            RequestContext::User(req) => req,
+
+            RequestContext::Overridden { base_context, .. } => base_context.get_base_context(),
         }
     }
 
@@ -94,6 +147,7 @@ impl<'a> RequestContext<'a> {
     async fn extract_context_field_from_source<'s>(
         &'a self,
         parsed_context_map: &HashMap<String, BoxedParsedContext>,
+        request: &'a (dyn Request + Send + Sync),
         resolver: &'s ResolveOperationFn<'a>,
         annotation_name: &str,
         value: &str,
@@ -103,22 +157,27 @@ impl<'a> RequestContext<'a> {
             .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(value, resolver, self)
+            .extract_context_field(value, resolver, self, request)
             .await)
     }
 
     #[async_recursion]
-    pub async fn extract_context_field<'s>(
+    async fn extract_context_field<'s>(
         &'a self,
         context: &ContextType,
         field: &ContextField,
         resolver: &'s ResolveOperationFn<'a>,
     ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
-            RequestContext::User(UserRequestContext { parsed_context_map }) => {
+            RequestContext::User(UserRequestContext {
+                parsed_context_map,
+                request,
+                ..
+            }) => {
                 let field_value = self
                     .extract_context_field_from_source(
                         parsed_context_map,
+                        *request,
                         resolver,
                         &field.source.annotation_name,
                         &field.source.value,
@@ -163,8 +222,10 @@ pub trait ParsedContext {
         value: &str,
         resolver: &ResolveOperationFn<'r>,
         request_context: &'r RequestContext<'r>,
+        request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value>;
 }
+pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
 #[cfg(test)]
 pub struct TestRequestContext {
@@ -183,6 +244,7 @@ impl ParsedContext for TestRequestContext {
         key: &str,
         _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
+        _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
         self.test_values.get(key).cloned()
     }

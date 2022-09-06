@@ -307,8 +307,9 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
 
             if !resp.status().is_success() {
                 bail!(
-                    "Bad response: {}",
-                    resp.status().canonical_reason().unwrap()
+                    "Bad response: {}, {}",
+                    resp.status().canonical_reason().unwrap(),
+                    resp.text()?
                 );
             }
 

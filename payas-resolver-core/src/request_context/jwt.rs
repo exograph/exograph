@@ -1,21 +1,16 @@
 use std::env;
 
-use actix_web::http::header::Header;
-use actix_web::HttpRequest;
-use actix_web_httpauth::headers::authorization::Authorization;
-use actix_web_httpauth::headers::authorization::Bearer;
-use async_trait::async_trait;
-use jsonwebtoken::errors::ErrorKind;
-use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
-use payas_resolver_core::{
+use crate::{
     request_context::{BoxedParsedContext, ParsedContext, RequestContext},
     ResolveOperationFn,
 };
-use serde_json::json;
+use async_trait::async_trait;
+use jsonwebtoken::errors::ErrorKind;
+use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
 use serde_json::Value;
+use tracing::warn;
 
-use super::ActixContextProducer;
-use super::ContextProducerError;
+use super::{ContextParsingError, Request};
 
 pub enum JwtAuthenticationError {
     ExpiredToken,
@@ -30,8 +25,8 @@ pub struct JwtAuthenticator {
 const JWT_SECRET_PARAM: &str = "CLAY_JWT_SECRET";
 
 impl JwtAuthenticator {
-    pub fn new_from_env() -> Self {
-        Self::new(env::var(JWT_SECRET_PARAM).ok().unwrap())
+    pub fn new_from_env() -> Option<Self> {
+        Some(Self::new(env::var(JWT_SECRET_PARAM).ok()?))
     }
 
     fn new(secret: String) -> Self {
@@ -52,50 +47,50 @@ impl JwtAuthenticator {
     /// to the declared user context model
     pub fn extract_authentication(
         &self,
-        req: &HttpRequest,
-    ) -> Result<Option<Value>, JwtAuthenticationError> {
-        match Authorization::<Bearer>::parse(req) {
-            Ok(auth) => {
-                let scheme = auth.into_scheme();
-                let token = scheme.token();
-                self.validate_jwt(token)
-                    .map(|v| Some(v.claims))
-                    .map_err(|err| match &err.kind() {
-                        ErrorKind::InvalidSignature => JwtAuthenticationError::TamperedToken,
-                        ErrorKind::ExpiredSignature => JwtAuthenticationError::ExpiredToken,
-                        _ => JwtAuthenticationError::Unknown,
-                    })
-            }
-            Err(_) => {
+        request: &dyn Request,
+    ) -> Result<Value, JwtAuthenticationError> {
+        let jwt_token = request
+            .get_header("Authorization")
+            .and_then(|auth_token| auth_token.strip_prefix("Bearer ").map(|t| t.to_owned()));
+
+        match jwt_token {
+            Some(jwt_token) => self
+                .validate_jwt(&jwt_token)
+                .map(|v| v.claims)
+                .map_err(|err| match &err.kind() {
+                    ErrorKind::InvalidSignature => JwtAuthenticationError::TamperedToken,
+                    ErrorKind::ExpiredSignature => JwtAuthenticationError::ExpiredToken,
+                    _ => JwtAuthenticationError::Unknown,
+                }),
+            None => {
                 // Either the "Authorization" header was absent or the next token wasn't "Bearer"
                 // It is not an error to have no authorization header, since that indicates an anonymous user
                 // and there may be queries allowed for such users.
-                Ok(None)
+                Ok(serde_json::Value::Null)
             }
         }
     }
-}
 
-impl ActixContextProducer for JwtAuthenticator {
-    fn parse_context(
-        &self,
-        request: &HttpRequest,
-    ) -> Result<BoxedParsedContext, ContextProducerError> {
-        let jwt_claims =
-            self.extract_authentication(request)
+    pub fn parse_context(request: &dyn Request) -> Result<BoxedParsedContext, ContextParsingError> {
+        let jwt_claims = if let Some(jwt_authenticator) = JwtAuthenticator::new_from_env() {
+            jwt_authenticator
+                .extract_authentication(request)
                 .map_err(|e| match e {
                     JwtAuthenticationError::ExpiredToken
-                    | JwtAuthenticationError::TamperedToken => ContextProducerError::Unauthorized,
+                    | JwtAuthenticationError::TamperedToken => ContextParsingError::Unauthorized,
 
-                    JwtAuthenticationError::Unknown => ContextProducerError::Malformed,
+                    JwtAuthenticationError::Unknown => ContextParsingError::Malformed,
                 })?
-                .unwrap_or_else(|| json!({}));
+        } else {
+            warn!("{JWT_SECRET_PARAM} is not set, not parsing JWT tokens");
+            serde_json::Value::Null
+        };
 
         Ok(Box::new(ParsedJwtContext { jwt_claims }))
     }
 }
 
-struct ParsedJwtContext {
+pub struct ParsedJwtContext {
     jwt_claims: Value,
 }
 
@@ -110,6 +105,7 @@ impl ParsedContext for ParsedJwtContext {
         key: &str,
         _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
+        _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
         self.jwt_claims.get(key).cloned()
     }
