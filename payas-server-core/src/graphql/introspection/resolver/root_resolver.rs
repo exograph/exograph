@@ -6,7 +6,7 @@ use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::introspection::definition::root_element::IntrospectionRootElement;
-use crate::graphql::introspection::schema::{
+use crate::graphql::introspection::definition::schema::{
     MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
 };
 use async_graphql_parser::types::{BaseType, OperationType, Type};

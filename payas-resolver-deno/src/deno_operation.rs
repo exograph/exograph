@@ -1,3 +1,4 @@
+use async_graphql_value::indexmap::IndexMap;
 use async_graphql_value::ConstValue;
 use futures::FutureExt;
 use futures::StreamExt;
@@ -113,7 +114,7 @@ async fn compute_service_access_predicate<'a>(
 }
 
 pub async fn construct_arg_sequence<'a>(
-    field_args: &HashMap<String, ConstValue>,
+    field_args: &IndexMap<String, ConstValue>,
     args: &[Argument],
     system: &'a ModelSystem,
     resolve_query: &ResolveOperationFn<'a>,

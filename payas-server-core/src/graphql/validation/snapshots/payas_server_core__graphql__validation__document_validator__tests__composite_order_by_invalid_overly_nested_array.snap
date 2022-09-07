@@ -1,0 +1,12 @@
+---
+source: payas-server-core/src/graphql/validation/document_validator.rs
+expression: "validator.validate(create_query_document(r#\"\n                query {\n                    concerts(orderBy: [[{id: ASC}, {title: DESC}]]) {\n                        id\n                    }\n                }\n            \"#))"
+---
+Err(
+    InvalidArgumentType {
+        argument_name: "orderBy",
+        expected_type: "ConcertOrdering",
+        actual_type: "[ConcertOrdering]",
+        pos: Pos(3:39),
+    },
+)

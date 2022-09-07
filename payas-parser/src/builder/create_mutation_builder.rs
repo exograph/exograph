@@ -6,7 +6,9 @@ use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
-use payas_model::model::operation::{CreateDataParameter, DatabaseMutationKind};
+use payas_model::model::operation::{
+    CreateDataParameter, CreateDataParameterTypeWithModifier, DatabaseMutationKind,
+};
 
 use super::mutation_builder::{DataParamBuilder, MutationBuilder};
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
@@ -105,9 +107,11 @@ impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
 
         CreateDataParameter {
             name: "data".to_string(),
-            type_name: data_param_type_name,
-            type_id: data_param_type_id,
-            array_input: array,
+            typ: CreateDataParameterTypeWithModifier {
+                type_name: data_param_type_name,
+                type_id: data_param_type_id,
+                array_input: array,
+            },
         }
     }
 }
