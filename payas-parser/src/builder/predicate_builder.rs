@@ -1,5 +1,6 @@
 use payas_model::model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
+    predicate::PredicateParameterTypeWithModifier,
     types::{GqlType, GqlTypeKind, GqlTypeModifier},
     GqlCompositeType, GqlCompositeTypeKind,
 };
@@ -169,11 +170,13 @@ fn create_operator_filter_type_kind(
     let parameter_constructor = |operator: &&str| PredicateParameter {
         name: operator.to_string(),
         type_name: scalar_model_type.name.to_string(),
-        type_id: building
-            .predicate_types
-            .get_id(&scalar_model_type.name)
-            .unwrap(),
-        type_modifier: GqlTypeModifier::Optional,
+        typ: PredicateParameterTypeWithModifier {
+            type_id: building
+                .predicate_types
+                .get_id(&scalar_model_type.name)
+                .unwrap(),
+            type_modifier: GqlTypeModifier::Optional,
+        },
         column_path_link: None,
         underlying_type_id: gql_type_id,
     };
@@ -218,8 +221,10 @@ fn create_composite_filter_type_kind(
             PredicateParameter {
                 name: field.name.to_string(),
                 type_name: param_type_name.clone(),
-                type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-                type_modifier: GqlTypeModifier::Optional,
+                typ: PredicateParameterTypeWithModifier {
+                    type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
+                    type_modifier: GqlTypeModifier::Optional,
+                },
                 underlying_type_id: *param_type_id,
                 column_path_link,
             }
@@ -240,13 +245,15 @@ fn create_composite_filter_type_kind(
             PredicateParameter {
                 name: name.to_string(),
                 type_name: get_parameter_type_name(composite_type_name),
-                type_id: building
-                    .predicate_types
-                    .get_id(&param_type_name)
-                    .unwrap_or_else(|| {
-                        panic!("Could not find predicate type '{}'", param_type_name)
-                    }),
-                type_modifier,
+                typ: PredicateParameterTypeWithModifier {
+                    type_id: building
+                        .predicate_types
+                        .get_id(&param_type_name)
+                        .unwrap_or_else(|| {
+                            panic!("Could not find predicate type '{}'", param_type_name)
+                        }),
+                    type_modifier,
+                },
                 column_path_link: None,
                 underlying_type_id: gql_type_id,
             }

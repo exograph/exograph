@@ -12,7 +12,7 @@ use payas_sql::DatabaseExecutor;
 
 use crate::graphql::{
     execution_error::ExecutionError,
-    introspection::schema::Schema,
+    introspection::definition::schema::Schema,
     validation::{
         document_validator::DocumentValidator, operation::ValidatedOperation,
         validation_error::ValidationError,
@@ -86,6 +86,7 @@ impl SystemContext {
         let document = parse_query(operations_payload.query)?;
 
         let document_validator = DocumentValidator::new(
+            &self.system,
             &self.schema,
             operations_payload.operation_name,
             operations_payload.variables,

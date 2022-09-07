@@ -2,20 +2,22 @@ use std::collections::HashMap;
 
 use async_graphql_parser::{
     types::{FragmentDefinition, OperationDefinition, OperationType, VariableDefinition},
-    Pos, Positioned,
+    Positioned,
 };
 use async_graphql_value::{ConstValue, Name};
+use payas_model::model::system::ModelSystem;
 use serde_json::{Map, Value};
 
 use crate::graphql::{
-    introspection::schema::{Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME},
-    validation::validation_error::ValidationError,
+    introspection::definition::schema::Schema,
+    validation::{definition::GqlTypeDefinition, validation_error::ValidationError},
 };
 
 use super::{operation::ValidatedOperation, selection_set_validator::SelectionSetValidator};
 
 /// Context for validating an operation.
 pub struct OperationValidator<'a> {
+    model: &'a ModelSystem,
     schema: &'a Schema,
     operation_name: Option<String>,
     variables: Option<Map<String, Value>>,
@@ -25,12 +27,14 @@ pub struct OperationValidator<'a> {
 impl<'a> OperationValidator<'a> {
     #[must_use]
     pub fn new(
+        model: &'a ModelSystem,
         schema: &'a Schema,
         operation_name: Option<String>,
         variables: Option<Map<String, Value>>,
         fragment_definitions: HashMap<Name, Positioned<FragmentDefinition>>,
     ) -> Self {
         Self {
+            model,
             schema,
             operation_name,
             variables,
@@ -60,26 +64,17 @@ impl<'a> OperationValidator<'a> {
         self,
         operation: Positioned<OperationDefinition>,
     ) -> Result<ValidatedOperation, ValidationError> {
-        let operation_type_name = match operation.node.ty {
-            OperationType::Query => QUERY_ROOT_TYPENAME,
-            OperationType::Mutation => MUTATION_ROOT_TYPENAME,
+        let container_type_definition: &dyn GqlTypeDefinition = match operation.node.ty {
+            OperationType::Query => &self.model.queries,
+            OperationType::Mutation => &self.model.mutations,
             OperationType::Subscription => todo!(),
-        };
-
-        let container_type = match self.schema.get_type_definition(operation_type_name) {
-            Some(td) => td,
-            None => {
-                return Err(ValidationError::OperationNotFound(
-                    operation_type_name.to_string(),
-                    Pos::default(),
-                ))
-            }
         };
 
         let variables = self.validate_variables(operation.node.variable_definitions)?;
         let selection_set_validator = SelectionSetValidator::new(
+            self.model,
             self.schema,
-            container_type,
+            container_type_definition,
             &variables,
             &self.fragment_definitions,
         );

@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +17,7 @@ use super::{
     types::{GqlType, GqlTypeModifier},
 };
 
-pub trait GraphQLOperation {
+pub trait GraphQLOperation: Debug {
     fn name(&self) -> &str;
 
     fn interceptors(&self) -> &Interceptors;
@@ -119,9 +121,7 @@ impl Interceptors {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateDataParameter {
     pub name: String,
-    pub type_name: String,
-    pub type_id: SerializableSlabIndex<GqlType>,
-    pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
+    pub typ: CreateDataParameterTypeWithModifier,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -129,6 +129,13 @@ pub struct UpdateDataParameter {
     pub name: String,
     pub type_name: String,
     pub type_id: SerializableSlabIndex<GqlType>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CreateDataParameterTypeWithModifier {
+    pub type_name: String,
+    pub type_id: SerializableSlabIndex<GqlType>,
+    pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
 }
 
 impl GraphQLOperation for Mutation {

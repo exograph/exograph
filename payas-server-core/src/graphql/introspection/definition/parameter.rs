@@ -31,7 +31,7 @@ impl Parameter for OrderByParameter {
     }
 
     fn type_modifier(&self) -> &GqlTypeModifier {
-        &self.type_modifier
+        &self.typ.type_modifier
     }
 }
 
@@ -41,11 +41,11 @@ impl Parameter for LimitParameter {
     }
 
     fn type_name(&self) -> &str {
-        &self.type_name
+        &self.typ.type_name
     }
 
     fn type_modifier(&self) -> &GqlTypeModifier {
-        &self.type_modifier
+        &self.typ.type_modifier
     }
 }
 
@@ -55,11 +55,11 @@ impl Parameter for OffsetParameter {
     }
 
     fn type_name(&self) -> &str {
-        &self.type_name
+        &self.typ.type_name
     }
 
     fn type_modifier(&self) -> &GqlTypeModifier {
-        &self.type_modifier
+        &self.typ.type_modifier
     }
 }
 
@@ -73,7 +73,7 @@ impl Parameter for PredicateParameter {
     }
 
     fn type_modifier(&self) -> &GqlTypeModifier {
-        &self.type_modifier
+        &self.typ.type_modifier
     }
 }
 
@@ -83,11 +83,11 @@ impl Parameter for CreateDataParameter {
     }
 
     fn type_name(&self) -> &str {
-        &self.type_name
+        &self.typ.type_name
     }
 
     fn type_modifier(&self) -> &GqlTypeModifier {
-        if self.array_input {
+        if self.typ.array_input {
             &GqlTypeModifier::List
         } else {
             &GqlTypeModifier::NonNull
@@ -115,11 +115,11 @@ impl Parameter for ArgumentParameter {
     }
 
     fn type_name(&self) -> &str {
-        &self.type_name
+        &self.typ.type_name
     }
 
     fn type_modifier(&self) -> &GqlTypeModifier {
-        &self.type_modifier
+        &self.typ.type_modifier
     }
 }
 

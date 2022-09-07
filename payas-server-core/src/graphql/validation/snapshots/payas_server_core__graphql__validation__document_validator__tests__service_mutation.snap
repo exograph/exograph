@@ -1,0 +1,37 @@
+---
+source: payas-server-core/src/graphql/validation/document_validator.rs
+expression: "validator.validate(create_query_document(r#\"\n                mutation {\n                    processInfo(info: { level: 1, message: \"allowed\" })\n                }\n            \"#))"
+---
+Ok(
+    ValidatedOperation {
+        name: None,
+        typ: Mutation,
+        fields: [
+            ValidatedField {
+                alias: None,
+                name: Name(
+                    "processInfo",
+                ),
+                arguments: {
+                    "info": Object(
+                        {
+                            Name(
+                                "level",
+                            ): Number(
+                                Number(
+                                    1,
+                                ),
+                            ),
+                            Name(
+                                "message",
+                            ): String(
+                                "allowed",
+                            ),
+                        },
+                    ),
+                },
+                subfields: [],
+            },
+        ],
+    },
+)

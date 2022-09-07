@@ -8,7 +8,7 @@ use async_graphql_parser::{
 use async_graphql_value::Name;
 use payas_model::model::system::ModelSystem;
 
-use super::definition::{
+use super::{
     provider::{FieldDefinitionProvider, TypeDefinitionProvider},
     type_introspection::TypeDefinitionIntrospection,
 };
@@ -18,6 +18,8 @@ pub struct Schema {
     pub type_definitions: Vec<TypeDefinition>,
     pub(crate) schema_field_definition: FieldDefinition,
     pub(crate) type_field_definition: FieldDefinition,
+
+    pub schema_type_definitions: Vec<TypeDefinition>,
 }
 
 pub const QUERY_ROOT_TYPENAME: &str = "Query";
@@ -141,6 +143,14 @@ impl Schema {
                 })],
             )
             .node,
+            schema_type_definitions: vec![
+                Self::create_schema_type_definition(),
+                Self::create_type_definition(),
+                Self::create_field_definition(),
+                Self::create_directive_definition(),
+                Self::create_directive_location_definition(),
+                Self::create_input_value_definition(),
+            ],
         }
     }
 
