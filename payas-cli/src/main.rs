@@ -100,7 +100,7 @@ fn main() -> Result<()> {
                         )
                         .arg(
                             Arg::new("output")
-                                .help("If specified, the script will be outputted to this filename")
+                                .help("If specified, the script will be written to this filename")
                                 .short('o')
                                 .long("output")
                                 .required(false)
