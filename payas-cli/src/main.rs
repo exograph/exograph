@@ -184,7 +184,7 @@ fn main() -> Result<()> {
             }),
             Some(("verify", matches)) => Box::new(schema::verify::VerifyCommand {
                 model: get_path(matches, "model"),
-                database: matches.get_one::<String>("database").unwrap().to_owned(),
+                database: matches.get_one::<String>("database").cloned(),
             }),
             Some(("import", matches)) => Box::new(schema::import::ImportCommand {
                 output: get_path(matches, "output"),

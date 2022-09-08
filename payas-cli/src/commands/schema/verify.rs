@@ -12,7 +12,7 @@ use crate::commands::command::Command;
 /// Verify that a schema is compatible with a claytip model
 pub struct VerifyCommand {
     pub model: PathBuf,
-    pub database: String,
+    pub database: Option<String>,
 }
 
 impl Command for VerifyCommand {
@@ -23,7 +23,12 @@ impl Command for VerifyCommand {
             .unwrap();
 
         rt.block_on(async {
-            let database = Database::from_db_url(&self.database)?; // TODO: error handling here
+            let database = if let Some(database) = &self.database {
+                Database::from_db_url(database)? // TODO: error handling here
+            } else {
+                Database::from_env(None)?
+            };
+
             let client = database.get_client().await?;
 
             // import schema from db
