@@ -97,7 +97,15 @@ fn main() -> Result<()> {
                                 .help("Claytip model file")
                                 .default_value(DEFAULT_MODEL_FILE)
                                 .index(1),
-                        ),
+                        )
+                        .arg(
+                            Arg::new("output")
+                                .help("If specified, the script will be outputted to this filename")
+                                .short('o')
+                                .long("output")
+                                .required(false)
+                                .takes_value(true)
+                        )
                 )
                 .subcommand(
                     Command::new("import")
@@ -107,8 +115,8 @@ fn main() -> Result<()> {
                                 .help("Claytip model output file")
                                 .short('o')
                                 .long("output")
+                                .required(false)
                                 .takes_value(true)
-                                .value_name("output")
                                 .default_value(DEFAULT_MODEL_FILE),
                         ),
                 ),
@@ -169,42 +177,43 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    fn get_path(matches: &clap::ArgMatches, arg_id: &str) -> PathBuf {
-        PathBuf::from(matches.get_one::<String>(arg_id).unwrap())
+    fn get_path(matches: &clap::ArgMatches, arg_id: &str) -> Option<PathBuf> {
+        matches.get_one::<String>(arg_id).map(PathBuf::from)
     }
 
     // Map subcommands with args
     let command: Box<dyn crate::commands::command::Command> = match matches.subcommand() {
         Some(("build", matches)) => Box::new(BuildCommand {
-            model: get_path(matches, "model"),
+            model: get_path(matches, "model").unwrap(),
         }),
         Some(("schema", matches)) => match matches.subcommand() {
             Some(("create", matches)) => Box::new(schema::create::CreateCommand {
-                model: get_path(matches, "model"),
+                model: get_path(matches, "model").unwrap(),
             }),
             Some(("verify", matches)) => Box::new(schema::verify::VerifyCommand {
-                model: get_path(matches, "model"),
+                model: get_path(matches, "model").unwrap(),
                 database: matches.get_one::<String>("database").unwrap().to_owned(),
             }),
             Some(("import", matches)) => Box::new(schema::import::ImportCommand {
-                output: get_path(matches, "output"),
+                output: get_path(matches, "output").unwrap(),
             }),
             Some(("migrate", matches)) => Box::new(schema::migrate::MigrateCommand {
-                model: get_path(matches, "model"),
+                model: get_path(matches, "model").unwrap(),
+                output: get_path(matches, "output"),
                 comment_destructive_changes: !matches.contains_id("allow-destructive-changes"),
             }),
             _ => panic!("Unhandled command name"),
         },
         Some(("serve", matches)) => Box::new(ServeCommand {
-            model: get_path(matches, "model"),
+            model: get_path(matches, "model").unwrap(),
             port: matches.get_one::<u32>("port").copied(),
         }),
         Some(("test", matches)) => Box::new(TestCommand {
-            dir: get_path(matches, "dir"),
+            dir: get_path(matches, "dir").unwrap(),
             pattern: matches.get_one::<String>("pattern").map(|s| s.to_owned()),
         }),
         Some(("yolo", matches)) => Box::new(YoloCommand {
-            model: get_path(matches, "model"),
+            model: get_path(matches, "model").unwrap(),
             port: matches.get_one::<u32>("port").copied(),
         }),
         _ => panic!("Unhandled command name"),
