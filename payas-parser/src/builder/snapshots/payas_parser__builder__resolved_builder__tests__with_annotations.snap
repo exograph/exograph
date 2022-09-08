@@ -43,8 +43,8 @@ types:
             - name: id
               typ:
                 Plain:
-                  - Int
-                  - true
+                  type_name: Int
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: custom_id
@@ -58,8 +58,8 @@ types:
             - name: title
               typ:
                 Plain:
-                  - String
-                  - true
+                  type_name: String
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: custom_title
@@ -73,8 +73,8 @@ types:
             - name: venue
               typ:
                 Plain:
-                  - Venue
-                  - false
+                  type_name: Venue
+                  is_primitive: false
               kind:
                 Persistent:
                   column_name: custom_venue_id
@@ -86,8 +86,8 @@ types:
             - name: reserved
               typ:
                 Plain:
-                  - Int
-                  - true
+                  type_name: Int
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: reserved
@@ -104,8 +104,8 @@ types:
             - name: time
               typ:
                 Plain:
-                  - Instant
-                  - true
+                  type_name: Instant
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: time
@@ -119,8 +119,8 @@ types:
             - name: price
               typ:
                 Plain:
-                  - Decimal
-                  - true
+                  type_name: Decimal
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: price
@@ -156,8 +156,8 @@ types:
             - name: id
               typ:
                 Plain:
-                  - Int
-                  - true
+                  type_name: Int
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: custom_id
@@ -169,8 +169,8 @@ types:
             - name: name
               typ:
                 Plain:
-                  - String
-                  - true
+                  type_name: String
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: custom_name
@@ -183,8 +183,8 @@ types:
               typ:
                 List:
                   Plain:
-                    - Concert
-                    - false
+                    type_name: Concert
+                    is_primitive: false
               kind:
                 Persistent:
                   column_name: custom_venue_id
@@ -196,8 +196,8 @@ types:
             - name: capacity
               typ:
                 Plain:
-                  - Int
-                  - true
+                  type_name: Int
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: capacity
@@ -212,8 +212,8 @@ types:
             - name: latitude
               typ:
                 Plain:
-                  - Float
-                  - true
+                  type_name: Float
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: latitude
@@ -482,25 +482,25 @@ services:
               - name: claytip
                 typ:
                   Plain:
-                    - Claytip
-                    - true
+                    type_name: Claytip
+                    is_primitive: true
                 is_injected: true
               - name: x
                 typ:
                   Plain:
-                    - Int
-                    - true
+                    type_name: Int
+                    is_primitive: true
                 is_injected: false
               - name: y
                 typ:
                   Plain:
-                    - String
-                    - true
+                    type_name: String
+                    is_primitive: true
                 is_injected: false
             return_type:
               Plain:
-                - Int
-                - true
+                type_name: Int
+                is_primitive: true
           - name: quuz
             operation_kind: Mutation
             is_exported: false
@@ -520,8 +520,8 @@ services:
             arguments: []
             return_type:
               Plain:
-                - String
-                - true
+                type_name: String
+                is_primitive: true
         interceptors: []
     - ~
     - ~

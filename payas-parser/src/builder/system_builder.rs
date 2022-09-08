@@ -152,16 +152,11 @@ pub struct SystemContextBuilding {
 
 impl SystemContextBuilding {
     pub fn get_id(&self, name: &str) -> Option<SerializableSlabIndex<GqlType>> {
-        match self.primitive_types.get_id(name) {
-            Some(id) => Some(id),
-            None => match self.database_types.get_id(name) {
-                Some(id) => Some(id),
-                None => match self.service_types.get_id(name) {
-                    Some(id) => Some(id),
-                    None => self.context_types.get_id(name),
-                },
-            },
-        }
+        self.primitive_types
+            .get_id(name)
+            .or_else(|| self.database_types.get_id(name))
+            .or_else(|| self.service_types.get_id(name))
+            .or_else(|| self.context_types.get_id(name))
     }
 }
 

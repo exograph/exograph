@@ -97,7 +97,10 @@ fn create_context_field_type(
     building: &SystemContextBuilding,
 ) -> GqlFieldType {
     match field_type {
-        ResolvedFieldType::Plain(type_name, is_primitive) => GqlFieldType::Reference {
+        ResolvedFieldType::Plain {
+            type_name,
+            is_primitive,
+        } => GqlFieldType::Reference {
             type_id: if *is_primitive {
                 building.primitive_types.get_id(type_name).unwrap()
             } else {

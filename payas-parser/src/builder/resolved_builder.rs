@@ -235,7 +235,10 @@ pub struct ResolvedContextSource {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum ResolvedFieldType {
-    Plain(String, bool), // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
+    Plain {
+        type_name: String, // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
+        is_primitive: bool, // We need to know if the type is primitive, so that we can look into the correct arena in ModelSystem
+    },
     Optional(Box<ResolvedFieldType>),
     List(Box<ResolvedFieldType>),
 }
@@ -250,7 +253,7 @@ pub enum ResolvedFieldDefault {
 impl ResolvedFieldType {
     pub fn get_underlying_typename(&self) -> &str {
         match &self {
-            ResolvedFieldType::Plain(s, _) => s,
+            ResolvedFieldType::Plain { type_name, .. } => type_name,
             ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
             ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
         }
@@ -258,7 +261,7 @@ impl ResolvedFieldType {
 
     pub fn get_modifier(&self) -> GqlTypeModifier {
         match &self {
-            ResolvedFieldType::Plain(_, _) => GqlTypeModifier::NonNull,
+            ResolvedFieldType::Plain { .. } => GqlTypeModifier::NonNull,
             ResolvedFieldType::Optional(_) => GqlTypeModifier::Optional,
             ResolvedFieldType::List(_) => GqlTypeModifier::List,
         }
@@ -266,7 +269,7 @@ impl ResolvedFieldType {
 
     pub fn is_underlying_type_primitive(&self) -> bool {
         match &self {
-            ResolvedFieldType::Plain(_, is_primitive) => *is_primitive,
+            ResolvedFieldType::Plain { is_primitive, .. } => *is_primitive,
             ResolvedFieldType::Optional(underlying) => underlying.is_underlying_type_primitive(),
             ResolvedFieldType::List(underlying) => underlying.is_underlying_type_primitive(),
         }
@@ -345,7 +348,7 @@ impl ResolvedType {
 impl ResolvedFieldType {
     pub fn deref<'a>(&'a self, types: &'a MappedArena<ResolvedType>) -> &'a ResolvedType {
         match self {
-            ResolvedFieldType::Plain(name, _) => types.get_by_key(name).unwrap(),
+            ResolvedFieldType::Plain { type_name, .. } => types.get_by_key(type_name).unwrap(),
             ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
                 underlying.deref(types)
             }
@@ -510,7 +513,7 @@ fn build_shallow(
                                     is_exported: m.is_exported,
                                     access,
                                     arguments: vec![],
-                                    return_type: ResolvedFieldType::Plain("".to_string(), true),
+                                    return_type: ResolvedFieldType::Plain { type_name: "".to_string(), is_primitive: true},
                                 }
                             })
                             .collect(),
@@ -1338,10 +1341,10 @@ fn resolve_field_type(
             types,
             resolved_types,
         ))),
-        Type::Reference(id) => ResolvedFieldType::Plain(
-            types[*id].get_underlying_typename(types).unwrap(),
-            matches!(types[*id], Type::Primitive(_)),
-        ),
+        Type::Reference(id) => ResolvedFieldType::Plain {
+            type_name: types[*id].get_underlying_typename(types).unwrap(),
+            is_primitive: matches!(types[*id], Type::Primitive(_)),
+        },
         Type::Set(underlying) | Type::Array(underlying) => ResolvedFieldType::List(Box::new(
             resolve_field_type(underlying.as_ref(), types, resolved_types),
         )),

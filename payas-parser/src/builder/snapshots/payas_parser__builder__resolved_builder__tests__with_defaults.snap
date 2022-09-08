@@ -43,8 +43,8 @@ types:
             - name: id
               typ:
                 Plain:
-                  - Int
-                  - true
+                  type_name: Int
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: id
@@ -58,8 +58,8 @@ types:
             - name: title
               typ:
                 Plain:
-                  - String
-                  - true
+                  type_name: String
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: title
@@ -71,8 +71,8 @@ types:
             - name: venue
               typ:
                 Plain:
-                  - Venue
-                  - false
+                  type_name: Venue
+                  is_primitive: false
               kind:
                 Persistent:
                   column_name: venue_id
@@ -86,8 +86,8 @@ types:
               typ:
                 List:
                   Plain:
-                    - String
-                    - true
+                    type_name: String
+                    is_primitive: true
               kind:
                 Persistent:
                   column_name: attending
@@ -101,8 +101,8 @@ types:
                 List:
                   List:
                     Plain:
-                      - Boolean
-                      - true
+                      type_name: Boolean
+                      is_primitive: true
               kind:
                 Persistent:
                   column_name: seating
@@ -135,8 +135,8 @@ types:
             - name: id
               typ:
                 Plain:
-                  - Int
-                  - true
+                  type_name: Int
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: id
@@ -150,8 +150,8 @@ types:
             - name: name
               typ:
                 Plain:
-                  - String
-                  - true
+                  type_name: String
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: name
@@ -164,8 +164,8 @@ types:
               typ:
                 List:
                   Plain:
-                    - Concert
-                    - false
+                    type_name: Concert
+                    is_primitive: false
               kind:
                 Persistent:
                   column_name: venue_id

@@ -287,18 +287,21 @@ fn create_field(
         building: &SystemContextBuilding,
     ) -> GqlFieldType {
         match field_type {
-            ResolvedFieldType::Plain(r, is_primitive) => {
+            ResolvedFieldType::Plain {
+                type_name,
+                is_primitive,
+            } => {
                 let type_id = if *is_primitive {
-                    building.primitive_types.get_id(r).unwrap()
+                    building.primitive_types.get_id(type_name).unwrap()
                 } else {
-                    match building.database_types.get_id(r) {
+                    match building.database_types.get_id(type_name) {
                         Some(type_id) => type_id,
-                        None => building.service_types.get_id(r).unwrap(),
+                        None => building.service_types.get_id(type_name).unwrap(),
                     }
                 };
 
                 GqlFieldType::Reference {
-                    type_name: r.clone(),
+                    type_name: type_name.clone(),
                     is_primitive: *is_primitive,
                     type_id,
                 }
@@ -374,7 +377,7 @@ fn create_column(
             });
 
     match typ {
-        ResolvedFieldType::Plain(type_name, _) => {
+        ResolvedFieldType::Plain { type_name, .. } => {
             // Either a scalar (primitive) or a many-to-one relationship with another table
             let field_type = env.get_by_key(type_name).unwrap();
 
@@ -429,15 +432,16 @@ fn create_column(
                 depth += 1;
             }
 
-            let underlying_pt = if let ResolvedFieldType::Plain(name, _) = &**underlying_typ {
-                if let Some(ResolvedType::Primitive(pt)) = env.get_by_key(name) {
-                    Some(pt)
+            let underlying_pt =
+                if let ResolvedFieldType::Plain { type_name, .. } = &**underlying_typ {
+                    if let Some(ResolvedType::Primitive(pt)) = env.get_by_key(type_name) {
+                        Some(pt)
+                    } else {
+                        None
+                    }
                 } else {
-                    None
-                }
-            } else {
-                todo!()
-            };
+                    todo!()
+                };
 
             // is our underlying list type a primitive or a column?
             if let Some(underlying_pt) = underlying_pt {
@@ -684,7 +688,7 @@ fn create_relation(
                 }
             }
 
-            ResolvedFieldType::Plain(type_name, _) => {
+            ResolvedFieldType::Plain { type_name, .. } => {
                 let field_type = env.get_by_key(type_name).unwrap();
 
                 match field_type {
@@ -710,7 +714,7 @@ fn create_relation(
                         let other_type_id = building.get_id(&ct.name).unwrap();
 
                         match (&field.typ, other_type_field_typ) {
-                            (ResolvedFieldType::Optional(_), ResolvedFieldType::Plain(_, _)) => {
+                            (ResolvedFieldType::Optional(_), ResolvedFieldType::Plain { .. }) => {
                                 let other_type = &building.database_types[other_type_id];
                                 let other_table_id = other_type.table_id().unwrap();
                                 let other_table = &building.tables[other_table_id];
@@ -723,7 +727,7 @@ fn create_relation(
                                     cardinality: RelationCardinality::Optional,
                                 }
                             }
-                            (ResolvedFieldType::Plain(_, _), ResolvedFieldType::Optional(_)) => {
+                            (ResolvedFieldType::Plain { .. }, ResolvedFieldType::Optional(_)) => {
                                 let column_id = compute_column_id(table, table_id, field);
 
                                 GqlRelation::ManyToOne {
@@ -735,7 +739,7 @@ fn create_relation(
                             (field_typ, other_field_type) => {
                                 match (field_base_typ, compute_base_type(other_field_type)) {
                                     (
-                                        ResolvedFieldType::Plain(_, _),
+                                        ResolvedFieldType::Plain { .. },
                                         ResolvedFieldType::List(_),
                                     ) => {
                                         let column_id = compute_column_id(table, table_id, field);

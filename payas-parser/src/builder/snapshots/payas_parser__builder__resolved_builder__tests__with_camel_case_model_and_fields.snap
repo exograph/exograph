@@ -43,8 +43,8 @@ types:
             - name: concertId
               typ:
                 Plain:
-                  - Int
-                  - true
+                  type_name: Int
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: concert_id
@@ -56,8 +56,8 @@ types:
             - name: mainTitle
               typ:
                 Plain:
-                  - String
-                  - true
+                  type_name: String
+                  is_primitive: true
               kind:
                 Persistent:
                   column_name: main_title
