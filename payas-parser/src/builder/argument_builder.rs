@@ -23,6 +23,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
                     &param_name,
                     ArgumentParameterType {
                         name: param_name.clone(),
+                        is_primitive: false,
                         actual_type_id: None,
                     },
                 );
@@ -32,11 +33,12 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (id, typ) in building.types.iter_mut() {
+    for (id, typ) in building.service_types.iter_mut() {
         let param_name = get_parameter_type_name(&typ.name);
 
         if let Some(arg_typ) = building.argument_types.get_by_key_mut(&param_name) {
             arg_typ.actual_type_id = Some(id);
+            arg_typ.is_primitive = typ.is_primitive();
         }
     }
 }

@@ -42,7 +42,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: id
@@ -53,7 +55,9 @@ types:
               default_value: Autoincrement
             - name: title
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: title
@@ -64,7 +68,9 @@ types:
               default_value: ~
             - name: venuex
               typ:
-                Plain: Venue
+                Plain:
+                  - Venue
+                  - false
               kind:
                 Persistent:
                   column_name: venuex_id
@@ -75,7 +81,9 @@ types:
               default_value: ~
             - name: published
               typ:
-                Plain: Boolean
+                Plain:
+                  - Boolean
+                  - true
               kind:
                 Persistent:
                   column_name: published
@@ -107,7 +115,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: id
@@ -118,7 +128,9 @@ types:
               default_value: Autoincrement
             - name: name
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: name
@@ -130,7 +142,9 @@ types:
             - name: concerts
               typ:
                 List:
-                  Plain: Concert
+                  Plain:
+                    - Concert
+                    - false
               kind:
                 Persistent:
                   column_name: venuex_id
@@ -141,7 +155,9 @@ types:
               default_value: ~
             - name: published
               typ:
-                Plain: Boolean
+                Plain:
+                  - Boolean
+                  - true
               kind:
                 Persistent:
                   column_name: published

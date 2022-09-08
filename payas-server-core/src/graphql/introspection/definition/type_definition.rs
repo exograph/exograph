@@ -67,7 +67,7 @@ impl FieldDefinitionProvider for GqlField {
                 vec![]
             }
             GqlRelation::OneToMany { other_type_id, .. } => {
-                let other_type = &system.types[other_type_id];
+                let other_type = &system.database_types[other_type_id];
                 match &other_type.kind {
                     GqlTypeKind::Primitive => panic!(),
                     GqlTypeKind::Composite(kind) => {

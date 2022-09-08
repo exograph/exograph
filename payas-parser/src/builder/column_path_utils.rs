@@ -10,7 +10,13 @@ pub fn column_path_link(
     building: &SystemContextBuilding,
 ) -> ColumnIdPathLink {
     let field_type_id = field.typ.type_id();
-    let field_type = &building.types[*field_type_id];
+    let is_field_type_primitive = field.typ.is_primitive();
+
+    let field_type = if is_field_type_primitive {
+        &building.primitive_types[*field_type_id]
+    } else {
+        &building.database_types[*field_type_id]
+    };
 
     match &field.relation {
         GqlRelation::Pk { column_id, .. } | GqlRelation::Scalar { column_id, .. } => {

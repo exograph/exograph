@@ -208,7 +208,7 @@ impl<'content> DatabaseQuery<'content> {
                     other_type_id,
                     ..
                 } => {
-                    let other_type = &system.types[*other_type_id];
+                    let other_type = &system.database_types[*other_type_id];
                     let other_table = &system.tables[other_type.table_id().unwrap()];
 
                     let other_table_pk_query = match &other_type.kind {
@@ -245,7 +245,7 @@ impl<'content> DatabaseQuery<'content> {
                     other_type_id,
                     cardinality,
                 } => {
-                    let other_type = &system.types[*other_type_id];
+                    let other_type = &system.database_types[*other_type_id];
                     let other_table_query = {
                         match &other_type.kind {
                             GqlTypeKind::Primitive => panic!(""),

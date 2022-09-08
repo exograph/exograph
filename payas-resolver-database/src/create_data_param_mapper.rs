@@ -108,7 +108,7 @@ fn map_self_column<'a>(
     let argument_value = match &field.relation {
         GqlRelation::ManyToOne { other_type_id, .. } => {
             // TODO: Include enough information in the ManyToOne relation to not need this much logic here
-            let other_type = &system.types[*other_type_id];
+            let other_type = &system.database_types[*other_type_id];
             let other_type_pk_field_name = other_type
                 .pk_column_id()
                 .map(|column_id| &column_id.get_column(system).column_name)
@@ -154,7 +154,7 @@ fn map_foreign<'a>(
         match &data_type.kind {
             GqlTypeKind::Primitive => todo!(),
             GqlTypeKind::Composite(kind) => {
-                &system.types[system.queries[kind.get_pk_query()].return_type.type_id]
+                &system.database_types[system.queries[kind.get_pk_query()].return_type.type_id]
             }
         }
     }

@@ -92,8 +92,17 @@ impl GqlFieldTypeDefinition for GqlFieldType {
             GqlFieldType::List(ty) => {
                 GqlFieldTypeDefinitionNode::NonLeaf(ty.as_ref(), &GqlTypeModifier::List)
             }
-            GqlFieldType::Reference { type_id, .. } => {
-                GqlFieldTypeDefinitionNode::Leaf(&model.types[*type_id])
+            GqlFieldType::Reference {
+                type_id,
+                is_primitive,
+                ..
+            } => {
+                let typ = if *is_primitive {
+                    &model.primitive_types[*type_id]
+                } else {
+                    &model.database_types[*type_id]
+                };
+                GqlFieldTypeDefinitionNode::Leaf(typ)
             }
         }
     }
@@ -125,7 +134,7 @@ impl GqlFieldDefinition for GqlField {
                 vec![]
             }
             GqlRelation::OneToMany { other_type_id, .. } => {
-                let other_type = &model.types[other_type_id];
+                let other_type = &model.database_types[other_type_id];
                 match &other_type.kind {
                     GqlTypeKind::Primitive => panic!(),
                     GqlTypeKind::Composite(kind) => {

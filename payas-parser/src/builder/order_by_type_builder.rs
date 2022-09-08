@@ -35,7 +35,11 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (_, model_type) in building.types.iter() {
+    for (_, model_type) in building
+        .primitive_types
+        .iter()
+        .chain(building.database_types.iter())
+    {
         let param_type_name = get_parameter_type_name(&model_type.name, model_type.is_primitive());
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
@@ -114,7 +118,13 @@ pub fn new_field_param(
     composite_type: &GqlCompositeType,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    let field_model_type = &building.types[model_field.typ.type_id().to_owned()];
+    let is_field_primitive = model_field.typ.is_primitive();
+    let field_type_id = model_field.typ.type_id().to_owned();
+    let field_model_type = if is_field_primitive {
+        &building.primitive_types[field_type_id]
+    } else {
+        &building.database_types[field_type_id]
+    };
 
     let column_path_link = Some(column_path_utils::column_path_link(
         composite_type,

@@ -167,6 +167,7 @@ pub enum GqlFieldType {
     Optional(Box<GqlFieldType>),
     Reference {
         type_id: SerializableSlabIndex<GqlType>,
+        is_primitive: bool, // A way to know which arena to look up the type in
         type_name: String,
     },
     List(Box<GqlFieldType>),
@@ -179,6 +180,15 @@ impl GqlFieldType {
                 underlying.type_id()
             }
             GqlFieldType::Reference { type_id, .. } => type_id,
+        }
+    }
+
+    pub fn is_primitive(&self) -> bool {
+        match self {
+            GqlFieldType::Optional(underlying) | GqlFieldType::List(underlying) => {
+                underlying.is_primitive()
+            }
+            GqlFieldType::Reference { is_primitive, .. } => *is_primitive,
         }
     }
 

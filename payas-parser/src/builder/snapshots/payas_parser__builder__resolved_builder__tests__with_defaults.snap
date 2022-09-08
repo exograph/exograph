@@ -42,7 +42,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: id
@@ -55,7 +57,9 @@ types:
               default_value: Autoincrement
             - name: title
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: title
@@ -66,7 +70,9 @@ types:
               default_value: ~
             - name: venue
               typ:
-                Plain: Venue
+                Plain:
+                  - Venue
+                  - false
               kind:
                 Persistent:
                   column_name: venue_id
@@ -79,7 +85,9 @@ types:
             - name: attending
               typ:
                 List:
-                  Plain: String
+                  Plain:
+                    - String
+                    - true
               kind:
                 Persistent:
                   column_name: attending
@@ -92,7 +100,9 @@ types:
               typ:
                 List:
                   List:
-                    Plain: Boolean
+                    Plain:
+                      - Boolean
+                      - true
               kind:
                 Persistent:
                   column_name: seating
@@ -124,7 +134,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: id
@@ -137,7 +149,9 @@ types:
               default_value: Autoincrement
             - name: name
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: name
@@ -149,7 +163,9 @@ types:
             - name: concerts
               typ:
                 List:
-                  Plain: Concert
+                  Plain:
+                    - Concert
+                    - false
               kind:
                 Persistent:
                   column_name: venue_id

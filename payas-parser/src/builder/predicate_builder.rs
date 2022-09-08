@@ -57,7 +57,12 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (model_type_id, model_type) in building.types.iter() {
+    for (model_type_id, model_type) in building
+        .database_types
+        .iter()
+        .chain(building.primitive_types.iter())
+    // Chain with primitives too to expand filters like "IntFilter"
+    {
         // expand filter types for both persistent composite and primitive filter parameters
         // but NOT non-persistent composite types
         if !matches!(

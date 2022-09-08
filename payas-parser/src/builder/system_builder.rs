@@ -1,7 +1,7 @@
 use payas_model::model::{
     argument::ArgumentParameterType,
     interceptor::Interceptor,
-    mapped_arena::MappedArena,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
     operation::{Mutation, Query},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
@@ -51,8 +51,12 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError>
     build_expanded(&resolved_system, &mut building)?;
 
     Ok(ModelSystem {
-        types: building.types.values,
+        primitive_types: building.primitive_types.values,
+        database_types: building.database_types.values,
+        service_types: building.service_types.values,
+
         contexts: building.contexts,
+        context_types: building.context_types.values,
         argument_types: building.argument_types.values,
         order_by_types: building.order_by_types.values,
         predicate_types: building.predicate_types.values,
@@ -124,18 +128,41 @@ fn build_expanded(
 
 #[derive(Debug, Default)]
 pub struct SystemContextBuilding {
-    pub types: MappedArena<GqlType>,
+    pub primitive_types: MappedArena<GqlType>,
+    pub database_types: MappedArena<GqlType>,
+    // TODO: Break this up into deno/wasm
+    pub service_types: MappedArena<GqlType>,
+
     pub contexts: MappedArena<ContextType>,
+    pub context_types: MappedArena<GqlType>, // The GqlType version of ContextType to pass in as injected parameter (TODO: Is there a better way to do this?)
     pub argument_types: MappedArena<ArgumentParameterType>,
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
+
+    // break this into subsystems
     pub queries: MappedArena<Query>,
+
     pub mutation_types: MappedArena<GqlType>,
     pub mutations: MappedArena<Mutation>,
     pub tables: MappedArena<PhysicalTable>,
     pub methods: MappedArena<ServiceMethod>,
     pub interceptors: MappedArena<Interceptor>,
     pub scripts: MappedArena<Script>,
+}
+
+impl SystemContextBuilding {
+    pub fn get_id(&self, name: &str) -> Option<SerializableSlabIndex<GqlType>> {
+        match self.primitive_types.get_id(name) {
+            Some(id) => Some(id),
+            None => match self.database_types.get_id(name) {
+                Some(id) => Some(id),
+                None => match self.service_types.get_id(name) {
+                    Some(id) => Some(id),
+                    None => self.context_types.get_id(name),
+                },
+            },
+        }
+    }
 }
 
 #[cfg(test)]

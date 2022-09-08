@@ -42,7 +42,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: id
@@ -53,7 +55,9 @@ types:
               default_value: Autoincrement
             - name: title
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: title
@@ -64,7 +68,9 @@ types:
               default_value: ~
             - name: public
               typ:
-                Plain: Boolean
+                Plain:
+                  - Boolean
+                  - true
               kind:
                 Persistent:
                   column_name: public
@@ -257,7 +263,9 @@ contexts:
         fields:
           - name: role
             typ:
-              Plain: String
+              Plain:
+                - String
+                - true
             source:
               annotation: jwt
               value: role
@@ -491,10 +499,14 @@ services:
             arguments:
               - name: claytip
                 typ:
-                  Plain: Claytip
+                  Plain:
+                    - Claytip
+                    - true
                 is_injected: true
             return_type:
-              Plain: Boolean
+              Plain:
+                - Boolean
+                - true
         interceptors: []
     - ~
     - ~

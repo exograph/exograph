@@ -71,7 +71,9 @@ pub trait MutationBuilder {
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
+                is_primitive: false,
                 type_modifier: GqlTypeModifier::Optional,
+                is_persistent: true,
             },
             interceptors: Interceptors::default(),
         };
@@ -84,7 +86,9 @@ pub trait MutationBuilder {
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
+                is_primitive: false,
                 type_modifier: GqlTypeModifier::List,
+                is_persistent: true,
             },
             interceptors: Interceptors::default(),
         };
@@ -197,6 +201,7 @@ pub trait DataParamBuilder<D> {
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = GqlFieldType::Reference {
                     type_name: field_type_name,
+                    is_primitive: false,
                     type_id: field_type_id,
                 };
                 let field_type = match field.typ {
@@ -241,6 +246,7 @@ pub trait DataParamBuilder<D> {
             .and_then(|field_type_id| {
                 let field_plain_type = GqlFieldType::Reference {
                     type_name: field_type_name,
+                    is_primitive: false, // Mutation types are never primitive
                     type_id: field_type_id,
                 };
                 let field_type = GqlFieldType::List(Box::new(field_plain_type));
@@ -277,7 +283,15 @@ pub trait DataParamBuilder<D> {
             let mut field_types: Vec<_> = model_fields
                 .iter()
                 .flat_map(|field| {
-                    let field_type = field.typ.base_type(&building.types.values);
+                    let is_field_primitive = field.typ.is_primitive();
+                    let field_type = field.typ.base_type(
+                        &if is_field_primitive {
+                            &building.primitive_types
+                        } else {
+                            &building.database_types
+                        }
+                        .values,
+                    );
                     if let (GqlTypeKind::Composite(_), GqlRelation::OneToMany { .. }) =
                         (&field_type.kind, &field.relation)
                     {

@@ -42,7 +42,9 @@ types:
           fields:
             - name: concertId
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: concert_id
@@ -53,7 +55,9 @@ types:
               default_value: Autoincrement
             - name: mainTitle
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: main_title

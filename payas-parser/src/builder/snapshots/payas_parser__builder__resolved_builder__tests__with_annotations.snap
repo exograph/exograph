@@ -42,7 +42,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: custom_id
@@ -55,7 +57,9 @@ types:
               default_value: Autoincrement
             - name: title
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: custom_title
@@ -68,7 +72,9 @@ types:
               default_value: ~
             - name: venue
               typ:
-                Plain: Venue
+                Plain:
+                  - Venue
+                  - false
               kind:
                 Persistent:
                   column_name: custom_venue_id
@@ -79,7 +85,9 @@ types:
               default_value: ~
             - name: reserved
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: reserved
@@ -95,7 +103,9 @@ types:
               default_value: ~
             - name: time
               typ:
-                Plain: Instant
+                Plain:
+                  - Instant
+                  - true
               kind:
                 Persistent:
                   column_name: time
@@ -108,7 +118,9 @@ types:
               default_value: ~
             - name: price
               typ:
-                Plain: Decimal
+                Plain:
+                  - Decimal
+                  - true
               kind:
                 Persistent:
                   column_name: price
@@ -143,7 +155,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: custom_id
@@ -154,7 +168,9 @@ types:
               default_value: Autoincrement
             - name: name
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: custom_name
@@ -166,7 +182,9 @@ types:
             - name: concerts
               typ:
                 List:
-                  Plain: Concert
+                  Plain:
+                    - Concert
+                    - false
               kind:
                 Persistent:
                   column_name: custom_venue_id
@@ -177,7 +195,9 @@ types:
               default_value: ~
             - name: capacity
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: capacity
@@ -191,7 +211,9 @@ types:
               default_value: ~
             - name: latitude
               typ:
-                Plain: Float
+                Plain:
+                  - Float
+                  - true
               kind:
                 Persistent:
                   column_name: latitude
@@ -459,18 +481,26 @@ services:
             arguments:
               - name: claytip
                 typ:
-                  Plain: Claytip
+                  Plain:
+                    - Claytip
+                    - true
                 is_injected: true
               - name: x
                 typ:
-                  Plain: Int
+                  Plain:
+                    - Int
+                    - true
                 is_injected: false
               - name: y
                 typ:
-                  Plain: String
+                  Plain:
+                    - String
+                    - true
                 is_injected: false
             return_type:
-              Plain: Int
+              Plain:
+                - Int
+                - true
           - name: quuz
             operation_kind: Mutation
             is_exported: false
@@ -489,7 +519,9 @@ services:
                   - true
             arguments: []
             return_type:
-              Plain: String
+              Plain:
+                - String
+                - true
         interceptors: []
     - ~
     - ~

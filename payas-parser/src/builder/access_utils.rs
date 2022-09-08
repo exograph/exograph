@@ -30,7 +30,7 @@ pub fn compute_predicate_expression(
         AstExpr::FieldSelection(selection) => {
             match compute_selection(selection, self_type_info, building) {
                 PathSelection::Column(column_path, column_type) => {
-                    if column_type.base_type(&building.types.values).name == "Boolean" {
+                    if column_type.base_type(&building.primitive_types.values).name == "Boolean" {
                         Ok(AccessPredicateExpression::BooleanColumn(column_path))
                     } else {
                         Err(ParserError::Generic(
@@ -39,7 +39,7 @@ pub fn compute_predicate_expression(
                     }
                 }
                 PathSelection::Context(context_selection, field_type) => {
-                    if field_type.base_type(&building.types.values).name == "Boolean" {
+                    if field_type.base_type(&building.primitive_types.values).name == "Boolean" {
                         Ok(AccessPredicateExpression::BooleanContextSelection(
                             context_selection,
                         ))
@@ -198,11 +198,11 @@ fn compute_selection<'a>(
                 let (field_column_path, field_type) =
                     get_column(field_name, self_type_info, building);
 
-                let field_composite_type = match &field_type.base_type(&building.types.values).kind
-                {
-                    GqlTypeKind::Composite(composite_type) => Some(composite_type),
-                    _ => None,
-                };
+                let field_composite_type =
+                    match &field_type.base_type(&building.database_types.values).kind {
+                        GqlTypeKind::Composite(composite_type) => Some(composite_type),
+                        _ => None,
+                    };
 
                 (
                     field_composite_type,

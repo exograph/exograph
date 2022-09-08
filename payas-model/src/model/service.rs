@@ -45,6 +45,7 @@ impl ScriptKind {
 pub struct Argument {
     pub name: String,
     pub type_id: SerializableSlabIndex<GqlType>,
+    pub is_primitive: bool,
     pub modifier: GqlTypeModifier,
     pub is_injected: bool,
 }

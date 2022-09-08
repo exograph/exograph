@@ -3,6 +3,7 @@ use payas_model::model::limit_offset::{LimitParameterType, OffsetParameter, Offs
 use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::operation::{DatabaseQueryParameter, Interceptors, QueryKind};
 use payas_model::model::predicate::{ColumnIdPathLink, PredicateParameterTypeWithModifier};
+use payas_model::model::GqlCompositeType;
 use payas_model::model::{
     limit_offset::LimitParameter,
     mapped_arena::MappedArena,
@@ -10,7 +11,6 @@ use payas_model::model::{
     predicate::PredicateParameter,
     GqlType, GqlTypeKind, GqlTypeModifier,
 };
-use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind};
 
 use super::resolved_builder::ResolvedCompositeTypeKind;
 use super::{
@@ -28,7 +28,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
             },
         ) = &model
         {
-            let model_type_id = building.types.get_id(c.name.as_str()).unwrap();
+            let model_type_id = building.get_id(c.name.as_str()).unwrap();
             let shallow_query = shallow_pk_query(model_type_id, c);
             let collection_query = shallow_collection_query(model_type_id, c);
 
@@ -43,12 +43,8 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (model_type_id, model_type) in building.types.iter() {
-        if let GqlTypeKind::Composite(GqlCompositeType {
-            kind: GqlCompositeTypeKind::Persistent { .. },
-            ..
-        }) = &model_type.kind
-        {
+    for (model_type_id, model_type) in building.database_types.iter() {
+        if let GqlTypeKind::Composite(GqlCompositeType { .. }) = &model_type.kind {
             {
                 let operation_name = model_type.pk_query();
                 let query = expanded_pk_query(model_type_id, model_type, building);
@@ -80,8 +76,10 @@ fn shallow_pk_query(
         })),
         return_type: OperationReturnType {
             type_id: model_type_id,
+            is_primitive: false,
             type_name: typ.name.clone(),
             type_modifier: GqlTypeModifier::NonNull,
+            is_persistent: true,
         },
         interceptors: Interceptors::default(),
     }
@@ -154,7 +152,9 @@ fn shallow_collection_query(
         return_type: OperationReturnType {
             type_id: model_type_id,
             type_name: model.name.clone(),
+            is_primitive: false,
             type_modifier: GqlTypeModifier::List,
+            is_persistent: true,
         },
         interceptors: Interceptors::default(),
     }
@@ -193,7 +193,7 @@ pub fn limit_param(building: &SystemContextBuilding) -> LimitParameter {
         name: "limit".to_string(),
         typ: LimitParameterType {
             type_name: param_type_name.clone(),
-            type_id: building.types.get_id(&param_type_name).unwrap(),
+            type_id: building.get_id(&param_type_name).unwrap(),
             type_modifier: GqlTypeModifier::Optional,
         },
     }
@@ -206,7 +206,7 @@ pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
         name: "offset".to_string(),
         typ: OffsetParameterType {
             type_name: param_type_name.clone(),
-            type_id: building.types.get_id(&param_type_name).unwrap(),
+            type_id: building.get_id(&param_type_name).unwrap(),
             type_modifier: GqlTypeModifier::Optional,
         },
     }

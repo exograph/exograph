@@ -95,13 +95,22 @@ pub fn create_shallow_service(
             access: Access::restrictive(),
             operation_kind: match resolved_method.operation_kind {
                 ResolvedMethodType::Query => {
-                    let query = shallow_service_query(resolved_method, &building.types, building);
+                    let query = shallow_service_query(
+                        resolved_method,
+                        &building.primitive_types,
+                        &building.service_types,
+                        building,
+                    );
                     let query_id = building.queries.add(&resolved_method.name, query);
                     ServiceMethodType::Query(query_id)
                 }
                 ResolvedMethodType::Mutation => {
-                    let mutation =
-                        shallow_service_mutation(resolved_method, &building.types, building);
+                    let mutation = shallow_service_mutation(
+                        resolved_method,
+                        &building.primitive_types,
+                        &building.service_types,
+                        building,
+                    );
                     let mutation_id = building.mutations.add(&resolved_method.name, mutation);
                     ServiceMethodType::Mutation(mutation_id)
                 }
@@ -112,24 +121,23 @@ pub fn create_shallow_service(
                 .iter()
                 .map(|arg| Argument {
                     name: arg.name.clone(),
-                    type_id: building
-                        .types
-                        .get_id(arg.typ.get_underlying_typename())
-                        .unwrap(),
+                    type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
+                    is_primitive: arg.typ.is_underlying_type_primitive(),
                     modifier: arg.typ.get_modifier(),
                     is_injected: arg.is_injected,
                 })
                 .collect(),
             return_type: OperationReturnType {
                 type_id: building
-                    .types
                     .get_id(resolved_method.return_type.get_underlying_typename())
                     .unwrap(),
                 type_name: resolved_method
                     .return_type
                     .get_underlying_typename()
                     .to_string(),
+                is_primitive: resolved_method.return_type.is_underlying_type_primitive(),
                 type_modifier: resolved_method.return_type.get_modifier(),
+                is_persistent: false,
             },
         },
     );
@@ -137,10 +145,13 @@ pub fn create_shallow_service(
 
 fn shallow_service_query(
     method: &ResolvedMethod,
-    types: &MappedArena<GqlType>,
+    primitive_types: &MappedArena<GqlType>,
+    service_types: &MappedArena<GqlType>,
     building: &SystemContextBuilding,
 ) -> Query {
     let return_type = &method.return_type;
+
+    let return_type_name = return_type.get_underlying_typename();
 
     Query {
         name: method.name.clone(),
@@ -149,9 +160,13 @@ fn shallow_service_query(
             argument_param: argument_param(method, building),
         },
         return_type: OperationReturnType {
-            type_id: types.get_id(return_type.get_underlying_typename()).unwrap(),
-            type_name: return_type.get_underlying_typename().to_string(),
+            type_id: primitive_types
+                .get_id(return_type_name)
+                .unwrap_or_else(|| service_types.get_id(return_type_name).unwrap()),
+            type_name: return_type_name.to_string(),
+            is_primitive: return_type.is_underlying_type_primitive(),
             type_modifier: return_type.get_modifier(),
+            is_persistent: false,
         },
         interceptors: Interceptors::default(),
     }
@@ -159,10 +174,12 @@ fn shallow_service_query(
 
 fn shallow_service_mutation(
     method: &ResolvedMethod,
-    types: &MappedArena<GqlType>,
+    primitive_types: &MappedArena<GqlType>,
+    service_types: &MappedArena<GqlType>,
     building: &SystemContextBuilding,
 ) -> Mutation {
     let return_type = &method.return_type;
+    let return_type_name = return_type.get_underlying_typename();
 
     Mutation {
         name: method.name.clone(),
@@ -171,9 +188,13 @@ fn shallow_service_mutation(
             argument_param: argument_param(method, building),
         },
         return_type: OperationReturnType {
-            type_id: types.get_id(return_type.get_underlying_typename()).unwrap(),
-            type_name: return_type.get_underlying_typename().to_string(),
+            type_id: primitive_types
+                .get_id(return_type_name)
+                .unwrap_or_else(|| service_types.get_id(return_type_name).unwrap()),
+            type_name: return_type_name.to_string(),
+            is_primitive: return_type.is_underlying_type_primitive(),
             type_modifier: return_type.get_modifier(),
+            is_persistent: false,
         },
         interceptors: Interceptors::default(),
     }
@@ -254,10 +275,8 @@ pub fn create_shallow_interceptor(
                 .iter()
                 .map(|arg| Argument {
                     name: arg.name.clone(),
-                    type_id: building
-                        .types
-                        .get_id(arg.typ.get_underlying_typename())
-                        .unwrap(),
+                    type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
+                    is_primitive: arg.typ.is_underlying_type_primitive(),
                     modifier: arg.typ.get_modifier(),
                     is_injected: true, // implicitly set is_injected for interceptors
                 })

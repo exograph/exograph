@@ -29,7 +29,7 @@ fn create_shallow(context: &ResolvedContext, building: &mut SystemContextBuildin
         },
     );
 
-    building.types.add(
+    building.context_types.add(
         &context.name,
         GqlType {
             name: context.name.clone(),
@@ -51,7 +51,7 @@ pub fn build_expanded(
 
 fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
     let existing_context_id = building.contexts.get_id(&context.name).unwrap();
-    let existing_type_id = building.types.get_id(&context.name).unwrap();
+    let existing_type_id = building.context_types.get_id(&context.name).unwrap();
     let existing_context = &building.contexts[existing_context_id];
 
     let context_fields = context
@@ -89,7 +89,7 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
         kind: GqlCompositeTypeKind::NonPersistent,
         access: Access::restrictive(),
     });
-    building.types[existing_type_id].kind = expanded_type_kind;
+    building.context_types[existing_type_id].kind = expanded_type_kind;
 }
 
 fn create_context_field_type(
@@ -97,8 +97,13 @@ fn create_context_field_type(
     building: &SystemContextBuilding,
 ) -> GqlFieldType {
     match field_type {
-        ResolvedFieldType::Plain(type_name) => GqlFieldType::Reference {
-            type_id: building.types.get_id(type_name).unwrap(),
+        ResolvedFieldType::Plain(type_name, is_primitive) => GqlFieldType::Reference {
+            type_id: if *is_primitive {
+                building.primitive_types.get_id(type_name).unwrap()
+            } else {
+                building.context_types.get_id(type_name).unwrap()
+            },
+            is_primitive: *is_primitive,
             type_name: type_name.clone(),
         },
         ResolvedFieldType::Optional(underlying) => {

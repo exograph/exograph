@@ -42,7 +42,9 @@ types:
           fields:
             - name: _id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: id
@@ -53,7 +55,9 @@ types:
               default_value: Autoincrement
             - name: title_main
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: title_main
@@ -64,7 +68,9 @@ types:
               default_value: ~
             - name: title_main1
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: title_main1
@@ -75,7 +81,9 @@ types:
               default_value: ~
             - name: public1
               typ:
-                Plain: Boolean
+                Plain:
+                  - Boolean
+                  - true
               kind:
                 Persistent:
                   column_name: public1
@@ -86,7 +94,9 @@ types:
               default_value: ~
             - name: PUBLIC2
               typ:
-                Plain: Boolean
+                Plain:
+                  - Boolean
+                  - true
               kind:
                 Persistent:
                   column_name: public2
@@ -97,7 +107,9 @@ types:
               default_value: ~
             - name: foo123
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: foo123

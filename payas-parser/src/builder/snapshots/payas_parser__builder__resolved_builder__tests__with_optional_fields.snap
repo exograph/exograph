@@ -42,7 +42,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: id
@@ -53,7 +55,9 @@ types:
               default_value: Autoincrement
             - name: title
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: title
@@ -65,7 +69,9 @@ types:
             - name: venue
               typ:
                 Optional:
-                  Plain: Venue
+                  Plain:
+                    - Venue
+                    - false
               kind:
                 Persistent:
                   column_name: venue_id
@@ -77,7 +83,9 @@ types:
             - name: icon
               typ:
                 Optional:
-                  Plain: Blob
+                  Plain:
+                    - Blob
+                    - true
               kind:
                 Persistent:
                   column_name: icon
@@ -109,7 +117,9 @@ types:
           fields:
             - name: id
               typ:
-                Plain: Int
+                Plain:
+                  - Int
+                  - true
               kind:
                 Persistent:
                   column_name: id
@@ -120,7 +130,9 @@ types:
               default_value: Autoincrement
             - name: name
               typ:
-                Plain: String
+                Plain:
+                  - String
+                  - true
               kind:
                 Persistent:
                   column_name: name
@@ -132,7 +144,9 @@ types:
             - name: address
               typ:
                 Optional:
-                  Plain: String
+                  Plain:
+                    - String
+                    - true
               kind:
                 Persistent:
                   column_name: custom_address
@@ -145,7 +159,9 @@ types:
               typ:
                 Optional:
                   List:
-                    Plain: Concert
+                    Plain:
+                      - Concert
+                      - false
               kind:
                 Persistent:
                   column_name: venue_id

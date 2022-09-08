@@ -34,7 +34,7 @@ impl Builder for UpdateMutationBuilder {
 
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
-        for (_, model_type) in building.types.iter() {
+        for (_, model_type) in building.database_types.iter() {
             if let GqlTypeKind::Composite(GqlCompositeType {
                 kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
@@ -49,13 +49,16 @@ impl Builder for UpdateMutationBuilder {
             }
         }
 
-        for (_, model_type) in building.types.iter() {
+        for (_, model_type) in building.database_types.iter() {
             if let GqlTypeKind::Composite(GqlCompositeType {
                 kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {
-                let model_type_id = building.types.get_id(model_type.name.as_str()).unwrap();
+                let model_type_id = building
+                    .database_types
+                    .get_id(model_type.name.as_str())
+                    .unwrap();
 
                 for mutation in self.build_mutations(model_type_id, model_type, building) {
                     building.mutations.add(&mutation.name.to_owned(), mutation);
@@ -228,6 +231,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     .map(|(name, field_type_name)| {
                         let plain_field_type = GqlFieldType::Reference {
                             type_id: building.mutation_types.get_id(&field_type_name).unwrap(),
+                            is_primitive: false, // Mutation types are always non-primitive
                             type_name: field_type_name,
                         };
                         GqlField {

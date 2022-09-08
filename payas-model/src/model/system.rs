@@ -17,8 +17,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModelSystem {
-    pub types: SerializableSlab<GqlType>,
+    pub primitive_types: SerializableSlab<GqlType>,
+    pub database_types: SerializableSlab<GqlType>,
+    // TODO: Break this up into deno/wasm
+    pub service_types: SerializableSlab<GqlType>,
+
     pub contexts: MappedArena<ContextType>,
+    pub context_types: SerializableSlab<GqlType>,
 
     // query related
     pub argument_types: SerializableSlab<ArgumentParameterType>,
@@ -40,8 +45,11 @@ pub struct ModelSystem {
 impl Default for ModelSystem {
     fn default() -> Self {
         ModelSystem {
-            types: SerializableSlab::new(),
+            primitive_types: SerializableSlab::new(),
+            database_types: SerializableSlab::new(),
+            service_types: SerializableSlab::new(),
             contexts: MappedArena::default(),
+            context_types: SerializableSlab::new(),
             order_by_types: SerializableSlab::new(),
             predicate_types: SerializableSlab::new(),
             queries: MappedArena::default(),

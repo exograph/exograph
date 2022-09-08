@@ -129,7 +129,10 @@ impl GqlFieldTypeDefinition for LimitParameterType {
     }
 
     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        GqlFieldTypeDefinitionNode::NonLeaf(&model.types[self.type_id], &self.type_modifier)
+        GqlFieldTypeDefinitionNode::NonLeaf(
+            &model.database_types[self.type_id],
+            &self.type_modifier,
+        )
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -171,7 +174,10 @@ impl GqlFieldTypeDefinition for OffsetParameterType {
     }
 
     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        GqlFieldTypeDefinitionNode::NonLeaf(&model.types[self.type_id], &self.type_modifier)
+        GqlFieldTypeDefinitionNode::NonLeaf(
+            &model.database_types[self.type_id],
+            &self.type_modifier,
+        )
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -262,8 +268,9 @@ impl GqlFieldTypeDefinition for ArgumentParameterTypeWithModifier {
             }
             None => {
                 let tpe = &model
-                    .types
+                    .primitive_types
                     .iter()
+                    .chain(model.service_types.iter())
                     .find(|t| t.1.name == self.type_name)
                     .unwrap()
                     .1;
@@ -283,7 +290,12 @@ impl GqlFieldTypeDefinition for ArgumentParameterType {
     }
 
     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        GqlFieldTypeDefinitionNode::Leaf(&model.types[self.actual_type_id.unwrap()])
+        let typ = if self.is_primitive {
+            &model.primitive_types[self.actual_type_id.unwrap()]
+        } else {
+            &model.service_types[self.actual_type_id.unwrap()]
+        };
+        GqlFieldTypeDefinitionNode::Leaf(typ)
     }
 
     fn modifier(&self) -> &GqlTypeModifier {

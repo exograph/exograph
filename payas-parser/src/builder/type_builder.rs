@@ -67,15 +67,24 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
 
     // Mark every type as Primitive, since other types that may be referred haven't been processed yet
     // and we haven't build query and mutation types either
-    building.types.add(
-        &type_name,
-        GqlType {
-            name: type_name.to_string(),
-            plural_name: resolved_type.plural_name(),
-            kind: GqlTypeKind::Primitive,
-            is_input: false,
+    let typ = GqlType {
+        name: type_name.to_string(),
+        plural_name: resolved_type.plural_name(),
+        kind: GqlTypeKind::Primitive,
+        is_input: false,
+    };
+
+    match resolved_type {
+        ResolvedType::Primitive(_) => building.primitive_types.add(&type_name, typ),
+        ResolvedType::Composite(composite_type) => match composite_type.kind {
+            ResolvedCompositeTypeKind::Persistent { .. } => {
+                building.database_types.add(&type_name, typ)
+            }
+            ResolvedCompositeTypeKind::NonPersistent { .. } => {
+                building.service_types.add(&type_name, typ)
+            }
         },
-    );
+    };
 }
 
 /// Expand a type except for creating its fields.
@@ -86,8 +95,8 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
 /// 3. Leave fields as an empty vector
 ///
 /// This allows types to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
-/// We can't expand fields yet since creating a field requires access to columns (self as well as those in a refered field in case a relation)
-/// and we may not have expanded a refered type yet.
+/// We can't expand fields yet since creating a field requires access to columns (self as well as those in a referred field in case a relation)
+/// and we may not have expanded a referred type yet.
 fn expand_type_no_fields(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
@@ -133,9 +142,16 @@ fn expand_type_no_fields(
         })
     };
 
-    let existing_type_id = building.types.get_id(&resolved_type.name);
+    let existing_type_id = building.get_id(&resolved_type.name);
 
-    building.types.values[existing_type_id.unwrap()].kind = kind;
+    match &resolved_type.kind {
+        ResolvedCompositeTypeKind::Persistent { .. } => {
+            building.database_types.values[existing_type_id.unwrap()].kind = kind
+        }
+        ResolvedCompositeTypeKind::NonPersistent { .. } => {
+            building.service_types.values[existing_type_id.unwrap()].kind = kind
+        }
+    }
 }
 
 /// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
@@ -145,8 +161,13 @@ fn expand_type_fields(
     building: &mut SystemContextBuilding,
     resolved_types: &MappedArena<ResolvedType>,
 ) {
-    let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
-    let existing_type = &building.types[existing_type_id];
+    let existing_type_id = building.get_id(&resolved_type.name).unwrap();
+    let existing_type = match &resolved_type.kind {
+        ResolvedCompositeTypeKind::Persistent { .. } => &building.database_types[existing_type_id],
+        ResolvedCompositeTypeKind::NonPersistent { .. } => {
+            &building.service_types[existing_type_id]
+        }
+    };
 
     if let GqlTypeKind::Composite(GqlCompositeType { kind, .. }) = &existing_type.kind {
         let table_id = match kind {
@@ -166,7 +187,14 @@ fn expand_type_fields(
             access: Access::restrictive(),
         });
 
-        building.types.values[existing_type_id].kind = kind;
+        match &resolved_type.kind {
+            ResolvedCompositeTypeKind::Persistent { .. } => {
+                building.database_types.values[existing_type_id].kind = kind
+            }
+            ResolvedCompositeTypeKind::NonPersistent { .. } => {
+                building.service_types.values[existing_type_id].kind = kind
+            }
+        }
     }
 }
 
@@ -175,8 +203,13 @@ fn expand_type_access(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ParserError> {
-    let existing_type_id = building.types.get_id(&resolved_type.name).unwrap();
-    let existing_type = &building.types[existing_type_id];
+    let existing_type_id = building.get_id(&resolved_type.name).unwrap();
+    let existing_type = match &resolved_type.kind {
+        ResolvedCompositeTypeKind::Persistent { .. } => &building.database_types[existing_type_id],
+        ResolvedCompositeTypeKind::NonPersistent { .. } => {
+            &building.service_types[existing_type_id]
+        }
+    };
 
     if let GqlTypeKind::Composite(self_type_info) = &existing_type.kind {
         let expr = compute_access_composite_types(&resolved_type.access, self_type_info, building)?;
@@ -187,7 +220,14 @@ fn expand_type_access(
             access: expr,
         });
 
-        building.types.values[existing_type_id].kind = kind;
+        match &resolved_type.kind {
+            ResolvedCompositeTypeKind::Persistent { .. } => {
+                building.database_types.values[existing_type_id].kind = kind
+            }
+            ResolvedCompositeTypeKind::NonPersistent { .. } => {
+                building.service_types.values[existing_type_id].kind = kind
+            }
+        }
     }
 
     Ok(())
@@ -247,10 +287,22 @@ fn create_field(
         building: &SystemContextBuilding,
     ) -> GqlFieldType {
         match field_type {
-            ResolvedFieldType::Plain(r) => GqlFieldType::Reference {
-                type_name: r.clone(),
-                type_id: building.types.get_id(r).unwrap(),
-            },
+            ResolvedFieldType::Plain(r, is_primitive) => {
+                let type_id = if *is_primitive {
+                    building.primitive_types.get_id(r).unwrap()
+                } else {
+                    match building.database_types.get_id(r) {
+                        Some(type_id) => type_id,
+                        None => building.service_types.get_id(r).unwrap(),
+                    }
+                };
+
+                GqlFieldType::Reference {
+                    type_name: r.clone(),
+                    is_primitive: *is_primitive,
+                    type_id,
+                }
+            }
             ResolvedFieldType::Optional(underlying) => {
                 GqlFieldType::Optional(Box::new(create_field_type(underlying, building)))
             }
@@ -322,7 +374,7 @@ fn create_column(
             });
 
     match typ {
-        ResolvedFieldType::Plain(type_name) => {
+        ResolvedFieldType::Plain(type_name, _) => {
             // Either a scalar (primitive) or a many-to-one relationship with another table
             let field_type = env.get_by_key(type_name).unwrap();
 
@@ -377,7 +429,7 @@ fn create_column(
                 depth += 1;
             }
 
-            let underlying_pt = if let ResolvedFieldType::Plain(name) = &**underlying_typ {
+            let underlying_pt = if let ResolvedFieldType::Plain(name, _) = &**underlying_typ {
                 if let Some(ResolvedType::Primitive(pt)) = env.get_by_key(name) {
                     Some(pt)
                 } else {
@@ -616,8 +668,8 @@ fn create_relation(
                     // and the field's type being the "Many" side.
                     let field_type = underlying.deref(env).as_composite();
 
-                    let other_type_id = building.types.get_id(field_type.name.as_str()).unwrap();
-                    let other_type = &building.types[other_type_id];
+                    let other_type_id = building.get_id(field_type.name.as_str()).unwrap();
+                    let other_type = &building.database_types[other_type_id];
                     let other_table_id = other_type.table_id().unwrap();
                     let other_table = &building.tables[other_table_id];
 
@@ -632,7 +684,7 @@ fn create_relation(
                 }
             }
 
-            ResolvedFieldType::Plain(type_name) => {
+            ResolvedFieldType::Plain(type_name, _) => {
                 let field_type = env.get_by_key(type_name).unwrap();
 
                 match field_type {
@@ -655,11 +707,11 @@ fn create_relation(
                             .unwrap()
                             .typ;
 
-                        let other_type_id = building.types.get_id(&ct.name).unwrap();
+                        let other_type_id = building.get_id(&ct.name).unwrap();
 
                         match (&field.typ, other_type_field_typ) {
-                            (ResolvedFieldType::Optional(_), ResolvedFieldType::Plain(_)) => {
-                                let other_type = &building.types[other_type_id];
+                            (ResolvedFieldType::Optional(_), ResolvedFieldType::Plain(_, _)) => {
+                                let other_type = &building.database_types[other_type_id];
                                 let other_table_id = other_type.table_id().unwrap();
                                 let other_table = &building.tables[other_table_id];
                                 let other_type_column_id =
@@ -671,7 +723,7 @@ fn create_relation(
                                     cardinality: RelationCardinality::Optional,
                                 }
                             }
-                            (ResolvedFieldType::Plain(_), ResolvedFieldType::Optional(_)) => {
+                            (ResolvedFieldType::Plain(_, _), ResolvedFieldType::Optional(_)) => {
                                 let column_id = compute_column_id(table, table_id, field);
 
                                 GqlRelation::ManyToOne {
@@ -682,7 +734,10 @@ fn create_relation(
                             }
                             (field_typ, other_field_type) => {
                                 match (field_base_typ, compute_base_type(other_field_type)) {
-                                    (ResolvedFieldType::Plain(_), ResolvedFieldType::List(_)) => {
+                                    (
+                                        ResolvedFieldType::Plain(_, _),
+                                        ResolvedFieldType::List(_),
+                                    ) => {
                                         let column_id = compute_column_id(table, table_id, field);
                                         GqlRelation::ManyToOne {
                                             column_id: column_id.unwrap(),

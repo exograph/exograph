@@ -31,13 +31,16 @@ impl Builder for DeleteMutationBuilder {
     fn build_expanded(&self, building: &mut SystemContextBuilding) {
         // Since there are no special input types for deletion, no expansion is needed
 
-        for (_, model_type) in building.types.iter() {
+        for (_, model_type) in building.database_types.iter() {
             if let GqlTypeKind::Composite(GqlCompositeType {
                 kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {
-                let model_type_id = building.types.get_id(model_type.name.as_str()).unwrap();
+                let model_type_id = building
+                    .database_types
+                    .get_id(model_type.name.as_str())
+                    .unwrap();
 
                 for mutation in self.build_mutations(model_type_id, model_type, building) {
                     building.mutations.add(&mutation.name.to_owned(), mutation);

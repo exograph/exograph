@@ -29,8 +29,14 @@ pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 impl Schema {
     pub fn new(system: &ModelSystem) -> Schema {
         let mut type_definitions: Vec<TypeDefinition> = system
-            .types
+            .primitive_types
             .iter()
+            .chain(
+                system
+                    .database_types
+                    .iter()
+                    .chain(system.service_types.iter()),
+            )
             .map(|model_type| model_type.1.type_definition(system))
             .collect();
 

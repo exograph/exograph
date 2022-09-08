@@ -19,4 +19,5 @@ pub struct ArgumentParameterTypeWithModifier {
 pub struct ArgumentParameterType {
     pub name: String,
     pub actual_type_id: Option<SerializableSlabIndex<GqlType>>,
+    pub is_primitive: bool,
 }
