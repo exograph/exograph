@@ -2,7 +2,7 @@
 source: payas-parser/src/builder/resolved_builder.rs
 expression: resolved
 ---
-types:
+primitive_types:
   values:
     - - ~
       - Primitive: Boolean
@@ -35,6 +35,55 @@ types:
     - - ~
       - Primitive:
           Interception: Operation
+    - ~
+  map:
+    Blob:
+      index: 10
+      generation: ~
+    Boolean:
+      index: 0
+      generation: ~
+    Claytip:
+      index: 12
+      generation: ~
+    ClaytipPriv:
+      index: 13
+      generation: ~
+    Decimal:
+      index: 3
+      generation: ~
+    Float:
+      index: 2
+      generation: ~
+    Instant:
+      index: 8
+      generation: ~
+    Int:
+      index: 1
+      generation: ~
+    Json:
+      index: 9
+      generation: ~
+    LocalDate:
+      index: 7
+      generation: ~
+    LocalDateTime:
+      index: 6
+      generation: ~
+    LocalTime:
+      index: 5
+      generation: ~
+    Operation:
+      index: 14
+      generation: ~
+    String:
+      index: 4
+      generation: ~
+    Uuid:
+      index: 11
+      generation: ~
+database_types:
+  values:
     - - ~
       - Composite:
           name: Concert
@@ -192,71 +241,20 @@ types:
                 - true
     - ~
     - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
-    - ~
   map:
-    Blob:
-      index: 10
-      generation: ~
-    Boolean:
+    Concert:
       index: 0
       generation: ~
-    Claytip:
-      index: 12
-      generation: ~
-    ClaytipPriv:
-      index: 13
-      generation: ~
-    Concert:
-      index: 15
-      generation: ~
-    Decimal:
-      index: 3
-      generation: ~
-    Float:
-      index: 2
-      generation: ~
-    Instant:
-      index: 8
-      generation: ~
-    Int:
+    Venue:
       index: 1
       generation: ~
-    Json:
-      index: 9
-      generation: ~
-    LocalDate:
-      index: 7
-      generation: ~
-    LocalDateTime:
-      index: 6
-      generation: ~
-    LocalTime:
-      index: 5
-      generation: ~
-    Operation:
-      index: 14
-      generation: ~
-    String:
-      index: 4
-      generation: ~
-    Uuid:
-      index: 11
-      generation: ~
-    Venue:
-      index: 16
-      generation: ~
+service_types:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
 contexts:
   values:
     - ~

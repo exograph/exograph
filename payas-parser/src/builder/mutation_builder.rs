@@ -150,8 +150,8 @@ pub trait DataParamBuilder<D> {
 
                 // If the type is a list or a reference, we need to create a nested input type (one-to-many or one-to-zero-or-one)
                 if let ResolvedFieldType::List(_) | ResolvedFieldType::Optional(_) = field.typ {
-                    if let ResolvedType::Composite(ResolvedCompositeType { name, .. }) =
-                        typ.deref(resolved_types)
+                    if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
+                        typ.deref_subsystem_type(resolved_types)
                     {
                         Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
                     } else {

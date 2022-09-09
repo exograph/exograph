@@ -7,6 +7,7 @@
 use std::io::Write;
 
 use super::naming::{ToPlural, ToTableName};
+use super::type_builder::ResolvedTypeEnv;
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_model::model::mapped_arena::MappedArena;
@@ -31,7 +32,9 @@ use serde::{Deserialize, Serialize};
 /// Consume typed-checked types and build resolved types
 #[derive(Deserialize, Serialize)]
 pub struct ResolvedSystem {
-    pub types: MappedArena<ResolvedType>,
+    pub primitive_types: MappedArena<ResolvedType>,
+    pub database_types: MappedArena<ResolvedType>,
+    pub service_types: MappedArena<ResolvedType>,
     pub contexts: MappedArena<ResolvedContext>,
     pub services: MappedArena<ResolvedService>,
 }
@@ -346,11 +349,23 @@ impl ResolvedType {
 }
 
 impl ResolvedFieldType {
-    pub fn deref<'a>(&'a self, types: &'a MappedArena<ResolvedType>) -> &'a ResolvedType {
+    pub(crate) fn deref<'a>(&'a self, env: &'a ResolvedTypeEnv) -> &'a ResolvedType {
         match self {
-            ResolvedFieldType::Plain { type_name, .. } => types.get_by_key(type_name).unwrap(),
+            ResolvedFieldType::Plain { type_name, .. } => env.get_by_key(type_name).unwrap(),
             ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
-                underlying.deref(types)
+                underlying.deref(env)
+            }
+        }
+    }
+
+    pub(crate) fn deref_subsystem_type<'a>(
+        &'a self,
+        types: &'a MappedArena<ResolvedType>,
+    ) -> Option<&'a ResolvedType> {
+        match self {
+            ResolvedFieldType::Plain { type_name, .. } => types.get_by_key(type_name),
+            ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
+                underlying.deref_subsystem_type(types)
             }
         }
     }
@@ -373,14 +388,16 @@ fn build_shallow(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Result<ResolvedSystem, ParserError> {
-    let mut resolved_types: MappedArena<ResolvedType> = MappedArena::default();
+    let mut resolved_primitive_types: MappedArena<ResolvedType> = MappedArena::default();
+    let mut resolved_database_types: MappedArena<ResolvedType> = MappedArena::default();
+    let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
     for (_, typ) in types.iter() {
         match typ {
             Type::Primitive(pt) => {
-                resolved_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
+                resolved_primitive_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
             Type::Composite(ct) if ct.kind == AstModelKind::Persistent => {
                 let plural_annotation_value = ct
@@ -394,7 +411,7 @@ fn build_shallow(
                     .map(|p| p.as_single().as_string())
                     .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
                 let access = build_access(ct.annotations.get("access"));
-                resolved_types.add(
+                resolved_database_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
@@ -410,7 +427,7 @@ fn build_shallow(
                     || ct.kind == AstModelKind::NonPersistentInput =>
             {
                 let access = build_access(ct.annotations.get("access"));
-                resolved_types.add(
+                resolved_service_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
                         name: ct.name.clone(),
@@ -577,7 +594,9 @@ fn build_shallow(
     }
 
     Ok(ResolvedSystem {
-        types: resolved_types,
+        primitive_types: resolved_primitive_types,
+        database_types: resolved_database_types,
+        service_types: resolved_service_types,
         contexts: resolved_contexts,
         services: resolved_services,
     })
@@ -634,11 +653,12 @@ fn build_expanded(
 ) {
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
-            if ct.kind == AstModelKind::Persistent
-                || ct.kind == AstModelKind::NonPersistent
+            if ct.kind == AstModelKind::Persistent {
+                build_expanded_persistent_type(ct, &types, resolved_system, errors);
+            } else if ct.kind == AstModelKind::NonPersistent
                 || ct.kind == AstModelKind::NonPersistentInput
             {
-                build_expanded_persistent_type(ct, &types, resolved_system, errors);
+                build_expanded_service_type(ct, &types, resolved_system);
             } else if ct.kind == AstModelKind::Context {
                 build_expanded_context_type(ct, &types, resolved_system, errors);
             } else {
@@ -658,7 +678,6 @@ fn build_expanded_service(
     // build arguments and return type of service methods
 
     let resolved_services = &mut resolved_system.services;
-    let resolved_types = &mut resolved_system.types;
 
     let existing_type_id = resolved_services.get_id(&s.name).unwrap();
     let existing_service = &resolved_services[existing_type_id];
@@ -677,13 +696,9 @@ fn build_expanded_service(
                 arguments: m
                     .arguments
                     .iter()
-                    .map(|a| resolve_argument(a, types, resolved_types))
+                    .map(|a| resolve_argument(a, types))
                     .collect(),
-                return_type: resolve_field_type(
-                    &m.return_type.to_typ(types),
-                    types,
-                    resolved_types,
-                ),
+                return_type: resolve_field_type(&m.return_type.to_typ(types), types),
                 ..existing_method.clone()
             }
         })
@@ -703,7 +718,7 @@ fn build_expanded_service(
                 arguments: i
                     .arguments
                     .iter()
-                    .map(|a| resolve_argument(a, types, resolved_types))
+                    .map(|a| resolve_argument(a, types))
                     .collect(),
                 ..existing_interceptor.clone()
             }
@@ -725,16 +740,16 @@ fn build_expanded_persistent_type(
     resolved_system: &mut ResolvedSystem,
     errors: &mut Vec<Diagnostic>,
 ) {
-    let resolved_types = &mut resolved_system.types;
+    let resolved_database_types = &mut resolved_system.database_types;
 
-    let existing_type_id = resolved_types.get_id(&ct.name).unwrap();
-    let existing_type = &resolved_types[existing_type_id];
+    let existing_type_id = resolved_database_types.get_id(&ct.name).unwrap();
+    let existing_type = &resolved_database_types[existing_type_id];
 
     if let ResolvedType::Composite(ResolvedCompositeType {
         name,
         plural_name,
-        kind,
         access,
+        kind,
         ..
     }) = existing_type
     {
@@ -742,36 +757,31 @@ fn build_expanded_persistent_type(
             .fields
             .iter()
             .flat_map(|field| {
-                let resolved_kind = match kind {
-                    ResolvedCompositeTypeKind::Persistent { .. } => {
-                        let column_info = compute_column_info(ct, field, types);
+                let resolved_kind = {
+                    let column_info = compute_column_info(ct, field, types);
 
-                        match column_info {
-                            Ok(ColumnInfo {
-                                name: column_name,
-                                self_column,
-                                unique_constraints,
-                            }) => Some(ResolvedFieldKind::Persistent {
-                                column_name,
-                                self_column,
-                                is_pk: field.annotations.contains("pk"),
-                                type_hint: build_type_hint(field, types),
-                                unique_constraints,
-                            }),
-                            Err(e) => {
-                                errors.push(e);
-                                None
-                            }
+                    match column_info {
+                        Ok(ColumnInfo {
+                            name: column_name,
+                            self_column,
+                            unique_constraints,
+                        }) => Some(ResolvedFieldKind::Persistent {
+                            column_name,
+                            self_column,
+                            is_pk: field.annotations.contains("pk"),
+                            type_hint: build_type_hint(field, types),
+                            unique_constraints,
+                        }),
+                        Err(e) => {
+                            errors.push(e);
+                            None
                         }
-                    }
-                    ResolvedCompositeTypeKind::NonPersistent { .. } => {
-                        Some(ResolvedFieldKind::NonPersistent)
                     }
                 };
 
                 resolved_kind.map(|kind| ResolvedField {
                     name: field.name.clone(),
-                    typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
+                    typ: resolve_field_type(&field.typ.to_typ(types), types),
                     kind,
                     default_value: field.default_value.as_ref().map(resolve_field_default_type),
                 })
@@ -785,7 +795,48 @@ fn build_expanded_persistent_type(
             kind: kind.clone(),
             access: access.clone(),
         });
-        resolved_types[existing_type_id] = expanded;
+        resolved_database_types[existing_type_id] = expanded;
+    }
+}
+
+fn build_expanded_service_type(
+    ct: &AstModel<Typed>,
+    types: &MappedArena<Type>,
+    resolved_system: &mut ResolvedSystem,
+) {
+    let resolved_service_types = &mut resolved_system.service_types;
+
+    let existing_type_id = resolved_service_types.get_id(&ct.name).unwrap();
+    let existing_type = &resolved_service_types[existing_type_id];
+
+    if let ResolvedType::Composite(ResolvedCompositeType {
+        name,
+        plural_name,
+        kind,
+        access,
+        ..
+    }) = existing_type
+    {
+        let resolved_fields = ct
+            .fields
+            .iter()
+            .map(|field| ResolvedField {
+                name: field.name.clone(),
+                typ: resolve_field_type(&field.typ.to_typ(types), types),
+                kind: ResolvedFieldKind::NonPersistent,
+                default_value: field.default_value.as_ref().map(resolve_field_default_type),
+            })
+            .collect();
+
+        let expanded = ResolvedType::Composite(ResolvedCompositeType {
+            name: name.clone(),
+            plural_name: plural_name.clone(),
+            fields: resolved_fields,
+            kind: kind.clone(),
+            access: access.clone(),
+        });
+
+        resolved_service_types[existing_type_id] = expanded;
     }
 }
 
@@ -1022,7 +1073,6 @@ fn build_expanded_context_type(
     errors: &mut Vec<Diagnostic>,
 ) {
     let resolved_contexts = &mut resolved_system.contexts;
-    let resolved_types = &mut resolved_system.types;
 
     let existing_type_id = resolved_contexts.get_id(&ct.name).unwrap();
     let existing_type = &resolved_contexts[existing_type_id];
@@ -1032,7 +1082,7 @@ fn build_expanded_context_type(
         .flat_map(|field| {
             Some(ResolvedContextField {
                 name: field.name.clone(),
-                typ: resolve_field_type(&field.typ.to_typ(types), types, resolved_types),
+                typ: resolve_field_type(&field.typ.to_typ(types), types),
                 source: extract_context_source(field, errors)?,
             })
         })
@@ -1330,36 +1380,26 @@ fn compute_column_info(
     column_name(enclosing_type, field, types)
 }
 
-fn resolve_field_type(
-    typ: &Type,
-    types: &MappedArena<Type>,
-    resolved_types: &MappedArena<ResolvedType>,
-) -> ResolvedFieldType {
+fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldType {
     match typ {
-        Type::Optional(underlying) => ResolvedFieldType::Optional(Box::new(resolve_field_type(
-            underlying.as_ref(),
-            types,
-            resolved_types,
-        ))),
+        Type::Optional(underlying) => {
+            ResolvedFieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
+        }
         Type::Reference(id) => ResolvedFieldType::Plain {
             type_name: types[*id].get_underlying_typename(types).unwrap(),
             is_primitive: matches!(types[*id], Type::Primitive(_)),
         },
-        Type::Set(underlying) | Type::Array(underlying) => ResolvedFieldType::List(Box::new(
-            resolve_field_type(underlying.as_ref(), types, resolved_types),
-        )),
+        Type::Set(underlying) | Type::Array(underlying) => {
+            ResolvedFieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
+        }
         _ => todo!("Unsupported field type"),
     }
 }
 
-fn resolve_argument(
-    arg: &AstArgument<Typed>,
-    types: &MappedArena<Type>,
-    resolved_types: &MappedArena<ResolvedType>,
-) -> ResolvedArgument {
+fn resolve_argument(arg: &AstArgument<Typed>, types: &MappedArena<Type>) -> ResolvedArgument {
     ResolvedArgument {
         name: arg.name.clone(),
-        typ: resolve_field_type(&arg.typ.to_typ(types), types, resolved_types),
+        typ: resolve_field_type(&arg.typ.to_typ(types), types),
         is_injected: arg.annotations.get("inject").is_some(),
     }
 }

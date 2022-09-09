@@ -18,7 +18,8 @@ use super::{
     argument_builder, context_builder, interceptor_weaver, mutation_builder, order_by_type_builder,
     predicate_builder, query_builder,
     resolved_builder::{self, ResolvedSystem},
-    service_builder, type_builder,
+    service_builder,
+    type_builder::{self, ResolvedTypeEnv},
 };
 
 use crate::error::ParserError;
@@ -70,31 +71,41 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError>
 }
 
 fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
-    let resolved_types = &resolved_system.types;
+    let resolved_primitive_types = &resolved_system.primitive_types;
+    let resolved_database_types = &resolved_system.database_types;
+    let resolved_service_types = &resolved_system.service_types;
     let resolved_contexts = &resolved_system.contexts;
     let resolved_services = &resolved_system.services;
 
     // First build shallow GQL types for types, context, query parameters (order by and predicate)
     // The order of next five is unimportant, since each of them simply create a shallow type without referring to anything
-    type_builder::build_shallow(resolved_types, building);
+    type_builder::build_shallow(resolved_primitive_types, building);
+    type_builder::build_shallow(resolved_database_types, building);
+    type_builder::build_shallow(resolved_service_types, building);
+
     context_builder::build_shallow(resolved_contexts, building);
-    order_by_type_builder::build_shallow(resolved_types, building);
-    predicate_builder::build_shallow(resolved_types, building);
-    argument_builder::build_shallow(resolved_types, building);
+    order_by_type_builder::build_shallow(resolved_database_types, building);
+
+    predicate_builder::build_shallow(resolved_primitive_types, building);
+    predicate_builder::build_shallow(resolved_database_types, building);
+
+    argument_builder::build_shallow(resolved_database_types, building);
+    argument_builder::build_shallow(resolved_service_types, building);
 
     // The next three shallow builders need GQL types build above (the order of the next three is unimportant)
     // Specifically, the OperationReturn type in Query, Mutation, and ServiceMethod looks for the id for the return type, so requires
     // type_builder::build_shallow to have run
-    query_builder::build_shallow(resolved_types, building);
-    mutation_builder::build_shallow(resolved_types, building);
-    service_builder::build_shallow(resolved_types, resolved_services, building);
+    query_builder::build_shallow(resolved_database_types, building);
+    mutation_builder::build_shallow(resolved_database_types, building);
+    service_builder::build_shallow(resolved_service_types, resolved_services, building);
 }
 
 fn build_expanded(
     resolved_system: &ResolvedSystem,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ParserError> {
-    let resolved_types = &resolved_system.types;
+    let resolved_primitive_types = &resolved_system.primitive_types;
+    let resolved_database_types = &resolved_system.database_types;
 
     let resolved_methods = &resolved_system
         .services
@@ -108,7 +119,21 @@ fn build_expanded(
     // First fully build the model types.
     // First context, since model types may refer to context types in @access annotation
     context_builder::build_expanded(resolved_contexts, building);
-    type_builder::build_expanded(resolved_types, resolved_methods, building)?;
+    type_builder::build_persistent_expanded(
+        ResolvedTypeEnv {
+            resolved_primitive_types,
+            resolved_subsystem_types: resolved_database_types,
+        },
+        building,
+    )?;
+    type_builder::build_service_expanded(
+        resolved_methods,
+        ResolvedTypeEnv {
+            resolved_primitive_types,
+            resolved_subsystem_types: &resolved_system.service_types,
+        },
+        building,
+    )?;
 
     // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
     // after running type_builder::build_expanded (since they depend on expanded GqlTypes (note the next ones do not access resolved_types))
