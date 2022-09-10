@@ -374,8 +374,7 @@ impl ResolvedFieldType {
 pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem, ParserError> {
     let mut errors = Vec::new();
 
-    let mut resolved_system = build_shallow(&types, &mut errors)?;
-    build_expanded(types, &mut resolved_system, &mut errors);
+    let resolved_system = resolve(&types, &mut errors)?;
 
     if errors.is_empty() {
         Ok(resolved_system)
@@ -384,49 +383,89 @@ pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem, ParserError> {
     }
 }
 
-fn build_shallow(
+fn resolve(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Result<ResolvedSystem, ParserError> {
+    Ok(ResolvedSystem {
+        primitive_types: resolve_primitive_types(types)?,
+        database_types: resolve_persistent_types(types, errors)?,
+        service_types: resolve_service_types(types)?,
+        contexts: resolve_shallow_contexts(types, errors)?,
+        services: resolve_shallow_services(types, errors)?,
+    })
+}
+
+fn resolve_primitive_types(
+    types: &MappedArena<Type>,
+) -> Result<MappedArena<ResolvedType>, ParserError> {
     let mut resolved_primitive_types: MappedArena<ResolvedType> = MappedArena::default();
-    let mut resolved_database_types: MappedArena<ResolvedType> = MappedArena::default();
-    let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
-    let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
-    let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
     for (_, typ) in types.iter() {
-        match typ {
-            Type::Primitive(pt) => {
-                resolved_primitive_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
-            }
-            Type::Composite(ct) if ct.kind == AstModelKind::Persistent => {
-                let plural_annotation_value = ct
-                    .annotations
-                    .get("plural_name")
-                    .map(|p| p.as_single().as_string());
+        if let Type::Primitive(pt) = typ {
+            resolved_primitive_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
+        }
+    }
 
-                let table_name = ct
-                    .annotations
-                    .get("table")
-                    .map(|p| p.as_single().as_string())
-                    .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
-                let access = build_access(ct.annotations.get("access"));
-                resolved_database_types.add(
+    Ok(resolved_primitive_types)
+}
+
+fn resolve_shallow_contexts(
+    types: &MappedArena<Type>,
+    errors: &mut Vec<Diagnostic>,
+) -> Result<MappedArena<ResolvedContext>, ParserError> {
+    let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
+
+    for (_, typ) in types.iter() {
+        if let Type::Composite(ct) = typ {
+            if ct.kind == AstModelKind::Context {
+                let resolved_fields = ct
+                    .fields
+                    .iter()
+                    .flat_map(|field| {
+                        Some(ResolvedContextField {
+                            name: field.name.clone(),
+                            typ: resolve_field_type(&field.typ.to_typ(types), types),
+                            source: extract_context_source(field, errors)?,
+                        })
+                    })
+                    .collect();
+
+                resolved_contexts.add(
                     &ct.name,
-                    ResolvedType::Composite(ResolvedCompositeType {
+                    ResolvedContext {
                         name: ct.name.clone(),
-                        plural_name: plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
-                        fields: vec![],
-                        kind: ResolvedCompositeTypeKind::Persistent { table_name },
-                        access,
-                    }),
+                        fields: resolved_fields,
+                    },
                 );
             }
-            Type::Composite(ct)
-                if ct.kind == AstModelKind::NonPersistent
-                    || ct.kind == AstModelKind::NonPersistentInput =>
+        }
+    }
+
+    Ok(resolved_contexts)
+}
+
+fn resolve_service_types(
+    types: &MappedArena<Type>,
+) -> Result<MappedArena<ResolvedType>, ParserError> {
+    let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
+
+    for (_, typ) in types.iter() {
+        if let Type::Composite(ct) = typ {
+            if ct.kind == AstModelKind::NonPersistent || ct.kind == AstModelKind::NonPersistentInput
             {
                 let access = build_access(ct.annotations.get("access"));
+                let resolved_fields = ct
+                    .fields
+                    .iter()
+                    .map(|field| ResolvedField {
+                        name: field.name.clone(),
+                        typ: resolve_field_type(&field.typ.to_typ(types), types),
+                        kind: ResolvedFieldKind::NonPersistent,
+                        default_value: field.default_value.as_ref().map(resolve_field_default_type),
+                    })
+                    .collect();
+
                 resolved_service_types.add(
                     &ct.name,
                     ResolvedType::Composite(ResolvedCompositeType {
@@ -436,7 +475,7 @@ fn build_shallow(
                             .get("plural_name")
                             .map(|p| p.as_single().as_string())
                             .unwrap_or_else(|| ct.name.to_plural()), // fallback to automatically pluralizing name
-                        fields: vec![],
+                        fields: resolved_fields,
                         kind: ResolvedCompositeTypeKind::NonPersistent {
                             is_input: matches!(ct.kind, AstModelKind::NonPersistentInput),
                         },
@@ -444,162 +483,170 @@ fn build_shallow(
                     }),
                 );
             }
-            Type::Composite(ct) if ct.kind == AstModelKind::Context => {
-                resolved_contexts.add(
-                    &ct.name,
-                    ResolvedContext {
-                        name: ct.name.clone(),
-                        fields: vec![],
-                    },
-                );
-            }
-            Type::Service(service) => {
-                let module_path = match service.annotations.get("external").unwrap() {
-                    AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
-                    _ => panic!(),
-                }
-                .clone();
-
-                let mut module_fs_path = service.base_clayfile.clone();
-                module_fs_path.pop();
-                module_fs_path.push(module_path);
-                let extension = module_fs_path.extension().and_then(|e| e.to_str());
-
-                let bundled_script = if extension == Some("ts") || extension == Some("js") {
-                    service_skeleton_generator::generate_service_skeleton(
-                        service,
-                        &module_fs_path,
-                    )?;
-
-                    // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
-                    let bundler_output = std::process::Command::new("deno")
-                        .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
-                        .output()
-                        .map_err(|err| {
-                            ParserError::Generic(format!(
-                                "While trying to invoke `deno` in order to bundle .ts files: {}",
-                                err
-                            ))
-                        })?;
-
-                    if bundler_output.status.success() {
-                        bundler_output.stdout
-                    } else {
-                        std::io::stdout().write_all(&bundler_output.stderr).unwrap();
-                        return Err(ParserError::Generic(
-                            "Deno bundler did not exit successfully".to_string(),
-                        ));
-                    }
-                } else {
-                    std::fs::read(&module_fs_path).map_err(|err| {
-                        ParserError::Generic(format!(
-                            "While trying to read bundled service module: {}",
-                            err
-                        ))
-                    })?
-                };
-
-                let module_anonymized_path = module_fs_path
-                    .strip_prefix(&service.base_clayfile.parent().unwrap())
-                    .unwrap();
-
-                fn extract_intercept_annot<'a>(
-                    annotations: &'a AnnotationMap,
-                    key: &str,
-                ) -> Option<&'a AstExpr<Typed>> {
-                    annotations.get(key).map(|a| a.as_single())
-                }
-
-                resolved_services.add(
-                    &service.name,
-                    ResolvedService {
-                        name: service.name.clone(),
-                        script: bundled_script,
-                        script_path: module_anonymized_path.to_str().expect("Script path was not UTF-8").to_string(),
-                        methods: service
-                            .methods
-                            .iter()
-                            .map(|m| {
-                                let access = build_access(m.annotations.get("access"));
-                                ResolvedMethod {
-                                    name: m.name.clone(),
-                                    operation_kind: match m.typ {
-                                        AstMethodType::Query   => ResolvedMethodType::Query,
-                                        AstMethodType::Mutation => ResolvedMethodType::Mutation,
-                                    },
-                                    is_exported: m.is_exported,
-                                    access,
-                                    arguments: vec![],
-                                    return_type: ResolvedFieldType::Plain { type_name: "".to_string(), is_primitive: true},
-                                }
-                            })
-                            .collect(),
-                        interceptors: service
-                            .interceptors
-                            .iter()
-                            .flat_map(|i| {
-                                let before_annot = extract_intercept_annot(&i.annotations, "before")
-                                    .map(|s| ResolvedInterceptorKind::Before(s.clone()));
-                                let after_annot = extract_intercept_annot(&i.annotations, "after")
-                                    .map(|s| ResolvedInterceptorKind::After(s.clone()));
-                                let around_annot = extract_intercept_annot(&i.annotations, "around")
-                                    .map(|s| ResolvedInterceptorKind::Around(s.clone()));
-
-                                let kind_annots = vec![before_annot, after_annot, around_annot];
-                                let kind_annots: Vec<_> =
-                                    kind_annots.into_iter().flatten().collect();
-
-                                fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T, ParserError> {
-                                    errors.push(
-                                        Diagnostic {
-                                            level: Level::Error,
-                                            message: message.to_string(),
-                                            code: Some("C000".to_string()),
-                                            spans: vec![SpanLabel {
-                                                span,
-                                                style: SpanStyle::Primary,
-                                                label: None,
-                                            }],
-                                        });
-                                    Err(ParserError::Generic(message.to_string()))
-                                }
-
-                                let kind_annot = match kind_annots.as_slice() {
-                                    [] => {
-                                        create_diagnostic("Interceptor must have at least one of the before/after/around annotation", i.span, errors)
-                                    }
-                                    [single] => Ok(single),
-                                    _ => create_diagnostic(
-                                        "Interceptor cannot have more than of the before/after/around annotations", i.span, errors
-                                    ),
-                                }?;
-
-                                Result::<ResolvedInterceptor, ParserError>::Ok(ResolvedInterceptor {
-                                    name: i.name.clone(),
-                                    arguments: vec![],
-                                    interceptor_kind: kind_annot.clone(),
-                                })
-                            })
-                            .collect(),
-                    },
-                );
-            }
-            o => {
-                return Err(ParserError::Generic(format!(
-                    "Unable to build shallow type for non-primitve, non-composite type: {:?}",
-                    o
-                )))
-            }
-        };
+        }
     }
 
-    Ok(ResolvedSystem {
-        primitive_types: resolved_primitive_types,
-        database_types: resolved_database_types,
-        service_types: resolved_service_types,
-        contexts: resolved_contexts,
-        services: resolved_services,
-    })
+    Ok(resolved_service_types)
+}
+
+fn resolve_shallow_services(
+    types: &MappedArena<Type>,
+    errors: &mut Vec<Diagnostic>,
+) -> Result<MappedArena<ResolvedService>, ParserError> {
+    let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
+
+    for (_, typ) in types.iter() {
+        if let Type::Service(service) = typ {
+            resolve_shallow_service(service, types, errors, &mut resolved_services)?;
+        }
+    }
+
+    Ok(resolved_services)
+}
+
+fn resolve_shallow_service(
+    service: &AstService<Typed>,
+    types: &MappedArena<Type>,
+
+    errors: &mut Vec<Diagnostic>,
+    resolved_services: &mut MappedArena<ResolvedService>,
+) -> Result<(), ParserError> {
+    let module_path = match service.annotations.get("external").unwrap() {
+        AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
+        _ => panic!(),
+    }
+    .clone();
+
+    let mut module_fs_path = service.base_clayfile.clone();
+    module_fs_path.pop();
+    module_fs_path.push(module_path);
+    let extension = module_fs_path.extension().and_then(|e| e.to_str());
+
+    let bundled_script = if extension == Some("ts") || extension == Some("js") {
+        service_skeleton_generator::generate_service_skeleton(service, &module_fs_path)?;
+
+        // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
+        let bundler_output = std::process::Command::new("deno")
+            .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
+            .output()
+            .map_err(|err| {
+                ParserError::Generic(format!(
+                    "While trying to invoke `deno` in order to bundle .ts files: {}",
+                    err
+                ))
+            })?;
+
+        if bundler_output.status.success() {
+            bundler_output.stdout
+        } else {
+            std::io::stdout().write_all(&bundler_output.stderr).unwrap();
+            return Err(ParserError::Generic(
+                "Deno bundler did not exit successfully".to_string(),
+            ));
+        }
+    } else {
+        std::fs::read(&module_fs_path).map_err(|err| {
+            ParserError::Generic(format!(
+                "While trying to read bundled service module: {}",
+                err
+            ))
+        })?
+    };
+
+    let module_anonymized_path = module_fs_path
+        .strip_prefix(&service.base_clayfile.parent().unwrap())
+        .unwrap();
+
+    fn extract_intercept_annot<'a>(
+        annotations: &'a AnnotationMap,
+        key: &str,
+    ) -> Option<&'a AstExpr<Typed>> {
+        annotations.get(key).map(|a| a.as_single())
+    }
+
+    resolved_services.add(
+        &service.name,
+        ResolvedService {
+            name: service.name.clone(),
+            script: bundled_script,
+            script_path: module_anonymized_path.to_str().expect("Script path was not UTF-8").to_string(),
+            methods: service
+                .methods
+                .iter()
+                .map(|m| {
+                    let access = build_access(m.annotations.get("access"));
+                    ResolvedMethod {
+                        name: m.name.clone(),
+                        operation_kind: match m.typ {
+                            AstMethodType::Query   => ResolvedMethodType::Query,
+                            AstMethodType::Mutation => ResolvedMethodType::Mutation,
+                        },
+                        is_exported: m.is_exported,
+                        access,
+                        arguments: m
+                            .arguments
+                            .iter()
+                            .map(|a| resolve_argument(a, types))
+                            .collect(),
+                        return_type: resolve_field_type(&m.return_type.to_typ(types), types),
+                    }
+                })
+                .collect(),
+            interceptors: service
+                .interceptors
+                .iter()
+                .flat_map(|i| {
+                    let before_annot = extract_intercept_annot(&i.annotations, "before")
+                        .map(|s| ResolvedInterceptorKind::Before(s.clone()));
+                    let after_annot = extract_intercept_annot(&i.annotations, "after")
+                        .map(|s| ResolvedInterceptorKind::After(s.clone()));
+                    let around_annot = extract_intercept_annot(&i.annotations, "around")
+                        .map(|s| ResolvedInterceptorKind::Around(s.clone()));
+
+                    let kind_annots = vec![before_annot, after_annot, around_annot];
+                    let kind_annots: Vec<_> =
+                        kind_annots.into_iter().flatten().collect();
+
+                    fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T, ParserError> {
+                        errors.push(
+                            Diagnostic {
+                                level: Level::Error,
+                                message: message.to_string(),
+                                code: Some("C000".to_string()),
+                                spans: vec![SpanLabel {
+                                    span,
+                                    style: SpanStyle::Primary,
+                                    label: None,
+                                }],
+                            });
+                        Err(ParserError::Generic(message.to_string()))
+                    }
+
+                    let kind_annot = match kind_annots.as_slice() {
+                        [] => {
+                            create_diagnostic("Interceptor must have at least one of the before/after/around annotation", i.span, errors)
+                        }
+                        [single] => Ok(single),
+                        _ => create_diagnostic(
+                            "Interceptor cannot have more than of the before/after/around annotations", i.span, errors
+                        ),
+                    }?;
+
+                    Result::<ResolvedInterceptor, ParserError>::Ok(ResolvedInterceptor {
+                        name: i.name.clone(),
+                        arguments: i
+                            .arguments
+                            .iter()
+                            .map(|a| resolve_argument(a, types))
+                            .collect(),
+                        interceptor_kind: kind_annot.clone(),
+                    })
+                })
+                .collect(),
+        },
+    );
+
+    Ok(())
 }
 
 fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -> ResolvedAccess {
@@ -646,198 +693,82 @@ fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -
     }
 }
 
-fn build_expanded(
-    types: MappedArena<Type>,
-    resolved_system: &mut ResolvedSystem,
+fn resolve_persistent_types(
+    types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-) {
+) -> Result<MappedArena<ResolvedType>, ParserError> {
+    let mut resolved_database_types: MappedArena<ResolvedType> = MappedArena::default();
+
     for (_, typ) in types.iter() {
         if let Type::Composite(ct) = typ {
             if ct.kind == AstModelKind::Persistent {
-                build_expanded_persistent_type(ct, &types, resolved_system, errors);
-            } else if ct.kind == AstModelKind::NonPersistent
-                || ct.kind == AstModelKind::NonPersistentInput
-            {
-                build_expanded_service_type(ct, &types, resolved_system);
-            } else if ct.kind == AstModelKind::Context {
-                build_expanded_context_type(ct, &types, resolved_system, errors);
-            } else {
-                todo!()
+                let plural_annotation_value = ct
+                    .annotations
+                    .get("plural_name")
+                    .map(|p| p.as_single().as_string());
+
+                let table_name = ct
+                    .annotations
+                    .get("table")
+                    .map(|p| p.as_single().as_string())
+                    .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
+                let access = build_access(ct.annotations.get("access"));
+                let name = ct.name.clone();
+                let plural_name = plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
+
+                let resolved_fields = ct
+                    .fields
+                    .iter()
+                    .flat_map(|field| {
+                        let resolved_kind = {
+                            let column_info = compute_column_info(ct, field, types);
+
+                            match column_info {
+                                Ok(ColumnInfo {
+                                    name: column_name,
+                                    self_column,
+                                    unique_constraints,
+                                }) => Some(ResolvedFieldKind::Persistent {
+                                    column_name,
+                                    self_column,
+                                    is_pk: field.annotations.contains("pk"),
+                                    type_hint: build_type_hint(field, types),
+                                    unique_constraints,
+                                }),
+                                Err(e) => {
+                                    errors.push(e);
+                                    None
+                                }
+                            }
+                        };
+
+                        resolved_kind.map(|kind| ResolvedField {
+                            name: field.name.clone(),
+                            typ: resolve_field_type(&field.typ.to_typ(types), types),
+                            kind,
+                            default_value: field
+                                .default_value
+                                .as_ref()
+                                .map(resolve_field_default_type),
+                        })
+                    })
+                    .collect();
+
+                resolved_database_types.add(
+                    &ct.name,
+                    ResolvedType::Composite(ResolvedCompositeType {
+                        name,
+                        plural_name: plural_name.clone(),
+                        fields: resolved_fields,
+                        kind: ResolvedCompositeTypeKind::Persistent { table_name },
+                        access: access.clone(),
+                    }),
+                );
             }
-        } else if let Type::Service(s) = typ {
-            build_expanded_service(s, &types, resolved_system);
         }
     }
-}
 
-fn build_expanded_service(
-    s: &AstService<Typed>,
-    types: &MappedArena<Type>,
-    resolved_system: &mut ResolvedSystem,
-) {
-    // build arguments and return type of service methods
-
-    let resolved_services = &mut resolved_system.services;
-
-    let existing_type_id = resolved_services.get_id(&s.name).unwrap();
-    let existing_service = &resolved_services[existing_type_id];
-
-    let expanded_methods = s
-        .methods
-        .iter()
-        .map(|m| {
-            let existing_method = existing_service
-                .methods
-                .iter()
-                .find(|existing_m| m.name == existing_m.name)
-                .unwrap();
-
-            ResolvedMethod {
-                arguments: m
-                    .arguments
-                    .iter()
-                    .map(|a| resolve_argument(a, types))
-                    .collect(),
-                return_type: resolve_field_type(&m.return_type.to_typ(types), types),
-                ..existing_method.clone()
-            }
-        })
-        .collect();
-
-    let expanded_interceptors = s
-        .interceptors
-        .iter()
-        .map(|i| {
-            let existing_interceptor = existing_service
-                .interceptors
-                .iter()
-                .find(|existing_i| i.name == existing_i.name)
-                .unwrap();
-
-            ResolvedInterceptor {
-                arguments: i
-                    .arguments
-                    .iter()
-                    .map(|a| resolve_argument(a, types))
-                    .collect(),
-                ..existing_interceptor.clone()
-            }
-        })
-        .collect();
-
-    let expanded_service = ResolvedService {
-        methods: expanded_methods,
-        interceptors: expanded_interceptors,
-        ..existing_service.clone()
-    };
-
-    resolved_services[existing_type_id] = expanded_service;
-}
-
-fn build_expanded_persistent_type(
-    ct: &AstModel<Typed>,
-    types: &MappedArena<Type>,
-    resolved_system: &mut ResolvedSystem,
-    errors: &mut Vec<Diagnostic>,
-) {
-    let resolved_database_types = &mut resolved_system.database_types;
-
-    let existing_type_id = resolved_database_types.get_id(&ct.name).unwrap();
-    let existing_type = &resolved_database_types[existing_type_id];
-
-    if let ResolvedType::Composite(ResolvedCompositeType {
-        name,
-        plural_name,
-        access,
-        kind,
-        ..
-    }) = existing_type
-    {
-        let resolved_fields = ct
-            .fields
-            .iter()
-            .flat_map(|field| {
-                let resolved_kind = {
-                    let column_info = compute_column_info(ct, field, types);
-
-                    match column_info {
-                        Ok(ColumnInfo {
-                            name: column_name,
-                            self_column,
-                            unique_constraints,
-                        }) => Some(ResolvedFieldKind::Persistent {
-                            column_name,
-                            self_column,
-                            is_pk: field.annotations.contains("pk"),
-                            type_hint: build_type_hint(field, types),
-                            unique_constraints,
-                        }),
-                        Err(e) => {
-                            errors.push(e);
-                            None
-                        }
-                    }
-                };
-
-                resolved_kind.map(|kind| ResolvedField {
-                    name: field.name.clone(),
-                    typ: resolve_field_type(&field.typ.to_typ(types), types),
-                    kind,
-                    default_value: field.default_value.as_ref().map(resolve_field_default_type),
-                })
-            })
-            .collect();
-
-        let expanded = ResolvedType::Composite(ResolvedCompositeType {
-            name: name.clone(),
-            plural_name: plural_name.clone(),
-            fields: resolved_fields,
-            kind: kind.clone(),
-            access: access.clone(),
-        });
-        resolved_database_types[existing_type_id] = expanded;
-    }
-}
-
-fn build_expanded_service_type(
-    ct: &AstModel<Typed>,
-    types: &MappedArena<Type>,
-    resolved_system: &mut ResolvedSystem,
-) {
-    let resolved_service_types = &mut resolved_system.service_types;
-
-    let existing_type_id = resolved_service_types.get_id(&ct.name).unwrap();
-    let existing_type = &resolved_service_types[existing_type_id];
-
-    if let ResolvedType::Composite(ResolvedCompositeType {
-        name,
-        plural_name,
-        kind,
-        access,
-        ..
-    }) = existing_type
-    {
-        let resolved_fields = ct
-            .fields
-            .iter()
-            .map(|field| ResolvedField {
-                name: field.name.clone(),
-                typ: resolve_field_type(&field.typ.to_typ(types), types),
-                kind: ResolvedFieldKind::NonPersistent,
-                default_value: field.default_value.as_ref().map(resolve_field_default_type),
-            })
-            .collect();
-
-        let expanded = ResolvedType::Composite(ResolvedCompositeType {
-            name: name.clone(),
-            plural_name: plural_name.clone(),
-            fields: resolved_fields,
-            kind: kind.clone(),
-            access: access.clone(),
-        });
-
-        resolved_service_types[existing_type_id] = expanded;
-    }
+    Ok(resolved_database_types)
 }
 
 fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> ResolvedFieldDefault {
@@ -1064,35 +995,6 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
     } else {
         None
     }
-}
-
-fn build_expanded_context_type(
-    ct: &AstModel<Typed>,
-    types: &MappedArena<Type>,
-    resolved_system: &mut ResolvedSystem,
-    errors: &mut Vec<Diagnostic>,
-) {
-    let resolved_contexts = &mut resolved_system.contexts;
-
-    let existing_type_id = resolved_contexts.get_id(&ct.name).unwrap();
-    let existing_type = &resolved_contexts[existing_type_id];
-    let resolved_fields = ct
-        .fields
-        .iter()
-        .flat_map(|field| {
-            Some(ResolvedContextField {
-                name: field.name.clone(),
-                typ: resolve_field_type(&field.typ.to_typ(types), types),
-                source: extract_context_source(field, errors)?,
-            })
-        })
-        .collect();
-
-    let expanded = ResolvedContext {
-        name: existing_type.name.clone(),
-        fields: resolved_fields,
-    };
-    resolved_contexts[existing_type_id] = expanded;
 }
 
 fn extract_context_source(
