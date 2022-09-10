@@ -11,7 +11,7 @@ use payas_model::model::{
     ContextType,
 };
 
-use crate::ast::ast_types::{AstSystem, Untyped};
+use crate::typechecker::Type;
 use payas_sql::PhysicalTable;
 
 use super::{
@@ -23,7 +23,6 @@ use super::{
 };
 
 use crate::error::ParserError;
-use crate::typechecker;
 
 /// Build a [ModelSystem] given an [AstSystem].
 ///
@@ -42,14 +41,26 @@ use crate::typechecker;
 /// (this is done in place, so references created from elsewhere remain valid). Since all model
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
-pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError> {
-    let typechecked_system = typechecker::build(ast_system)?;
+pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, ParserError> {
     let resolved_system = resolved_builder::build(typechecked_system)?;
 
     let mut building = SystemContextBuilding::default();
 
-    build_shallow(&resolved_system, &mut building);
-    build_expanded(&resolved_system, &mut building)?;
+    // Shallow build
+    type_builder::build_shallow(&resolved_system.primitive_types, &mut building);
+    context_builder::build_shallow(&resolved_system.contexts, &mut building);
+
+    build_shallow_database(&resolved_system, &mut building);
+    build_shallow_service(&resolved_system, &mut building);
+
+    // Expand build
+    // First context, since model types may refer to context types in @access annotation
+    context_builder::build_expanded(&resolved_system.contexts, &mut building);
+
+    build_expanded_database(&resolved_system, &mut building)?;
+    build_expanded_service(&resolved_system, &mut building)?;
+
+    interceptor_weaver::weave_interceptors(&resolved_system, &mut building);
 
     Ok(ModelSystem {
         primitive_types: building.primitive_types.values,
@@ -70,67 +81,50 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<ModelSystem, ParserError>
     })
 }
 
-fn build_shallow(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
+fn build_shallow_database(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
     let resolved_primitive_types = &resolved_system.primitive_types;
     let resolved_database_types = &resolved_system.database_types;
-    let resolved_service_types = &resolved_system.service_types;
-    let resolved_contexts = &resolved_system.contexts;
-    let resolved_services = &resolved_system.services;
 
     // First build shallow GQL types for types, context, query parameters (order by and predicate)
     // The order of next five is unimportant, since each of them simply create a shallow type without referring to anything
-    type_builder::build_shallow(resolved_primitive_types, building);
     type_builder::build_shallow(resolved_database_types, building);
-    type_builder::build_shallow(resolved_service_types, building);
 
-    context_builder::build_shallow(resolved_contexts, building);
     order_by_type_builder::build_shallow(resolved_database_types, building);
 
     predicate_builder::build_shallow(resolved_primitive_types, building);
     predicate_builder::build_shallow(resolved_database_types, building);
 
     argument_builder::build_shallow(resolved_database_types, building);
-    argument_builder::build_shallow(resolved_service_types, building);
 
-    // The next three shallow builders need GQL types build above (the order of the next three is unimportant)
-    // Specifically, the OperationReturn type in Query, Mutation, and ServiceMethod looks for the id for the return type, so requires
+    // The next two shallow builders need GQL types build above (the order of the next three is unimportant)
+    // Specifically, the OperationReturn type in Query and Mutation looks for the id for the return type, so requires
     // type_builder::build_shallow to have run
     query_builder::build_shallow(resolved_database_types, building);
     mutation_builder::build_shallow(resolved_database_types, building);
+}
+
+fn build_shallow_service(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
+    let resolved_service_types = &resolved_system.service_types;
+    let resolved_services = &resolved_system.services;
+
+    type_builder::build_shallow(resolved_service_types, building);
+
+    argument_builder::build_shallow(resolved_service_types, building);
+
     service_builder::build_shallow(resolved_service_types, resolved_services, building);
 }
 
-fn build_expanded(
+fn build_expanded_database(
     resolved_system: &ResolvedSystem,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ParserError> {
-    let resolved_primitive_types = &resolved_system.primitive_types;
+    // First fully build the model types.
     let resolved_database_types = &resolved_system.database_types;
 
-    let resolved_methods = &resolved_system
-        .services
-        .iter()
-        .map(|(_, s)| s.methods.iter().collect::<Vec<_>>())
-        .collect::<Vec<_>>()
-        .concat();
-
-    let resolved_contexts = &resolved_system.contexts;
-
-    // First fully build the model types.
-    // First context, since model types may refer to context types in @access annotation
-    context_builder::build_expanded(resolved_contexts, building);
     type_builder::build_persistent_expanded(
         ResolvedTypeEnv {
-            resolved_primitive_types,
+            resolved_primitive_types: &resolved_system.primitive_types,
             resolved_subsystem_types: resolved_database_types,
-        },
-        building,
-    )?;
-    type_builder::build_service_expanded(
-        resolved_methods,
-        ResolvedTypeEnv {
-            resolved_primitive_types,
-            resolved_subsystem_types: &resolved_system.service_types,
         },
         building,
     )?;
@@ -139,14 +133,37 @@ fn build_expanded(
     // after running type_builder::build_expanded (since they depend on expanded GqlTypes (note the next ones do not access resolved_types))
     order_by_type_builder::build_expanded(building);
     predicate_builder::build_expanded(building);
-    argument_builder::build_expanded(building);
 
     // Finally expand queries, mutations, and service methods
     query_builder::build_expanded(building);
     mutation_builder::build_expanded(building);
-    service_builder::build_expanded(building);
 
-    interceptor_weaver::weave_interceptors(resolved_system, building);
+    Ok(())
+}
+
+fn build_expanded_service(
+    resolved_system: &ResolvedSystem,
+    building: &mut SystemContextBuilding,
+) -> Result<(), ParserError> {
+    let resolved_methods = &resolved_system
+        .services
+        .iter()
+        .map(|(_, s)| s.methods.iter().collect::<Vec<_>>())
+        .collect::<Vec<_>>()
+        .concat();
+
+    type_builder::build_service_expanded(
+        resolved_methods,
+        ResolvedTypeEnv {
+            resolved_primitive_types: &resolved_system.primitive_types,
+            resolved_subsystem_types: &resolved_system.service_types,
+        },
+        building,
+    )?;
+
+    argument_builder::build_expanded(building);
+
+    service_builder::build_expanded(building);
 
     Ok(())
 }
@@ -187,12 +204,10 @@ impl SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
-    use codemap::CodeMap;
     use payas_model::model::mapped_arena::SerializableSlab;
     use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;
-    use crate::parser;
 
     #[test]
     fn optional_fields() {
@@ -408,8 +423,6 @@ mod tests {
     }
 
     fn create_system(src: &str) -> ModelSystem {
-        let mut codemap = CodeMap::new();
-        let parsed = parser::parse_str(src, &mut codemap, "input.clay").unwrap();
-        build(parsed).unwrap()
+        crate::build_system_from_str(src, "input.clay".to_string()).unwrap()
     }
 }

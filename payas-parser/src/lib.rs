@@ -22,6 +22,7 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
     );
 
     parser::parse_file(&model_file, &mut codemap)
+        .and_then(typechecker::build)
         .and_then(builder::build)
         .map_err(|err| {
             let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
@@ -44,6 +45,7 @@ pub fn build_system_from_str(
     codemap.add_file(file_name.clone(), model_str.to_string());
 
     parser::parse_str(model_str, &mut codemap, &file_name)
+        .and_then(typechecker::build)
         .and_then(builder::build)
         .map_err(|err| {
             let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
