@@ -5,12 +5,13 @@ use codemap_diagnostic::{ColorConfig, Emitter};
 use error::ParserError;
 use payas_model::model::system::ModelSystem;
 
-mod ast;
 mod builder;
 pub(crate) mod error;
 mod parser;
 mod typechecker;
 mod util;
+
+use payas_core_model_builder::ast;
 
 /// Build a model system from a clay file
 pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserError> {

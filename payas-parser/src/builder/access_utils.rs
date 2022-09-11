@@ -7,12 +7,12 @@ use payas_model::model::{
     GqlCompositeType, GqlFieldType, GqlTypeKind,
 };
 
-use crate::{
+use payas_core_model_builder::{
     ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
-    builder::column_path_utils,
-    error::ParserError,
     typechecker::Typed,
 };
+
+use crate::{builder::column_path_utils, error::ParserError};
 
 use super::system_builder::SystemContextBuilding;
 

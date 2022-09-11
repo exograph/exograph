@@ -19,6 +19,7 @@ wildmatch = "2.1.0"
 thiserror = "1.0.30"
 payas-model = { path = "../payas-model" }
 payas-sql = { path = "../payas-sql" }
+payas-core-model-builder = { path = "../payas-core-plugin/payas-core-model-builder" }
 
 [build-dependencies]
 cc = "*"

@@ -10,22 +10,22 @@ use super::naming::{ToPlural, ToTableName};
 use super::type_builder::ResolvedTypeEnv;
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model_builder::typechecker::annotation_map::AnnotationMap;
+use payas_core_model_builder::typechecker::typ::{PrimitiveType, Type};
+use payas_core_model_builder::typechecker::Typed;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::GqlTypeModifier;
 
+use crate::typechecker::annotation_map::AnnotationMapImpl;
+
 use crate::ast::ast_types::{
-    AstAnnotationParams, AstArgument, AstFieldDefault, AstFieldDefaultKind, AstFieldType,
-    AstMethodType, AstService,
+    AstAnnotationParams, AstArgument, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind,
+    AstFieldType, AstMethodType, AstModel, AstModelKind, AstService,
 };
 use crate::builder::service_skeleton_generator;
 use crate::error::ParserError;
 use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
-use crate::typechecker::AnnotationMap;
-use crate::{
-    ast::ast_types::{AstExpr, AstField, AstModel, AstModelKind},
-    typechecker::{PrimitiveType, Type, Typed},
-    util::null_span,
-};
+use crate::util::null_span;
 use heck::ToSnakeCase;
 use serde::{Deserialize, Serialize};
 
@@ -507,7 +507,6 @@ fn resolve_shallow_services(
 fn resolve_shallow_service(
     service: &AstService<Typed>,
     types: &MappedArena<Type>,
-
     errors: &mut Vec<Diagnostic>,
     resolved_services: &mut MappedArena<ResolvedService>,
 ) -> Result<(), ParserError> {

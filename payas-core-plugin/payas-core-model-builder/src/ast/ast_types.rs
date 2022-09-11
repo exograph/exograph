@@ -8,6 +8,8 @@ use std::{
 use codemap::{CodeMap, Span};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
+use crate::typechecker::Typed;
+
 pub trait NodeTypedness
 where
     Self::FieldSelection: Serialize + DeserializeOwned + std::fmt::Debug + Clone + PartialEq,
@@ -209,6 +211,22 @@ pub enum AstAnnotationParams<T: NodeTypedness> {
         #[serde(skip_deserializing)]
         HashMap<String, Vec<Span>>, // store as Vec to check for duplicates later on
     ),
+}
+
+impl AstAnnotationParams<Typed> {
+    pub fn as_single(&self) -> &AstExpr<Typed> {
+        match self {
+            Self::Single(expr, _) => expr,
+            _ => panic!(),
+        }
+    }
+
+    pub fn as_map(&self) -> &HashMap<String, AstExpr<Typed>> {
+        match self {
+            Self::Map(map, _) => map,
+            _ => panic!(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

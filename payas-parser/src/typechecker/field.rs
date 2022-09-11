@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model_builder::typechecker::annotation::{AnnotationSpec, AnnotationTarget};
+use payas_core_model_builder::typechecker::annotation_map::AnnotationMap;
+use payas_core_model_builder::typechecker::Typed;
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{
@@ -8,8 +11,8 @@ use crate::ast::ast_types::{
 };
 use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 
-use super::annotation::{AnnotationSpec, AnnotationTarget};
-use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed};
+use super::annotation_map::AnnotationMapImpl;
+use super::{Scope, Type, TypecheckFrom};
 
 impl TypecheckFrom<AstField<Untyped>> for AstField<Typed> {
     fn shallow(untyped: &AstField<Untyped>) -> AstField<Typed> {

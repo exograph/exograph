@@ -1,12 +1,10 @@
 use std::io::Write;
 use std::{fs::File, path::Path};
 
-use crate::ast::ast_types::AstArgument;
-use crate::{
-    ast::ast_types::{AstFieldType, AstModel, AstService},
-    error::ParserError,
-    typechecker::Typed,
-};
+use payas_core_model_builder::ast::ast_types::{AstArgument, AstFieldType, AstModel, AstService};
+use payas_core_model_builder::typechecker::Typed;
+
+use crate::error::ParserError;
 
 // Temporary. Eventually, we will have a published artifact (at https://deno.land/x/claytip@<version>) that contains this code.
 // Then, we will have this imported in each generated service code (currently, it suffices to just have it in the same directory as the service code).

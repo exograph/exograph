@@ -1,3 +1,4 @@
+use payas_core_model_builder::typechecker::{typ::PrimitiveType, Typed};
 use payas_model::model::{
     access::Access,
     column_id::ColumnId,
@@ -18,10 +19,8 @@ use super::{
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
 use crate::{
-    ast::ast_types::AstExpr,
-    builder::resolved_builder::ResolvedCompositeTypeKind,
+    ast::ast_types::AstExpr, builder::resolved_builder::ResolvedCompositeTypeKind,
     error::ParserError,
-    typechecker::{PrimitiveType, Typed},
 };
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};

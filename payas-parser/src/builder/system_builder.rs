@@ -1,3 +1,4 @@
+use payas_core_model_builder::typechecker::typ::Type;
 use payas_model::model::{
     argument::ArgumentParameterType,
     interceptor::Interceptor,
@@ -11,7 +12,6 @@ use payas_model::model::{
     ContextType,
 };
 
-use crate::typechecker::Type;
 use payas_sql::PhysicalTable;
 
 use super::{

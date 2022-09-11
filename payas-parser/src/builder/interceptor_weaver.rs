@@ -1,14 +1,13 @@
+use payas_core_model_builder::{
+    ast::ast_types::{AstExpr, LogicalOp},
+    typechecker::Typed,
+};
 use payas_model::model::{
     interceptor::Interceptor, mapped_arena::MappedArena, operation::Interceptors,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use typed_generational_arena::{IgnoreGeneration, Index};
 use wildmatch::WildMatch;
-
-use crate::{
-    ast::ast_types::{AstExpr, LogicalOp},
-    typechecker::Typed,
-};
 
 use super::{resolved_builder::ResolvedSystem, system_builder::SystemContextBuilding};
 
