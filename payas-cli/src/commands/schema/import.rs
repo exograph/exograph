@@ -3,7 +3,7 @@
 use anyhow::Result;
 use payas_sql::schema::issue::WithIssues;
 use payas_sql::{schema::spec::SchemaSpec, Database};
-use std::{fs::File, io::Write, path::PathBuf, time::SystemTime};
+use std::{io::Write, path::PathBuf, time::SystemTime};
 
 use heck::ToUpperCamelCase;
 
@@ -11,6 +11,7 @@ use payas_sql::schema::issue::Issue;
 use payas_sql::{PhysicalColumn, PhysicalColumnType, PhysicalTable};
 
 use crate::commands::command::Command;
+use crate::util::open_file_for_output;
 
 /// Create a claytip model file based on a database schema
 pub struct ImportCommand {
@@ -33,17 +34,13 @@ impl Command for ImportCommand {
         issues.append(&mut schema.issues);
         issues.append(&mut model.issues);
 
-        if self.output.exists() {
-            Err(anyhow::anyhow!("File {} already exists. Rerun after removing that file or specify a different output file using the -o option", self.output.display()))
-        } else {
-            File::create(&self.output)?.write_all(schema.value.to_model().value.as_bytes())?;
-            for issue in &issues {
-                println!("{}", issue);
-            }
-
-            println!("\nClaytip model written to `{}`", self.output.display());
-            Ok(())
+        open_file_for_output(&self.output)?.write_all(schema.value.to_model().value.as_bytes())?;
+        for issue in &issues {
+            println!("{}", issue);
         }
+
+        println!("\nClaytip model written to `{}`", self.output.display());
+        Ok(())
     }
 }
 

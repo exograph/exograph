@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use async_graphql_value::indexmap::IndexMap;
 use payas_deno::Arg;
 use payas_model::model::{interceptor::Interceptor, system::ModelSystem};
 use payas_resolver_core::{
@@ -33,7 +32,7 @@ pub async fn execute_interceptor<'a>(
     let script = &system.scripts[interceptor.script];
 
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
-        &HashMap::new(),
+        &IndexMap::new(),
         &interceptor.arguments,
         system,
         &resolve_operation,

@@ -1,0 +1,107 @@
+---
+source: payas-server-core/src/graphql/validation/document_validator.rs
+expression: "validator.validate(create_query_document(r#\"\n                query {\n                    concerts(where: {and: [{id: {gt: 1}}, {id: {lt: 3}}]}) {\n                        id\n                        title\n                        venue {\n                            id\n                            name\n                        }\n                    }\n                }\n            \"#))"
+---
+Ok(
+    ValidatedOperation {
+        name: None,
+        typ: Query,
+        fields: [
+            ValidatedField {
+                alias: None,
+                name: Name(
+                    "concerts",
+                ),
+                arguments: {
+                    "where": Object(
+                        {
+                            Name(
+                                "and",
+                            ): List(
+                                [
+                                    Object(
+                                        {
+                                            Name(
+                                                "id",
+                                            ): Object(
+                                                {
+                                                    Name(
+                                                        "gt",
+                                                    ): Number(
+                                                        Number(
+                                                            1,
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    Object(
+                                        {
+                                            Name(
+                                                "id",
+                                            ): Object(
+                                                {
+                                                    Name(
+                                                        "lt",
+                                                    ): Number(
+                                                        Number(
+                                                            3,
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                ],
+                            ),
+                        },
+                    ),
+                },
+                subfields: [
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "id",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "title",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "venue",
+                        ),
+                        arguments: {},
+                        subfields: [
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "id",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "name",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+)

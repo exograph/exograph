@@ -1,8 +1,8 @@
 use super::naming::ToGqlQueryName;
-use payas_model::model::limit_offset::OffsetParameter;
+use payas_model::model::limit_offset::{LimitParameterType, OffsetParameter, OffsetParameterType};
 use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::operation::{DatabaseQueryParameter, Interceptors, QueryKind};
-use payas_model::model::predicate::ColumnIdPathLink;
+use payas_model::model::predicate::{ColumnIdPathLink, PredicateParameterTypeWithModifier};
 use payas_model::model::{
     limit_offset::LimitParameter,
     mapped_arena::MappedArena,
@@ -120,11 +120,13 @@ pub fn pk_predicate_param(
     PredicateParameter {
         name: pk_field.name.to_string(),
         type_name: pk_field.typ.type_name().to_string(),
-        type_id: building
-            .predicate_types
-            .get_id(pk_field.typ.type_name())
-            .unwrap(),
-        type_modifier: GqlTypeModifier::NonNull,
+        typ: PredicateParameterTypeWithModifier {
+            type_id: building
+                .predicate_types
+                .get_id(pk_field.typ.type_name())
+                .unwrap(),
+            type_modifier: GqlTypeModifier::NonNull,
+        },
         column_path_link: pk_field
             .relation
             .self_column()
@@ -189,9 +191,11 @@ pub fn limit_param(building: &SystemContextBuilding) -> LimitParameter {
 
     LimitParameter {
         name: "limit".to_string(),
-        type_name: param_type_name.clone(),
-        type_id: building.types.get_id(&param_type_name).unwrap(),
-        type_modifier: GqlTypeModifier::Optional,
+        typ: LimitParameterType {
+            type_name: param_type_name.clone(),
+            type_id: building.types.get_id(&param_type_name).unwrap(),
+            type_modifier: GqlTypeModifier::Optional,
+        },
     }
 }
 
@@ -200,9 +204,11 @@ pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
 
     OffsetParameter {
         name: "offset".to_string(),
-        type_name: param_type_name.clone(),
-        type_id: building.types.get_id(&param_type_name).unwrap(),
-        type_modifier: GqlTypeModifier::Optional,
+        typ: OffsetParameterType {
+            type_name: param_type_name.clone(),
+            type_id: building.types.get_id(&param_type_name).unwrap(),
+            type_modifier: GqlTypeModifier::Optional,
+        },
     }
 }
 
@@ -215,8 +221,10 @@ pub fn collection_predicate_param(
     PredicateParameter {
         name: "where".to_string(),
         type_name: param_type_name.clone(),
-        type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-        type_modifier: GqlTypeModifier::Optional,
+        typ: PredicateParameterTypeWithModifier {
+            type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
+            type_modifier: GqlTypeModifier::Optional,
+        },
         column_path_link: None,
         underlying_type_id: model_type_id,
     }

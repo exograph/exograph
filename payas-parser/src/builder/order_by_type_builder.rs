@@ -1,7 +1,7 @@
 use payas_model::model::{
     mapped_arena::{MappedArena, SerializableSlabIndex},
     order::OrderByParameter,
-    order::{OrderByParameterType, OrderByParameterTypeKind},
+    order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWithModifier},
     predicate::ColumnIdPathLink,
     types::{GqlCompositeType, GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
 };
@@ -91,18 +91,20 @@ fn new_param(
     OrderByParameter {
         name: name.to_string(),
         type_name: param_type_name,
-        type_id: param_type_id,
-        // Specifying ModelTypeModifier::List allows queries such as:
-        // order_by: [{name: ASC}, {id: DESC}]
-        // Using a List is the only way to maintain ordering within a parameter value
-        // (the order within an object is not guaranteed to be maintained (and the graphql-parser uses BTreeMap that doesn't maintain so))
-        //
-        // But this also allows nonsensical queries such as
-        // order_by: [{name: ASC, id: DESC}].
-        // Here the user intention is the same as the query above, but we cannot honor that intention
-        // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
-        // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
-        type_modifier: GqlTypeModifier::List,
+        typ: OrderByParameterTypeWithModifier {
+            type_id: param_type_id,
+            // Specifying ModelTypeModifier::List allows queries such as:
+            // order_by: [{name: ASC}, {id: DESC}]
+            // Using a List is the only way to maintain ordering within a parameter value
+            // (the order within an object is not guaranteed to be maintained (and the graphql-parser uses BTreeMap that doesn't maintain so))
+            //
+            // But this also allows nonsensical queries such as
+            // order_by: [{name: ASC, id: DESC}].
+            // Here the user intention is the same as the query above, but we cannot honor that intention
+            // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
+            // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
+            type_modifier: GqlTypeModifier::List,
+        },
         column_path_link,
     }
 }

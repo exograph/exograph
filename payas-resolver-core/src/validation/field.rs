@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use async_graphql_value::{ConstValue, Name};
+use async_graphql_value::{indexmap::IndexMap, ConstValue, Name};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -9,7 +7,7 @@ pub struct ValidatedField {
     /// The name of the field.
     pub name: Name,
     /// The arguments to the field, empty if no arguments are provided.
-    pub arguments: HashMap<String, ConstValue>,
+    pub arguments: IndexMap<String, ConstValue>,
 
     /// The subfields being selected in this field, if it is an object. Empty if no fields are
     /// being selected.

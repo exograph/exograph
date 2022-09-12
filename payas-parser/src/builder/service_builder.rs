@@ -1,6 +1,6 @@
 use payas_model::model::{
     access::Access,
-    argument::ArgumentParameter,
+    argument::{ArgumentParameter, ArgumentParameterTypeWithModifier},
     interceptor::{Interceptor, InterceptorKind},
     mapped_arena::{MappedArena, SerializableSlabIndex},
     operation::{Interceptors, Mutation, MutationKind, OperationReturnType, Query, QueryKind},
@@ -199,18 +199,22 @@ fn argument_param(
             if let Some(input_type_id) = input_type_id {
                 ArgumentParameter {
                     name: arg.name.clone(),
-                    type_name: input_name,
-                    type_id: Some(input_type_id),
-                    type_modifier,
+                    typ: ArgumentParameterTypeWithModifier {
+                        type_name: input_name,
+                        type_id: Some(input_type_id),
+                        type_modifier,
+                    },
                 }
             } else {
                 // argument must be a primitive type
 
                 ArgumentParameter {
                     name: arg.name.clone(),
-                    type_name: arg_typename.to_string(),
-                    type_id: None,
-                    type_modifier,
+                    typ: ArgumentParameterTypeWithModifier {
+                        type_name: arg_typename.to_string(),
+                        type_id: None,
+                        type_modifier,
+                    },
                 }
             }
         })
