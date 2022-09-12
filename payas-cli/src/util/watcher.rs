@@ -46,7 +46,7 @@ where
         !matches!(path.extension().and_then(|e| e.to_str()), Some("claypot"))
     }
 
-    let start_server = || {
+    let build_and_start_server = || {
         build(&absolute_path, None, false).and_then(|_| {
             if let Err(e) = prestart_callback() {
                 println!("Error: {}", e);
@@ -61,26 +61,34 @@ where
         })
     };
 
-    let mut server = start_server();
+    let mut server = build_and_start_server();
 
     loop {
         if crate::SIGINT.load(Ordering::SeqCst) {
             break;
         }
 
+        if let Ok(child) = server.as_mut() {
+            if let Ok(Some(_)) = child.try_wait() {
+                // server has exited for some reason, break out of loop so we can exit
+                break;
+            }
+        }
+
+        // block loop for 500ms
         match rx.recv_timeout(Duration::from_millis(500)) {
             Ok(event) => match &event {
                 DebouncedEvent::Create(path) | DebouncedEvent::Write(path) => {
                     if should_restart(path) {
                         println!("Change detected, rebuilding and restarting...");
 
-                        if let Ok(mut server) = server {
+                        if let Ok(server) = server.as_mut() {
                             if server.kill().is_err() {
                                 println!("Unable to kill server");
                             }
                         }
 
-                        server = start_server();
+                        server = build_and_start_server();
                     }
                 }
                 _ => {}
@@ -96,7 +104,7 @@ where
     }
 
     if let Ok(mut server) = server {
-        server.kill()?;
+        let _ = server.kill();
     }
     Ok(())
 }
