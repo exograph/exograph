@@ -3648,6 +3648,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-database-model-builder"
+version = "0.1.0"
+dependencies = [
+ "codemap",
+ "codemap-diagnostic",
+ "heck",
+ "lazy_static",
+ "payas-core-model-builder",
+ "payas-model",
+ "payas-sql",
+ "serde",
+ "thiserror",
+ "typed-generational-arena",
+ "wildmatch",
+]
+
+[[package]]
 name = "payas-deno"
 version = "0.1.0"
 dependencies = [
@@ -3680,10 +3697,10 @@ dependencies = [
  "cc",
  "codemap",
  "codemap-diagnostic",
- "heck",
  "insta",
  "lazy_static",
  "payas-core-model-builder",
+ "payas-database-model-builder",
  "payas-model",
  "payas-sql",
  "serde",

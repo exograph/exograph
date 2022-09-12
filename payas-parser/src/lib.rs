@@ -3,9 +3,9 @@ use std::{fs, path::Path};
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 use error::ParserError;
+use payas_database_model_builder::builder;
 use payas_model::model::system::ModelSystem;
 
-mod builder;
 pub(crate) mod error;
 mod parser;
 mod typechecker;
@@ -24,7 +24,7 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
 
     parser::parse_file(&model_file, &mut codemap)
         .and_then(typechecker::build)
-        .and_then(builder::build)
+        .and_then(|types| builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
             let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
             if let ParserError::Diagnosis(err) = err {
@@ -47,7 +47,7 @@ pub fn build_system_from_str(
 
     parser::parse_str(model_str, &mut codemap, &file_name)
         .and_then(typechecker::build)
-        .and_then(builder::build)
+        .and_then(|types| builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
             let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 

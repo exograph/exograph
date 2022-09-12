@@ -12,7 +12,7 @@ use payas_core_model_builder::{
     typechecker::Typed,
 };
 
-use crate::{builder::column_path_utils, error::ParserError};
+use crate::{builder::column_path_utils, error::ModelBuildingError};
 
 use super::system_builder::SystemContextBuilding;
 
@@ -25,7 +25,7 @@ pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
     self_type_info: Option<&GqlCompositeType>,
     building: &SystemContextBuilding,
-) -> Result<AccessPredicateExpression, ParserError> {
+) -> Result<AccessPredicateExpression, ModelBuildingError> {
     match expr {
         AstExpr::FieldSelection(selection) => {
             match compute_selection(selection, self_type_info, building) {
@@ -33,7 +33,7 @@ pub fn compute_predicate_expression(
                     if column_type.base_type(&building.primitive_types.values).name == "Boolean" {
                         Ok(AccessPredicateExpression::BooleanColumn(column_path))
                     } else {
-                        Err(ParserError::Generic(
+                        Err(ModelBuildingError::Generic(
                             "Field selection must be a boolean".to_string(),
                         ))
                     }
@@ -44,7 +44,7 @@ pub fn compute_predicate_expression(
                             context_selection,
                         ))
                     } else {
-                        Err(ParserError::Generic(
+                        Err(ModelBuildingError::Generic(
                             "Context selection must be a boolean".to_string(),
                         ))
                     }
@@ -93,7 +93,7 @@ pub fn compute_predicate_expression(
         }
         AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
 
-        _ => Err(ParserError::Generic(
+        _ => Err(ModelBuildingError::Generic(
             "Unsupported expression type".to_string(),
         )), // String or NumberLiteral cannot be used as a top-level expression in access rules
     }

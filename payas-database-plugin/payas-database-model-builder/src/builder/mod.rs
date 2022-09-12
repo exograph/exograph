@@ -32,6 +32,10 @@ use self::{
     system_builder::SystemContextBuilding,
 };
 
+pub const DEFAULT_FN_AUTOINCREMENT: &str = "autoincrement";
+pub const DEFAULT_FN_CURRENT_TIME: &str = "now";
+pub const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
+
 // TODO: Ensure it works for all builders (this one makes the assumption that it is building only input types)
 // TODO: Abstract out build_expanded (currently loops in it are repeated in each implementation)
 

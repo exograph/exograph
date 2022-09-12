@@ -6,7 +6,9 @@ use payas_core_model_builder::typechecker::Typed;
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, AstFieldDefault, AstFieldDefaultKind, Untyped};
-use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
+use payas_database_model_builder::builder::{
+    DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID,
+};
 
 use super::{Scope, Type, TypecheckFrom};
 

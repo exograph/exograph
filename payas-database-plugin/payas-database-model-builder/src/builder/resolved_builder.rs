@@ -8,7 +8,7 @@ use std::io::Write;
 
 use super::naming::{ToPlural, ToTableName};
 use super::type_builder::ResolvedTypeEnv;
-use codemap::Span;
+use codemap::{CodeMap, Span};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_core_model_builder::typechecker::annotation_map::AnnotationMap;
 use payas_core_model_builder::typechecker::typ::{PrimitiveType, Type};
@@ -16,18 +16,21 @@ use payas_core_model_builder::typechecker::Typed;
 use payas_model::model::mapped_arena::MappedArena;
 use payas_model::model::GqlTypeModifier;
 
-use crate::typechecker::annotation_map::AnnotationMapImpl;
-
-use crate::ast::ast_types::{
-    AstAnnotationParams, AstArgument, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind,
-    AstFieldType, AstMethodType, AstModel, AstModelKind, AstService,
-};
+use super::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 use crate::builder::service_skeleton_generator;
-use crate::error::ParserError;
-use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
-use crate::util::null_span;
+use crate::error::ModelBuildingError;
 use heck::ToSnakeCase;
+use payas_core_model_builder::ast::ast_types::{
+    AstAnnotation, AstAnnotationParams, AstArgument, AstExpr, AstField, AstFieldDefault,
+    AstFieldDefaultKind, AstFieldType, AstMethodType, AstModel, AstModelKind, AstService,
+};
 use serde::{Deserialize, Serialize};
+
+pub fn null_span() -> Span {
+    let mut codemap = CodeMap::new();
+    let file = codemap.add_file("".to_string(), "".to_string());
+    file.span
+}
 
 /// Consume typed-checked types and build resolved types
 #[derive(Deserialize, Serialize)]
@@ -371,7 +374,7 @@ impl ResolvedFieldType {
     }
 }
 
-pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem, ParserError> {
+pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem, ModelBuildingError> {
     let mut errors = Vec::new();
 
     let resolved_system = resolve(&types, &mut errors)?;
@@ -379,14 +382,44 @@ pub fn build(types: MappedArena<Type>) -> Result<ResolvedSystem, ParserError> {
     if errors.is_empty() {
         Ok(resolved_system)
     } else {
-        Err(ParserError::Diagnosis(errors))
+        Err(ModelBuildingError::Diagnosis(errors))
+    }
+}
+
+trait AnnotationMapHelper {
+    fn get<'a>(&'a self, field_name: &str) -> Option<&'a AstAnnotationParams<Typed>>;
+
+    fn contains(&self, field_name: &str) -> bool {
+        self.get(field_name).is_some()
+    }
+
+    fn iter(&self) -> std::collections::hash_map::Iter<'_, String, AstAnnotation<Typed>>;
+}
+
+impl AnnotationMapHelper for AnnotationMap {
+    fn get<'a>(&'a self, field_name: &str) -> Option<&'a AstAnnotationParams<Typed>> {
+        self.annotations.get(field_name).map(|a| &a.params)
+    }
+
+    fn iter(&self) -> std::collections::hash_map::Iter<'_, String, AstAnnotation<Typed>> {
+        self.annotations.iter()
+    }
+}
+
+trait AstAnnotationHelper {
+    fn as_single(&self) -> String;
+}
+
+impl AstAnnotationHelper for AstAnnotation<Typed> {
+    fn as_single(&self) -> String {
+        self.params.as_single().as_string()
     }
 }
 
 fn resolve(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-) -> Result<ResolvedSystem, ParserError> {
+) -> Result<ResolvedSystem, ModelBuildingError> {
     Ok(ResolvedSystem {
         primitive_types: resolve_primitive_types(types)?,
         database_types: resolve_persistent_types(types, errors)?,
@@ -398,7 +431,7 @@ fn resolve(
 
 fn resolve_primitive_types(
     types: &MappedArena<Type>,
-) -> Result<MappedArena<ResolvedType>, ParserError> {
+) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut resolved_primitive_types: MappedArena<ResolvedType> = MappedArena::default();
 
     for (_, typ) in types.iter() {
@@ -413,7 +446,7 @@ fn resolve_primitive_types(
 fn resolve_shallow_contexts(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-) -> Result<MappedArena<ResolvedContext>, ParserError> {
+) -> Result<MappedArena<ResolvedContext>, ModelBuildingError> {
     let mut resolved_contexts: MappedArena<ResolvedContext> = MappedArena::default();
 
     for (_, typ) in types.iter() {
@@ -447,7 +480,7 @@ fn resolve_shallow_contexts(
 
 fn resolve_service_types(
     types: &MappedArena<Type>,
-) -> Result<MappedArena<ResolvedType>, ParserError> {
+) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
 
     for (_, typ) in types.iter() {
@@ -492,7 +525,7 @@ fn resolve_service_types(
 fn resolve_shallow_services(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-) -> Result<MappedArena<ResolvedService>, ParserError> {
+) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
     for (_, typ) in types.iter() {
@@ -509,7 +542,7 @@ fn resolve_shallow_service(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
     resolved_services: &mut MappedArena<ResolvedService>,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     let module_path = match service.annotations.get("external").unwrap() {
         AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
         _ => panic!(),
@@ -529,7 +562,7 @@ fn resolve_shallow_service(
             .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
             .output()
             .map_err(|err| {
-                ParserError::Generic(format!(
+                ModelBuildingError::Generic(format!(
                     "While trying to invoke `deno` in order to bundle .ts files: {}",
                     err
                 ))
@@ -539,13 +572,13 @@ fn resolve_shallow_service(
             bundler_output.stdout
         } else {
             std::io::stdout().write_all(&bundler_output.stderr).unwrap();
-            return Err(ParserError::Generic(
+            return Err(ModelBuildingError::Generic(
                 "Deno bundler did not exit successfully".to_string(),
             ));
         }
     } else {
         std::fs::read(&module_fs_path).map_err(|err| {
-            ParserError::Generic(format!(
+            ModelBuildingError::Generic(format!(
                 "While trying to read bundled service module: {}",
                 err
             ))
@@ -606,7 +639,7 @@ fn resolve_shallow_service(
                     let kind_annots: Vec<_> =
                         kind_annots.into_iter().flatten().collect();
 
-                    fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T, ParserError> {
+                    fn create_diagnostic<T>(message: &str, span: Span, errors: &mut Vec<Diagnostic>,) -> Result<T, ModelBuildingError> {
                         errors.push(
                             Diagnostic {
                                 level: Level::Error,
@@ -618,7 +651,7 @@ fn resolve_shallow_service(
                                     label: None,
                                 }],
                             });
-                        Err(ParserError::Generic(message.to_string()))
+                        Err(ModelBuildingError::Generic(message.to_string()))
                     }
 
                     let kind_annot = match kind_annots.as_slice() {
@@ -631,7 +664,7 @@ fn resolve_shallow_service(
                         ),
                     }?;
 
-                    Result::<ResolvedInterceptor, ParserError>::Ok(ResolvedInterceptor {
+                    Result::<ResolvedInterceptor, ModelBuildingError>::Ok(ResolvedInterceptor {
                         name: i.name.clone(),
                         arguments: i
                             .arguments
@@ -695,7 +728,7 @@ fn build_access(access_annotation_params: Option<&AstAnnotationParams<Typed>>) -
 fn resolve_persistent_types(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-) -> Result<MappedArena<ResolvedType>, ParserError> {
+) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut resolved_database_types: MappedArena<ResolvedType> = MappedArena::default();
 
     for (_, typ) in types.iter() {
@@ -1313,8 +1346,9 @@ fn get_matching_field<'a>(
 ) -> Result<&'a AstField<Typed>, Diagnostic> {
     let user_supplied_column_name = field
         .annotations
+        .annotations
         .get("column")
-        .map(|p| p.as_single().as_string());
+        .map(|p| p.params.as_single().as_string());
 
     let matching_fields: Vec<_> = field_model
         .fields
@@ -1663,7 +1697,7 @@ mod tests {
         });
     }
 
-    fn create_resolved_system(src: &str) -> Result<ResolvedSystem, ParserError> {
+    fn create_resolved_system(src: &str) -> Result<ResolvedSystem, ModelBuildingError> {
         let mut codemap = CodeMap::new();
         let parsed = parser::parse_str(src, &mut codemap, "input.clay")?;
         let types = typechecker::build(parsed)?;

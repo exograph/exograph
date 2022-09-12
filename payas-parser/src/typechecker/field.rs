@@ -9,7 +9,9 @@ use payas_model::model::mapped_arena::MappedArena;
 use crate::ast::ast_types::{
     AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType, Untyped,
 };
-use crate::parser::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
+use payas_database_model_builder::builder::{
+    DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID,
+};
 
 use super::annotation_map::AnnotationMapImpl;
 use super::{Scope, Type, TypecheckFrom};

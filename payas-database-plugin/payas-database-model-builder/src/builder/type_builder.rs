@@ -1,4 +1,7 @@
-use payas_core_model_builder::typechecker::{typ::PrimitiveType, Typed};
+use payas_core_model_builder::{
+    ast::ast_types::AstExpr,
+    typechecker::{typ::PrimitiveType, Typed},
+};
 use payas_model::model::{
     access::Access,
     column_id::ColumnId,
@@ -18,10 +21,7 @@ use super::{
 };
 use super::{resolved_builder::ResolvedCompositeType, system_builder::SystemContextBuilding};
 
-use crate::{
-    ast::ast_types::AstExpr, builder::resolved_builder::ResolvedCompositeTypeKind,
-    error::ParserError,
-};
+use crate::{builder::resolved_builder::ResolvedCompositeTypeKind, error::ModelBuildingError};
 
 use payas_model::model::{GqlField, GqlType, GqlTypeKind};
 
@@ -48,7 +48,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 pub(crate) fn build_persistent_expanded(
     env: ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     for (_, model_type) in env.resolved_subsystem_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
             expand_persistent_type_no_fields(c, building, &env);
@@ -74,7 +74,7 @@ pub(crate) fn build_service_expanded(
     resolved_methods: &[&ResolvedMethod],
     env: ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     for (_, model_type) in env.resolved_subsystem_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
             expand_service_type_no_fields(c, building);
@@ -274,7 +274,7 @@ fn expand_service_type_fields(
 fn expand_type_access(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     let existing_type_id = building.get_id(&resolved_type.name).unwrap();
     let existing_type = match &resolved_type.kind {
         ResolvedCompositeTypeKind::Persistent { .. } => &building.database_types[existing_type_id],
@@ -308,7 +308,7 @@ fn expand_type_access(
 fn expand_method_access(
     resolved_method: &ResolvedMethod,
     building: &mut SystemContextBuilding,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     let existing_method_id = building.methods.get_id(&resolved_method.name).unwrap();
     let expr = compute_access_method(&resolved_method.access, building)?;
     building.methods.values[existing_method_id].access = expr;
@@ -320,7 +320,7 @@ fn compute_access_composite_types(
     resolved: &ResolvedAccess,
     self_type_info: &GqlCompositeType,
     building: &SystemContextBuilding,
-) -> Result<Access, ParserError> {
+) -> Result<Access, ModelBuildingError> {
     let access_expr = |expr: &AstExpr<Typed>| {
         access_utils::compute_predicate_expression(expr, Some(self_type_info), building)
     };
@@ -336,7 +336,7 @@ fn compute_access_composite_types(
 fn compute_access_method(
     resolved: &ResolvedAccess,
     building: &SystemContextBuilding,
-) -> Result<Access, ParserError> {
+) -> Result<Access, ModelBuildingError> {
     let access_expr =
         |expr: &AstExpr<Typed>| access_utils::compute_predicate_expression(expr, None, building);
 

@@ -22,7 +22,7 @@ use super::{
     type_builder::{self, ResolvedTypeEnv},
 };
 
-use crate::error::ParserError;
+use crate::error::ModelBuildingError;
 
 /// Build a [ModelSystem] given an [AstSystem].
 ///
@@ -41,7 +41,7 @@ use crate::error::ParserError;
 /// (this is done in place, so references created from elsewhere remain valid). Since all model
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
-pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, ParserError> {
+pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, ModelBuildingError> {
     let resolved_system = resolved_builder::build(typechecked_system)?;
 
     let mut building = SystemContextBuilding::default();
@@ -117,7 +117,7 @@ fn build_shallow_service(resolved_system: &ResolvedSystem, building: &mut System
 fn build_expanded_database(
     resolved_system: &ResolvedSystem,
     building: &mut SystemContextBuilding,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     // First fully build the model types.
     let resolved_database_types = &resolved_system.database_types;
 
@@ -144,7 +144,7 @@ fn build_expanded_database(
 fn build_expanded_service(
     resolved_system: &ResolvedSystem,
     building: &mut SystemContextBuilding,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     let resolved_methods = &resolved_system
         .services
         .iter()

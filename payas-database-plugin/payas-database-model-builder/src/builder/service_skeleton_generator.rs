@@ -4,7 +4,7 @@ use std::{fs::File, path::Path};
 use payas_core_model_builder::ast::ast_types::{AstArgument, AstFieldType, AstModel, AstService};
 use payas_core_model_builder::typechecker::Typed;
 
-use crate::error::ParserError;
+use crate::error::ModelBuildingError;
 
 // Temporary. Eventually, we will have a published artifact (at https://deno.land/x/claytip@<version>) that contains this code.
 // Then, we will have this imported in each generated service code (currently, it suffices to just have it in the same directory as the service code).
@@ -97,7 +97,7 @@ declare class ClaytipError extends Error {
 pub fn generate_service_skeleton(
     service: &AstService<Typed>,
     out_file: impl AsRef<Path>,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     let is_typescript = out_file
         .as_ref()
         .extension()
@@ -158,7 +158,10 @@ pub fn generate_service_skeleton(
     Ok(())
 }
 
-fn generate_type_skeleton(model: &AstModel<Typed>, out_file: &mut File) -> Result<(), ParserError> {
+fn generate_type_skeleton(
+    model: &AstModel<Typed>,
+    out_file: &mut File,
+) -> Result<(), ModelBuildingError> {
     out_file.write_all(format!("interface {} {{\n", model.name).as_bytes())?;
 
     for field in model.fields.iter() {
@@ -186,7 +189,7 @@ fn generate_method_skeleton(
     return_type: Option<&AstFieldType<Typed>>,
     out_file: &mut File,
     is_typescript: bool,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     // We put `async` in a comment as an indication to the user that it is okay to have async functions
     out_file.write_all("export async function ".as_bytes())?;
     out_file.write_all(name.as_bytes())?;
@@ -216,7 +219,7 @@ fn generate_arguments_skeleton(
     arguments: &[AstArgument<Typed>],
     out_file: &mut File,
     is_typescript: bool,
-) -> Result<(), ParserError> {
+) -> Result<(), ModelBuildingError> {
     let args_str = arguments
         .iter()
         .map(|argument| generate_field(&argument.name, &argument.typ, is_typescript))
