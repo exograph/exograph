@@ -211,7 +211,7 @@ fn main() -> Result<()> {
             }),
             Some(("verify", matches)) => Box::new(schema::verify::VerifyCommand {
                 model: get_required(matches, "model")?,
-                database: get_required(matches, "database")?,
+                database: get(matches, "database"),
             }),
             Some(("import", matches)) => Box::new(schema::import::ImportCommand {
                 output: get_required(matches, "output")?,
