@@ -33,7 +33,7 @@ impl Command for MigrateCommand {
             let old_schema = SchemaSpec::from_db(&client).await?;
 
             for issue in &old_schema.issues {
-                println!("{}", issue);
+                eprintln!("{}", issue);
             }
 
             let new_system = payas_parser::build_system(&self.model)?;

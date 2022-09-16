@@ -38,11 +38,11 @@ impl Command for ImportCommand {
         buffer.write_all(schema.value.to_model().value.as_bytes())?;
 
         for issue in &issues {
-            println!("{}", issue);
+            eprintln!("{}", issue);
         }
 
         if let Some(output) = &self.output {
-            println!("\nClaytip model written to `{}`", output.display());
+            eprintln!("\nClaytip model written to `{}`", output.display());
         }
 
         Ok(())
