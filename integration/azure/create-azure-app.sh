@@ -132,7 +132,6 @@ az postgres server firewall-rule create \
 set +x
 
 echo ""
-echo "A new Azure database instance was successfully set up, along with \`$postgresServer\`. Please initialize it with your schema:"
-echo "$ clay schema create model.clay | psql \"$postgresConnectionString\""
-echo ""
-echo "A new firewall rule was created for \`$currentOutgoingIp\` (your current outgoing IP)"
+echo "- A new Azure database instance was successfully set up, along with \`$appname\`. Please initialize it with your schema:"
+echo "  \$ clay schema create model.clay | psql \"$postgresConnectionString\""
+echo "- A new firewall rule was created for the instance, allowing \`$currentOutgoingIp\` to connect (your current outgoing IP)"
