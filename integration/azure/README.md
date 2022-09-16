@@ -1,6 +1,15 @@
 This is an example workflow to show how to deploy Claytip as an Azure function.
 
-0. `cd` into this directory on a shell.
+# Prerequisites
+
+- Docker
+- azure-cli
+- azure-functions-core-tools
+
+# Getting started
+
+0. `cd` into this directory on a shell. Make sure you are logged into Azure:
+   `az login`.
 1. Run `./create-azure-app.sh` to create a function app in Azure and follow the
    interactive instructions.
 2. If needed, create a database and set `CLAY_DATABASE_URL` as an application
@@ -13,7 +22,8 @@ This is an example workflow to show how to deploy Claytip as an Azure function.
    ```
    $ ./deploy.sh --appname <your function app's name> -c example.clay
    ```
-5. Visit the `ClaytipApi` invoke url printed in the console to access the playground:
+5. Visit the `ClaytipApi` invoke url printed in the console to access the
+   playground:
    ```
    ...
    Deployment completed successfully.
