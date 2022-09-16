@@ -19,10 +19,11 @@ const DEFAULT_MODEL_FILE: &str = "index.clay";
 pub static SIGINT: AtomicBool = AtomicBool::new(false);
 pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
-fn required_model_file_arg() -> Arg<'static> {
+fn model_file_arg() -> Arg<'static> {
     Arg::new("model")
         .help("The path to the Claytip model file.")
-        .required(true)
+        .hide_default_value(false)
+        .required(false)
         .value_parser(clap::value_parser!(PathBuf))
         .default_value(DEFAULT_MODEL_FILE)
         .index(1)
@@ -82,7 +83,7 @@ fn main() -> Result<()> {
         .subcommand(
             Command::new("build")
                 .about("Build claytip server binary")
-                .arg(required_model_file_arg()),
+                .arg(model_file_arg()),
         )
         .subcommand(
             Command::new("schema")
@@ -92,19 +93,19 @@ fn main() -> Result<()> {
                 .subcommand(
                     Command::new("create")
                         .about("Create a database schema from a Claytip model")
-                        .arg(required_model_file_arg())
+                        .arg(model_file_arg())
                         .arg(output_arg())
                 )
                 .subcommand(
                     Command::new("verify")
                         .about("Verify that the database schema is compatible with a Claytip model")
-                        .arg(required_model_file_arg())
+                        .arg(model_file_arg())
                         .arg(database_arg())
                 )
                 .subcommand(
                     Command::new("migrate")
                         .about("Produces a SQL migration script for a Claytip model and the specified database")
-                        .arg(required_model_file_arg())
+                        .arg(model_file_arg())
                         .arg(database_arg())
                         .arg(output_arg())
                         .arg(
@@ -126,7 +127,7 @@ fn main() -> Result<()> {
         .subcommand(
             Command::new("serve")
                 .about("Run claytip server in development mode")
-                .arg(required_model_file_arg())
+                .arg(model_file_arg())
                 .arg(port_arg()),
         )
         .subcommand(
@@ -149,7 +150,7 @@ fn main() -> Result<()> {
         .subcommand(
             Command::new("yolo")
                 .about("Run local claytip server with a temporary database")
-                .arg(required_model_file_arg())
+                .arg(model_file_arg())
                 .arg(port_arg()),
         )
         .get_matches();
