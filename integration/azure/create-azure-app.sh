@@ -8,6 +8,12 @@ NC='\033[0m' # No Color
 # check if azure-cli is logged in
 az account show > /dev/null
 
+# check that jq is installed
+if ! command -v jq &> /dev/null; then
+    echo "Please install \`jq\`."
+    exit 1
+fi
+
 function queryUser () {
     QUERY=$1
     DEFAULT_RESPONSE=$2
