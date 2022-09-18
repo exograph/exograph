@@ -108,7 +108,6 @@ pub struct SystemContextBuilding {
     // break this into subsystems
     pub queries: MappedArena<Query>,
 
-    pub mutation_types: MappedArena<GqlType>,
     pub mutations: MappedArena<Mutation>,
     pub methods: MappedArena<ServiceMethod>,
     pub interceptors: MappedArena<Interceptor>,

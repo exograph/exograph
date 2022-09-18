@@ -63,7 +63,7 @@ fn expand_service_type_no_fields(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
-    if let ResolvedCompositeTypeKind::NonPersistent { .. } = &resolved_type.kind {
+    if let ResolvedCompositeTypeKind::NonPersistent { is_input, .. } = &resolved_type.kind {
         let kind = GqlTypeKind::Composite(GqlCompositeType {
             fields: vec![],
             kind: GqlCompositeTypeKind::NonPersistent,
@@ -73,10 +73,7 @@ fn expand_service_type_no_fields(
         let existing_type_id = building.get_id(&resolved_type.name, resolved_env);
 
         building.service_types.values[existing_type_id.unwrap()].kind = kind;
-        building.service_types.values[existing_type_id.unwrap()].is_input = matches!(
-            &resolved_type.kind,
-            ResolvedCompositeTypeKind::NonPersistent { is_input: true }
-        );
+        building.service_types.values[existing_type_id.unwrap()].is_input = *is_input;
     }
 }
 
