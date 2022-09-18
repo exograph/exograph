@@ -1,6 +1,6 @@
-use std::{path::PathBuf, time::SystemTime};
+use std::{io, path::PathBuf, time::SystemTime};
 
-use crate::commands::command::Command;
+use crate::{commands::command::Command, util::open_file_for_output};
 
 use super::migration_helper::migration_statements;
 use anyhow::Result;
@@ -10,10 +10,17 @@ use payas_sql::{schema::spec::SchemaSpec, Database};
 pub struct MigrateCommand {
     pub model: PathBuf,
     pub comment_destructive_changes: bool,
+    pub output: Option<PathBuf>,
 }
 
 impl Command for MigrateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
+        let mut buffer: Box<dyn io::Write> = if let Some(output) = &self.output {
+            Box::new(open_file_for_output(output)?)
+        } else {
+            Box::new(io::stdout())
+        };
+
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_io()
             .build()
@@ -36,9 +43,9 @@ impl Command for MigrateCommand {
 
             for (statement, is_destructive) in statements {
                 if is_destructive && self.comment_destructive_changes {
-                    print!("-- ");
+                    write!(buffer, "-- ")?;
                 }
-                println!("{}", statement);
+                write!(buffer, "{}", statement)?;
             }
 
             Ok(())

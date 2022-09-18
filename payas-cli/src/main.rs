@@ -5,7 +5,7 @@ use std::{
     time::SystemTime,
 };
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::{Arg, Command};
 use commands::{serve::ServeCommand, test::TestCommand, yolo::YoloCommand};
 
@@ -47,6 +47,7 @@ fn main() -> Result<()> {
                 .arg(
                     Arg::new("model")
                         .help("Claytip model file")
+                        .value_parser(clap::value_parser!(PathBuf))
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
                 ),
@@ -62,6 +63,7 @@ fn main() -> Result<()> {
                         .arg(
                             Arg::new("model")
                                 .help("Claytip model file")
+                                .value_parser(clap::value_parser!(PathBuf))
                                 .default_value(DEFAULT_MODEL_FILE)
                                 .index(1),
                         ),
@@ -72,6 +74,7 @@ fn main() -> Result<()> {
                         .arg(
                             Arg::new("model")
                                 .help("Claytip model file")
+                                .value_parser(clap::value_parser!(PathBuf))
                                 .required(true)
                                 .index(1),
                         )
@@ -95,9 +98,19 @@ fn main() -> Result<()> {
                         .arg(
                             Arg::new("model")
                                 .help("Claytip model file")
+                                .value_parser(clap::value_parser!(PathBuf))
                                 .default_value(DEFAULT_MODEL_FILE)
                                 .index(1),
-                        ),
+                        )
+                        .arg(
+                            Arg::new("output")
+                                .help("If specified, the script will be written to this filename")
+                                .short('o')
+                                .long("output")
+                                .required(false)
+                                .value_parser(clap::value_parser!(PathBuf))
+                                .takes_value(true)
+                        )
                 )
                 .subcommand(
                     Command::new("import")
@@ -107,8 +120,9 @@ fn main() -> Result<()> {
                                 .help("Claytip model output file")
                                 .short('o')
                                 .long("output")
+                                .required(false)
                                 .takes_value(true)
-                                .value_name("output")
+                                .value_parser(clap::value_parser!(PathBuf))
                                 .default_value(DEFAULT_MODEL_FILE),
                         ),
                 ),
@@ -119,6 +133,7 @@ fn main() -> Result<()> {
                 .arg(
                     Arg::new("model")
                         .help("Claytip model file")
+                        .value_parser(clap::value_parser!(PathBuf))
                         .default_value(DEFAULT_MODEL_FILE)
                         .index(1),
                 )
@@ -138,6 +153,7 @@ fn main() -> Result<()> {
                 .arg(
                     Arg::new("dir")
                         .help("Integration test directory")
+                        .value_parser(clap::value_parser!(PathBuf))
                         .required(true)
                         .index(1),
                 )
@@ -155,6 +171,7 @@ fn main() -> Result<()> {
                     Arg::new("model")
                         .help("Claytip model file")
                         .default_value(DEFAULT_MODEL_FILE)
+                        .value_parser(clap::value_parser!(PathBuf))
                         .index(1),
 
                 ).arg(
@@ -169,43 +186,54 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    fn get_path(matches: &clap::ArgMatches, arg_id: &str) -> PathBuf {
-        PathBuf::from(matches.get_one::<String>(arg_id).unwrap())
+    fn get<T: Clone + Send + Sync + 'static>(
+        matches: &clap::ArgMatches,
+        arg_id: &str,
+    ) -> Option<T> {
+        matches.get_one::<T>(arg_id).cloned()
+    }
+
+    fn get_required<T: Clone + Send + Sync + 'static>(
+        matches: &clap::ArgMatches,
+        arg_id: &str,
+    ) -> Result<T> {
+        get(matches, arg_id).ok_or_else(|| anyhow!("Required argument `{}` is not present", arg_id))
     }
 
     // Map subcommands with args
     let command: Box<dyn crate::commands::command::Command> = match matches.subcommand() {
         Some(("build", matches)) => Box::new(BuildCommand {
-            model: get_path(matches, "model"),
+            model: get_required(matches, "model")?,
         }),
         Some(("schema", matches)) => match matches.subcommand() {
             Some(("create", matches)) => Box::new(schema::create::CreateCommand {
-                model: get_path(matches, "model"),
+                model: get_required(matches, "model")?,
             }),
             Some(("verify", matches)) => Box::new(schema::verify::VerifyCommand {
-                model: get_path(matches, "model"),
-                database: matches.get_one::<String>("database").unwrap().to_owned(),
+                model: get_required(matches, "model")?,
+                database: get(matches, "database"),
             }),
             Some(("import", matches)) => Box::new(schema::import::ImportCommand {
-                output: get_path(matches, "output"),
+                output: get_required(matches, "output")?,
             }),
             Some(("migrate", matches)) => Box::new(schema::migrate::MigrateCommand {
-                model: get_path(matches, "model"),
+                model: get_required(matches, "model")?,
+                output: get(matches, "output"),
                 comment_destructive_changes: !matches.contains_id("allow-destructive-changes"),
             }),
             _ => panic!("Unhandled command name"),
         },
         Some(("serve", matches)) => Box::new(ServeCommand {
-            model: get_path(matches, "model"),
+            model: get_required(matches, "model")?,
             port: matches.get_one::<u32>("port").copied(),
         }),
         Some(("test", matches)) => Box::new(TestCommand {
-            dir: get_path(matches, "dir"),
-            pattern: matches.get_one::<String>("pattern").map(|s| s.to_owned()),
+            dir: get_required(matches, "dir")?,
+            pattern: get(matches, "pattern"),
         }),
         Some(("yolo", matches)) => Box::new(YoloCommand {
-            model: get_path(matches, "model"),
-            port: matches.get_one::<u32>("port").copied(),
+            model: get_required(matches, "model")?,
+            port: get(matches, "port"),
         }),
         _ => panic!("Unhandled command name"),
     };

@@ -6,7 +6,7 @@ use error::ParserError;
 use payas_model::model::system::ModelSystem;
 
 mod builder;
-pub(crate) mod error;
+pub mod error;
 mod parser;
 mod typechecker;
 mod util;

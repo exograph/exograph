@@ -1,71 +1,113 @@
 //! Subcommands under the `schema` subcommand
 
 use anyhow::{anyhow, Result};
+use payas_parser::error::ParserError;
 use payas_sql::{
+    database_error::DatabaseError,
     schema::{op::SchemaOp, spec::SchemaSpec},
     Database,
 };
-use std::{path::PathBuf, time::SystemTime};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
 
 use crate::commands::command::Command;
 
 /// Verify that a schema is compatible with a claytip model
 pub struct VerifyCommand {
     pub model: PathBuf,
-    pub database: String,
+    pub database: Option<String>,
 }
 
 impl Command for VerifyCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_io()
-            .build()
-            .unwrap();
+        let verification_result = verify(&self.model, self.database.as_deref());
 
-        rt.block_on(async {
-            let database = Database::from_db_url(&self.database)?; // TODO: error handling here
-            let client = database.get_client().await?;
+        match &verification_result {
+            Ok(()) => eprintln!("This model is compatible with the database schema!"),
+            Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
+                eprintln!("This model is not compatible with the current database schema. You may need to update your model to match, or perform a migration to update it.");
+                eprintln!("The following issues should be corrected:");
+                eprintln!("{}", e)
+            }
+            Err(e) => eprintln!("Error: {}", e),
+        }
+
+        verification_result.map_err(|_| anyhow!("Incompatible model."))
+    }
+}
+
+pub enum VerificationErrors {
+    DatabaseError(DatabaseError),
+    ParserError(ParserError),
+    ModelNotCompatible(Vec<String>),
+}
+
+impl Display for VerificationErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            VerificationErrors::DatabaseError(e) => write!(f, "Database error: {}", e),
+            VerificationErrors::ParserError(e) => write!(f, "Error while parsing model: {}", e),
+            VerificationErrors::ModelNotCompatible(e) => {
+                for error in e.iter() {
+                    writeln!(f, "- {}", error)?
+                }
+
+                Ok(())
+            }
+        }
+    }
+}
+
+pub fn verify(model: &Path, database: Option<&str>) -> Result<(), VerificationErrors> {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .build()
+        .unwrap();
+
+    rt.block_on(async {
+            let database = if let Some(database) = database {
+                Database::from_db_url(database).map_err(VerificationErrors::DatabaseError)? // TODO: error handling here
+            } else {
+                Database::from_env(None).map_err(VerificationErrors::DatabaseError)?
+            };
+
+            let client = database.get_client().await.map_err(VerificationErrors::DatabaseError)?;
 
             // import schema from db
-            let db_schema = SchemaSpec::from_db(&client).await?;
+            let db_schema = SchemaSpec::from_db(&client).await.map_err(VerificationErrors::DatabaseError)?;
             for issue in &db_schema.issues {
                 println!("{}", issue);
             }
 
             // parse provided model
-            let model_system = payas_parser::build_system(&self.model)?;
+            let model_system = payas_parser::build_system(model).map_err(VerificationErrors::ParserError)?;
             let model_schema = SchemaSpec::from_model(model_system.tables.into_iter().collect());
 
             // generate diff
             let migration = db_schema.value.diff(&model_schema);
 
-            let mut is_compatible = true;
+            let mut errors = vec![];
 
             for op in migration.iter() {
-                let mut pass = false;
                 match op {
-                    SchemaOp::CreateTable { table } => println!("The table `{}` exists in the model, but does not exist in the database.", table.name),
-                    SchemaOp::CreateColumn { column } => println!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.column_name, column.table_name),
-                    SchemaOp::SetColumnDefaultValue { column, default_value } => println!("The default value for column `{}` in table `{}` does not match `{}`", column.column_name, column.table_name, default_value),
-                    SchemaOp::UnsetColumnDefaultValue { column } => println!("The column `{}` in table `{}` is not set in the model.", column.column_name, column.table_name),
-                    SchemaOp::CreateExtension { extension } => println!("The model requires the extension `{}`.", extension),
-                    SchemaOp::CreateUniqueConstraint { table, columns, constraint_name } => println!("The model requires a unique constraint named `{}` for the following columns in table `{}`: {}", constraint_name, table.name, columns.join(", ")),
-                    SchemaOp::SetNotNull { column } => println!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.column_name, column.table_name),
-                    _ => {
-                        pass = true;
-                    }
+                    SchemaOp::CreateTable { table } => errors.push(format!("The table `{}` exists in the model, but does not exist in the database.", table.name)),
+                    SchemaOp::CreateColumn { column } => errors.push(format!("The column `{}` in the table `{}` exists in the model, but does not exist in the database table.", column.column_name, column.table_name)),
+                    SchemaOp::SetColumnDefaultValue { column, default_value } => errors.push(format!("The default value for column `{}` in table `{}` does not match `{}`", column.column_name, column.table_name, default_value)),
+                    SchemaOp::UnsetColumnDefaultValue { column } => errors.push(format!("The column `{}` in table `{}` is not set in the model.", column.column_name, column.table_name)),
+                    SchemaOp::CreateExtension { extension } => errors.push(format!("The model requires the extension `{}`.", extension)),
+                    SchemaOp::CreateUniqueConstraint { table, columns, constraint_name } => errors.push(format!("The model requires a unique constraint named `{}` for the following columns in table `{}`: {}", constraint_name, table.name, columns.join(", "))),
+                    SchemaOp::SetNotNull { column } => errors.push(format!("The model requires that the column `{}` in table `{}` is not nullable. All records in the database must have a non-null value for this column before migration.", column.column_name, column.table_name)),
+                    _ => {}
                 }
-
-                is_compatible &= pass;
             }
 
-            if !is_compatible {
-                Err(anyhow!("This model is not compatible with the current database schema. You may need to update your model to match, or perform a migration to update it."))
+            if !errors.is_empty() {
+                Err(VerificationErrors::ModelNotCompatible(errors))
             } else {
-                println!("This model is compatible with the database schema!");
                 Ok(())
             }
-
         })
-    }
 }
