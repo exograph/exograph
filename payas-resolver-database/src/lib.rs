@@ -146,8 +146,8 @@ pub(crate) fn return_type_info<'a>(
         GqlTypeKind::Primitive => panic!(""),
         GqlTypeKind::Composite(kind) => (
             &system.tables[kind.get_table_id()],
-            &system.queries[kind.get_pk_query()],
-            &system.queries[kind.get_collection_query()],
+            &system.database_queries[kind.get_pk_query()],
+            &system.database_queries[kind.get_collection_query()],
         ),
     }
 }

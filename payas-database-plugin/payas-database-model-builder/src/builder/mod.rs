@@ -1,14 +1,9 @@
 //! Transforms an AstSystem into a GraphQL system
 
-mod system_builder;
+pub mod system_builder;
 
-mod access_utils;
-mod argument_builder;
-mod column_path_utils;
-mod context_builder;
 mod create_mutation_builder;
 mod delete_mutation_builder;
-mod interceptor_weaver;
 mod mutation_builder;
 mod naming;
 mod order_by_type_builder;
@@ -16,20 +11,15 @@ mod predicate_builder;
 mod query_builder;
 mod reference_input_type_builder;
 mod resolved_builder;
-mod service_builder;
-mod service_skeleton_generator;
 mod type_builder;
 mod update_mutation_builder;
 
-pub use system_builder::build;
-
 use payas_model::model::{mapped_arena::MappedArena, GqlType, GqlTypeKind};
 
-use crate::builder::resolved_builder::ResolvedCompositeTypeKind;
-
-use self::{
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
+use self::system_builder::SystemContextBuilding;
+use payas_core_model_builder::builder::{
+    resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
+    type_builder::ResolvedTypeEnv,
 };
 
 pub const DEFAULT_FN_AUTOINCREMENT: &str = "autoincrement";
@@ -86,5 +76,5 @@ pub trait Builder {
         }
     }
 
-    fn build_expanded(&self, building: &mut SystemContextBuilding);
+    fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding);
 }

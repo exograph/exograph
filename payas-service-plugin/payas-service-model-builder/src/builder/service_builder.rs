@@ -1,3 +1,6 @@
+use payas_core_model_builder::builder::{
+    resolved_builder::ResolvedType, type_builder::ResolvedTypeEnv,
+};
 use payas_model::model::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterTypeWithModifier},
@@ -10,24 +13,23 @@ use payas_model::model::{
 
 use super::{
     argument_builder,
-    resolved_builder::{
-        ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService, ResolvedType,
-    },
+    resolved_builder::{ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService},
     system_builder::SystemContextBuilding,
 };
 
 pub fn build_shallow(
     _models: &MappedArena<ResolvedType>,
     services: &MappedArena<ResolvedService>,
+    resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
     // create shallow service
     for (_, service) in services.iter() {
         for method in service.methods.iter() {
-            create_shallow_service(service, method, building);
+            create_shallow_service(service, method, resolved_env, building);
         }
         for interceptor in service.interceptors.iter() {
-            create_shallow_interceptor(service, interceptor, building);
+            create_shallow_interceptor(service, interceptor, resolved_env, building);
         }
     }
 }
@@ -75,9 +77,10 @@ fn get_or_populate_script(
     }
 }
 
-pub fn create_shallow_service(
+fn create_shallow_service(
     resolved_service: &ResolvedService,
     resolved_method: &ResolvedMethod,
+    resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
     let script = get_or_populate_script(
@@ -97,7 +100,7 @@ pub fn create_shallow_service(
                 ResolvedMethodType::Query => {
                     let query = shallow_service_query(
                         resolved_method,
-                        &building.primitive_types,
+                        &resolved_env.base_system.primitive_types,
                         &building.service_types,
                         building,
                     );
@@ -107,7 +110,7 @@ pub fn create_shallow_service(
                 ResolvedMethodType::Mutation => {
                     let mutation = shallow_service_mutation(
                         resolved_method,
-                        &building.primitive_types,
+                        &resolved_env.base_system.primitive_types,
                         &building.service_types,
                         building,
                     );
@@ -121,7 +124,9 @@ pub fn create_shallow_service(
                 .iter()
                 .map(|arg| Argument {
                     name: arg.name.clone(),
-                    type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
+                    type_id: building
+                        .get_id(arg.typ.get_underlying_typename(), resolved_env)
+                        .unwrap(),
                     is_primitive: arg.typ.is_underlying_type_primitive(),
                     modifier: arg.typ.get_modifier(),
                     is_injected: arg.is_injected,
@@ -129,7 +134,10 @@ pub fn create_shallow_service(
                 .collect(),
             return_type: OperationReturnType {
                 type_id: building
-                    .get_id(resolved_method.return_type.get_underlying_typename())
+                    .get_id(
+                        resolved_method.return_type.get_underlying_typename(),
+                        resolved_env,
+                    )
                     .unwrap(),
                 type_name: resolved_method
                     .return_type
@@ -245,6 +253,7 @@ fn argument_param(
 pub fn create_shallow_interceptor(
     resolved_service: &ResolvedService,
     resolved_interceptor: &ResolvedInterceptor,
+    resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
     let script = get_or_populate_script(
@@ -275,7 +284,9 @@ pub fn create_shallow_interceptor(
                 .iter()
                 .map(|arg| Argument {
                     name: arg.name.clone(),
-                    type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
+                    type_id: building
+                        .get_id(arg.typ.get_underlying_typename(), resolved_env)
+                        .unwrap(),
                     is_primitive: arg.typ.is_underlying_type_primitive(),
                     modifier: arg.typ.get_modifier(),
                     is_injected: true, // implicitly set is_injected for interceptors

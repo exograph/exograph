@@ -64,9 +64,17 @@ impl<'a> OperationValidator<'a> {
         self,
         operation: Positioned<OperationDefinition>,
     ) -> Result<ValidatedOperation, ValidationError> {
+        let queries = (
+            &self.model.database_queries.values,
+            &self.model.service_queries.values,
+        );
+        let mutations = (
+            &self.model.database_mutations.values,
+            &self.model.service_mutations.values,
+        );
         let container_type_definition: &dyn GqlTypeDefinition = match operation.node.ty {
-            OperationType::Query => &self.model.queries,
-            OperationType::Mutation => &self.model.mutations,
+            OperationType::Query => &queries,
+            OperationType::Mutation => &mutations,
             OperationType::Subscription => todo!(),
         };
 

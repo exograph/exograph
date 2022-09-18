@@ -154,7 +154,9 @@ fn map_foreign<'a>(
         match &data_type.kind {
             GqlTypeKind::Primitive => todo!(),
             GqlTypeKind::Composite(kind) => {
-                &system.database_types[system.queries[kind.get_pk_query()].return_type.type_id]
+                &system.database_types[system.database_queries[kind.get_pk_query()]
+                    .return_type
+                    .type_id]
             }
         }
     }

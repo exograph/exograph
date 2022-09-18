@@ -214,7 +214,7 @@ impl<'content> DatabaseQuery<'content> {
                     let other_table_pk_query = match &other_type.kind {
                         GqlTypeKind::Primitive => panic!(""),
                         GqlTypeKind::Composite(kind) => {
-                            DatabaseQuery::from(&system.queries[kind.get_pk_query()])
+                            DatabaseQuery::from(&system.database_queries[kind.get_pk_query()])
                         }
                     };
                     let self_table = &system.tables[return_type
@@ -253,9 +253,9 @@ impl<'content> DatabaseQuery<'content> {
                                 // Get an appropriate query based on the cardinality of the relation
                                 DatabaseQuery::from(
                                     if cardinality == &RelationCardinality::Unbounded {
-                                        &system.queries[kind.get_collection_query()]
+                                        &system.database_queries[kind.get_collection_query()]
                                     } else {
-                                        &system.queries[kind.get_pk_query()]
+                                        &system.database_queries[kind.get_pk_query()]
                                     },
                                 )
                             }

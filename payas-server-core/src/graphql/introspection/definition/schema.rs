@@ -66,9 +66,10 @@ impl Schema {
 
         let query_type_definition = {
             let fields: Vec<_> = system
-                .queries
+                .database_queries
                 .values
                 .iter()
+                .chain(system.service_queries.values.iter())
                 .map(|query| default_positioned(query.1.field_definition(system)))
                 .collect();
 
@@ -90,9 +91,10 @@ impl Schema {
 
         let mutation_type_definition = {
             let fields = system
-                .mutations
+                .database_mutations
                 .values
                 .iter()
+                .chain(system.service_mutations.values.iter())
                 .map(|mutation| default_positioned(mutation.1.field_definition(system)))
                 .collect();
 

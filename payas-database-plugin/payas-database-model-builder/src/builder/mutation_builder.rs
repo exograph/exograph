@@ -2,6 +2,8 @@
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
 use super::naming::ToGqlTypeNames;
+use payas_core_model_builder::builder::resolved_builder::ResolvedFieldType;
+use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::operation::{
@@ -15,9 +17,9 @@ use payas_model::model::{
 use super::create_mutation_builder::CreateMutationBuilder;
 use super::delete_mutation_builder::DeleteMutationBuilder;
 use super::reference_input_type_builder::ReferenceInputTypeBuilder;
-use super::resolved_builder::{ResolvedCompositeType, ResolvedFieldType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::update_mutation_builder::UpdateMutationBuilder;
+use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 use super::Builder;
 
@@ -34,12 +36,12 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 }
 
 /// Expand the mutation input types as well as build the mutation
-pub fn build_expanded(building: &mut SystemContextBuilding) {
-    ReferenceInputTypeBuilder {}.build_expanded(building); // Used by many...
+pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+    ReferenceInputTypeBuilder {}.build_expanded(resolved_env, building); // Used by many...
 
-    CreateMutationBuilder {}.build_expanded(building);
-    UpdateMutationBuilder {}.build_expanded(building);
-    DeleteMutationBuilder {}.build_expanded(building);
+    CreateMutationBuilder {}.build_expanded(resolved_env, building);
+    UpdateMutationBuilder {}.build_expanded(resolved_env, building);
+    DeleteMutationBuilder {}.build_expanded(resolved_env, building);
 }
 
 pub trait MutationBuilder {
@@ -153,7 +155,10 @@ pub trait DataParamBuilder<D> {
                     if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
                         typ.deref_subsystem_type(resolved_types)
                     {
-                        Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
+                        Self::data_param_field_one_to_many_type_names(
+                            &name,
+                            resolved_composite_type,
+                        )
                     } else {
                         vec![]
                     }
@@ -270,6 +275,7 @@ pub trait DataParamBuilder<D> {
     fn expanded_data_type(
         &self,
         model_type: &GqlType,
+        resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&GqlType>,
         container_type: Option<&GqlType>,
@@ -286,7 +292,7 @@ pub trait DataParamBuilder<D> {
                     let is_field_primitive = field.typ.is_primitive();
                     let field_type = field.typ.base_type(
                         &if is_field_primitive {
-                            &building.primitive_types
+                            &resolved_env.base_system.primitive_types
                         } else {
                             &building.database_types
                         }
@@ -299,6 +305,7 @@ pub trait DataParamBuilder<D> {
                             model_type,
                             field,
                             field_type,
+                            resolved_env,
                             building,
                             top_level_type,
                             Some(model_type),
@@ -341,6 +348,7 @@ pub trait DataParamBuilder<D> {
         model_type: &GqlType,
         _field: &GqlField,
         field_type: &GqlType,
+        resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&GqlType>,
         _container_type: Option<&GqlType>,
@@ -359,7 +367,13 @@ pub trait DataParamBuilder<D> {
             .kind
         {
             // If not already expanded (i.e. the kind is primitive)
-            self.expanded_data_type(field_type, building, top_level_type, new_container_type)
+            self.expanded_data_type(
+                field_type,
+                resolved_env,
+                building,
+                top_level_type,
+                new_container_type,
+            )
         } else {
             vec![]
         }

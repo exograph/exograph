@@ -1,21 +1,22 @@
+use crate::builder::type_builder::ResolvedTypeEnv;
 use payas_model::model::{
-    predicate::ColumnIdPathLink, relation::GqlRelation, GqlCompositeType, GqlField,
+    mapped_arena::MappedArena, predicate::ColumnIdPathLink, relation::GqlRelation,
+    GqlCompositeType, GqlField, GqlType,
 };
-
-use super::system_builder::SystemContextBuilding;
 
 pub fn column_path_link(
     container_type: &GqlCompositeType,
     field: &GqlField,
-    building: &SystemContextBuilding,
+    env: &ResolvedTypeEnv,
+    subsystem_types: &MappedArena<GqlType>,
 ) -> ColumnIdPathLink {
     let field_type_id = field.typ.type_id();
     let is_field_type_primitive = field.typ.is_primitive();
 
     let field_type = if is_field_type_primitive {
-        &building.primitive_types[*field_type_id]
+        &env.base_system.primitive_types[*field_type_id]
     } else {
-        &building.database_types[*field_type_id]
+        &subsystem_types[*field_type_id]
     };
 
     match &field.relation {

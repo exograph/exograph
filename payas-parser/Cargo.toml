@@ -20,6 +20,7 @@ payas-model = { path = "../payas-model" }
 payas-sql = { path = "../payas-sql" }
 payas-core-model-builder = { path = "../payas-core-plugin/payas-core-model-builder" }
 payas-database-model-builder = { path = "../payas-database-plugin/payas-database-model-builder" }
+payas-service-model-builder = { path = "../payas-service-plugin/payas-service-model-builder" }
 
 [build-dependencies]
 cc = "*"

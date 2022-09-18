@@ -1,4 +1,5 @@
 use super::naming::ToGqlQueryName;
+use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
 use payas_model::model::limit_offset::{LimitParameterType, OffsetParameter, OffsetParameterType};
 use payas_model::model::mapped_arena::SerializableSlabIndex;
 use payas_model::model::operation::{DatabaseQueryParameter, Interceptors, QueryKind};
@@ -12,14 +13,16 @@ use payas_model::model::{
     GqlType, GqlTypeKind, GqlTypeModifier,
 };
 
-use super::resolved_builder::ResolvedCompositeTypeKind;
-use super::{
-    order_by_type_builder, predicate_builder,
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
+use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
+use payas_core_model_builder::builder::resolved_builder::{
+    ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType,
 };
 
-pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+pub fn build_shallow(
+    models: &MappedArena<ResolvedType>,
+    resolved_env: &ResolvedTypeEnv,
+    building: &mut SystemContextBuilding,
+) {
     for (_, model) in models.iter() {
         if let ResolvedType::Composite(
             c @ ResolvedCompositeType {
@@ -28,7 +31,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
             },
         ) = &model
         {
-            let model_type_id = building.get_id(c.name.as_str()).unwrap();
+            let model_type_id = building.get_id(c.name.as_str(), resolved_env).unwrap();
             let shallow_query = shallow_pk_query(model_type_id, c);
             let collection_query = shallow_collection_query(model_type_id, c);
 
@@ -42,7 +45,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
     }
 }
 
-pub fn build_expanded(building: &mut SystemContextBuilding) {
+pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (model_type_id, model_type) in building.database_types.iter() {
         if let GqlTypeKind::Composite(GqlCompositeType { .. }) = &model_type.kind {
             {
@@ -53,7 +56,8 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
             }
             {
                 let operation_name = model_type.collection_query();
-                let query = expanded_collection_query(model_type_id, model_type, building);
+                let query =
+                    expanded_collection_query(model_type_id, model_type, resolved_env, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
             }
@@ -163,6 +167,7 @@ fn shallow_collection_query(
 fn expanded_collection_query(
     model_type_id: SerializableSlabIndex<GqlType>,
     model_type: &GqlType,
+    resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> Query {
     let operation_name = model_type.collection_query();
@@ -170,8 +175,8 @@ fn expanded_collection_query(
 
     let predicate_param = collection_predicate_param(model_type_id, model_type, building);
     let order_by_param = order_by_type_builder::new_root_param(&model_type.name, false, building);
-    let limit_param = limit_param(building);
-    let offset_param = offset_param(building);
+    let limit_param = limit_param(resolved_env, building);
+    let offset_param = offset_param(resolved_env, building);
 
     Query {
         name: operation_name.clone(),
@@ -186,27 +191,33 @@ fn expanded_collection_query(
     }
 }
 
-pub fn limit_param(building: &SystemContextBuilding) -> LimitParameter {
+pub fn limit_param(
+    resolved_env: &ResolvedTypeEnv,
+    building: &SystemContextBuilding,
+) -> LimitParameter {
     let param_type_name = "Int".to_string();
 
     LimitParameter {
         name: "limit".to_string(),
         typ: LimitParameterType {
             type_name: param_type_name.clone(),
-            type_id: building.get_id(&param_type_name).unwrap(),
+            type_id: building.get_id(&param_type_name, resolved_env).unwrap(),
             type_modifier: GqlTypeModifier::Optional,
         },
     }
 }
 
-pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
+pub fn offset_param(
+    resolved_env: &ResolvedTypeEnv,
+    building: &SystemContextBuilding,
+) -> OffsetParameter {
     let param_type_name = "Int".to_string();
 
     OffsetParameter {
         name: "offset".to_string(),
         typ: OffsetParameterType {
             type_name: param_type_name.clone(),
-            type_id: building.get_id(&param_type_name).unwrap(),
+            type_id: building.get_id(&param_type_name, resolved_env).unwrap(),
             type_modifier: GqlTypeModifier::Optional,
         },
     }

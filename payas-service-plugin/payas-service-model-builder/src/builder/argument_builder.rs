@@ -1,13 +1,15 @@
 use payas_model::model::{argument::ArgumentParameterType, mapped_arena::MappedArena};
 
-use crate::builder::resolved_builder::ResolvedCompositeTypeKind;
-
-use super::{
-    resolved_builder::{ResolvedCompositeType, ResolvedType},
-    system_builder::SystemContextBuilding,
+use payas_core_model_builder::builder::resolved_builder::{
+    ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType,
 };
 
-pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+use super::system_builder::SystemContextBuilding;
+
+pub(super) fn build_shallow(
+    types: &MappedArena<ResolvedType>,
+    building: &mut SystemContextBuilding,
+) {
     // build an argument type for each composite type
     // (we need an input object for each composite type argument)
     for (_, typ) in types.iter() {
@@ -32,7 +34,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
     }
 }
 
-pub fn build_expanded(building: &mut SystemContextBuilding) {
+pub(super) fn build_expanded(building: &mut SystemContextBuilding) {
     for (id, typ) in building.service_types.iter_mut() {
         let param_name = get_parameter_type_name(&typ.name);
 
@@ -43,6 +45,6 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     }
 }
 
-pub fn get_parameter_type_name(method_name: &str) -> String {
+pub(super) fn get_parameter_type_name(method_name: &str) -> String {
     format!("{}ArgumentInput", method_name)
 }

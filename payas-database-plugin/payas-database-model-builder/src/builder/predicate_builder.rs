@@ -6,10 +6,11 @@ use payas_model::model::{
 };
 use std::collections::HashMap;
 
-use super::{
+use super::system_builder::SystemContextBuilding;
+use payas_core_model_builder::builder::{
     column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
-    system_builder::SystemContextBuilding,
+    type_builder::ResolvedTypeEnv,
 };
 use payas_model::model::predicate::{
     PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
@@ -17,7 +18,41 @@ use payas_model::model::predicate::{
 
 use lazy_static::lazy_static;
 
-pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+pub fn build_primitive_predicates<'a>(
+    types: impl Iterator<Item = &'a GqlType>,
+) -> MappedArena<PredicateParameterType> {
+    let mut predicate_types = MappedArena::default();
+
+    for typ in types {
+        let type_name = &typ.name;
+        // One for queries such as {id: 1}, where the type name is the same as the model type name (in this case `Int`)
+        predicate_types.add(
+            &type_name,
+            PredicateParameterType {
+                name: type_name.to_string(),
+                kind: PredicateParameterTypeKind::ImplicitEqual {},
+            },
+        );
+
+        // Another one for operators
+        let param_type_name = get_parameter_type_name(&type_name);
+        predicate_types.add(
+            &param_type_name,
+            PredicateParameterType {
+                name: param_type_name.to_string(),
+                kind: PredicateParameterTypeKind::ImplicitEqual {},
+            },
+        );
+    }
+
+    predicate_types
+}
+
+pub fn build_shallow(
+    models: &MappedArena<ResolvedType>,
+    _env: &ResolvedTypeEnv,
+    building: &mut SystemContextBuilding,
+) {
     for (_, model) in models.iter() {
         match model {
             ResolvedType::Primitive(pt) => {
@@ -56,11 +91,11 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
     }
 }
 
-pub fn build_expanded(building: &mut SystemContextBuilding) {
+pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (model_type_id, model_type) in building
         .database_types
         .iter()
-        .chain(building.primitive_types.iter())
+        .chain(resolved_env.base_system.primitive_types.iter())
     // Chain with primitives too to expand filters like "IntFilter"
     {
         // expand filter types for both persistent composite and primitive filter parameters
@@ -75,7 +110,7 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
             let param_type_name = get_parameter_type_name(&model_type.name);
             let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-            let new_kind = expand_type(model_type_id, model_type, building);
+            let new_kind = expand_type(model_type_id, model_type, resolved_env, building);
             building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
         }
     }
@@ -95,13 +130,18 @@ fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType 
 fn expand_type(
     gql_type_id: SerializableSlabIndex<GqlType>,
     gql_type: &GqlType,
+    resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     match &gql_type.kind {
         GqlTypeKind::Primitive => create_operator_filter_type_kind(gql_type_id, gql_type, building),
-        GqlTypeKind::Composite(composite_type) => {
-            create_composite_filter_type_kind(gql_type_id, composite_type, &gql_type.name, building)
-        }
+        GqlTypeKind::Composite(composite_type) => create_composite_filter_type_kind(
+            gql_type_id,
+            composite_type,
+            &gql_type.name,
+            resolved_env,
+            building,
+        ),
     }
 }
 
@@ -207,6 +247,7 @@ fn create_composite_filter_type_kind(
     gql_type_id: SerializableSlabIndex<GqlType>,
     composite_type: &GqlCompositeType,
     composite_type_name: &str,
+    resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     // populate params for each field
@@ -220,7 +261,8 @@ fn create_composite_filter_type_kind(
             let column_path_link = Some(column_path_utils::column_path_link(
                 composite_type,
                 field,
-                building,
+                resolved_env,
+                &building.database_types,
             ));
 
             PredicateParameter {

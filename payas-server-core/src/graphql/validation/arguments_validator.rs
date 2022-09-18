@@ -309,7 +309,6 @@ impl<'a> ArgumentValidator<'a> {
         // allows auto-coercion of an object to a single element list.
 
         let field_underlying_type = find_arg_type(self.model, field_underlying_type_name);
-        println!("field_underlying_type: {:?}", field_underlying_type);
 
         let field_underlying_type: &dyn GqlTypeDefinition = match field_underlying_type {
             Some(field_underlying_type) => field_underlying_type,

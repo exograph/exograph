@@ -2,6 +2,7 @@
 //! the create mutations (delete<Type>, and delete<Type>s)
 
 use super::naming::ToGqlMutationNames;
+use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
@@ -11,9 +12,9 @@ use crate::builder::query_builder;
 use payas_model::model::operation::DatabaseMutationKind;
 
 use super::mutation_builder::MutationBuilder;
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
+use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 pub struct DeleteMutationBuilder;
 
@@ -28,7 +29,11 @@ impl Builder for DeleteMutationBuilder {
     }
 
     /// Expand the mutation input types as well as build the mutation
-    fn build_expanded(&self, building: &mut SystemContextBuilding) {
+    fn build_expanded(
+        &self,
+        _resolved_env: &ResolvedTypeEnv,
+        building: &mut SystemContextBuilding,
+    ) {
         // Since there are no special input types for deletion, no expansion is needed
 
         for (_, model_type) in building.database_types.iter() {

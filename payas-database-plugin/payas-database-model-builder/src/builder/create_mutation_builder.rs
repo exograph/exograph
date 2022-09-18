@@ -2,6 +2,7 @@
 //! the create mutations (create<Type>, and create<Type>s)
 
 use super::naming::{ToGqlMutationNames, ToGqlTypeNames};
+use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
@@ -11,9 +12,9 @@ use payas_model::model::operation::{
 };
 
 use super::mutation_builder::{DataParamBuilder, MutationBuilder};
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
+use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 pub struct CreateMutationBuilder;
 
@@ -28,16 +29,20 @@ impl Builder for CreateMutationBuilder {
         field_types
     }
 
-    fn build_expanded(&self, building: &mut SystemContextBuilding) {
+    fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.database_types.iter() {
             if let GqlTypeKind::Composite(GqlCompositeType {
                 kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {
-                for (existing_id, expanded_kind) in
-                    self.expanded_data_type(model_type, building, Some(model_type), None)
-                {
+                for (existing_id, expanded_kind) in self.expanded_data_type(
+                    model_type,
+                    resolved_env,
+                    building,
+                    Some(model_type),
+                    None,
+                ) {
                     building.mutation_types[existing_id].kind =
                         GqlTypeKind::Composite(expanded_kind);
                 }

@@ -72,7 +72,7 @@ impl FieldDefinitionProvider for GqlField {
                     GqlTypeKind::Primitive => panic!(),
                     GqlTypeKind::Composite(kind) => {
                         let collection_query = kind.get_collection_query();
-                        let collection_query = &system.queries[collection_query];
+                        let collection_query = &system.database_queries[collection_query];
 
                         match &collection_query.kind {
                             QueryKind::Database(db_query_params) => {

@@ -1,6 +1,7 @@
 //! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
 
 use super::naming::{ToGqlMutationNames, ToGqlTypeNames};
+use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::types::GqlType;
@@ -14,9 +15,9 @@ use crate::builder::query_builder;
 use payas_model::model::operation::{DatabaseMutationKind, UpdateDataParameter};
 
 use super::mutation_builder::{DataParamBuilder, MutationBuilder};
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
+use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 pub struct UpdateMutationBuilder;
 
@@ -33,16 +34,20 @@ impl Builder for UpdateMutationBuilder {
     }
 
     /// Expand the mutation input types as well as build the mutation
-    fn build_expanded(&self, building: &mut SystemContextBuilding) {
+    fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.database_types.iter() {
             if let GqlTypeKind::Composite(GqlCompositeType {
                 kind: GqlCompositeTypeKind::Persistent { .. },
                 ..
             }) = &model_type.kind
             {
-                for (existing_id, expanded_kind) in
-                    self.expanded_data_type(model_type, building, Some(model_type), None)
-                {
+                for (existing_id, expanded_kind) in self.expanded_data_type(
+                    model_type,
+                    resolved_env,
+                    building,
+                    Some(model_type),
+                    None,
+                ) {
                     building.mutation_types[existing_id].kind =
                         GqlTypeKind::Composite(expanded_kind);
                 }
@@ -155,6 +160,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         model_type: &GqlType,
         field: &GqlField,
         field_type: &GqlType,
+        resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
         top_level_type: Option<&GqlType>,
         container_type: Option<&GqlType>,
@@ -175,7 +181,13 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             };
 
             &self
-                .expanded_data_type(field_type, building, top_level_type, container_type)
+                .expanded_data_type(
+                    field_type,
+                    resolved_env,
+                    building,
+                    top_level_type,
+                    container_type,
+                )
                 .first()
                 .map(|tpe| {
                     let base_type = tpe.1.clone();

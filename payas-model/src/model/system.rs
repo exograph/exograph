@@ -29,11 +29,13 @@ pub struct ModelSystem {
     pub argument_types: SerializableSlab<ArgumentParameterType>,
     pub order_by_types: SerializableSlab<OrderByParameterType>,
     pub predicate_types: SerializableSlab<PredicateParameterType>,
-    pub queries: MappedArena<Query>,
+    pub database_queries: MappedArena<Query>,
+    pub service_queries: MappedArena<Query>,
 
     // mutation related
     pub mutation_types: SerializableSlab<GqlType>, // create, update, delete input types such as `PersonUpdateInput`
-    pub mutations: MappedArena<Mutation>,
+    pub database_mutations: MappedArena<Mutation>,
+    pub service_mutations: MappedArena<Mutation>,
 
     // service related
     pub methods: SerializableSlab<ServiceMethod>,
@@ -52,9 +54,11 @@ impl Default for ModelSystem {
             context_types: SerializableSlab::new(),
             order_by_types: SerializableSlab::new(),
             predicate_types: SerializableSlab::new(),
-            queries: MappedArena::default(),
+            database_queries: MappedArena::default(),
+            service_queries: MappedArena::default(),
             mutation_types: SerializableSlab::new(),
-            mutations: MappedArena::default(),
+            database_mutations: MappedArena::default(),
+            service_mutations: MappedArena::default(),
             tables: SerializableSlab::new(),
             methods: SerializableSlab::new(),
             argument_types: SerializableSlab::new(),

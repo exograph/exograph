@@ -9,12 +9,15 @@ use super::{
     system_builder::SystemContextBuilding,
 };
 
+pub fn build(contexts: &MappedArena<ResolvedContext>, building: &mut SystemContextBuilding) {
+    // TODO: Check if we can combine this shallow-expanded building
+    build_shallow(contexts, building);
+    build_expanded(contexts, building);
+}
+
 // Note: The current implementation considers only simple JWT payload
 // TODO: Make this a more general context
-pub fn build_shallow(
-    contexts: &MappedArena<ResolvedContext>,
-    building: &mut SystemContextBuilding,
-) {
+fn build_shallow(contexts: &MappedArena<ResolvedContext>, building: &mut SystemContextBuilding) {
     for (_, context) in contexts.iter() {
         create_shallow(context, building);
     }

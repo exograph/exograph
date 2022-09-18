@@ -13,7 +13,7 @@ pub enum ParserError {
     IO(#[from] std::io::Error),
 
     #[error("{0}")]
-    ModelBuildingError(#[from] payas_database_model_builder::error::ModelBuildingError),
+    ModelBuildingError(#[from] payas_core_model_builder::error::ModelBuildingError),
 
     #[error("{0}")]
     Generic(String),

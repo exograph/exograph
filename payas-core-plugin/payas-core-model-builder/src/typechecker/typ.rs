@@ -124,6 +124,26 @@ pub enum PrimitiveType {
 }
 
 impl PrimitiveType {
+    pub fn from_str(name: &str) -> Self {
+        match name {
+            "Int" => PrimitiveType::Int,
+            "Float" => PrimitiveType::Float,
+            "Decimal" => PrimitiveType::Decimal,
+            "String" => PrimitiveType::String,
+            "Boolean" => PrimitiveType::Boolean,
+            "LocalDate" => PrimitiveType::LocalDate,
+            "LocalTime" => PrimitiveType::LocalTime,
+            "LocalDateTime" => PrimitiveType::LocalDateTime,
+            "Instant" => PrimitiveType::Instant,
+            "Json" => PrimitiveType::Json,
+            "Blob" => PrimitiveType::Blob,
+            "Uuid" => PrimitiveType::Uuid,
+            "Array" => panic!("Array is not a primitive type"),
+            "Claytip" => PrimitiveType::Claytip,
+            "ClaytipPriv" => PrimitiveType::ClaytipPriv,
+            _ => PrimitiveType::Interception(name.to_owned()),
+        }
+    }
     pub fn name(&self) -> String {
         if let PrimitiveType::Array(pt) = &self {
             return format!("[{}]", pt.name());

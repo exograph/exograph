@@ -1,15 +1,16 @@
 //! Build the reference input type (used to refer to an entity by its pk)
 
 use super::naming::ToGqlTypeNames;
+use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
 use payas_model::model::access::Access;
 use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_model::model::relation::GqlRelation;
 use payas_model::model::types::GqlType;
 use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
+use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 pub struct ReferenceInputTypeBuilder;
 
@@ -23,7 +24,11 @@ impl Builder for ReferenceInputTypeBuilder {
     }
 
     /// Expand the mutation input types as well as build the mutation
-    fn build_expanded(&self, building: &mut SystemContextBuilding) {
+    fn build_expanded(
+        &self,
+        _resolved_env: &ResolvedTypeEnv,
+        building: &mut SystemContextBuilding,
+    ) {
         for (_, model_type) in building.database_types.iter() {
             if let GqlTypeKind::Composite(GqlCompositeType {
                 kind: _kind @ GqlCompositeTypeKind::Persistent { .. },

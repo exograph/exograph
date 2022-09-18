@@ -139,7 +139,7 @@ impl GqlFieldDefinition for GqlField {
                     GqlTypeKind::Primitive => panic!(),
                     GqlTypeKind::Composite(kind) => {
                         let collection_query = kind.get_collection_query();
-                        let collection_query = &model.queries[collection_query];
+                        let collection_query = &model.database_queries[collection_query];
 
                         match &collection_query.kind {
                             QueryKind::Database(db_query_params) => {

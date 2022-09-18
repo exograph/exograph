@@ -3645,6 +3645,7 @@ dependencies = [
  "codemap-diagnostic",
  "payas-model",
  "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -3702,6 +3703,7 @@ dependencies = [
  "payas-core-model-builder",
  "payas-database-model-builder",
  "payas-model",
+ "payas-service-model-builder",
  "payas-sql",
  "serde",
  "serde_json",
@@ -3877,6 +3879,22 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typed-generational-arena",
+]
+
+[[package]]
+name = "payas-service-model-builder"
+version = "0.1.0"
+dependencies = [
+ "codemap",
+ "codemap-diagnostic",
+ "lazy_static",
+ "payas-core-model-builder",
+ "payas-model",
+ "payas-sql",
+ "serde",
+ "thiserror",
+ "typed-generational-arena",
+ "wildmatch",
 ]
 
 [[package]]
