@@ -5,14 +5,22 @@ set -e
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+function checkDependency () {
+    DEPENDENCY=$1
+
+    if ! command -v $DEPENDENCY &> /dev/null; then
+        echo "Please install \`$DEPENDENCY\`."
+        exit 1
+    fi
+}
+
+# check that dependencies are installed
+checkDependency az
+checkDependency jq
+checkDependency curl
+
 # check if azure-cli is logged in
 az account show > /dev/null
-
-# check that jq is installed
-if ! command -v jq &> /dev/null; then
-    echo "Please install \`jq\`."
-    exit 1
-fi
 
 function queryUser () {
     QUERY=$1
