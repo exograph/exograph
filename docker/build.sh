@@ -11,8 +11,8 @@ buildType="$2" # "release" or "debug"
 # TODO: Resolve the openssl issues and then "BASE_IMAGE=debian:buster-slim"
 
 ## DEFAULTS ##
-BUILD_IMAGE=rust:1.60.0-buster # image to build Claytip with
-BASE_IMAGE=rust:1.60.0-slim-buster # image to use when actually running Claytip
+BUILD_IMAGE=rust:1.63.0-buster # image to build Claytip with
+BASE_IMAGE=rust:1.63.0-slim-buster # image to use when actually running Claytip
 DEPENDENCY_STYLE=deb # how to install or setup dependencies
 TAG_SUFFIX="" # docker tag suffix
 

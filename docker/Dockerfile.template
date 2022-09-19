@@ -21,11 +21,16 @@ RUN USER=root cargo new --vcs none --bin payas-cli
 RUN USER=root cargo new --vcs none --lib payas-deno
 RUN USER=root cargo new --vcs none --lib payas-model
 RUN USER=root cargo new --vcs none --lib payas-parser
+RUN USER=root cargo new --vcs none --lib payas-resolver-core
+RUN USER=root cargo new --vcs none --lib payas-resolver-database
+RUN USER=root cargo new --vcs none --lib payas-resolver-deno
+RUN USER=root cargo new --vcs none --lib payas-resolver-wasm
 RUN USER=root cargo new --vcs none --bin payas-server-actix
 RUN USER=root cargo new --vcs none --bin payas-server-aws-lambda
 RUN USER=root cargo new --vcs none --lib payas-server-core
 RUN USER=root cargo new --vcs none --lib payas-sql
 RUN USER=root cargo new --vcs none --lib payas-test
+RUN USER=root cargo new --vcs none --lib payas-wasm
 
 ### Copy over Cargo.toml and Cargo.lock files so that we can build just
 ### the dependencies and cache this layer when only source files change
@@ -35,11 +40,16 @@ COPY ./payas-cli/Cargo.toml ./payas-cli/Cargo.toml
 COPY ./payas-deno/Cargo.toml ./payas-deno/Cargo.toml
 COPY ./payas-model/Cargo.toml ./payas-model/Cargo.toml
 COPY ./payas-parser/Cargo.toml ./payas-parser/Cargo.toml
+COPY ./payas-resolver-core/Cargo.toml ./payas-resolver-core/Cargo.toml
+COPY ./payas-resolver-database/Cargo.toml ./payas-resolver-database/Cargo.toml
+COPY ./payas-resolver-deno/Cargo.toml ./payas-resolver-deno/Cargo.toml
+COPY ./payas-resolver-wasm/Cargo.toml ./payas-resolver-wasm/Cargo.toml
 COPY ./payas-server-actix/Cargo.toml ./payas-server-actix/Cargo.toml
 COPY ./payas-server-aws-lambda/Cargo.toml ./payas-server-aws-lambda/Cargo.toml
 COPY ./payas-server-core/Cargo.toml ./payas-server-core/Cargo.toml
 COPY ./payas-sql/Cargo.toml ./payas-sql/Cargo.toml
 COPY ./payas-test/Cargo.toml ./payas-test/Cargo.toml
+COPY ./payas-wasm/Cargo.toml ./payas-wasm/Cargo.toml
 
 COPY ./graphiql/package.json ./graphiql/package.json
 COPY ./graphiql/package-lock.json ./graphiql/package-lock.json
@@ -54,11 +64,16 @@ ADD payas-cli payas-cli/
 ADD payas-deno payas-deno/
 ADD payas-model payas-model/
 ADD payas-parser payas-parser/
+ADD payas-resolver-core payas-resolver-core/
+ADD payas-resolver-database payas-resolver-database/
+ADD payas-resolver-deno payas-resolver-deno/
+ADD payas-resolver-wasm payas-resolver-wasm/
 ADD payas-server-actix payas-server-actix/
 ADD payas-server-aws-lambda payas-server-aws-lambda/
 ADD payas-server-core payas-server-core/
 ADD payas-sql payas-sql/
 ADD payas-test payas-test/
+ADD payas-wasm payas-wasm/
 
 ADD graphiql graphiql/
 
