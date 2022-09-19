@@ -1,4 +1,3 @@
-use super::argument::ArgumentParameterType;
 use super::mapped_arena::SerializableSlab;
 use super::order::OrderByParameterType;
 use super::predicate::PredicateParameterType;
@@ -17,18 +16,24 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModelSystem {
-    pub types: SerializableSlab<GqlType>,
+    pub primitive_types: SerializableSlab<GqlType>,
+    pub database_types: SerializableSlab<GqlType>,
+    // TODO: Break this up into deno/wasm
+    pub service_types: SerializableSlab<GqlType>,
+
     pub contexts: MappedArena<ContextType>,
+    pub context_types: SerializableSlab<GqlType>,
 
     // query related
-    pub argument_types: SerializableSlab<ArgumentParameterType>,
     pub order_by_types: SerializableSlab<OrderByParameterType>,
     pub predicate_types: SerializableSlab<PredicateParameterType>,
-    pub queries: MappedArena<Query>,
+    pub database_queries: MappedArena<Query>,
+    pub service_queries: MappedArena<Query>,
 
     // mutation related
     pub mutation_types: SerializableSlab<GqlType>, // create, update, delete input types such as `PersonUpdateInput`
-    pub mutations: MappedArena<Mutation>,
+    pub database_mutations: MappedArena<Mutation>,
+    pub service_mutations: MappedArena<Mutation>,
 
     // service related
     pub methods: SerializableSlab<ServiceMethod>,
@@ -40,16 +45,20 @@ pub struct ModelSystem {
 impl Default for ModelSystem {
     fn default() -> Self {
         ModelSystem {
-            types: SerializableSlab::new(),
+            primitive_types: SerializableSlab::new(),
+            database_types: SerializableSlab::new(),
+            service_types: SerializableSlab::new(),
             contexts: MappedArena::default(),
+            context_types: SerializableSlab::new(),
             order_by_types: SerializableSlab::new(),
             predicate_types: SerializableSlab::new(),
-            queries: MappedArena::default(),
+            database_queries: MappedArena::default(),
+            service_queries: MappedArena::default(),
             mutation_types: SerializableSlab::new(),
-            mutations: MappedArena::default(),
+            database_mutations: MappedArena::default(),
+            service_mutations: MappedArena::default(),
             tables: SerializableSlab::new(),
             methods: SerializableSlab::new(),
-            argument_types: SerializableSlab::new(),
             scripts: SerializableSlab::new(),
         }
     }

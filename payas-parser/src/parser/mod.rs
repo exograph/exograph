@@ -17,10 +17,6 @@ mod sitter_ffi;
 
 use self::converter::{convert_root, parse};
 
-pub(crate) const DEFAULT_FN_AUTOINCREMENT: &str = "autoincrement";
-pub(crate) const DEFAULT_FN_CURRENT_TIME: &str = "now";
-pub(crate) const DEFAULT_FN_GENERATE_UUID: &str = "generate_uuid";
-
 fn span_from_node(source_span: Span, node: Node<'_>) -> Span {
     source_span.subspan(node.start_byte() as u64, node.end_byte() as u64)
 }

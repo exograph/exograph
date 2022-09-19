@@ -1,22 +1,13 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, LogicalOp, Untyped};
 
-use super::annotation::AnnotationSpec;
-use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
+use super::{PrimitiveType, Scope, Type, TypecheckFrom};
 
-impl LogicalOp<Typed> {
-    pub fn typ(&self) -> &Type {
-        match &self {
-            LogicalOp::Not(_, _, typ) => typ,
-            LogicalOp::And(_, _, _, typ) => typ,
-            LogicalOp::Or(_, _, _, typ) => typ,
-        }
-    }
-}
 impl TypecheckFrom<LogicalOp<Untyped>> for LogicalOp<Typed> {
     fn shallow(untyped: &LogicalOp<Untyped>) -> LogicalOp<Typed> {
         match untyped {

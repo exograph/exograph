@@ -155,14 +155,23 @@ impl GraphQLOperation for Mutation {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {
     pub type_id: SerializableSlabIndex<GqlType>,
+    pub is_primitive: bool,
     pub type_name: String,
     pub type_modifier: GqlTypeModifier,
+    pub is_persistent: bool,
 }
 
 impl OperationReturnType {
     pub fn typ<'a>(&self, system: &'a ModelSystem) -> &'a GqlType {
         let return_type_id = &self.type_id;
-        &system.types[*return_type_id]
+
+        if self.is_primitive {
+            &system.primitive_types[*return_type_id]
+        } else if self.is_persistent {
+            &system.database_types[*return_type_id]
+        } else {
+            &system.service_types[*return_type_id]
+        }
     }
 
     pub fn physical_table<'a>(&self, system: &'a ModelSystem) -> &'a PhysicalTable {

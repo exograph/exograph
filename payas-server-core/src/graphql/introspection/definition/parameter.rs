@@ -115,7 +115,7 @@ impl Parameter for ArgumentParameter {
     }
 
     fn type_name(&self) -> &str {
-        &self.typ.type_name
+        &self.typ.name
     }
 
     fn type_modifier(&self) -> &GqlTypeModifier {

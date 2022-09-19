@@ -135,7 +135,11 @@ pub async fn construct_arg_sequence<'a>(
             if arg.is_injected {
                 // handle injected arguments
 
-                let arg_type = &system.types[arg.type_id];
+                let arg_type = if arg.is_primitive {
+                    &system.primitive_types[arg.type_id]
+                } else {
+                    &system.context_types[arg.type_id]
+                };
 
                 // what kind of injected argument is it?
                 // first check if it's a context

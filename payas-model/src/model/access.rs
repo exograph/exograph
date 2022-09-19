@@ -40,7 +40,7 @@ pub enum AccessPredicateExpression {
     LogicalOp(AccessLogicalExpression),
     RelationalOp(AccessRelationalOp),
     BooleanLiteral(bool),
-    // This allows specifying access rule such as `self.published` instead of self.published == true`
+    // This allows specifying access rule such as `self.published` instead of `self.published == true`
     BooleanColumn(ColumnIdPath),
     // Similarly, this allows specifying access rule such as `AuthContext.superUser` instead of `AuthContext.superUser == true`
     BooleanContextSelection(AccessContextSelection),
@@ -67,7 +67,7 @@ pub enum AccessLogicalExpression {
     ),
 }
 
-/// Relational operators expressing a relation betweend two primitive expressions
+/// Relational operators expressing a relation between two primitive expressions
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AccessRelationalOp {
     Eq(

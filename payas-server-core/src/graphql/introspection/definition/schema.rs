@@ -29,15 +29,15 @@ pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 impl Schema {
     pub fn new(system: &ModelSystem) -> Schema {
         let mut type_definitions: Vec<TypeDefinition> = system
-            .types
+            .primitive_types
             .iter()
+            .chain(
+                system
+                    .database_types
+                    .iter()
+                    .chain(system.service_types.iter()),
+            )
             .map(|model_type| model_type.1.type_definition(system))
-            .collect();
-
-        let argument_type_definitions: Vec<TypeDefinition> = system
-            .argument_types
-            .iter()
-            .map(|m| m.1.type_definition(system))
             .collect();
 
         let order_by_param_type_definitions: Vec<TypeDefinition> = system
@@ -60,9 +60,10 @@ impl Schema {
 
         let query_type_definition = {
             let fields: Vec<_> = system
-                .queries
+                .database_queries
                 .values
                 .iter()
+                .chain(system.service_queries.values.iter())
                 .map(|query| default_positioned(query.1.field_definition(system)))
                 .collect();
 
@@ -84,9 +85,10 @@ impl Schema {
 
         let mutation_type_definition = {
             let fields = system
-                .mutations
+                .database_mutations
                 .values
                 .iter()
+                .chain(system.service_mutations.values.iter())
                 .map(|mutation| default_positioned(mutation.1.field_definition(system)))
                 .collect();
 
@@ -111,7 +113,6 @@ impl Schema {
 
         type_definitions.push(query_type_definition);
         type_definitions.push(mutation_type_definition);
-        type_definitions.extend(argument_type_definitions);
         type_definitions.extend(order_by_param_type_definitions);
         type_definitions.extend(predicate_param_type_definitions);
         type_definitions.extend(mutation_param_type_definitions);

@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, RelationalOp, Untyped};
 
-use super::annotation::AnnotationSpec;
-use super::{PrimitiveType, Scope, Type, TypecheckFrom, Typed};
+use super::{PrimitiveType, Scope, Type, TypecheckFrom};
 
 impl TypecheckFrom<RelationalOp<Untyped>> for RelationalOp<Typed> {
     fn shallow(untyped: &RelationalOp<Untyped>) -> RelationalOp<Typed> {

@@ -1,0 +1,162 @@
+---
+source: payas-parser/src/builder/resolved_builder.rs
+expression: resolved
+---
+primitive_types:
+  values:
+    - - ~
+      - Primitive: Boolean
+    - - ~
+      - Primitive: Int
+    - - ~
+      - Primitive: Float
+    - - ~
+      - Primitive: Decimal
+    - - ~
+      - Primitive: String
+    - - ~
+      - Primitive: LocalTime
+    - - ~
+      - Primitive: LocalDateTime
+    - - ~
+      - Primitive: LocalDate
+    - - ~
+      - Primitive: Instant
+    - - ~
+      - Primitive: Json
+    - - ~
+      - Primitive: Blob
+    - - ~
+      - Primitive: Uuid
+    - - ~
+      - Primitive: Claytip
+    - - ~
+      - Primitive: ClaytipPriv
+    - - ~
+      - Primitive:
+          Interception: Operation
+    - ~
+  map:
+    Blob:
+      index: 10
+      generation: ~
+    Boolean:
+      index: 0
+      generation: ~
+    Claytip:
+      index: 12
+      generation: ~
+    ClaytipPriv:
+      index: 13
+      generation: ~
+    Decimal:
+      index: 3
+      generation: ~
+    Float:
+      index: 2
+      generation: ~
+    Instant:
+      index: 8
+      generation: ~
+    Int:
+      index: 1
+      generation: ~
+    Json:
+      index: 9
+      generation: ~
+    LocalDate:
+      index: 7
+      generation: ~
+    LocalDateTime:
+      index: 6
+      generation: ~
+    LocalTime:
+      index: 5
+      generation: ~
+    Operation:
+      index: 14
+      generation: ~
+    String:
+      index: 4
+      generation: ~
+    Uuid:
+      index: 11
+      generation: ~
+database_types:
+  values:
+    - - ~
+      - Composite:
+          name: ConcertInfo
+          plural_name: ConcertInfos
+          fields:
+            - name: concertId
+              typ:
+                Plain:
+                  type_name: Int
+                  is_primitive: true
+              kind:
+                Persistent:
+                  column_name: concert_id
+                  self_column: true
+                  is_pk: true
+                  type_hint: ~
+                  unique_constraints: []
+              default_value: Autoincrement
+            - name: mainTitle
+              typ:
+                Plain:
+                  type_name: String
+                  is_primitive: true
+              kind:
+                Persistent:
+                  column_name: main_title
+                  self_column: true
+                  is_pk: false
+                  type_hint: ~
+                  unique_constraints: []
+              default_value: ~
+          kind:
+            Persistent:
+              table_name: concert_infos
+          access:
+            creation:
+              BooleanLiteral:
+                - true
+            read:
+              BooleanLiteral:
+                - true
+            update:
+              BooleanLiteral:
+                - true
+            delete:
+              BooleanLiteral:
+                - true
+    - ~
+    - ~
+    - ~
+  map:
+    ConcertInfo:
+      index: 0
+      generation: ~
+service_types:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+contexts:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+services:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+

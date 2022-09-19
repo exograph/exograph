@@ -69,7 +69,7 @@ fn compute_update_columns<'a>(
                         let key_column = key_column_id.get_column(system);
                         let argument_value = match &field.relation {
                             GqlRelation::ManyToOne { other_type_id, .. } => {
-                                let other_type = &system.types[*other_type_id];
+                                let other_type = &system.database_types[*other_type_id];
                                 let other_type_pk_field_name = other_type
                                     .pk_column_id()
                                     .map(|column_id| &column_id.get_column(system).column_name)
@@ -120,7 +120,7 @@ fn compute_nested_ops<'a>(
         GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
             fields.iter().for_each(|field| {
                 if let GqlRelation::OneToMany { other_type_id, .. } = &field.relation {
-                    let field_model_type = &system.types[*other_type_id]; // TODO: This is a model type but should be a data type
+                    let field_model_type = &system.database_types[*other_type_id]; // TODO: This is a model type but should be a data type
 
                     if let Some(argument) = super::get_argument_field(argument, &field.name) {
                         nested_updates.extend(compute_nested_update(

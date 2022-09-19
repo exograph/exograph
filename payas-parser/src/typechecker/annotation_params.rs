@@ -1,28 +1,12 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::Diagnostic;
+use payas_core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstAnnotationParams, AstExpr, Untyped};
 
-use super::annotation::AnnotationSpec;
-use super::{Type, TypecheckFrom, Typed};
-
-impl AstAnnotationParams<Typed> {
-    pub fn as_single(&self) -> &AstExpr<Typed> {
-        match self {
-            Self::Single(expr, _) => expr,
-            _ => panic!(),
-        }
-    }
-
-    pub fn as_map(&self) -> &HashMap<String, AstExpr<Typed>> {
-        match self {
-            Self::Map(map, _) => map,
-            _ => panic!(),
-        }
-    }
-}
+use super::{Type, TypecheckFrom};
 
 impl TypecheckFrom<AstAnnotationParams<Untyped>> for AstAnnotationParams<Typed> {
     fn shallow(untyped: &AstAnnotationParams<Untyped>) -> AstAnnotationParams<Typed> {

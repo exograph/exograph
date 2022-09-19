@@ -1,5 +1,20 @@
+use std::collections::HashMap;
+
+use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model_builder::{
+    ast::ast_types::{AstModel, AstService, AstSystem, Untyped},
+    typechecker::{
+        annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
+        typ::{PrimitiveType, Type},
+        Scope,
+    },
+};
+use payas_model::model::mapped_arena::MappedArena;
+
+use crate::error::ParserError;
+
 mod annotation;
-mod annotation_map;
+pub mod annotation_map;
 mod annotation_params;
 mod expression;
 mod field;
@@ -10,39 +25,6 @@ mod model;
 mod relational_op;
 mod selection;
 mod service;
-mod typ;
-
-use std::collections::HashMap;
-
-use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use serde::{Deserialize, Serialize};
-
-pub(super) use annotation_map::AnnotationMap;
-
-pub(super) use typ::{PrimitiveType, Type};
-
-use crate::ast::ast_types::{AstModel, AstService, NodeTypedness};
-use crate::ast::ast_types::{AstSystem, Untyped};
-use crate::error::ParserError;
-use payas_model::model::mapped_arena::MappedArena;
-
-use self::annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec};
-
-pub struct Scope {
-    pub enclosing_model: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Typed;
-impl NodeTypedness for Typed {
-    type FieldSelection = Type;
-    type RelationalOp = Type;
-    type Expr = Type;
-    type LogicalOp = Type;
-    type Field = Type;
-    type Annotations = AnnotationMap;
-    type Type = bool;
-}
 
 pub trait TypecheckInto<T> {
     fn shallow(&self) -> T;

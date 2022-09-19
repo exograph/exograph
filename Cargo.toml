@@ -1,5 +1,6 @@
 [workspace]
-members = ["payas-*"]
+members = ["payas-*", "payas-*-plugin/*"]
+exclude = ["payas-core-plugin", "payas-database-plugin", "payas-service-plugin"]
 resolver = "2"
 
 [profile.release]

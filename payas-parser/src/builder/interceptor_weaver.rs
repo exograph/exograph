@@ -1,46 +1,41 @@
+use payas_core_model_builder::{
+    ast::ast_types::{AstExpr, LogicalOp},
+    typechecker::Typed,
+};
 use payas_model::model::{
-    interceptor::Interceptor, mapped_arena::MappedArena, operation::Interceptors,
+    interceptor::Interceptor,
+    mapped_arena::MappedArena,
+    operation::{Interceptors, Mutation, Query},
 };
 use serde::{de::DeserializeOwned, Serialize};
 use typed_generational_arena::{IgnoreGeneration, Index};
 use wildmatch::WildMatch;
-
-use crate::{
-    ast::ast_types::{AstExpr, LogicalOp},
-    typechecker::Typed,
-};
-
-use super::{resolved_builder::ResolvedSystem, system_builder::SystemContextBuilding};
 
 enum OperationKind {
     Query,
     Mutation,
 }
 
-pub fn weave_interceptors(resolved_system: &ResolvedSystem, building: &mut SystemContextBuilding) {
-    let interceptors = &building.interceptors;
-    let interceptors: Vec<(&AstExpr<Typed>, &Interceptor)> = resolved_system
-        .services
-        .iter()
-        .flat_map(|(_, s)| {
-            s.interceptors.iter().map(|i| {
-                let model_interceptor = interceptors.get_by_key(&i.name).unwrap();
-                (i.interceptor_kind.expr(), model_interceptor)
-            })
-        })
-        .collect();
-
+pub fn weave_queries(
+    queries: &mut MappedArena<Query>,
+    interceptors: &[(AstExpr<Typed>, Interceptor)],
+) {
     weave(
-        &mut building.queries,
-        &interceptors,
+        queries,
+        interceptors,
         |o| &o.name,
         &OperationKind::Query,
         |operation, interceptors| operation.interceptors = interceptors,
     );
+}
 
+pub fn weave_mutations(
+    mutations: &mut MappedArena<Mutation>,
+    interceptors: &[(AstExpr<Typed>, Interceptor)],
+) {
     weave(
-        &mut building.mutations,
-        &interceptors,
+        mutations,
+        interceptors,
         |o| &o.name,
         &OperationKind::Mutation,
         |operation, interceptors| operation.interceptors = interceptors,
@@ -49,7 +44,7 @@ pub fn weave_interceptors(resolved_system: &ResolvedSystem, building: &mut Syste
 
 fn weave<T: DeserializeOwned + Serialize>(
     operations: &mut MappedArena<T>,
-    interceptors: &[(&AstExpr<Typed>, &Interceptor)],
+    interceptors: &[(AstExpr<Typed>, Interceptor)],
     get_operation_name: fn(&T) -> &str,
     operation_kind: &OperationKind,
     set_interceptors: impl Fn(&mut T, Interceptors),
@@ -65,7 +60,7 @@ fn weave<T: DeserializeOwned + Serialize>(
 
 fn compute_weaving_info<T: DeserializeOwned + Serialize>(
     operations: &MappedArena<T>,
-    interceptors: &[(&AstExpr<Typed>, &Interceptor)],
+    interceptors: &[(AstExpr<Typed>, Interceptor)],
     get_operation_name: impl Fn(&T) -> &str,
     operation_kind: &OperationKind,
 ) -> Vec<(Index<T, usize, IgnoreGeneration>, Interceptors)> {
@@ -85,7 +80,7 @@ fn compute_weaving_info<T: DeserializeOwned + Serialize>(
 }
 
 fn matching_interceptors(
-    interceptors: &[(&AstExpr<Typed>, &Interceptor)],
+    interceptors: &[(AstExpr<Typed>, Interceptor)],
     operation_name: &str,
     operation_kind: &OperationKind,
 ) -> Vec<Interceptor> {
@@ -93,7 +88,7 @@ fn matching_interceptors(
         .iter()
         .filter_map(|(expr, interceptor)| {
             if matches(expr, operation_name, operation_kind) {
-                Some(*interceptor)
+                Some(interceptor)
             } else {
                 None
             }
