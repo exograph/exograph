@@ -208,13 +208,13 @@ impl<'content> DatabaseQuery<'content> {
                     other_type_id,
                     ..
                 } => {
-                    let other_type = &system.types[*other_type_id];
+                    let other_type = &system.database_types[*other_type_id];
                     let other_table = &system.tables[other_type.table_id().unwrap()];
 
                     let other_table_pk_query = match &other_type.kind {
                         GqlTypeKind::Primitive => panic!(""),
                         GqlTypeKind::Composite(kind) => {
-                            DatabaseQuery::from(&system.queries[kind.get_pk_query()])
+                            DatabaseQuery::from(&system.database_queries[kind.get_pk_query()])
                         }
                     };
                     let self_table = &system.tables[return_type
@@ -245,7 +245,7 @@ impl<'content> DatabaseQuery<'content> {
                     other_type_id,
                     cardinality,
                 } => {
-                    let other_type = &system.types[*other_type_id];
+                    let other_type = &system.database_types[*other_type_id];
                     let other_table_query = {
                         match &other_type.kind {
                             GqlTypeKind::Primitive => panic!(""),
@@ -253,9 +253,9 @@ impl<'content> DatabaseQuery<'content> {
                                 // Get an appropriate query based on the cardinality of the relation
                                 DatabaseQuery::from(
                                     if cardinality == &RelationCardinality::Unbounded {
-                                        &system.queries[kind.get_collection_query()]
+                                        &system.database_queries[kind.get_collection_query()]
                                     } else {
-                                        &system.queries[kind.get_pk_query()]
+                                        &system.database_queries[kind.get_pk_query()]
                                     },
                                 )
                             }

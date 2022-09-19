@@ -1,7 +1,7 @@
 use async_graphql_parser::types::{TypeDefinition, TypeKind};
 use payas_model::model::{
     argument::ArgumentParameterType,
-    mapped_arena::MappedArena,
+    mapped_arena::SerializableSlab,
     operation::{Mutation, Query},
     order::{OrderByParameterType, OrderByParameterTypeKind},
     predicate::{PredicateParameterType, PredicateParameterTypeKind},
@@ -15,27 +15,29 @@ use crate::graphql::introspection::definition::schema::{
 
 use super::definition::{GqlFieldDefinition, GqlTypeDefinition};
 
-impl GqlTypeDefinition for MappedArena<Query> {
+impl GqlTypeDefinition for (&SerializableSlab<Query>, &SerializableSlab<Query>) {
     fn name(&self) -> &str {
         QUERY_ROOT_TYPENAME
     }
 
     fn fields(&self, _model: &ModelSystem) -> Vec<&dyn GqlFieldDefinition> {
-        self.values
+        self.0
             .iter()
+            .chain(self.1.iter())
             .map(|q| q.1 as &dyn GqlFieldDefinition)
             .collect()
     }
 }
 
-impl GqlTypeDefinition for MappedArena<Mutation> {
+impl GqlTypeDefinition for (&SerializableSlab<Mutation>, &SerializableSlab<Mutation>) {
     fn name(&self) -> &str {
         MUTATION_ROOT_TYPENAME
     }
 
     fn fields(&self, _model: &ModelSystem) -> Vec<&dyn GqlFieldDefinition> {
-        self.values
+        self.0
             .iter()
+            .chain(self.1.iter())
             .map(|q| q.1 as &dyn GqlFieldDefinition)
             .collect()
     }
@@ -104,7 +106,11 @@ impl GqlTypeDefinition for ArgumentParameterType {
     }
 
     fn fields<'a>(&'a self, model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
-        let underlying_type = &model.types[self.actual_type_id.unwrap()];
+        let underlying_type = if self.is_primitive {
+            &model.primitive_types[self.type_id.unwrap()]
+        } else {
+            &model.service_types[self.type_id.unwrap()]
+        };
 
         match &underlying_type.kind {
             GqlTypeKind::Primitive => vec![],

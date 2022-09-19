@@ -1,0 +1,532 @@
+---
+source: payas-parser/src/builder/resolved_builder.rs
+expression: resolved
+---
+primitive_types:
+  values:
+    - - ~
+      - Primitive: Boolean
+    - - ~
+      - Primitive: Int
+    - - ~
+      - Primitive: Float
+    - - ~
+      - Primitive: Decimal
+    - - ~
+      - Primitive: String
+    - - ~
+      - Primitive: LocalTime
+    - - ~
+      - Primitive: LocalDateTime
+    - - ~
+      - Primitive: LocalDate
+    - - ~
+      - Primitive: Instant
+    - - ~
+      - Primitive: Json
+    - - ~
+      - Primitive: Blob
+    - - ~
+      - Primitive: Uuid
+    - - ~
+      - Primitive: Claytip
+    - - ~
+      - Primitive: ClaytipPriv
+    - - ~
+      - Primitive:
+          Interception: Operation
+    - ~
+  map:
+    Blob:
+      index: 10
+      generation: ~
+    Boolean:
+      index: 0
+      generation: ~
+    Claytip:
+      index: 12
+      generation: ~
+    ClaytipPriv:
+      index: 13
+      generation: ~
+    Decimal:
+      index: 3
+      generation: ~
+    Float:
+      index: 2
+      generation: ~
+    Instant:
+      index: 8
+      generation: ~
+    Int:
+      index: 1
+      generation: ~
+    Json:
+      index: 9
+      generation: ~
+    LocalDate:
+      index: 7
+      generation: ~
+    LocalDateTime:
+      index: 6
+      generation: ~
+    LocalTime:
+      index: 5
+      generation: ~
+    Operation:
+      index: 14
+      generation: ~
+    String:
+      index: 4
+      generation: ~
+    Uuid:
+      index: 11
+      generation: ~
+database_types:
+  values:
+    - - ~
+      - Composite:
+          name: Concert
+          plural_name: Concerts
+          fields:
+            - name: id
+              typ:
+                Plain:
+                  type_name: Int
+                  is_primitive: true
+              kind:
+                Persistent:
+                  column_name: id
+                  self_column: true
+                  is_pk: true
+                  type_hint: ~
+                  unique_constraints: []
+              default_value: Autoincrement
+            - name: title
+              typ:
+                Plain:
+                  type_name: String
+                  is_primitive: true
+              kind:
+                Persistent:
+                  column_name: title
+                  self_column: true
+                  is_pk: false
+                  type_hint: ~
+                  unique_constraints: []
+              default_value: ~
+            - name: public
+              typ:
+                Plain:
+                  type_name: Boolean
+                  is_primitive: true
+              kind:
+                Persistent:
+                  column_name: public
+                  self_column: true
+                  is_pk: false
+                  type_hint: ~
+                  unique_constraints: []
+              default_value: ~
+          kind:
+            Persistent:
+              table_name: concerts
+          access:
+            creation:
+              LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - AuthContext
+                                  - Reference:
+                                      index: 16
+                                      generation: ~
+                              - - role
+                              - Reference:
+                                  index: 4
+                                  generation: ~
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - - self
+                            - Reference:
+                                index: 17
+                                generation: ~
+                        - - public
+                        - Reference:
+                            index: 0
+                            generation: ~
+                  - Primitive: Boolean
+            read:
+              LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - AuthContext
+                                  - Reference:
+                                      index: 16
+                                      generation: ~
+                              - - role
+                              - Reference:
+                                  index: 4
+                                  generation: ~
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - - self
+                            - Reference:
+                                index: 17
+                                generation: ~
+                        - - public
+                        - Reference:
+                            index: 0
+                            generation: ~
+                  - Primitive: Boolean
+            update:
+              LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - AuthContext
+                                  - Reference:
+                                      index: 16
+                                      generation: ~
+                              - - role
+                              - Reference:
+                                  index: 4
+                                  generation: ~
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - - self
+                            - Reference:
+                                index: 17
+                                generation: ~
+                        - - public
+                        - Reference:
+                            index: 0
+                            generation: ~
+                  - Primitive: Boolean
+            delete:
+              LogicalOp:
+                Or:
+                  - RelationalOp:
+                      Eq:
+                        - FieldSelection:
+                            Select:
+                              - Single:
+                                  - - AuthContext
+                                  - Reference:
+                                      index: 16
+                                      generation: ~
+                              - - role
+                              - Reference:
+                                  index: 4
+                                  generation: ~
+                        - StringLiteral:
+                            - ROLE_ADMIN
+                        - Primitive: Boolean
+                  - FieldSelection:
+                      Select:
+                        - Single:
+                            - - self
+                            - Reference:
+                                index: 17
+                                generation: ~
+                        - - public
+                        - Reference:
+                            index: 0
+                            generation: ~
+                  - Primitive: Boolean
+    - ~
+    - ~
+    - ~
+  map:
+    Concert:
+      index: 0
+      generation: ~
+service_types:
+  values:
+    - ~
+    - ~
+    - ~
+    - ~
+  map: {}
+contexts:
+  values:
+    - - ~
+      - name: AuthContext
+        fields:
+          - name: role
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            source:
+              annotation: jwt
+              value: role
+    - ~
+    - ~
+    - ~
+  map:
+    AuthContext:
+      index: 0
+      generation: ~
+services:
+  values:
+    - - ~
+      - name: Logger
+        script:
+          - 47
+          - 47
+          - 32
+          - 100
+          - 101
+          - 110
+          - 111
+          - 45
+          - 102
+          - 109
+          - 116
+          - 45
+          - 105
+          - 103
+          - 110
+          - 111
+          - 114
+          - 101
+          - 45
+          - 102
+          - 105
+          - 108
+          - 101
+          - 10
+          - 47
+          - 47
+          - 32
+          - 100
+          - 101
+          - 110
+          - 111
+          - 45
+          - 108
+          - 105
+          - 110
+          - 116
+          - 45
+          - 105
+          - 103
+          - 110
+          - 111
+          - 114
+          - 101
+          - 45
+          - 102
+          - 105
+          - 108
+          - 101
+          - 10
+          - 47
+          - 47
+          - 32
+          - 84
+          - 104
+          - 105
+          - 115
+          - 32
+          - 99
+          - 111
+          - 100
+          - 101
+          - 32
+          - 119
+          - 97
+          - 115
+          - 32
+          - 98
+          - 117
+          - 110
+          - 100
+          - 108
+          - 101
+          - 100
+          - 32
+          - 117
+          - 115
+          - 105
+          - 110
+          - 103
+          - 32
+          - 96
+          - 100
+          - 101
+          - 110
+          - 111
+          - 32
+          - 98
+          - 117
+          - 110
+          - 100
+          - 108
+          - 101
+          - 96
+          - 32
+          - 97
+          - 110
+          - 100
+          - 32
+          - 105
+          - 116
+          - 39
+          - 115
+          - 32
+          - 110
+          - 111
+          - 116
+          - 32
+          - 114
+          - 101
+          - 99
+          - 111
+          - 109
+          - 109
+          - 101
+          - 110
+          - 100
+          - 101
+          - 100
+          - 32
+          - 116
+          - 111
+          - 32
+          - 101
+          - 100
+          - 105
+          - 116
+          - 32
+          - 105
+          - 116
+          - 32
+          - 109
+          - 97
+          - 110
+          - 117
+          - 97
+          - 108
+          - 108
+          - 121
+          - 10
+          - 10
+          - 10
+        script_path: logger.js
+        methods:
+          - name: log
+            operation_kind: Query
+            is_exported: true
+            access:
+              creation:
+                RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference:
+                                  index: 16
+                                  generation: ~
+                          - - role
+                          - Reference:
+                              index: 4
+                              generation: ~
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                    - Primitive: Boolean
+              read:
+                RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference:
+                                  index: 16
+                                  generation: ~
+                          - - role
+                          - Reference:
+                              index: 4
+                              generation: ~
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                    - Primitive: Boolean
+              update:
+                RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference:
+                                  index: 16
+                                  generation: ~
+                          - - role
+                          - Reference:
+                              index: 4
+                              generation: ~
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                    - Primitive: Boolean
+              delete:
+                RelationalOp:
+                  Eq:
+                    - FieldSelection:
+                        Select:
+                          - Single:
+                              - - AuthContext
+                              - Reference:
+                                  index: 16
+                                  generation: ~
+                          - - role
+                          - Reference:
+                              index: 4
+                              generation: ~
+                    - StringLiteral:
+                        - ROLE_ADMIN
+                    - Primitive: Boolean
+            arguments:
+              - name: claytip
+                typ:
+                  Plain:
+                    type_name: Claytip
+                    is_primitive: true
+                is_injected: true
+            return_type:
+              Plain:
+                type_name: Boolean
+                is_primitive: true
+        interceptors: []
+    - ~
+    - ~
+    - ~
+  map:
+    Logger:
+      index: 0
+      generation: ~
+

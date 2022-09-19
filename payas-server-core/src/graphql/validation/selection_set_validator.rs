@@ -213,8 +213,14 @@ impl<'a> SelectionSetValidator<'a> {
     fn find_type(&'a self, name: &str) -> Option<&'a dyn GqlTypeDefinition> {
         let core_type = self
             .model
-            .types
+            .primitive_types
             .iter()
+            .chain(
+                self.model
+                    .database_types
+                    .iter()
+                    .chain(self.model.service_types.iter()),
+            )
             .find(|t| t.1.name.as_str() == name)
             .map(|t| t.1 as &dyn GqlTypeDefinition);
 

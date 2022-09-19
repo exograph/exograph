@@ -1,7 +1,7 @@
 use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::Name;
 use payas_model::model::{
-    argument::{ArgumentParameter, ArgumentParameterType, ArgumentParameterTypeWithModifier},
+    argument::{ArgumentParameter, ArgumentParameterType},
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     operation::{CreateDataParameter, CreateDataParameterTypeWithModifier, UpdateDataParameter},
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeWithModifier},
@@ -129,7 +129,10 @@ impl GqlFieldTypeDefinition for LimitParameterType {
     }
 
     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        GqlFieldTypeDefinitionNode::NonLeaf(&model.types[self.type_id], &self.type_modifier)
+        GqlFieldTypeDefinitionNode::NonLeaf(
+            &model.database_types[self.type_id],
+            &self.type_modifier,
+        )
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -171,7 +174,10 @@ impl GqlFieldTypeDefinition for OffsetParameterType {
     }
 
     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        GqlFieldTypeDefinitionNode::NonLeaf(&model.types[self.type_id], &self.type_modifier)
+        GqlFieldTypeDefinitionNode::NonLeaf(
+            &model.database_types[self.type_id],
+            &self.type_modifier,
+        )
     }
 
     fn modifier(&self) -> &GqlTypeModifier {
@@ -244,13 +250,13 @@ impl GqlFieldDefinition for ArgumentParameter {
     }
 }
 
-impl GqlFieldTypeDefinition for ArgumentParameterTypeWithModifier {
+impl GqlFieldTypeDefinition for ArgumentParameterType {
     fn name<'a>(&'a self, _model: &'a ModelSystem) -> &'a str {
-        &self.type_name
+        &self.name
     }
 
     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        let tpe = self.type_id.as_ref().map(|t| &model.argument_types[*t]);
+        let tpe = self.type_id.as_ref().map(|t| &model.service_types[*t]);
 
         match tpe {
             Some(tpe) => {
@@ -262,9 +268,10 @@ impl GqlFieldTypeDefinition for ArgumentParameterTypeWithModifier {
             }
             None => {
                 let tpe = &model
-                    .types
+                    .primitive_types
                     .iter()
-                    .find(|t| t.1.name == self.type_name)
+                    .chain(model.service_types.iter())
+                    .find(|t| t.1.name == self.name)
                     .unwrap()
                     .1;
                 GqlFieldTypeDefinitionNode::Leaf(*tpe)
@@ -274,20 +281,6 @@ impl GqlFieldTypeDefinition for ArgumentParameterTypeWithModifier {
 
     fn modifier(&self) -> &GqlTypeModifier {
         &self.type_modifier
-    }
-}
-
-impl GqlFieldTypeDefinition for ArgumentParameterType {
-    fn name<'a>(&'a self, _model: &'a ModelSystem) -> &'a str {
-        &self.name
-    }
-
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        GqlFieldTypeDefinitionNode::Leaf(&model.types[self.actual_type_id.unwrap()])
-    }
-
-    fn modifier(&self) -> &GqlTypeModifier {
-        &GqlTypeModifier::NonNull
     }
 }
 

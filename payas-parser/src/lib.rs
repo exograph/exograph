@@ -5,12 +5,13 @@ use codemap_diagnostic::{ColorConfig, Emitter};
 use error::ParserError;
 use payas_model::model::system::ModelSystem;
 
-mod ast;
 mod builder;
 pub mod error;
 mod parser;
 mod typechecker;
 mod util;
+
+use payas_core_model_builder::ast;
 
 /// Build a model system from a clay file
 pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserError> {
@@ -22,7 +23,8 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
     );
 
     parser::parse_file(&model_file, &mut codemap)
-        .and_then(builder::build)
+        .and_then(typechecker::build)
+        .and_then(|types| builder::system_builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
             let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
             if let ParserError::Diagnosis(err) = err {
@@ -44,7 +46,8 @@ pub fn build_system_from_str(
     codemap.add_file(file_name.clone(), model_str.to_string());
 
     parser::parse_str(model_str, &mut codemap, &file_name)
-        .and_then(builder::build)
+        .and_then(typechecker::build)
+        .and_then(|types| builder::system_builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
             let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
 

@@ -1,21 +1,12 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstModelKind, FieldSelection, Identifier, Untyped};
 
-use super::annotation::AnnotationSpec;
-use super::{Scope, Type, TypecheckFrom, Typed};
-
-impl FieldSelection<Typed> {
-    pub fn typ(&self) -> &Type {
-        match &self {
-            FieldSelection::Single(_, typ) => typ,
-            FieldSelection::Select(_, _, _, typ) => typ,
-        }
-    }
-}
+use super::{Scope, Type, TypecheckFrom};
 
 impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
     fn shallow(untyped: &FieldSelection<Untyped>) -> FieldSelection<Typed> {

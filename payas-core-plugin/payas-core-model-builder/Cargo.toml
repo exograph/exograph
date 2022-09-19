@@ -1,0 +1,18 @@
+[package]
+name = "payas-core-model-builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codemap = "0.1.3"
+serde = { version = "1.0.136", features = ["derive"] }
+codemap-diagnostic = "0.1.1"
+thiserror = "1.0.30"
+
+payas-model = { path = "../../payas-model" }
+
+[dev-dependencies]
+
+
+
+[lib]

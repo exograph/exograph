@@ -1,12 +1,16 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model_builder::typechecker::{
+    annotation::{AnnotationSpec, AnnotationTarget},
+    annotation_map::AnnotationMap,
+    Typed,
+};
 use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstField, AstFieldDefault, AstModel, AstModelKind, Untyped};
 
-use super::annotation::{AnnotationSpec, AnnotationTarget};
-use super::{AnnotationMap, Scope, Type, TypecheckFrom, Typed};
+use super::{annotation_map::AnnotationMapImpl, Scope, Type, TypecheckFrom};
 
 impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
     fn shallow(untyped: &AstModel<Untyped>) -> AstModel<Typed> {

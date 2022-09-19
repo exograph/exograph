@@ -1,11 +1,3 @@
-use codemap::{CodeMap, Span};
-
-pub fn null_span() -> Span {
-    let mut codemap = CodeMap::new();
-    let file = codemap.add_file("".to_string(), "".to_string());
-    file.span
-}
-
 /// Join strings together with commas and an optional separator before the last word.
 ///
 /// e.g. `join_strings(vec!["a", "b", "c"], Some("or")) == "a, b, or c"`

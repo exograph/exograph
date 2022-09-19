@@ -25,15 +25,17 @@ impl<'a> DataRootElement<'a> {
         match self.operation_type {
             OperationType::Query => {
                 let query = system
-                    .queries
+                    .database_queries
                     .get_by_key(name)
+                    .or_else(|| system.service_queries.get_by_key(name))
                     .ok_or_else(|| ExecutionError::Generic(format!("No such query {}", name)))?;
                 query.execute(field, system_context, request_context).await
             }
             OperationType::Mutation => {
                 let mutation = system
-                    .mutations
+                    .database_mutations
                     .get_by_key(name)
+                    .or_else(|| system.service_mutations.get_by_key(name))
                     .ok_or_else(|| ExecutionError::Generic(format!("No such mutation {}", name)))?;
                 mutation
                     .execute(field, system_context, request_context)

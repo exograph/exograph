@@ -1,38 +1,41 @@
-use std::collections::{hash_map, BTreeMap, HashMap};
-use std::fmt::Debug;
+use std::collections::{hash_map, HashMap};
 
-use crate::ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped};
-use crate::typechecker::TypecheckFrom;
-use crate::util;
+use crate::{
+    ast::ast_types::{AstAnnotation, AstAnnotationParams, Untyped},
+    util,
+};
 
-use super::annotation::{AnnotationSpec, AnnotationTarget};
-use super::{Scope, Type, Typed};
+use super::{Scope, TypecheckFrom};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model_builder::typechecker::{
+    annotation::{AnnotationSpec, AnnotationTarget},
+    annotation_map::AnnotationMap,
+    typ::Type,
+    Typed,
+};
 use payas_model::model::mapped_arena::MappedArena;
-use serde::{Deserialize, Serialize, Serializer};
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct AnnotationMap {
-    #[serde(serialize_with = "ordered_map")] // serialize with ordered_map to sort by key
-    annotations: HashMap<String, AstAnnotation<Typed>>,
+pub trait AnnotationMapImpl {
+    fn new(ast_annotations: &[AstAnnotation<Untyped>]) -> Self;
+    fn contains(&self, name: &str) -> bool;
 
-    /// Spans of the annotations (also keeps track of duplicate annotations).
-    #[serde(skip_serializing)]
-    #[serde(skip_deserializing)]
-    spans: HashMap<String, Vec<Span>>,
+    fn get(&self, name: &str) -> Option<&AstAnnotationParams<Typed>>;
+
+    fn iter(&self) -> hash_map::Iter<String, AstAnnotation<Typed>>;
+
+    fn pass(
+        &mut self,
+        target: AnnotationTarget,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
+        scope: &Scope,
+        errors: &mut Vec<Diagnostic>,
+    ) -> bool;
 }
 
-fn ordered_map<S: Serializer>(
-    value: &HashMap<String, AstAnnotation<Typed>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    let ordered = value.iter().collect::<BTreeMap<_, _>>();
-    ordered.serialize(serializer)
-}
-
-impl AnnotationMap {
-    pub fn new(ast_annotations: &[AstAnnotation<Untyped>]) -> Self {
+impl AnnotationMapImpl for AnnotationMap {
+    fn new(ast_annotations: &[AstAnnotation<Untyped>]) -> Self {
         let mut annotations = HashMap::new();
         let mut spans: HashMap<String, Vec<Span>> = HashMap::new();
 
@@ -49,19 +52,19 @@ impl AnnotationMap {
         AnnotationMap { annotations, spans }
     }
 
-    pub fn contains(&self, name: &str) -> bool {
+    fn contains(&self, name: &str) -> bool {
         self.annotations.contains_key(name)
     }
 
-    pub fn get(&self, name: &str) -> Option<&AstAnnotationParams<Typed>> {
+    fn get(&self, name: &str) -> Option<&AstAnnotationParams<Typed>> {
         self.annotations.get(name).map(|a| &a.params)
     }
 
-    pub fn iter(&self) -> hash_map::Iter<String, AstAnnotation<Typed>> {
+    fn iter(&self) -> hash_map::Iter<String, AstAnnotation<Typed>> {
         self.annotations.iter()
     }
 
-    pub fn pass(
+    fn pass(
         &mut self,
         target: AnnotationTarget,
         type_env: &MappedArena<Type>,

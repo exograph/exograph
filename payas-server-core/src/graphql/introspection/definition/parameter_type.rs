@@ -132,9 +132,13 @@ impl TypeDefinitionProvider for PredicateParameterType {
 // TODO: Reduce duplication from the above impl
 impl TypeDefinitionProvider for ArgumentParameterType {
     fn type_definition(&self, system: &ModelSystem) -> TypeDefinition {
-        let type_def = system
-            .types
-            .get(self.actual_type_id.unwrap())
+        let arena = if self.is_primitive {
+            &system.primitive_types
+        } else {
+            &system.service_types
+        };
+        let type_def = arena
+            .get(self.type_id.unwrap())
             .unwrap()
             .type_definition(system);
 
