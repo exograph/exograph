@@ -107,9 +107,9 @@ impl GqlTypeDefinition for ArgumentParameterType {
 
     fn fields<'a>(&'a self, model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
         let underlying_type = if self.is_primitive {
-            &model.primitive_types[self.actual_type_id.unwrap()]
+            &model.primitive_types[self.type_id.unwrap()]
         } else {
-            &model.service_types[self.actual_type_id.unwrap()]
+            &model.service_types[self.type_id.unwrap()]
         };
 
         match &underlying_type.kind {

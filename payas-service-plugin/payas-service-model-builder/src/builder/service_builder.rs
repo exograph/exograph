@@ -3,7 +3,7 @@ use payas_core_model_builder::builder::{
 };
 use payas_model::model::{
     access::Access,
-    argument::{ArgumentParameter, ArgumentParameterTypeWithModifier},
+    argument::{ArgumentParameter, ArgumentParameterType},
     interceptor::{Interceptor, InterceptorKind},
     mapped_arena::{MappedArena, SerializableSlabIndex},
     operation::{Interceptors, Mutation, MutationKind, OperationReturnType, Query, QueryKind},
@@ -12,7 +12,6 @@ use payas_model::model::{
 };
 
 use super::{
-    argument_builder,
     resolved_builder::{ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService},
     system_builder::SystemContextBuilding,
 };
@@ -213,8 +212,6 @@ fn argument_param(
     method: &ResolvedMethod,
     building: &SystemContextBuilding,
 ) -> Vec<ArgumentParameter> {
-    let arg_types = &building.argument_types;
-
     method
         .arguments
         .iter()
@@ -222,16 +219,16 @@ fn argument_param(
         .map(|arg| {
             let arg_typename = arg.typ.get_underlying_typename();
             let type_modifier = arg.typ.get_modifier();
-            let input_name = argument_builder::get_parameter_type_name(arg_typename);
-            let input_type_id = arg_types.get_id(&input_name);
+            let input_type_id = building.service_types.get_id(&arg_typename);
 
             if let Some(input_type_id) = input_type_id {
                 ArgumentParameter {
                     name: arg.name.clone(),
-                    typ: ArgumentParameterTypeWithModifier {
-                        type_name: input_name,
+                    typ: ArgumentParameterType {
+                        name: arg_typename.to_owned(),
                         type_id: Some(input_type_id),
                         type_modifier,
+                        is_primitive: false,
                     },
                 }
             } else {
@@ -239,10 +236,11 @@ fn argument_param(
 
                 ArgumentParameter {
                     name: arg.name.clone(),
-                    typ: ArgumentParameterTypeWithModifier {
-                        type_name: arg_typename.to_string(),
+                    typ: ArgumentParameterType {
+                        name: arg_typename.to_string(),
                         type_id: None,
                         type_modifier,
+                        is_primitive: true,
                     },
                 }
             }

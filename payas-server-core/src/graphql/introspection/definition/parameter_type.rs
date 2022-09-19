@@ -138,7 +138,7 @@ impl TypeDefinitionProvider for ArgumentParameterType {
             &system.service_types
         };
         let type_def = arena
-            .get(self.actual_type_id.unwrap())
+            .get(self.type_id.unwrap())
             .unwrap()
             .type_definition(system);
 

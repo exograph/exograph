@@ -8,7 +8,6 @@ use payas_core_model_builder::{
     typechecker::{typ::Type, Typed},
 };
 use payas_model::model::{
-    argument::ArgumentParameterType,
     interceptor::Interceptor,
     mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex},
     operation::{Mutation, Query},
@@ -17,7 +16,6 @@ use payas_model::model::{
 };
 
 use super::{
-    argument_builder,
     resolved_builder::{self, ResolvedServiceSystem},
     service_builder, type_builder,
 };
@@ -26,7 +24,6 @@ pub struct ModelServiceSystem {
     pub service_types: SerializableSlab<GqlType>,
 
     // query related
-    pub argument_types: SerializableSlab<ArgumentParameterType>,
     pub queries: MappedArena<Query>,
 
     // mutation related
@@ -89,7 +86,7 @@ pub fn build(
 
     Ok(ModelServiceSystem {
         service_types: building.service_types.values,
-        argument_types: building.argument_types.values,
+        // argument_types: building.argument_types.values,
         queries: building.queries,
         mutations: building.mutations,
         methods: building.methods.values,
@@ -102,8 +99,6 @@ pub fn build(
 pub struct SystemContextBuilding {
     // TODO: Break this up into deno/wasm
     pub service_types: MappedArena<GqlType>,
-
-    pub argument_types: MappedArena<ArgumentParameterType>,
 
     // break this into subsystems
     pub queries: MappedArena<Query>,
@@ -139,8 +134,6 @@ fn build_shallow_service(
 
     type_builder::build_shallow(resolved_service_types, building);
 
-    argument_builder::build_shallow(resolved_service_types, building);
-
     service_builder::build_shallow(
         resolved_service_types,
         resolved_services,
@@ -162,8 +155,6 @@ fn build_expanded_service(
         .concat();
 
     type_builder::build_service_expanded(resolved_methods, resolved_env, building)?;
-
-    argument_builder::build_expanded(building);
 
     service_builder::build_expanded(building);
 

@@ -1,7 +1,7 @@
 use async_graphql_parser::types::{BaseType, Type};
 use async_graphql_value::Name;
 use payas_model::model::{
-    argument::{ArgumentParameter, ArgumentParameterType, ArgumentParameterTypeWithModifier},
+    argument::{ArgumentParameter, ArgumentParameterType},
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     operation::{CreateDataParameter, CreateDataParameterTypeWithModifier, UpdateDataParameter},
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeWithModifier},
@@ -250,13 +250,13 @@ impl GqlFieldDefinition for ArgumentParameter {
     }
 }
 
-impl GqlFieldTypeDefinition for ArgumentParameterTypeWithModifier {
+impl GqlFieldTypeDefinition for ArgumentParameterType {
     fn name<'a>(&'a self, _model: &'a ModelSystem) -> &'a str {
-        &self.type_name
+        &self.name
     }
 
     fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        let tpe = self.type_id.as_ref().map(|t| &model.argument_types[*t]);
+        let tpe = self.type_id.as_ref().map(|t| &model.service_types[*t]);
 
         match tpe {
             Some(tpe) => {
@@ -271,7 +271,7 @@ impl GqlFieldTypeDefinition for ArgumentParameterTypeWithModifier {
                     .primitive_types
                     .iter()
                     .chain(model.service_types.iter())
-                    .find(|t| t.1.name == self.type_name)
+                    .find(|t| t.1.name == self.name)
                     .unwrap()
                     .1;
                 GqlFieldTypeDefinitionNode::Leaf(*tpe)
@@ -281,25 +281,6 @@ impl GqlFieldTypeDefinition for ArgumentParameterTypeWithModifier {
 
     fn modifier(&self) -> &GqlTypeModifier {
         &self.type_modifier
-    }
-}
-
-impl GqlFieldTypeDefinition for ArgumentParameterType {
-    fn name<'a>(&'a self, _model: &'a ModelSystem) -> &'a str {
-        &self.name
-    }
-
-    fn inner<'a>(&'a self, model: &'a ModelSystem) -> GqlFieldTypeDefinitionNode<'a> {
-        let typ = if self.is_primitive {
-            &model.primitive_types[self.actual_type_id.unwrap()]
-        } else {
-            &model.service_types[self.actual_type_id.unwrap()]
-        };
-        GqlFieldTypeDefinitionNode::Leaf(typ)
-    }
-
-    fn modifier(&self) -> &GqlTypeModifier {
-        &GqlTypeModifier::NonNull
     }
 }
 

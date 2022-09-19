@@ -47,7 +47,6 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
 
         contexts: base_system.contexts,
         context_types: base_system.context_types.values,
-        argument_types: service_system.argument_types,
         order_by_types: database_system.order_by_types,
         predicate_types: database_system.predicate_types,
         database_queries: database_system.queries,
