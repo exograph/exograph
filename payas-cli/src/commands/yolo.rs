@@ -154,7 +154,7 @@ impl PostgreSQLInstance {
         let container_name = format!("claytip-yolo-{}", generate_random_string());
 
         // start postgres docker in background
-        let mut db_background = std::process::Command::new("docker");
+        let mut db_background = std::process::Command::new("dockerz");
         let db_background = db_background
             .args([
                 "run",
@@ -172,7 +172,9 @@ impl PostgreSQLInstance {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let mut db_background = db_background.spawn()?;
+        let mut db_background = db_background
+            .spawn()
+            .context("While trying to start Docker (it may not be installed)")?;
 
         // let things stabilize
 
