@@ -1,5 +1,6 @@
 use std::{
     path::Path,
+    process::Child,
     sync::{
         atomic::Ordering,
         mpsc::{channel, RecvTimeoutError},
@@ -48,7 +49,14 @@ where
         !matches!(path.extension().and_then(|e| e.to_str()), Some("claypot"))
     }
 
-    let build_and_start_server = || {
+    // this method attempts to builds a claypot from the model and spawn a clay-server from it
+
+    // - if the attempt succeeds, we will return a handle to the process in an Ok(Some(...))
+    // - if the return value is an Err, this means that we have encountered an unrecoverable error, and so the
+    //   watcher should exit.
+    // - if the return value is an Ok(None), this mean that we have encountered some error, but it is not necessarily
+    //   unrecoverable (the watcher should not exit)
+    let build_and_start_server: &dyn Fn() -> Result<Option<Child>> = &|| {
         let result = build(&absolute_path, None, false).and_then(|_| {
             if let Err(e) = prestart_callback() {
                 println!("Error: {}", e);
