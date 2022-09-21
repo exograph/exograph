@@ -314,6 +314,10 @@ mod tests {
         fn get_headers(&self, _key: &str) -> Vec<String> {
             vec![]
         }
+
+        fn get_ip(&self) -> std::net::IpAddr {
+            panic!()
+        }
     }
 
     const REQUEST: TestRequest = TestRequest {};
