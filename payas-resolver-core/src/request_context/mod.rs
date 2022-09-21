@@ -51,7 +51,7 @@ pub trait Request {
     }
 
     // return the IP address used to make the request
-    fn get_ip(&self) -> std::net::IpAddr;
+    fn get_ip(&self) -> Option<std::net::IpAddr>;
 }
 
 /// Represent a request context extracted for a particular request

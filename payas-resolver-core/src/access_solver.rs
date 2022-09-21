@@ -315,8 +315,8 @@ mod tests {
             vec![]
         }
 
-        fn get_ip(&self) -> std::net::IpAddr {
-            panic!()
+        fn get_ip(&self) -> Option<std::net::IpAddr> {
+            None
         }
     }
 
