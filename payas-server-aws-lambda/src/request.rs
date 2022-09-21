@@ -53,8 +53,8 @@ impl Request for LambdaRequest<'_> {
 
         event
             .get("requestContext")
-            .or_else(|| event.get("identity"))
-            .or_else(|| event.get("sourceIp"))
+            .and_then(|ctx| ctx.get("identity"))
+            .and_then(|ident| ident.get("sourceIp"))
             .and_then(|source_ip| source_ip.as_str())
             .and_then(|str| str.parse::<std::net::IpAddr>().ok())
     }
