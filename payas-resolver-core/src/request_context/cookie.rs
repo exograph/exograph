@@ -48,13 +48,13 @@ impl ParsedContext for ParsedCookieContext {
 
     async fn extract_context_field<'r>(
         &self,
-        value: &str,
+        key: Option<&str>,
         _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
         self.cookies
-            .get(value)
+            .get(key?)
             .map(|c| (*c.value()).to_string().into())
     }
 }

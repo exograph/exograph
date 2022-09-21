@@ -17,13 +17,13 @@ impl ParsedContext for HeaderExtractor {
 
     async fn extract_context_field<'r>(
         &self,
-        key: &str,
+        key: Option<&str>,
         _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
         request
-            .get_header(&key.to_ascii_lowercase())
+            .get_header(&key?.to_ascii_lowercase())
             .map(|str| str.as_str().into())
     }
 }
