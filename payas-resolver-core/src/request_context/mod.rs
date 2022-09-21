@@ -21,6 +21,7 @@ use crate::ResolveOperationFn;
 
 use self::cookie::CookieExtractor;
 use self::header::HeaderExtractor;
+use self::ip::IpExtractor;
 use self::jwt::JwtAuthenticator;
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
 
@@ -74,6 +75,7 @@ impl<'a> UserRequestContext<'a> {
             Box::new(EnvironmentContextExtractor),
             Box::new(QueryExtractor),
             Box::new(HeaderExtractor),
+            Box::new(IpExtractor),
             CookieExtractor::parse_context(request)?,
             JwtAuthenticator::parse_context(request)?,
         ];
