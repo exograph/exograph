@@ -1,0 +1,4 @@
+model Log {
+    id: Int = autoincrement() @pk
+    message: String
+}
