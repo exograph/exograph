@@ -27,12 +27,10 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
         .and_then(|types| builder::system_builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
             let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
-            if let ParserError::Diagnosis(err) = err {
-                emitter.emit(&err);
-                ParserError::Generic("Failed to parse input file".to_string())
-            } else {
-                err
+            if let ParserError::Diagnosis(err) = &err {
+                emitter.emit(err);
             }
+            err
         })
 }
 
@@ -50,12 +48,9 @@ pub fn build_system_from_str(
         .and_then(|types| builder::system_builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
             let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
-
-            if let ParserError::Diagnosis(err) = err {
-                emitter.emit(&err);
-                ParserError::Generic("Failed to parse input file".to_string())
-            } else {
-                err
+            if let ParserError::Diagnosis(err) = &err {
+                emitter.emit(err);
             }
+            err
         })
 }

@@ -235,7 +235,7 @@ fn resolve_shallow_service(
                                     label: None,
                                 }],
                             });
-                        Err(ModelBuildingError::Generic(message.to_string()))
+                        Err(ModelBuildingError::Diagnosis(errors.clone()))
                     }
 
                     let kind_annot = match kind_annots.as_slice() {
