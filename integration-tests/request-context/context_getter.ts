@@ -4,7 +4,7 @@ interface AuthContext {
     role: string,
     secretHeader: string,
     devMode: string,
-    ip: string
+    clientIp: string
 }
 
 interface TrackingContext {
@@ -25,7 +25,7 @@ export function getDevModeEnabled(context: AuthContext): boolean {
 }
 
 export function getIp(context: AuthContext): string {
-    return context.ip
+    return context.clientIp
 }
 
 export function isTrackingEnabled(context: TrackingContext): boolean {

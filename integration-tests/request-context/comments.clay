@@ -3,7 +3,7 @@ context AuthContext {
     secretHeader: String @header("X-Secret-Header")
     devMode: String @env("__DEV_MODE")
     sessionId: String @cookie("session_id")
-    ip: String @ip
+    clientIp: String @ip
 }
 
 context TrackingContext {
