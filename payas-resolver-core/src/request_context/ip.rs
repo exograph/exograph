@@ -7,23 +7,21 @@ use serde_json::Value;
 
 use super::Request;
 
-pub struct HeaderExtractor;
+pub struct IpExtractor;
 
 #[async_trait]
-impl ParsedContext for HeaderExtractor {
+impl ParsedContext for IpExtractor {
     fn annotation_name(&self) -> &str {
-        "header"
+        "clientIp"
     }
 
     async fn extract_context_field<'r>(
         &self,
-        key: Option<&str>,
+        _key: Option<&str>,
         _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
-        request
-            .get_header(&key?.to_ascii_lowercase())
-            .map(|str| str.as_str().into())
+        request.get_ip().map(|ip| ip.to_string().into())
     }
 }

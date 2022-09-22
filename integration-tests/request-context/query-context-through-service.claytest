@@ -1,9 +1,10 @@
 operation: | 
     query {
       getRole 
-      getConnectingIp
+      getSecretHeader
       getDevModeEnabled
       getRoleAndUid
+      getIp
     }
 auth: |
   {
@@ -11,7 +12,7 @@ auth: |
   }
 headers: |
   {
-    "X-Connecting-IP": "127.0.0.1",
+    "X-Secret-Header": "pancake",
     "X-User-ID": "abcde"
   }
 envs:
@@ -20,8 +21,9 @@ response: |
   {
     "data": {
       "getRole": "ADMIN",
-      "getConnectingIp": "127.0.0.1",
+      "getSecretHeader": "pancake",
       "getDevModeEnabled": true,
-      "getRoleAndUid": "ADMIN,abcde"
+      "getRoleAndUid": "ADMIN,abcde",
+      "getIp": "127.0.0.1"
     }
   }

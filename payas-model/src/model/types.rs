@@ -23,7 +23,7 @@ pub struct ContextField {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ContextSource {
     pub annotation_name: String,
-    pub value: String,
+    pub value: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

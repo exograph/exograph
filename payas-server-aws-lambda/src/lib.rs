@@ -1,38 +1,40 @@
 mod request;
 
 use futures::StreamExt;
-use lambda_http::{http::StatusCode, Error, Response};
+use lambda_runtime::{Error, LambdaEvent};
 use payas_resolver_core::request_context::{ContextParsingError, RequestContext};
 use payas_server_core::{OperationsPayload, SystemContext};
 use request::LambdaRequest;
+use serde_json::{json, Value};
 use std::sync::Arc;
 
-fn error_msg(message: &str) -> String {
-    format!(r#"{{ "errors": [{{"message": "{message}"}}] }}"#)
+fn error_msg(message: &str, status_code: usize) -> Value {
+    let body = format!(r#"{{ "errors": [{{"message": "{message}"}}] }}"#);
+
+    json!({
+        "isBase64Encoded": false,
+        "statusCode": status_code,
+        "body": body
+    })
 }
 
 pub async fn resolve(
-    req: lambda_http::Request,
+    event: LambdaEvent<Value>,
     system_context: Arc<SystemContext>,
-) -> Result<Response<String>, Error> {
-    let request = LambdaRequest::new(&req);
+) -> Result<Value, Error> {
+    let request = LambdaRequest::new(&event);
     let request_context = RequestContext::parse_context(&request, vec![]);
 
-    let body = req.body();
-
-    let body_string = match body {
-        lambda_http::Body::Empty => todo!(),
-        lambda_http::Body::Text(string) => string,
-        lambda_http::Body::Binary(_) => todo!(),
-    };
+    let body = event.payload["body"].clone();
 
     match request_context {
         Ok(request_context) => {
-            let operations_payload: Result<OperationsPayload, _> =
-                serde_json::from_str(body_string);
+            let operations_payload: Option<OperationsPayload> = body
+                .as_str()
+                .and_then(|body_string| serde_json::from_str(body_string).ok());
 
             match operations_payload {
-                Ok(operations_payload) => {
+                Some(operations_payload) => {
                     let (stream, headers) = payas_server_core::resolve::<Error>(
                         operations_payload,
                         &system_context,
@@ -55,41 +57,39 @@ pub async fn resolve(
                         .expect("Response stream is not UTF-8")
                         .to_string();
 
-                    let mut builder = Response::builder();
-                    builder = builder.status(StatusCode::OK);
-                    builder = builder.header("Content-Type", "application/json");
+                    Ok(json!({
+                        "isBase64Encoded": false,
+                        "statusCode": 200,
+                        "headers": {},
+                        "multiValueHeaders": headers
+                            .into_iter()
+                            .fold(json!({}), |mut acc, (k, v)| {
+                                if let Some(value) = acc.get_mut(&k) {
+                                    let array = value.as_array_mut().unwrap();
+                                    array.push(v.into());
+                                } else {
+                                    let map = acc.as_object_mut().unwrap();
+                                    map[&k] = v.into();
+                                }
 
-                    for header in headers.iter() {
-                        builder = builder.header(&header.0, &header.1)
-                    }
-
-                    Ok(builder.body(body_string)?)
+                                acc
+                            }),
+                        "body": body_string
+                    }))
                 }
-                Err(_) => Ok(Response::builder()
-                    .status(StatusCode::BAD_REQUEST)
-                    .body(error_msg("Invalid query payload"))?),
+
+                None => Ok(error_msg("Invalid query payload", 400)),
             }
         }
 
         Err(err) => {
-            let (message, base_response) = match err {
-                ContextParsingError::Unauthorized => (
-                    error_msg("Unauthorized"),
-                    Response::builder().status(StatusCode::UNAUTHORIZED),
-                ),
-                ContextParsingError::Malformed => (
-                    error_msg("Malformed header"),
-                    Response::builder().status(StatusCode::BAD_REQUEST),
-                ),
-                _ => (
-                    error_msg("Unknown error"),
-                    Response::builder().status(StatusCode::UNAUTHORIZED),
-                ),
+            let response = match err {
+                ContextParsingError::Unauthorized => (error_msg("Unauthorized", 401)),
+                ContextParsingError::Malformed => (error_msg("Malformed header", 400)),
+                _ => (error_msg("Unknown error", 401)),
             };
 
-            Ok(base_response
-                .header("Content-Type", "application/json")
-                .body(message)?)
+            Ok(response)
         }
     }
 }

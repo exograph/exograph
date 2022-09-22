@@ -1,11 +1,11 @@
 headers: |
     {
-        "X-Connecting-IP": "127.0.0.1"
+        "X-Secret-Header": "pancake"
     }
 operation: | 
     mutation {
         createJournalEntry(data: {
-            text: "Entry made by localhost."
+            text: "Entry made through header."
         }) 
     }
 response: |

@@ -2,8 +2,9 @@ import "./claytip.d.ts";
 
 interface AuthContext {
     role: string,
-    connectingIp: string,
-    devMode: string
+    secretHeader: string,
+    devMode: string,
+    clientIp: string
 }
 
 interface TrackingContext {
@@ -15,12 +16,16 @@ export function getRole(context: AuthContext): string {
     return context.role
 }
 
-export function getConnectingIp(context: AuthContext): string {
-    return context.connectingIp
+export function getSecretHeader(context: AuthContext): string {
+    return context.secretHeader
 }
 
 export function getDevModeEnabled(context: AuthContext): boolean {
     return context.devMode == "1"
+}
+
+export function getIp(context: AuthContext): string {
+    return context.clientIp
 }
 
 export function isTrackingEnabled(context: TrackingContext): boolean {
