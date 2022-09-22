@@ -12,7 +12,7 @@ pub struct IpExtractor;
 #[async_trait]
 impl ParsedContext for IpExtractor {
     fn annotation_name(&self) -> &str {
-        "ip"
+        "clientIp"
     }
 
     async fn extract_context_field<'r>(
