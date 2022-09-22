@@ -3626,6 +3626,7 @@ dependencies = [
  "ctrlc",
  "heck",
  "notify 4.0.17",
+ "payas-core-model-builder",
  "payas-model",
  "payas-parser",
  "payas-sql",

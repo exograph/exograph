@@ -1,5 +1,6 @@
 use std::{
     path::Path,
+    process::Child,
     sync::{
         atomic::Ordering,
         mpsc::{channel, RecvTimeoutError},
@@ -9,8 +10,10 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
+use payas_core_model_builder::error::ModelBuildingError;
+use payas_parser::error::ParserError;
 
-use crate::commands::build::build;
+use crate::commands::build::{build, BuildError};
 
 /// Starts a watcher that will rebuild and serve model files with every change.
 /// Takes a callback that will be called before the start of each server.
@@ -46,8 +49,15 @@ where
         !matches!(path.extension().and_then(|e| e.to_str()), Some("claypot"))
     }
 
-    let build_and_start_server = || {
-        build(&absolute_path, None, false).and_then(|_| {
+    // this method attempts to builds a claypot from the model and spawn a clay-server from it
+
+    // - if the attempt succeeds, we will return a handle to the process in an Ok(Some(...))
+    // - if the return value is an Err, this means that we have encountered an unrecoverable error, and so the
+    //   watcher should exit.
+    // - if the return value is an Ok(None), this mean that we have encountered some error, but it is not necessarily
+    //   unrecoverable (the watcher should not exit)
+    let build_and_start_server: &dyn Fn() -> Result<Option<Child>> = &|| {
+        let result = build(&absolute_path, None, false).and_then(|_| {
             if let Err(e) = prestart_callback() {
                 println!("Error: {}", e);
             }
@@ -57,22 +67,34 @@ where
             if let Some(port) = server_port {
                 command.env("CLAY_SERVER_PORT", port.to_string());
             }
-            command.spawn().context("Failed to start clay-server")
-        })
+            command
+                .spawn()
+                .context("Failed to start clay-server")
+                .map_err(|e| BuildError::UnrecoverableError(anyhow!(e)))
+        });
+
+        match result {
+            // server successfully started
+            Ok(child) => Ok(Some(child)),
+
+            // server encountered an unrecoverable error while building
+            Err(BuildError::ParserError(ParserError::Generic(e)))
+            | Err(BuildError::ParserError(ParserError::ModelBuildingError(
+                ModelBuildingError::Generic(e),
+            ))) => Err(anyhow!(e)),
+            Err(BuildError::UnrecoverableError(e)) => Err(e),
+
+            // server encountered a parser error (we don't need to exit the watcher)
+            Err(BuildError::ParserError(_)) => Ok(None),
+        }
     };
 
-    let mut server = build_and_start_server();
+    let mut server = build_and_start_server()?;
 
+    // watcher loop
     loop {
         if crate::SIGINT.load(Ordering::SeqCst) {
             break;
-        }
-
-        if let Ok(child) = server.as_mut() {
-            if let Ok(Some(_)) = child.try_wait() {
-                // server has exited for some reason, break out of loop so we can exit
-                break;
-            }
         }
 
         // block loop for 500ms
@@ -82,13 +104,13 @@ where
                     if should_restart(path) {
                         println!("Change detected, rebuilding and restarting...");
 
-                        if let Ok(server) = server.as_mut() {
+                        if let Some(server) = server.as_mut() {
                             if server.kill().is_err() {
                                 println!("Unable to kill server");
                             }
                         }
 
-                        server = build_and_start_server();
+                        server = build_and_start_server()?;
                     }
                 }
                 _ => {}
@@ -101,10 +123,18 @@ where
                 }
             },
         }
+
+        if let Some(server) = server.as_mut() {
+            if let Ok(Some(_)) = server.try_wait() {
+                // server died for some reason
+                break;
+            }
+        }
     }
 
-    if let Ok(mut server) = server {
+    if let Some(mut server) = server {
         let _ = server.kill();
     }
+
     Ok(())
 }
