@@ -1,8 +1,9 @@
 context AuthContext {
     role: String @jwt("role")
-    connectingIp: String @header("X-Connecting-IP")
+    secretHeader: String @header("X-Secret-Header")
     devMode: String @env("__DEV_MODE")
     sessionId: String @cookie("session_id")
+    clientIp: String @clientIp
 }
 
 context TrackingContext {
@@ -21,14 +22,14 @@ context TrackingContext {
 @access(
     query=true,
     mutation=AuthContext.role == "ADMIN" ||
-             AuthContext.connectingIp == "127.0.0.1" ||
+             AuthContext.secretHeader == "pancake" ||
              AuthContext.devMode == "1" ||
-             AuthContext.sessionId == "abcde"
+             AuthContext.sessionId == "abcde" 
 )
 model JournalEntry {
     id: Int = autoincrement() @pk
     text: String
-} 
+}
 
 @external("cookie.ts")
 service CookieService {
@@ -39,7 +40,7 @@ service CookieService {
 // Our example service providing 'tracking' logic. Doesn't actually do very much.
 @external("tracking.ts")
 service TrackingService {
-    // this query will return `true` for all requests EXCEPT when X-Connecting-IP is set to 127.0.0.1
+    // this query will return `true` for all requests EXCEPT when X-Secret-Header is set to "pancake"
     query shouldTrack(@inject context: AuthContext): Boolean
 }
 
@@ -47,8 +48,9 @@ service TrackingService {
 @external("context_getter.ts")
 service ContextGetter {
     export query getRole(@inject context: AuthContext): String
-    export query getConnectingIp(@inject context: AuthContext): String
+    export query getSecretHeader(@inject context: AuthContext): String
     export query getDevModeEnabled(@inject context: AuthContext): Boolean
+    export query getIp(@inject context: AuthContext): String
 
     // this method simply takes TrackingContext and returns TrackingContext.shouldTrack
     export query isTrackingEnabled(@inject tracking: TrackingContext): Boolean

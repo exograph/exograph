@@ -16,12 +16,13 @@ impl ParsedContext for QueryExtractor {
 
     async fn extract_context_field<'r>(
         &self,
-        value: &str,
+        key: Option<&str>,
         resolver: &ResolveOperationFn<'r>,
         request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<serde_json::Value> {
-        let query = format!("query {{ {} }}", value.to_owned());
+        let key = key?;
+        let query = format!("query {{ {} }}", key.to_owned());
 
         let result = resolver.as_ref()(
             OperationsPayload {
@@ -34,10 +35,10 @@ impl ParsedContext for QueryExtractor {
         .await
         .ok()?;
 
-        let (_, query_result) = result.iter().find(|(k, _)| k == value).unwrap_or_else(|| {
+        let (_, query_result) = result.iter().find(|(k, _)| k == key).unwrap_or_else(|| {
             panic!(
                 "Could not find {} in results while processing @query context",
-                value
+                key
             )
         });
 

@@ -1,7 +1,9 @@
-use lambda_http::{Error, Request};
+use lambda_runtime::Error;
+use lambda_runtime::LambdaEvent;
 
 use payas_server_aws_lambda::resolve;
 use payas_server_core::create_system_context_or_exit;
+use serde_json::Value;
 
 use std::sync::Arc;
 use std::{env, process::exit};
@@ -14,11 +16,11 @@ async fn main() -> Result<(), Error> {
     payas_server_core::init();
 
     let system_context = Arc::new(create_system_context_or_exit(&claypot_file));
-    let service = lambda_http::service_fn(|request: Request| async {
-        resolve(request, system_context.clone()).await
+    let service = lambda_runtime::service_fn(|event: LambdaEvent<Value>| async {
+        resolve(event, system_context.clone()).await
     });
 
-    lambda_http::run(service).await?;
+    lambda_runtime::run(service).await?;
 
     Ok(())
 }
@@ -50,3 +52,6 @@ fn get_claypot_file_name() -> String {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {}

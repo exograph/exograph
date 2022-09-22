@@ -1,6 +1,7 @@
 mod cookie;
 mod environment;
 mod header;
+mod ip;
 mod jwt;
 mod query;
 
@@ -20,6 +21,7 @@ use crate::ResolveOperationFn;
 
 use self::cookie::CookieExtractor;
 use self::header::HeaderExtractor;
+use self::ip::IpExtractor;
 use self::jwt::JwtAuthenticator;
 use self::{environment::EnvironmentContextExtractor, query::QueryExtractor};
 
@@ -49,6 +51,9 @@ pub trait Request {
     fn get_header(&self, key: &str) -> Option<String> {
         self.get_headers(&key.to_lowercase()).get(0).cloned()
     }
+
+    // return the IP address used to make the request
+    fn get_ip(&self) -> Option<std::net::IpAddr>;
 }
 
 /// Represent a request context extracted for a particular request
@@ -70,6 +75,7 @@ impl<'a> UserRequestContext<'a> {
             Box::new(EnvironmentContextExtractor),
             Box::new(QueryExtractor),
             Box::new(HeaderExtractor),
+            Box::new(IpExtractor),
             CookieExtractor::parse_context(request)?,
             JwtAuthenticator::parse_context(request)?,
         ];
@@ -150,7 +156,7 @@ impl<'a> RequestContext<'a> {
         request: &'a (dyn Request + Send + Sync),
         resolver: &'s ResolveOperationFn<'a>,
         annotation_name: &str,
-        value: &str,
+        value: Option<&str>,
     ) -> Result<Option<Value>, ContextParsingError> {
         let parsed_context = parsed_context_map
             .get(annotation_name)
@@ -180,7 +186,7 @@ impl<'a> RequestContext<'a> {
                         *request,
                         resolver,
                         &field.source.annotation_name,
-                        &field.source.value,
+                        field.source.value.as_deref(),
                     )
                     .await?;
                 Ok(field_value.map(|value| (field.name.clone(), value)))
@@ -219,7 +225,7 @@ pub trait ParsedContext {
     // extract a context field from this struct
     async fn extract_context_field<'r>(
         &self,
-        value: &str,
+        key: Option<&str>,
         resolver: &ResolveOperationFn<'r>,
         request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
@@ -241,11 +247,11 @@ impl ParsedContext for TestRequestContext {
 
     async fn extract_context_field<'r>(
         &self,
-        key: &str,
+        key: Option<&str>,
         _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
-        self.test_values.get(key).cloned()
+        self.test_values.get(key?).cloned()
     }
 }
