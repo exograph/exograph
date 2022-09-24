@@ -180,7 +180,7 @@ fn compute_selection<'a>(
     fn get_context<'a>(
         path_elements: &[String],
         resolved_env: &'a ResolvedTypeEnv<'a>,
-    ) -> (AccessContextSelection, &'a DatabaseFieldType) {
+    ) -> (AccessContextSelection, &'a ContextFieldType) {
         if path_elements.len() == 2 {
             let context_type = resolved_env
                 .contexts
@@ -194,12 +194,13 @@ fn compute_selection<'a>(
                 .iter()
                 .find(|field| field.name == path_elements[1])
                 .unwrap();
+
             (
                 AccessContextSelection::Select(
                     Box::new(AccessContextSelection::Context(path_elements[0].clone())),
                     path_elements[1].clone(),
                 ),
-                todo!(), // &field.typ,
+                &field.typ,
             )
         } else {
             todo!() // Nested selection such as AuthContext.user.id
@@ -243,8 +244,7 @@ fn compute_selection<'a>(
             field_type.unwrap(),
         )
     } else {
-        let (context_selection, column_type) = get_context(&path_elements, resolved_env);
-        // PathSelection::Context(context_selection, column_type)
-        todo!()
+        let (context_selection, context_field_type) = get_context(&path_elements, resolved_env);
+        PathSelection::Context(context_selection, context_field_type)
     }
 }

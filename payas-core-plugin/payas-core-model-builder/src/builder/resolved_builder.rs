@@ -47,8 +47,15 @@ pub struct ResolvedContext {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedContextField {
     pub name: String,
-    pub typ: PrimitiveType,
+    pub typ: ResolvedContextFieldType,
     pub source: ResolvedContextSource,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedContextFieldType {
+    Plain(PrimitiveType),
+    Optional(Box<ResolvedContextFieldType>),
+    List(Box<ResolvedContextFieldType>),
 }
 
 // For now, ResolvedContextSource and ContextSource have the same structure
@@ -98,7 +105,7 @@ fn resolve_shallow_contexts(
                     .flat_map(|field| {
                         Some(ResolvedContextField {
                             name: field.name.clone(),
-                            typ: todo!(), //resolve_field_type(&field.typ.to_typ(types), types),
+                            typ: resolve_primitive_type(&field.typ.to_typ(types), types),
                             source: extract_context_source(field, errors)?,
                         })
                     })
@@ -116,6 +123,19 @@ fn resolve_shallow_contexts(
     }
 
     Ok(resolved_contexts)
+}
+
+fn resolve_primitive_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedContextFieldType {
+    match typ.deref(types) {
+        Type::Primitive(pt) => ResolvedContextFieldType::Plain(pt.clone()),
+        Type::Optional(underlying) => {
+            ResolvedContextFieldType::Optional(Box::new(resolve_primitive_type(&underlying, types)))
+        }
+        Type::Set(underlying) => {
+            ResolvedContextFieldType::List(Box::new(resolve_primitive_type(&underlying, types)))
+        }
+        _ => panic!("Unexpected type in context field {}", typ.deref(types)),
+    }
 }
 
 fn extract_context_source(

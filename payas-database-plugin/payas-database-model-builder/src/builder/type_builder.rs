@@ -4,7 +4,6 @@ use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_core_model::primitive_type::PrimitiveType;
 use payas_core_model_builder::ast::ast_types::AstExpr;
 
-use payas_core_model_builder::builder::system_builder::BaseModelSystem;
 use payas_core_model_builder::typechecker::Typed;
 use payas_database_model::access::Access;
 use payas_database_model::column_id::ColumnId;
@@ -40,7 +39,7 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
     }
 }
 
-pub(crate) fn build_persistent_expanded(
+pub(crate) fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {

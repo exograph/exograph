@@ -18,10 +18,7 @@ pub struct ContextField {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ContextFieldType {
     Optional(Box<ContextFieldType>),
-    Reference {
-        type_id: SerializableSlabIndex<PrimitiveType>,
-        type_name: String,
-    },
+    Reference(PrimitiveType),
     List(Box<ContextFieldType>),
 }
 

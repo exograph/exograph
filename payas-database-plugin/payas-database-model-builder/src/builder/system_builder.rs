@@ -71,7 +71,7 @@ fn build_expanded(
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
     // First fully build the model types.
-    type_builder::build_persistent_expanded(resolved_env, building)?;
+    type_builder::build_expanded(resolved_env, building)?;
 
     // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
     // after running type_builder::build_expanded (since they depend on expanded DatabaseTypes (note the next ones do not access resolved_types))
