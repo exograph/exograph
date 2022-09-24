@@ -46,7 +46,6 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
                 let param_type_name = shallow_type.name.clone();
                 building.predicate_types.add(&param_type_name, shallow_type);
             }
-            _ => {}
         }
     }
 }
@@ -55,18 +54,11 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
     for (model_type_id, model_type) in building.database_types.iter()
     // Chain with primitives too to expand filters like "IntFilter"
     {
-        // expand filter types for both persistent composite and primitive filter parameters
-        // but NOT non-persistent composite types
-        if !matches!(
-            &model_type.kind,
-            DatabaseTypeKind::Composite(DatabaseCompositeType { .. })
-        ) {
-            let param_type_name = get_parameter_type_name(&model_type.name);
-            let existing_param_id = building.predicate_types.get_id(&param_type_name);
+        let param_type_name = get_parameter_type_name(&model_type.name);
+        let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-            let new_kind = expand_type(model_type_id, model_type, resolved_env, building);
-            building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
-        }
+        let new_kind = expand_type(model_type_id, model_type, resolved_env, building);
+        building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
 

@@ -38,15 +38,14 @@ impl<'a> DataRootElement<'a> {
                 query.execute(field, system_context, request_context).await
             }
             OperationType::Mutation => {
-                todo!()
-                // let mutation = system
-                //     .database_mutations
-                //     .get_by_key(name)
-                //     .or_else(|| system.service_mutations.get_by_key(name))
-                //     .ok_or_else(|| ExecutionError::Generic(format!("No such mutation {}", name)))?;
-                // mutation
-                //     .execute(field, system_context, request_context)
-                //     .await
+                let mutation = system
+                    .database_subsystem
+                    .mutations
+                    .get_by_key(name)
+                    .ok_or_else(|| ExecutionError::Generic(format!("No such mutation {}", name)))?;
+                mutation
+                    .execute(field, system_context, request_context)
+                    .await
             }
             OperationType::Subscription => {
                 todo!()

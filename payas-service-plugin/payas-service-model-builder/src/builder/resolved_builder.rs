@@ -22,89 +22,150 @@
 
 // use crate::builder::service_skeleton_generator;
 
-// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-// pub struct ResolvedService {
-//     pub name: String,
-//     pub script: Vec<u8>,
-//     pub script_path: String,
-//     pub methods: Vec<ResolvedMethod>,
-//     pub interceptors: Vec<ResolvedInterceptor>,
-// }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
+pub enum ResolvedType {
+    Primitive(PrimitiveType),
+    Composite(ResolvedCompositeType),
+}
 
-// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-// pub struct ResolvedMethod {
-//     pub name: String,
-//     pub operation_kind: ResolvedMethodType,
-//     pub is_exported: bool,
-//     pub access: ResolvedAccess,
-//     pub arguments: Vec<ResolvedArgument>,
-//     pub return_type: ResolvedFieldType,
-// }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedCompositeType {
+    pub name: String,
+    pub fields: Vec<ResolvedField>,
+    pub access: ResolvedAccess,
+}
 
-// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-// pub enum ResolvedMethodType {
-//     Query,
-//     Mutation,
-// }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedField {
+    pub name: String,
+    pub typ: ResolvedFieldType,
+}
 
-// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-// pub struct ResolvedArgument {
-//     pub name: String,
-//     pub typ: ResolvedFieldType,
-//     pub is_injected: bool,
-// }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedFieldType {
+    Plain {
+        type_name: String, // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
+        is_primitive: bool, // We need to know if the type is primitive, so that we can look into the correct arena in ModelSystem
+    },
+    Optional(Box<ResolvedFieldType>),
+    List(Box<ResolvedFieldType>),
+}
 
-// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-// pub struct ResolvedInterceptor {
-//     pub name: String,
-//     pub arguments: Vec<ResolvedArgument>,
-//     pub interceptor_kind: ResolvedInterceptorKind,
-// }
+impl ResolvedFieldType {
+    pub fn get_underlying_typename(&self) -> &str {
+        match &self {
+            ResolvedFieldType::Plain { type_name, .. } => type_name,
+            ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
+            ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
+        }
+    }
 
-// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-// pub enum ResolvedInterceptorKind {
-//     Before(AstExpr<Typed>),
-//     After(AstExpr<Typed>),
-//     Around(AstExpr<Typed>),
-// }
+    pub fn is_underlying_type_primitive(&self) -> bool {
+        match &self {
+            ResolvedFieldType::Plain { is_primitive, .. } => *is_primitive,
+            ResolvedFieldType::Optional(underlying) => underlying.is_underlying_type_primitive(),
+            ResolvedFieldType::List(underlying) => underlying.is_underlying_type_primitive(),
+        }
+    }
+}
 
-// impl ResolvedInterceptorKind {
-//     pub fn expr(&self) -> &AstExpr<Typed> {
-//         match self {
-//             ResolvedInterceptorKind::Before(expr) => expr,
-//             ResolvedInterceptorKind::After(expr) => expr,
-//             ResolvedInterceptorKind::Around(expr) => expr,
-//         }
-//     }
-// }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedService {
+    pub name: String,
+    pub script: Vec<u8>,
+    pub script_path: String,
+    pub methods: Vec<ResolvedMethod>,
+    pub interceptors: Vec<ResolvedInterceptor>,
+}
 
-// #[derive(Serialize, Deserialize, Debug, Clone)]
-// pub struct ResolvedServiceSystem {
-//     pub service_types: MappedArena<ResolvedType>,
-//     pub services: MappedArena<ResolvedService>,
-// }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedMethod {
+    pub name: String,
+    pub operation_kind: ResolvedMethodType,
+    pub is_exported: bool,
+    pub access: ResolvedAccess,
+    pub arguments: Vec<ResolvedArgument>,
+    pub return_type: ResolvedFieldType,
+}
 
-// pub fn build(types: &MappedArena<Type>) -> Result<ResolvedServiceSystem, ModelBuildingError> {
-//     let mut errors = Vec::new();
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ResolvedMethodType {
+    Query,
+    Mutation,
+}
 
-//     let resolved_system = resolve(&types, &mut errors)?;
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedArgument {
+    pub name: String,
+    pub typ: ResolvedFieldType,
+    pub is_injected: bool,
+}
 
-//     if errors.is_empty() {
-//         Ok(resolved_system)
-//     } else {
-//         Err(ModelBuildingError::Diagnosis(errors))
-//     }
-// }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedInterceptor {
+    pub name: String,
+    pub arguments: Vec<ResolvedArgument>,
+    pub interceptor_kind: ResolvedInterceptorKind,
+}
 
-// pub fn resolve(
-//     types: &MappedArena<Type>,
-//     errors: &mut Vec<Diagnostic>,
-// ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
-//     Ok(ResolvedServiceSystem {
-//         service_types: resolve_service_types(types)?,
-//         services: resolve_shallow_services(types, errors)?,
-//     })
-// }
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedInterceptorKind {
+    Before(AstExpr<Typed>),
+    After(AstExpr<Typed>),
+    Around(AstExpr<Typed>),
+}
+
+impl ResolvedInterceptorKind {
+    pub fn expr(&self) -> &AstExpr<Typed> {
+        match self {
+            ResolvedInterceptorKind::Before(expr) => expr,
+            ResolvedInterceptorKind::After(expr) => expr,
+            ResolvedInterceptorKind::Around(expr) => expr,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ResolvedServiceSystem {
+    pub service_types: MappedArena<ResolvedType>,
+    pub services: MappedArena<ResolvedService>,
+}
+
+use codemap_diagnostic::Diagnostic;
+use payas_core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
+use payas_core_model_builder::{
+    ast::ast_types::AstExpr,
+    error::ModelBuildingError,
+    typechecker::{typ::Type, Typed},
+};
+use serde::{Deserialize, Serialize};
+
+use super::access_builder::ResolvedAccess;
+
+pub fn build(types: &MappedArena<Type>) -> Result<ResolvedServiceSystem, ModelBuildingError> {
+    let mut errors = Vec::new();
+
+    let resolved_system = resolve(&types, &mut errors)?;
+
+    if errors.is_empty() {
+        Ok(resolved_system)
+    } else {
+        Err(ModelBuildingError::Diagnosis(errors))
+    }
+}
+
+pub fn resolve(
+    types: &MappedArena<Type>,
+    errors: &mut Vec<Diagnostic>,
+) -> Result<ResolvedServiceSystem, ModelBuildingError> {
+    Ok(ResolvedServiceSystem {
+        service_types: MappedArena::default(),
+        services: MappedArena::default(),
+        // service_types: resolve_service_types(types)?,
+        // services: resolve_shallow_services(types, errors)?,
+    })
+}
 
 // fn resolve_shallow_services(
 //     types: &MappedArena<Type>,

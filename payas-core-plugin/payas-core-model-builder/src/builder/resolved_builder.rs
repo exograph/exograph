@@ -59,7 +59,6 @@ pub struct ResolvedContextSource {
 }
 
 pub(crate) struct ResolvedBaseSystem {
-    pub primitive_types: MappedArena<PrimitiveType>,
     pub contexts: MappedArena<ResolvedContext>,
 }
 
@@ -80,24 +79,10 @@ fn resolve(
     errors: &mut Vec<Diagnostic>,
 ) -> Result<ResolvedBaseSystem, ModelBuildingError> {
     Ok(ResolvedBaseSystem {
-        primitive_types: resolve_primitive_types(types)?,
         contexts: resolve_shallow_contexts(types, errors)?,
     })
 }
 
-fn resolve_primitive_types(
-    types: &MappedArena<Type>,
-) -> Result<MappedArena<PrimitiveType>, ModelBuildingError> {
-    let mut resolved_primitive_types: MappedArena<PrimitiveType> = MappedArena::default();
-
-    for (_, typ) in types.iter() {
-        if let Type::Primitive(pt) = typ {
-            resolved_primitive_types.add(&pt.name(), pt.clone());
-        }
-    }
-
-    Ok(resolved_primitive_types)
-}
 fn resolve_shallow_contexts(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,

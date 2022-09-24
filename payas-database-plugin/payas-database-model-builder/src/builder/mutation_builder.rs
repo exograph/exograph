@@ -290,7 +290,6 @@ pub trait DataParamBuilder<D> {
             let mut field_types: Vec<_> = model_fields
                 .iter()
                 .flat_map(|field| {
-                    let is_field_primitive = field.typ.is_primitive();
                     let field_type = field.typ.base_type(&building.database_types.values);
                     if let (DatabaseTypeKind::Composite(_), DatabaseRelation::OneToMany { .. }) =
                         (&field_type.kind, &field.relation)

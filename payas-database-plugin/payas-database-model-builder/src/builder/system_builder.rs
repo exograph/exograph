@@ -34,8 +34,8 @@ pub fn build(
         resolved_types,
     };
 
-    build_shallow_database(&resolved_env, &mut building);
-    build_expanded_database(&resolved_env, &mut building)?;
+    build_shallow(&resolved_env, &mut building);
+    build_expanded(&resolved_env, &mut building)?;
 
     Ok(ModelDatabaseSystem {
         contexts: base_system.contexts.clone(),
@@ -50,10 +50,8 @@ pub fn build(
     })
 }
 
-fn build_shallow_database(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    let resolved_types = &resolved_env.resolved_types;
-
-    // First build shallow DATABASE types for types, context, query parameters (order by and predicate)
+fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+    // First build shallow types, context, query parameters (order by and predicate)
     // The order of next five is unimportant, since each of them simply create a shallow type without referring to anything
     type_builder::build_shallow(resolved_env, building);
 
@@ -68,7 +66,7 @@ fn build_shallow_database(resolved_env: &ResolvedTypeEnv, building: &mut SystemC
     mutation_builder::build_shallow(&resolved_env.resolved_types, building);
 }
 
-fn build_expanded_database(
+fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {

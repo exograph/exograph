@@ -1,26 +1,19 @@
 use codemap::{CodeMap, Span};
-use serde::{Deserialize, Serialize};
-
-use crate::{
+use payas_core_model_builder::{
     ast::ast_types::{AstAnnotationParams, AstExpr},
     typechecker::Typed,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedAccess {
-    pub creation: AstExpr<Typed>,
-    pub read: AstExpr<Typed>,
-    pub update: AstExpr<Typed>,
-    pub delete: AstExpr<Typed>,
+    pub value: AstExpr<Typed>,
 }
 
 impl ResolvedAccess {
     fn permissive() -> Self {
         ResolvedAccess {
-            creation: AstExpr::BooleanLiteral(true, null_span()),
-            read: AstExpr::BooleanLiteral(true, null_span()),
-            update: AstExpr::BooleanLiteral(true, null_span()),
-            delete: AstExpr::BooleanLiteral(true, null_span()),
+            value: AstExpr::BooleanLiteral(true, null_span()),
         }
     }
 }
@@ -36,41 +29,16 @@ pub fn build_access(
 ) -> ResolvedAccess {
     match access_annotation_params {
         Some(p) => {
-            let restrictive = AstExpr::BooleanLiteral(false, null_span());
+            let restrictive: AstExpr<Typed> = AstExpr::BooleanLiteral(false, null_span());
 
-            // The annotation parameter hierarchy is:
-            // value -> query
-            //       -> mutation -> create
-            //                   -> update
-            //                   -> delete
-            // Any lower node in the hierarchy get a priority over its parent.
+            let value = match p {
+                AstAnnotationParams::Single(default, _) => default,
 
-            let (creation, read, update, delete) = match p {
-                AstAnnotationParams::Single(default, _) => (default, default, default, default),
-                AstAnnotationParams::Map(m, _) => {
-                    let query = m.get("query");
-                    let mutation = m.get("mutation");
-                    let create = m.get("create");
-                    let update = m.get("update");
-                    let delete = m.get("delete");
-
-                    let default_mutation = mutation.unwrap_or(&restrictive);
-
-                    (
-                        create.unwrap_or(default_mutation),
-                        query.unwrap_or(&restrictive),
-                        update.unwrap_or(default_mutation),
-                        delete.unwrap_or(default_mutation),
-                    )
-                }
                 _ => panic!(),
             };
 
             ResolvedAccess {
-                creation: creation.clone(),
-                read: read.clone(),
-                update: update.clone(),
-                delete: delete.clone(),
+                value: value.clone(),
             }
         }
         None => ResolvedAccess::permissive(),

@@ -5,7 +5,7 @@ use crate::{error::ModelBuildingError, typechecker::Type};
 
 use super::{context_builder, resolved_builder, type_builder};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SystemContextBuilding {
     pub primitive_types: MappedArena<PrimitiveType>,
     pub contexts: MappedArena<ContextType>,
@@ -30,8 +30,6 @@ pub fn build(types: &MappedArena<Type>) -> Result<BaseModelSystem, ModelBuilding
     let resolved = resolved_builder::build(types)?;
 
     context_builder::build(&resolved.contexts, &mut building);
-
-    println!("Building: {:#?}", building.primitive_types);
 
     Ok(BaseModelSystem {
         primitive_types: building.primitive_types,

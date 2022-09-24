@@ -5,7 +5,15 @@ use payas_core_model_builder::{
     error::ModelBuildingError,
     typechecker::{typ::Type, Typed},
 };
-use payas_service_model::{interceptor::Interceptor, model::ModelServiceSystem};
+use payas_service_model::{
+    interceptor::Interceptor,
+    model::ModelServiceSystem,
+    operation::{ServiceMutation, ServiceQuery},
+    service::{Script, ServiceMethod},
+    types::ServiceType,
+};
+
+use super::resolved_builder;
 
 // use super::{
 //     resolved_builder::{self, ResolvedServiceSystem},
@@ -13,6 +21,25 @@ use payas_service_model::{interceptor::Interceptor, model::ModelServiceSystem};
 // };
 
 // use super::{interceptor::Interceptor, service::Script};
+
+#[derive(Debug, Default)]
+pub struct SystemContextBuilding {
+    pub types: MappedArena<ServiceType>,
+
+    // break this into subsystems
+    pub queries: MappedArena<ServiceQuery>,
+
+    pub mutations: MappedArena<ServiceMutation>,
+    pub methods: MappedArena<ServiceMethod>,
+    pub interceptors: MappedArena<Interceptor>,
+    pub scripts: MappedArena<Script>,
+}
+
+impl SystemContextBuilding {
+    pub fn get_id(&self, name: &str) -> Option<SerializableSlabIndex<ServiceType>> {
+        self.types.get_id(name)
+    }
+}
 
 pub struct ModelServiceSystemWithInterceptors {
     pub underlying: ModelServiceSystem,
@@ -24,12 +51,13 @@ pub fn build(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
 ) -> Result<ModelServiceSystemWithInterceptors, ModelBuildingError> {
-    todo!()
-    // let mut building = SystemContextBuilding::default();
+    let mut building = SystemContextBuilding::default();
+    let resolved_types = resolved_builder::build(&typechecked_system)?;
 
-    // let resolved_system = resolved_builder::build(&typechecked_system)?;
-
-    // let mut resolved_primitive_types = MappedArena::default();
+    // let resolved_env = ResolvedTypeEnv {
+    //     contexts: &base_system.contexts,
+    //     resolved_types,
+    // };
 
     // base_system.primitive_types.iter().for_each(|(_, typ)| {
     //     resolved_primitive_types.add(
@@ -69,17 +97,18 @@ pub fn build(
     //     })
     //     .collect();
 
-    // Ok(ModelServiceSystemWithInterceptors {
-    //     underlying: ModelServiceSystem {
-    //         service_types: building.service_types.values,
-    //         // argument_types: building.argument_types.values,
-    //         queries: building.queries,
-    //         mutations: building.mutations,
-    //         methods: building.methods.values,
-    //         scripts: building.scripts.values,
-    //     },
-    //     interceptors,
-    // })
+    Ok(ModelServiceSystemWithInterceptors {
+        underlying: ModelServiceSystem {
+            service_types: building.types.values,
+            // argument_types: building.argument_types.values,
+            queries: building.queries,
+            mutations: building.mutations,
+            methods: building.methods.values,
+            scripts: building.scripts.values,
+            contexts: MappedArena::default(),
+        },
+        interceptors: vec![],
+    })
 }
 
 // #[derive(Debug, Default)]

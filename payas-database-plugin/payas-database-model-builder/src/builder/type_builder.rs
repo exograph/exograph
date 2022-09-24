@@ -81,9 +81,7 @@ fn create_shallow_type(
         is_input: false,
     };
 
-    if let ResolvedType::Composite(composite_type) = resolved_type {
-        building.database_types.add(&type_name, typ);
-    };
+    building.database_types.add(&type_name, typ);
 }
 
 /// Expand a type except for creating its fields.
@@ -245,7 +243,6 @@ fn create_persistent_field(
                 type_name,
                 is_primitive,
             } => {
-                println!("Creating field type for {}", type_name);
                 let type_id = building.database_types.get_id(type_name).unwrap();
 
                 DatabaseFieldType::Reference {
