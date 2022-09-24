@@ -1,6 +1,8 @@
+use payas_core_model::primitive_type::PrimitiveType;
+
 use crate::ast::ast_types::AstExpr;
 
-use super::{PrimitiveType, Type, Typed};
+use super::{Type, Typed};
 
 impl AstExpr<Typed> {
     pub fn typ(&self) -> Type {

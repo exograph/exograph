@@ -1,6 +1,6 @@
 use async_graphql_value::ConstValue;
 
-use payas_model::model::limit_offset::{LimitParameter, OffsetParameter};
+use payas_database_model::limit_offset::{LimitParameter, OffsetParameter};
 use payas_sql::{Limit, Offset};
 
 use super::{

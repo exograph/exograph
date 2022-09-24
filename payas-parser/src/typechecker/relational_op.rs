@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_core_model_builder::typechecker::{annotation::AnnotationSpec, Typed};
-use payas_model::model::mapped_arena::MappedArena;
+use payas_core_model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, RelationalOp, Untyped};
 

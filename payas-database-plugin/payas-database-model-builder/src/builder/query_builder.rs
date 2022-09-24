@@ -1,22 +1,19 @@
-use super::naming::ToGqlQueryName;
-use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
-use payas_model::model::limit_offset::{LimitParameterType, OffsetParameter, OffsetParameterType};
-use payas_model::model::mapped_arena::SerializableSlabIndex;
-use payas_model::model::operation::{DatabaseQueryParameter, Interceptors, QueryKind};
-use payas_model::model::predicate::{ColumnIdPathLink, PredicateParameterTypeWithModifier};
-use payas_model::model::GqlCompositeType;
-use payas_model::model::{
-    limit_offset::LimitParameter,
-    mapped_arena::MappedArena,
-    operation::{OperationReturnType, Query},
-    predicate::PredicateParameter,
-    GqlType, GqlTypeKind, GqlTypeModifier,
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_database_model::column_path::ColumnIdPathLink;
+use payas_database_model::limit_offset::{
+    LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType,
+};
+use payas_database_model::operation::{DatabaseQuery, DatabaseQueryParameter, OperationReturnType};
+use payas_database_model::predicate::{PredicateParameter, PredicateParameterTypeWithModifier};
+use payas_database_model::types::{
+    DatabaseCompositeType, DatabaseType, DatabaseTypeKind, DatabaseTypeModifier,
 };
 
+use super::naming::ToDatabaseQueryName;
+
+use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
+use super::type_builder::ResolvedTypeEnv;
 use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
-use payas_core_model_builder::builder::resolved_builder::{
-    ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType,
-};
 
 pub fn build_shallow(
     models: &MappedArena<ResolvedType>,
@@ -24,14 +21,8 @@ pub fn build_shallow(
     building: &mut SystemContextBuilding,
 ) {
     for (_, model) in models.iter() {
-        if let ResolvedType::Composite(
-            c @ ResolvedCompositeType {
-                kind: ResolvedCompositeTypeKind::Persistent { .. },
-                ..
-            },
-        ) = &model
-        {
-            let model_type_id = building.get_id(c.name.as_str(), resolved_env).unwrap();
+        if let ResolvedType::Composite(c) = &model {
+            let model_type_id = building.get_id(c.name.as_str()).unwrap();
             let shallow_query = shallow_pk_query(model_type_id, c);
             let collection_query = shallow_collection_query(model_type_id, c);
 
@@ -47,7 +38,7 @@ pub fn build_shallow(
 
 pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (model_type_id, model_type) in building.database_types.iter() {
-        if let GqlTypeKind::Composite(GqlCompositeType { .. }) = &model_type.kind {
+        if let DatabaseTypeKind::Composite(DatabaseCompositeType { .. }) = &model_type.kind {
             {
                 let operation_name = model_type.pk_query();
                 let query = expanded_pk_query(model_type_id, model_type, building);
@@ -66,55 +57,52 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
 }
 
 fn shallow_pk_query(
-    model_type_id: SerializableSlabIndex<GqlType>,
+    model_type_id: SerializableSlabIndex<DatabaseType>,
     typ: &ResolvedCompositeType,
-) -> Query {
+) -> DatabaseQuery {
     let operation_name = typ.pk_query();
-    Query {
+    DatabaseQuery {
         name: operation_name,
-        kind: QueryKind::Database(Box::new(DatabaseQueryParameter {
+        parameter: DatabaseQueryParameter {
             predicate_param: None,
             order_by_param: None,
             limit_param: None,
             offset_param: None,
-        })),
+        },
         return_type: OperationReturnType {
             type_id: model_type_id,
             is_primitive: false,
             type_name: typ.name.clone(),
-            type_modifier: GqlTypeModifier::NonNull,
-            is_persistent: true,
+            type_modifier: DatabaseTypeModifier::NonNull,
         },
-        interceptors: Interceptors::default(),
     }
 }
 
 fn expanded_pk_query(
-    model_type_id: SerializableSlabIndex<GqlType>,
-    model_type: &GqlType,
+    model_type_id: SerializableSlabIndex<DatabaseType>,
+    model_type: &DatabaseType,
     building: &SystemContextBuilding,
-) -> Query {
+) -> DatabaseQuery {
     let operation_name = model_type.pk_query();
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
     let pk_param = pk_predicate_param(model_type_id, model_type, building);
 
-    Query {
+    DatabaseQuery {
         name: operation_name,
-        kind: QueryKind::Database(Box::new(DatabaseQueryParameter {
+        parameter: DatabaseQueryParameter {
             predicate_param: Some(pk_param),
             order_by_param: None,
             limit_param: None,
             offset_param: None,
-        })),
+        },
         return_type: existing_query.return_type.clone(),
-        interceptors: existing_query.interceptors.clone(),
     }
 }
 
 pub fn pk_predicate_param(
-    model_type_id: SerializableSlabIndex<GqlType>,
-    model_type: &GqlType,
+    model_type_id: SerializableSlabIndex<DatabaseType>,
+    model_type: &DatabaseType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let pk_field = model_type.pk_field().unwrap();
@@ -127,7 +115,7 @@ pub fn pk_predicate_param(
                 .predicate_types
                 .get_id(pk_field.typ.type_name())
                 .unwrap(),
-            type_modifier: GqlTypeModifier::NonNull,
+            type_modifier: DatabaseTypeModifier::NonNull,
         },
         column_path_link: pk_field
             .relation
@@ -141,35 +129,33 @@ pub fn pk_predicate_param(
 }
 
 fn shallow_collection_query(
-    model_type_id: SerializableSlabIndex<GqlType>,
+    model_type_id: SerializableSlabIndex<DatabaseType>,
     model: &ResolvedCompositeType,
-) -> Query {
+) -> DatabaseQuery {
     let operation_name = model.collection_query();
-    Query {
+    DatabaseQuery {
         name: operation_name,
-        kind: QueryKind::Database(Box::new(DatabaseQueryParameter {
+        parameter: DatabaseQueryParameter {
             predicate_param: None,
             order_by_param: None,
             limit_param: None,
             offset_param: None,
-        })),
+        },
         return_type: OperationReturnType {
             type_id: model_type_id,
             type_name: model.name.clone(),
             is_primitive: false,
-            type_modifier: GqlTypeModifier::List,
-            is_persistent: true,
+            type_modifier: DatabaseTypeModifier::List,
         },
-        interceptors: Interceptors::default(),
     }
 }
 
 fn expanded_collection_query(
-    model_type_id: SerializableSlabIndex<GqlType>,
-    model_type: &GqlType,
+    model_type_id: SerializableSlabIndex<DatabaseType>,
+    model_type: &DatabaseType,
     resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
-) -> Query {
+) -> DatabaseQuery {
     let operation_name = model_type.collection_query();
     let existing_query = building.queries.get_by_key(&operation_name).unwrap();
 
@@ -178,16 +164,15 @@ fn expanded_collection_query(
     let limit_param = limit_param(resolved_env, building);
     let offset_param = offset_param(resolved_env, building);
 
-    Query {
+    DatabaseQuery {
         name: operation_name.clone(),
-        kind: QueryKind::Database(Box::new(DatabaseQueryParameter {
+        parameter: DatabaseQueryParameter {
             predicate_param: Some(predicate_param),
             order_by_param: Some(order_by_param),
             limit_param: Some(limit_param),
             offset_param: Some(offset_param),
-        })),
+        },
         return_type: existing_query.return_type.clone(),
-        interceptors: Interceptors::default(),
     }
 }
 
@@ -201,8 +186,8 @@ pub fn limit_param(
         name: "limit".to_string(),
         typ: LimitParameterType {
             type_name: param_type_name.clone(),
-            type_id: building.get_id(&param_type_name, resolved_env).unwrap(),
-            type_modifier: GqlTypeModifier::Optional,
+            type_id: building.get_id(&param_type_name).unwrap(),
+            type_modifier: DatabaseTypeModifier::Optional,
         },
     }
 }
@@ -217,15 +202,15 @@ pub fn offset_param(
         name: "offset".to_string(),
         typ: OffsetParameterType {
             type_name: param_type_name.clone(),
-            type_id: building.get_id(&param_type_name, resolved_env).unwrap(),
-            type_modifier: GqlTypeModifier::Optional,
+            type_id: building.get_id(&param_type_name).unwrap(),
+            type_modifier: DatabaseTypeModifier::Optional,
         },
     }
 }
 
 pub fn collection_predicate_param(
-    model_type_id: SerializableSlabIndex<GqlType>,
-    model_type: &GqlType,
+    model_type_id: SerializableSlabIndex<DatabaseType>,
+    model_type: &DatabaseType,
     building: &SystemContextBuilding,
 ) -> PredicateParameter {
     let param_type_name = predicate_builder::get_parameter_type_name(&model_type.name);
@@ -234,7 +219,7 @@ pub fn collection_predicate_param(
         type_name: param_type_name.clone(),
         typ: PredicateParameterTypeWithModifier {
             type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-            type_modifier: GqlTypeModifier::Optional,
+            type_modifier: DatabaseTypeModifier::Optional,
         },
         column_path_link: None,
         underlying_type_id: model_type_id,

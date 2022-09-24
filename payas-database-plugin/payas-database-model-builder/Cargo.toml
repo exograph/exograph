@@ -13,8 +13,9 @@ typed-generational-arena = { version = "0.2", features = ["serde"] }
 wildmatch = "2.1.0"
 thiserror = "1.0.30"
 
+payas-core-model = { path = "../../payas-core-plugin/payas-core-model" }
 payas-core-model-builder = { path = "../../payas-core-plugin/payas-core-model-builder" }
-payas-model = { path = "../../payas-model" }
+payas-database-model = { path = "../payas-database-model" }
 payas-sql = { path = "../../payas-sql" }
 
 

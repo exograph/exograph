@@ -8,6 +8,6 @@ Err(
             "foo",
         ],
         "concert",
-        Pos(3:21),
+        Pos(3:17),
     ),
 )

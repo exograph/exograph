@@ -1,5 +1,6 @@
+use payas_core_model::mapped_arena::MappedArena;
 use payas_core_model_builder::{error::ModelBuildingError, typechecker::typ::Type};
-use payas_model::model::{mapped_arena::MappedArena, system::ModelSystem};
+use payas_model::model::system::ModelSystem;
 
 use super::interceptor_weaver;
 
@@ -24,38 +25,24 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
     let base_system =
         payas_core_model_builder::builder::system_builder::build(&typechecked_system)?;
 
-    let mut database_system =
+    let database_subsystem =
         payas_database_model_builder::build(&typechecked_system, &base_system)?;
 
-    let mut service_system = payas_service_model_builder::build(&typechecked_system, &base_system)?;
+    let service_subsystem = payas_service_model_builder::build(&typechecked_system, &base_system)?;
 
-    interceptor_weaver::weave_queries(&mut database_system.queries, &service_system.interceptors);
-    interceptor_weaver::weave_mutations(
-        &mut database_system.mutations,
-        &service_system.interceptors,
-    );
-    interceptor_weaver::weave_queries(&mut service_system.queries, &service_system.interceptors);
-    interceptor_weaver::weave_mutations(
-        &mut service_system.mutations,
-        &service_system.interceptors,
-    );
+    // interceptor_weaver::weave_queries(&mut database_system.queries, &service_system.interceptors);
+    // interceptor_weaver::weave_mutations(
+    //     &mut database_system.mutations,
+    //     &service_system.interceptors,
+    // );
+    // interceptor_weaver::weave_queries(&mut service_system.queries, &service_system.interceptors);
+    // interceptor_weaver::weave_mutations(
+    //     &mut service_system.mutations,
+    //     &service_system.interceptors,
+    // );
 
     Ok(ModelSystem {
-        primitive_types: base_system.primitive_types.values,
-        database_types: database_system.database_types,
-        service_types: service_system.service_types,
-
-        contexts: base_system.contexts,
-        context_types: base_system.context_types.values,
-        order_by_types: database_system.order_by_types,
-        predicate_types: database_system.predicate_types,
-        database_queries: database_system.queries,
-        database_mutations: database_system.mutations,
-        service_queries: service_system.queries,
-        service_mutations: service_system.mutations,
-        tables: database_system.tables,
-        mutation_types: database_system.mutation_types,
-        methods: service_system.methods,
-        scripts: service_system.scripts,
+        database_subsystem,
+        service_subsystem: service_subsystem.underlying,
     })
 }

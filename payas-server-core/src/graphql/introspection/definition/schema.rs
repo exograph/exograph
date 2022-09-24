@@ -6,13 +6,11 @@ use async_graphql_parser::{
 };
 
 use async_graphql_value::Name;
+use payas_core_model::type_normalization::{
+    default_positioned, default_positioned_name, TypeDefinitionIntrospection,
+};
 use payas_model::model::system::ModelSystem;
 
-use super::{
-    provider::{FieldDefinitionProvider, TypeDefinitionProvider},
-    type_introspection::TypeDefinitionIntrospection,
-};
-use crate::graphql::introspection::util::{default_positioned, default_positioned_name};
 #[derive(Debug, Clone)]
 pub struct Schema {
     pub type_definitions: Vec<TypeDefinition>,
@@ -28,44 +26,22 @@ pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
 impl Schema {
     pub fn new(system: &ModelSystem) -> Schema {
-        let mut type_definitions: Vec<TypeDefinition> = system
-            .primitive_types
-            .iter()
-            .chain(
-                system
-                    .database_types
-                    .iter()
-                    .chain(system.service_types.iter()),
-            )
-            .map(|model_type| model_type.1.type_definition(system))
-            .collect();
-
-        let order_by_param_type_definitions: Vec<TypeDefinition> = system
-            .order_by_types
-            .iter()
-            .map(|parameter_type| parameter_type.1.type_definition(system))
-            .collect();
-
-        let predicate_param_type_definitions: Vec<TypeDefinition> = system
-            .predicate_types
-            .iter()
-            .map(|parameter_type| parameter_type.1.type_definition(system))
-            .collect();
-
-        let mutation_param_type_definitions: Vec<TypeDefinition> = system
-            .mutation_types
-            .iter()
-            .map(|parameter_type| parameter_type.1.type_definition(system))
-            .collect();
+        let mut type_definitions: Vec<TypeDefinition> = vec![
+            system.database_subsystem.schema_types().into_iter(),
+            system.service_subsystem.schema_types().into_iter(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
 
         let query_type_definition = {
-            let fields: Vec<_> = system
-                .database_queries
-                .values
-                .iter()
-                .chain(system.service_queries.values.iter())
-                .map(|query| default_positioned(query.1.field_definition(system)))
-                .collect();
+            let queries = vec![
+                system.database_subsystem.schema_queries().into_iter(),
+                system.service_subsystem.schema_queries().into_iter(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
 
             // Even though we resolve __type and __schema fields for the Query
             // type, GraphQL spec doesn't allow them to be exposed as an
@@ -78,19 +54,19 @@ impl Schema {
                 directives: vec![],
                 kind: TypeKind::Object(ObjectType {
                     implements: vec![],
-                    fields,
+                    fields: queries,
                 }),
             }
         };
 
         let mutation_type_definition = {
-            let fields = system
-                .database_mutations
-                .values
-                .iter()
-                .chain(system.service_mutations.values.iter())
-                .map(|mutation| default_positioned(mutation.1.field_definition(system)))
-                .collect();
+            let mutations = vec![
+                system.database_subsystem.schema_mutations().into_iter(),
+                system.service_subsystem.schema_mutations().into_iter(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect();
 
             TypeDefinition {
                 extend: false,
@@ -99,7 +75,7 @@ impl Schema {
                 directives: vec![],
                 kind: TypeKind::Object(ObjectType {
                     implements: vec![],
-                    fields,
+                    fields: mutations,
                 }),
             }
         };
@@ -113,9 +89,6 @@ impl Schema {
 
         type_definitions.push(query_type_definition);
         type_definitions.push(mutation_type_definition);
-        type_definitions.extend(order_by_param_type_definitions);
-        type_definitions.extend(predicate_param_type_definitions);
-        type_definitions.extend(mutation_param_type_definitions);
 
         Schema {
             type_definitions,

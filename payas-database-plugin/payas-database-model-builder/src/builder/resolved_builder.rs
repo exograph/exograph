@@ -4,31 +4,28 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
+use super::access_builder::{build_access, ResolvedAccess};
 use super::naming::{ToPlural, ToTableName};
+
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use payas_core_model_builder::builder::access_builder::build_access;
-use payas_core_model_builder::builder::resolved_builder::{
-    resolve_field_type, AnnotationMapHelper, ResolvedCompositeType, ResolvedCompositeTypeKind,
-    ResolvedField, ResolvedFieldDefault, ResolvedFieldKind, ResolvedType, ResolvedTypeHint,
-};
+use payas_core_model::mapped_arena::MappedArena;
+use payas_core_model_builder::builder::resolved_builder::ResolvedContext;
+use payas_core_model_builder::typechecker::annotation_map::AnnotationMap;
 use payas_core_model_builder::typechecker::typ::Type;
 use payas_core_model_builder::typechecker::Typed;
-use payas_model::model::mapped_arena::MappedArena;
 
 use super::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 use heck::ToSnakeCase;
 use payas_core_model_builder::ast::ast_types::{
-    AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType,
-    AstModel, AstModelKind,
+    AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind,
+    AstFieldType, AstModel, AstModelKind,
 };
 use payas_core_model_builder::error::ModelBuildingError;
 use serde::{Deserialize, Serialize};
 
-/// Consume typed-checked types and build resolved types
-#[derive(Deserialize, Serialize)]
-pub struct ResolvedDatabaseSystem {
-    pub database_types: MappedArena<ResolvedType>,
-}
+use payas_core_model::primitive_type::PrimitiveType;
+
+use super::type_builder::ResolvedTypeEnv;
 
 impl ToPlural for ResolvedCompositeType {
     fn to_singular(&self) -> String {
@@ -40,7 +37,8 @@ impl ToPlural for ResolvedCompositeType {
     }
 }
 
-pub fn build(types: &MappedArena<Type>) -> Result<ResolvedDatabaseSystem, ModelBuildingError> {
+/// Consume typed-checked types and build resolved types
+pub fn build(types: &MappedArena<Type>) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut errors = Vec::new();
 
     let resolved_system = resolve(&types, &mut errors)?;
@@ -52,43 +50,251 @@ pub fn build(types: &MappedArena<Type>) -> Result<ResolvedDatabaseSystem, ModelB
     }
 }
 
-fn resolve(
-    types: &MappedArena<Type>,
-    errors: &mut Vec<Diagnostic>,
-) -> Result<ResolvedDatabaseSystem, ModelBuildingError> {
-    Ok(ResolvedDatabaseSystem {
-        database_types: resolve_persistent_types(types, errors)?,
-    })
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
+pub enum ResolvedType {
+    Primitive(PrimitiveType),
+    Composite(ResolvedCompositeType),
 }
 
-fn resolve_persistent_types(
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedCompositeType {
+    pub name: String,
+    pub plural_name: String,
+    pub fields: Vec<ResolvedField>,
+    pub table_name: String,
+    pub access: ResolvedAccess,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedFieldType {
+    Plain {
+        type_name: String, // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
+        is_primitive: bool, // We need to know if the type is primitive, so that we can look into the correct arena in ModelSystem
+    },
+    Optional(Box<ResolvedFieldType>),
+    List(Box<ResolvedFieldType>),
+}
+
+impl ResolvedFieldType {
+    pub fn get_underlying_typename(&self) -> &str {
+        match &self {
+            ResolvedFieldType::Plain { type_name, .. } => type_name,
+            ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
+            ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
+        }
+    }
+
+    pub fn is_underlying_type_primitive(&self) -> bool {
+        match &self {
+            ResolvedFieldType::Plain { is_primitive, .. } => *is_primitive,
+            ResolvedFieldType::Optional(underlying) => underlying.is_underlying_type_primitive(),
+            ResolvedFieldType::List(underlying) => underlying.is_underlying_type_primitive(),
+        }
+    }
+}
+
+impl ResolvedFieldType {
+    pub fn deref<'a>(&'a self, env: &'a ResolvedTypeEnv) -> &'a ResolvedType {
+        match self {
+            ResolvedFieldType::Plain { type_name, .. } => env.get_by_key(type_name).unwrap(),
+            ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
+                underlying.deref(env)
+            }
+        }
+    }
+
+    pub fn deref_subsystem_type<'a>(
+        &'a self,
+        types: &'a MappedArena<ResolvedType>,
+    ) -> Option<&'a ResolvedType> {
+        match self {
+            ResolvedFieldType::Plain { type_name, .. } => types.get_by_key(type_name),
+            ResolvedFieldType::Optional(underlying) | ResolvedFieldType::List(underlying) => {
+                underlying.deref_subsystem_type(types)
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedField {
+    pub name: String,
+    pub typ: ResolvedFieldType,
+    pub column_name: String,
+    pub self_column: bool, // is the column name in the same table or does it point to a column in a different table?
+    pub is_pk: bool,
+    pub type_hint: Option<ResolvedTypeHint>,
+    pub unique_constraints: Vec<String>,
+    pub default_value: Option<ResolvedFieldDefault>,
+}
+
+// TODO: dedup?
+impl ResolvedField {
+    pub fn get_is_autoincrement(&self) -> bool {
+        matches!(
+            &self.default_value,
+            Some(ResolvedFieldDefault::Autoincrement)
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub enum ResolvedTypeHint {
+    Explicit {
+        dbtype: String,
+    },
+    Int {
+        bits: Option<usize>,
+        range: Option<(i64, i64)>,
+    },
+    Float {
+        bits: usize,
+    },
+    Decimal {
+        precision: Option<usize>,
+        scale: Option<usize>,
+    },
+    String {
+        length: usize,
+    },
+    DateTime {
+        precision: usize,
+    },
+}
+
+impl ResolvedCompositeType {
+    pub fn pk_field(&self) -> Option<&ResolvedField> {
+        self.fields.iter().find(|f| f.is_pk)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedFieldDefault {
+    Value(Box<AstExpr<Typed>>),
+    DatabaseFunction(String),
+    Autoincrement,
+}
+
+impl ResolvedType {
+    pub fn name(&self) -> String {
+        match self {
+            ResolvedType::Primitive(pt) => pt.name(),
+            ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name.to_owned(),
+        }
+    }
+
+    pub fn plural_name(&self) -> String {
+        match self {
+            ResolvedType::Primitive(_) => "".to_string(), // unused
+            ResolvedType::Composite(ResolvedCompositeType { plural_name, .. }) => {
+                plural_name.to_owned()
+            }
+        }
+    }
+
+    pub fn as_primitive(&self) -> PrimitiveType {
+        match &self {
+            ResolvedType::Primitive(p) => p.clone(),
+            _ => panic!("Not a primitive: {:?}", self),
+        }
+    }
+
+    // useful for relation creation
+    pub fn as_composite(&self) -> &ResolvedCompositeType {
+        match &self {
+            ResolvedType::Composite(c) => c,
+            _ => panic!("Cannot get inner composite of type {:?}", self),
+        }
+    }
+}
+
+pub trait AnnotationMapHelper {
+    fn get<'a>(&'a self, field_name: &str) -> Option<&'a AstAnnotationParams<Typed>>;
+
+    fn contains(&self, field_name: &str) -> bool {
+        self.get(field_name).is_some()
+    }
+
+    fn iter(&self) -> std::collections::hash_map::Iter<'_, String, AstAnnotation<Typed>>;
+}
+
+impl AnnotationMapHelper for AnnotationMap {
+    fn get<'a>(&'a self, field_name: &str) -> Option<&'a AstAnnotationParams<Typed>> {
+        self.annotations.get(field_name).map(|a| &a.params)
+    }
+
+    fn iter(&self) -> std::collections::hash_map::Iter<'_, String, AstAnnotation<Typed>> {
+        self.annotations.iter()
+    }
+}
+
+pub trait AstAnnotationHelper {
+    fn as_single(&self) -> String;
+}
+
+impl AstAnnotationHelper for AstAnnotation<Typed> {
+    fn as_single(&self) -> String {
+        self.params.as_single().as_string()
+    }
+}
+
+pub(crate) struct ResolvedBaseSystem {
+    pub primitive_types: MappedArena<ResolvedType>,
+    pub contexts: MappedArena<ResolvedContext>,
+}
+
+pub fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldType {
+    match typ {
+        Type::Optional(underlying) => {
+            ResolvedFieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
+        }
+        Type::Reference(id) => ResolvedFieldType::Plain {
+            type_name: types[*id].get_underlying_typename(types).unwrap(),
+            is_primitive: matches!(types[*id], Type::Primitive(_)),
+        },
+        Type::Set(underlying) | Type::Array(underlying) => {
+            ResolvedFieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
+        }
+        _ => todo!("Unsupported field type"),
+    }
+}
+
+fn resolve(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut resolved_database_types: MappedArena<ResolvedType> = MappedArena::default();
 
+    // Adopt the primitive types as a DatabaseType
+    // Process each persistent type to create a DatabaseType
+
     for (_, typ) in types.iter() {
-        if let Type::Composite(ct) = typ {
-            if ct.kind == AstModelKind::Persistent {
-                let plural_annotation_value = ct
-                    .annotations
-                    .get("plural_name")
-                    .map(|p| p.as_single().as_string());
+        match typ {
+            Type::Primitive(pt) => {
+                resolved_database_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
+            }
+            Type::Composite(ct) if ct.kind == AstModelKind::Persistent => {
+                if ct.kind == AstModelKind::Persistent {
+                    let plural_annotation_value = ct
+                        .annotations
+                        .get("plural_name")
+                        .map(|p| p.as_single().as_string());
 
-                let table_name = ct
-                    .annotations
-                    .get("table")
-                    .map(|p| p.as_single().as_string())
-                    .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
-                let access = build_access(ct.annotations.get("access"));
-                let name = ct.name.clone();
-                let plural_name = plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
+                    let table_name = ct
+                        .annotations
+                        .get("table")
+                        .map(|p| p.as_single().as_string())
+                        .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
+                    let access = build_access(ct.annotations.get("access"));
+                    let name = ct.name.clone();
+                    let plural_name =
+                        plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
 
-                let resolved_fields = ct
-                    .fields
-                    .iter()
-                    .flat_map(|field| {
-                        let resolved_kind = {
+                    let resolved_fields = ct
+                        .fields
+                        .iter()
+                        .flat_map(|field| {
                             let column_info = compute_column_info(ct, field, types);
 
                             match column_info {
@@ -96,43 +302,40 @@ fn resolve_persistent_types(
                                     name: column_name,
                                     self_column,
                                     unique_constraints,
-                                }) => Some(ResolvedFieldKind::Persistent {
+                                }) => Some(ResolvedField {
+                                    name: field.name.clone(),
+                                    typ: resolve_field_type(&field.typ.to_typ(types), types),
                                     column_name,
                                     self_column,
                                     is_pk: field.annotations.contains("pk"),
                                     type_hint: build_type_hint(field, types),
                                     unique_constraints,
+                                    default_value: field
+                                        .default_value
+                                        .as_ref()
+                                        .map(resolve_field_default_type),
                                 }),
                                 Err(e) => {
                                     errors.push(e);
                                     None
                                 }
                             }
-                        };
-
-                        resolved_kind.map(|kind| ResolvedField {
-                            name: field.name.clone(),
-                            typ: resolve_field_type(&field.typ.to_typ(types), types),
-                            kind,
-                            default_value: field
-                                .default_value
-                                .as_ref()
-                                .map(resolve_field_default_type),
                         })
-                    })
-                    .collect();
+                        .collect();
 
-                resolved_database_types.add(
-                    &ct.name,
-                    ResolvedType::Composite(ResolvedCompositeType {
-                        name,
-                        plural_name: plural_name.clone(),
-                        fields: resolved_fields,
-                        kind: ResolvedCompositeTypeKind::Persistent { table_name },
-                        access: access.clone(),
-                    }),
-                );
+                    resolved_database_types.add(
+                        &ct.name,
+                        ResolvedType::Composite(ResolvedCompositeType {
+                            name,
+                            plural_name: plural_name.clone(),
+                            fields: resolved_fields,
+                            table_name,
+                            access: access.clone(),
+                        }),
+                    );
+                }
             }
+            _ => {}
         }
     }
 

@@ -1,6 +1,6 @@
 use async_graphql_value::ConstValue;
 
-use payas_model::model::operation::OperationReturnType;
+use payas_database_model::operation::OperationReturnType;
 use payas_sql::{AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate};
 
 use super::{

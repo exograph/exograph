@@ -10,8 +10,7 @@ use tokio::sync::Mutex;
 
 use async_trait::async_trait;
 use futures::StreamExt;
-use payas_model::model::ContextField;
-use payas_model::model::ContextType;
+use payas_core_model::context_type::{ContextField, ContextType};
 use payas_sql::TransactionHolder;
 use serde_json::Value;
 use thiserror::Error;

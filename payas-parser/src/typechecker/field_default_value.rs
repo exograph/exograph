@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model::mapped_arena::MappedArena;
 use payas_core_model_builder::typechecker::annotation::AnnotationSpec;
 use payas_core_model_builder::typechecker::Typed;
-use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{AstExpr, AstFieldDefault, AstFieldDefaultKind, Untyped};
 use payas_database_model_builder::builder::{

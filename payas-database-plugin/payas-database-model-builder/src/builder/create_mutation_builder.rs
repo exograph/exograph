@@ -1,20 +1,19 @@
 //! Build mutation input types associated with creation (<Type>CreationInput) and
 //! the create mutations (create<Type>, and create<Type>s)
 
-use super::naming::{ToGqlMutationNames, ToGqlTypeNames};
-use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
-use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
+use super::naming::{ToDatabaseMutationNames, ToDatabaseTypeNames};
+use super::type_builder::ResolvedTypeEnv;
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 
-use payas_model::model::operation::{
+use payas_database_model::operation::{
     CreateDataParameter, CreateDataParameterTypeWithModifier, DatabaseMutationKind,
 };
+use payas_database_model::types::{DatabaseCompositeType, DatabaseType, DatabaseTypeKind};
 
 use super::mutation_builder::{DataParamBuilder, MutationBuilder};
+use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
-use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 pub struct CreateMutationBuilder;
 
@@ -31,11 +30,7 @@ impl Builder for CreateMutationBuilder {
 
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.database_types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeType {
-                kind: GqlCompositeTypeKind::Persistent { .. },
-                ..
-            }) = &model_type.kind
-            {
+            if let DatabaseTypeKind::Composite(DatabaseCompositeType { .. }) = &model_type.kind {
                 for (existing_id, expanded_kind) in self.expanded_data_type(
                     model_type,
                     resolved_env,
@@ -44,16 +39,12 @@ impl Builder for CreateMutationBuilder {
                     None,
                 ) {
                     building.mutation_types[existing_id].kind =
-                        GqlTypeKind::Composite(expanded_kind);
+                        DatabaseTypeKind::Composite(expanded_kind);
                 }
             }
         }
         for (_, model_type) in building.database_types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeType {
-                kind: GqlCompositeTypeKind::Persistent { .. },
-                ..
-            }) = &model_type.kind
-            {
+            if let DatabaseTypeKind::Composite(DatabaseCompositeType { .. }) = &model_type.kind {
                 let model_type_id = building
                     .database_types
                     .get_id(model_type.name.as_str())
@@ -68,25 +59,25 @@ impl Builder for CreateMutationBuilder {
 }
 
 impl MutationBuilder for CreateMutationBuilder {
-    fn single_mutation_name(model_type: &GqlType) -> String {
+    fn single_mutation_name(model_type: &DatabaseType) -> String {
         model_type.pk_create()
     }
 
     fn single_mutation_kind(
-        _model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        _model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
     ) -> DatabaseMutationKind {
         DatabaseMutationKind::Create(Self::data_param(model_type, building, false))
     }
 
-    fn multi_mutation_name(model_type: &GqlType) -> String {
+    fn multi_mutation_name(model_type: &DatabaseType) -> String {
         model_type.collection_create()
     }
 
     fn multi_mutation_kind(
-        _model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        _model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
     ) -> DatabaseMutationKind {
         DatabaseMutationKind::Create(Self::data_param(model_type, building, true))
@@ -103,7 +94,7 @@ impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
     }
 
     fn data_param(
-        model_type: &GqlType,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
         array: bool,
     ) -> CreateDataParameter {

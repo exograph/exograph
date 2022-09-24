@@ -1,10 +1,10 @@
 use async_graphql_value::ConstValue;
 
-use payas_model::model::{
+use crate::column_path_util::to_column_path;
+use payas_database_model::{
+    column_path::ColumnIdPath,
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
-    predicate::ColumnIdPath,
 };
-use payas_resolver_core::column_path_util::to_column_path;
 use payas_sql::{AbstractOrderBy, Ordering};
 
 use crate::to_column_id_path;

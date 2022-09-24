@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use futures::FutureExt;
-use payas_model::model::operation::GraphQLOperation;
 use serde_json::Value;
 
 use payas_resolver_core::validation::field::ValidatedField;
@@ -37,7 +36,7 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for Value {
 }
 
 #[async_trait]
-pub trait OperationResolver<'a>: GraphQLOperation {
+pub trait DatabaseOperationResolver<'a>: payas_database_model::operation::GraphQLOperation {
     async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
@@ -66,13 +65,87 @@ pub trait OperationResolver<'a>: GraphQLOperation {
             .boxed()
         };
 
-        let intercepted_operation =
-            InterceptedOperation::new(self.name(), self.interceptors().ordered());
+        let intercepted_operation = InterceptedOperation::new(self.name(), vec![]);
+        // InterceptedOperation::new(self.name(), self.interceptors().ordered());
 
         let resolve_operation_fn = system_context.resolve_operation_fn();
 
         let deno_system_context = DenoSystemContext {
-            system: &system_context.system,
+            system: &system_context.system.service_subsystem,
+            deno_execution_pool: &system_context.deno_execution_pool,
+            resolve_operation_fn,
+        };
+
+        let QueryResponse { body, headers } = intercepted_operation
+            .execute(
+                field,
+                system_context,
+                &deno_system_context,
+                request_context,
+                &resolve,
+            )
+            .await?;
+
+        // A proceed call in an around interceptor may have returned more fields that necessary (just like a normal service),
+        // so we need to filter out the fields that are not needed.
+        // TODO: Validate that all requested fields are present in the response.
+        let field_selected_response_body = match body {
+            QueryResponseBody::Json(value @ serde_json::Value::Object(_)) => {
+                let resolved_set = value
+                    .resolve_fields(&field.subfields, system_context, request_context)
+                    .await?;
+                QueryResponseBody::Json(serde_json::Value::Object(
+                    resolved_set.into_iter().collect(),
+                ))
+            }
+            _ => body,
+        };
+
+        Ok(QueryResponse {
+            body: field_selected_response_body,
+            headers,
+        })
+    }
+}
+
+// TODO: Fix this duplication. Once the final plugin refactoring is done, this would look very different.
+#[async_trait]
+pub trait ServiceOperationResolver<'a>: payas_service_model::operation::GraphQLOperation {
+    async fn resolve_operation(
+        &'a self,
+        field: &'a ValidatedField,
+        system_context: &'a SystemContext,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<DataOperation<'a>, ExecutionError>;
+
+    async fn execute(
+        &'a self,
+        field: &'a ValidatedField,
+        system_context: &'a SystemContext,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<QueryResponse, ExecutionError> {
+        let resolve = move |field: &'a ValidatedField, request_context: &'a RequestContext<'a>| {
+            async move {
+                let data_operation = self
+                    .resolve_operation(field, system_context, request_context)
+                    .await
+                    .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))?;
+
+                data_operation
+                    .execute(system_context, request_context)
+                    .await
+                    .map_err(|e| DenoExecutionError::Delegate(Box::new(e)))
+            }
+            .boxed()
+        };
+
+        let intercepted_operation = InterceptedOperation::new(self.name(), vec![]);
+        // InterceptedOperation::new(self.name(), self.interceptors().ordered());
+
+        let resolve_operation_fn = system_context.resolve_operation_fn();
+
+        let deno_system_context = DenoSystemContext {
+            system: &system_context.system.service_subsystem,
             deno_execution_pool: &system_context.deno_execution_pool,
             resolve_operation_fn,
         };

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 pub(super) use annotation_map::AnnotationMap;
 
-pub(super) use typ::{PrimitiveType, Type};
+pub(super) use typ::Type;
 
 use crate::ast::ast_types::NodeTypedness;
 

@@ -18,8 +18,8 @@ tokio = "1"
 
 tracing = "0.1"
 
-payas-model = { path = "../payas-model" }
 payas-sql = { path = "../payas-sql" }
+payas-core-model = { path = "../payas-core-plugin/payas-core-model" }
 
 [dev-dependencies]
 tokio = "1"

@@ -2,25 +2,24 @@ use async_graphql_value::indexmap::IndexMap;
 use async_graphql_value::ConstValue;
 use futures::FutureExt;
 use futures::StreamExt;
-use payas_model::model::system::ModelSystem;
-use payas_resolver_core::access_solver;
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::ResolveOperationFn;
+use payas_service_model::model::ModelServiceSystem;
+use payas_service_model::operation::OperationReturnType;
 use std::collections::HashMap;
 
 use payas_deno::Arg;
-use payas_model::model::operation::OperationReturnType;
-use payas_model::model::service::{Argument, ServiceMethod, ServiceMethodType};
-use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
 use payas_resolver_core::validation::field::ValidatedField;
+use payas_service_model::service::{Argument, ServiceMethod, ServiceMethodType};
+use payas_service_model::types::{ServiceCompositeType, ServiceTypeKind};
 
+use crate::access_solver;
 use crate::clay_execution::ClayCallbackProcessor;
+use crate::service_access_predicate::ServiceAccessPredicate;
 
 use super::deno_system_context::DenoSystemContext;
 
 use payas_resolver_core::{QueryResponse, QueryResponseBody};
-
-use payas_sql::{AbstractPredicate, Predicate};
 
 use super::DenoExecutionError;
 
@@ -43,7 +42,7 @@ impl<'a> DenoOperation<'a> {
         )
         .await;
 
-        if access_predicate == &Predicate::False {
+        if access_predicate == false {
             return Err(DenoExecutionError::Authorization);
         }
 
@@ -62,21 +61,14 @@ async fn compute_service_access_predicate<'a>(
     method: &'a ServiceMethod,
     system_context: &DenoSystemContext<'a>,
     request_context: &'a RequestContext<'a>,
-) -> &'a Predicate<'a> {
+) -> bool {
     let return_type = return_type.typ(system_context.system);
     let resolve = &system_context.resolve_operation_fn;
 
     let type_level_access = match &return_type.kind {
-        GqlTypeKind::Primitive => Predicate::True,
-        GqlTypeKind::Composite(GqlCompositeType {
-            access,
-            kind: GqlCompositeTypeKind::NonPersistent,
-            ..
-        }) => {
-            let access_expr = match &method.operation_kind {
-                ServiceMethodType::Query(_) => &access.read, // query
-                ServiceMethodType::Mutation(_) => &access.creation, // mutation
-            };
+        ServiceTypeKind::Primitive => true,
+        ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => {
+            let access_expr = &access.value;
 
             access_solver::solve_access(
                 access_expr,
@@ -85,14 +77,12 @@ async fn compute_service_access_predicate<'a>(
                 resolve,
             )
             .await
+            .into()
         }
         _ => panic!(),
     };
 
-    let method_access_expr = match &method.operation_kind {
-        ServiceMethodType::Query(_) => &method.access.read, // query
-        ServiceMethodType::Mutation(_) => &method.access.creation, // mutation
-    };
+    let method_access_expr = &method.access.value;
 
     let method_level_access = access_solver::solve_access(
         method_access_expr,
@@ -102,79 +92,80 @@ async fn compute_service_access_predicate<'a>(
     )
     .await;
 
-    let method_level_access = method_level_access.predicate();
+    let method_level_access = method_level_access;
 
-    if matches!(type_level_access, AbstractPredicate::False)
-        || matches!(method_level_access, Predicate::False)
+    if matches!(type_level_access, false)
+        || matches!(method_level_access, ServiceAccessPredicate::False)
     {
-        &Predicate::False // deny if either access check fails
+        false // deny if either access check fails
     } else {
-        &Predicate::True
+        true
     }
 }
 
 pub async fn construct_arg_sequence<'a>(
     field_args: &IndexMap<String, ConstValue>,
     args: &[Argument],
-    system: &'a ModelSystem,
+    system: &'a ModelServiceSystem,
     resolve_query: &ResolveOperationFn<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
-    let mapped_args = field_args
-        .iter()
-        .map(|(gql_name, gql_value)| {
-            (
-                gql_name.as_str().to_owned(),
-                gql_value.clone().into_json().unwrap(),
-            )
-        })
-        .collect::<HashMap<_, _>>();
+    todo!()
+    // let mapped_args = field_args
+    //     .iter()
+    //     .map(|(service_name, service_value)| {
+    //         (
+    //             service_name.as_str().to_owned(),
+    //             service_value.clone().into_json().unwrap(),
+    //         )
+    //     })
+    //     .collect::<HashMap<_, _>>();
 
-    futures::stream::iter(args.iter())
-        .then(|arg| async {
-            if arg.is_injected {
-                // handle injected arguments
+    // futures::stream::iter(args.iter())
+    //     .then(|arg| async {
+    //         if arg.is_injected {
+    //             // handle injected arguments
 
-                let arg_type = if arg.is_primitive {
-                    &system.primitive_types[arg.type_id]
-                } else {
-                    &system.context_types[arg.type_id]
-                };
+    //             let arg_type = if arg.is_primitive {
+    //                 &system.primitive_types[arg.type_id]
+    //             } else {
+    //                 &system.context_types[arg.type_id]
+    //             };
 
-                // what kind of injected argument is it?
-                // first check if it's a context
-                if let Some(context) = system
-                    .contexts
-                    .iter()
-                    .map(|(_, context)| context)
-                    .find(|context| context.name == arg_type.name)
-                {
-                    // this argument is a context, get the value of the context and give it as an argument
-                    let context_value = request_context
-                        .extract_context(context, resolve_query)
-                        .await
-                        .unwrap_or_else(|_| {
-                            panic!(
-                                "Could not get context `{}` from request context",
-                                &context.name
-                            )
-                        });
-                    Ok(Arg::Serde(context_value))
-                } else {
-                    // not a context, assume it is a provided shim by the Deno executor
-                    Ok(Arg::Shim(arg_type.name.clone()))
-                }
-            } else if let Some(val) = mapped_args.get(&arg.name) {
-                // regular argument
-                Ok(Arg::Serde(val.clone()))
-            } else {
-                Err(DenoExecutionError::InvalidArgument(arg.name.clone()))
-            }
-        })
-        .collect::<Vec<Result<_, _>>>()
-        .await
-        .into_iter()
-        .collect::<Result<_, _>>()
+    //             // what kind of injected argument is it?
+    //             // first check if it's a context
+    //             if let Some(context) = system
+    //                 .contexts
+    //                 .iter()
+    //                 .map(|(_, context)| context)
+    //                 .find(|context| context.name == arg_type.name)
+    //             {
+    //                 // this argument is a context, get the value of the context and give it as an argument
+    //                 let context_value = request_context
+    //                     .extract_context(context, resolve_query)
+    //                     .await
+    //                     .unwrap_or_else(|_| {
+    //                         panic!(
+    //                             "Could not get context `{}` from request context",
+    //                             &context.name
+    //                         )
+    //                     });
+    //                 Ok(Arg::Serde(context_value))
+    //             } else {
+    //                 // not a context, assume it is a provided shim by the Deno executor
+    //                 Ok(Arg::Shim(arg_type.name.clone()))
+    //             }
+    //         } else if let Some(val) = mapped_args.get(&arg.name) {
+    //             // regular argument
+    //             Ok(Arg::Serde(val.clone()))
+    //         } else {
+    //             Err(DenoExecutionError::InvalidArgument(arg.name.clone()))
+    //         }
+    //     })
+    //     .collect::<Vec<Result<_, _>>>()
+    //     .await
+    //     .into_iter()
+    //     .collect::<Result<_, _>>()
 }
 
 async fn resolve_deno<'a>(

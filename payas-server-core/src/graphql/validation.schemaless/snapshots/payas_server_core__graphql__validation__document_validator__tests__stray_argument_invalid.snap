@@ -1,0 +1,13 @@
+---
+source: payas-server-core/src/graphql/validation/document_validator.rs
+expression: validator.validate(create_query_document(query))
+---
+Err(
+    StrayArguments(
+        [
+            "foo",
+        ],
+        "concert",
+        Pos(3:21),
+    ),
+)

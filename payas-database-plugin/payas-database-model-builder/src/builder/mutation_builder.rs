@@ -1,25 +1,26 @@
 //! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
-use super::naming::ToGqlTypeNames;
-use payas_core_model_builder::builder::resolved_builder::ResolvedFieldType;
-use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
-use payas_model::model::access::Access;
-use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::operation::{
-    DatabaseMutationKind, Interceptors, Mutation, MutationKind, OperationReturnType,
+use super::naming::ToDatabaseTypeNames;
+use super::resolved_builder::ResolvedFieldType;
+use super::type_builder::ResolvedTypeEnv;
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_database_model::access::Access;
+use payas_database_model::operation::{
+    DatabaseMutation, DatabaseMutationKind, OperationReturnType,
 };
-use payas_model::model::relation::GqlRelation;
-use payas_model::model::{
-    GqlCompositeType, GqlField, GqlFieldType, GqlType, GqlTypeKind, GqlTypeModifier,
+use payas_database_model::relation::DatabaseRelation;
+use payas_database_model::types::{
+    DatabaseCompositeType, DatabaseField, DatabaseFieldType, DatabaseType, DatabaseTypeKind,
+    DatabaseTypeModifier,
 };
 
 use super::create_mutation_builder::CreateMutationBuilder;
 use super::delete_mutation_builder::DeleteMutationBuilder;
 use super::reference_input_type_builder::ReferenceInputTypeBuilder;
+use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::update_mutation_builder::UpdateMutationBuilder;
-use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 use super::Builder;
 
@@ -45,54 +46,46 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
 }
 
 pub trait MutationBuilder {
-    fn single_mutation_name(model_type: &GqlType) -> String;
+    fn single_mutation_name(model_type: &DatabaseType) -> String;
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
     ) -> DatabaseMutationKind;
 
-    fn multi_mutation_name(model_type: &GqlType) -> String;
+    fn multi_mutation_name(model_type: &DatabaseType) -> String;
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
     ) -> DatabaseMutationKind;
 
     fn build_mutations(
         &self,
-        model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
-    ) -> Vec<Mutation> {
-        let single_mutation = Mutation {
+    ) -> Vec<DatabaseMutation> {
+        let single_mutation = DatabaseMutation {
             name: Self::single_mutation_name(model_type),
-            kind: MutationKind::Database {
-                kind: Self::single_mutation_kind(model_type_id, model_type, building),
-            },
+            kind: Self::single_mutation_kind(model_type_id, model_type, building),
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
                 is_primitive: false,
-                type_modifier: GqlTypeModifier::Optional,
-                is_persistent: true,
+                type_modifier: DatabaseTypeModifier::Optional,
             },
-            interceptors: Interceptors::default(),
         };
 
-        let multi_mutation = Mutation {
+        let multi_mutation = DatabaseMutation {
             name: Self::multi_mutation_name(model_type),
-            kind: MutationKind::Database {
-                kind: Self::multi_mutation_kind(model_type_id, model_type, building),
-            },
+            kind: Self::multi_mutation_kind(model_type_id, model_type, building),
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
                 is_primitive: false,
-                type_modifier: GqlTypeModifier::List,
-                is_persistent: true,
+                type_modifier: DatabaseTypeModifier::List,
             },
-            interceptors: Interceptors::default(),
         };
 
         vec![single_mutation, multi_mutation]
@@ -106,7 +99,7 @@ pub trait DataParamBuilder<D> {
 
     fn base_data_type_name(model_type_name: &str) -> String;
 
-    fn data_param(model_type: &GqlType, building: &SystemContextBuilding, array: bool) -> D;
+    fn data_param(model_type: &DatabaseType, building: &SystemContextBuilding, array: bool) -> D;
 
     fn data_type_name(model_type_name: &str, container_type: Option<&str>) -> String {
         let base_name = Self::base_data_type_name(model_type_name);
@@ -115,12 +108,12 @@ pub trait DataParamBuilder<D> {
 
     fn compute_data_fields(
         &self,
-        gql_fields: &[GqlField],
-        top_level_type: Option<&GqlType>,
+        database_fields: &[DatabaseField],
+        top_level_type: Option<&DatabaseType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
-    ) -> Vec<GqlField> {
-        gql_fields
+    ) -> Vec<DatabaseField> {
+        database_fields
             .iter()
             .flat_map(|field| {
                 self.compute_data_field(field, top_level_type, container_type, building)
@@ -181,16 +174,16 @@ pub trait DataParamBuilder<D> {
 
     fn compute_data_field(
         &self,
-        field: &GqlField,
-        top_level_type: Option<&GqlType>,
+        field: &DatabaseField,
+        top_level_type: Option<&DatabaseType>,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
-    ) -> Option<GqlField> {
+    ) -> Option<DatabaseField> {
         let optional = Self::mark_fields_optional() || field.has_default_value;
 
         match &field.relation {
-            GqlRelation::Pk { .. } => None, // TODO: Make this decision based on autoincrement/uuid etc of the id
-            GqlRelation::Scalar { .. } | GqlRelation::NonPersistent => Some(GqlField {
+            DatabaseRelation::Pk { .. } => None, // TODO: Make this decision based on autoincrement/uuid etc of the id
+            DatabaseRelation::Scalar { .. } => Some(DatabaseField {
                 typ: if optional {
                     field.typ.optional()
                 } else {
@@ -198,32 +191,36 @@ pub trait DataParamBuilder<D> {
                 },
                 ..field.clone()
             }),
-            GqlRelation::OneToMany { .. } => {
+            DatabaseRelation::OneToMany { .. } => {
                 self.compute_one_to_many_data_field(field, container_type, building)
             }
-            GqlRelation::ManyToOne { .. } => {
+            DatabaseRelation::ManyToOne { .. } => {
                 let field_type_name = field.typ.type_name().reference_type();
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
-                let field_plain_type = GqlFieldType::Reference {
+                let field_plain_type = DatabaseFieldType::Reference {
                     type_name: field_type_name,
                     is_primitive: false,
                     type_id: field_type_id,
                 };
                 let field_type = match field.typ {
-                    GqlFieldType::Reference { .. } => {
+                    DatabaseFieldType::Reference { .. } => {
                         if optional {
                             field_plain_type.optional()
                         } else {
                             field_plain_type
                         }
                     }
-                    GqlFieldType::Optional(_) => GqlFieldType::Optional(Box::new(field_plain_type)),
-                    GqlFieldType::List(_) => GqlFieldType::List(Box::new(field_plain_type)),
+                    DatabaseFieldType::Optional(_) => {
+                        DatabaseFieldType::Optional(Box::new(field_plain_type))
+                    }
+                    DatabaseFieldType::List(_) => {
+                        DatabaseFieldType::List(Box::new(field_plain_type))
+                    }
                 };
 
                 match &top_level_type {
                     Some(value) if value.name == field.typ.type_name() => None,
-                    _ => Some(GqlField {
+                    _ => Some(DatabaseField {
                         name: field.name.clone(),
                         typ: field_type,
                         relation: field.relation.clone(),
@@ -236,12 +233,12 @@ pub trait DataParamBuilder<D> {
 
     fn compute_one_to_many_data_field(
         &self,
-        field: &GqlField,
+        field: &DatabaseField,
         container_type: Option<&str>,
         building: &SystemContextBuilding,
-    ) -> Option<GqlField> {
+    ) -> Option<DatabaseField> {
         let optional =
-            matches!(field.typ, GqlFieldType::Optional(_)) || Self::mark_fields_optional();
+            matches!(field.typ, DatabaseFieldType::Optional(_)) || Self::mark_fields_optional();
 
         let field_type_name = Self::data_type_name(field.typ.type_name(), container_type);
 
@@ -249,16 +246,16 @@ pub trait DataParamBuilder<D> {
             .mutation_types
             .get_id(&field_type_name)
             .and_then(|field_type_id| {
-                let field_plain_type = GqlFieldType::Reference {
+                let field_plain_type = DatabaseFieldType::Reference {
                     type_name: field_type_name,
                     is_primitive: false, // Mutation types are never primitive
                     type_id: field_type_id,
                 };
-                let field_type = GqlFieldType::List(Box::new(field_plain_type));
+                let field_type = DatabaseFieldType::List(Box::new(field_plain_type));
 
                 match &container_type {
                     Some(value) if value == &field.typ.type_name() => None,
-                    _ => Some(GqlField {
+                    _ => Some(DatabaseField {
                         name: field.name.clone(),
                         typ: if optional {
                             field_type.optional()
@@ -274,14 +271,18 @@ pub trait DataParamBuilder<D> {
 
     fn expanded_data_type(
         &self,
-        model_type: &GqlType,
+        model_type: &DatabaseType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
-        top_level_type: Option<&GqlType>,
-        container_type: Option<&GqlType>,
-    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeType)> {
-        if let GqlTypeKind::Composite(GqlCompositeType {
-            ref fields, kind, ..
+        top_level_type: Option<&DatabaseType>,
+        container_type: Option<&DatabaseType>,
+    ) -> Vec<(SerializableSlabIndex<DatabaseType>, DatabaseCompositeType)> {
+        if let DatabaseTypeKind::Composite(DatabaseCompositeType {
+            fields,
+            table_id,
+            pk_query,
+            collection_query,
+            access,
         }) = &model_type.kind
         {
             let model_fields = fields;
@@ -290,15 +291,8 @@ pub trait DataParamBuilder<D> {
                 .iter()
                 .flat_map(|field| {
                     let is_field_primitive = field.typ.is_primitive();
-                    let field_type = field.typ.base_type(
-                        &if is_field_primitive {
-                            &resolved_env.base_system.primitive_types
-                        } else {
-                            &building.database_types
-                        }
-                        .values,
-                    );
-                    if let (GqlTypeKind::Composite(_), GqlRelation::OneToMany { .. }) =
+                    let field_type = field.typ.base_type(&building.database_types.values);
+                    if let (DatabaseTypeKind::Composite(_), DatabaseRelation::OneToMany { .. }) =
                         (&field_type.kind, &field.relation)
                     {
                         self.expand_one_to_many(
@@ -330,9 +324,11 @@ pub trait DataParamBuilder<D> {
             );
             field_types.push((
                 existing_type_id,
-                GqlCompositeType {
+                DatabaseCompositeType {
                     fields: input_type_fields,
-                    kind: kind.clone(),
+                    table_id: *table_id,
+                    pk_query: pk_query.clone(),
+                    collection_query: collection_query.clone(),
                     access: Access::restrictive(),
                 },
             ));
@@ -345,14 +341,14 @@ pub trait DataParamBuilder<D> {
 
     fn expand_one_to_many(
         &self,
-        model_type: &GqlType,
-        _field: &GqlField,
-        field_type: &GqlType,
+        model_type: &DatabaseType,
+        _field: &DatabaseField,
+        field_type: &DatabaseType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
-        top_level_type: Option<&GqlType>,
-        _container_type: Option<&GqlType>,
-    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeType)> {
+        top_level_type: Option<&DatabaseType>,
+        _container_type: Option<&DatabaseType>,
+    ) -> Vec<(SerializableSlabIndex<DatabaseType>, DatabaseCompositeType)> {
         let new_container_type = Some(model_type);
 
         let existing_type_name = Self::data_type_name(
@@ -360,7 +356,7 @@ pub trait DataParamBuilder<D> {
             new_container_type.map(|value| value.name.as_str()),
         );
 
-        if let GqlTypeKind::Primitive = building
+        if let DatabaseTypeKind::Primitive = building
             .mutation_types
             .get_by_key(&existing_type_name)
             .unwrap_or_else(|| panic!("Could not find type {} to expand", existing_type_name))

@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use payas_core_model_builder::{
     ast::ast_types::{AstModel, AstService, AstSystem, Untyped},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
-        typ::{PrimitiveType, Type},
+        typ::Type,
         Scope,
     },
 };
-use payas_model::model::mapped_arena::MappedArena;
 
 use crate::error::ParserError;
 

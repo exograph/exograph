@@ -16,10 +16,10 @@ tokio = "1"
 wasmtime = "0.39.1"
 wasmtime-wasi = "0.39.1"
 
-payas-model = { path = "../payas-model" }
-payas-sql = { path = "../payas-sql" }
 payas-wasm = { path = "../payas-wasm" }
 payas-resolver-core = { path = "../payas-resolver-core" }
+payas-service-model = { path = "../payas-service-plugin/payas-service-model" }
+
 
 [dev-dependencies]
 tokio = "1"

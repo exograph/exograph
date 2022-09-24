@@ -1,20 +1,22 @@
-use payas_model::model::{
-    mapped_arena::{MappedArena, SerializableSlabIndex},
+use payas_core_model::mapped_arena::SerializableSlabIndex;
+
+use payas_database_model::{
+    column_path::ColumnIdPathLink,
     order::OrderByParameter,
     order::{OrderByParameterType, OrderByParameterTypeKind, OrderByParameterTypeWithModifier},
-    predicate::ColumnIdPathLink,
-    types::{GqlCompositeType, GqlField, GqlType, GqlTypeKind, GqlTypeModifier},
-};
-
-use payas_core_model_builder::builder::{
-    column_path_utils,
-    resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
-    type_builder::ResolvedTypeEnv,
+    types::{
+        DatabaseCompositeType, DatabaseField, DatabaseType, DatabaseTypeKind, DatabaseTypeModifier,
+    },
 };
 
 use super::system_builder::SystemContextBuilding;
+use super::type_builder::ResolvedTypeEnv;
+use super::{
+    column_path_utils,
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+};
 
-pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     let type_name = "Ordering".to_string();
     let primitive_type = OrderByParameterType {
         name: type_name.to_owned(),
@@ -23,12 +25,8 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 
     building.order_by_types.add(&type_name, primitive_type);
 
-    for (_, model) in models.iter() {
-        if let ResolvedType::Composite(ResolvedCompositeType {
-            kind: ResolvedCompositeTypeKind::Persistent { .. },
-            ..
-        }) = model
-        {
+    for (_, model) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(ResolvedCompositeType { .. }) = model {
             let shallow_type = create_shallow_type(model);
             let param_type_name = shallow_type.name.clone();
             building.order_by_types.add(&param_type_name, shallow_type);
@@ -37,12 +35,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 }
 
 pub fn build_expanded(env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (_, model_type) in env
-        .base_system
-        .primitive_types
-        .iter()
-        .chain(building.database_types.iter())
-    {
+    for (_, model_type) in building.database_types.iter() {
         let param_type_name = get_parameter_type_name(&model_type.name, model_type.is_primitive());
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
@@ -72,13 +65,13 @@ fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
 }
 
 fn expand_type(
-    model_type: &GqlType,
+    model_type: &DatabaseType,
     env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> OrderByParameterTypeKind {
     match &model_type.kind {
-        GqlTypeKind::Primitive => OrderByParameterTypeKind::Primitive,
-        GqlTypeKind::Composite(composite_type @ GqlCompositeType { fields, .. }) => {
+        DatabaseTypeKind::Primitive => OrderByParameterTypeKind::Primitive,
+        DatabaseTypeKind::Composite(composite_type @ DatabaseCompositeType { fields, .. }) => {
             let parameters = fields
                 .iter()
                 .map(|field| new_field_param(field, composite_type, env, building))
@@ -114,25 +107,21 @@ fn new_param(
             // Here the user intention is the same as the query above, but we cannot honor that intention
             // This seems like an inherent limit of GraphQL types system (perhaps, input union type proposal will help fix this)
             // TODO: When executing, check for the unsupported version (more than one attributes in an array element) and return an error
-            type_modifier: GqlTypeModifier::List,
+            type_modifier: DatabaseTypeModifier::List,
         },
         column_path_link,
     }
 }
 
 pub fn new_field_param(
-    model_field: &GqlField,
-    composite_type: &GqlCompositeType,
+    model_field: &DatabaseField,
+    composite_type: &DatabaseCompositeType,
     env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
     let is_field_primitive = model_field.typ.is_primitive();
     let field_type_id = model_field.typ.type_id().to_owned();
-    let field_model_type = if is_field_primitive {
-        &env.base_system.primitive_types[field_type_id]
-    } else {
-        &building.database_types[field_type_id]
-    };
+    let field_model_type = &building.database_types[field_type_id];
 
     let column_path_link = Some(column_path_utils::column_path_link(
         composite_type,

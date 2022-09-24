@@ -590,7 +590,7 @@ mod tests {
 
     fn compute_spec(model: &str) -> SchemaSpec {
         let system = payas_parser::build_system_from_str(model, "test.clay".to_string()).unwrap();
-        SchemaSpec::from_model(system.tables.into_iter().collect())
+        SchemaSpec::from_model(system.database_subsystem.tables.into_iter().collect())
     }
 
     fn assert_changes(
