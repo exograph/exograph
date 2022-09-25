@@ -24,7 +24,7 @@ impl<'a> DatabaseOperationResolver<'a> for DatabaseQuery {
         request_context: &'a RequestContext<'a>,
     ) -> Result<DataOperation<'a>, ExecutionError> {
         let database_system_context = DatabaseSystemContext {
-            system: &&system_context.system.database_subsystem,
+            system: &system_context.system.database_subsystem,
             database_executor: &system_context.database_executor,
             resolve_operation_fn: system_context.resolve_operation_fn(),
         };

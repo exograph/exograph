@@ -1,4 +1,6 @@
-use payas_core_model::{context_type::ContextFieldType, mapped_arena::MappedArena};
+use payas_core_model::{
+    context_type::ContextFieldType, mapped_arena::MappedArena, primitive_type::PrimitiveType,
+};
 use payas_core_model_builder::{
     ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
     error::ModelBuildingError,
@@ -41,16 +43,15 @@ pub fn compute_predicate_expression(
                     }
                 }
                 PathSelection::Context(context_selection, field_type) => {
-                    todo!()
-                    // if field_type.base_type(&subsystem_types.values).name == "Boolean" {
-                    //     Ok(AccessPredicateExpression::BooleanContextSelection(
-                    //         context_selection,
-                    //     ))
-                    // } else {
-                    //     Err(ModelBuildingError::Generic(
-                    //         "Context selection must be a boolean".to_string(),
-                    //     ))
-                    // }
+                    if field_type.primitive_type() == &PrimitiveType::Boolean {
+                        Ok(AccessPredicateExpression::BooleanContextSelection(
+                            context_selection,
+                        ))
+                    } else {
+                        Err(ModelBuildingError::Generic(
+                            "Context selection must be a boolean".to_string(),
+                        ))
+                    }
                 }
             }
         }

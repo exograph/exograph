@@ -27,3 +27,14 @@ pub struct ContextSource {
     pub annotation_name: String,
     pub value: String,
 }
+
+impl ContextFieldType {
+    pub fn primitive_type(&self) -> &PrimitiveType {
+        match self {
+            ContextFieldType::Optional(underlying) | ContextFieldType::List(underlying) => {
+                underlying.primitive_type()
+            }
+            ContextFieldType::Reference(pt) => pt,
+        }
+    }
+}

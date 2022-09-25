@@ -54,6 +54,7 @@ pub enum ServiceTypeKind {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceCompositeType {
     pub fields: Vec<ServiceField>,
+    pub is_input: bool,
     pub access: Access,
 }
 

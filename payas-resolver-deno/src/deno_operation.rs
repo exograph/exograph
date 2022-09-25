@@ -10,7 +10,7 @@ use std::collections::HashMap;
 
 use payas_deno::Arg;
 use payas_resolver_core::validation::field::ValidatedField;
-use payas_service_model::service::{Argument, ServiceMethod, ServiceMethodType};
+use payas_service_model::service::{Argument, ServiceMethod};
 use payas_service_model::types::{ServiceCompositeType, ServiceTypeKind};
 
 use crate::access_solver;
@@ -42,7 +42,7 @@ impl<'a> DenoOperation<'a> {
         )
         .await;
 
-        if access_predicate == false {
+        if !access_predicate {
             return Err(DenoExecutionError::Authorization);
         }
 
@@ -79,7 +79,6 @@ async fn compute_service_access_predicate<'a>(
             .await
             .into()
         }
-        _ => panic!(),
     };
 
     let method_access_expr = &method.access.value;
@@ -94,13 +93,9 @@ async fn compute_service_access_predicate<'a>(
 
     let method_level_access = method_level_access;
 
-    if matches!(type_level_access, false)
-        || matches!(method_level_access, ServiceAccessPredicate::False)
-    {
-        false // deny if either access check fails
-    } else {
-        true
-    }
+    // deny if either access check fails
+    !(matches!(type_level_access, false)
+        || matches!(method_level_access, ServiceAccessPredicate::False))
 }
 
 pub async fn construct_arg_sequence<'a>(
@@ -110,62 +105,57 @@ pub async fn construct_arg_sequence<'a>(
     resolve_query: &ResolveOperationFn<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
-    todo!()
-    // let mapped_args = field_args
-    //     .iter()
-    //     .map(|(service_name, service_value)| {
-    //         (
-    //             service_name.as_str().to_owned(),
-    //             service_value.clone().into_json().unwrap(),
-    //         )
-    //     })
-    //     .collect::<HashMap<_, _>>();
+    let mapped_args = field_args
+        .iter()
+        .map(|(service_name, service_value)| {
+            (
+                service_name.as_str().to_owned(),
+                service_value.clone().into_json().unwrap(),
+            )
+        })
+        .collect::<HashMap<_, _>>();
 
-    // futures::stream::iter(args.iter())
-    //     .then(|arg| async {
-    //         if arg.is_injected {
-    //             // handle injected arguments
+    futures::stream::iter(args.iter())
+        .then(|arg| async {
+            if arg.is_injected {
+                // handle injected arguments
 
-    //             let arg_type = if arg.is_primitive {
-    //                 &system.primitive_types[arg.type_id]
-    //             } else {
-    //                 &system.context_types[arg.type_id]
-    //             };
+                let arg_type = &system.service_types[arg.type_id];
 
-    //             // what kind of injected argument is it?
-    //             // first check if it's a context
-    //             if let Some(context) = system
-    //                 .contexts
-    //                 .iter()
-    //                 .map(|(_, context)| context)
-    //                 .find(|context| context.name == arg_type.name)
-    //             {
-    //                 // this argument is a context, get the value of the context and give it as an argument
-    //                 let context_value = request_context
-    //                     .extract_context(context, resolve_query)
-    //                     .await
-    //                     .unwrap_or_else(|_| {
-    //                         panic!(
-    //                             "Could not get context `{}` from request context",
-    //                             &context.name
-    //                         )
-    //                     });
-    //                 Ok(Arg::Serde(context_value))
-    //             } else {
-    //                 // not a context, assume it is a provided shim by the Deno executor
-    //                 Ok(Arg::Shim(arg_type.name.clone()))
-    //             }
-    //         } else if let Some(val) = mapped_args.get(&arg.name) {
-    //             // regular argument
-    //             Ok(Arg::Serde(val.clone()))
-    //         } else {
-    //             Err(DenoExecutionError::InvalidArgument(arg.name.clone()))
-    //         }
-    //     })
-    //     .collect::<Vec<Result<_, _>>>()
-    //     .await
-    //     .into_iter()
-    //     .collect::<Result<_, _>>()
+                // what kind of injected argument is it?
+                // first check if it's a context
+                if let Some(context) = system
+                    .contexts
+                    .iter()
+                    .map(|(_, context)| context)
+                    .find(|context| context.name == arg_type.name)
+                {
+                    // this argument is a context, get the value of the context and give it as an argument
+                    let context_value = request_context
+                        .extract_context(context, resolve_query)
+                        .await
+                        .unwrap_or_else(|_| {
+                            panic!(
+                                "Could not get context `{}` from request context",
+                                &context.name
+                            )
+                        });
+                    Ok(Arg::Serde(context_value))
+                } else {
+                    // not a context, assume it is a provided shim by the Deno executor
+                    Ok(Arg::Shim(arg_type.name.clone()))
+                }
+            } else if let Some(val) = mapped_args.get(&arg.name) {
+                // regular argument
+                Ok(Arg::Serde(val.clone()))
+            } else {
+                Err(DenoExecutionError::InvalidArgument(arg.name.clone()))
+            }
+        })
+        .collect::<Vec<Result<_, _>>>()
+        .await
+        .into_iter()
+        .collect::<Result<_, _>>()
 }
 
 async fn resolve_deno<'a>(

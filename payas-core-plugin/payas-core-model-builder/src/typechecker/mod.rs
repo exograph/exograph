@@ -12,7 +12,7 @@ mod util;
 
 use serde::{Deserialize, Serialize};
 
-pub(super) use annotation_map::AnnotationMap;
+pub use annotation_map::AnnotationMap;
 
 pub(super) use typ::Type;
 

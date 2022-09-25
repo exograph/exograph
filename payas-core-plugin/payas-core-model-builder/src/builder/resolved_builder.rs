@@ -105,7 +105,7 @@ fn resolve_shallow_contexts(
                     .flat_map(|field| {
                         Some(ResolvedContextField {
                             name: field.name.clone(),
-                            typ: resolve_primitive_type(&field.typ.to_typ(types), types),
+                            typ: resolve_context_field_type(&field.typ.to_typ(types), types),
                             source: extract_context_source(field, errors)?,
                         })
                     })
@@ -125,14 +125,14 @@ fn resolve_shallow_contexts(
     Ok(resolved_contexts)
 }
 
-fn resolve_primitive_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedContextFieldType {
+fn resolve_context_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedContextFieldType {
     match typ.deref(types) {
         Type::Primitive(pt) => ResolvedContextFieldType::Plain(pt.clone()),
-        Type::Optional(underlying) => {
-            ResolvedContextFieldType::Optional(Box::new(resolve_primitive_type(&underlying, types)))
-        }
-        Type::Set(underlying) => {
-            ResolvedContextFieldType::List(Box::new(resolve_primitive_type(&underlying, types)))
+        Type::Optional(underlying) => ResolvedContextFieldType::Optional(Box::new(
+            resolve_context_field_type(&underlying, types),
+        )),
+        Type::Set(underlying) | Type::Array(underlying) => {
+            ResolvedContextFieldType::List(Box::new(resolve_context_field_type(&underlying, types)))
         }
         _ => panic!("Unexpected type in context field {}", typ.deref(types)),
     }

@@ -46,7 +46,6 @@ impl ScriptKind {
 pub struct Argument {
     pub name: String,
     pub type_id: SerializableSlabIndex<ServiceType>,
-    pub is_primitive: bool,
     pub modifier: ServiceTypeModifier,
     pub is_injected: bool,
 }

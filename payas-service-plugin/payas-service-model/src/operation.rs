@@ -18,7 +18,7 @@ use super::{
 pub struct ServiceQuery {
     pub name: String,
     pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
-    argument_param: Vec<ArgumentParameter>,
+    pub argument_param: Vec<ArgumentParameter>,
     pub return_type: OperationReturnType,
     pub interceptors: Interceptors,
 }
@@ -27,14 +27,6 @@ impl GraphQLOperation for ServiceQuery {
     fn name(&self) -> &str {
         &self.name
     }
-
-    // fn interceptors(&self) -> &Interceptors {
-    //     &self.interceptors
-    // }
-
-    // fn return_type(&self) -> &OperationReturnType {
-    //     &self.return_type
-    // }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -70,44 +62,24 @@ impl Interceptors {
 
 pub trait GraphQLOperation: Debug {
     fn name(&self) -> &str;
-
-    // fn interceptors(&self) -> &Interceptors;
-
-    // fn return_type(&self) -> &OperationReturnType;
 }
 
 impl GraphQLOperation for ServiceMutation {
     fn name(&self) -> &str {
         &self.name
     }
-
-    // fn interceptors(&self) -> &Interceptors {
-    //     &self.interceptors
-    // }
-
-    // fn return_type(&self) -> &OperationReturnType {
-    //     &self.return_type
-    // }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {
     pub type_id: SerializableSlabIndex<ServiceType>,
-    pub is_primitive: bool,
     pub type_name: String,
     pub type_modifier: ServiceTypeModifier,
 }
 
 impl OperationReturnType {
     pub fn typ<'a>(&self, system: &'a ModelServiceSystem) -> &'a ServiceType {
-        todo!()
-        // let return_type_id = &self.type_id;
-
-        // if self.is_primitive {
-        //     &system.primitive_types[*return_type_id]
-        // } else {
-        //     &system.service_types[*return_type_id]
-        // }
+        &system.service_types[self.type_id]
     }
 }
 
