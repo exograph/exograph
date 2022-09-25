@@ -108,7 +108,7 @@ pub trait DatabaseOperationResolver<'a>: payas_database_model::operation::GraphQ
     }
 }
 
-// TODO: Fix this duplication. Once the final plugin refactoring is done, this would look very different.
+// TODO: Fix this duplication. Once the final plugin refactoring is done, this will look very different.
 #[async_trait]
 pub trait ServiceOperationResolver<'a>: payas_service_model::operation::GraphQLOperation {
     async fn resolve_operation(

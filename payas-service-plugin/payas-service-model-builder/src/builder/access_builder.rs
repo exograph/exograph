@@ -29,8 +29,6 @@ pub fn build_access(
 ) -> ResolvedAccess {
     match access_annotation_params {
         Some(p) => {
-            let restrictive: AstExpr<Typed> = AstExpr::BooleanLiteral(false, null_span());
-
             let value = match p {
                 AstAnnotationParams::Single(default, _) => default,
 

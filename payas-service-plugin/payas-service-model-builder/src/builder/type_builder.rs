@@ -25,12 +25,6 @@ pub struct ResolvedTypeEnv<'a> {
     pub resolved_services: MappedArena<ResolvedService>,
 }
 
-impl<'a> ResolvedTypeEnv<'a> {
-    pub fn get_by_key(&self, key: &str) -> Option<&ResolvedType> {
-        self.resolved_types.get_by_key(key)
-    }
-}
-
 pub(super) fn build_service_expanded(
     resolved_methods: &[&ResolvedMethod],
     resolved_env: &ResolvedTypeEnv,

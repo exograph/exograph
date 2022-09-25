@@ -12,14 +12,9 @@ use payas_database_model::types::{
 use super::naming::ToDatabaseQueryName;
 
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
-use super::type_builder::ResolvedTypeEnv;
 use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
 
-pub fn build_shallow(
-    models: &MappedArena<ResolvedType>,
-    resolved_env: &ResolvedTypeEnv,
-    building: &mut SystemContextBuilding,
-) {
+pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {
         if let ResolvedType::Composite(c) = &model {
             let model_type_id = building.get_id(c.name.as_str()).unwrap();
@@ -36,7 +31,7 @@ pub fn build_shallow(
     }
 }
 
-pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (model_type_id, model_type) in building.database_types.iter() {
         if let DatabaseTypeKind::Composite(DatabaseCompositeType { .. }) = &model_type.kind {
             {
@@ -47,8 +42,7 @@ pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemConte
             }
             {
                 let operation_name = model_type.collection_query();
-                let query =
-                    expanded_collection_query(model_type_id, model_type, resolved_env, building);
+                let query = expanded_collection_query(model_type_id, model_type, building);
                 let existing_id = building.queries.get_id(&operation_name).unwrap();
                 building.queries[existing_id] = query;
             }
@@ -153,7 +147,6 @@ fn shallow_collection_query(
 fn expanded_collection_query(
     model_type_id: SerializableSlabIndex<DatabaseType>,
     model_type: &DatabaseType,
-    resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> DatabaseQuery {
     let operation_name = model_type.collection_query();
@@ -161,8 +154,8 @@ fn expanded_collection_query(
 
     let predicate_param = collection_predicate_param(model_type_id, model_type, building);
     let order_by_param = order_by_type_builder::new_root_param(&model_type.name, false, building);
-    let limit_param = limit_param(resolved_env, building);
-    let offset_param = offset_param(resolved_env, building);
+    let limit_param = limit_param(building);
+    let offset_param = offset_param(building);
 
     DatabaseQuery {
         name: operation_name.clone(),
@@ -176,10 +169,7 @@ fn expanded_collection_query(
     }
 }
 
-pub fn limit_param(
-    resolved_env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
-) -> LimitParameter {
+pub fn limit_param(building: &SystemContextBuilding) -> LimitParameter {
     let param_type_name = "Int".to_string();
 
     LimitParameter {
@@ -192,10 +182,7 @@ pub fn limit_param(
     }
 }
 
-pub fn offset_param(
-    resolved_env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
-) -> OffsetParameter {
+pub fn offset_param(building: &SystemContextBuilding) -> OffsetParameter {
     let param_type_name = "Int".to_string();
 
     OffsetParameter {

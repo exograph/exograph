@@ -13,7 +13,6 @@ use super::{
         ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService, ResolvedType,
     },
     system_builder::SystemContextBuilding,
-    type_builder::ResolvedTypeEnv,
 };
 
 pub fn build_shallow(

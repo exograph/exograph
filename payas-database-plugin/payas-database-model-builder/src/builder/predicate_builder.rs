@@ -8,7 +8,6 @@ use super::system_builder::SystemContextBuilding;
 use super::{
     column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
-    type_builder::ResolvedTypeEnv,
 };
 use payas_database_model::predicate::{
     PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
@@ -50,14 +49,14 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
     }
 }
 
-pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (model_type_id, model_type) in building.database_types.iter()
     // Chain with primitives too to expand filters like "IntFilter"
     {
         let param_type_name = get_parameter_type_name(&model_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        let new_kind = expand_type(model_type_id, model_type, resolved_env, building);
+        let new_kind = expand_type(model_type_id, model_type, building);
         building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
@@ -76,7 +75,6 @@ fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType 
 fn expand_type(
     database_type_id: SerializableSlabIndex<DatabaseType>,
     database_type: &DatabaseType,
-    resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     match &database_type.kind {
@@ -87,7 +85,6 @@ fn expand_type(
             database_type_id,
             composite_type,
             &database_type.name,
-            resolved_env,
             building,
         ),
     }
@@ -195,7 +192,6 @@ fn create_composite_filter_type_kind(
     database_type_id: SerializableSlabIndex<DatabaseType>,
     composite_type: &DatabaseCompositeType,
     composite_type_name: &str,
-    resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     // populate params for each field
@@ -209,7 +205,6 @@ fn create_composite_filter_type_kind(
             let column_path_link = Some(column_path_utils::column_path_link(
                 composite_type,
                 field,
-                resolved_env,
                 &building.database_types,
             ));
 

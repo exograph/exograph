@@ -5,17 +5,12 @@ use payas_database_model::{
     types::{DatabaseCompositeType, DatabaseField, DatabaseType},
 };
 
-use super::type_builder::ResolvedTypeEnv;
-
 pub fn column_path_link(
     container_type: &DatabaseCompositeType,
     field: &DatabaseField,
-    env: &ResolvedTypeEnv,
     subsystem_types: &MappedArena<DatabaseType>,
 ) -> ColumnIdPathLink {
     let field_type_id = field.typ.type_id();
-    let is_field_type_primitive = field.typ.is_primitive();
-
     let field_type = &subsystem_types[*field_type_id];
 
     match &field.relation {

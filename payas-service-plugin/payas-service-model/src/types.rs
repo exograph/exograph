@@ -188,7 +188,7 @@ impl TypeDefinitionProvider<ModelServiceSystem> for ServiceType {
 }
 
 impl FieldDefinitionProvider<ModelServiceSystem> for ServiceField {
-    fn field_definition(&self, system: &ModelServiceSystem) -> FieldDefinition {
+    fn field_definition(&self, _system: &ModelServiceSystem) -> FieldDefinition {
         let field_type = default_positioned(compute_type(&self.typ));
 
         FieldDefinition {

@@ -59,24 +59,24 @@ pub fn build(
     build_shallow_service(&resolved_env, &mut building);
     build_expanded_service(&resolved_env, &mut building)?;
 
-    // let model_interceptors = building.interceptors;
-    // let interceptors: Vec<(AstExpr<Typed>, Interceptor)> = resolved_system
-    //     .services
-    //     .values
-    //     .into_iter()
-    //     .flat_map(|s| {
-    //         s.interceptors.into_iter().map(|resolved_interceptor| {
-    //             let model_interceptor = model_interceptors
-    //                 .get_by_key(&resolved_interceptor.name)
-    //                 .unwrap();
+    let model_interceptors = building.interceptors;
+    let interceptors: Vec<(AstExpr<Typed>, Interceptor)> = resolved_env
+        .resolved_services
+        .values
+        .iter()
+        .flat_map(|s| {
+            s.1.interceptors.iter().map(|resolved_interceptor| {
+                let model_interceptor = model_interceptors
+                    .get_by_key(&resolved_interceptor.name)
+                    .unwrap();
 
-    //             (
-    //                 resolved_interceptor.interceptor_kind.expr().clone(),
-    //                 model_interceptor.clone(),
-    //             )
-    //         })
-    //     })
-    //     .collect();
+                (
+                    resolved_interceptor.interceptor_kind.expr().clone(),
+                    model_interceptor.clone(),
+                )
+            })
+        })
+        .collect();
 
     Ok(ModelServiceSystemWithInterceptors {
         underlying: ModelServiceSystem {
@@ -87,7 +87,7 @@ pub fn build(
             scripts: building.scripts.values,
             contexts: base_system.contexts.clone(),
         },
-        interceptors: vec![],
+        interceptors,
     })
 }
 

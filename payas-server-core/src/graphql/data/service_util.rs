@@ -1,5 +1,4 @@
 use payas_core_model::mapped_arena::SerializableSlabIndex;
-use payas_model::model::system::ModelSystem;
 use payas_resolver_core::{request_context::RequestContext, validation::field::ValidatedField};
 use payas_resolver_deno::DenoOperation;
 use payas_resolver_wasm::WasmOperation;

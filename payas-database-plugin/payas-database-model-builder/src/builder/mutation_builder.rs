@@ -5,7 +5,6 @@ use super::naming::ToDatabaseTypeNames;
 use super::resolved_builder::ResolvedFieldType;
 use super::type_builder::ResolvedTypeEnv;
 use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_database_model::access::Access;
 use payas_database_model::operation::{
     DatabaseMutation, DatabaseMutationKind, OperationReturnType,
 };
@@ -328,7 +327,7 @@ pub trait DataParamBuilder<D> {
                     table_id: *table_id,
                     pk_query: pk_query.clone(),
                     collection_query: collection_query.clone(),
-                    access: Access::restrictive(),
+                    access: access.clone(),
                 },
             ));
 

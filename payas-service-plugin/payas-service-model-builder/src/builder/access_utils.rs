@@ -27,21 +27,19 @@ pub fn compute_predicate_expression(
     subsystem_types: &MappedArena<ServiceType>,
 ) -> Result<AccessPredicateExpression, ModelBuildingError> {
     match expr {
-        AstExpr::FieldSelection(selection) => {
-            match compute_selection(selection, self_type_info, resolved_env, subsystem_types) {
-                PathSelection::Context(context_selection, field_type) => {
-                    if field_type.primitive_type() == &PrimitiveType::Boolean {
-                        Ok(AccessPredicateExpression::BooleanContextSelection(
-                            context_selection,
-                        ))
-                    } else {
-                        Err(ModelBuildingError::Generic(
-                            "Context selection must be a boolean".to_string(),
-                        ))
-                    }
+        AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
+            PathSelection::Context(context_selection, field_type) => {
+                if field_type.primitive_type() == &PrimitiveType::Boolean {
+                    Ok(AccessPredicateExpression::BooleanContextSelection(
+                        context_selection,
+                    ))
+                } else {
+                    Err(ModelBuildingError::Generic(
+                        "Context selection must be a boolean".to_string(),
+                    ))
                 }
             }
-        }
+        },
         AstExpr::LogicalOp(op) => {
             let predicate_expr = |expr: &AstExpr<Typed>| {
                 compute_predicate_expression(expr, self_type_info, resolved_env, subsystem_types)
@@ -78,18 +76,8 @@ pub fn compute_predicate_expression(
             let (left, right) = op.sides();
 
             Ok(AccessPredicateExpression::RelationalOp(combiner(
-                Box::new(compute_primitive_expr(
-                    left,
-                    self_type_info,
-                    resolved_env,
-                    subsystem_types,
-                )),
-                Box::new(compute_primitive_expr(
-                    right,
-                    self_type_info,
-                    resolved_env,
-                    subsystem_types,
-                )),
+                Box::new(compute_primitive_expr(left, resolved_env)),
+                Box::new(compute_primitive_expr(right, resolved_env)),
             )))
         }
         AstExpr::BooleanLiteral(value, _) => Ok(AccessPredicateExpression::BooleanLiteral(*value)),
@@ -102,16 +90,12 @@ pub fn compute_predicate_expression(
 
 fn compute_primitive_expr(
     expr: &AstExpr<Typed>,
-    self_type_info: Option<&ServiceCompositeType>,
     resolved_env: &ResolvedTypeEnv,
-    subsystem_types: &MappedArena<ServiceType>,
 ) -> AccessPrimitiveExpression {
     match expr {
-        AstExpr::FieldSelection(selection) => {
-            match compute_selection(selection, self_type_info, resolved_env, subsystem_types) {
-                PathSelection::Context(c, _) => AccessPrimitiveExpression::ContextSelection(c),
-            }
-        }
+        AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
+            PathSelection::Context(c, _) => AccessPrimitiveExpression::ContextSelection(c),
+        },
         AstExpr::StringLiteral(value, _) => AccessPrimitiveExpression::StringLiteral(value.clone()),
         AstExpr::BooleanLiteral(value, _) => AccessPrimitiveExpression::BooleanLiteral(*value),
         AstExpr::NumberLiteral(value, _) => AccessPrimitiveExpression::NumberLiteral(*value),
@@ -123,9 +107,7 @@ fn compute_primitive_expr(
 
 fn compute_selection<'a>(
     selection: &FieldSelection<Typed>,
-    self_type_info: Option<&'a ServiceCompositeType>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
-    subsystem_types: &'a MappedArena<ServiceType>,
 ) -> PathSelection<'a> {
     fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
         match selection {

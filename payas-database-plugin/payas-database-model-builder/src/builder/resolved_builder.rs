@@ -9,7 +9,6 @@ use super::naming::{ToPlural, ToTableName};
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_core_model::mapped_arena::MappedArena;
-use payas_core_model_builder::builder::resolved_builder::ResolvedContext;
 use payas_core_model_builder::typechecker::annotation_map::AnnotationMap;
 use payas_core_model_builder::typechecker::typ::Type;
 use payas_core_model_builder::typechecker::Typed;
@@ -237,11 +236,6 @@ impl AstAnnotationHelper for AstAnnotation<Typed> {
     fn as_single(&self) -> String {
         self.params.as_single().as_string()
     }
-}
-
-pub(crate) struct ResolvedBaseSystem {
-    pub primitive_types: MappedArena<ResolvedType>,
-    pub contexts: MappedArena<ResolvedContext>,
 }
 
 pub fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldType {

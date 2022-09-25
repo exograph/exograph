@@ -2,7 +2,7 @@ use async_recursion::async_recursion;
 use futures::StreamExt;
 
 use payas_database_model::{
-    operation::{DatabaseQuery, DatabaseQueryParameter, OperationReturnType},
+    operation::{DatabaseQuery, DatabaseQueryParameter},
     relation::{DatabaseRelation, RelationCardinality},
     types::{DatabaseTypeKind, DatabaseTypeModifier},
 };
@@ -256,10 +256,6 @@ async fn map_field<'content>(
                 )
                 .await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
-            }
-
-            _ => {
-                panic!("")
             }
         }
     };

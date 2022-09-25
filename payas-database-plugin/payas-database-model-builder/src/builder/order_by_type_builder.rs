@@ -34,13 +34,13 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
     }
 }
 
-pub fn build_expanded(env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (_, model_type) in building.database_types.iter() {
         let param_type_name = get_parameter_type_name(&model_type.name, model_type.is_primitive());
         let existing_param_id = building.order_by_types.get_id(&param_type_name);
 
         if let Some(existing_param_id) = existing_param_id {
-            let new_kind = expand_type(model_type, env, building);
+            let new_kind = expand_type(model_type, building);
             building.order_by_types[existing_param_id].kind = new_kind;
         }
     }
@@ -66,7 +66,6 @@ fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
 
 fn expand_type(
     model_type: &DatabaseType,
-    env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> OrderByParameterTypeKind {
     match &model_type.kind {
@@ -74,7 +73,7 @@ fn expand_type(
         DatabaseTypeKind::Composite(composite_type @ DatabaseCompositeType { fields, .. }) => {
             let parameters = fields
                 .iter()
-                .map(|field| new_field_param(field, composite_type, env, building))
+                .map(|field| new_field_param(field, composite_type, building))
                 .collect();
 
             OrderByParameterTypeKind::Composite { parameters }
@@ -116,17 +115,14 @@ fn new_param(
 pub fn new_field_param(
     model_field: &DatabaseField,
     composite_type: &DatabaseCompositeType,
-    env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> OrderByParameter {
-    let is_field_primitive = model_field.typ.is_primitive();
     let field_type_id = model_field.typ.type_id().to_owned();
     let field_model_type = &building.database_types[field_type_id];
 
     let column_path_link = Some(column_path_utils::column_path_link(
         composite_type,
         model_field,
-        env,
         &building.database_types,
     ));
 

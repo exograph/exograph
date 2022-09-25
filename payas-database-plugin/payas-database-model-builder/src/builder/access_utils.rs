@@ -156,7 +156,6 @@ fn compute_selection<'a>(
     fn get_column<'a>(
         field_name: &str,
         self_type_info: &'a DatabaseCompositeType,
-        resolved_env: &ResolvedTypeEnv,
         subsystem_types: &MappedArena<DatabaseType>,
     ) -> (ColumnIdPathLink, &'a DatabaseFieldType) {
         let get_field = |field_name: &str| {
@@ -168,12 +167,8 @@ fn compute_selection<'a>(
         };
 
         let field = get_field(field_name);
-        let column_path_link = column_path_utils::column_path_link(
-            self_type_info,
-            field,
-            resolved_env,
-            subsystem_types,
-        );
+        let column_path_link =
+            column_path_utils::column_path_link(self_type_info, field, subsystem_types);
 
         (column_path_link, &field.typ)
     }
@@ -219,7 +214,7 @@ fn compute_selection<'a>(
                     self_type_info.expect("Type for the access selection is not defined");
 
                 let (field_column_path, field_type) =
-                    get_column(field_name, self_type_info, resolved_env, subsystem_types);
+                    get_column(field_name, self_type_info, subsystem_types);
 
                 let field_composite_type = match &field_type.base_type(&subsystem_types.values).kind
                 {

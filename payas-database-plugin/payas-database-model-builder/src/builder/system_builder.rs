@@ -1,7 +1,4 @@
-use payas_core_model::{
-    mapped_arena::{MappedArena, SerializableSlabIndex},
-    primitive_type::PrimitiveType,
-};
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_core_model_builder::{
     builder::system_builder::BaseModelSystem, error::ModelBuildingError, typechecker::typ::Type,
 };
@@ -62,7 +59,7 @@ fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBui
     // The next two shallow builders need DATABASE types build above (the order of the next three is unimportant)
     // Specifically, the OperationReturn type in Query and Mutation looks for the id for the return type, so requires
     // type_builder::build_shallow to have run
-    query_builder::build_shallow(&resolved_env.resolved_types, resolved_env, building);
+    query_builder::build_shallow(&resolved_env.resolved_types, building);
     mutation_builder::build_shallow(&resolved_env.resolved_types, building);
 }
 
@@ -75,11 +72,11 @@ fn build_expanded(
 
     // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
     // after running type_builder::build_expanded (since they depend on expanded DatabaseTypes (note the next ones do not access resolved_types))
-    order_by_type_builder::build_expanded(resolved_env, building);
-    predicate_builder::build_expanded(resolved_env, building);
+    order_by_type_builder::build_expanded(building);
+    predicate_builder::build_expanded(building);
 
     // Finally expand queries, mutations, and service methods
-    query_builder::build_expanded(resolved_env, building);
+    query_builder::build_expanded(building);
     mutation_builder::build_expanded(resolved_env, building);
 
     Ok(())
