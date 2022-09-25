@@ -20,12 +20,15 @@ pub struct ServiceQuery {
     pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
     pub return_type: OperationReturnType,
-    pub interceptors: Interceptors,
 }
 
 impl GraphQLOperation for ServiceQuery {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn is_query(&self) -> bool {
+        true
     }
 }
 
@@ -35,20 +38,19 @@ pub struct ServiceMutation {
     pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
     pub return_type: OperationReturnType,
-    pub interceptors: Interceptors,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct Interceptors {
-    pub interceptors: Vec<Interceptor>,
+#[derive(Debug, Clone, Default)]
+pub struct Interceptors<'a> {
+    pub interceptors: Vec<&'a Interceptor>,
 }
 
-impl Interceptors {
-    pub fn ordered(&self) -> Vec<&Interceptor> {
+impl<'a> Interceptors<'a> {
+    pub fn ordered(self) -> Vec<&'a Interceptor> {
         let mut processed = Vec::new();
         let mut deferred = Vec::new();
 
-        for interceptor in &self.interceptors {
+        for interceptor in self.interceptors {
             if interceptor.interceptor_kind == InterceptorKind::Before {
                 processed.push(interceptor);
             } else {
@@ -62,11 +64,17 @@ impl Interceptors {
 
 pub trait GraphQLOperation: Debug {
     fn name(&self) -> &str;
+
+    fn is_query(&self) -> bool;
 }
 
 impl GraphQLOperation for ServiceMutation {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn is_query(&self) -> bool {
+        false
     }
 }
 

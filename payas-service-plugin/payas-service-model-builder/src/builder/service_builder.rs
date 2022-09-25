@@ -140,7 +140,6 @@ fn shallow_service_query(
             type_name: return_type_name.to_string(),
             type_modifier: return_type.get_modifier(),
         },
-        interceptors: Interceptors::default(),
     }
 }
 
@@ -161,7 +160,6 @@ fn shallow_service_mutation(
             type_name: return_type_name.to_string(),
             type_modifier: return_type.get_modifier(),
         },
-        interceptors: Interceptors::default(),
     }
 }
 

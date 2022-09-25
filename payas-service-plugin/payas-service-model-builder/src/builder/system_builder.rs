@@ -40,7 +40,7 @@ impl SystemContextBuilding {
 pub struct ModelServiceSystemWithInterceptors {
     pub underlying: ModelServiceSystem,
 
-    pub interceptors: Vec<(AstExpr<Typed>, Interceptor)>,
+    pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
 pub fn build(
@@ -60,21 +60,24 @@ pub fn build(
     build_expanded_service(&resolved_env, &mut building)?;
 
     let model_interceptors = building.interceptors;
-    let interceptors: Vec<(AstExpr<Typed>, Interceptor)> = resolved_env
+    let interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)> = resolved_env
         .resolved_services
         .values
         .iter()
-        .flat_map(|s| {
-            s.1.interceptors.iter().map(|resolved_interceptor| {
-                let model_interceptor = model_interceptors
-                    .get_by_key(&resolved_interceptor.name)
-                    .unwrap();
+        .flat_map(|(_, resolved_service)| {
+            resolved_service
+                .interceptors
+                .iter()
+                .map(|resolved_interceptor| {
+                    let model_interceptor = model_interceptors
+                        .get_id(&resolved_interceptor.name)
+                        .unwrap();
 
-                (
-                    resolved_interceptor.interceptor_kind.expr().clone(),
-                    model_interceptor.clone(),
-                )
-            })
+                    (
+                        resolved_interceptor.interceptor_kind.expr().clone(),
+                        model_interceptor,
+                    )
+                })
         })
         .collect();
 
@@ -86,6 +89,7 @@ pub fn build(
             methods: building.methods.values,
             scripts: building.scripts.values,
             contexts: base_system.contexts.clone(),
+            interceptors: model_interceptors.values,
         },
         interceptors,
     })

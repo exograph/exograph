@@ -22,6 +22,8 @@ use super::{
 pub trait GraphQLOperation: Debug {
     fn name(&self) -> &str;
 
+    fn is_query(&self) -> bool;
+
     fn return_type(&self) -> &OperationReturnType;
 }
 
@@ -43,6 +45,10 @@ pub struct DatabaseQueryParameter {
 impl GraphQLOperation for DatabaseQuery {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn is_query(&self) -> bool {
+        true
     }
 
     fn return_type(&self) -> &OperationReturnType {
@@ -67,28 +73,6 @@ pub enum DatabaseMutationKind {
     },
 }
 
-// #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-// pub struct Interceptors {
-//     pub interceptors: Vec<Interceptor>,
-// }
-
-// impl Interceptors {
-//     pub fn ordered(&self) -> Vec<&Interceptor> {
-//         let mut processed = Vec::new();
-//         let mut deferred = Vec::new();
-
-//         for interceptor in &self.interceptors {
-//             if interceptor.interceptor_kind == InterceptorKind::Before {
-//                 processed.push(interceptor);
-//             } else {
-//                 deferred.push(interceptor);
-//             }
-//         }
-//         processed.extend(deferred.into_iter());
-//         processed
-//     }
-// }
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateDataParameter {
     pub name: String,
@@ -112,6 +96,10 @@ pub struct CreateDataParameterTypeWithModifier {
 impl GraphQLOperation for DatabaseMutation {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn is_query(&self) -> bool {
+        false
     }
 
     fn return_type(&self) -> &OperationReturnType {

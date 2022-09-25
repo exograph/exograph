@@ -10,6 +10,7 @@ use payas_core_model::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    interceptor::Interceptor,
     operation::{ServiceMutation, ServiceQuery},
     service::ServiceMethod,
     types::ServiceType,
@@ -31,6 +32,7 @@ pub struct ModelServiceSystem {
     // service related
     pub methods: SerializableSlab<ServiceMethod>,
     pub scripts: SerializableSlab<Script>,
+    pub interceptors: SerializableSlab<Interceptor>,
 }
 
 impl ModelServiceSystem {

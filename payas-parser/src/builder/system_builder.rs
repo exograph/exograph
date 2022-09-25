@@ -2,7 +2,7 @@ use payas_core_model::mapped_arena::MappedArena;
 use payas_core_model_builder::{error::ModelBuildingError, typechecker::typ::Type};
 use payas_model::model::system::ModelSystem;
 
-use super::interceptor_weaver;
+use super::interceptor_weaver::{self, OperationKind};
 
 /// Build a [ModelSystem] given an [AstSystem].
 ///
@@ -30,19 +30,42 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
 
     let service_subsystem = payas_service_model_builder::build(&typechecked_system, &base_system)?;
 
-    // interceptor_weaver::weave_queries(&mut database_system.queries, &service_system.interceptors);
-    // interceptor_weaver::weave_mutations(
-    //     &mut database_system.mutations,
-    //     &service_system.interceptors,
-    // );
-    // interceptor_weaver::weave_queries(&mut service_system.queries, &service_system.interceptors);
-    // interceptor_weaver::weave_mutations(
-    //     &mut service_system.mutations,
-    //     &service_system.interceptors,
-    // );
+    let query_interceptors = interceptor_weaver::weave(
+        database_subsystem
+            .queries
+            .iter()
+            .map(|(_, q)| q.name.as_str())
+            .chain(
+                service_subsystem
+                    .underlying
+                    .queries
+                    .iter()
+                    .map(|(_, q)| q.name.as_str()),
+            ),
+        &service_subsystem.interceptors,
+        OperationKind::Query,
+    );
+
+    let mutation_interceptors = interceptor_weaver::weave(
+        database_subsystem
+            .mutations
+            .iter()
+            .map(|(_, q)| q.name.as_str())
+            .chain(
+                service_subsystem
+                    .underlying
+                    .mutations
+                    .iter()
+                    .map(|(_, q)| q.name.as_str()),
+            ),
+        &service_subsystem.interceptors,
+        OperationKind::Mutation,
+    );
 
     Ok(ModelSystem {
         database_subsystem,
         service_subsystem: service_subsystem.underlying,
+        query_interceptors,
+        mutation_interceptors,
     })
 }

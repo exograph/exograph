@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 use futures::FutureExt;
+use payas_service_model::interceptor::Interceptor;
+use payas_service_model::operation::Interceptors;
 use serde_json::Value;
 
 use payas_resolver_core::validation::field::ValidatedField;
@@ -65,8 +67,10 @@ pub trait DatabaseOperationResolver<'a>: payas_database_model::operation::GraphQ
             .boxed()
         };
 
-        let intercepted_operation = InterceptedOperation::new(self.name(), vec![]);
-        // InterceptedOperation::new(self.name(), self.interceptors().ordered());
+        let intercepted_operation = InterceptedOperation::new(
+            self.name(),
+            compute_interceptors(self.name(), self.is_query(), system_context),
+        );
 
         let resolve_operation_fn = system_context.resolve_operation_fn();
 
@@ -139,8 +143,10 @@ pub trait ServiceOperationResolver<'a>: payas_service_model::operation::GraphQLO
             .boxed()
         };
 
-        let intercepted_operation = InterceptedOperation::new(self.name(), vec![]);
-        // InterceptedOperation::new(self.name(), self.interceptors().ordered());
+        let intercepted_operation = InterceptedOperation::new(
+            self.name(),
+            compute_interceptors(self.name(), self.is_query(), system_context),
+        );
 
         let resolve_operation_fn = system_context.resolve_operation_fn();
 
@@ -180,4 +186,29 @@ pub trait ServiceOperationResolver<'a>: payas_service_model::operation::GraphQLO
             headers,
         })
     }
+}
+
+fn compute_interceptors<'a>(
+    operation_name: &str,
+    is_query: bool,
+    system_context: &'a SystemContext,
+) -> Vec<&'a Interceptor> {
+    let all_interceptors = &system_context.system.service_subsystem.interceptors;
+
+    let interceptors_map = if is_query {
+        &system_context.system.query_interceptors
+    } else {
+        &system_context.system.mutation_interceptors
+    };
+
+    let interceptors = interceptors_map
+        .get(operation_name)
+        .map(|interceptor_indices| {
+            interceptor_indices
+                .iter()
+                .map(|index| &all_interceptors[*index])
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    Interceptors { interceptors }.ordered()
 }

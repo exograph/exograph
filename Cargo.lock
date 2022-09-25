@@ -3729,6 +3729,7 @@ dependencies = [
  "payas-core-model-builder",
  "payas-database-model-builder",
  "payas-model",
+ "payas-service-model",
  "payas-service-model-builder",
  "payas-sql",
  "serde",
