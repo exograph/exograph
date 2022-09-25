@@ -63,10 +63,17 @@ pub(super) fn build_service_expanded(
 
 pub(super) fn build_shallow(
     models: &MappedArena<ResolvedType>,
+    contexts: &MappedArena<ContextType>,
     building: &mut SystemContextBuilding,
 ) {
     for (_, model_type) in models.iter() {
         create_shallow_type(model_type, building);
+    }
+
+    // For contexts, building shallow types is enough
+    // (we need to have them in the SystemContextBuilding.types, so that when passed as an argument to a service method, we can resolve the type)
+    for (_, context) in contexts.iter() {
+        create_shallow_context(context, building);
     }
 }
 
@@ -210,6 +217,20 @@ fn expand_type_access(
 
 fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
     let type_name = resolved_type.name();
+
+    // Mark every type as Primitive, since other types that may be referred haven't been processed yet
+    // and we haven't build query and mutation types either
+    let typ = ServiceType {
+        name: type_name.to_string(),
+        kind: ServiceTypeKind::Primitive,
+        is_input: false,
+    };
+
+    building.types.add(&type_name, typ);
+}
+
+fn create_shallow_context(context: &ContextType, building: &mut SystemContextBuilding) {
+    let type_name = &context.name;
 
     // Mark every type as Primitive, since other types that may be referred haven't been processed yet
     // and we haven't build query and mutation types either

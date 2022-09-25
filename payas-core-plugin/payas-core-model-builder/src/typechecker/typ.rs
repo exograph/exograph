@@ -1,10 +1,7 @@
 use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_core_model::primitive_type::PrimitiveType;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{Display, Formatter},
-    ops::Deref,
-};
+use std::{fmt::Display, ops::Deref};
 
 use super::Typed;
 use crate::ast::ast_types::{AstModel, AstService};
