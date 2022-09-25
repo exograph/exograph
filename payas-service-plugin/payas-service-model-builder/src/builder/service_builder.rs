@@ -3,7 +3,7 @@ use payas_service_model::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterType},
     interceptor::{Interceptor, InterceptorKind},
-    operation::{Interceptors, OperationReturnType, ServiceMutation, ServiceQuery},
+    operation::{OperationReturnType, ServiceMutation, ServiceQuery},
     service::{Argument, Script, ScriptKind, ServiceMethod, ServiceMethodType},
     types::ServiceType,
 };

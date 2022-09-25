@@ -1,4 +1,3 @@
-
 mod operation_payload;
 mod query_response;
 pub mod request_context;
