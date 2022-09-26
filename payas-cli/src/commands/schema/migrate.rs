@@ -1,25 +1,25 @@
 use std::{io, path::PathBuf, time::SystemTime};
 
-use crate::{commands::command::Command, util::open_file_for_output};
+use crate::{
+    commands::command::Command,
+    util::{open_database, open_file_for_output},
+};
 
 use super::migration_helper::migration_statements;
 use anyhow::Result;
-use payas_sql::{schema::spec::SchemaSpec, Database};
+use payas_sql::schema::spec::SchemaSpec;
 
 /// Perform a database migration for a claytip model
 pub struct MigrateCommand {
     pub model: PathBuf,
-    pub comment_destructive_changes: bool,
+    pub database: Option<String>,
     pub output: Option<PathBuf>,
+    pub comment_destructive_changes: bool,
 }
 
 impl Command for MigrateCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        let mut buffer: Box<dyn io::Write> = if let Some(output) = &self.output {
-            Box::new(open_file_for_output(output)?)
-        } else {
-            Box::new(io::stdout())
-        };
+        let mut buffer: Box<dyn io::Write> = open_file_for_output(self.output.as_deref())?;
 
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_io()
@@ -27,13 +27,13 @@ impl Command for MigrateCommand {
             .unwrap();
 
         rt.block_on(async {
-            let database = Database::from_env(Some(1))?; // TODO: error handling here
+            let database = open_database(self.database.as_deref())?;
             let client = database.get_client().await?;
 
             let old_schema = SchemaSpec::from_db(&client).await?;
 
             for issue in &old_schema.issues {
-                println!("{}", issue);
+                eprintln!("{}", issue);
             }
 
             let new_system = payas_parser::build_system(&self.model)?;

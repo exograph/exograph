@@ -62,7 +62,7 @@ pub enum ResolvedContextFieldType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedContextSource {
     pub annotation: String,
-    pub value: String,
+    pub value: Option<String>,
 }
 
 pub(crate) struct ResolvedBaseSystem {
@@ -168,9 +168,11 @@ fn extract_context_source(
 
             // extract the value from the annotation
             let value = match &annotation.params {
-                AstAnnotationParams::Single(AstExpr::StringLiteral(string, _), _) => string.clone(),
+                AstAnnotationParams::Single(AstExpr::StringLiteral(string, _), _) => {
+                    Some(string.clone())
+                }
 
-                AstAnnotationParams::None => field.name.clone(),
+                AstAnnotationParams::None => None,
 
                 _ => panic!(
                     "Annotation parameters other than single literal and none unsupported for @{}",

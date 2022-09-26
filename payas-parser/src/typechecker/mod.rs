@@ -225,6 +225,15 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             },
         ),
         (
+            "clientIp",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Field],
+                no_params: true,
+                single_params: false,
+                mapped_params: None,
+            },
+        ),
+        (
             "jwt",
             AnnotationSpec {
                 targets: &[AnnotationTarget::Field],

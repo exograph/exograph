@@ -5,7 +5,6 @@ use payas_parser::error::ParserError;
 use payas_sql::{
     database_error::DatabaseError,
     schema::{op::SchemaOp, spec::SchemaSpec},
-    Database,
 };
 use std::{
     fmt::Display,
@@ -13,7 +12,7 @@ use std::{
     time::SystemTime,
 };
 
-use crate::commands::command::Command;
+use crate::{commands::command::Command, util::open_database};
 
 /// Verify that a schema is compatible with a claytip model
 pub struct VerifyCommand {
@@ -68,12 +67,7 @@ pub fn verify(model: &Path, database: Option<&str>) -> Result<(), VerificationEr
         .unwrap();
 
     rt.block_on(async {
-            let database = if let Some(database) = database {
-                Database::from_db_url(database).map_err(VerificationErrors::DatabaseError)? // TODO: error handling here
-            } else {
-                Database::from_env(None).map_err(VerificationErrors::DatabaseError)?
-            };
-
+            let database = open_database(database).map_err(VerificationErrors::DatabaseError)?;
             let client = database.get_client().await.map_err(VerificationErrors::DatabaseError)?;
 
             // import schema from db

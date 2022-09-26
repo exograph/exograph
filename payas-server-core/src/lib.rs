@@ -51,6 +51,13 @@ fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationEr
 }
 
 fn create_system_context(claypot_file: &str) -> Result<SystemContext, InitializationError> {
+    let system = open_claypot_file(claypot_file)?;
+    create_system_context_with_model_system(system)
+}
+
+pub fn create_system_context_with_model_system(
+    model_system: ModelSystem,
+) -> Result<SystemContext, InitializationError> {
     let database = Database::from_env(None)?;
 
     let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
@@ -63,8 +70,7 @@ fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initializa
         None => Ok(false),
     }?;
 
-    let system = open_claypot_file(claypot_file)?;
-    let schema = Schema::new(&system);
+    let schema = Schema::new(&model_system);
     let deno_execution_config =
         DenoExecutorPool::new_from_config(payas_resolver_deno::clay_config());
 
@@ -74,7 +80,7 @@ fn create_system_context(claypot_file: &str) -> Result<SystemContext, Initializa
         database_executor,
         deno_execution_pool: deno_execution_config,
         wasm_execution_pool: WasmExecutorPool::default(),
-        system,
+        system: model_system,
         schema,
         allow_introspection,
     };

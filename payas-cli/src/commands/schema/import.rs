@@ -15,7 +15,7 @@ use crate::util::open_file_for_output;
 
 /// Create a claytip model file based on a database schema
 pub struct ImportCommand {
-    pub output: PathBuf,
+    pub output: Option<PathBuf>,
 }
 
 impl Command for ImportCommand {
@@ -34,12 +34,17 @@ impl Command for ImportCommand {
         issues.append(&mut schema.issues);
         issues.append(&mut model.issues);
 
-        open_file_for_output(&self.output)?.write_all(schema.value.to_model().value.as_bytes())?;
+        let mut buffer: Box<dyn Write> = open_file_for_output(self.output.as_deref())?;
+        buffer.write_all(schema.value.to_model().value.as_bytes())?;
+
         for issue in &issues {
-            println!("{}", issue);
+            eprintln!("{}", issue);
         }
 
-        println!("\nClaytip model written to `{}`", self.output.display());
+        if let Some(output) = &self.output {
+            eprintln!("\nClaytip model written to `{}`", output.display());
+        }
+
         Ok(())
     }
 }
