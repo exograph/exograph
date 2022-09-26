@@ -37,6 +37,19 @@ pub struct ModelDatabaseSystem {
 }
 
 impl ModelDatabaseSystem {
+    pub fn new() -> Self {
+        Self {
+            contexts: MappedArena::default(),
+            database_types: SerializableSlab::new(),
+            order_by_types: SerializableSlab::new(),
+            predicate_types: SerializableSlab::new(),
+            queries: MappedArena::default(),
+            mutation_types: SerializableSlab::new(),
+            mutations: MappedArena::default(),
+            tables: SerializableSlab::new(),
+        }
+    }
+
     pub fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
         self.queries
             .values

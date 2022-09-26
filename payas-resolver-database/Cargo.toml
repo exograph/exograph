@@ -28,6 +28,7 @@ payas-database-model = { path = "../payas-database-plugin/payas-database-model" 
 [dev-dependencies]
 tokio = "1"
 payas-parser = { path = "../payas-parser" }
+payas-resolver-core = { path = "../payas-resolver-core", features = ["test-context"] }
 
 
 [lib]

@@ -232,12 +232,12 @@ pub trait ParsedContext {
 }
 pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
-#[cfg(test)]
+#[cfg(feature = "test-context")]
 pub struct TestRequestContext {
     pub test_values: Value,
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-context")]
 #[async_trait]
 impl ParsedContext for TestRequestContext {
     fn annotation_name(&self) -> &str {

@@ -3,6 +3,9 @@ name = "payas-resolver-core"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+test-context = []
+
 [dependencies]
 async-graphql-value = "4.0.5"
 async-recursion = "1.0.0"
