@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use payas_core_model::mapped_arena::SerializableSlabIndex;
+use payas_core_model::mapped_arena::{SerializableSlab, SerializableSlabIndex};
 use payas_core_model_builder::{
     ast::ast_types::{AstExpr, LogicalOp},
     typechecker::Typed,
 };
-use payas_service_model::interceptor::Interceptor;
+use payas_service_model::interceptor::{Interceptor, InterceptorKind};
 
 use wildmatch::WildMatch;
 
@@ -17,35 +17,45 @@ pub enum OperationKind {
 
 pub fn weave<'a>(
     operation_names: impl Iterator<Item = &'a str>,
-    interceptors: &[(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)],
+    expr_interceptor_pairs: &[(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)],
+    interceptors: &SerializableSlab<Interceptor>,
     operation_kind: OperationKind,
 ) -> HashMap<String, Vec<SerializableSlabIndex<Interceptor>>> {
     operation_names
         .map(|operation_name| {
             (
                 operation_name.to_owned(),
-                matching_interceptors(interceptors, operation_name, operation_kind),
+                matching_interceptors(
+                    expr_interceptor_pairs,
+                    interceptors,
+                    operation_name,
+                    operation_kind,
+                ),
             )
         })
         .collect()
 }
 
 fn matching_interceptors(
-    interceptors: &[(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)],
+    expr_interceptor_pairs: &[(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)],
+    interceptors: &SerializableSlab<Interceptor>,
     operation_name: &str,
     operation_kind: OperationKind,
 ) -> Vec<SerializableSlabIndex<Interceptor>> {
-    interceptors
-        .iter()
-        .filter_map(|(expr, interceptor)| {
-            if matches(expr, operation_name, operation_kind) {
-                Some(interceptor)
-            } else {
-                None
-            }
-        })
-        .cloned()
-        .collect()
+    ordered(
+        expr_interceptor_pairs
+            .iter()
+            .filter_map(|(expr, interceptor)| {
+                if matches(expr, operation_name, operation_kind) {
+                    Some(interceptor)
+                } else {
+                    None
+                }
+            })
+            .cloned()
+            .collect(),
+        interceptors,
+    )
 }
 
 fn matches(expr: &AstExpr<Typed>, operation_name: &str, operation_kind: OperationKind) -> bool {
@@ -83,4 +93,23 @@ fn matches_str(expr: &str, operation_name: &str, operation_kind: OperationKind) 
         OperationKind::Mutation => "mutation",
     };
     wildmatch.matches(&format!("{} {}", input, operation_name))
+}
+
+pub fn ordered(
+    interceptor_indices: Vec<SerializableSlabIndex<Interceptor>>,
+    interceptors: &SerializableSlab<Interceptor>,
+) -> Vec<SerializableSlabIndex<Interceptor>> {
+    let mut processed = Vec::new();
+    let mut deferred = Vec::new();
+
+    for interceptor_index in interceptor_indices {
+        let interceptor = &interceptors[interceptor_index];
+        if interceptor.interceptor_kind == InterceptorKind::Before {
+            processed.push(interceptor_index);
+        } else {
+            deferred.push(interceptor_index);
+        }
+    }
+    processed.extend(deferred.into_iter());
+    processed
 }

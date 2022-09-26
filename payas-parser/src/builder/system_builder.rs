@@ -43,6 +43,7 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
                     .map(|(_, q)| q.name.as_str()),
             ),
         &service_subsystem.interceptors,
+        &service_subsystem.underlying.interceptors,
         OperationKind::Query,
     );
 
@@ -59,6 +60,7 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
                     .map(|(_, q)| q.name.as_str()),
             ),
         &service_subsystem.interceptors,
+        &service_subsystem.underlying.interceptors,
         OperationKind::Mutation,
     );
 

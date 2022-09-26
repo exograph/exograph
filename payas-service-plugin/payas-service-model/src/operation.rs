@@ -7,12 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::model::ModelServiceSystem;
 use super::types::ServiceType;
-use super::{
-    argument::ArgumentParameter,
-    interceptor::{Interceptor, InterceptorKind},
-    service::ServiceMethod,
-    types::ServiceTypeModifier,
-};
+use super::{argument::ArgumentParameter, service::ServiceMethod, types::ServiceTypeModifier};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceQuery {
@@ -38,28 +33,6 @@ pub struct ServiceMutation {
     pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
     pub return_type: OperationReturnType,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct Interceptors<'a> {
-    pub interceptors: Vec<&'a Interceptor>,
-}
-
-impl<'a> Interceptors<'a> {
-    pub fn ordered(self) -> Vec<&'a Interceptor> {
-        let mut processed = Vec::new();
-        let mut deferred = Vec::new();
-
-        for interceptor in self.interceptors {
-            if interceptor.interceptor_kind == InterceptorKind::Before {
-                processed.push(interceptor);
-            } else {
-                deferred.push(interceptor);
-            }
-        }
-        processed.extend(deferred.into_iter());
-        processed
-    }
 }
 
 pub trait GraphQLOperation: Debug {

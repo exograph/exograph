@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use futures::FutureExt;
 use payas_service_model::interceptor::Interceptor;
-use payas_service_model::operation::Interceptors;
 use serde_json::Value;
 
 use payas_resolver_core::validation::field::ValidatedField;
@@ -201,7 +200,7 @@ fn compute_interceptors<'a>(
         &system_context.system.mutation_interceptors
     };
 
-    let interceptors = interceptors_map
+    interceptors_map
         .get(operation_name)
         .map(|interceptor_indices| {
             interceptor_indices
@@ -209,6 +208,5 @@ fn compute_interceptors<'a>(
                 .map(|index| &all_interceptors[*index])
                 .collect::<Vec<_>>()
         })
-        .unwrap_or_default();
-    Interceptors { interceptors }.ordered()
+        .unwrap_or_default()
 }
