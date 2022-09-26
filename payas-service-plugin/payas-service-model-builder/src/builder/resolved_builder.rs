@@ -153,17 +153,17 @@ pub fn build(types: &MappedArena<Type>) -> Result<ResolvedServiceSystem, ModelBu
     }
 }
 
-pub fn resolve(
+fn resolve(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     Ok(ResolvedServiceSystem {
         service_types: resolve_service_types(types)?,
-        services: resolve_shallow_services(types, errors)?,
+        services: resolve_services(types, errors)?,
     })
 }
 
-fn resolve_shallow_services(
+fn resolve_services(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
@@ -171,14 +171,14 @@ fn resolve_shallow_services(
 
     for (_, typ) in types.iter() {
         if let Type::Service(service) = typ {
-            resolve_shallow_service(service, types, errors, &mut resolved_services)?;
+            resolve_service(service, types, errors, &mut resolved_services)?;
         }
     }
 
     Ok(resolved_services)
 }
 
-fn resolve_shallow_service(
+fn resolve_service(
     service: &AstService<Typed>,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
@@ -374,7 +374,7 @@ fn resolve_service_types(
     Ok(resolved_service_types)
 }
 
-pub fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldType {
+fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldType {
     match typ {
         Type::Optional(underlying) => {
             ResolvedFieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
