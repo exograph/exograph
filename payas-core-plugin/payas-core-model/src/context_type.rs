@@ -25,7 +25,7 @@ pub enum ContextFieldType {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ContextSource {
     pub annotation_name: String,
-    pub value: String,
+    pub value: Option<String>,
 }
 
 impl ContextFieldType {

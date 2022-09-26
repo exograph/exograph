@@ -316,6 +316,10 @@ async fn solve_logical_op<'a>(
 //         fn get_headers(&self, _key: &str) -> Vec<String> {
 //             vec![]
 //         }
+
+//         fn get_ip(&self) -> Option<std::net::IpAddr> {
+//             None
+//         }
 //     }
 
 //     const REQUEST: TestRequest = TestRequest {};
