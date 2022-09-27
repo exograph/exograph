@@ -1,11 +1,10 @@
 ---
 source: payas-server-core/src/graphql/validation/document_validator.rs
-assertion_line: 218
-expression: "validator.validate(create_query_document(r#\"\n                query {\n                    concert { # id argument is required here\n                        id\n                        title\n                        venue {\n                            id\n                            name\n                        }\n                    }\n                }\n            \"#))"
+expression: validator.validate(create_query_document(query))
 ---
 Err(
     RequiredArgumentNotFound(
         "id",
-        Pos(3:21),
+        Pos(3:17),
     ),
 )

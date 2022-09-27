@@ -1,23 +1,22 @@
 //! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
 
-use super::naming::{ToGqlMutationNames, ToGqlTypeNames};
-use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
-use payas_model::model::access::Access;
-use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::types::GqlType;
-use payas_model::model::{
-    GqlCompositeType, GqlCompositeTypeKind, GqlField, GqlFieldType, GqlTypeKind,
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_database_model::access::Access;
+use payas_database_model::operation::{DatabaseMutationKind, UpdateDataParameter};
+use payas_database_model::types::{
+    DatabaseCompositeType, DatabaseField, DatabaseFieldType, DatabaseType, DatabaseTypeKind,
 };
+
+use super::naming::{ToDatabaseMutationNames, ToDatabaseTypeNames};
+use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
+use super::type_builder::ResolvedTypeEnv;
 
 use crate::builder::mutation_builder::{create_data_type_name, update_data_type_name};
 use crate::builder::query_builder;
 
-use payas_model::model::operation::{DatabaseMutationKind, UpdateDataParameter};
-
 use super::mutation_builder::{DataParamBuilder, MutationBuilder};
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
-use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 pub struct UpdateMutationBuilder;
 
@@ -36,11 +35,7 @@ impl Builder for UpdateMutationBuilder {
     /// Expand the mutation input types as well as build the mutation
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
         for (_, model_type) in building.database_types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeType {
-                kind: GqlCompositeTypeKind::Persistent { .. },
-                ..
-            }) = &model_type.kind
-            {
+            if let DatabaseTypeKind::Composite(DatabaseCompositeType { .. }) = &model_type.kind {
                 for (existing_id, expanded_kind) in self.expanded_data_type(
                     model_type,
                     resolved_env,
@@ -49,17 +44,13 @@ impl Builder for UpdateMutationBuilder {
                     None,
                 ) {
                     building.mutation_types[existing_id].kind =
-                        GqlTypeKind::Composite(expanded_kind);
+                        DatabaseTypeKind::Composite(expanded_kind);
                 }
             }
         }
 
         for (_, model_type) in building.database_types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeType {
-                kind: GqlCompositeTypeKind::Persistent { .. },
-                ..
-            }) = &model_type.kind
-            {
+            if let DatabaseTypeKind::Composite(DatabaseCompositeType { .. }) = &model_type.kind {
                 let model_type_id = building
                     .database_types
                     .get_id(model_type.name.as_str())
@@ -74,13 +65,13 @@ impl Builder for UpdateMutationBuilder {
 }
 
 impl MutationBuilder for UpdateMutationBuilder {
-    fn single_mutation_name(model_type: &GqlType) -> String {
+    fn single_mutation_name(model_type: &DatabaseType) -> String {
         model_type.pk_update()
     }
 
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
     ) -> DatabaseMutationKind {
         DatabaseMutationKind::Update {
@@ -89,13 +80,13 @@ impl MutationBuilder for UpdateMutationBuilder {
         }
     }
 
-    fn multi_mutation_name(model_type: &GqlType) -> String {
+    fn multi_mutation_name(model_type: &DatabaseType) -> String {
         model_type.collection_update()
     }
 
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
     ) -> DatabaseMutationKind {
         DatabaseMutationKind::Update {
@@ -119,7 +110,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
     }
 
     fn data_param(
-        model_type: &GqlType,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
         _array: bool,
     ) -> UpdateDataParameter {
@@ -157,14 +148,14 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
     // from the containing "update" type, we add a "Nested" suffix.
     fn expand_one_to_many(
         &self,
-        model_type: &GqlType,
-        field: &GqlField,
-        field_type: &GqlType,
+        model_type: &DatabaseType,
+        field: &DatabaseField,
+        field_type: &DatabaseType,
         resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
-        top_level_type: Option<&GqlType>,
-        container_type: Option<&GqlType>,
-    ) -> Vec<(SerializableSlabIndex<GqlType>, GqlCompositeType)> {
+        top_level_type: Option<&DatabaseType>,
+        container_type: Option<&DatabaseType>,
+    ) -> Vec<(SerializableSlabIndex<DatabaseType>, DatabaseCompositeType)> {
         let existing_type_name =
             Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
@@ -195,7 +186,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
 
                     let model_pk_field = model_type.pk_field().unwrap();
 
-                    let update_pk_field = GqlField {
+                    let update_pk_field = DatabaseField {
                         typ: model_pk_field.typ.clone(),
                         ..model_pk_field.clone()
                     };
@@ -203,7 +194,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
 
                     fields_with_id.extend(base_type.fields.into_iter());
 
-                    let type_with_id = GqlCompositeType {
+                    let type_with_id = DatabaseCompositeType {
                         fields: fields_with_id,
                         ..base_type
                     };
@@ -213,13 +204,15 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         }
         .clone();
 
-        if let GqlTypeKind::Composite(GqlCompositeType {
-            kind: kind @ GqlCompositeTypeKind::Persistent { .. },
+        if let DatabaseTypeKind::Composite(DatabaseCompositeType {
+            table_id,
+            pk_query,
+            collection_query,
             ..
         }) = &model_type.kind
         {
             // If not already expanded (i.e. the kind is primitive)
-            if let GqlTypeKind::Primitive = building.mutation_types[existing_type_id].kind {
+            if let DatabaseTypeKind::Primitive = building.mutation_types[existing_type_id].kind {
                 let fields_info = vec![
                     (
                         "create",
@@ -241,17 +234,17 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                 let fields = fields_info
                     .into_iter()
                     .map(|(name, field_type_name)| {
-                        let plain_field_type = GqlFieldType::Reference {
+                        let plain_field_type = DatabaseFieldType::Reference {
                             type_id: building.mutation_types.get_id(&field_type_name).unwrap(),
                             is_primitive: false, // Mutation types are always non-primitive
                             type_name: field_type_name,
                         };
-                        GqlField {
+                        DatabaseField {
                             name: String::from(name),
                             // The nested "create", "update", and "delete" fields are all optional that take multiple values.
-                            typ: GqlFieldType::Optional(Box::new(GqlFieldType::List(Box::new(
-                                plain_field_type,
-                            )))),
+                            typ: DatabaseFieldType::Optional(Box::new(DatabaseFieldType::List(
+                                Box::new(plain_field_type),
+                            ))),
                             relation: field.relation.clone(),
                             has_default_value: field.has_default_value,
                         }
@@ -259,9 +252,11 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     .collect();
                 let mut types = vec![(
                     existing_type_id,
-                    GqlCompositeType {
+                    DatabaseCompositeType {
                         fields,
-                        kind: kind.clone(),
+                        table_id: *table_id,
+                        pk_query: pk_query.clone(),
+                        collection_query: collection_query.clone(),
                         access: Access::restrictive(),
                     },
                 )];

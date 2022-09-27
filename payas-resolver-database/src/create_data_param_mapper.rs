@@ -1,12 +1,11 @@
 use async_graphql_value::ConstValue;
 
-use payas_model::model::{
+use payas_database_model::{
     column_id::ColumnId,
+    model::ModelDatabaseSystem,
     operation::{CreateDataParameter, OperationReturnType},
-    relation::GqlRelation,
-    system::ModelSystem,
-    types::GqlTypeKind,
-    GqlCompositeType, GqlField, GqlType,
+    relation::DatabaseRelation,
+    types::{DatabaseCompositeType, DatabaseField, DatabaseType, DatabaseTypeKind},
 };
 use payas_sql::{
     AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
@@ -47,7 +46,7 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
 }
 
 pub(crate) fn map_argument<'a>(
-    input_data_type: &'a GqlType,
+    input_data_type: &'a DatabaseType,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
 ) -> Result<Vec<InsertionRow<'a>>, DatabaseExecutionError> {
@@ -64,17 +63,17 @@ pub(crate) fn map_argument<'a>(
 
 /// Map a single item from the data parameter
 fn map_single<'a>(
-    input_data_type: &'a GqlType,
+    input_data_type: &'a DatabaseType,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
 ) -> Result<InsertionRow<'a>, DatabaseExecutionError> {
     let fields = match &input_data_type.kind {
-        GqlTypeKind::Primitive => {
+        DatabaseTypeKind::Primitive => {
             return Err(DatabaseExecutionError::Generic(
                 "Query attempted on a primitive type".into(),
             ))
         }
-        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields,
+        DatabaseTypeKind::Composite(DatabaseCompositeType { fields, .. }) => fields,
     };
 
     let row: Result<Vec<_>, _> = fields
@@ -98,7 +97,7 @@ fn map_single<'a>(
 
 fn map_self_column<'a>(
     key_column_id: ColumnId,
-    field: &'a GqlField,
+    field: &'a DatabaseField,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
 ) -> Result<InsertionElement<'a>, DatabaseExecutionError> {
@@ -106,7 +105,7 @@ fn map_self_column<'a>(
 
     let key_column = key_column_id.get_column(system);
     let argument_value = match &field.relation {
-        GqlRelation::ManyToOne { other_type_id, .. } => {
+        DatabaseRelation::ManyToOne { other_type_id, .. } => {
             // TODO: Include enough information in the ManyToOne relation to not need this much logic here
             let other_type = &system.database_types[*other_type_id];
             let other_type_pk_field_name = other_type
@@ -141,22 +140,23 @@ fn map_self_column<'a>(
 /// For example, if the data parameter is `data: {name: "venue-name", concerts: [{<concert-info1>}, {<concert-info2>}]} }
 /// this needs to be called for the `concerts` part (which is mapped to a separate table)
 fn map_foreign<'a>(
-    field: &'a GqlField,
+    field: &'a DatabaseField,
     argument: &'a ConstValue,
-    parent_data_type: &'a GqlType,
+    parent_data_type: &'a DatabaseType,
     system_context: &DatabaseSystemContext<'a>,
 ) -> Result<InsertionElement<'a>, DatabaseExecutionError> {
     let system = &system_context.system;
 
-    fn underlying_type<'a>(data_type: &'a GqlType, system: &'a ModelSystem) -> &'a GqlType {
+    fn underlying_type<'a>(
+        data_type: &'a DatabaseType,
+        system: &'a ModelDatabaseSystem,
+    ) -> &'a DatabaseType {
         // TODO: Unhack this. Most likely, we need to separate input types from output types and have input types carry
         //       additional information (such as the associated model type) so that we can get the id column more directly
         match &data_type.kind {
-            GqlTypeKind::Primitive => todo!(),
-            GqlTypeKind::Composite(kind) => {
-                &system.database_types[system.database_queries[kind.get_pk_query()]
-                    .return_type
-                    .type_id]
+            DatabaseTypeKind::Primitive => todo!(),
+            DatabaseTypeKind::Composite(kind) => {
+                &system.database_types[system.queries[kind.pk_query].return_type.type_id]
             }
         }
     }

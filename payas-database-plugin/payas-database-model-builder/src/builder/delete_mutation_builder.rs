@@ -1,20 +1,18 @@
 //! Build mutation input types associatd with deletion (<Type>DeletionInput) and
 //! the create mutations (delete<Type>, and delete<Type>s)
 
-use super::naming::ToGqlMutationNames;
-use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
-use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
+use super::naming::ToDatabaseMutationNames;
+use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
+use super::type_builder::ResolvedTypeEnv;
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_database_model::operation::DatabaseMutationKind;
+use payas_database_model::types::{DatabaseType, DatabaseTypeKind};
 
 use crate::builder::query_builder;
-
-use payas_model::model::operation::DatabaseMutationKind;
 
 use super::mutation_builder::MutationBuilder;
 use super::system_builder::SystemContextBuilding;
 use super::Builder;
-use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 pub struct DeleteMutationBuilder;
 
@@ -37,11 +35,7 @@ impl Builder for DeleteMutationBuilder {
         // Since there are no special input types for deletion, no expansion is needed
 
         for (_, model_type) in building.database_types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeType {
-                kind: GqlCompositeTypeKind::Persistent { .. },
-                ..
-            }) = &model_type.kind
-            {
+            if let DatabaseTypeKind::Composite(_) = &model_type.kind {
                 let model_type_id = building
                     .database_types
                     .get_id(model_type.name.as_str())
@@ -56,13 +50,13 @@ impl Builder for DeleteMutationBuilder {
 }
 
 impl MutationBuilder for DeleteMutationBuilder {
-    fn single_mutation_name(model_type: &GqlType) -> String {
+    fn single_mutation_name(model_type: &DatabaseType) -> String {
         model_type.pk_delete()
     }
 
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
     ) -> DatabaseMutationKind {
         DatabaseMutationKind::Delete(query_builder::pk_predicate_param(
@@ -72,13 +66,13 @@ impl MutationBuilder for DeleteMutationBuilder {
         ))
     }
 
-    fn multi_mutation_name(model_type: &GqlType) -> String {
+    fn multi_mutation_name(model_type: &DatabaseType) -> String {
         model_type.collection_delete()
     }
 
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<GqlType>,
-        model_type: &GqlType,
+        model_type_id: SerializableSlabIndex<DatabaseType>,
+        model_type: &DatabaseType,
         building: &SystemContextBuilding,
     ) -> DatabaseMutationKind {
         DatabaseMutationKind::Delete(query_builder::collection_predicate_param(

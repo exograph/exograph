@@ -1,58 +1,22 @@
-use payas_model::model::{
-    mapped_arena::{MappedArena, SerializableSlabIndex},
-    predicate::PredicateParameterTypeWithModifier,
-    types::{GqlType, GqlTypeKind, GqlTypeModifier},
-    GqlCompositeType, GqlCompositeTypeKind,
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_database_model::types::{
+    DatabaseCompositeType, DatabaseType, DatabaseTypeKind, DatabaseTypeModifier,
 };
 use std::collections::HashMap;
 
 use super::system_builder::SystemContextBuilding;
-use payas_core_model_builder::builder::{
+use super::{
     column_path_utils,
-    resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
-    type_builder::ResolvedTypeEnv,
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
 };
-use payas_model::model::predicate::{
+use payas_database_model::predicate::{
     PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,
+    PredicateParameterTypeWithModifier,
 };
 
 use lazy_static::lazy_static;
 
-pub fn build_primitive_predicates<'a>(
-    types: impl Iterator<Item = &'a GqlType>,
-) -> MappedArena<PredicateParameterType> {
-    let mut predicate_types = MappedArena::default();
-
-    for typ in types {
-        let type_name = &typ.name;
-        // One for queries such as {id: 1}, where the type name is the same as the model type name (in this case `Int`)
-        predicate_types.add(
-            &type_name,
-            PredicateParameterType {
-                name: type_name.to_string(),
-                kind: PredicateParameterTypeKind::ImplicitEqual {},
-            },
-        );
-
-        // Another one for operators
-        let param_type_name = get_parameter_type_name(&type_name);
-        predicate_types.add(
-            &param_type_name,
-            PredicateParameterType {
-                name: param_type_name.to_string(),
-                kind: PredicateParameterTypeKind::ImplicitEqual {},
-            },
-        );
-    }
-
-    predicate_types
-}
-
-pub fn build_shallow(
-    models: &MappedArena<ResolvedType>,
-    _env: &ResolvedTypeEnv,
-    building: &mut SystemContextBuilding,
-) {
+pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {
         match model {
             ResolvedType::Primitive(pt) => {
@@ -76,43 +40,24 @@ pub fn build_shallow(
                     },
                 );
             }
-            ResolvedType::Composite(
-                c @ ResolvedCompositeType {
-                    kind: ResolvedCompositeTypeKind::Persistent { .. },
-                    ..
-                },
-            ) => {
+            ResolvedType::Composite(c @ ResolvedCompositeType { .. }) => {
                 let shallow_type = create_shallow_type(c);
                 let param_type_name = shallow_type.name.clone();
                 building.predicate_types.add(&param_type_name, shallow_type);
             }
-            _ => {}
         }
     }
 }
 
-pub fn build_expanded(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    for (model_type_id, model_type) in building
-        .database_types
-        .iter()
-        .chain(resolved_env.base_system.primitive_types.iter())
+pub fn build_expanded(building: &mut SystemContextBuilding) {
+    for (model_type_id, model_type) in building.database_types.iter()
     // Chain with primitives too to expand filters like "IntFilter"
     {
-        // expand filter types for both persistent composite and primitive filter parameters
-        // but NOT non-persistent composite types
-        if !matches!(
-            &model_type.kind,
-            GqlTypeKind::Composite(GqlCompositeType {
-                kind: GqlCompositeTypeKind::NonPersistent { .. },
-                ..
-            })
-        ) {
-            let param_type_name = get_parameter_type_name(&model_type.name);
-            let existing_param_id = building.predicate_types.get_id(&param_type_name);
+        let param_type_name = get_parameter_type_name(&model_type.name);
+        let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-            let new_kind = expand_type(model_type_id, model_type, resolved_env, building);
-            building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
-        }
+        let new_kind = expand_type(model_type_id, model_type, building);
+        building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
 
@@ -128,18 +73,18 @@ fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType 
 }
 
 fn expand_type(
-    gql_type_id: SerializableSlabIndex<GqlType>,
-    gql_type: &GqlType,
-    resolved_env: &ResolvedTypeEnv,
+    database_type_id: SerializableSlabIndex<DatabaseType>,
+    database_type: &DatabaseType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
-    match &gql_type.kind {
-        GqlTypeKind::Primitive => create_operator_filter_type_kind(gql_type_id, gql_type, building),
-        GqlTypeKind::Composite(composite_type) => create_composite_filter_type_kind(
-            gql_type_id,
+    match &database_type.kind {
+        DatabaseTypeKind::Primitive => {
+            create_operator_filter_type_kind(database_type_id, database_type, building)
+        }
+        DatabaseTypeKind::Composite(composite_type) => create_composite_filter_type_kind(
+            database_type_id,
             composite_type,
-            &gql_type.name,
-            resolved_env,
+            &database_type.name,
             building,
         ),
     }
@@ -208,8 +153,8 @@ lazy_static! {
 }
 
 fn create_operator_filter_type_kind(
-    gql_type_id: SerializableSlabIndex<GqlType>,
-    scalar_model_type: &GqlType,
+    database_type_id: SerializableSlabIndex<DatabaseType>,
+    scalar_model_type: &DatabaseType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     let parameter_constructor = |operator: &&str| PredicateParameter {
@@ -220,10 +165,10 @@ fn create_operator_filter_type_kind(
                 .predicate_types
                 .get_id(&scalar_model_type.name)
                 .unwrap(),
-            type_modifier: GqlTypeModifier::Optional,
+            type_modifier: DatabaseTypeModifier::Optional,
         },
         column_path_link: None,
-        underlying_type_id: gql_type_id,
+        underlying_type_id: database_type_id,
     };
 
     // look up type in (type, operations) table
@@ -244,10 +189,9 @@ fn create_operator_filter_type_kind(
 }
 
 fn create_composite_filter_type_kind(
-    gql_type_id: SerializableSlabIndex<GqlType>,
-    composite_type: &GqlCompositeType,
+    database_type_id: SerializableSlabIndex<DatabaseType>,
+    composite_type: &DatabaseCompositeType,
     composite_type_name: &str,
-    resolved_env: &ResolvedTypeEnv,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     // populate params for each field
@@ -261,7 +205,6 @@ fn create_composite_filter_type_kind(
             let column_path_link = Some(column_path_utils::column_path_link(
                 composite_type,
                 field,
-                resolved_env,
                 &building.database_types,
             ));
 
@@ -270,7 +213,7 @@ fn create_composite_filter_type_kind(
                 type_name: param_type_name.clone(),
                 typ: PredicateParameterTypeWithModifier {
                     type_id: building.predicate_types.get_id(&param_type_name).unwrap(),
-                    type_modifier: GqlTypeModifier::Optional,
+                    type_modifier: DatabaseTypeModifier::Optional,
                 },
                 underlying_type_id: *param_type_id,
                 column_path_link,
@@ -280,9 +223,9 @@ fn create_composite_filter_type_kind(
 
     // populate logical ops predicate parameters
     let logical_ops = [
-        ("and", GqlTypeModifier::List),
-        ("or", GqlTypeModifier::List),
-        ("not", GqlTypeModifier::Optional),
+        ("and", DatabaseTypeModifier::List),
+        ("or", DatabaseTypeModifier::List),
+        ("not", DatabaseTypeModifier::Optional),
     ];
 
     let logical_op_params = logical_ops
@@ -302,7 +245,7 @@ fn create_composite_filter_type_kind(
                     type_modifier,
                 },
                 column_path_link: None,
-                underlying_type_id: gql_type_id,
+                underlying_type_id: database_type_id,
             }
         })
         .collect();

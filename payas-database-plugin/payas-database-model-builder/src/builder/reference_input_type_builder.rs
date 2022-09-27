@@ -1,16 +1,16 @@
 //! Build the reference input type (used to refer to an entity by its pk)
 
-use super::naming::ToGqlTypeNames;
-use payas_core_model_builder::builder::type_builder::ResolvedTypeEnv;
-use payas_model::model::access::Access;
-use payas_model::model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_model::model::relation::GqlRelation;
-use payas_model::model::types::GqlType;
-use payas_model::model::{GqlCompositeType, GqlCompositeTypeKind, GqlTypeKind};
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_database_model::access::Access;
+use payas_database_model::relation::DatabaseRelation;
+use payas_database_model::types::{DatabaseCompositeType, DatabaseType, DatabaseTypeKind};
 
+use super::naming::ToDatabaseTypeNames;
+
+use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
+use super::type_builder::ResolvedTypeEnv;
 use super::Builder;
-use payas_core_model_builder::builder::resolved_builder::{ResolvedCompositeType, ResolvedType};
 
 pub struct ReferenceInputTypeBuilder;
 
@@ -30,11 +30,7 @@ impl Builder for ReferenceInputTypeBuilder {
         building: &mut SystemContextBuilding,
     ) {
         for (_, model_type) in building.database_types.iter() {
-            if let GqlTypeKind::Composite(GqlCompositeType {
-                kind: _kind @ GqlCompositeTypeKind::Persistent { .. },
-                ..
-            }) = &model_type.kind
-            {
+            if let DatabaseTypeKind::Composite(DatabaseCompositeType { .. }) = &model_type.kind {
                 for (existing_id, expanded_kind) in expanded_reference_types(model_type, building) {
                     building.mutation_types[existing_id].kind = expanded_kind;
                 }
@@ -44,14 +40,16 @@ impl Builder for ReferenceInputTypeBuilder {
 }
 
 fn expanded_reference_types(
-    model_type: &GqlType,
+    model_type: &DatabaseType,
     building: &SystemContextBuilding,
-) -> Vec<(SerializableSlabIndex<GqlType>, GqlTypeKind)> {
+) -> Vec<(SerializableSlabIndex<DatabaseType>, DatabaseTypeKind)> {
     let existing_type = model_type;
 
-    if let GqlTypeKind::Composite(GqlCompositeType {
+    if let DatabaseTypeKind::Composite(DatabaseCompositeType {
         ref fields,
-        kind: kind @ GqlCompositeTypeKind::Persistent { .. },
+        pk_query,
+        collection_query,
+        table_id,
         ..
     }) = &existing_type.kind
     {
@@ -59,7 +57,7 @@ fn expanded_reference_types(
             .clone()
             .into_iter()
             .flat_map(|field| match &field.relation {
-                GqlRelation::Pk { .. } => Some(field),
+                DatabaseRelation::Pk { .. } => Some(field),
                 _ => None,
             })
             .collect();
@@ -69,9 +67,11 @@ fn expanded_reference_types(
 
         vec![(
             existing_type_id,
-            GqlTypeKind::Composite(GqlCompositeType {
+            DatabaseTypeKind::Composite(DatabaseCompositeType {
                 fields: reference_type_fields,
-                kind: kind.clone(),
+                pk_query: *pk_query,
+                collection_query: *collection_query,
+                table_id: *table_id,
                 access: Access::restrictive(),
             }),
         )]

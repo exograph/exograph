@@ -1,4 +1,4 @@
-use payas_model::model::mapped_arena::MappedArena;
+use payas_core_model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::AstFieldType;
 

@@ -78,7 +78,7 @@ pub fn verify(model: &Path, database: Option<&str>) -> Result<(), VerificationEr
 
             // parse provided model
             let model_system = payas_parser::build_system(model).map_err(VerificationErrors::ParserError)?;
-            let model_schema = SchemaSpec::from_model(model_system.tables.into_iter().collect());
+            let model_schema = SchemaSpec::from_model(model_system.database_subsystem.tables.into_iter().collect());
 
             // generate diff
             let migration = db_schema.value.diff(&model_schema);

@@ -1,8 +1,12 @@
 use async_graphql_value::ConstValue;
 
-use payas_model::model::predicate::{ColumnIdPath, PredicateParameter, PredicateParameterTypeKind};
-use payas_resolver_core::column_path_util::to_column_path;
+use payas_database_model::{
+    column_path::ColumnIdPath,
+    predicate::{PredicateParameter, PredicateParameterTypeKind},
+};
 use payas_sql::{AbstractPredicate, ColumnPath};
+
+use crate::column_path_util::to_column_path;
 
 use super::{
     cast::cast_value, database_execution_error::DatabaseExecutionError,

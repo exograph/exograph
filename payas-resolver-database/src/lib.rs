@@ -1,14 +1,15 @@
 pub use database_execution_error::DatabaseExecutionError;
-pub use database_mutation::DatabaseMutation;
-pub use database_query::DatabaseQuery;
+
 pub use database_system_context::DatabaseSystemContext;
 
 mod abstract_operation_resolver;
+pub mod access_solver;
 mod cast;
+pub mod column_path_util;
 mod create_data_param_mapper;
 mod database_execution_error;
-mod database_mutation;
-mod database_query;
+pub mod database_mutation;
+pub mod database_query;
 mod database_system_context;
 mod limit_offset_mapper;
 mod order_by_mapper;
@@ -18,7 +19,6 @@ mod update_data_param_mapper;
 
 use async_graphql_value::{indexmap::IndexMap, ConstValue};
 
-use payas_resolver_core::access_solver;
 use payas_resolver_core::request_context::RequestContext;
 use payas_sql::{AbstractPredicate, PhysicalTable};
 
@@ -27,10 +27,11 @@ use predicate_mapper::PredicateParameterMapper;
 #[macro_use]
 extern crate fix_hidden_lifetime_bug;
 
-use payas_model::model::{
-    operation::{OperationReturnType, Query},
-    predicate::{ColumnIdPath, ColumnIdPathLink, PredicateParameter},
-    GqlCompositeType, GqlTypeKind,
+use payas_database_model::{
+    column_path::{ColumnIdPath, ColumnIdPathLink},
+    operation::{DatabaseQuery, OperationReturnType},
+    predicate::PredicateParameter,
+    types::{DatabaseCompositeType, DatabaseTypeKind},
 };
 
 use self::sql_mapper::SQLOperationKind;
@@ -48,8 +49,8 @@ pub(crate) async fn compute_sql_access_predicate<'a>(
     let return_type = return_type.typ(system_context.system);
 
     match &return_type.kind {
-        GqlTypeKind::Primitive => AbstractPredicate::True,
-        GqlTypeKind::Composite(GqlCompositeType { access, .. }) => {
+        DatabaseTypeKind::Primitive => AbstractPredicate::True,
+        DatabaseTypeKind::Composite(DatabaseCompositeType { access, .. }) => {
             let access_expr = match kind {
                 SQLOperationKind::Create => &access.creation,
                 SQLOperationKind::Retrieve => &access.read,
@@ -138,16 +139,16 @@ pub(crate) fn get_argument_field<'a>(
 pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType,
     system_context: &DatabaseSystemContext<'a>,
-) -> (&'a PhysicalTable, &'a Query, &'a Query) {
+) -> (&'a PhysicalTable, &'a DatabaseQuery, &'a DatabaseQuery) {
     let system = &system_context.system;
     let typ = return_type.typ(system);
 
     match &typ.kind {
-        GqlTypeKind::Primitive => panic!(""),
-        GqlTypeKind::Composite(kind) => (
-            &system.tables[kind.get_table_id()],
-            &system.database_queries[kind.get_pk_query()],
-            &system.database_queries[kind.get_collection_query()],
+        DatabaseTypeKind::Primitive => panic!(""),
+        DatabaseTypeKind::Composite(kind) => (
+            &system.tables[kind.table_id],
+            &system.queries[kind.pk_query],
+            &system.queries[kind.collection_query],
         ),
     }
 }

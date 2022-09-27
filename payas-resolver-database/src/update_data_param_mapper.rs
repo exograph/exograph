@@ -1,11 +1,10 @@
 use async_graphql_value::ConstValue;
 
-use payas_model::model::{
+use payas_database_model::{
+    model::ModelDatabaseSystem,
     operation::{OperationReturnType, UpdateDataParameter},
-    relation::GqlRelation,
-    system::ModelSystem,
-    types::GqlTypeKind,
-    GqlCompositeType, GqlType,
+    relation::DatabaseRelation,
+    types::{DatabaseCompositeType, DatabaseType, DatabaseTypeKind},
 };
 use payas_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
@@ -53,22 +52,22 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 }
 
 fn compute_update_columns<'a>(
-    data_type: &'a GqlType,
+    data_type: &'a DatabaseType,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
     let system = &system_context.system;
 
     match &data_type.kind {
-        GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => fields
+        DatabaseTypeKind::Primitive => panic!(),
+        DatabaseTypeKind::Composite(DatabaseCompositeType { fields, .. }) => fields
             .iter()
             .flat_map(|field| {
                 field.relation.self_column().and_then(|key_column_id| {
                     super::get_argument_field(argument, &field.name).map(|argument_value| {
                         let key_column = key_column_id.get_column(system);
                         let argument_value = match &field.relation {
-                            GqlRelation::ManyToOne { other_type_id, .. } => {
+                            DatabaseRelation::ManyToOne { other_type_id, .. } => {
                                 let other_type = &system.database_types[*other_type_id];
                                 let other_type_pk_field_name = other_type
                                     .pk_column_id()
@@ -100,9 +99,9 @@ fn compute_update_columns<'a>(
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
 fn compute_nested_ops<'a>(
-    field_model_type: &'a GqlType,
+    field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
-    container_model_type: &'a GqlType,
+    container_model_type: &'a DatabaseType,
     system_context: &DatabaseSystemContext<'a>,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
@@ -116,10 +115,10 @@ fn compute_nested_ops<'a>(
     let mut nested_deletes = vec![];
 
     match &field_model_type.kind {
-        GqlTypeKind::Primitive => {}
-        GqlTypeKind::Composite(GqlCompositeType { fields, .. }) => {
+        DatabaseTypeKind::Primitive => {}
+        DatabaseTypeKind::Composite(DatabaseCompositeType { fields, .. }) => {
             fields.iter().for_each(|field| {
-                if let GqlRelation::OneToMany { other_type_id, .. } = &field.relation {
+                if let DatabaseRelation::OneToMany { other_type_id, .. } = &field.relation {
                     let field_model_type = &system.database_types[*other_type_id]; // TODO: This is a model type but should be a data type
 
                     if let Some(argument) = super::get_argument_field(argument, &field.name) {
@@ -154,14 +153,14 @@ fn compute_nested_ops<'a>(
 
 // Which column in field_model_type corresponds to the primary column in container_model_type?
 fn compute_nested_reference_column<'a>(
-    field_model_type: &'a GqlType,
-    container_model_type: &'a GqlType,
-    system: &'a ModelSystem,
+    field_model_type: &'a DatabaseType,
+    container_model_type: &'a DatabaseType,
+    system: &'a ModelDatabaseSystem,
 ) -> Option<&'a PhysicalColumn> {
     let pk_column = match &container_model_type.kind {
-        GqlTypeKind::Primitive => panic!(),
-        GqlTypeKind::Composite(kind) => {
-            let container_table = &system.tables[kind.get_table_id()];
+        DatabaseTypeKind::Primitive => panic!(),
+        DatabaseTypeKind::Composite(kind) => {
+            let container_table = &system.tables[kind.table_id];
             container_table.get_pk_physical_column()
         }
     }
@@ -186,9 +185,9 @@ fn compute_nested_reference_column<'a>(
 
 // Looks for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
-    field_model_type: &'a GqlType,
+    field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
-    container_model_type: &'a GqlType,
+    container_model_type: &'a DatabaseType,
     system_context: &DatabaseSystemContext<'a>,
 ) -> Vec<NestedAbstractUpdate<'a>> {
     let system = &system_context.system;
@@ -227,7 +226,7 @@ fn compute_nested_update<'a>(
 
 // Compute update step assuming that the argument is a single object (not an array)
 fn compute_nested_update_object_arg<'a>(
-    field_model_type: &'a GqlType,
+    field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
     system_context: &DatabaseSystemContext<'a>,
@@ -289,15 +288,15 @@ fn compute_nested_update_object_arg<'a>(
 
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
 fn compute_nested_inserts<'a>(
-    field_model_type: &'a GqlType,
+    field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
-    container_model_type: &'a GqlType,
+    container_model_type: &'a DatabaseType,
     system_context: &DatabaseSystemContext<'a>,
 ) -> Vec<NestedAbstractInsert<'a>> {
     fn create_nested<'a>(
-        field_model_type: &'a GqlType,
+        field_model_type: &'a DatabaseType,
         argument: &'a ConstValue,
-        container_model_type: &'a GqlType,
+        container_model_type: &'a DatabaseType,
         system_context: &DatabaseSystemContext<'a>,
     ) -> Result<NestedAbstractInsert<'a>, DatabaseExecutionError> {
         let nested_reference_col = compute_nested_reference_column(
@@ -361,10 +360,10 @@ fn compute_nested_inserts<'a>(
 }
 
 fn compute_nested_delete<'a>(
-    field_model_type: &'a GqlType,
+    field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
     system_context: &DatabaseSystemContext<'a>,
-    container_model_type: &'a GqlType,
+    container_model_type: &'a DatabaseType,
 ) -> Vec<NestedAbstractDelete<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
@@ -404,7 +403,7 @@ fn compute_nested_delete<'a>(
 
 // Compute delete step assuming that the argument is a single object (not an array)
 fn compute_nested_delete_object_arg<'a>(
-    field_model_type: &'a GqlType,
+    field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
     system_context: &DatabaseSystemContext<'a>,
