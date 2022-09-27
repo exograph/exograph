@@ -28,7 +28,8 @@ impl Schema {
     pub fn new(system: &ModelSystem) -> Schema {
         let mut type_definitions: Vec<TypeDefinition> = vec![
             system.database_subsystem.schema_types().into_iter(),
-            system.service_subsystem.schema_types().into_iter(),
+            system.deno_subsystem.schema_types().into_iter(),
+            system.wasm_subsystem.schema_types().into_iter(),
         ]
         .into_iter()
         .flatten()
@@ -37,7 +38,8 @@ impl Schema {
         let query_type_definition = {
             let queries = vec![
                 system.database_subsystem.schema_queries().into_iter(),
-                system.service_subsystem.schema_queries().into_iter(),
+                system.deno_subsystem.schema_queries().into_iter(),
+                system.wasm_subsystem.schema_queries().into_iter(),
             ]
             .into_iter()
             .flatten()
@@ -62,7 +64,8 @@ impl Schema {
         let mutation_type_definition = {
             let mutations = vec![
                 system.database_subsystem.schema_mutations().into_iter(),
-                system.service_subsystem.schema_mutations().into_iter(),
+                system.deno_subsystem.schema_mutations().into_iter(),
+                system.wasm_subsystem.schema_mutations().into_iter(),
             ]
             .into_iter()
             .flatten()

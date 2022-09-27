@@ -23,6 +23,8 @@ payas-core-model-builder = { path = "../payas-core-plugin/payas-core-model-build
 payas-database-model-builder = { path = "../payas-database-plugin/payas-database-model-builder" }
 payas-deno-model = { path = "../payas-deno-plugin/payas-deno-model" }
 payas-deno-model-builder = { path = "../payas-deno-plugin/payas-deno-model-builder" }
+payas-wasm-model = { path = "../payas-wasm-plugin/payas-wasm-model" }
+payas-wasm-model-builder = { path = "../payas-wasm-plugin/payas-wasm-model-builder" }
 
 [build-dependencies]
 cc = "*"

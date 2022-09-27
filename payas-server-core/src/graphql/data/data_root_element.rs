@@ -6,7 +6,9 @@ use payas_resolver_core::{request_context::RequestContext, QueryResponse};
 use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::execution_error::ExecutionError;
 
-use super::operation_resolver::{DatabaseOperationResolver, ServiceOperationResolver};
+use super::operation_resolver::{
+    DatabaseOperationResolver, DenoOperationResolver, WasmOperationResolver,
+};
 
 pub struct DataRootElement<'a> {
     pub operation_type: &'a OperationType,
@@ -26,15 +28,28 @@ impl<'a> DataRootElement<'a> {
             OperationType::Query => {
                 let query = system.database_subsystem.queries.get_by_key(name);
 
+                // TODO: Once the proper plugin system is in place, this would be a "find" into all subsystems and
+                // then delegate to the subsystem that has the query
                 match query {
                     Some(query) => query.execute(field, system_context, request_context).await,
                     None => {
-                        let query = system.service_subsystem.queries.get_by_key(name);
+                        let query = system.deno_subsystem.queries.get_by_key(name);
                         match query {
                             Some(query) => {
                                 query.execute(field, system_context, request_context).await
                             }
-                            None => Err(ExecutionError::Generic(format!("No such query {}", name))),
+                            None => {
+                                let query = system.wasm_subsystem.queries.get_by_key(name);
+                                match query {
+                                    Some(query) => {
+                                        query.execute(field, system_context, request_context).await
+                                    }
+                                    None => Err(ExecutionError::Generic(format!(
+                                        "No such query {}",
+                                        name
+                                    ))),
+                                }
+                            }
                         }
                     }
                 }
@@ -49,17 +64,27 @@ impl<'a> DataRootElement<'a> {
                             .await
                     }
                     None => {
-                        let mutation = system.service_subsystem.mutations.get_by_key(name);
+                        let mutation = system.deno_subsystem.mutations.get_by_key(name);
                         match mutation {
                             Some(mutation) => {
                                 mutation
                                     .execute(field, system_context, request_context)
                                     .await
                             }
-                            None => Err(ExecutionError::Generic(format!(
-                                "No such mutation {}",
-                                name
-                            ))),
+                            None => {
+                                let mutation = system.wasm_subsystem.mutations.get_by_key(name);
+                                match mutation {
+                                    Some(mutation) => {
+                                        mutation
+                                            .execute(field, system_context, request_context)
+                                            .await
+                                    }
+                                    None => Err(ExecutionError::Generic(format!(
+                                        "No such mutation {}",
+                                        name
+                                    ))),
+                                }
+                            }
                         }
                     }
                 }

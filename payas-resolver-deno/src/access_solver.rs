@@ -6,7 +6,7 @@ use payas_deno_model::{
         AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
         AccessPrimitiveExpression, AccessRelationalOp,
     },
-    model::ModelServiceSystem,
+    model::ModelDenoSystem,
 };
 use payas_resolver_core::{request_context::RequestContext, ResolveOperationFn};
 
@@ -24,7 +24,7 @@ use crate::service_access_predicate::ServiceAccessPredicate;
 pub async fn solve_access<'s, 'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
-    system: &'a ModelServiceSystem,
+    system: &'a ModelDenoSystem,
     resolve: &ResolveOperationFn<'a>,
 ) -> ServiceAccessPredicate {
     solve_predicate_expression(expr, request_context, system, resolve).await
@@ -34,7 +34,7 @@ pub async fn solve_access<'s, 'a>(
 async fn solve_predicate_expression<'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
-    system: &'a ModelServiceSystem,
+    system: &'a ModelDenoSystem,
     resolve: &ResolveOperationFn<'a>,
 ) -> ServiceAccessPredicate {
     match expr {
@@ -65,7 +65,7 @@ async fn solve_predicate_expression<'a>(
 async fn solve_context_selection<'a>(
     context_selection: &AccessContextSelection,
     value: &'a RequestContext<'a>,
-    system: &'a ModelServiceSystem,
+    system: &'a ModelDenoSystem,
     resolve: &ResolveOperationFn<'a>,
 ) -> Option<Value> {
     match context_selection {
@@ -84,7 +84,7 @@ async fn solve_context_selection<'a>(
 async fn solve_relational_op<'a>(
     op: &'a AccessRelationalOp,
     request_context: &'a RequestContext<'a>,
-    system: &'a ModelServiceSystem,
+    system: &'a ModelDenoSystem,
     resolve: &ResolveOperationFn<'a>,
 ) -> ServiceAccessPredicate {
     #[derive(Debug)]
@@ -96,7 +96,7 @@ async fn solve_relational_op<'a>(
     async fn reduce_primitive_expression<'a>(
         expr: &'a AccessPrimitiveExpression,
         request_context: &'a RequestContext<'a>,
-        system: &'a ModelServiceSystem,
+        system: &'a ModelDenoSystem,
         resolve: &ResolveOperationFn<'a>,
     ) -> SolvedPrimitiveExpression<'a> {
         match expr {
@@ -159,7 +159,7 @@ async fn solve_relational_op<'a>(
 async fn solve_logical_op<'a>(
     op: &'a AccessLogicalExpression,
     request_context: &'a RequestContext<'a>,
-    system: &'a ModelServiceSystem,
+    system: &'a ModelDenoSystem,
     resolve: &ResolveOperationFn<'a>,
 ) -> ServiceAccessPredicate {
     match op {

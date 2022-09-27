@@ -18,7 +18,7 @@ wasmtime-wasi = "0.39.1"
 
 payas-wasm = { path = "../payas-wasm" }
 payas-resolver-core = { path = "../payas-resolver-core" }
-payas-deno-model = { path = "../payas-deno-plugin/payas-deno-model" }
+payas-wasm-model = { path = "../payas-wasm-plugin/payas-wasm-model" }
 
 
 [dev-dependencies]

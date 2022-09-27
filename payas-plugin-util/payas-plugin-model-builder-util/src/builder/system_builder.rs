@@ -1,6 +1,8 @@
+use std::path::PathBuf;
+
 use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_core_model_builder::{
-    ast::ast_types::AstExpr,
+    ast::ast_types::{AstExpr, AstService},
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
     typechecker::{typ::Type, Typed},
@@ -43,12 +45,18 @@ pub struct ModelServiceSystemWithInterceptors {
     pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
-pub fn build(
+pub fn build_with_selection(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
+    service_selection_predicate: impl Fn(&AstService<Typed>) -> bool,
+    process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ModelServiceSystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
-    let resolved_system = resolved_builder::build(&typechecked_system)?;
+    let resolved_system = resolved_builder::build(
+        &typechecked_system,
+        service_selection_predicate,
+        process_script,
+    )?;
 
     let resolved_env = ResolvedTypeEnv {
         contexts: &base_system.contexts,

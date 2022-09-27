@@ -1,7 +1,7 @@
 use async_graphql_value::indexmap::IndexMap;
 use payas_deno::Arg;
 use payas_deno_model::interceptor::Interceptor;
-use payas_deno_model::model::ModelServiceSystem;
+use payas_deno_model::model::ModelDenoSystem;
 use payas_resolver_core::{
     request_context::RequestContext, validation::field::ValidatedField, ResolveOperationFn,
 };
@@ -21,7 +21,7 @@ use super::{
 #[allow(clippy::too_many_arguments)]
 pub async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
-    system: &'a ModelServiceSystem,
+    system: &'a ModelDenoSystem,
     deno_execution_pool: &'a ClayDenoExecutorPool,
     request_context: &'a RequestContext<'a>,
     claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,

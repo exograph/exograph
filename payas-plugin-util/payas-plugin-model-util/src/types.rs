@@ -14,7 +14,7 @@ use payas_core_model::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::{access::Access, model::ModelServiceSystem};
+use crate::access::Access;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceType {
@@ -144,8 +144,8 @@ impl From<&ServiceTypeModifier> for TypeModifier {
     }
 }
 
-impl TypeDefinitionProvider<ModelServiceSystem> for ServiceType {
-    fn type_definition(&self, system: &ModelServiceSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ServiceType {
+    fn type_definition(&self, service_types: &SerializableSlab<ServiceType>) -> TypeDefinition {
         match &self.kind {
             ServiceTypeKind::Primitive => TypeDefinition {
                 extend: false,
@@ -167,7 +167,9 @@ impl TypeDefinitionProvider<ModelServiceSystem> for ServiceType {
                 } else {
                     let fields: Vec<_> = model_fields
                         .iter()
-                        .map(|model_field| default_positioned(model_field.field_definition(system)))
+                        .map(|model_field| {
+                            default_positioned(model_field.field_definition(service_types))
+                        })
                         .collect();
 
                     TypeKind::Object(ObjectType {
@@ -187,8 +189,8 @@ impl TypeDefinitionProvider<ModelServiceSystem> for ServiceType {
     }
 }
 
-impl FieldDefinitionProvider<ModelServiceSystem> for ServiceField {
-    fn field_definition(&self, _system: &ModelServiceSystem) -> FieldDefinition {
+impl FieldDefinitionProvider<SerializableSlab<ServiceType>> for ServiceField {
+    fn field_definition(&self, _service_types: &SerializableSlab<ServiceType>) -> FieldDefinition {
         let field_type = default_positioned(compute_type(&self.typ));
 
         FieldDefinition {

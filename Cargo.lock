@@ -3646,13 +3646,20 @@ dependencies = [
 name = "payas-deno-model"
 version = "0.1.0"
 dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "payas-core-model",
+ "payas-core-model-builder",
  "payas-plugin-model-util",
+ "serde",
 ]
 
 [[package]]
 name = "payas-deno-model-builder"
 version = "0.1.0"
 dependencies = [
+ "payas-core-model",
+ "payas-core-model-builder",
  "payas-deno-model",
  "payas-plugin-model-builder-util",
 ]
@@ -3664,6 +3671,7 @@ dependencies = [
  "payas-core-model",
  "payas-database-model",
  "payas-deno-model",
+ "payas-wasm-model",
  "serde",
  "typed-generational-arena",
 ]
@@ -3684,6 +3692,8 @@ dependencies = [
  "payas-deno-model-builder",
  "payas-model",
  "payas-sql",
+ "payas-wasm-model",
+ "payas-wasm-model-builder",
  "serde",
  "serde_json",
  "thiserror",
@@ -3796,10 +3806,10 @@ dependencies = [
  "async-trait",
  "futures",
  "maybe-owned",
- "payas-deno-model",
  "payas-parser",
  "payas-resolver-core",
  "payas-wasm",
+ "payas-wasm-model",
  "serde_json",
  "thiserror",
  "tokio",
@@ -3874,6 +3884,7 @@ dependencies = [
  "payas-resolver-deno",
  "payas-resolver-wasm",
  "payas-sql",
+ "payas-wasm-model",
  "pretty_env_logger",
  "serde",
  "serde_json",
@@ -3950,6 +3961,28 @@ dependencies = [
  "wasi-common",
  "wasmtime",
  "wasmtime-wasi",
+]
+
+[[package]]
+name = "payas-wasm-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "payas-core-model",
+ "payas-core-model-builder",
+ "payas-plugin-model-util",
+ "serde",
+]
+
+[[package]]
+name = "payas-wasm-model-builder"
+version = "0.1.0"
+dependencies = [
+ "payas-core-model",
+ "payas-core-model-builder",
+ "payas-plugin-model-builder-util",
+ "payas-wasm-model",
 ]
 
 [[package]]

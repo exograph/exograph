@@ -176,7 +176,7 @@ impl<'a> InterceptedOperation<'a> {
                 for before_interceptor in before {
                     execute_interceptor(
                         before_interceptor,
-                        &system.service_subsystem,
+                        &system.deno_subsystem,
                         deno_execution_pool,
                         request_context,
                         claytip_execute_query!(
@@ -202,7 +202,7 @@ impl<'a> InterceptedOperation<'a> {
                 for after_interceptor in after {
                     execute_interceptor(
                         after_interceptor,
-                        &system.service_subsystem,
+                        &system.deno_subsystem,
                         deno_execution_pool,
                         request_context,
                         claytip_execute_query!(
@@ -227,7 +227,7 @@ impl<'a> InterceptedOperation<'a> {
             } => {
                 let (result, response) = execute_interceptor(
                     interceptor,
-                    &system.service_subsystem,
+                    &system.deno_subsystem,
                     deno_execution_pool,
                     request_context,
                     claytip_execute_query!(

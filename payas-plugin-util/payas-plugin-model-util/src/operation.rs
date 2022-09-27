@@ -1,11 +1,10 @@
 use std::fmt::Debug;
 
-use payas_core_model::mapped_arena::SerializableSlabIndex;
+use payas_core_model::mapped_arena::{SerializableSlab, SerializableSlabIndex};
 
 use payas_core_model::type_normalization::{Operation, Parameter, TypeModifier};
 use serde::{Deserialize, Serialize};
 
-use super::model::ModelServiceSystem;
 use super::types::ServiceType;
 use super::{argument::ArgumentParameter, service::ServiceMethod, types::ServiceTypeModifier};
 
@@ -15,16 +14,6 @@ pub struct ServiceQuery {
     pub method_id: Option<SerializableSlabIndex<ServiceMethod>>,
     pub argument_param: Vec<ArgumentParameter>,
     pub return_type: OperationReturnType,
-}
-
-impl GraphQLOperation for ServiceQuery {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn is_query(&self) -> bool {
-        true
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -41,16 +30,6 @@ pub trait GraphQLOperation: Debug {
     fn is_query(&self) -> bool;
 }
 
-impl GraphQLOperation for ServiceMutation {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn is_query(&self) -> bool {
-        false
-    }
-}
-
 // TODO: This is nearly duplicated from the database version. We should consolidate them.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {
@@ -60,8 +39,8 @@ pub struct OperationReturnType {
 }
 
 impl OperationReturnType {
-    pub fn typ<'a>(&self, system: &'a ModelServiceSystem) -> &'a ServiceType {
-        &system.service_types[self.type_id]
+    pub fn typ<'a>(&self, service_types: &'a SerializableSlab<ServiceType>) -> &'a ServiceType {
+        &service_types[self.type_id]
     }
 }
 

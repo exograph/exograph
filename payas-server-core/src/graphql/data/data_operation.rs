@@ -44,7 +44,7 @@ impl<'a> DataOperation<'a> {
 
             DataOperation::Deno(operation) => {
                 let deno_system_context = DenoSystemContext {
-                    system: &system_context.system.service_subsystem,
+                    system: &system_context.system.deno_subsystem,
                     deno_execution_pool: &system_context.deno_execution_pool,
                     resolve_operation_fn,
                 };
@@ -57,7 +57,7 @@ impl<'a> DataOperation<'a> {
 
             DataOperation::Wasm(operation) => {
                 let wasm_system_context = WasmSystemContext {
-                    system: &system_context.system.service_subsystem,
+                    system: &system_context.system.wasm_subsystem,
                     executor_pool: &system_context.wasm_execution_pool,
                     resolve_operation_fn,
                 };

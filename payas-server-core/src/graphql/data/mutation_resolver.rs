@@ -2,17 +2,18 @@ use crate::graphql::{execution::system_context::SystemContext, execution_error::
 use async_trait::async_trait;
 
 use payas_database_model::operation::DatabaseMutation;
-use payas_deno_model::operation::ServiceMutation;
+use payas_deno_model::operation::DenoMutation;
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
+use payas_wasm_model::operation::WasmMutation;
 
 use crate::graphql::data::data_operation::DataOperation;
 
 use payas_resolver_database::{database_mutation::operation, DatabaseSystemContext};
 
 use super::{
-    operation_resolver::{DatabaseOperationResolver, ServiceOperationResolver},
-    service_util::create_service_operation,
+    operation_resolver::{DatabaseOperationResolver, DenoOperationResolver, WasmOperationResolver},
+    service_util::{create_deno_operation, create_wasm_operation},
 };
 
 #[async_trait]
@@ -37,15 +38,32 @@ impl<'a> DatabaseOperationResolver<'a> for DatabaseMutation {
 }
 
 #[async_trait]
-impl<'a> ServiceOperationResolver<'a> for ServiceMutation {
+impl<'a> DenoOperationResolver<'a> for DenoMutation {
     async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,
         system_context: &'a SystemContext,
         request_context: &'a RequestContext<'a>,
     ) -> Result<DataOperation<'a>, ExecutionError> {
-        create_service_operation(
-            &system_context.system.service_subsystem,
+        create_deno_operation(
+            &system_context.system.deno_subsystem,
+            &self.method_id,
+            field,
+            request_context,
+        )
+    }
+}
+
+#[async_trait]
+impl<'a> WasmOperationResolver<'a> for WasmMutation {
+    async fn resolve_operation(
+        &'a self,
+        field: &'a ValidatedField,
+        system_context: &'a SystemContext,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<DataOperation<'a>, ExecutionError> {
+        create_wasm_operation(
+            &system_context.system.wasm_subsystem,
             &self.method_id,
             field,
             request_context,

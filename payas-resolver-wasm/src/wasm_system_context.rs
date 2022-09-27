@@ -1,10 +1,10 @@
-use payas_deno_model::model::ModelServiceSystem;
 use payas_resolver_core::ResolveOperationFn;
+use payas_wasm_model::model::ModelWasmSystem;
 
 use super::WasmExecutorPool;
 
 pub struct WasmSystemContext<'r> {
-    pub system: &'r ModelServiceSystem,
+    pub system: &'r ModelWasmSystem,
     pub executor_pool: &'r WasmExecutorPool,
     pub resolve_operation_fn: ResolveOperationFn<'r>,
 }

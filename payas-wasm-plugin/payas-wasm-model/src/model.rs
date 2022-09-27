@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     interceptor::Interceptor,
-    operation::{ServiceMutation, ServiceQuery},
+    operation::{WasmMutation, WasmQuery},
     service::ServiceMethod,
     types::ServiceType,
 };
@@ -19,15 +19,15 @@ use crate::{
 use super::service::Script;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ModelServiceSystem {
+pub struct ModelWasmSystem {
     pub contexts: MappedArena<ContextType>,
     pub service_types: SerializableSlab<ServiceType>,
 
     // query related
-    pub queries: MappedArena<ServiceQuery>,
+    pub queries: MappedArena<WasmQuery>,
 
     // mutation related
-    pub mutations: MappedArena<ServiceMutation>,
+    pub mutations: MappedArena<WasmMutation>,
 
     // service related
     pub methods: SerializableSlab<ServiceMethod>,
@@ -35,7 +35,7 @@ pub struct ModelServiceSystem {
     pub interceptors: SerializableSlab<Interceptor>,
 }
 
-impl ModelServiceSystem {
+impl ModelWasmSystem {
     pub fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
         self.queries
             .values

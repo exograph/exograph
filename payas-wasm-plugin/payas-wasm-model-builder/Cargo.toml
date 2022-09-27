@@ -1,5 +1,5 @@
 [package]
-name = "payas-deno-model-builder"
+name = "payas-wasm-model-builder"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,7 @@ edition = "2021"
 payas-core-model = { path = "../../payas-core-plugin/payas-core-model" }
 payas-core-model-builder = { path = "../../payas-core-plugin/payas-core-model-builder" }
 
-payas-deno-model = { path = "../payas-deno-model" }
+payas-wasm-model = { path = "../payas-wasm-model" }
 payas-plugin-model-builder-util = { path = "../../payas-plugin-util/payas-plugin-model-builder-util" }
 
 [dev-dependencies]

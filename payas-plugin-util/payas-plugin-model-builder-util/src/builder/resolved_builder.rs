@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::path::PathBuf;
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -16,7 +16,7 @@ use payas_core_model_builder::{
 use payas_plugin_model_util::types::ServiceTypeModifier;
 use serde::{Deserialize, Serialize};
 
-use crate::builder::{access_builder::build_access, service_skeleton_generator};
+use crate::builder::access_builder::build_access;
 
 use super::access_builder::ResolvedAccess;
 
@@ -141,10 +141,19 @@ pub struct ResolvedServiceSystem {
     pub services: MappedArena<ResolvedService>,
 }
 
-pub fn build(types: &MappedArena<Type>) -> Result<ResolvedServiceSystem, ModelBuildingError> {
+pub fn build(
+    types: &MappedArena<Type>,
+    service_selection_predicate: impl Fn(&AstService<Typed>) -> bool,
+    process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
+) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     let mut errors = Vec::new();
 
-    let resolved_system = resolve(&types, &mut errors)?;
+    let resolved_system = resolve(
+        &types,
+        &mut errors,
+        service_selection_predicate,
+        process_script,
+    )?;
 
     if errors.is_empty() {
         Ok(resolved_system)
@@ -156,22 +165,34 @@ pub fn build(types: &MappedArena<Type>) -> Result<ResolvedServiceSystem, ModelBu
 fn resolve(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
+    service_selection_predicate: impl Fn(&AstService<Typed>) -> bool,
+    process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     Ok(ResolvedServiceSystem {
         service_types: resolve_service_types(types)?,
-        services: resolve_services(types, errors)?,
+        services: resolve_services(types, errors, service_selection_predicate, &process_script)?,
     })
 }
 
 fn resolve_services(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
+    service_selection_predicate: impl Fn(&AstService<Typed>) -> bool,
+    process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
     for (_, typ) in types.iter() {
         if let Type::Service(service) = typ {
-            resolve_service(service, types, errors, &mut resolved_services)?;
+            if service_selection_predicate(service) {
+                resolve_service(
+                    service,
+                    types,
+                    errors,
+                    &mut resolved_services,
+                    &process_script,
+                )?;
+            }
         }
     }
 
@@ -183,6 +204,7 @@ fn resolve_service(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
     resolved_services: &mut MappedArena<ResolvedService>,
+    process_script: &impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
     let module_path = match service.annotations.get("external").unwrap() {
         AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
@@ -193,38 +215,8 @@ fn resolve_service(
     let mut module_fs_path = service.base_clayfile.clone();
     module_fs_path.pop();
     module_fs_path.push(module_path);
-    let extension = module_fs_path.extension().and_then(|e| e.to_str());
 
-    let bundled_script = if extension == Some("ts") || extension == Some("js") {
-        service_skeleton_generator::generate_service_skeleton(service, &module_fs_path)?;
-
-        // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
-        let bundler_output = std::process::Command::new("deno")
-            .args(["bundle", "--no-check", module_fs_path.to_str().unwrap()])
-            .output()
-            .map_err(|err| {
-                ModelBuildingError::Generic(format!(
-                    "While trying to invoke `deno` in order to bundle .ts files: {}",
-                    err
-                ))
-            })?;
-
-        if bundler_output.status.success() {
-            bundler_output.stdout
-        } else {
-            std::io::stdout().write_all(&bundler_output.stderr).unwrap();
-            return Err(ModelBuildingError::Generic(
-                "Deno bundler did not exit successfully".to_string(),
-            ));
-        }
-    } else {
-        std::fs::read(&module_fs_path).map_err(|err| {
-            ModelBuildingError::Generic(format!(
-                "While trying to read bundled service module: {}",
-                err
-            ))
-        })?
-    };
+    let bundled_script = process_script(service, &module_fs_path)?;
 
     let module_anonymized_path = module_fs_path
         .strip_prefix(&service.base_clayfile.parent().unwrap())

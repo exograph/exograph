@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 use async_graphql_value::ConstValue;
-use payas_deno_model::service::ServiceMethod;
 use payas_resolver_core::{
     request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
     QueryResponseBody,
 };
+use payas_wasm_model::service::ServiceMethod;
 use wasmtime::Val;
 
 use crate::{wasm_execution_error::WasmExecutionError, wasm_system_context::WasmSystemContext};

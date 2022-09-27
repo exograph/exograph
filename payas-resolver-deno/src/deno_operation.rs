@@ -2,7 +2,7 @@ use async_graphql_value::indexmap::IndexMap;
 use async_graphql_value::ConstValue;
 use futures::FutureExt;
 use futures::StreamExt;
-use payas_deno_model::model::ModelServiceSystem;
+use payas_deno_model::model::ModelDenoSystem;
 use payas_deno_model::operation::OperationReturnType;
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::ResolveOperationFn;
@@ -62,7 +62,7 @@ async fn compute_service_access_predicate<'a>(
     system_context: &DenoSystemContext<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> bool {
-    let return_type = return_type.typ(system_context.system);
+    let return_type = return_type.typ(&system_context.system.service_types);
     let resolve = &system_context.resolve_operation_fn;
 
     let type_level_access = match &return_type.kind {
@@ -101,7 +101,7 @@ async fn compute_service_access_predicate<'a>(
 pub async fn construct_arg_sequence<'a>(
     field_args: &IndexMap<String, ConstValue>,
     args: &[Argument],
-    system: &'a ModelServiceSystem,
+    system: &'a ModelDenoSystem,
     resolve_query: &ResolveOperationFn<'a>,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {

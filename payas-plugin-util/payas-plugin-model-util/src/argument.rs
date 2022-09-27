@@ -3,15 +3,13 @@ use async_graphql_parser::{
     Positioned,
 };
 use payas_core_model::{
-    mapped_arena::SerializableSlabIndex,
+    mapped_arena::{SerializableSlab, SerializableSlabIndex},
     type_normalization::{
         default_positioned_name, Parameter, TypeDefinitionIntrospection, TypeDefinitionProvider,
         TypeModifier,
     },
 };
 use serde::{Deserialize, Serialize};
-
-use crate::model::ModelServiceSystem;
 
 use super::types::{ServiceType, ServiceTypeModifier};
 
@@ -44,13 +42,12 @@ impl Parameter for ArgumentParameter {
 }
 
 // TODO: Reduce duplication from the above impl
-impl TypeDefinitionProvider<ModelServiceSystem> for ArgumentParameterType {
-    fn type_definition(&self, system: &ModelServiceSystem) -> TypeDefinition {
-        let type_def = system
-            .service_types
+impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ArgumentParameterType {
+    fn type_definition(&self, service_types: &SerializableSlab<ServiceType>) -> TypeDefinition {
+        let type_def = service_types
             .get(self.type_id.unwrap())
             .unwrap()
-            .type_definition(system);
+            .type_definition(service_types);
 
         let kind = match type_def.fields() {
             Some(fields) => TypeKind::InputObject(InputObjectType {
@@ -85,8 +82,8 @@ impl TypeDefinitionProvider<ModelServiceSystem> for ArgumentParameterType {
     }
 }
 
-impl TypeDefinitionProvider<ModelServiceSystem> for ArgumentParameter {
-    fn type_definition(&self, _system: &ModelServiceSystem) -> TypeDefinition {
+impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ArgumentParameter {
+    fn type_definition(&self, _system: &SerializableSlab<ServiceType>) -> TypeDefinition {
         TypeDefinition {
             extend: false,
             description: None,

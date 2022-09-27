@@ -44,6 +44,7 @@ payas-resolver-deno = { path = "../payas-resolver-deno" }
 payas-resolver-wasm = { path = "../payas-resolver-wasm" }
 payas-core-model = { path = "../payas-core-plugin/payas-core-model" }
 payas-deno-model = { path = "../payas-deno-plugin/payas-deno-model" }
+payas-wasm-model = { path = "../payas-wasm-plugin/payas-wasm-model" }
 payas-database-model = { path = "../payas-database-plugin/payas-database-model" }
 
 [dev-dependencies]
