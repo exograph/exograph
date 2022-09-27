@@ -11,8 +11,7 @@ use tokio::sync::Mutex;
 
 use async_trait::async_trait;
 use futures::StreamExt;
-use payas_model::model::ContextField;
-use payas_model::model::ContextType;
+use payas_core_model::context_type::{ContextField, ContextType};
 use payas_sql::TransactionHolder;
 use serde_json::Value;
 use thiserror::Error;
@@ -233,12 +232,12 @@ pub trait ParsedContext {
 }
 pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
 
-#[cfg(test)]
+#[cfg(feature = "test-context")]
 pub struct TestRequestContext {
     pub test_values: Value,
 }
 
-#[cfg(test)]
+#[cfg(feature = "test-context")]
 #[async_trait]
 impl ParsedContext for TestRequestContext {
     fn annotation_name(&self) -> &str {

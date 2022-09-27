@@ -1,0 +1,19 @@
+[package]
+name = "payas-database-model"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+typed-generational-arena = { version = "0.2", features = ["serde"] }
+serde = "1.0"
+async-graphql-parser = "4.0.5"
+async-graphql-value = "4.0.5"
+
+payas-sql = { path = "../../payas-sql" }
+payas-core-model = { path = "../../payas-core-plugin/payas-core-model" }
+
+[dev-dependencies]
+
+
+
+[lib]

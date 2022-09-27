@@ -2,25 +2,82 @@ use std::io::Write;
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+
+use payas_core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
+use payas_core_model_builder::builder::resolved_builder::AnnotationMapHelper;
+use payas_core_model_builder::typechecker::AnnotationMap;
 use payas_core_model_builder::{
     ast::ast_types::{
         AstAnnotationParams, AstArgument, AstExpr, AstMethodType, AstModelKind, AstService,
     },
-    builder::{
-        access_builder::{build_access, ResolvedAccess},
-        resolved_builder::{
-            resolve_field_type, AnnotationMapHelper, ResolvedCompositeType,
-            ResolvedCompositeTypeKind, ResolvedField, ResolvedFieldKind, ResolvedFieldType,
-            ResolvedType,
-        },
-    },
     error::ModelBuildingError,
-    typechecker::{annotation_map::AnnotationMap, typ::Type, Typed},
+    typechecker::{typ::Type, Typed},
 };
-use payas_model::model::mapped_arena::MappedArena;
+use payas_service_model::types::ServiceTypeModifier;
 use serde::{Deserialize, Serialize};
 
-use crate::builder::service_skeleton_generator;
+use crate::builder::{access_builder::build_access, service_skeleton_generator};
+
+use super::access_builder::ResolvedAccess;
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[allow(clippy::large_enum_variant)]
+pub enum ResolvedType {
+    Primitive(PrimitiveType),
+    Composite(ResolvedCompositeType),
+}
+
+impl ResolvedType {
+    pub fn name(&self) -> String {
+        match self {
+            ResolvedType::Primitive(pt) => pt.name(),
+            ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name.to_owned(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedCompositeType {
+    pub name: String,
+    pub fields: Vec<ResolvedField>,
+    pub is_input: bool,
+    pub access: ResolvedAccess,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ResolvedField {
+    pub name: String,
+    pub typ: ResolvedFieldType,
+    pub default_value: Option<Box<AstExpr<Typed>>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub enum ResolvedFieldType {
+    Plain {
+        type_name: String, // Should really be Id<ResolvedType>, but using String since the former is not serializable as needed by the insta crate
+        is_primitive: bool, // We need to know if the type is primitive, so that we can look into the correct arena in ModelSystem
+    },
+    Optional(Box<ResolvedFieldType>),
+    List(Box<ResolvedFieldType>),
+}
+
+impl ResolvedFieldType {
+    pub fn get_underlying_typename(&self) -> &str {
+        match &self {
+            ResolvedFieldType::Plain { type_name, .. } => type_name,
+            ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
+            ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
+        }
+    }
+
+    pub fn get_modifier(&self) -> ServiceTypeModifier {
+        match &self {
+            ResolvedFieldType::Plain { .. } => ServiceTypeModifier::NonNull,
+            ResolvedFieldType::Optional(_) => ServiceTypeModifier::Optional,
+            ResolvedFieldType::List(_) => ServiceTypeModifier::List,
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedService {
@@ -96,17 +153,17 @@ pub fn build(types: &MappedArena<Type>) -> Result<ResolvedServiceSystem, ModelBu
     }
 }
 
-pub fn resolve(
+fn resolve(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     Ok(ResolvedServiceSystem {
         service_types: resolve_service_types(types)?,
-        services: resolve_shallow_services(types, errors)?,
+        services: resolve_services(types, errors)?,
     })
 }
 
-fn resolve_shallow_services(
+fn resolve_services(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
@@ -114,14 +171,14 @@ fn resolve_shallow_services(
 
     for (_, typ) in types.iter() {
         if let Type::Service(service) = typ {
-            resolve_shallow_service(service, types, errors, &mut resolved_services)?;
+            resolve_service(service, types, errors, &mut resolved_services)?;
         }
     }
 
     Ok(resolved_services)
 }
 
-fn resolve_shallow_service(
+fn resolve_service(
     service: &AstService<Typed>,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
@@ -279,36 +336,56 @@ fn resolve_service_types(
     let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
 
     for (_, typ) in types.iter() {
-        if let Type::Composite(ct) = typ {
-            if ct.kind == AstModelKind::NonPersistent || ct.kind == AstModelKind::NonPersistentInput
-            {
-                let access = build_access(ct.annotations.get("access"));
-                let resolved_fields = ct
-                    .fields
-                    .iter()
-                    .map(|field| ResolvedField {
-                        name: field.name.clone(),
-                        typ: resolve_field_type(&field.typ.to_typ(types), types),
-                        kind: ResolvedFieldKind::NonPersistent,
-                        default_value: None,
-                    })
-                    .collect();
-
-                resolved_service_types.add(
-                    &ct.name,
-                    ResolvedType::Composite(ResolvedCompositeType {
-                        name: ct.name.clone(),
-                        plural_name: "".to_string(),
-                        fields: resolved_fields,
-                        kind: ResolvedCompositeTypeKind::NonPersistent {
-                            is_input: matches!(ct.kind, AstModelKind::NonPersistentInput),
-                        },
-                        access,
-                    }),
-                );
+        match typ {
+            // Adopt the primitive types as a ServiceType
+            Type::Primitive(pt) => {
+                resolved_service_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
+            Type::Composite(ct) => {
+                if ct.kind == AstModelKind::NonPersistent
+                    || ct.kind == AstModelKind::NonPersistentInput
+                {
+                    let access = build_access(ct.annotations.get("access"));
+                    let resolved_fields = ct
+                        .fields
+                        .iter()
+                        .map(|field| ResolvedField {
+                            name: field.name.clone(),
+                            typ: resolve_field_type(&field.typ.to_typ(types), types),
+                            default_value: None,
+                        })
+                        .collect();
+
+                    resolved_service_types.add(
+                        &ct.name,
+                        ResolvedType::Composite(ResolvedCompositeType {
+                            name: ct.name.clone(),
+                            fields: resolved_fields,
+                            is_input: matches!(ct.kind, AstModelKind::NonPersistentInput),
+                            access,
+                        }),
+                    );
+                }
+            }
+            _ => {}
         }
     }
 
     Ok(resolved_service_types)
+}
+
+fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldType {
+    match typ {
+        Type::Optional(underlying) => {
+            ResolvedFieldType::Optional(Box::new(resolve_field_type(underlying.as_ref(), types)))
+        }
+        Type::Reference(id) => ResolvedFieldType::Plain {
+            type_name: types[*id].get_underlying_typename(types).unwrap(),
+            is_primitive: matches!(types[*id], Type::Primitive(_)),
+        },
+        Type::Set(underlying) | Type::Array(underlying) => {
+            ResolvedFieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
+        }
+        _ => todo!("Unsupported field type"),
+    }
 }

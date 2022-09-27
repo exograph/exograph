@@ -223,21 +223,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-web-httpauth"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6dda62cf04bc3a9ad2ea8f314f721951cfdb4cdacec4e984d20e77c7bb170991"
-dependencies = [
- "actix-utils",
- "actix-web",
- "base64 0.13.0",
- "futures-core",
- "futures-util",
- "log",
- "pin-project-lite",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3590,14 +3575,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-core-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "serde",
+ "typed-generational-arena",
+]
+
+[[package]]
 name = "payas-core-model-builder"
 version = "0.1.0"
 dependencies = [
  "codemap",
  "codemap-diagnostic",
- "payas-model",
+ "payas-core-model",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "payas-database-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "payas-core-model",
+ "payas-sql",
+ "serde",
+ "typed-generational-arena",
 ]
 
 [[package]]
@@ -3608,8 +3615,9 @@ dependencies = [
  "codemap-diagnostic",
  "heck",
  "lazy_static",
+ "payas-core-model",
  "payas-core-model-builder",
- "payas-model",
+ "payas-database-model",
  "payas-sql",
  "serde",
  "thiserror",
@@ -3638,7 +3646,9 @@ dependencies = [
 name = "payas-model"
 version = "0.1.0"
 dependencies = [
- "payas-sql",
+ "payas-core-model",
+ "payas-database-model",
+ "payas-service-model",
  "serde",
  "typed-generational-arena",
 ]
@@ -3652,9 +3662,11 @@ dependencies = [
  "codemap-diagnostic",
  "insta",
  "lazy_static",
+ "payas-core-model",
  "payas-core-model-builder",
  "payas-database-model-builder",
  "payas-model",
+ "payas-service-model",
  "payas-service-model-builder",
  "payas-sql",
  "serde",
@@ -3676,7 +3688,7 @@ dependencies = [
  "futures",
  "jsonwebtoken",
  "maybe-owned",
- "payas-model",
+ "payas-core-model",
  "payas-parser",
  "payas-sql",
  "serde",
@@ -3698,7 +3710,7 @@ dependencies = [
  "fix-hidden-lifetime-bug",
  "futures",
  "maybe-owned",
- "payas-model",
+ "payas-database-model",
  "payas-parser",
  "payas-resolver-core",
  "payas-sql",
@@ -3724,10 +3736,9 @@ dependencies = [
  "futures",
  "maybe-owned",
  "payas-deno",
- "payas-model",
  "payas-parser",
  "payas-resolver-core",
- "payas-sql",
+ "payas-service-model",
  "serde_json",
  "thiserror",
  "tokio",
@@ -3743,10 +3754,9 @@ dependencies = [
  "async-trait",
  "futures",
  "maybe-owned",
- "payas-model",
  "payas-parser",
  "payas-resolver-core",
- "payas-sql",
+ "payas-service-model",
  "payas-wasm",
  "serde_json",
  "thiserror",
@@ -3762,7 +3772,6 @@ dependencies = [
  "actix-cors",
  "actix-files",
  "actix-web",
- "actix-web-httpauth",
  "async-trait",
  "futures",
  "jsonwebtoken",
@@ -3812,6 +3821,8 @@ dependencies = [
  "maybe-owned",
  "opentelemetry",
  "opentelemetry-jaeger",
+ "payas-core-model",
+ "payas-database-model",
  "payas-deno",
  "payas-model",
  "payas-parser",
@@ -3819,6 +3830,7 @@ dependencies = [
  "payas-resolver-database",
  "payas-resolver-deno",
  "payas-resolver-wasm",
+ "payas-service-model",
  "payas-sql",
  "pretty_env_logger",
  "serde",
@@ -3835,15 +3847,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-service-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "payas-core-model",
+ "serde",
+ "typed-generational-arena",
+]
+
+[[package]]
 name = "payas-service-model-builder"
 version = "0.1.0"
 dependencies = [
  "codemap",
  "codemap-diagnostic",
  "lazy_static",
+ "payas-core-model",
  "payas-core-model-builder",
- "payas-model",
- "payas-sql",
+ "payas-service-model",
  "serde",
  "thiserror",
  "typed-generational-arena",

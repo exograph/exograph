@@ -8,13 +8,13 @@ use crate::{
 use super::{Scope, TypecheckFrom};
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
+use payas_core_model::mapped_arena::MappedArena;
 use payas_core_model_builder::typechecker::{
     annotation::{AnnotationSpec, AnnotationTarget},
     annotation_map::AnnotationMap,
     typ::Type,
     Typed,
 };
-use payas_model::model::mapped_arena::MappedArena;
 
 pub trait AnnotationMapImpl {
     fn new(ast_annotations: &[AstAnnotation<Untyped>]) -> Self;

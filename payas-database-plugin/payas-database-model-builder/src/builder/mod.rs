@@ -2,6 +2,9 @@
 
 pub mod system_builder;
 
+pub mod access_builder;
+pub mod access_utils;
+pub mod column_path_utils;
 mod create_mutation_builder;
 mod delete_mutation_builder;
 mod mutation_builder;
@@ -14,11 +17,12 @@ mod resolved_builder;
 mod type_builder;
 mod update_mutation_builder;
 
-use payas_model::model::{mapped_arena::MappedArena, GqlType, GqlTypeKind};
+use payas_core_model::mapped_arena::MappedArena;
+use payas_database_model::types::{DatabaseType, DatabaseTypeKind};
 
-use self::system_builder::SystemContextBuilding;
-use payas_core_model_builder::builder::{
-    resolved_builder::{ResolvedCompositeType, ResolvedCompositeTypeKind, ResolvedType},
+use self::{
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
     type_builder::ResolvedTypeEnv,
 };
 
@@ -49,10 +53,10 @@ pub trait Builder {
             for type_name in self.type_names(c, resolved_types).iter() {
                 building.mutation_types.add(
                     type_name,
-                    GqlType {
+                    DatabaseType {
                         name: type_name.to_string(),
                         plural_name: "".to_string(), // unused
-                        kind: GqlTypeKind::Primitive,
+                        kind: DatabaseTypeKind::Primitive,
                         is_input: true,
                     },
                 );
@@ -66,11 +70,7 @@ pub trait Builder {
         building: &mut SystemContextBuilding,
     ) {
         for (_, model_type) in resolved_types.iter() {
-            if let ResolvedType::Composite(ResolvedCompositeType {
-                kind: ResolvedCompositeTypeKind::Persistent { .. },
-                ..
-            }) = &model_type
-            {
+            if let ResolvedType::Composite(ResolvedCompositeType { .. }) = &model_type {
                 self.create_shallow_type(model_type, resolved_types, building);
             }
         }

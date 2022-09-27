@@ -3,6 +3,9 @@ name = "payas-resolver-core"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+test-context = []
+
 [dependencies]
 async-graphql-value = "4.0.5"
 async-recursion = "1.0.0"
@@ -18,8 +21,8 @@ tokio = "1"
 
 tracing = "0.1"
 
-payas-model = { path = "../payas-model" }
 payas-sql = { path = "../payas-sql" }
+payas-core-model = { path = "../payas-core-plugin/payas-core-model" }
 
 [dev-dependencies]
 tokio = "1"

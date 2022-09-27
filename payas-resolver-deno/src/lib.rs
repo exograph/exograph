@@ -9,12 +9,14 @@ pub type ClayDenoExecutorPool = DenoExecutorPool<
     clay_execution::ClaytipMethodResponse,
 >;
 
+mod access_solver;
 mod clay_execution;
 mod claytip_ops;
 mod deno_execution_error;
 mod deno_operation;
 mod deno_system_context;
 mod interceptor_execution;
+mod service_access_predicate;
 
 use claytip_ops::InterceptedOperationInfo;
 use payas_deno::DenoExecutorPool;

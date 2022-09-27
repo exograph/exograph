@@ -1,34 +1,32 @@
-use payas_core_model_builder::builder::{
-    resolved_builder::ResolvedType, type_builder::ResolvedTypeEnv,
-};
-use payas_model::model::{
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_service_model::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterType},
     interceptor::{Interceptor, InterceptorKind},
-    mapped_arena::{MappedArena, SerializableSlabIndex},
-    operation::{Interceptors, Mutation, MutationKind, OperationReturnType, Query, QueryKind},
+    operation::{OperationReturnType, ServiceMutation, ServiceQuery},
     service::{Argument, Script, ScriptKind, ServiceMethod, ServiceMethodType},
-    GqlType,
+    types::ServiceType,
 };
 
 use super::{
-    resolved_builder::{ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService},
+    resolved_builder::{
+        ResolvedInterceptor, ResolvedMethod, ResolvedMethodType, ResolvedService, ResolvedType,
+    },
     system_builder::SystemContextBuilding,
 };
 
 pub fn build_shallow(
     _models: &MappedArena<ResolvedType>,
     services: &MappedArena<ResolvedService>,
-    resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
     // create shallow service
     for (_, service) in services.iter() {
         for method in service.methods.iter() {
-            create_shallow_service(service, method, resolved_env, building);
+            create_shallow_service(service, method, building);
         }
         for interceptor in service.interceptors.iter() {
-            create_shallow_interceptor(service, interceptor, resolved_env, building);
+            create_shallow_interceptor(service, interceptor, building);
         }
     }
 }
@@ -38,20 +36,12 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
         match method.operation_kind {
             ServiceMethodType::Mutation(mutation_id) => {
                 let mutation = &mut building.mutations[mutation_id];
-                if let MutationKind::Service { method_id, .. } = &mut mutation.kind {
-                    *method_id = Some(id)
-                } else {
-                    panic!()
-                }
+                mutation.method_id = Some(id)
             }
 
             ServiceMethodType::Query(query_id) => {
                 let query = &mut building.queries[query_id];
-                if let QueryKind::Service { method_id, .. } = &mut query.kind {
-                    *method_id = Some(id)
-                } else {
-                    panic!()
-                }
+                query.method_id = Some(id)
             }
         }
     }
@@ -79,7 +69,6 @@ fn get_or_populate_script(
 fn create_shallow_service(
     resolved_service: &ResolvedService,
     resolved_method: &ResolvedMethod,
-    resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
     let script = get_or_populate_script(
@@ -97,22 +86,13 @@ fn create_shallow_service(
             access: Access::restrictive(),
             operation_kind: match resolved_method.operation_kind {
                 ResolvedMethodType::Query => {
-                    let query = shallow_service_query(
-                        resolved_method,
-                        &resolved_env.base_system.primitive_types,
-                        &building.service_types,
-                        building,
-                    );
+                    let query = shallow_service_query(resolved_method, &building.types, building);
                     let query_id = building.queries.add(&resolved_method.name, query);
                     ServiceMethodType::Query(query_id)
                 }
                 ResolvedMethodType::Mutation => {
-                    let mutation = shallow_service_mutation(
-                        resolved_method,
-                        &resolved_env.base_system.primitive_types,
-                        &building.service_types,
-                        building,
-                    );
+                    let mutation =
+                        shallow_service_mutation(resolved_method, &building.types, building);
                     let mutation_id = building.mutations.add(&resolved_method.name, mutation);
                     ServiceMethodType::Mutation(mutation_id)
                 }
@@ -123,28 +103,20 @@ fn create_shallow_service(
                 .iter()
                 .map(|arg| Argument {
                     name: arg.name.clone(),
-                    type_id: building
-                        .get_id(arg.typ.get_underlying_typename(), resolved_env)
-                        .unwrap(),
-                    is_primitive: arg.typ.is_underlying_type_primitive(),
+                    type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
                     modifier: arg.typ.get_modifier(),
                     is_injected: arg.is_injected,
                 })
                 .collect(),
             return_type: OperationReturnType {
                 type_id: building
-                    .get_id(
-                        resolved_method.return_type.get_underlying_typename(),
-                        resolved_env,
-                    )
+                    .get_id(resolved_method.return_type.get_underlying_typename())
                     .unwrap(),
                 type_name: resolved_method
                     .return_type
                     .get_underlying_typename()
                     .to_string(),
-                is_primitive: resolved_method.return_type.is_underlying_type_primitive(),
                 type_modifier: resolved_method.return_type.get_modifier(),
-                is_persistent: false,
             },
         },
     );
@@ -152,58 +124,42 @@ fn create_shallow_service(
 
 fn shallow_service_query(
     method: &ResolvedMethod,
-    primitive_types: &MappedArena<GqlType>,
-    service_types: &MappedArena<GqlType>,
+    service_types: &MappedArena<ServiceType>,
     building: &SystemContextBuilding,
-) -> Query {
+) -> ServiceQuery {
     let return_type = &method.return_type;
 
     let return_type_name = return_type.get_underlying_typename();
 
-    Query {
+    ServiceQuery {
         name: method.name.clone(),
-        kind: QueryKind::Service {
-            method_id: None,
-            argument_param: argument_param(method, building),
-        },
+        method_id: None,
+        argument_param: argument_param(method, building),
         return_type: OperationReturnType {
-            type_id: primitive_types
-                .get_id(return_type_name)
-                .unwrap_or_else(|| service_types.get_id(return_type_name).unwrap()),
+            type_id: service_types.get_id(return_type_name).unwrap(),
             type_name: return_type_name.to_string(),
-            is_primitive: return_type.is_underlying_type_primitive(),
             type_modifier: return_type.get_modifier(),
-            is_persistent: false,
         },
-        interceptors: Interceptors::default(),
     }
 }
 
 fn shallow_service_mutation(
     method: &ResolvedMethod,
-    primitive_types: &MappedArena<GqlType>,
-    service_types: &MappedArena<GqlType>,
+    service_types: &MappedArena<ServiceType>,
     building: &SystemContextBuilding,
-) -> Mutation {
+) -> ServiceMutation {
     let return_type = &method.return_type;
     let return_type_name = return_type.get_underlying_typename();
 
-    Mutation {
+    ServiceMutation {
         name: method.name.clone(),
-        kind: MutationKind::Service {
-            method_id: None,
-            argument_param: argument_param(method, building),
-        },
+        method_id: None,
+        argument_param: argument_param(method, building),
         return_type: OperationReturnType {
-            type_id: primitive_types
-                .get_id(return_type_name)
-                .unwrap_or_else(|| service_types.get_id(return_type_name).unwrap()),
+            type_id: service_types.get_id(return_type_name).unwrap(),
             type_name: return_type_name.to_string(),
-            is_primitive: return_type.is_underlying_type_primitive(),
             type_modifier: return_type.get_modifier(),
-            is_persistent: false,
         },
-        interceptors: Interceptors::default(),
     }
 }
 
@@ -219,7 +175,7 @@ fn argument_param(
         .map(|arg| {
             let arg_typename = arg.typ.get_underlying_typename();
             let type_modifier = arg.typ.get_modifier();
-            let input_type_id = building.service_types.get_id(&arg_typename);
+            let input_type_id = building.types.get_id(&arg_typename);
 
             if let Some(input_type_id) = input_type_id {
                 ArgumentParameter {
@@ -251,7 +207,6 @@ fn argument_param(
 pub fn create_shallow_interceptor(
     resolved_service: &ResolvedService,
     resolved_interceptor: &ResolvedInterceptor,
-    resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
     let script = get_or_populate_script(
@@ -282,10 +237,7 @@ pub fn create_shallow_interceptor(
                 .iter()
                 .map(|arg| Argument {
                     name: arg.name.clone(),
-                    type_id: building
-                        .get_id(arg.typ.get_underlying_typename(), resolved_env)
-                        .unwrap(),
-                    is_primitive: arg.typ.is_underlying_type_primitive(),
+                    type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
                     modifier: arg.typ.get_modifier(),
                     is_injected: true, // implicitly set is_injected for interceptors
                 })

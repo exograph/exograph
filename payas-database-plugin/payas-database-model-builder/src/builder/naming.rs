@@ -1,6 +1,6 @@
 use heck::ToLowerCamelCase;
 use heck::ToSnakeCase;
-use payas_model::model::GqlType;
+use payas_database_model::types::DatabaseType;
 
 /// A type with both singular and plural versions of itself.
 pub(super) trait ToPlural {
@@ -18,7 +18,7 @@ impl ToPlural for str {
     }
 }
 
-impl ToPlural for GqlType {
+impl ToPlural for DatabaseType {
     fn to_singular(&self) -> String {
         self.name.clone()
     }
@@ -29,7 +29,7 @@ impl ToPlural for GqlType {
 }
 
 /// A type that can generate GraphQL query names.
-pub(super) trait ToGqlQueryName {
+pub(super) trait ToDatabaseQueryName {
     /// Single query name (e.g. `concert`)
     fn pk_query(&self) -> String;
     /// Plural query name (e.g. `concerts`)
@@ -40,7 +40,7 @@ fn to_query(name: &str) -> String {
     name.to_lower_camel_case()
 }
 
-impl<T: ToPlural> ToGqlQueryName for T {
+impl<T: ToPlural> ToDatabaseQueryName for T {
     fn pk_query(&self) -> String {
         to_query(&self.to_singular())
     }
@@ -63,7 +63,7 @@ fn to_update(name: &str) -> String {
 }
 
 /// A type that can generate GraphQL mutation names.
-pub(crate) trait ToGqlMutationNames {
+pub(crate) trait ToDatabaseMutationNames {
     /// Single create name (e.g. `createConcert`)
     fn pk_create(&self) -> String;
     /// Single delete name (e.g. `deleteConcert`)
@@ -78,7 +78,7 @@ pub(crate) trait ToGqlMutationNames {
     fn collection_update(&self) -> String;
 }
 
-impl<T: ToPlural> ToGqlMutationNames for T {
+impl<T: ToPlural> ToDatabaseMutationNames for T {
     fn pk_create(&self) -> String {
         to_create(&self.to_singular())
     }
@@ -117,7 +117,7 @@ fn to_reference_type(name: &str) -> String {
 }
 
 /// A type that can generate GraphQL type names.
-pub(crate) trait ToGqlTypeNames {
+pub(crate) trait ToDatabaseTypeNames {
     /// Creation type name (e.g. `ConcertCreationInput`)
     fn creation_type(&self) -> String;
     /// Update type name (e.g. `ConcertUpdateInput`)
@@ -126,7 +126,7 @@ pub(crate) trait ToGqlTypeNames {
     fn reference_type(&self) -> String;
 }
 
-impl ToGqlTypeNames for str {
+impl ToDatabaseTypeNames for str {
     fn creation_type(&self) -> String {
         to_creation_type(self)
     }
@@ -140,7 +140,7 @@ impl ToGqlTypeNames for str {
     }
 }
 
-impl<T: ToPlural> ToGqlTypeNames for T {
+impl<T: ToPlural> ToDatabaseTypeNames for T {
     fn creation_type(&self) -> String {
         to_creation_type(&self.to_singular())
     }

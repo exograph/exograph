@@ -1,21 +1,20 @@
 use std::collections::HashMap;
 
-use async_graphql_parser::{types::Field, Pos, Positioned};
+use async_graphql_parser::{
+    types::{BaseType, Field, InputValueDefinition, TypeKind},
+    Pos, Positioned,
+};
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
 use bytes::Bytes;
-use payas_model::model::{system::ModelSystem, GqlTypeModifier};
 
-use crate::graphql::validation::validation_error::ValidationError;
-
-use super::{
-    definition::{
-        GqlFieldDefinition, GqlFieldTypeDefinition, GqlFieldTypeDefinitionNode, GqlTypeDefinition,
-    },
-    find_arg_type,
+use crate::graphql::{
+    introspection::definition::schema::Schema, validation::validation_error::ValidationError,
 };
 
+use super::underlying_type;
+
 pub struct ArgumentValidator<'a> {
-    model: &'a ModelSystem,
+    schema: &'a Schema,
     variables: &'a HashMap<Name, ConstValue>,
     field: &'a Positioned<Field>,
 }
@@ -23,12 +22,12 @@ pub struct ArgumentValidator<'a> {
 impl<'a> ArgumentValidator<'a> {
     #[must_use]
     pub fn new(
-        model: &'a ModelSystem,
+        schema: &'a Schema,
         variables: &'a HashMap<Name, ConstValue>,
         field: &'a Positioned<Field>,
     ) -> Self {
         Self {
-            model,
+            schema,
             variables,
             field,
         }
@@ -42,20 +41,20 @@ impl<'a> ArgumentValidator<'a> {
     ///          as a LocalTime argument is valid or the numbers fit the expected range).
     pub(super) fn validate(
         &self,
-        field_argument_definition: &[&dyn GqlFieldDefinition],
+        field_argument_definition: &[&InputValueDefinition],
     ) -> Result<IndexMap<String, ConstValue>, ValidationError> {
         self.validate_arguments(field_argument_definition, &self.field.node.arguments)
     }
 
     fn validate_arguments(
         &self,
-        field_argument_definitions: &[&dyn GqlFieldDefinition],
+        field_argument_definitions: &[&InputValueDefinition],
         field_arguments: &[(Positioned<Name>, Positioned<Value>)],
     ) -> Result<IndexMap<String, ConstValue>, ValidationError> {
         let field_name = self.field.node.name.node.as_str();
 
         // Stray arguments tracking: 1. Maintain a hashmap of all the arguments supplied in the query
-        let mut field_arguments: HashMap<_, _> = field_arguments
+        let mut field_arguments: IndexMap<_, _> = field_arguments
             .iter()
             .filter_map(|(name, value)| {
                 // A few typical usages of GraphQL operations involve taking an
@@ -67,7 +66,7 @@ impl<'a> ArgumentValidator<'a> {
                 if name.node == "__typename" {
                     None
                 } else {
-                    Some((name.node.to_string(), value))
+                    Some((&name.node, value))
                 }
             })
             .collect();
@@ -75,11 +74,11 @@ impl<'a> ArgumentValidator<'a> {
         let validated_arguments = field_argument_definitions
             .iter()
             .filter_map(|argument_definition| {
-                let argument_name = &argument_definition.name();
+                let argument_name = &argument_definition.name.node;
                 // Stray arguments tracking: 2. Remove the argument being processed
-                let argument_value = field_arguments.remove(argument_name.to_owned());
+                let argument_value = field_arguments.remove(argument_name);
 
-                self.validate_argument(*argument_definition, argument_value)
+                self.validate_argument(argument_definition, argument_value)
                     .map(|argument_value| {
                         argument_value
                             .map(|argument_value| (argument_name.to_string(), argument_value))
@@ -113,7 +112,7 @@ impl<'a> ArgumentValidator<'a> {
     /// - Lists match the expected shape
     fn validate_argument(
         &self,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         argument_value: Option<&Positioned<Value>>,
     ) -> Option<Result<ConstValue, ValidationError>> {
         match argument_value {
@@ -155,41 +154,39 @@ impl<'a> ArgumentValidator<'a> {
                     Some(self.validate_object_argument(argument_definition, object, value.pos))
                 }
             },
-            None => match argument_definition.field_type(self.model).modifier() {
-                // If the expected type is optional or list, we can skip the argument
-                // TODO: For the list case, we should be able to structure PredicateType better.
-                //       Currently, we lack the ability to specify Option<List<T>> due to
-                //       GqlTypeModifier (which allows only one modifier on a base type), so we
-                //       specify List<T>. This means that we can't distinguish between a list with a
-                //       single null element and an empty list.
-                GqlTypeModifier::Optional | GqlTypeModifier::List => None,
-                _ => Some(Err(ValidationError::RequiredArgumentNotFound(
-                    argument_definition.name().to_owned(),
-                    self.field.pos,
-                ))),
-            },
+            None => {
+                if argument_definition.ty.node.nullable {
+                    None
+                } else {
+                    Some(Err(ValidationError::RequiredArgumentNotFound(
+                        argument_definition.name.node.to_string(),
+                        self.field.pos,
+                    )))
+                }
+            }
         }
     }
 
     fn validate_null_argument(
         &self,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        let ty = &argument_definition.field_type(self.model);
+        let ty = &argument_definition.ty.node;
 
-        match ty.modifier() {
-            GqlTypeModifier::Optional => Ok(ConstValue::Null),
-            _ => Err(ValidationError::RequiredArgumentNotFound(
-                argument_definition.name().to_owned(),
+        if ty.nullable {
+            Ok(ConstValue::Null)
+        } else {
+            Err(ValidationError::RequiredArgumentNotFound(
+                argument_definition.name.node.to_string(),
                 pos,
-            )),
+            ))
         }
     }
 
     fn validate_number_argument(
         &self,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         number: &Number,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
@@ -205,7 +202,7 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_boolean_argument(
         &self,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         boolean: &bool,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
@@ -221,7 +218,7 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_string_argument(
         &self,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         string: &str,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
@@ -247,7 +244,7 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_binary_argument(
         &self,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         bytes: &Bytes,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
@@ -267,18 +264,17 @@ impl<'a> ArgumentValidator<'a> {
         argument_typename: &str,
         acceptable_destination_types: &[&str; N],
         to_const_value: impl FnOnce() -> ConstValue,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        let ty = &argument_definition.field_type(self.model);
+        let ty = &argument_definition.ty.node;
+        let underlying = underlying_type(ty);
 
-        let underlying = ty.name(self.model);
-
-        if acceptable_destination_types.contains(&underlying) {
+        if acceptable_destination_types.contains(&underlying.as_str()) {
             Ok(to_const_value())
         } else {
             Err(ValidationError::InvalidArgumentType {
-                argument_name: argument_definition.name().to_owned(),
+                argument_name: argument_definition.name.node.to_string(),
                 expected_type: underlying.to_string(),
                 actual_type: argument_typename.to_string(),
                 pos,
@@ -289,14 +285,14 @@ impl<'a> ArgumentValidator<'a> {
     /// Recursively validate an object argument
     fn validate_object_argument(
         &self,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         entires: &IndexMap<Name, Value>,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        let ty = &argument_definition.field_type(self.model);
-        let field_underlying_type_name = ty.name(self.model);
+        let ty = &argument_definition.ty.node;
+        let underlying = underlying_type(ty);
 
-        if field_underlying_type_name == "Json" {
+        if underlying.as_str() == "Json" {
             let const_value = Value::Object(entires.clone()).into_const_with(|name| {
                 self.variables.get(&name).cloned().ok_or_else(|| {
                     ValidationError::VariableNotFound(name.to_string(), Pos::default())
@@ -308,19 +304,19 @@ impl<'a> ArgumentValidator<'a> {
         // We don't validate if the expected type is an object (and not a list), since the GraphQL spec
         // allows auto-coercion of an object to a single element list.
 
-        let field_underlying_type = find_arg_type(self.model, field_underlying_type_name);
-
-        let field_underlying_type: &dyn GqlTypeDefinition = match field_underlying_type {
-            Some(field_underlying_type) => field_underlying_type,
-            None => {
-                return Err(ValidationError::InvalidArgumentType {
-                    argument_name: argument_definition.name().to_owned(),
-                    expected_type: field_underlying_type_name.to_string(),
-                    actual_type: field_underlying_type_name.to_string(),
-                    pos,
-                });
-            }
-        };
+        let td = self
+            .schema
+            .get_type_definition(underlying.as_str())
+            .unwrap();
+        let input_object_type = match &td.kind {
+            TypeKind::InputObject(input_object_type) => Ok(input_object_type),
+            _ => Err(ValidationError::InvalidArgumentType {
+                argument_name: argument_definition.name.node.to_string(),
+                expected_type: ty.to_string(),
+                actual_type: td.name.to_string(),
+                pos,
+            }),
+        }?;
 
         let field_arguments: Vec<_> = entires
             .iter()
@@ -332,8 +328,14 @@ impl<'a> ArgumentValidator<'a> {
             })
             .collect::<Vec<_>>();
 
-        let validated_arguments =
-            self.validate_arguments(&field_underlying_type.fields(self.model), &field_arguments)?;
+        let validated_arguments = self.validate_arguments(
+            &input_object_type
+                .fields
+                .iter()
+                .map(|d| &d.node)
+                .collect::<Vec<_>>(),
+            &field_arguments,
+        )?;
 
         let index_map = validated_arguments
             .into_iter()
@@ -345,15 +347,15 @@ impl<'a> ArgumentValidator<'a> {
 
     fn validate_list_argument(
         &self,
-        argument_definition: &dyn GqlFieldDefinition,
+        argument_definition: &InputValueDefinition,
         elems: &[Value],
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        let field_type = &argument_definition.field_type(self.model);
-        let underlying_field_type_name = field_type.name(self.model);
+        let ty = &argument_definition.ty.node;
+        let underlying = underlying_type(ty);
 
         // If the expected type is json, treat it as an opaque object
-        if underlying_field_type_name == "Json" {
+        if underlying.as_str() == "Json" {
             let const_value = Value::List(elems.to_vec()).into_const_with(|name| {
                 self.variables.get(&name).cloned().ok_or_else(|| {
                     ValidationError::VariableNotFound(name.to_string(), Pos::default())
@@ -362,27 +364,26 @@ impl<'a> ArgumentValidator<'a> {
             return const_value;
         }
 
-        match field_type.modifier() {
-            GqlTypeModifier::NonNull => Err(ValidationError::InvalidArgumentType {
-                argument_name: argument_definition.name().to_string(),
-                expected_type: argument_definition
-                    .field_type(self.model)
-                    .name(self.model)
-                    .to_string(),
-                actual_type: format!("[{}]", field_type.name(self.model)),
+        match &ty.base {
+            BaseType::Named(name) => Err(ValidationError::InvalidArgumentType {
+                argument_name: argument_definition.name.node.to_string(),
+                expected_type: underlying.to_string(),
+                actual_type: format!("[{name}]"),
                 pos,
             }),
-            GqlTypeModifier::Optional => self.validate_list_argument(
-                &get_inner_field_definition(argument_definition, self.model),
-                elems,
-                pos,
-            ),
-            GqlTypeModifier::List => {
+            BaseType::List(elem_type) => {
+                // Peel off the list type to get the element type
+
+                let elem_argument_definition = InputValueDefinition {
+                    ty: Positioned::new(elem_type.as_ref().clone(), pos),
+                    ..argument_definition.clone()
+                };
+
                 let validated_elems = elems
                     .iter()
                     .flat_map(|elem| {
                         self.validate_argument(
-                            &get_inner_field_definition(argument_definition, self.model),
+                            &elem_argument_definition,
                             Some(&Positioned::new(elem.clone(), pos)),
                         )
                     })
@@ -391,42 +392,5 @@ impl<'a> ArgumentValidator<'a> {
                 Ok(ConstValue::List(validated_elems))
             }
         }
-    }
-}
-
-fn get_inner_field_definition<'a>(
-    field_definition: &'a dyn GqlFieldDefinition,
-    model: &'a ModelSystem,
-) -> InnerGqlFieldDefinition<'a> {
-    let typ = field_definition.field_type(model);
-
-    let inner_field_type_definition = match typ.inner(model) {
-        GqlFieldTypeDefinitionNode::NonLeaf(inner, ..) => inner,
-        GqlFieldTypeDefinitionNode::Leaf(_) => field_definition.field_type(model),
-    };
-
-    InnerGqlFieldDefinition {
-        name: field_definition.name(),
-        field_type_definition: inner_field_type_definition,
-    }
-}
-
-#[derive(Debug)]
-struct InnerGqlFieldDefinition<'a> {
-    name: &'a str,
-    field_type_definition: &'a dyn GqlFieldTypeDefinition,
-}
-
-impl<'b> GqlFieldDefinition for InnerGqlFieldDefinition<'b> {
-    fn name(&self) -> &str {
-        self.name
-    }
-
-    fn field_type<'a>(&'a self, _model: &'a ModelSystem) -> &'a dyn GqlFieldTypeDefinition {
-        self.field_type_definition
-    }
-
-    fn arguments<'a>(&'a self, _model: &'a ModelSystem) -> Vec<&'a dyn GqlFieldDefinition> {
-        vec![]
     }
 }

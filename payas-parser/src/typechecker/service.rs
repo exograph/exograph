@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
 use codemap_diagnostic::{Diagnostic, Level};
+use payas_core_model::mapped_arena::MappedArena;
 use payas_core_model_builder::typechecker::{
     annotation::{AnnotationSpec, AnnotationTarget},
     annotation_map::AnnotationMap,
     Typed,
 };
-use payas_model::model::mapped_arena::MappedArena;
 
 use crate::ast::ast_types::{
     AstArgument, AstFieldType, AstInterceptor, AstMethod, AstModelKind, AstService, Untyped,
@@ -35,8 +35,8 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
 
     fn pass(
         &mut self,
-        type_env: &payas_model::model::mapped_arena::MappedArena<super::Type>,
-        annotation_env: &std::collections::HashMap<String, AnnotationSpec>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
@@ -107,8 +107,8 @@ impl TypecheckFrom<AstMethod<Untyped>> for AstMethod<Typed> {
 
     fn pass(
         &mut self,
-        type_env: &payas_model::model::mapped_arena::MappedArena<super::Type>,
-        annotation_env: &std::collections::HashMap<String, AnnotationSpec>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
@@ -150,8 +150,8 @@ impl TypecheckFrom<AstInterceptor<Untyped>> for AstInterceptor<Typed> {
 
     fn pass(
         &mut self,
-        type_env: &payas_model::model::mapped_arena::MappedArena<super::Type>,
-        annotation_env: &std::collections::HashMap<String, AnnotationSpec>,
+        type_env: &MappedArena<Type>,
+        annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {

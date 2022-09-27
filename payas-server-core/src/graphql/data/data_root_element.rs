@@ -6,7 +6,7 @@ use payas_resolver_core::{request_context::RequestContext, QueryResponse};
 use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::execution_error::ExecutionError;
 
-use super::operation_resolver::OperationResolver;
+use super::operation_resolver::{DatabaseOperationResolver, ServiceOperationResolver};
 
 pub struct DataRootElement<'a> {
     pub operation_type: &'a OperationType,
@@ -24,22 +24,45 @@ impl<'a> DataRootElement<'a> {
 
         match self.operation_type {
             OperationType::Query => {
-                let query = system
-                    .database_queries
-                    .get_by_key(name)
-                    .or_else(|| system.service_queries.get_by_key(name))
-                    .ok_or_else(|| ExecutionError::Generic(format!("No such query {}", name)))?;
-                query.execute(field, system_context, request_context).await
+                let query = system.database_subsystem.queries.get_by_key(name);
+
+                match query {
+                    Some(query) => query.execute(field, system_context, request_context).await,
+                    None => {
+                        let query = system.service_subsystem.queries.get_by_key(name);
+                        match query {
+                            Some(query) => {
+                                query.execute(field, system_context, request_context).await
+                            }
+                            None => Err(ExecutionError::Generic(format!("No such query {}", name))),
+                        }
+                    }
+                }
             }
             OperationType::Mutation => {
-                let mutation = system
-                    .database_mutations
-                    .get_by_key(name)
-                    .or_else(|| system.service_mutations.get_by_key(name))
-                    .ok_or_else(|| ExecutionError::Generic(format!("No such mutation {}", name)))?;
-                mutation
-                    .execute(field, system_context, request_context)
-                    .await
+                let mutation = system.database_subsystem.mutations.get_by_key(name);
+
+                match mutation {
+                    Some(mutation) => {
+                        mutation
+                            .execute(field, system_context, request_context)
+                            .await
+                    }
+                    None => {
+                        let mutation = system.service_subsystem.mutations.get_by_key(name);
+                        match mutation {
+                            Some(mutation) => {
+                                mutation
+                                    .execute(field, system_context, request_context)
+                                    .await
+                            }
+                            None => Err(ExecutionError::Generic(format!(
+                                "No such mutation {}",
+                                name
+                            ))),
+                        }
+                    }
+                }
             }
             OperationType::Subscription => {
                 todo!()
