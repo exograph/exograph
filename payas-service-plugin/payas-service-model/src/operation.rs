@@ -51,6 +51,7 @@ impl GraphQLOperation for ServiceMutation {
     }
 }
 
+// TODO: This is nearly duplicated from the database version. We should consolidate them.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {
     pub type_id: SerializableSlabIndex<ServiceType>,

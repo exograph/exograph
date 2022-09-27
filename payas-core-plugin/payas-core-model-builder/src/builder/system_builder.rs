@@ -9,14 +9,12 @@ use super::{context_builder, resolved_builder, type_builder};
 pub struct SystemContextBuilding {
     pub primitive_types: MappedArena<PrimitiveType>,
     pub contexts: MappedArena<ContextType>,
-    // pub context_types: MappedArena<GqlType>, // The GqlType version of ContextType to pass in as injected parameter (TODO: Is there a better way to do this?)
 }
 
 #[derive(Debug)]
 pub struct BaseModelSystem {
     pub primitive_types: MappedArena<PrimitiveType>,
     pub contexts: MappedArena<ContextType>,
-    // pub context_types: MappedArena<GqlType>, // The GqlType version of ContextType to pass in as injected parameter (TODO: Is there a better way to do this?)
 }
 
 pub fn build(types: &MappedArena<Type>) -> Result<BaseModelSystem, ModelBuildingError> {

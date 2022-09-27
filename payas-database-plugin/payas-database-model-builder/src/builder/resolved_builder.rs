@@ -9,15 +9,15 @@ use super::naming::{ToPlural, ToTableName};
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use payas_core_model::mapped_arena::MappedArena;
-use payas_core_model_builder::typechecker::annotation_map::AnnotationMap;
+use payas_core_model_builder::builder::resolved_builder::AnnotationMapHelper;
 use payas_core_model_builder::typechecker::typ::Type;
 use payas_core_model_builder::typechecker::Typed;
 
 use super::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 use heck::ToSnakeCase;
 use payas_core_model_builder::ast::ast_types::{
-    AstAnnotation, AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind,
-    AstFieldType, AstModel, AstModelKind,
+    AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType,
+    AstModel, AstModelKind,
 };
 use payas_core_model_builder::error::ModelBuildingError;
 use serde::{Deserialize, Serialize};
@@ -183,6 +183,7 @@ impl ResolvedType {
         }
     }
 
+    // TODO: Could this return an Option<String> instead? This would avoid the "".to_string() hack
     pub fn plural_name(&self) -> String {
         match self {
             ResolvedType::Primitive(_) => "".to_string(), // unused
@@ -205,36 +206,6 @@ impl ResolvedType {
             ResolvedType::Composite(c) => c,
             _ => panic!("Cannot get inner composite of type {:?}", self),
         }
-    }
-}
-
-pub trait AnnotationMapHelper {
-    fn get<'a>(&'a self, field_name: &str) -> Option<&'a AstAnnotationParams<Typed>>;
-
-    fn contains(&self, field_name: &str) -> bool {
-        self.get(field_name).is_some()
-    }
-
-    fn iter(&self) -> std::collections::hash_map::Iter<'_, String, AstAnnotation<Typed>>;
-}
-
-impl AnnotationMapHelper for AnnotationMap {
-    fn get<'a>(&'a self, field_name: &str) -> Option<&'a AstAnnotationParams<Typed>> {
-        self.annotations.get(field_name).map(|a| &a.params)
-    }
-
-    fn iter(&self) -> std::collections::hash_map::Iter<'_, String, AstAnnotation<Typed>> {
-        self.annotations.iter()
-    }
-}
-
-pub trait AstAnnotationHelper {
-    fn as_single(&self) -> String;
-}
-
-impl AstAnnotationHelper for AstAnnotation<Typed> {
-    fn as_single(&self) -> String {
-        self.params.as_single().as_string()
     }
 }
 

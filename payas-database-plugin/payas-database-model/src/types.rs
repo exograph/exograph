@@ -100,12 +100,6 @@ impl DatabaseCompositeType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum DatabaseCompositeTypeKind {
-    Persistent {},
-    NonPersistent,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum DatabaseTypeModifier {
     Optional,
