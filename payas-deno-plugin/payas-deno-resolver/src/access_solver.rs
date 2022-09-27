@@ -1,6 +1,7 @@
 use std::ops::Not;
 
 use async_recursion::async_recursion;
+use payas_core_resolver::{request_context::RequestContext, ResolveOperationFn};
 use payas_deno_model::{
     access::{
         AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
@@ -8,7 +9,6 @@ use payas_deno_model::{
     },
     model::ModelDenoSystem,
 };
-use payas_resolver_core::{request_context::RequestContext, ResolveOperationFn};
 
 use serde_json::Value;
 

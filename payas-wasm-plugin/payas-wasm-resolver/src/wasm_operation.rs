@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use async_graphql_value::ConstValue;
-use payas_resolver_core::{
+use payas_core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
     QueryResponseBody,
 };

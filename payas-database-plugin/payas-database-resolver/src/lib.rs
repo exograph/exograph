@@ -19,7 +19,7 @@ mod update_data_param_mapper;
 
 use async_graphql_value::{indexmap::IndexMap, ConstValue};
 
-use payas_resolver_core::request_context::RequestContext;
+use payas_core_resolver::request_context::RequestContext;
 use payas_sql::{AbstractPredicate, PhysicalTable};
 
 use predicate_mapper::PredicateParameterMapper;

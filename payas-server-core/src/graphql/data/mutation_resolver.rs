@@ -1,15 +1,15 @@
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 use async_trait::async_trait;
 
+use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::validation::field::ValidatedField;
 use payas_database_model::operation::DatabaseMutation;
 use payas_deno_model::operation::DenoMutation;
-use payas_resolver_core::request_context::RequestContext;
-use payas_resolver_core::validation::field::ValidatedField;
 use payas_wasm_model::operation::WasmMutation;
 
 use crate::graphql::data::data_operation::DataOperation;
 
-use payas_resolver_database::{database_mutation::operation, DatabaseSystemContext};
+use payas_database_resolver::{database_mutation::operation, DatabaseSystemContext};
 
 use super::{
     operation_resolver::{DatabaseOperationResolver, DenoOperationResolver, WasmOperationResolver},

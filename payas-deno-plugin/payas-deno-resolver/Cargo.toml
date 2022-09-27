@@ -1,5 +1,5 @@
 [package]
-name = "payas-resolver-wasm"
+name = "payas-deno-resolver"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,17 +8,16 @@ anyhow = "1.0"
 async-graphql-value = "4.0.5"
 async-recursion = "1.0.0"
 async-trait = "0.1.53"
+deno_core = "0.146.0"
 futures = "0.3"
 maybe-owned = "0.3.4"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 thiserror = "1.0.30"
 tokio = "1"
-wasmtime = "0.39.1"
-wasmtime-wasi = "0.39.1"
 
-payas-wasm = { path = "../payas-wasm" }
-payas-resolver-core = { path = "../payas-resolver-core" }
-payas-wasm-model = { path = "../payas-wasm-plugin/payas-wasm-model" }
+payas-deno = { path = "../../payas-deno" }
+payas-core-resolver = { path = "../../payas-core-plugin/payas-core-resolver" }
+payas-deno-model = { path = "../payas-deno-model" }
 
 
 [dev-dependencies]

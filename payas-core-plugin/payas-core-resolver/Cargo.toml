@@ -1,5 +1,5 @@
 [package]
-name = "payas-resolver-core"
+name = "payas-core-resolver"
 version = "0.1.0"
 edition = "2021"
 
@@ -21,12 +21,12 @@ tokio = "1"
 
 tracing = "0.1"
 
-payas-sql = { path = "../payas-sql" }
-payas-core-model = { path = "../payas-core-plugin/payas-core-model" }
+payas-sql = { path = "../../payas-sql" }
+payas-core-model = { path = "../payas-core-model" }
 
 [dev-dependencies]
 tokio = "1"
-payas-parser = { path = "../payas-parser", features = ["test-context"]}
+payas-parser = { path = "../../payas-parser", features = ["test-context"]}
 
 
 [lib]

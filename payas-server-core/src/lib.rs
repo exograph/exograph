@@ -17,13 +17,13 @@ use graphql::introspection::definition::schema::Schema;
 use initialization_error::InitializationError;
 use payas_deno::DenoExecutorPool;
 use payas_model::model::system::ModelSystem;
-use payas_resolver_wasm::WasmExecutorPool;
 use payas_sql::{Database, DatabaseExecutor};
+use payas_wasm_resolver::WasmExecutorPool;
 
 use crate::graphql::execution_error::ExecutionError;
 
-pub use payas_resolver_core::OperationsPayload;
-use payas_resolver_core::{request_context::RequestContext, QueryResponseBody};
+pub use payas_core_resolver::OperationsPayload;
+use payas_core_resolver::{request_context::RequestContext, QueryResponseBody};
 
 pub mod graphiql;
 pub mod initialization_error;
@@ -72,7 +72,7 @@ pub fn create_system_context_with_model_system(
 
     let schema = Schema::new(&model_system);
     let deno_execution_config =
-        DenoExecutorPool::new_from_config(payas_resolver_deno::clay_config());
+        DenoExecutorPool::new_from_config(payas_deno_resolver::clay_config());
 
     let database_executor = DatabaseExecutor { database };
 

@@ -1,7 +1,7 @@
 use async_graphql_parser::types::OperationType;
 
-use payas_resolver_core::validation::field::ValidatedField;
-use payas_resolver_core::{request_context::RequestContext, QueryResponse};
+use payas_core_resolver::validation::field::ValidatedField;
+use payas_core_resolver::{request_context::RequestContext, QueryResponse};
 
 use crate::graphql::execution::system_context::SystemContext;
 use crate::graphql::execution_error::ExecutionError;

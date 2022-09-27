@@ -3,9 +3,9 @@ use futures::FutureExt;
 use payas_deno_model::interceptor::Interceptor;
 use serde_json::Value;
 
-use payas_resolver_core::validation::field::ValidatedField;
-use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
-use payas_resolver_deno::{DenoExecutionError, DenoSystemContext};
+use payas_core_resolver::validation::field::ValidatedField;
+use payas_core_resolver::{request_context::RequestContext, QueryResponse, QueryResponseBody};
+use payas_deno_resolver::{DenoExecutionError, DenoSystemContext};
 
 use crate::graphql::{
     data::data_operation::DataOperation, data::interception::InterceptedOperation,

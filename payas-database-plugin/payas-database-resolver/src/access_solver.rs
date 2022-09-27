@@ -1,5 +1,6 @@
 use async_recursion::async_recursion;
 use maybe_owned::MaybeOwned;
+use payas_core_resolver::{request_context::RequestContext, ResolveOperationFn};
 use payas_database_model::{
     access::{
         AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
@@ -8,7 +9,6 @@ use payas_database_model::{
     column_path::ColumnIdPath,
     model::ModelDatabaseSystem,
 };
-use payas_resolver_core::{request_context::RequestContext, ResolveOperationFn};
 
 use crate::column_path_util;
 use payas_sql::{AbstractPredicate, ColumnPath};
@@ -295,8 +295,8 @@ async fn solve_logical_op<'a>(
 #[cfg(test)]
 mod tests {
 
+    use payas_core_resolver::{request_context::Request, OperationsPayload};
     use payas_database_model::{column_id::ColumnId, column_path::ColumnIdPathLink};
-    use payas_resolver_core::{request_context::Request, OperationsPayload};
     use serde_json::json;
 
     use super::*;
@@ -1199,7 +1199,7 @@ mod tests {
         RequestContext::parse_context(
             &REQUEST,
             vec![Box::new(
-                payas_resolver_core::request_context::TestRequestContext { test_values },
+                payas_core_resolver::request_context::TestRequestContext { test_values },
             )],
         )
         .unwrap()

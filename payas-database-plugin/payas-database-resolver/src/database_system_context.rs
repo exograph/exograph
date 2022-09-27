@@ -1,5 +1,5 @@
+use payas_core_resolver::ResolveOperationFn;
 use payas_database_model::model::ModelDatabaseSystem;
-use payas_resolver_core::ResolveOperationFn;
 use payas_sql::DatabaseExecutor;
 
 pub struct DatabaseSystemContext<'a> {

@@ -2,16 +2,16 @@ use async_graphql_value::indexmap::IndexMap;
 use async_graphql_value::ConstValue;
 use futures::FutureExt;
 use futures::StreamExt;
+use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::ResolveOperationFn;
 use payas_deno_model::model::ModelDenoSystem;
 use payas_deno_model::operation::OperationReturnType;
-use payas_resolver_core::request_context::RequestContext;
-use payas_resolver_core::ResolveOperationFn;
 use std::collections::HashMap;
 
+use payas_core_resolver::validation::field::ValidatedField;
 use payas_deno::Arg;
 use payas_deno_model::service::{Argument, ServiceMethod};
 use payas_deno_model::types::{ServiceCompositeType, ServiceTypeKind};
-use payas_resolver_core::validation::field::ValidatedField;
 
 use crate::access_solver;
 use crate::clay_execution::ClayCallbackProcessor;
@@ -19,7 +19,7 @@ use crate::service_access_predicate::ServiceAccessPredicate;
 
 use super::deno_system_context::DenoSystemContext;
 
-use payas_resolver_core::{QueryResponse, QueryResponseBody};
+use payas_core_resolver::{QueryResponse, QueryResponseBody};
 
 use super::DenoExecutionError;
 

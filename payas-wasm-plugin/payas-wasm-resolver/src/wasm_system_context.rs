@@ -1,4 +1,4 @@
-use payas_resolver_core::ResolveOperationFn;
+use payas_core_resolver::ResolveOperationFn;
 use payas_wasm_model::model::ModelWasmSystem;
 
 use super::WasmExecutorPool;

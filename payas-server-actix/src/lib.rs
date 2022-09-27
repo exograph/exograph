@@ -3,7 +3,7 @@ mod request;
 use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
-use payas_resolver_core::request_context::{ContextParsingError, RequestContext};
+use payas_core_resolver::request_context::{ContextParsingError, RequestContext};
 use payas_server_core::{OperationsPayload, SystemContext};
 use request::ActixRequest;
 use serde_json::Value;

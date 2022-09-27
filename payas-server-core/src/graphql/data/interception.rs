@@ -1,12 +1,12 @@
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, FutureExt};
 
-use payas_deno_model::interceptor::{Interceptor, InterceptorKind};
-use payas_resolver_core::{
+use payas_core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
     QueryResponseBody,
 };
-use payas_resolver_deno::{
+use payas_deno_model::interceptor::{Interceptor, InterceptorKind};
+use payas_deno_resolver::{
     claytip_execute_query, execute_interceptor, DenoExecutionError, DenoSystemContext,
 };
 

@@ -32,7 +32,7 @@ macro_rules! claytip_execute_query {
             async move {
                 // execute query
                 let result = $resolve_query_fn(
-                    payas_resolver_core::OperationsPayload {
+                    payas_core_resolver::OperationsPayload {
                         operation_name: None,
                         query: query_string,
                         variables,

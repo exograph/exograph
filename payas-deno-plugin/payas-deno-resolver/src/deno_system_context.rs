@@ -1,5 +1,5 @@
+use payas_core_resolver::ResolveOperationFn;
 use payas_deno_model::model::ModelDenoSystem;
-use payas_resolver_core::ResolveOperationFn;
 
 use super::ClayDenoExecutorPool;
 
