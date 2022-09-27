@@ -1,5 +1,5 @@
+use payas_deno_model::model::ModelServiceSystem;
 use payas_resolver_core::ResolveOperationFn;
-use payas_service_model::model::ModelServiceSystem;
 
 use super::WasmExecutorPool;
 

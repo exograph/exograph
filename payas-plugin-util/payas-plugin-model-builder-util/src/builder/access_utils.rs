@@ -6,7 +6,7 @@ use payas_core_model_builder::{
     error::ModelBuildingError,
     typechecker::Typed,
 };
-use payas_service_model::{
+use payas_plugin_model_util::{
     access::{
         AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
         AccessPrimitiveExpression, AccessRelationalOp,

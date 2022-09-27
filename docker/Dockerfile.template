@@ -30,7 +30,7 @@ RUN USER=root cargo new --vcs none --lib payas-resolver-wasm
 RUN USER=root cargo new --vcs none --bin payas-server-actix
 RUN USER=root cargo new --vcs none --bin payas-server-aws-lambda
 RUN USER=root cargo new --vcs none --lib payas-server-core
-RUN USER=root cargo new --vcs none --lib payas-service-plugin/payas-service-model-builder
+RUN USER=root cargo new --vcs none --lib payas-deno-plugin/payas-deno-model-builder
 RUN USER=root cargo new --vcs none --lib payas-sql
 RUN USER=root cargo new --vcs none --lib payas-test
 RUN USER=root cargo new --vcs none --lib payas-wasm
@@ -52,7 +52,7 @@ COPY ./payas-resolver-wasm/Cargo.toml ./payas-resolver-wasm/Cargo.toml
 COPY ./payas-server-actix/Cargo.toml ./payas-server-actix/Cargo.toml
 COPY ./payas-server-aws-lambda/Cargo.toml ./payas-server-aws-lambda/Cargo.toml
 COPY ./payas-server-core/Cargo.toml ./payas-server-core/Cargo.toml
-COPY ./payas-service-plugin/payas-service-model-builder/Cargo.toml ./payas-service-plugin/payas-service-model-builder/Cargo.toml
+COPY ./payas-deno-plugin/payas-deno-model-builder/Cargo.toml ./payas-deno-plugin/payas-deno-model-builder/Cargo.toml
 COPY ./payas-sql/Cargo.toml ./payas-sql/Cargo.toml
 COPY ./payas-test/Cargo.toml ./payas-test/Cargo.toml
 COPY ./payas-wasm/Cargo.toml ./payas-wasm/Cargo.toml
@@ -79,7 +79,7 @@ ADD payas-resolver-wasm payas-resolver-wasm/
 ADD payas-server-actix payas-server-actix/
 ADD payas-server-aws-lambda payas-server-aws-lambda/
 ADD payas-server-core payas-server-core/
-ADD payas-service-plugin/payas-service-model-builder/ payas-service-plugin/payas-service-model-builder/ 
+ADD payas-deno-plugin/payas-deno-model-builder/ payas-deno-plugin/payas-deno-model-builder/ 
 ADD payas-sql payas-sql/
 ADD payas-test payas-test/
 ADD payas-wasm payas-wasm/

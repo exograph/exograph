@@ -1,14 +1,14 @@
 use std::ops::Not;
 
 use async_recursion::async_recursion;
-use payas_resolver_core::{request_context::RequestContext, ResolveOperationFn};
-use payas_service_model::{
+use payas_deno_model::{
     access::{
         AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
         AccessPrimitiveExpression, AccessRelationalOp,
     },
     model::ModelServiceSystem,
 };
+use payas_resolver_core::{request_context::RequestContext, ResolveOperationFn};
 
 use serde_json::Value;
 

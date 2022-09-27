@@ -5,8 +5,8 @@ use payas_database_model::operation::DatabaseQuery;
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
 
+use payas_deno_model::operation::ServiceQuery;
 use payas_resolver_database::{database_query::compute_select, DatabaseSystemContext};
-use payas_service_model::operation::ServiceQuery;
 use payas_sql::{AbstractOperation, AbstractPredicate};
 
 use super::{

@@ -1,10 +1,10 @@
 use async_graphql_value::indexmap::IndexMap;
 use payas_deno::Arg;
+use payas_deno_model::interceptor::Interceptor;
+use payas_deno_model::model::ModelServiceSystem;
 use payas_resolver_core::{
     request_context::RequestContext, validation::field::ValidatedField, ResolveOperationFn,
 };
-use payas_service_model::interceptor::Interceptor;
-use payas_service_model::model::ModelServiceSystem;
 use serde_json::Value;
 
 use crate::clay_execution::ClayCallbackProcessor;

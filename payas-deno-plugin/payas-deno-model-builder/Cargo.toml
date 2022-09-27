@@ -1,0 +1,14 @@
+[package]
+name = "payas-deno-model-builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+payas-deno-model = { path = "../payas-deno-model" }
+payas-plugin-model-builder-util = { path = "../../payas-plugin-util/payas-plugin-model-builder-util" }
+
+[dev-dependencies]
+
+
+
+[lib]

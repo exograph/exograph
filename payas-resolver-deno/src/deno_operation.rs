@@ -2,16 +2,16 @@ use async_graphql_value::indexmap::IndexMap;
 use async_graphql_value::ConstValue;
 use futures::FutureExt;
 use futures::StreamExt;
+use payas_deno_model::model::ModelServiceSystem;
+use payas_deno_model::operation::OperationReturnType;
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::ResolveOperationFn;
-use payas_service_model::model::ModelServiceSystem;
-use payas_service_model::operation::OperationReturnType;
 use std::collections::HashMap;
 
 use payas_deno::Arg;
+use payas_deno_model::service::{Argument, ServiceMethod};
+use payas_deno_model::types::{ServiceCompositeType, ServiceTypeKind};
 use payas_resolver_core::validation::field::ValidatedField;
-use payas_service_model::service::{Argument, ServiceMethod};
-use payas_service_model::types::{ServiceCompositeType, ServiceTypeKind};
 
 use crate::access_solver;
 use crate::clay_execution::ClayCallbackProcessor;

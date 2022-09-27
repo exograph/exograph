@@ -2,7 +2,7 @@ use payas_core_model::{context_type::ContextType, mapped_arena::MappedArena};
 use payas_core_model_builder::{
     ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed,
 };
-use payas_service_model::{
+use payas_plugin_model_util::{
     access::Access,
     types::{ServiceCompositeType, ServiceField, ServiceFieldType, ServiceType, ServiceTypeKind},
 };

@@ -1,5 +1,5 @@
 use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use payas_service_model::{
+use payas_plugin_model_util::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterType},
     interceptor::{Interceptor, InterceptorKind},

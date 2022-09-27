@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use payas_core_model::mapped_arena::SerializableSlabIndex;
 use payas_database_model::model::ModelDatabaseSystem;
-use payas_service_model::{interceptor::Interceptor, model::ModelServiceSystem};
+use payas_deno_model::{interceptor::Interceptor, model::ModelServiceSystem};
 
 use serde::{Deserialize, Serialize};
 

@@ -17,7 +17,7 @@ tokio = "1"
 
 payas-deno = { path = "../payas-deno" }
 payas-resolver-core = { path = "../payas-resolver-core" }
-payas-service-model = { path = "../payas-service-plugin/payas-service-model" }
+payas-deno-model = { path = "../payas-deno-plugin/payas-deno-model" }
 
 
 [dev-dependencies]

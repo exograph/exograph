@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use futures::FutureExt;
-use payas_service_model::interceptor::Interceptor;
+use payas_deno_model::interceptor::Interceptor;
 use serde_json::Value;
 
 use payas_resolver_core::validation::field::ValidatedField;
@@ -113,7 +113,7 @@ pub trait DatabaseOperationResolver<'a>: payas_database_model::operation::GraphQ
 
 // TODO: Fix this duplication. Once the final plugin refactoring is done, this will look very different.
 #[async_trait]
-pub trait ServiceOperationResolver<'a>: payas_service_model::operation::GraphQLOperation {
+pub trait ServiceOperationResolver<'a>: payas_deno_model::operation::GraphQLOperation {
     async fn resolve_operation(
         &'a self,
         field: &'a ValidatedField,

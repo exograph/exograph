@@ -13,7 +13,7 @@ use payas_core_model_builder::{
     error::ModelBuildingError,
     typechecker::{typ::Type, Typed},
 };
-use payas_service_model::types::ServiceTypeModifier;
+use payas_plugin_model_util::types::ServiceTypeModifier;
 use serde::{Deserialize, Serialize};
 
 use crate::builder::{access_builder::build_access, service_skeleton_generator};

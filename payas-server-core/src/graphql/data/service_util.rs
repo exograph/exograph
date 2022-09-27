@@ -1,11 +1,11 @@
 use payas_core_model::mapped_arena::SerializableSlabIndex;
-use payas_resolver_core::{request_context::RequestContext, validation::field::ValidatedField};
-use payas_resolver_deno::DenoOperation;
-use payas_resolver_wasm::WasmOperation;
-use payas_service_model::{
+use payas_deno_model::{
     model::ModelServiceSystem,
     service::{ScriptKind, ServiceMethod},
 };
+use payas_resolver_core::{request_context::RequestContext, validation::field::ValidatedField};
+use payas_resolver_deno::DenoOperation;
+use payas_resolver_wasm::WasmOperation;
 
 use crate::graphql::execution_error::ExecutionError;
 

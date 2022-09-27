@@ -1,5 +1,5 @@
 [package]
-name = "payas-service-model-builder"
+name = "payas-plugin-model-builder-util"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,7 +14,7 @@ thiserror = "1.0.30"
 
 payas-core-model = { path = "../../payas-core-plugin/payas-core-model" }
 payas-core-model-builder = { path = "../../payas-core-plugin/payas-core-model-builder" }
-payas-service-model = { path = "../payas-service-model" }
+payas-plugin-model-util = { path = "../payas-plugin-model-util" }
 
 [dev-dependencies]
 

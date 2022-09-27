@@ -5,7 +5,7 @@ use payas_core_model_builder::{
     ast::ast_types::{AstExpr, LogicalOp},
     typechecker::Typed,
 };
-use payas_service_model::interceptor::{Interceptor, InterceptorKind};
+use payas_deno_model::interceptor::{Interceptor, InterceptorKind};
 
 use wildmatch::WildMatch;
 

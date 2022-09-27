@@ -28,7 +28,7 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
     let database_subsystem =
         payas_database_model_builder::build(&typechecked_system, &base_system)?;
 
-    let service_subsystem = payas_service_model_builder::build(&typechecked_system, &base_system)?;
+    let service_subsystem = payas_deno_model_builder::build(&typechecked_system, &base_system)?;
 
     let query_interceptors = interceptor_weaver::weave(
         database_subsystem

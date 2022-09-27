@@ -2,9 +2,9 @@ use crate::graphql::{execution::system_context::SystemContext, execution_error::
 use async_trait::async_trait;
 
 use payas_database_model::operation::DatabaseMutation;
+use payas_deno_model::operation::ServiceMutation;
 use payas_resolver_core::request_context::RequestContext;
 use payas_resolver_core::validation::field::ValidatedField;
-use payas_service_model::operation::ServiceMutation;
 
 use crate::graphql::data::data_operation::DataOperation;
 

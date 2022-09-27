@@ -5,7 +5,7 @@ use payas_core_model_builder::{
     error::ModelBuildingError,
     typechecker::{typ::Type, Typed},
 };
-use payas_service_model::{
+use payas_plugin_model_util::{
     interceptor::Interceptor,
     model::ModelServiceSystem,
     operation::{ServiceMutation, ServiceQuery},
