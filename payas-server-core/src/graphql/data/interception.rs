@@ -1,6 +1,7 @@
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, FutureExt};
 
+use crate::graphql::execution::system_context::SystemContext;
 use payas_core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
     QueryResponseBody,
@@ -9,8 +10,6 @@ use payas_deno_model::interceptor::{Interceptor, InterceptorKind};
 use payas_deno_resolver::{
     claytip_execute_query, execute_interceptor, DenoExecutionError, DenoSystemContext,
 };
-
-use crate::graphql::execution::system_context::SystemContext;
 
 /// Determine the order and nesting for interceptors.
 ///
