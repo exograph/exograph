@@ -4,7 +4,7 @@ use payas_plugin_model_util::{
     argument::{ArgumentParameter, ArgumentParameterType},
     interceptor::{Interceptor, InterceptorKind},
     operation::{OperationReturnType, ServiceMutation, ServiceQuery},
-    service::{Argument, Script, ScriptKind, ServiceMethod, ServiceMethodType},
+    service::{Argument, Script, ServiceMethod, ServiceMethodType},
     types::ServiceType,
 };
 
@@ -50,7 +50,6 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 fn get_or_populate_script(
     script_path: &str,
     script: &[u8],
-    script_kind: ScriptKind,
     building: &mut SystemContextBuilding,
 ) -> SerializableSlabIndex<Script> {
     match building.scripts.get_id(script_path) {
@@ -60,7 +59,6 @@ fn get_or_populate_script(
             Script {
                 path: script_path.to_owned(),
                 script: script.to_owned(),
-                script_kind,
             },
         ),
     }
@@ -74,7 +72,6 @@ fn create_shallow_service(
     let script = get_or_populate_script(
         &resolved_service.script_path,
         &resolved_service.script,
-        ScriptKind::from_script_name(&resolved_service.script_path),
         building,
     );
 
@@ -212,7 +209,6 @@ pub fn create_shallow_interceptor(
     let script = get_or_populate_script(
         &resolved_service.script_path,
         &resolved_service.script,
-        ScriptKind::from_script_name(&resolved_service.script_path),
         building,
     );
 

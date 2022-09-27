@@ -1,8 +1,5 @@
 use payas_core_model::mapped_arena::SerializableSlabIndex;
-use payas_deno_model::{
-    model::ModelDenoSystem,
-    service::{ScriptKind, ServiceMethod},
-};
+use payas_deno_model::{model::ModelDenoSystem, service::ServiceMethod};
 use payas_resolver_core::{request_context::RequestContext, validation::field::ValidatedField};
 use payas_resolver_deno::DenoOperation;
 use payas_resolver_wasm::WasmOperation;
@@ -20,20 +17,12 @@ pub(crate) fn create_deno_operation<'a>(
 ) -> Result<DataOperation<'a>, ExecutionError> {
     // TODO: Remove unwrap() by changing the type of method_id
     let method = &system.methods[method_id.unwrap()];
-    let script = &system.scripts[method.script];
 
-    Ok(match script.script_kind {
-        ScriptKind::Deno => DataOperation::Deno(DenoOperation {
-            method,
-            field,
-            request_context,
-        }),
-        ScriptKind::Wasm => DataOperation::Wasm(WasmOperation {
-            method,
-            field,
-            request_context,
-        }),
-    })
+    Ok(DataOperation::Deno(DenoOperation {
+        method,
+        field,
+        request_context,
+    }))
 }
 
 pub(crate) fn create_wasm_operation<'a>(
@@ -44,18 +33,10 @@ pub(crate) fn create_wasm_operation<'a>(
 ) -> Result<DataOperation<'a>, ExecutionError> {
     // TODO: Remove unwrap() by changing the type of method_id
     let method = &system.methods[method_id.unwrap()];
-    let script = &system.scripts[method.script];
 
-    Ok(match script.script_kind {
-        ScriptKind::Deno => DataOperation::Deno(DenoOperation {
-            method,
-            field,
-            request_context,
-        }),
-        ScriptKind::Wasm => DataOperation::Wasm(WasmOperation {
-            method,
-            field,
-            request_context,
-        }),
-    })
+    Ok(DataOperation::Wasm(WasmOperation {
+        method,
+        field,
+        request_context,
+    }))
 }
