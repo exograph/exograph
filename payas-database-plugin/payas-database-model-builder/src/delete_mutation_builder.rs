@@ -8,11 +8,11 @@ use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use payas_database_model::operation::DatabaseMutationKind;
 use payas_database_model::types::{DatabaseType, DatabaseTypeKind};
 
-use crate::builder::query_builder;
+use super::query_builder;
 
+use super::builder::Builder;
 use super::mutation_builder::MutationBuilder;
 use super::system_builder::SystemContextBuilding;
-use super::Builder;
 
 pub struct DeleteMutationBuilder;
 

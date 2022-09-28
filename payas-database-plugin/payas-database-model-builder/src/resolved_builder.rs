@@ -13,7 +13,7 @@ use payas_core_model_builder::builder::resolved_builder::AnnotationMapHelper;
 use payas_core_model_builder::typechecker::typ::Type;
 use payas_core_model_builder::typechecker::Typed;
 
-use super::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
+use super::builder::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 use heck::ToSnakeCase;
 use payas_core_model_builder::ast::ast_types::{
     AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType,

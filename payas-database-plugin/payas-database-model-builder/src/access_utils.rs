@@ -15,7 +15,7 @@ use payas_database_model::{
     types::{DatabaseCompositeType, DatabaseFieldType, DatabaseType, DatabaseTypeKind},
 };
 
-use crate::builder::column_path_utils;
+use super::column_path_utils;
 
 use super::type_builder::ResolvedTypeEnv;
 
