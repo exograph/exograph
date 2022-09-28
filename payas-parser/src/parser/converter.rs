@@ -353,8 +353,6 @@ fn convert_field_default_value(
                 .collect();
 
             AstFieldDefaultKind::Function(fn_name, args)
-        } else if let Some(node) = node.child_by_field_name("default_value_db_fn") {
-            AstFieldDefaultKind::DatabaseFunction(node.utf8_text(source).unwrap().to_string())
         } else {
             panic!("no valid default field")
         }

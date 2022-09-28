@@ -1,26 +1,9 @@
 //! Transforms an AstSystem into a GraphQL system
 
-pub mod system_builder;
-
-pub mod access_builder;
-pub mod access_utils;
-pub mod column_path_utils;
-mod create_mutation_builder;
-mod delete_mutation_builder;
-mod mutation_builder;
-mod naming;
-mod order_by_type_builder;
-mod predicate_builder;
-mod query_builder;
-mod reference_input_type_builder;
-mod resolved_builder;
-mod type_builder;
-mod update_mutation_builder;
-
 use payas_core_model::mapped_arena::MappedArena;
 use payas_database_model::types::{DatabaseType, DatabaseTypeKind};
 
-use self::{
+use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
     type_builder::ResolvedTypeEnv,

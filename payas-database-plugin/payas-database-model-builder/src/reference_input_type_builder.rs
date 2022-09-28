@@ -7,10 +7,10 @@ use payas_database_model::types::{DatabaseCompositeType, DatabaseType, DatabaseT
 
 use super::naming::ToDatabaseTypeNames;
 
+use super::builder::Builder;
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::type_builder::ResolvedTypeEnv;
-use super::Builder;
 
 pub struct ReferenceInputTypeBuilder;
 

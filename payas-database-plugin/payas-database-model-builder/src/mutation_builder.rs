@@ -14,14 +14,13 @@ use payas_database_model::types::{
     DatabaseTypeModifier,
 };
 
+use super::builder::Builder;
 use super::create_mutation_builder::CreateMutationBuilder;
 use super::delete_mutation_builder::DeleteMutationBuilder;
 use super::reference_input_type_builder::ReferenceInputTypeBuilder;
 use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
 use super::update_mutation_builder::UpdateMutationBuilder;
-
-use super::Builder;
 
 // TODO: Introduce this module as a struct (and have it hold the sub-builders)
 // TODO: Abstract the concept of composite builders
