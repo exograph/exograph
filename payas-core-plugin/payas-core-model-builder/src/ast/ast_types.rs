@@ -149,7 +149,6 @@ pub struct AstFieldDefault<T: NodeTypedness> {
 pub enum AstFieldDefaultKind<T: NodeTypedness> {
     Value(AstExpr<T>),
     Function(String, Vec<AstExpr<T>>),
-    DatabaseFunction(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

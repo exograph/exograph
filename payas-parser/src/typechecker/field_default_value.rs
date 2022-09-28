@@ -6,9 +6,6 @@ use payas_core_model_builder::typechecker::annotation::AnnotationSpec;
 use payas_core_model_builder::typechecker::Typed;
 
 use crate::ast::ast_types::{AstExpr, AstFieldDefault, AstFieldDefaultKind, Untyped};
-use payas_database_model_builder::builder::{
-    DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID,
-};
 
 use super::{Scope, Type, TypecheckFrom};
 
@@ -16,9 +13,6 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
     fn shallow(untyped: &AstFieldDefault<Untyped>) -> AstFieldDefault<Typed> {
         let kind = {
             match &untyped.kind {
-                AstFieldDefaultKind::DatabaseFunction(string) => {
-                    AstFieldDefaultKind::DatabaseFunction(string.clone())
-                }
                 AstFieldDefaultKind::Function(fn_name, args) => AstFieldDefaultKind::Function(
                     fn_name.clone(),
                     args.iter().map(AstExpr::shallow).collect(),
@@ -63,30 +57,8 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
         };
 
         match &mut self.kind {
-            AstFieldDefaultKind::DatabaseFunction(_string) => false,
-            AstFieldDefaultKind::Function(fn_name, args) => {
+            AstFieldDefaultKind::Function(_, args) => {
                 let args_changed = args.iter_mut().any(check_literal);
-
-                match fn_name.as_str() {
-                    DEFAULT_FN_AUTOINCREMENT
-                    | DEFAULT_FN_CURRENT_TIME
-                    | DEFAULT_FN_GENERATE_UUID => {}
-                    _ => {
-                        errors.push(Diagnostic {
-                            level: Level::Error,
-                            message: format!(
-                                "Unknown kind of default value specified: {}",
-                                fn_name
-                            ),
-                            code: Some("C000".to_string()),
-                            spans: vec![SpanLabel {
-                                span: self.span,
-                                style: SpanStyle::Primary,
-                                label: Some("unknown kind".to_string()),
-                            }],
-                        });
-                    }
-                };
 
                 args_changed
             }

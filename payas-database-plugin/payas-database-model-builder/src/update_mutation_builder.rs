@@ -7,16 +7,14 @@ use payas_database_model::types::{
     DatabaseCompositeType, DatabaseField, DatabaseFieldType, DatabaseType, DatabaseTypeKind,
 };
 
-use super::naming::{ToDatabaseMutationNames, ToDatabaseTypeNames};
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
-use super::type_builder::ResolvedTypeEnv;
-
-use crate::builder::mutation_builder::{create_data_type_name, update_data_type_name};
-use crate::builder::query_builder;
-
+use super::builder::Builder;
+use super::mutation_builder::{create_data_type_name, update_data_type_name};
 use super::mutation_builder::{DataParamBuilder, MutationBuilder};
+use super::naming::{ToDatabaseMutationNames, ToDatabaseTypeNames};
+use super::query_builder;
+use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
 use super::system_builder::SystemContextBuilding;
-use super::Builder;
+use super::type_builder::ResolvedTypeEnv;
 
 pub struct UpdateMutationBuilder;
 

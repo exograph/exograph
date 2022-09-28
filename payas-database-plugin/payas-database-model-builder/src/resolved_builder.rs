@@ -13,7 +13,7 @@ use payas_core_model_builder::builder::resolved_builder::AnnotationMapHelper;
 use payas_core_model_builder::typechecker::typ::Type;
 use payas_core_model_builder::typechecker::Typed;
 
-use super::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
+use super::builder::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
 use heck::ToSnakeCase;
 use payas_core_model_builder::ast::ast_types::{
     AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType,
@@ -81,14 +81,6 @@ impl ResolvedFieldType {
             ResolvedFieldType::Plain { type_name, .. } => type_name,
             ResolvedFieldType::Optional(underlying) => underlying.get_underlying_typename(),
             ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
-        }
-    }
-
-    pub fn is_underlying_type_primitive(&self) -> bool {
-        match &self {
-            ResolvedFieldType::Plain { is_primitive, .. } => *is_primitive,
-            ResolvedFieldType::Optional(underlying) => underlying.is_underlying_type_primitive(),
-            ResolvedFieldType::List(underlying) => underlying.is_underlying_type_primitive(),
         }
     }
 }
@@ -267,19 +259,25 @@ fn resolve(
                                     name: column_name,
                                     self_column,
                                     unique_constraints,
-                                }) => Some(ResolvedField {
-                                    name: field.name.clone(),
-                                    typ: resolve_field_type(&field.typ.to_typ(types), types),
-                                    column_name,
-                                    self_column,
-                                    is_pk: field.annotations.contains("pk"),
-                                    type_hint: build_type_hint(field, types),
-                                    unique_constraints,
-                                    default_value: field
+                                }) => {
+                                    let typ = resolve_field_type(&field.typ.to_typ(types), types);
+
+                                    let default_value = field
                                         .default_value
                                         .as_ref()
-                                        .map(resolve_field_default_type),
-                                }),
+                                        .map(|v| resolve_field_default_type(v, &typ, errors));
+
+                                    Some(ResolvedField {
+                                        name: field.name.clone(),
+                                        typ,
+                                        column_name,
+                                        self_column,
+                                        is_pk: field.annotations.contains("pk"),
+                                        type_hint: build_type_hint(field, types),
+                                        unique_constraints,
+                                        default_value,
+                                    })
+                                }
                                 Err(e) => {
                                     errors.push(e);
                                     None
@@ -307,19 +305,96 @@ fn resolve(
     Ok(resolved_database_types)
 }
 
-fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> ResolvedFieldDefault {
+fn resolve_field_default_type(
+    default_value: &AstFieldDefault<Typed>,
+    field_type: &ResolvedFieldType,
+    errors: &mut Vec<Diagnostic>,
+) -> ResolvedFieldDefault {
+    let field_underlying_type = field_type.get_underlying_typename();
+
     match &default_value.kind {
         AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
-        AstFieldDefaultKind::DatabaseFunction(func) => {
-            ResolvedFieldDefault::DatabaseFunction(func.to_owned())
-        }
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
-            DEFAULT_FN_AUTOINCREMENT => ResolvedFieldDefault::Autoincrement,
-            DEFAULT_FN_CURRENT_TIME => ResolvedFieldDefault::DatabaseFunction("now()".to_string()),
+            DEFAULT_FN_AUTOINCREMENT => {
+                match field_underlying_type {
+                    "Int" => {}
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "{}() can only be used on Ints",
+                                DEFAULT_FN_AUTOINCREMENT
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: default_value.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                }
+
+                ResolvedFieldDefault::Autoincrement
+            }
+            DEFAULT_FN_CURRENT_TIME => {
+                match field_underlying_type {
+                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => {}
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "{}() can only be used for time-related types",
+                                DEFAULT_FN_CURRENT_TIME
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: default_value.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                }
+
+                ResolvedFieldDefault::DatabaseFunction("now()".to_string())
+            }
             DEFAULT_FN_GENERATE_UUID => {
+                match field_underlying_type {
+                    "Uuid" => {}
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "{}() can only be used on Uuids",
+                                DEFAULT_FN_GENERATE_UUID
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: default_value.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                }
+
                 ResolvedFieldDefault::DatabaseFunction("gen_random_uuid()".to_string())
             }
-            _ => panic!(),
+            _ => {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!("Unknown function specified for default value: {}", fn_name),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: default_value.span,
+                        style: SpanStyle::Primary,
+                        label: Some("unknown function".to_string()),
+                    }],
+                });
+                // Proceed with a reasonable value. Since we already reported an error, this is not going to be used.
+                ResolvedFieldDefault::DatabaseFunction(fn_name.to_string())
+            }
         },
     }
 }

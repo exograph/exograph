@@ -102,10 +102,6 @@ module.exports = grammar({
         "(", 
         optional(commaSep(field("default_value_fn_args", $.expression))),
         ")"
-      ),
-      seq(
-        "db:",
-        field("default_value_db_fn", /[a-zA-Z_][a-zA-Z0-9\(\)_]*/) 
       )
     ),
     type: $ => choice(
