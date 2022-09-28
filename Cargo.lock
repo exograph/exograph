@@ -3596,6 +3596,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-core-resolver"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "cookie",
+ "futures",
+ "jsonwebtoken",
+ "maybe-owned",
+ "payas-core-model",
+ "payas-sql",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "payas-database-model"
 version = "0.1.0"
 dependencies = [
@@ -3626,6 +3646,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-database-resolver"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "base64 0.13.0",
+ "chrono",
+ "fix-hidden-lifetime-bug",
+ "futures",
+ "maybe-owned",
+ "payas-core-resolver",
+ "payas-database-model",
+ "payas-sql",
+ "pg_bigdecimal",
+ "postgres-types",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio-postgres",
+ "uuid",
+]
+
+[[package]]
 name = "payas-deno"
 version = "0.1.0"
 dependencies = [
@@ -3643,12 +3687,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-deno-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "payas-core-model",
+ "payas-core-model-builder",
+ "payas-plugin-model-util",
+ "serde",
+]
+
+[[package]]
+name = "payas-deno-model-builder"
+version = "0.1.0"
+dependencies = [
+ "payas-core-model",
+ "payas-core-model-builder",
+ "payas-deno-model",
+ "payas-plugin-model-builder-util",
+]
+
+[[package]]
+name = "payas-deno-resolver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "deno_core",
+ "futures",
+ "maybe-owned",
+ "payas-core-resolver",
+ "payas-deno",
+ "payas-deno-model",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "payas-model"
 version = "0.1.0"
 dependencies = [
  "payas-core-model",
  "payas-database-model",
- "payas-service-model",
+ "payas-deno-model",
+ "payas-wasm-model",
  "serde",
  "typed-generational-arena",
 ]
@@ -3665,10 +3751,12 @@ dependencies = [
  "payas-core-model",
  "payas-core-model-builder",
  "payas-database-model-builder",
+ "payas-deno-model",
+ "payas-deno-model-builder",
  "payas-model",
- "payas-service-model",
- "payas-service-model-builder",
  "payas-sql",
+ "payas-wasm-model",
+ "payas-wasm-model-builder",
  "serde",
  "serde_json",
  "thiserror",
@@ -3678,91 +3766,30 @@ dependencies = [
 ]
 
 [[package]]
-name = "payas-resolver-core"
+name = "payas-plugin-model-builder-util"
 version = "0.1.0"
 dependencies = [
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "cookie",
- "futures",
- "jsonwebtoken",
- "maybe-owned",
+ "codemap",
+ "codemap-diagnostic",
+ "lazy_static",
  "payas-core-model",
- "payas-parser",
- "payas-sql",
+ "payas-core-model-builder",
+ "payas-plugin-model-util",
  "serde",
- "serde_json",
  "thiserror",
- "tokio",
- "tracing",
+ "typed-generational-arena",
+ "wildmatch",
 ]
 
 [[package]]
-name = "payas-resolver-database"
+name = "payas-plugin-model-util"
 version = "0.1.0"
 dependencies = [
+ "async-graphql-parser",
  "async-graphql-value",
- "async-recursion",
- "async-trait",
- "base64 0.13.0",
- "chrono",
- "fix-hidden-lifetime-bug",
- "futures",
- "maybe-owned",
- "payas-database-model",
- "payas-parser",
- "payas-resolver-core",
- "payas-sql",
- "pg_bigdecimal",
- "postgres-types",
+ "payas-core-model",
  "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
-name = "payas-resolver-deno"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "deno_core",
- "futures",
- "maybe-owned",
- "payas-deno",
- "payas-parser",
- "payas-resolver-core",
- "payas-service-model",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "payas-resolver-wasm"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "futures",
- "maybe-owned",
- "payas-parser",
- "payas-resolver-core",
- "payas-service-model",
- "payas-wasm",
- "serde_json",
- "thiserror",
- "tokio",
- "wasmtime",
- "wasmtime-wasi",
+ "typed-generational-arena",
 ]
 
 [[package]]
@@ -3775,7 +3802,7 @@ dependencies = [
  "async-trait",
  "futures",
  "jsonwebtoken",
- "payas-resolver-core",
+ "payas-core-resolver",
  "payas-server-core",
  "serde_json",
  "tracing",
@@ -3794,8 +3821,8 @@ dependencies = [
  "lambda_runtime",
  "opentelemetry",
  "opentelemetry-jaeger",
+ "payas-core-resolver",
  "payas-parser",
- "payas-resolver-core",
  "payas-server-core",
  "serde_json",
  "tokio",
@@ -3822,16 +3849,17 @@ dependencies = [
  "opentelemetry",
  "opentelemetry-jaeger",
  "payas-core-model",
+ "payas-core-resolver",
  "payas-database-model",
+ "payas-database-resolver",
  "payas-deno",
+ "payas-deno-model",
+ "payas-deno-resolver",
  "payas-model",
  "payas-parser",
- "payas-resolver-core",
- "payas-resolver-database",
- "payas-resolver-deno",
- "payas-resolver-wasm",
- "payas-service-model",
  "payas-sql",
+ "payas-wasm-model",
+ "payas-wasm-resolver",
  "pretty_env_logger",
  "serde",
  "serde_json",
@@ -3844,33 +3872,6 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typed-generational-arena",
-]
-
-[[package]]
-name = "payas-service-model"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "payas-core-model",
- "serde",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "payas-service-model-builder"
-version = "0.1.0"
-dependencies = [
- "codemap",
- "codemap-diagnostic",
- "lazy_static",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-service-model",
- "serde",
- "thiserror",
- "typed-generational-arena",
- "wildmatch",
 ]
 
 [[package]]
@@ -3933,6 +3934,48 @@ dependencies = [
  "thiserror",
  "tracing",
  "wasi-common",
+ "wasmtime",
+ "wasmtime-wasi",
+]
+
+[[package]]
+name = "payas-wasm-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "payas-core-model",
+ "payas-core-model-builder",
+ "payas-plugin-model-util",
+ "serde",
+]
+
+[[package]]
+name = "payas-wasm-model-builder"
+version = "0.1.0"
+dependencies = [
+ "payas-core-model",
+ "payas-core-model-builder",
+ "payas-plugin-model-builder-util",
+ "payas-wasm-model",
+]
+
+[[package]]
+name = "payas-wasm-resolver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "futures",
+ "maybe-owned",
+ "payas-core-resolver",
+ "payas-wasm",
+ "payas-wasm-model",
+ "serde_json",
+ "thiserror",
+ "tokio",
  "wasmtime",
  "wasmtime-wasi",
 ]

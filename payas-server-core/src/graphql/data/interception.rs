@@ -1,16 +1,15 @@
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, FutureExt};
 
-use payas_resolver_core::{
+use crate::graphql::execution::system_context::SystemContext;
+use payas_core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
     QueryResponseBody,
 };
-use payas_resolver_deno::{
+use payas_deno_model::interceptor::{Interceptor, InterceptorKind};
+use payas_deno_resolver::{
     claytip_execute_query, execute_interceptor, DenoExecutionError, DenoSystemContext,
 };
-use payas_service_model::interceptor::{Interceptor, InterceptorKind};
-
-use crate::graphql::execution::system_context::SystemContext;
 
 /// Determine the order and nesting for interceptors.
 ///
@@ -176,7 +175,7 @@ impl<'a> InterceptedOperation<'a> {
                 for before_interceptor in before {
                     execute_interceptor(
                         before_interceptor,
-                        &system.service_subsystem,
+                        &system.deno_subsystem,
                         deno_execution_pool,
                         request_context,
                         claytip_execute_query!(
@@ -202,7 +201,7 @@ impl<'a> InterceptedOperation<'a> {
                 for after_interceptor in after {
                     execute_interceptor(
                         after_interceptor,
-                        &system.service_subsystem,
+                        &system.deno_subsystem,
                         deno_execution_pool,
                         request_context,
                         claytip_execute_query!(
@@ -227,7 +226,7 @@ impl<'a> InterceptedOperation<'a> {
             } => {
                 let (result, response) = execute_interceptor(
                     interceptor,
-                    &system.service_subsystem,
+                    &system.deno_subsystem,
                     deno_execution_pool,
                     request_context,
                     claytip_execute_query!(

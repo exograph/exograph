@@ -1,6 +1,6 @@
 use payas_core_model::type_normalization::TypeDefinitionIntrospection;
-use payas_resolver_core::request_context::RequestContext;
-use payas_resolver_core::validation::field::ValidatedField;
+use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::validation::field::ValidatedField;
 
 use async_graphql_parser::types::{BaseType, Type, TypeDefinition};
 use async_trait::async_trait;

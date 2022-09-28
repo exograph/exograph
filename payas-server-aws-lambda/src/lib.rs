@@ -2,7 +2,7 @@ mod request;
 
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
-use payas_resolver_core::request_context::{ContextParsingError, RequestContext};
+use payas_core_resolver::request_context::{ContextParsingError, RequestContext};
 use payas_server_core::{OperationsPayload, SystemContext};
 use request::LambdaRequest;
 use serde_json::{json, Value};

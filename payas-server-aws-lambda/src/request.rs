@@ -1,8 +1,8 @@
 use lambda_runtime::LambdaEvent;
-use payas_resolver_core::request_context::Request;
+use payas_core_resolver::request_context::Request;
 use serde_json::Value;
 
-// as lambda_runtime::LambdaEvent and payas_resolver_core::request_context::Request are in different crates
+// as lambda_runtime::LambdaEvent and payas_core_resolver::request_context::Request are in different crates
 // from this one, we must wrap the request with our own struct
 pub struct LambdaRequest<'a>(&'a LambdaEvent<Value>);
 

@@ -28,7 +28,8 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
     let database_subsystem =
         payas_database_model_builder::build(&typechecked_system, &base_system)?;
 
-    let service_subsystem = payas_service_model_builder::build(&typechecked_system, &base_system)?;
+    let deno_subsystem = payas_deno_model_builder::build(&typechecked_system, &base_system)?;
+    let wasm_subsystem = payas_wasm_model_builder::build(&typechecked_system, &base_system)?;
 
     let query_interceptors = interceptor_weaver::weave(
         database_subsystem
@@ -36,14 +37,14 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
             .iter()
             .map(|(_, q)| q.name.as_str())
             .chain(
-                service_subsystem
+                deno_subsystem
                     .underlying
                     .queries
                     .iter()
                     .map(|(_, q)| q.name.as_str()),
             ),
-        &service_subsystem.interceptors,
-        &service_subsystem.underlying.interceptors,
+        &deno_subsystem.interceptors,
+        &deno_subsystem.underlying.interceptors,
         OperationKind::Query,
     );
 
@@ -53,20 +54,21 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
             .iter()
             .map(|(_, q)| q.name.as_str())
             .chain(
-                service_subsystem
+                deno_subsystem
                     .underlying
                     .mutations
                     .iter()
                     .map(|(_, q)| q.name.as_str()),
             ),
-        &service_subsystem.interceptors,
-        &service_subsystem.underlying.interceptors,
+        &deno_subsystem.interceptors,
+        &deno_subsystem.underlying.interceptors,
         OperationKind::Mutation,
     );
 
     Ok(ModelSystem {
         database_subsystem,
-        service_subsystem: service_subsystem.underlying,
+        deno_subsystem: deno_subsystem.underlying,
+        wasm_subsystem: wasm_subsystem.underlying,
         query_interceptors,
         mutation_interceptors,
     })

@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::Value;
 
-use payas_resolver_core::request_context::RequestContext;
-use payas_resolver_core::validation::field::ValidatedField;
+use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::validation::field::ValidatedField;
 
 use crate::{
     graphql::{execution::field_resolver::FieldResolver, execution_error::ExecutionError},

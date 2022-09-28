@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
-use payas_resolver_core::validation::field::ValidatedField;
-use payas_resolver_core::{request_context::RequestContext, QueryResponse, QueryResponseBody};
+use payas_core_resolver::validation::field::ValidatedField;
+use payas_core_resolver::{request_context::RequestContext, QueryResponse, QueryResponseBody};
 
 use super::system_context::SystemContext;
 use crate::graphql::{

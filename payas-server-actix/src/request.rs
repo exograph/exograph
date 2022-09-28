@@ -1,5 +1,5 @@
 use actix_web::{dev::ConnectionInfo, http::header::HeaderMap, HttpRequest};
-use payas_resolver_core::request_context::Request;
+use payas_core_resolver::request_context::Request;
 
 pub struct ActixRequest {
     // we cannot refer to HttpRequest directly, as it holds an Rc (and therefore does

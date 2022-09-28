@@ -3,10 +3,10 @@ use async_graphql_parser::Pos;
 use maybe_owned::MaybeOwned;
 use tracing::{error, instrument};
 
-use payas_model::model::system::ModelSystem;
-use payas_resolver_core::{
+use payas_core_resolver::{
     request_context::RequestContext, OperationsPayload, QueryResponse, ResolveOperationFn,
 };
+use payas_model::model::system::ModelSystem;
 
 use payas_sql::DatabaseExecutor;
 
@@ -18,8 +18,8 @@ use crate::graphql::{
         validation_error::ValidationError,
     },
 };
-use payas_resolver_deno::ClayDenoExecutorPool;
-use payas_resolver_wasm::WasmExecutorPool;
+use payas_deno_resolver::ClayDenoExecutorPool;
+use payas_wasm_resolver::WasmExecutorPool;
 
 use super::field_resolver::FieldResolver;
 
