@@ -83,14 +83,6 @@ impl ResolvedFieldType {
             ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
         }
     }
-
-    pub fn is_underlying_type_primitive(&self) -> bool {
-        match &self {
-            ResolvedFieldType::Plain { is_primitive, .. } => *is_primitive,
-            ResolvedFieldType::Optional(underlying) => underlying.is_underlying_type_primitive(),
-            ResolvedFieldType::List(underlying) => underlying.is_underlying_type_primitive(),
-        }
-    }
 }
 
 impl ResolvedFieldType {
@@ -267,19 +259,25 @@ fn resolve(
                                     name: column_name,
                                     self_column,
                                     unique_constraints,
-                                }) => Some(ResolvedField {
-                                    name: field.name.clone(),
-                                    typ: resolve_field_type(&field.typ.to_typ(types), types),
-                                    column_name,
-                                    self_column,
-                                    is_pk: field.annotations.contains("pk"),
-                                    type_hint: build_type_hint(field, types),
-                                    unique_constraints,
-                                    default_value: field
+                                }) => {
+                                    let typ = resolve_field_type(&field.typ.to_typ(types), types);
+
+                                    let default_value = field
                                         .default_value
                                         .as_ref()
-                                        .map(|v| resolve_field_default_type(v, errors)),
-                                }),
+                                        .map(|v| resolve_field_default_type(v, &typ, errors));
+
+                                    Some(ResolvedField {
+                                        name: field.name.clone(),
+                                        typ,
+                                        column_name,
+                                        self_column,
+                                        is_pk: field.annotations.contains("pk"),
+                                        type_hint: build_type_hint(field, types),
+                                        unique_constraints,
+                                        default_value,
+                                    })
+                                }
                                 Err(e) => {
                                     errors.push(e);
                                     None
@@ -309,14 +307,78 @@ fn resolve(
 
 fn resolve_field_default_type(
     default_value: &AstFieldDefault<Typed>,
+    field_type: &ResolvedFieldType,
     errors: &mut Vec<Diagnostic>,
 ) -> ResolvedFieldDefault {
+    let field_underlying_type = field_type.get_underlying_typename();
+
     match &default_value.kind {
         AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
-            DEFAULT_FN_AUTOINCREMENT => ResolvedFieldDefault::Autoincrement,
-            DEFAULT_FN_CURRENT_TIME => ResolvedFieldDefault::DatabaseFunction("now()".to_string()),
+            DEFAULT_FN_AUTOINCREMENT => {
+                match field_underlying_type {
+                    "Int" => {}
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "{}() can only be used on Ints",
+                                DEFAULT_FN_AUTOINCREMENT
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: default_value.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                }
+
+                ResolvedFieldDefault::Autoincrement
+            }
+            DEFAULT_FN_CURRENT_TIME => {
+                match field_underlying_type {
+                    "Instant" | "LocalDate" | "LocalTime" | "LocalDateTime" => {}
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "{}() can only be used for time-related types",
+                                DEFAULT_FN_CURRENT_TIME
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: default_value.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                }
+
+                ResolvedFieldDefault::DatabaseFunction("now()".to_string())
+            }
             DEFAULT_FN_GENERATE_UUID => {
+                match field_underlying_type {
+                    "Uuid" => {}
+                    _ => {
+                        errors.push(Diagnostic {
+                            level: Level::Error,
+                            message: format!(
+                                "{}() can only be used on Uuids",
+                                DEFAULT_FN_GENERATE_UUID
+                            ),
+                            code: Some("C000".to_string()),
+                            spans: vec![SpanLabel {
+                                span: default_value.span,
+                                style: SpanStyle::Primary,
+                                label: None,
+                            }],
+                        });
+                    }
+                }
+
                 ResolvedFieldDefault::DatabaseFunction("gen_random_uuid()".to_string())
             }
             _ => {

@@ -2,9 +2,9 @@
 
 pub mod system_builder;
 
-pub mod access_builder;
-pub mod access_utils;
-pub mod column_path_utils;
+mod access_builder;
+mod access_utils;
+mod column_path_utils;
 mod create_mutation_builder;
 mod delete_mutation_builder;
 mod mutation_builder;
