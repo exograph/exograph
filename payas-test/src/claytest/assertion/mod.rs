@@ -39,7 +39,7 @@ pub fn dynamic_assert_using_deno(
         "ClaytipTest",
         vec![],
         vec![include_str!(
-            "../../../../payas-resolver-deno/src/claytip_error.js"
+            "../../../../payas-deno-plugin/payas-deno-resolver/src/claytip_error.js"
         )],
         vec![],
         DenoModuleSharedState::default(),

@@ -1,12 +1,12 @@
 use std::error::Error;
 
-use payas_resolver_database::DatabaseExecutionError;
-use payas_resolver_wasm::WasmExecutionError;
+use payas_database_resolver::DatabaseExecutionError;
+use payas_wasm_resolver::WasmExecutionError;
 use thiserror::Error;
 
 use crate::graphql::validation::validation_error::ValidationError;
 
-use payas_resolver_deno::DenoExecutionError;
+use payas_deno_resolver::DenoExecutionError;
 
 #[derive(Error, Debug)]
 pub enum ExecutionError {

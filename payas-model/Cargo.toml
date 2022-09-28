@@ -8,6 +8,7 @@ typed-generational-arena = { version = "0.2", features = ["serde"] }
 serde = "1.0"
 payas-core-model = { path = "../payas-core-plugin/payas-core-model" }
 payas-database-model = { path = "../payas-database-plugin/payas-database-model" }
-payas-service-model = { path = "../payas-service-plugin/payas-service-model" }
+payas-deno-model = { path = "../payas-deno-plugin/payas-deno-model" }
+payas-wasm-model = { path = "../payas-wasm-plugin/payas-wasm-model" }
 
 [lib]

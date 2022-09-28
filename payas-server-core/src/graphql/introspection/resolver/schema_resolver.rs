@@ -1,5 +1,5 @@
-use payas_resolver_core::request_context::RequestContext;
-use payas_resolver_core::validation::field::ValidatedField;
+use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::validation::field::ValidatedField;
 
 use crate::graphql::execution_error::ExecutionError;
 use crate::graphql::introspection::definition::schema::{

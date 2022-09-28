@@ -2,8 +2,8 @@ use async_graphql_parser::types::EnumValueDefinition;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use payas_resolver_core::request_context::RequestContext;
-use payas_resolver_core::validation::field::ValidatedField;
+use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::validation::field::ValidatedField;
 
 use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution::system_context::SystemContext;

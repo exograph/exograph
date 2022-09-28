@@ -10,7 +10,7 @@ use async_graphql_parser::{
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name};
 
 use payas_core_model::type_normalization::TypeDefinitionIntrospection;
-use payas_resolver_core::validation::field::ValidatedField;
+use payas_core_resolver::validation::field::ValidatedField;
 
 use crate::graphql::{
     introspection::definition::schema::{Schema, QUERY_ROOT_TYPENAME},

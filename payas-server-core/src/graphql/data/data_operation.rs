@@ -1,12 +1,12 @@
-use payas_resolver_core::{request_context::RequestContext, QueryResponse};
-use payas_resolver_database::DatabaseSystemContext;
+use payas_core_resolver::{request_context::RequestContext, QueryResponse};
+use payas_database_resolver::DatabaseSystemContext;
 
-use payas_resolver_wasm::{WasmOperation, WasmSystemContext};
 use payas_sql::AbstractOperation;
+use payas_wasm_resolver::{WasmOperation, WasmSystemContext};
 
 use crate::graphql::{execution::system_context::SystemContext, execution_error::ExecutionError};
 
-use payas_resolver_deno::{DenoOperation, DenoSystemContext};
+use payas_deno_resolver::{DenoOperation, DenoSystemContext};
 
 #[allow(clippy::large_enum_variant)]
 pub enum DataOperation<'a> {
@@ -33,7 +33,7 @@ impl<'a> DataOperation<'a> {
                     resolve_operation_fn,
                 };
 
-                payas_resolver_database::resolve_operation(
+                payas_database_resolver::resolve_operation(
                     abstract_operation,
                     database_system_context,
                     request_context,
@@ -44,7 +44,7 @@ impl<'a> DataOperation<'a> {
 
             DataOperation::Deno(operation) => {
                 let deno_system_context = DenoSystemContext {
-                    system: &system_context.system.service_subsystem,
+                    system: &system_context.system.deno_subsystem,
                     deno_execution_pool: &system_context.deno_execution_pool,
                     resolve_operation_fn,
                 };
@@ -57,7 +57,7 @@ impl<'a> DataOperation<'a> {
 
             DataOperation::Wasm(operation) => {
                 let wasm_system_context = WasmSystemContext {
-                    system: &system_context.system.service_subsystem,
+                    system: &system_context.system.wasm_subsystem,
                     executor_pool: &system_context.wasm_execution_pool,
                     resolve_operation_fn,
                 };
