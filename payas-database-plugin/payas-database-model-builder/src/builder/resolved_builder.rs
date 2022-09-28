@@ -278,7 +278,7 @@ fn resolve(
                                     default_value: field
                                         .default_value
                                         .as_ref()
-                                        .map(resolve_field_default_type),
+                                        .map(|v| resolve_field_default_type(v, errors)),
                                 }),
                                 Err(e) => {
                                     errors.push(e);
@@ -307,7 +307,10 @@ fn resolve(
     Ok(resolved_database_types)
 }
 
-fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> ResolvedFieldDefault {
+fn resolve_field_default_type(
+    default_value: &AstFieldDefault<Typed>,
+    errors: &mut Vec<Diagnostic>,
+) -> ResolvedFieldDefault {
     match &default_value.kind {
         AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
@@ -316,7 +319,20 @@ fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> Resolve
             DEFAULT_FN_GENERATE_UUID => {
                 ResolvedFieldDefault::DatabaseFunction("gen_random_uuid()".to_string())
             }
-            _ => ResolvedFieldDefault::DatabaseFunction(fn_name.to_owned()),
+            _ => {
+                errors.push(Diagnostic {
+                    level: Level::Error,
+                    message: format!("Unknown function specified for default value: {}", fn_name),
+                    code: Some("C000".to_string()),
+                    spans: vec![SpanLabel {
+                        span: default_value.span,
+                        style: SpanStyle::Primary,
+                        label: Some("unknown function".to_string()),
+                    }],
+                });
+                // Proceed with a reasonable value. Since we already reported an error, this is not going to be used.
+                ResolvedFieldDefault::DatabaseFunction(fn_name.to_string())
+            }
         },
     }
 }

@@ -11,7 +11,7 @@ mod parser;
 mod typechecker;
 mod util;
 
-use payas_core_model_builder::ast;
+use payas_core_model_builder::{ast, error::ModelBuildingError};
 
 /// Build a model system from a clay file
 pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserError> {
@@ -26,10 +26,8 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
         .and_then(typechecker::build)
         .and_then(|types| builder::system_builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
-            let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
-            if let ParserError::Diagnosis(err) = &err {
-                emitter.emit(err);
-            }
+            emit_diagnostics(&err, &codemap);
+
             err
         })
 }
@@ -47,10 +45,21 @@ pub fn build_system_from_str(
         .and_then(typechecker::build)
         .and_then(|types| builder::system_builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
-            let mut emitter = Emitter::stderr(ColorConfig::Always, Some(&codemap));
-            if let ParserError::Diagnosis(err) = &err {
-                emitter.emit(err);
-            }
+            emit_diagnostics(&err, &codemap);
             err
         })
+}
+
+fn emit_diagnostics(err: &ParserError, codemap: &CodeMap) {
+    let mut emitter = Emitter::stderr(ColorConfig::Always, Some(codemap));
+
+    match err {
+        ParserError::Diagnosis(diagnostics) => {
+            emitter.emit(diagnostics);
+        }
+        ParserError::ModelBuildingError(ModelBuildingError::Diagnosis(diagnostics)) => {
+            emitter.emit(diagnostics);
+        }
+        _ => {}
+    }
 }
