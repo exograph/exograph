@@ -16,9 +16,6 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
     fn shallow(untyped: &AstFieldDefault<Untyped>) -> AstFieldDefault<Typed> {
         let kind = {
             match &untyped.kind {
-                AstFieldDefaultKind::DatabaseFunction(string) => {
-                    AstFieldDefaultKind::DatabaseFunction(string.clone())
-                }
                 AstFieldDefaultKind::Function(fn_name, args) => AstFieldDefaultKind::Function(
                     fn_name.clone(),
                     args.iter().map(AstExpr::shallow).collect(),
@@ -63,7 +60,6 @@ impl TypecheckFrom<AstFieldDefault<Untyped>> for AstFieldDefault<Typed> {
         };
 
         match &mut self.kind {
-            AstFieldDefaultKind::DatabaseFunction(_string) => false,
             AstFieldDefaultKind::Function(fn_name, args) => {
                 let args_changed = args.iter_mut().any(check_literal);
 

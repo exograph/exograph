@@ -310,16 +310,13 @@ fn resolve(
 fn resolve_field_default_type(default_value: &AstFieldDefault<Typed>) -> ResolvedFieldDefault {
     match &default_value.kind {
         AstFieldDefaultKind::Value(expr) => ResolvedFieldDefault::Value(Box::new(expr.to_owned())),
-        AstFieldDefaultKind::DatabaseFunction(func) => {
-            ResolvedFieldDefault::DatabaseFunction(func.to_owned())
-        }
         AstFieldDefaultKind::Function(fn_name, _args) => match fn_name.as_str() {
             DEFAULT_FN_AUTOINCREMENT => ResolvedFieldDefault::Autoincrement,
             DEFAULT_FN_CURRENT_TIME => ResolvedFieldDefault::DatabaseFunction("now()".to_string()),
             DEFAULT_FN_GENERATE_UUID => {
                 ResolvedFieldDefault::DatabaseFunction("gen_random_uuid()".to_string())
             }
-            _ => panic!(),
+            _ => ResolvedFieldDefault::DatabaseFunction(fn_name.to_owned()),
         },
     }
 }
