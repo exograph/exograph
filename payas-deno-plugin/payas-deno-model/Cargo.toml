@@ -7,6 +7,7 @@ edition = "2021"
 async-graphql-parser = "4.0.5"
 async-graphql-value = "4.0.5"
 serde = { version = "1.0.136", features = ["derive"] }
+bincode = "1.3.3"
 
 payas-plugin-model-util = { path = "../../payas-plugin-util/payas-plugin-model-util" }
 payas-core-model = { path = "../../payas-core-plugin/payas-core-model" }

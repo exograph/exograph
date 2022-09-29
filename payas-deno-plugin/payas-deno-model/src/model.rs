@@ -4,7 +4,9 @@ use async_graphql_parser::{
 };
 use payas_core_model::{
     context_type::ContextType,
+    error::ModelSerializationError,
     mapped_arena::{MappedArena, SerializableSlab},
+    system_serializer::SystemSerializer,
     type_normalization::{default_positioned, FieldDefinitionProvider, TypeDefinitionProvider},
 };
 use serde::{Deserialize, Serialize};
@@ -57,5 +59,17 @@ impl ModelDenoSystem {
             .iter()
             .map(|typ| typ.1.type_definition(&self.service_types))
             .collect()
+    }
+}
+
+impl SystemSerializer for ModelDenoSystem {
+    type Underlying = Self;
+
+    fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
+        bincode::serialize(self).map_err(|e| ModelSerializationError::Serialize(e))
+    }
+
+    fn deserialize(bytes: &[u8]) -> Result<Self, ModelSerializationError> {
+        bincode::deserialize(bytes).map_err(|e| ModelSerializationError::Deserialize(e))
     }
 }

@@ -3697,6 +3697,7 @@ version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "bincode",
  "payas-core-model",
  "payas-core-model-builder",
  "payas-plugin-model-util",
@@ -3950,6 +3951,7 @@ version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "bincode",
  "payas-core-model",
  "payas-core-model-builder",
  "payas-plugin-model-util",
