@@ -16,5 +16,8 @@ pub enum ParserError {
     ModelBuildingError(#[from] payas_core_model_builder::error::ModelBuildingError),
 
     #[error("{0}")]
+    ModelSerializationError(#[from] payas_core_model::error::ModelSerializationError),
+
+    #[error("{0}")]
     Generic(String),
 }

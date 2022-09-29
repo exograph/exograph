@@ -3557,12 +3557,13 @@ name = "payas-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bincode",
  "clap",
  "ctrlc",
  "heck",
  "notify 4.0.17",
+ "payas-core-model",
  "payas-core-model-builder",
+ "payas-database-model",
  "payas-model",
  "payas-parser",
  "payas-sql",
@@ -3580,7 +3581,9 @@ version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "bincode",
  "serde",
+ "thiserror",
  "typed-generational-arena",
 ]
 
@@ -3621,6 +3624,7 @@ version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "bincode",
  "payas-core-model",
  "payas-sql",
  "serde",
@@ -3745,7 +3749,6 @@ dependencies = [
 name = "payas-parser"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "cc",
  "codemap",
  "codemap-diagnostic",

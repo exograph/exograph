@@ -3,7 +3,6 @@ use std::{fs, path::Path};
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
 use error::ParserError;
-use payas_model::model::system::ModelSystem;
 
 mod builder;
 pub mod error;
@@ -14,7 +13,7 @@ mod util;
 use payas_core_model_builder::{ast, error::ModelBuildingError};
 
 /// Build a model system from a clay file
-pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserError> {
+pub fn build_system(model_file: impl AsRef<Path>) -> Result<Vec<u8>, ParserError> {
     let file_content = fs::read_to_string(model_file.as_ref())?;
     let mut codemap = CodeMap::new();
     codemap.add_file(
@@ -34,10 +33,7 @@ pub fn build_system(model_file: impl AsRef<Path>) -> Result<ModelSystem, ParserE
 
 // Can we expose this only for testing purposes?
 // #[cfg(test)]
-pub fn build_system_from_str(
-    model_str: &str,
-    file_name: String,
-) -> Result<ModelSystem, ParserError> {
+pub fn build_system_from_str(model_str: &str, file_name: String) -> Result<Vec<u8>, ParserError> {
     let mut codemap = CodeMap::new();
     codemap.add_file(file_name.clone(), model_str.to_string());
 

@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::{error::ModelSerializationError, system_serializer::SystemSerializer};
+
 /// A type to represent the index of an interceptor within a subsystem.
 ///
 /// This (instead of a simple `usize`) is used to make it intentional that the index is not
@@ -37,6 +39,18 @@ pub struct System {
     pub subsystems: Vec<Subsystem>,
     pub query_interception_map: InterceptionMap,
     pub mutation_interception_map: InterceptionMap,
+}
+
+impl SystemSerializer for System {
+    type Underlying = Self;
+
+    fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
+        bincode::serialize(self).map_err(|e| ModelSerializationError::Serialize(e))
+    }
+
+    fn deserialize(bytes: &[u8]) -> Result<Self, ModelSerializationError> {
+        bincode::deserialize(bytes).map_err(|e| ModelSerializationError::Deserialize(e))
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

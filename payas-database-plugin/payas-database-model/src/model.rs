@@ -6,7 +6,9 @@ use async_graphql_parser::{
 };
 use payas_core_model::{
     context_type::ContextType,
+    error::ModelSerializationError,
     mapped_arena::{MappedArena, SerializableSlab},
+    system_serializer::SystemSerializer,
     type_normalization::{default_positioned, FieldDefinitionProvider, TypeDefinitionProvider},
 };
 use payas_sql::PhysicalTable;
@@ -102,5 +104,17 @@ impl ModelDatabaseSystem {
         .collect();
 
         types
+    }
+}
+
+impl SystemSerializer for ModelDatabaseSystem {
+    type Underlying = Self;
+
+    fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
+        bincode::serialize(self).map_err(|e| ModelSerializationError::Serialize(e))
+    }
+
+    fn deserialize(bytes: &[u8]) -> Result<Self, ModelSerializationError> {
+        bincode::deserialize(bytes).map_err(|e| ModelSerializationError::Deserialize(e))
     }
 }

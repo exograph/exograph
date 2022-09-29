@@ -1,11 +1,11 @@
 use payas_core_model::{
     mapped_arena::MappedArena,
     system::{Subsystem, System},
+    system_serializer::SystemSerializer,
 };
 use payas_core_model_builder::{
     error::ModelBuildingError, plugin::SubsystemBuilder, typechecker::typ::Type,
 };
-use payas_model::model::system::ModelSystem;
 
 use super::interceptor_weaver::{self, OperationKind};
 
@@ -26,7 +26,7 @@ use super::interceptor_weaver::{self, OperationKind};
 /// (this is done in place, so references created from elsewhere remain valid). Since all model
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
-pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, ModelBuildingError> {
+pub fn build(typechecked_system: MappedArena<Type>) -> Result<Vec<u8>, ModelBuildingError> {
     let base_system =
         payas_core_model_builder::builder::system_builder::build(&typechecked_system)?;
 
@@ -74,26 +74,11 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
         OperationKind::Mutation,
     );
 
-    // let system = System {
-    //     subsystems,
-    //     query_interception_map,
-    //     mutation_interception_map,
-    // };
-
-    // let serialized_system = bincode::serialize(&system)
-    //     .map_err(|e| ModelBuildingError::Generic(format!("Failed to serialize system: {}", e)))?;
-
-    let database_subsystem =
-        payas_database_model_builder::build(&typechecked_system, &base_system)?;
-
-    let deno_subsystem = payas_deno_model_builder::build(&typechecked_system, &base_system)?;
-    let wasm_subsystem = payas_wasm_model_builder::build(&typechecked_system, &base_system)?;
-
-    Ok(ModelSystem {
-        database_subsystem,
-        deno_subsystem: deno_subsystem.underlying,
-        wasm_subsystem: wasm_subsystem.underlying,
+    let system = System {
+        subsystems,
         query_interception_map,
         mutation_interception_map,
-    })
+    };
+
+    system.serialize().map_err(ModelBuildingError::Serialize)
 }
