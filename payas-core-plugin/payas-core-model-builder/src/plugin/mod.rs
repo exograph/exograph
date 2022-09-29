@@ -24,6 +24,7 @@ pub struct SubsystemBuild {
     pub interceptions: Vec<Interception>,
 }
 
+#[derive(Debug)]
 pub struct Interception {
     pub expr: AstExpr<Typed>,
     pub kind: InterceptorKind,

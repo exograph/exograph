@@ -10,7 +10,7 @@ use payas_core_model_builder::{
 
 use wildmatch::WildMatch;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum OperationKind {
     Query,
     Mutation,
@@ -38,12 +38,12 @@ fn matching_interceptors(
     operation_name: &str,
     operation_kind: OperationKind,
 ) -> Vec<InterceptorIndexWithSubsystemIndex> {
-    let interceptions: Vec<(usize, &Interception)> = subsystem_interceptions
+    let matching_interceptions: Vec<(usize, &Interception)> = subsystem_interceptions
         .iter()
-        .filter_map(|(subsystem_index, interceptor)| {
-            interceptor.iter().find_map(|interceptor| {
-                if matches(&interceptor.expr, operation_name, operation_kind) {
-                    Some((*subsystem_index, interceptor))
+        .flat_map(|(subsystem_index, interceptions)| {
+            interceptions.iter().flat_map(|interception| {
+                if matches(&interception.expr, operation_name, operation_kind) {
+                    Some((*subsystem_index, interception))
                 } else {
                     None
                 }
@@ -51,7 +51,7 @@ fn matching_interceptors(
         })
         .collect();
 
-    ordered(interceptions)
+    ordered(matching_interceptions)
 }
 
 fn matches(expr: &AstExpr<Typed>, operation_name: &str, operation_kind: OperationKind) -> bool {

@@ -43,3 +43,9 @@ pub struct System {
 pub struct InterceptionMap {
     pub map: HashMap<String, Vec<InterceptorIndexWithSubsystemIndex>>,
 }
+
+impl InterceptionMap {
+    pub fn get(&self, operation_name: &str) -> Option<&Vec<InterceptorIndexWithSubsystemIndex>> {
+        self.map.get(operation_name)
+    }
+}

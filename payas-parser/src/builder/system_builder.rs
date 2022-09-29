@@ -74,14 +74,14 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
         OperationKind::Mutation,
     );
 
-    let system = System {
-        subsystems,
-        query_interception_map,
-        mutation_interception_map,
-    };
+    // let system = System {
+    //     subsystems,
+    //     query_interception_map,
+    //     mutation_interception_map,
+    // };
 
-    let serialized_system = bincode::serialize(&system)
-        .map_err(|e| ModelBuildingError::Generic(format!("Failed to serialize system: {}", e)))?;
+    // let serialized_system = bincode::serialize(&system)
+    //     .map_err(|e| ModelBuildingError::Generic(format!("Failed to serialize system: {}", e)))?;
 
     let database_subsystem =
         payas_database_model_builder::build(&typechecked_system, &base_system)?;
@@ -93,7 +93,7 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
         database_subsystem,
         deno_subsystem: deno_subsystem.underlying,
         wasm_subsystem: wasm_subsystem.underlying,
-        query_interceptors: std::collections::HashMap::new(),
-        mutation_interceptors: std::collections::HashMap::new(),
+        query_interception_map,
+        mutation_interception_map,
     })
 }
