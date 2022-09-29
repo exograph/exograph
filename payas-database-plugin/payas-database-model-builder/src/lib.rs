@@ -7,6 +7,7 @@ mod delete_mutation_builder;
 mod mutation_builder;
 mod naming;
 mod order_by_type_builder;
+mod plugin;
 mod predicate_builder;
 mod query_builder;
 mod reference_input_type_builder;
@@ -15,4 +16,5 @@ mod system_builder;
 mod type_builder;
 mod update_mutation_builder;
 
+pub use plugin::DatabaseSubsystemBuilder;
 pub use system_builder::build;

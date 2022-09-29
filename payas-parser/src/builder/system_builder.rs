@@ -1,5 +1,10 @@
-use payas_core_model::mapped_arena::MappedArena;
-use payas_core_model_builder::{error::ModelBuildingError, typechecker::typ::Type};
+use payas_core_model::{
+    mapped_arena::MappedArena,
+    system::{Subsystem, System},
+};
+use payas_core_model_builder::{
+    error::ModelBuildingError, plugin::SubsystemBuilder, typechecker::typ::Type,
+};
 use payas_model::model::system::ModelSystem;
 
 use super::interceptor_weaver::{self, OperationKind};
@@ -25,51 +30,70 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<ModelSystem, Model
     let base_system =
         payas_core_model_builder::builder::system_builder::build(&typechecked_system)?;
 
+    let database_subsystem_builder = payas_database_model_builder::DatabaseSubsystemBuilder {};
+    let deno_subsystem_builder = payas_deno_model_builder::DenoSubsystemBuilder {};
+    let wasm_subsystem_builder = payas_wasm_model_builder::WasmSubsystemBuilder {};
+
+    let subsystem_builders: Vec<&dyn SubsystemBuilder> = vec![
+        &database_subsystem_builder,
+        &deno_subsystem_builder,
+        &wasm_subsystem_builder,
+    ];
+
+    let mut subsystem_interceptions = vec![];
+    let mut query_names = vec![];
+    let mut mutation_names = vec![];
+
+    let subsystems: Vec<Subsystem> = subsystem_builders
+        .iter()
+        .enumerate()
+        .map(|(subsystem_index, builder)| {
+            let build_info = builder.build(&typechecked_system, &base_system)?;
+
+            subsystem_interceptions.push((subsystem_index, build_info.interceptions));
+            query_names.extend(build_info.query_names);
+            mutation_names.extend(build_info.mutation_names);
+
+            Ok(Subsystem {
+                id: build_info.id,
+                subsystem_index,
+                serialized_subsystem: build_info.serialized_subsystem,
+            })
+        })
+        .collect::<Result<Vec<_>, ModelBuildingError>>()?;
+
+    let query_interception_map = interceptor_weaver::weave(
+        query_names.iter().map(|n| n.as_str()),
+        &subsystem_interceptions,
+        OperationKind::Query,
+    );
+
+    let mutation_interception_map = interceptor_weaver::weave(
+        mutation_names.iter().map(|n| n.as_str()),
+        &subsystem_interceptions,
+        OperationKind::Mutation,
+    );
+
+    let system = System {
+        subsystems,
+        query_interception_map,
+        mutation_interception_map,
+    };
+
+    let serialized_system = bincode::serialize(&system)
+        .map_err(|e| ModelBuildingError::Generic(format!("Failed to serialize system: {}", e)))?;
+
     let database_subsystem =
         payas_database_model_builder::build(&typechecked_system, &base_system)?;
 
     let deno_subsystem = payas_deno_model_builder::build(&typechecked_system, &base_system)?;
     let wasm_subsystem = payas_wasm_model_builder::build(&typechecked_system, &base_system)?;
 
-    let query_interceptors = interceptor_weaver::weave(
-        database_subsystem
-            .queries
-            .iter()
-            .map(|(_, q)| q.name.as_str())
-            .chain(
-                deno_subsystem
-                    .underlying
-                    .queries
-                    .iter()
-                    .map(|(_, q)| q.name.as_str()),
-            ),
-        &deno_subsystem.interceptors,
-        &deno_subsystem.underlying.interceptors,
-        OperationKind::Query,
-    );
-
-    let mutation_interceptors = interceptor_weaver::weave(
-        database_subsystem
-            .mutations
-            .iter()
-            .map(|(_, q)| q.name.as_str())
-            .chain(
-                deno_subsystem
-                    .underlying
-                    .mutations
-                    .iter()
-                    .map(|(_, q)| q.name.as_str()),
-            ),
-        &deno_subsystem.interceptors,
-        &deno_subsystem.underlying.interceptors,
-        OperationKind::Mutation,
-    );
-
     Ok(ModelSystem {
         database_subsystem,
         deno_subsystem: deno_subsystem.underlying,
         wasm_subsystem: wasm_subsystem.underlying,
-        query_interceptors,
-        mutation_interceptors,
+        query_interceptors: std::collections::HashMap::new(),
+        mutation_interceptors: std::collections::HashMap::new(),
     })
 }

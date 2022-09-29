@@ -1,12 +1,13 @@
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, FutureExt};
+use payas_core_model::interceptor_kind::InterceptorKind;
 
 use crate::graphql::execution::system_context::SystemContext;
 use payas_core_resolver::{
     request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
     QueryResponseBody,
 };
-use payas_deno_model::interceptor::{Interceptor, InterceptorKind};
+use payas_deno_model::interceptor::Interceptor;
 use payas_deno_resolver::{
     claytip_execute_query, execute_interceptor, DenoExecutionError, DenoSystemContext,
 };

@@ -1,11 +1,12 @@
-use std::collections::HashMap;
-
-use payas_core_model::mapped_arena::{SerializableSlab, SerializableSlabIndex};
+use payas_core_model::{
+    interceptor_kind::InterceptorKind,
+    system::{InterceptionMap, InterceptorIndexWithSubsystemIndex},
+};
 use payas_core_model_builder::{
     ast::ast_types::{AstExpr, LogicalOp},
+    plugin::Interception,
     typechecker::Typed,
 };
-use payas_deno_model::interceptor::{Interceptor, InterceptorKind};
 
 use wildmatch::WildMatch;
 
@@ -17,45 +18,40 @@ pub enum OperationKind {
 
 pub fn weave<'a>(
     operation_names: impl Iterator<Item = &'a str>,
-    expr_interceptor_pairs: &[(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)],
-    interceptors: &SerializableSlab<Interceptor>,
+    subsystem_interceptions: &[(usize, Vec<Interception>)],
     operation_kind: OperationKind,
-) -> HashMap<String, Vec<SerializableSlabIndex<Interceptor>>> {
-    operation_names
-        .map(|operation_name| {
-            (
-                operation_name.to_owned(),
-                matching_interceptors(
-                    expr_interceptor_pairs,
-                    interceptors,
-                    operation_name,
-                    operation_kind,
-                ),
-            )
-        })
-        .collect()
+) -> InterceptionMap {
+    InterceptionMap {
+        map: operation_names
+            .map(|operation_name| {
+                (
+                    operation_name.to_owned(),
+                    matching_interceptors(subsystem_interceptions, operation_name, operation_kind),
+                )
+            })
+            .collect(),
+    }
 }
 
 fn matching_interceptors(
-    expr_interceptor_pairs: &[(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)],
-    interceptors: &SerializableSlab<Interceptor>,
+    subsystem_interceptions: &[(usize, Vec<Interception>)],
     operation_name: &str,
     operation_kind: OperationKind,
-) -> Vec<SerializableSlabIndex<Interceptor>> {
-    ordered(
-        expr_interceptor_pairs
-            .iter()
-            .filter_map(|(expr, interceptor)| {
-                if matches(expr, operation_name, operation_kind) {
-                    Some(interceptor)
+) -> Vec<InterceptorIndexWithSubsystemIndex> {
+    let interceptions: Vec<(usize, &Interception)> = subsystem_interceptions
+        .iter()
+        .filter_map(|(subsystem_index, interceptor)| {
+            interceptor.iter().find_map(|interceptor| {
+                if matches(&interceptor.expr, operation_name, operation_kind) {
+                    Some((*subsystem_index, interceptor))
                 } else {
                     None
                 }
             })
-            .cloned()
-            .collect(),
-        interceptors,
-    )
+        })
+        .collect();
+
+    ordered(interceptions)
 }
 
 fn matches(expr: &AstExpr<Typed>, operation_name: &str, operation_kind: OperationKind) -> bool {
@@ -95,19 +91,17 @@ fn matches_str(expr: &str, operation_name: &str, operation_kind: OperationKind) 
     wildmatch.matches(&format!("{} {}", input, operation_name))
 }
 
-pub fn ordered(
-    interceptor_indices: Vec<SerializableSlabIndex<Interceptor>>,
-    interceptors: &SerializableSlab<Interceptor>,
-) -> Vec<SerializableSlabIndex<Interceptor>> {
+fn ordered(interceptions: Vec<(usize, &Interception)>) -> Vec<InterceptorIndexWithSubsystemIndex> {
     let mut processed = Vec::new();
     let mut deferred = Vec::new();
 
-    for interceptor_index in interceptor_indices {
-        let interceptor = &interceptors[interceptor_index];
-        if interceptor.interceptor_kind == InterceptorKind::Before {
-            processed.push(interceptor_index);
+    for (subsystem_index, interception) in interceptions {
+        let interceptor =
+            InterceptorIndexWithSubsystemIndex::new(subsystem_index, interception.index.clone());
+        if interception.kind == InterceptorKind::Before {
+            processed.push(interceptor);
         } else {
-            deferred.push(interceptor_index);
+            deferred.push(interceptor);
         }
     }
     processed.extend(deferred.into_iter());

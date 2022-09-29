@@ -1,8 +1,11 @@
-use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_core_model::{
+    interceptor_kind::InterceptorKind,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+};
 use payas_plugin_model_util::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterType},
-    interceptor::{Interceptor, InterceptorKind},
+    interceptor::Interceptor,
     operation::{OperationReturnType, ServiceMutation, ServiceQuery},
     service::{Argument, Script, ServiceMethod, ServiceMethodType},
     types::ServiceType,

@@ -3631,6 +3631,7 @@ dependencies = [
 name = "payas-database-model-builder"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "codemap",
  "codemap-diagnostic",
  "heck",
@@ -3702,6 +3703,7 @@ dependencies = [
 name = "payas-deno-model-builder"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "payas-core-model",
  "payas-core-model-builder",
  "payas-deno-model",
@@ -3743,6 +3745,7 @@ dependencies = [
 name = "payas-parser"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "cc",
  "codemap",
  "codemap-diagnostic",
@@ -3954,6 +3957,7 @@ dependencies = [
 name = "payas-wasm-model-builder"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "payas-core-model",
  "payas-core-model-builder",
  "payas-plugin-model-builder-util",
