@@ -10,6 +10,7 @@ use deno_runtime::permissions::Permissions;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
+use fix_hidden_lifetime_bug::fix_hidden_lifetime_bug;
 use tracing::error;
 
 use std::path::PathBuf;
@@ -60,6 +61,8 @@ pub struct DenoModule {
 /// * `shared_state` - A shared state object to pass to the worker.
 /// * `explicit_error_class_name` - The name of the class whose message will be used to report errors.
 impl DenoModule {
+    #[allow(clippy::manual_async_fn)]
+    #[fix_hidden_lifetime_bug]
     pub async fn new(
         user_code: UserCode,
         user_agent_name: &str,
@@ -128,6 +131,7 @@ impl DenoModule {
                 unstable: true,
                 is_tty: false,
                 user_agent: user_agent_name.to_string(),
+                inspect: false,
             },
             extensions,
             unsafely_ignore_certificate_errors: None,
@@ -147,6 +151,9 @@ impl DenoModule {
             source_map_getter: None,
             format_js_error_fn: None,
             stdio: Stdio::default(),
+            npm_resolver: None,
+            web_worker_pre_execute_module_cb: Arc::new(|_| todo!()),
+            cache_storage_dir: None,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
