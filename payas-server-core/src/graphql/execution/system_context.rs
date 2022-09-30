@@ -125,7 +125,11 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
                 message,
                 start,
                 end,
-            } => (format!("Syntax error {message}"), start, end),
+            } => {
+                // Error::Syntax's message is formatted with newlines, escape them properly
+                let message = message.escape_debug();
+                (format!("Syntax error:\\n{message}"), start, end)
+            }
             async_graphql_parser::Error::MultipleRoots { root, schema, pos } => {
                 (format!("Multiple roots of {root} type"), schema, Some(pos))
             }
