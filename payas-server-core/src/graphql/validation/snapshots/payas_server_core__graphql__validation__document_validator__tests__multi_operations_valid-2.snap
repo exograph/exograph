@@ -16,9 +16,7 @@ Ok(
                 ),
                 arguments: {
                     "id": Number(
-                        Number(
-                            2,
-                        ),
+                        Number(2),
                     ),
                 },
                 subfields: [
