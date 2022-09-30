@@ -5,7 +5,7 @@ context AuthContext {
 
 @external("logger.js")
 service PrivilegedLogger {
-    input type LogEntry {
+    type LogEntry {
         level: String
         message: String
     }
