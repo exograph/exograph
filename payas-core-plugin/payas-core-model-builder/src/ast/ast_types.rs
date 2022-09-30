@@ -117,10 +117,9 @@ pub struct AstInterceptor<T: NodeTypedness> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum AstModelKind {
-    Persistent,         // a model intended to be persisted inside the database
-    Context,            // defines contextual models for authorization
-    NonPersistent,      // solely defines an output model for service methods
-    NonPersistentInput, // solely defines an input model for service methods
+    Persistent,    // a model intended to be persisted inside the database
+    Context,       // defines contextual models for authorization
+    NonPersistent, // a non-persistent model used as a type for service methods
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -177,6 +176,13 @@ impl<T: NodeTypedness> AstFieldType<T> {
         match self {
             AstFieldType::Optional(underlying) => underlying.name(),
             AstFieldType::Plain(base_type, _, _, _) => base_type.clone(),
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            AstFieldType::Plain(_, _, _, span) => span.clone(),
+            AstFieldType::Optional(underlying) => underlying.span(),
         }
     }
 }
