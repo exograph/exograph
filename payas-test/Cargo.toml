@@ -27,4 +27,4 @@ wildmatch = "2.1.0"
 payas-deno = { path = "../payas-deno" }
 
 [dev-dependencies]
-insta = "1.14.0"
+insta = { version = "1.14.0", features = [ "yaml" ] }
