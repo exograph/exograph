@@ -3,6 +3,7 @@ use deno_core::error::JsError;
 use deno_core::serde_json;
 use deno_core::v8;
 use deno_core::Extension;
+use deno_core::ModuleSpecifier;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::ops::io::Stdio;
@@ -13,6 +14,7 @@ use deno_runtime::BootstrapOptions;
 use fix_hidden_lifetime_bug::fix_hidden_lifetime_bug;
 use tracing::error;
 
+use std::cell::RefCell;
 use std::path::PathBuf;
 use tracing::instrument;
 
@@ -103,15 +105,24 @@ impl DenoModule {
 
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
-            source_code_map: match &user_code {
-                UserCode::LoadFromFs(_) => vec![("file:///main.js".to_owned(), source_code)],
-                UserCode::LoadFromMemory { path, script } => vec![
-                    ("file:///main.js".to_owned(), source_code),
-                    (format!("file:///{path}"), script.to_owned()),
-                ],
-            }
-            .into_iter()
-            .collect(),
+            source_code_map: {
+                let map: HashMap<ModuleSpecifier, Vec<u8>> = match &user_code {
+                    UserCode::LoadFromFs(_) => {
+                        vec![(ModuleSpecifier::parse("file:///main.js")?, source_code)]
+                    }
+                    UserCode::LoadFromMemory { path, script } => vec![
+                        (ModuleSpecifier::parse("file:///main.js")?, source_code),
+                        (
+                            ModuleSpecifier::parse(&format!("file:///{path}"))?,
+                            script.to_owned(),
+                        ),
+                    ],
+                }
+                .into_iter()
+                .collect();
+
+                Arc::new(RefCell::new(map))
+            },
         });
 
         let create_web_worker_cb = Arc::new(|_| {

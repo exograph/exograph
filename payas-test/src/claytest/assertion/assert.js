@@ -1,4 +1,6 @@
-export function evaluate(testvariables) {
+"%%PRELUDE%%"
+
+export async function evaluate(testvariables) {
     var $ = testvariables;
 
     // substituted in from Rust
@@ -8,7 +10,7 @@ export function evaluate(testvariables) {
     return JSON.parse(JSON.stringify(json));
 }
 
-export function test(actualPayload, testvariables) {
+export async function test(actualPayload, testvariables) {
     var $ = testvariables;
 
     // substituted in from Rust
@@ -16,7 +18,7 @@ export function test(actualPayload, testvariables) {
 
     var lastKey = undefined;
 
-    function _test(expected, actual) {
+    async function _test(expected, actual) {
         switch (typeof(expected)) {
             case "object": {
                 // recursively verify that all key/values in expectedResponse are present in actualValue
@@ -25,7 +27,7 @@ export function test(actualPayload, testvariables) {
                     const expectedValue = expected[key];
                     const actualValue = actual[key];
 
-                    _test(expectedValue, actualValue, testvariables);
+                    await _test(expectedValue, actualValue, testvariables);
                 }
 
                 // recursively verify that no extraneous key/values are present in actualValue
@@ -38,8 +40,14 @@ export function test(actualPayload, testvariables) {
                 break;
             }
             case "function": {
-                const result = expected(actual);
+                let result = expected(actual);
 
+                // if this function is a Promise, resolve the promise before asserting
+                if (Object.getPrototypeOf(result) === Promise.prototype) {
+                    result = await result;
+                }
+
+                // assert true
                 if (result === false) {
                     throw new ClaytipError("assert function failed for field " + lastKey + "!", expected)
                 }
@@ -54,5 +62,5 @@ export function test(actualPayload, testvariables) {
         }
     }
 
-    _test(expectedPayload, actualPayload);
+    await _test(expectedPayload, actualPayload);
 }
