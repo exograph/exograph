@@ -21,30 +21,43 @@ use super::{
 pub fn build(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
-) -> Result<ModelDatabaseSystem, ModelBuildingError> {
+) -> Option<Result<ModelDatabaseSystem, ModelBuildingError>> {
     let mut building = SystemContextBuilding::default();
 
-    let resolved_types = resolved_builder::build(&typechecked_system)?;
+    let resolved_types = resolved_builder::build(&typechecked_system);
 
-    let resolved_env = ResolvedTypeEnv {
-        contexts: &base_system.contexts,
-        resolved_types,
-    };
+    let system = resolved_types.and_then(|resolved_types| {
+        let resolved_env = ResolvedTypeEnv {
+            contexts: &base_system.contexts,
+            resolved_types,
+        };
 
-    build_shallow(&resolved_env, &mut building);
-    build_expanded(&resolved_env, &mut building)?;
+        build_shallow(&resolved_env, &mut building);
+        build_expanded(&resolved_env, &mut building)?;
 
-    Ok(ModelDatabaseSystem {
-        contexts: base_system.contexts.clone(),
-        database_types: building.database_types.values,
+        Ok(ModelDatabaseSystem {
+            contexts: base_system.contexts.clone(),
+            database_types: building.database_types.values,
 
-        order_by_types: building.order_by_types.values,
-        predicate_types: building.predicate_types.values,
-        queries: building.queries,
-        tables: building.tables.values,
-        mutation_types: building.mutation_types.values,
-        mutations: building.mutations,
-    })
+            order_by_types: building.order_by_types.values,
+            predicate_types: building.predicate_types.values,
+            queries: building.queries,
+            tables: building.tables.values,
+            mutation_types: building.mutation_types.values,
+            mutations: building.mutations,
+        })
+    });
+
+    match system {
+        Ok(system) => {
+            if system.queries.values.is_empty() && system.mutations.values.is_empty() {
+                None
+            } else {
+                Some(Ok(system))
+            }
+        }
+        Err(e) => Some(Err(e)),
+    }
 }
 
 fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {

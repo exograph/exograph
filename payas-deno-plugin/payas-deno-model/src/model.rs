@@ -69,7 +69,9 @@ impl SystemSerializer for ModelDenoSystem {
         bincode::serialize(self).map_err(|e| ModelSerializationError::Serialize(e))
     }
 
-    fn deserialize(bytes: &[u8]) -> Result<Self, ModelSerializationError> {
-        bincode::deserialize(bytes).map_err(|e| ModelSerializationError::Deserialize(e))
+    fn deserialize_reader(
+        reader: impl std::io::Read,
+    ) -> Result<Self::Underlying, ModelSerializationError> {
+        bincode::deserialize_from(reader).map_err(|e| ModelSerializationError::Deserialize(e))
     }
 }

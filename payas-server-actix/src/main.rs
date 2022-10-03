@@ -1,9 +1,11 @@
 use actix_cors::Cors;
 use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use payas_core_resolver::system::SystemResolver;
 use payas_server_actix::resolve;
-use payas_server_core::{create_system_context_or_exit, SystemContext};
-use payas_server_core::{get_endpoint_http_path, get_playground_http_path, graphiql};
+use payas_server_core::{
+    create_system_resolver_or_exit, get_endpoint_http_path, get_playground_http_path, graphiql,
+};
 use tracing_actix_web::TracingLogger;
 
 use std::io::ErrorKind;
@@ -19,7 +21,7 @@ async fn main() -> std::io::Result<()> {
 
     payas_server_core::init();
 
-    let system_context = web::Data::new(create_system_context_or_exit(&claypot_file));
+    let system_context = web::Data::new(create_system_resolver_or_exit(&claypot_file));
 
     let server_port = env::var("CLAY_SERVER_PORT")
         .map(|port_str| {
@@ -111,8 +113,8 @@ fn get_claypot_file_name() -> String {
     }
 }
 
-async fn playground(req: HttpRequest, executor: web::Data<SystemContext>) -> impl Responder {
-    if !executor.allow_introspection {
+async fn playground(req: HttpRequest, resolver: web::Data<SystemResolver>) -> impl Responder {
+    if !resolver.allow_introspection {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }
 

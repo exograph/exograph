@@ -1,6 +1,6 @@
 use payas_core_model::{
     mapped_arena::MappedArena,
-    system::{Subsystem, System},
+    serializable_system::{SerializableSubsystem, SerializableSystem},
     system_serializer::SystemSerializer,
 };
 use payas_core_model_builder::{
@@ -44,20 +44,23 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<Vec<u8>, ModelBuil
     let mut query_names = vec![];
     let mut mutation_names = vec![];
 
-    let subsystems: Vec<Subsystem> = subsystem_builders
+    let subsystems: Vec<SerializableSubsystem> = subsystem_builders
         .iter()
         .enumerate()
-        .map(|(subsystem_index, builder)| {
-            let build_info = builder.build(&typechecked_system, &base_system)?;
+        .flat_map(|(subsystem_index, builder)| {
+            let build_info = builder.build(&typechecked_system, &base_system);
 
-            subsystem_interceptions.push((subsystem_index, build_info.interceptions));
-            query_names.extend(build_info.query_names);
-            mutation_names.extend(build_info.mutation_names);
+            build_info.map(|build_info| {
+                let build_info = build_info?;
+                subsystem_interceptions.push((subsystem_index, build_info.interceptions));
+                query_names.extend(build_info.query_names);
+                mutation_names.extend(build_info.mutation_names);
 
-            Ok(Subsystem {
-                id: build_info.id,
-                subsystem_index,
-                serialized_subsystem: build_info.serialized_subsystem,
+                Ok(SerializableSubsystem {
+                    id: build_info.id,
+                    subsystem_index,
+                    serialized_subsystem: build_info.serialized_subsystem,
+                })
             })
         })
         .collect::<Result<Vec<_>, ModelBuildingError>>()?;
@@ -74,7 +77,7 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<Vec<u8>, ModelBuil
         OperationKind::Mutation,
     );
 
-    let system = System {
+    let system = SerializableSystem {
         subsystems,
         query_interception_map,
         mutation_interception_map,

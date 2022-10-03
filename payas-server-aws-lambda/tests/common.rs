@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use payas_server_aws_lambda::resolve;
-use payas_server_core::create_system_context_with_model_system;
+use payas_server_core::create_system_resolver_from_serialized_bytes;
 use serde_json::Value;
 
 pub async fn test_query(json_input: Value, clay_model: &str, expected: Value) {
@@ -16,7 +16,8 @@ pub async fn test_query(json_input: Value, clay_model: &str, expected: Value) {
 
     let model_system =
         payas_parser::build_system_from_str(clay_model, "index.clay".to_string()).unwrap();
-    let system_context = Arc::new(create_system_context_with_model_system(model_system).unwrap());
+    let system_context =
+        Arc::new(create_system_resolver_from_serialized_bytes(model_system, "index.clay").unwrap());
 
     let result = resolve(event, system_context).await.unwrap();
 

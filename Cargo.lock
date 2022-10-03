@@ -3582,6 +3582,7 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "bincode",
+ "bytes",
  "serde",
  "thiserror",
  "typed-generational-arena",
@@ -3602,9 +3603,11 @@ dependencies = [
 name = "payas-core-resolver"
 version = "0.1.0"
 dependencies = [
+ "async-graphql-parser",
  "async-graphql-value",
  "async-recursion",
  "async-trait",
+ "bytes",
  "cookie",
  "futures",
  "jsonwebtoken",
@@ -3654,6 +3657,7 @@ dependencies = [
 name = "payas-database-resolver"
 version = "0.1.0"
 dependencies = [
+ "async-graphql-parser",
  "async-graphql-value",
  "async-recursion",
  "async-trait",
@@ -3662,6 +3666,7 @@ dependencies = [
  "fix-hidden-lifetime-bug",
  "futures",
  "maybe-owned",
+ "payas-core-model",
  "payas-core-resolver",
  "payas-database-model",
  "payas-sql",

@@ -7,7 +7,7 @@ use async_graphql_parser::{
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name, Number, Value};
 use bytes::Bytes;
 
-use crate::graphql::{
+use crate::{
     introspection::definition::schema::Schema, validation::validation_error::ValidationError,
 };
 

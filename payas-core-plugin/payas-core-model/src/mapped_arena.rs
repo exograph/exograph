@@ -51,6 +51,10 @@ impl<V: DeserializeOwned + Serialize> MappedArena<V> {
     pub fn iter_mut(&mut self) -> typed_generational_arena::IterMut<V, usize, IgnoreGeneration> {
         self.values.iter_mut()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
 }
 
 // Needed for tests, should get DCEd for the main binary

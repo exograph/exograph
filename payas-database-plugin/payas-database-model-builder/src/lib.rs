@@ -17,4 +17,3 @@ mod type_builder;
 mod update_mutation_builder;
 
 pub use plugin::DatabaseSubsystemBuilder;
-pub use system_builder::build;

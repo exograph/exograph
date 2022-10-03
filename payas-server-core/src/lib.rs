@@ -9,18 +9,13 @@ use std::{fs::File, io::BufReader, path::Path, pin::Pin};
 use ::tracing::instrument;
 use async_graphql_parser::Pos;
 use async_stream::try_stream;
-use bincode::deserialize_from;
 use bytes::Bytes;
 use futures::Stream;
+use graphql::system_loader::SystemLoader;
 
-use graphql::introspection::definition::schema::Schema;
+use payas_core_resolver::system::{ExecutionError, SystemResolver};
+
 use initialization_error::InitializationError;
-use payas_deno::DenoExecutorPool;
-use payas_model::model::system::ModelSystem;
-use payas_sql::{Database, DatabaseExecutor};
-use payas_wasm_resolver::WasmExecutorPool;
-
-use crate::graphql::execution_error::ExecutionError;
 
 pub use payas_core_resolver::OperationsPayload;
 use payas_core_resolver::{request_context::RequestContext, QueryResponseBody};
@@ -34,62 +29,31 @@ mod graphql;
 
 pub use graphql::execution::system_context::SystemContext;
 
-fn open_claypot_file(claypot_file: &str) -> Result<ModelSystem, InitializationError> {
+fn create_system_resolver(claypot_file: &str) -> Result<SystemResolver, InitializationError> {
     if !Path::new(&claypot_file).exists() {
         return Err(InitializationError::FileNotFound(claypot_file.to_string()));
     }
     match File::open(&claypot_file) {
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
-            let in_file = BufReader::new(claypot_file_buffer);
-            deserialize_from(in_file).map_err(|err| {
-                InitializationError::ClaypotDeserialization(claypot_file.into(), err)
-            })
+
+            SystemLoader::load(claypot_file_buffer)
+                .map_err(|e| InitializationError::ModelSerializationError(claypot_file.into(), e))
         }
         Err(e) => Err(InitializationError::FileOpen(claypot_file.into(), e)),
     }
 }
 
-fn create_system_context(claypot_file: &str) -> Result<SystemContext, InitializationError> {
-    let system = open_claypot_file(claypot_file)?;
-    create_system_context_with_model_system(system)
+pub fn create_system_resolver_from_serialized_bytes(
+    bytes: Vec<u8>,
+    claypot_file: &str, // For error formation purposes only
+) -> Result<SystemResolver, InitializationError> {
+    SystemLoader::load_from_bytes(bytes)
+        .map_err(|e| InitializationError::ModelSerializationError(claypot_file.into(), e))
 }
 
-pub fn create_system_context_with_model_system(
-    model_system: ModelSystem,
-) -> Result<SystemContext, InitializationError> {
-    let database = Database::from_env(None)?;
-
-    let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
-        Some(e) => match e.parse::<bool>() {
-            Ok(v) => Ok(v),
-            Err(_) => Err(InitializationError::Config(
-                "CLAY_INTROSPECTION env var must be set to either true or false".into(),
-            )),
-        },
-        None => Ok(false),
-    }?;
-
-    let schema = Schema::new(&model_system);
-    let deno_execution_config =
-        DenoExecutorPool::new_from_config(payas_deno_resolver::clay_config());
-
-    let database_executor = DatabaseExecutor { database };
-
-    let executor = SystemContext {
-        database_executor,
-        deno_execution_pool: deno_execution_config,
-        wasm_execution_pool: WasmExecutorPool::default(),
-        system: model_system,
-        schema,
-        allow_introspection,
-    };
-
-    Ok(executor)
-}
-
-pub fn create_system_context_or_exit(claypot_file: &str) -> SystemContext {
-    match create_system_context(claypot_file) {
+pub fn create_system_resolver_or_exit(claypot_file: &str) -> SystemResolver {
+    match create_system_resolver(claypot_file) {
         Ok(system_context) => system_context,
         Err(error) => {
             println!("{}", error);
@@ -114,14 +78,14 @@ pub fn init() {
 /// then call `resolve` with that object.
 #[instrument(
     name = "payas-server-core::resolve"
-    skip(system_context, request_context)
+    skip(system_resolver, request_context)
     )]
 pub async fn resolve<'a, E: 'static>(
     operations_payload: OperationsPayload,
-    system_context: &SystemContext,
+    system_resolver: &SystemResolver,
     request_context: RequestContext<'a>,
 ) -> (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers) {
-    let response = system_context
+    let response = system_resolver
         .resolve(operations_payload, &request_context)
         .await;
 

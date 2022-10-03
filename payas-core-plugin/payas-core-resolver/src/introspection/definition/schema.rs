@@ -9,7 +9,8 @@ use async_graphql_value::Name;
 use payas_core_model::type_normalization::{
     default_positioned, default_positioned_name, TypeDefinitionIntrospection,
 };
-use payas_model::model::system::ModelSystem;
+
+use crate::system::SystemResolver;
 
 #[derive(Debug, Clone)]
 pub struct Schema {
@@ -25,25 +26,11 @@ pub const MUTATION_ROOT_TYPENAME: &str = "Mutation";
 pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
 impl Schema {
-    pub fn new(system: &ModelSystem) -> Schema {
-        let mut type_definitions: Vec<TypeDefinition> = vec![
-            system.database_subsystem.schema_types().into_iter(),
-            system.deno_subsystem.schema_types().into_iter(),
-            system.wasm_subsystem.schema_types().into_iter(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect();
+    pub fn new(system: &SystemResolver) -> Schema {
+        let mut type_definitions: Vec<TypeDefinition> = system.schema_types();
 
         let query_type_definition = {
-            let queries = vec![
-                system.database_subsystem.schema_queries().into_iter(),
-                system.deno_subsystem.schema_queries().into_iter(),
-                system.wasm_subsystem.schema_queries().into_iter(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect();
+            let queries = system.schema_queries();
 
             // Even though we resolve __type and __schema fields for the Query
             // type, GraphQL spec doesn't allow them to be exposed as an
@@ -62,14 +49,7 @@ impl Schema {
         };
 
         let mutation_type_definition = {
-            let mutations = vec![
-                system.database_subsystem.schema_mutations().into_iter(),
-                system.deno_subsystem.schema_mutations().into_iter(),
-                system.wasm_subsystem.schema_mutations().into_iter(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect();
+            let mutations = system.schema_mutations();
 
             TypeDefinition {
                 extend: false,

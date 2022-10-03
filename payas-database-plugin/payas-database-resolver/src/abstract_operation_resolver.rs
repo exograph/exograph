@@ -7,7 +7,7 @@ use tokio_postgres::Row;
 use super::{DatabaseExecutionError, DatabaseSystemContext};
 
 pub async fn resolve_operation<'e>(
-    op: &'e AbstractOperation<'e>,
+    op: &AbstractOperation<'e>,
     system_context: DatabaseSystemContext<'e>,
     request_context: &'e RequestContext<'e>,
 ) -> Result<QueryResponse, DatabaseExecutionError> {

@@ -1,5 +1,5 @@
 use payas_core_model::mapped_arena::MappedArena;
-use payas_core_model::{interceptor_kind::InterceptorKind, system::InterceptorIndex};
+use payas_core_model::{interceptor_kind::InterceptorKind, serializable_system::InterceptorIndex};
 
 use crate::{
     ast::ast_types::AstExpr,
@@ -13,7 +13,7 @@ pub trait SubsystemBuilder {
         &self,
         typechecked_system: &MappedArena<Type>,
         base_system: &BaseModelSystem,
-    ) -> Result<SubsystemBuild, ModelBuildingError>;
+    ) -> Option<Result<SubsystemBuild, ModelBuildingError>>;
 }
 
 pub struct SubsystemBuild {

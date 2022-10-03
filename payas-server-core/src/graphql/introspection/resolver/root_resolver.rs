@@ -5,13 +5,13 @@ use crate::graphql::execution_error::ExecutionError;
 
 use crate::graphql::execution::field_resolver::FieldResolver;
 use crate::graphql::execution::system_context::SystemContext;
-use crate::graphql::introspection::definition::root_element::IntrospectionRootElement;
-use crate::graphql::introspection::definition::schema::{
-    MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
-};
 use async_graphql_parser::types::{BaseType, OperationType, Type};
 use async_graphql_value::{ConstValue, Name};
 use async_trait::async_trait;
+use payas_core_resolver::introspection::definition::{
+    root_element::IntrospectionRootElement,
+    schema::{MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME},
+};
 use serde_json::Value;
 
 use super::resolver_support::Resolver;

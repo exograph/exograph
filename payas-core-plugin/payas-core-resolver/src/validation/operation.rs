@@ -1,6 +1,6 @@
 use async_graphql_parser::types::OperationType;
 
-use payas_core_resolver::validation::field::ValidatedField;
+use crate::validation::field::ValidatedField;
 
 // Validated operation.
 #[derive(Debug)]

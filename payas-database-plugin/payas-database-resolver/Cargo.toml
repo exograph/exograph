@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+async-graphql-parser = "4.0.6"
 async-graphql-value = "4.0.6"
 async-recursion = "1.0.0"
 async-trait = "0.1.57"
@@ -22,6 +23,7 @@ uuid = "1.1.2"
 fix-hidden-lifetime-bug = "0.2.5"
 
 payas-sql = { path = "../../payas-sql" }
+payas-core-model = { path = "../../payas-core-plugin/payas-core-model" }
 payas-core-resolver = { path = "../../payas-core-plugin/payas-core-resolver" }
 payas-database-model = { path = "../payas-database-model" }
 

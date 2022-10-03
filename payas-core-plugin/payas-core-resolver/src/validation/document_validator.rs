@@ -1,11 +1,10 @@
+use crate::validation::validation_error::ValidationError;
 use async_graphql_parser::types::{DocumentOperations, ExecutableDocument};
 use async_graphql_value::Name;
 use serde_json::{Map, Value};
 use tracing::instrument;
 
-use crate::graphql::{
-    introspection::definition::schema::Schema, validation::validation_error::ValidationError,
-};
+use crate::introspection::definition::schema::Schema;
 
 use super::{operation::ValidatedOperation, operation_validator::OperationValidator};
 

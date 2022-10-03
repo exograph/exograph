@@ -1,6 +1,9 @@
+pub mod introspection;
 mod operation_payload;
+pub mod plugin;
 mod query_response;
 pub mod request_context;
+pub mod system;
 pub mod validation;
 
 use std::{future::Future, pin::Pin};

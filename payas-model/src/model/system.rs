@@ -1,4 +1,4 @@
-use payas_core_model::system::InterceptionMap;
+use payas_core_model::serializable_system::InterceptionMap;
 use payas_database_model::model::ModelDatabaseSystem;
 use payas_deno_model::model::ModelDenoSystem;
 use payas_wasm_model::model::ModelWasmSystem;

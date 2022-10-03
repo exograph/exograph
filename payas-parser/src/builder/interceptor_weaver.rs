@@ -1,6 +1,6 @@
 use payas_core_model::{
     interceptor_kind::InterceptorKind,
-    system::{InterceptionMap, InterceptorIndexWithSubsystemIndex},
+    serializable_system::{InterceptionMap, InterceptorIndexWithSubsystemIndex},
 };
 use payas_core_model_builder::{
     ast::ast_types::{AstExpr, LogicalOp},

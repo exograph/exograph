@@ -1,10 +1,9 @@
 use std::error::Error;
 
+use payas_core_resolver::validation::validation_error::ValidationError;
 use payas_database_resolver::DatabaseExecutionError;
 use payas_wasm_resolver::WasmExecutionError;
 use thiserror::Error;
-
-use crate::graphql::validation::validation_error::ValidationError;
 
 use payas_deno_resolver::DenoExecutionError;
 

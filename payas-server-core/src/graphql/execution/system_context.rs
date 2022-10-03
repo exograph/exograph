@@ -4,20 +4,19 @@ use maybe_owned::MaybeOwned;
 use tracing::{error, instrument};
 
 use payas_core_resolver::{
-    request_context::RequestContext, OperationsPayload, QueryResponse, ResolveOperationFn,
+    introspection::definition::schema::Schema,
+    request_context::RequestContext,
+    validation::{
+        document_validator::DocumentValidator, operation::ValidatedOperation,
+        validation_error::ValidationError,
+    },
+    OperationsPayload, QueryResponse, ResolveOperationFn,
 };
 use payas_model::model::system::ModelSystem;
 
 use payas_sql::DatabaseExecutor;
 
-use crate::graphql::{
-    execution_error::ExecutionError,
-    introspection::definition::schema::Schema,
-    validation::{
-        document_validator::DocumentValidator, operation::ValidatedOperation,
-        validation_error::ValidationError,
-    },
-};
+use crate::graphql::execution_error::ExecutionError;
 use payas_deno_resolver::ClayDenoExecutorPool;
 use payas_wasm_resolver::WasmExecutorPool;
 

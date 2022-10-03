@@ -7,7 +7,7 @@ use async_graphql_parser::{
 use async_graphql_value::{ConstValue, Name};
 use serde_json::{Map, Value};
 
-use crate::graphql::{
+use crate::{
     introspection::definition::schema::{Schema, MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME},
     validation::validation_error::ValidationError,
 };

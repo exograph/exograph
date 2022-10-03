@@ -21,7 +21,7 @@ pub struct ModelWasmSystemWithInterceptors {
 pub fn build(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
-) -> Result<ModelWasmSystemWithInterceptors, ModelBuildingError> {
+) -> Option<Result<ModelWasmSystemWithInterceptors, ModelBuildingError>> {
     let service_selection_predicate = |service: &AstService<Typed>| {
         let module_path = match service.annotations.get("external").unwrap() {
             AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
@@ -39,32 +39,44 @@ pub fn build(
         base_system,
         service_selection_predicate,
         process_script,
-    )?;
+    );
 
-    let underlying_service_system = service_system.underlying;
+    match service_system {
+        Ok(service_system) => {
+            let underlying_service_system = service_system.underlying;
 
-    let mut queries = MappedArena::default();
-    for query in underlying_service_system.queries.values.into_iter() {
-        queries.add(&query.name.clone(), WasmQuery(query));
+            if underlying_service_system.queries.is_empty()
+                && underlying_service_system.mutations.is_empty()
+                && underlying_service_system.interceptors.is_empty()
+            {
+                return None;
+            }
+
+            let mut queries = MappedArena::default();
+            for query in underlying_service_system.queries.values.into_iter() {
+                queries.add(&query.name.clone(), WasmQuery(query));
+            }
+
+            let mut mutations = MappedArena::default();
+            for mutation in underlying_service_system.mutations.values.into_iter() {
+                mutations.add(&mutation.name.clone(), WasmMutation(mutation));
+            }
+
+            Some(Ok(ModelWasmSystemWithInterceptors {
+                underlying: ModelWasmSystem {
+                    contexts: underlying_service_system.contexts,
+                    service_types: underlying_service_system.service_types,
+                    queries,
+                    mutations,
+                    methods: underlying_service_system.methods,
+                    scripts: underlying_service_system.scripts,
+                    interceptors: underlying_service_system.interceptors,
+                },
+                interceptors: service_system.interceptors,
+            }))
+        }
+        Err(e) => Some(Err(e)),
     }
-
-    let mut mutations = MappedArena::default();
-    for mutation in underlying_service_system.mutations.values.into_iter() {
-        mutations.add(&mutation.name.clone(), WasmMutation(mutation));
-    }
-
-    Ok(ModelWasmSystemWithInterceptors {
-        underlying: ModelWasmSystem {
-            contexts: underlying_service_system.contexts,
-            service_types: underlying_service_system.service_types,
-            queries,
-            mutations,
-            methods: underlying_service_system.methods,
-            scripts: underlying_service_system.scripts,
-            interceptors: underlying_service_system.interceptors,
-        },
-        interceptors: service_system.interceptors,
-    })
 }
 
 fn process_script(
