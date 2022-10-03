@@ -211,7 +211,7 @@ impl TypecheckFrom<AstArgument<Untyped>> for AstArgument<Typed> {
     ) -> bool {
         if let Some(Type::Composite(model)) = type_env.get_by_key(&self.typ.name()) {
             match model.kind {
-                AstModelKind::NonPersistentInput | AstModelKind::Context => {}
+                AstModelKind::NonPersistent | AstModelKind::Context => {}
                 _ => errors.push(Diagnostic {
                     level: Level::Error,
                     message: format!(

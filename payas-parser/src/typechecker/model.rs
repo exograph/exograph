@@ -45,9 +45,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
 
         match self.kind {
             AstModelKind::Persistent => {}
-            AstModelKind::Context
-            | AstModelKind::NonPersistent
-            | AstModelKind::NonPersistentInput => self
+            AstModelKind::Context | AstModelKind::NonPersistent => self
                 .fields
                 .iter()
                 .map(|field| {

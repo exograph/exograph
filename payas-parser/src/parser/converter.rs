@@ -174,8 +174,6 @@ fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyp
         AstModelKind::Persistent
     } else if kind == "type" {
         AstModelKind::NonPersistent
-    } else if kind == "input type" {
-        AstModelKind::NonPersistentInput
     } else if kind == "context" {
         AstModelKind::Context
     } else {

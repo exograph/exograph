@@ -935,6 +935,8 @@ mod tests {
     use crate::{parser, typechecker};
     use std::fs::File;
 
+    // FIXME: separate out unit tests into respective plugins
+
     #[test]
     fn with_annotations() {
         let src = r#"
