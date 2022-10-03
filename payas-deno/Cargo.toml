@@ -8,7 +8,9 @@ thiserror = "1.0.31"
 async-trait = "0.1.53"
 deno_runtime = "0.79.0"
 deno_core = "0.153.0"
+deno_ast = { version = "0.19.0", features = ["transpiling"], optional = true }
 tokio = "1"
+http_req = "0.8.1"
 futures = "0.3"
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -18,3 +20,7 @@ tracing = "0.1"
 fix-hidden-lifetime-bug = "0.2.5"
 
 [lib]
+
+[features]
+default = ["typescript-loader"]
+typescript-loader = ["dep:deno_ast"]
