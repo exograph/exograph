@@ -386,6 +386,7 @@ fn resolve_service_input_types(
             .iter()
             .find(|(opposite_typ, _)| opposite_typ.name() == typ.name())
         {
+            // FIXME: add a resolved builder snapshot unit test case for this error
             errors.push(
                 Diagnostic {
                 level: Level::Error,
