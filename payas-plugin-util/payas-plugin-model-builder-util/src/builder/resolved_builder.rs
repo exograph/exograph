@@ -370,14 +370,8 @@ fn resolve_service_input_types(
         }
     });
 
-    let input_types = types_used
-        .clone()
-        .filter_map(|(typ, is_input)| if *is_input { Some(typ) } else { None })
-        .collect::<Vec<_>>();
-    let output_types = types_used
-        .clone()
-        .filter_map(|(typ, is_input)| if !*is_input { Some(typ) } else { None })
-        .collect::<Vec<_>>();
+    let (input_types, output_types): (Vec<_>, Vec<_>) =
+        types_used.clone().partition(|(_, is_input)| *is_input);
 
     // 3. check types
     for (typ, is_input) in types_used {
@@ -390,7 +384,7 @@ fn resolve_service_input_types(
         // check type against opposite list
         if let Some(opposite_type) = opposite_types
             .iter()
-            .find(|opposite_typ| opposite_typ.name() == typ.name())
+            .find(|(opposite_typ, _)| opposite_typ.name() == typ.name())
         {
             errors.push(
                 Diagnostic {
@@ -404,7 +398,7 @@ fn resolve_service_input_types(
                         label: Some("conflicting usage".to_owned()),
                     },
                     SpanLabel {
-                        span: opposite_type.span(),
+                        span: opposite_type.0.span(),
                         style: SpanStyle::Secondary,
                         label: Some(opposite_descriptor.to_string()),
                     },
@@ -416,7 +410,7 @@ fn resolve_service_input_types(
     }
 
     let mut input_type_names = vec![];
-    for input_type in input_types.iter() {
+    for (input_type, _) in input_types.iter() {
         if !input_type_names.contains(&input_type.name()) {
             input_type_names.push(input_type.name())
         }
