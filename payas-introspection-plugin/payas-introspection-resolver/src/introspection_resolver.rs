@@ -3,14 +3,14 @@ use async_graphql_parser::{
     Positioned,
 };
 use payas_core_resolver::{
-    introspection::definition::{root_element::IntrospectionRootElement, schema::Schema},
+    introspection::definition::schema::Schema,
     plugin::{SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
     validation::field::ValidatedField,
     QueryResponse, QueryResponseBody, ResolveOperationFn,
 };
 
-use crate::field_resolver::FieldResolver;
+use crate::{field_resolver::FieldResolver, root_element::IntrospectionRootElement};
 pub struct IntrospectionResolver {
     schema: Schema,
 }

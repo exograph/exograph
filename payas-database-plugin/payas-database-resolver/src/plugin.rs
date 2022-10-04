@@ -17,7 +17,10 @@ use payas_database_model::{
 };
 use payas_sql::{AbstractOperation, AbstractPredicate, Database, DatabaseExecutor};
 
-use crate::{database_mutation::operation, database_query::compute_select, DatabaseSystemContext};
+use crate::{
+    database_mutation::operation, database_query::compute_select, DatabaseExecutionError,
+    DatabaseSystemContext,
+};
 
 pub struct DatabaseSubsystemLoader {}
 
@@ -102,7 +105,7 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
                     }
                 }
             }
-            OperationType::Subscription => Some(Err(SubsystemResolutionError::Generic(
+            OperationType::Subscription => Some(Err(DatabaseExecutionError::Generic(
                 "Subscriptions are not supported".to_string(),
             ))),
         };
@@ -111,9 +114,9 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
             Some(Ok(operation)) => Some(
                 super::resolve_operation(&operation, database_system_context, request_context)
                     .await
-                    .map_err(|e| SubsystemResolutionError::BoxedError(Box::new(e))),
+                    .map_err(|e| e.into()),
             ),
-            Some(Err(e)) => Some(Err(e)),
+            Some(Err(e)) => Some(Err(e.into())),
             None => None,
         }
     }
@@ -136,7 +139,7 @@ async fn compute_query_sql_operation<'a>(
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     database_system_context: &DatabaseSystemContext<'a>,
-) -> Result<AbstractOperation<'a>, SubsystemResolutionError> {
+) -> Result<AbstractOperation<'a>, DatabaseExecutionError> {
     compute_select(
         query,
         field,
@@ -145,7 +148,6 @@ async fn compute_query_sql_operation<'a>(
         request_context,
     )
     .await
-    .map_err(|e| SubsystemResolutionError::BoxedError(Box::new(e)))
     .map(AbstractOperation::Select)
 }
 
@@ -154,8 +156,15 @@ async fn compute_mutation_sql_operation<'a>(
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     database_system_context: &DatabaseSystemContext<'a>,
-) -> Result<AbstractOperation<'a>, SubsystemResolutionError> {
-    operation(mutation, field, &database_system_context, request_context)
-        .await
-        .map_err(|e| SubsystemResolutionError::BoxedError(Box::new(e)))
+) -> Result<AbstractOperation<'a>, DatabaseExecutionError> {
+    operation(mutation, field, &database_system_context, request_context).await
+}
+
+impl From<DatabaseExecutionError> for SubsystemResolutionError {
+    fn from(e: DatabaseExecutionError) -> Self {
+        match e {
+            DatabaseExecutionError::Authorization => SubsystemResolutionError::Authorization,
+            _ => SubsystemResolutionError::BoxedError(Box::new(e)),
+        }
+    }
 }

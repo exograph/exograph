@@ -1,6 +1,7 @@
 use crate::{
-    request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
-    ResolveOperationFn,
+    request_context::RequestContext,
+    validation::{field::ValidatedField, validation_error::ValidationError},
+    QueryResponse, ResolveOperationFn,
 };
 use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
@@ -49,11 +50,23 @@ pub enum SubsystemResolutionError {
     #[error("{0}")]
     BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 
-    #[error("Subsystem error: {0}")]
-    Generic(String),
-
     #[error("Invalid field {0} for {1}")]
     InvalidField(String, &'static str), // (field name, container type)
+
+    #[error("Not authorized")]
+    Authorization,
+}
+
+impl SubsystemResolutionError {
+    pub fn user_error_message(&self) -> String {
+        match self {
+            SubsystemResolutionError::InvalidField(field_name, container_type) => {
+                format!("Invalid field {} for {}", field_name, container_type)
+            }
+            SubsystemResolutionError::Authorization => "Not authorized".to_string(),
+            SubsystemResolutionError::BoxedError(e) => e.to_string(),
+        }
+    }
 }
 
 #[derive(Error, Debug)]
@@ -61,6 +74,43 @@ pub enum SystemResolutionError {
     #[error("{0}")]
     BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 
+    #[error("{0}")]
+    Validation(#[from] ValidationError),
+
+    #[error("{0}")]
+    SubsystemResolutionError(#[from] SubsystemResolutionError),
+
     #[error("Subsystem error: {0}")]
     Generic(String),
 }
+
+impl SystemResolutionError {
+    // Message that should be emitted when the error is returned to the user.
+    // This should hide any internal details of the error.
+    // TODO: Log the details of the error.
+    pub fn user_error_message(&self) -> String {
+        match self {
+            SystemResolutionError::BoxedError(_) => todo!(),
+            SystemResolutionError::Validation(_) => todo!(),
+            SystemResolutionError::SubsystemResolutionError(error) => error.user_error_message(),
+            SystemResolutionError::Generic(_) => todo!(),
+        }
+    }
+}
+/*
+
+            ExecutionError::Database(error) => error.user_error_message(),
+            ExecutionError::Deno(error) => match error {
+                DenoExecutionError::Delegate(underlying) => {
+                    match underlying.downcast_ref::<ExecutionError>() {
+                        Some(error) => error.user_error_message(),
+                        None => error.user_error_message(),
+                    }
+                }
+                _ => error.user_error_message(),
+            },
+            _ => match self.source() {
+                Some(source) => source.to_string(),
+                None => self.to_string(),
+            },
+*/

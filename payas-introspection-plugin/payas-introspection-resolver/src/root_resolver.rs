@@ -5,13 +5,13 @@ use payas_core_resolver::{plugin::SubsystemResolutionError, request_context::Req
 use async_graphql_parser::types::{BaseType, OperationType, Type};
 use async_graphql_value::{ConstValue, Name};
 use async_trait::async_trait;
-use payas_core_resolver::introspection::definition::{
-    root_element::IntrospectionRootElement,
-    schema::{MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME},
+use payas_core_resolver::introspection::definition::schema::{
+    MUTATION_ROOT_TYPENAME, QUERY_ROOT_TYPENAME, SUBSCRIPTION_ROOT_TYPENAME,
 };
 use serde_json::Value;
 
 use crate::field_resolver::FieldResolver;
+use crate::root_element::IntrospectionRootElement;
 
 use super::resolver_support::Resolver;
 
@@ -38,10 +38,10 @@ impl<'a> FieldResolver<Value, SubsystemResolutionError> for IntrospectionRootEle
                 Ok(Value::String(typename.to_string()))
             }
             _ => {
-                return Err(SubsystemResolutionError::Generic(format!(
-                    "No such introspection field {}",
-                    self.name
-                )))
+                return Err(SubsystemResolutionError::InvalidField(
+                    self.name.into(),
+                    "introspection root",
+                ))
             }
         }
     }

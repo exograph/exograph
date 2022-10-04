@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 
-use crate::system::{ExecutionError, SystemResolver};
+use crate::plugin::SystemResolutionError;
+use crate::system::SystemResolver;
 use crate::validation::field::ValidatedField;
 use crate::validation::operation::ValidatedOperation;
 use crate::FieldResolver;
@@ -12,13 +13,13 @@ use crate::{request_context::RequestContext, QueryResponse};
 /// The operation may be a query or a mutation and may be for data or for introspection.
 ///
 #[async_trait]
-impl FieldResolver<QueryResponse, ExecutionError> for ValidatedOperation {
+impl FieldResolver<QueryResponse, SystemResolutionError> for ValidatedOperation {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
         system_resolver: &'e SystemResolver,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<QueryResponse, ExecutionError> {
+    ) -> Result<QueryResponse, SystemResolutionError> {
         let stream = futures::stream::iter(system_resolver.subsystem_resolvers.iter()).then(
             |resolver| async {
                 resolver
@@ -45,7 +46,7 @@ impl FieldResolver<QueryResponse, ExecutionError> for ValidatedOperation {
                 }
                 None => {
                     // The steam has been exhausted, so return error.
-                    break Err(ExecutionError::Generic(
+                    break Err(SystemResolutionError::Generic(
                         "No suitable resolver found".to_string(),
                     ));
                 }

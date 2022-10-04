@@ -1,12 +1,11 @@
 use async_graphql_parser::{types::ExecutableDocument, Pos};
 use maybe_owned::MaybeOwned;
 use payas_core_model::serializable_system::InterceptionMap;
-use thiserror::Error;
 use tracing::{error, instrument};
 
 use crate::{
     introspection::definition::schema::Schema,
-    plugin::{SubsystemResolutionError, SubsystemResolver},
+    plugin::{SubsystemResolver, SystemResolutionError},
     request_context::RequestContext,
     validation::{
         document_validator::DocumentValidator, operation::ValidatedOperation,
@@ -55,7 +54,7 @@ impl SystemResolver {
         &'e self,
         operations_payload: OperationsPayload,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Vec<(String, QueryResponse)>, ExecutionError> {
+    ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
         let operation = self.validate_operation(operations_payload)?;
 
         operation
@@ -147,29 +146,4 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
 
         ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
-}
-
-// Temporary
-#[derive(Debug, Error)]
-pub enum ExecutionError {
-    #[error("Execution error: {0}")]
-    Generic(String),
-
-    #[error("{0}")]
-    Validation(#[from] ValidationError),
-
-    #[error("{0}")]
-    SubsystemResolutionError(#[from] SubsystemResolutionError),
-
-    #[error("Invalid field {0} for {1}")]
-    InvalidField(String, &'static str), // (field name, container type)
-}
-
-impl ExecutionError {
-    // Message that should be emitted when the error is returned to the user.
-    // This should hide any internal details of the error.
-    // TODO: Log the details of the error.
-    pub fn user_error_message(&self) -> String {
-        format!("todo ExecutionError::user_error_message {:?}", self)
-    }
 }

@@ -12,8 +12,9 @@ use async_stream::try_stream;
 use bytes::Bytes;
 use futures::Stream;
 use graphql::system_loader::SystemLoader;
+use payas_core_resolver::plugin::SystemResolutionError;
 
-use payas_core_resolver::system::{ExecutionError, SystemResolver};
+use payas_core_resolver::system::SystemResolver;
 
 use initialization_error::InitializationError;
 
@@ -104,7 +105,9 @@ pub async fn resolve<'a, E: 'static>(
     let response = tx_holder
         .finalize(response.is_ok())
         .await
-        .map_err(|e| ExecutionError::Generic(format!("Error while finalizing transaction: {}", e)))
+        .map_err(|e| {
+            SystemResolutionError::Generic(format!("Error while finalizing transaction: {}", e))
+        })
         .and(response);
 
     let stream = try_stream! {
@@ -148,7 +151,7 @@ pub async fn resolve<'a, E: 'static>(
                         .replace("\n", "; ")
                 );
                 yield Bytes::from_static(br#"""#);
-                if let ExecutionError::Validation(err) = err {
+                if let SystemResolutionError::Validation(err) = err {
                     yield Bytes::from_static(br#", "locations": ["#);
                     report_position!(err.position1());
                     if let Some(position2) = err.position2() {
