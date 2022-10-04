@@ -42,6 +42,10 @@ export async function test(actualPayload, testvariables) {
             case "function": {
                 let result = expected(actual);
 
+                if (result === undefined) {
+                    throw new ClaytipError("assertion function for field " + lastKey + " did not return a value, cannot check")
+                }
+
                 // if this function is a Promise, resolve the promise before asserting
                 if (Object.getPrototypeOf(result) === Promise.prototype) {
                     result = await result;
@@ -49,7 +53,7 @@ export async function test(actualPayload, testvariables) {
 
                 // assert true
                 if (result === false) {
-                    throw new ClaytipError("assert function failed for field " + lastKey + "!", expected)
+                    throw new ClaytipError("assert function failed for field " + lastKey + "!\nactual: " + JSON.stringify(actual))
                 }
                 break;
             }
