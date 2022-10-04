@@ -1,14 +1,18 @@
-use async_graphql_parser::{
-    types::{FieldDefinition, TypeDefinition},
-    Positioned,
-};
+use async_graphql_parser::{types::ExecutableDocument, Pos};
+use maybe_owned::MaybeOwned;
 use payas_core_model::serializable_system::InterceptionMap;
 use thiserror::Error;
-use tracing::instrument;
+use tracing::{error, instrument};
 
 use crate::{
-    plugin::SubsystemResolver, request_context::RequestContext,
-    validation::validation_error::ValidationError, OperationsPayload, QueryResponse,
+    introspection::definition::schema::Schema,
+    plugin::{SubsystemResolutionError, SubsystemResolver},
+    request_context::RequestContext,
+    validation::{
+        document_validator::DocumentValidator, operation::ValidatedOperation,
+        validation_error::ValidationError,
+    },
+    FieldResolver, OperationsPayload, QueryResponse, ResolveOperationFn,
 };
 
 pub struct SystemResolver {
@@ -16,6 +20,7 @@ pub struct SystemResolver {
     pub query_interception_map: InterceptionMap,
     pub mutation_interception_map: InterceptionMap,
 
+    pub schema: Schema,
     pub allow_introspection: bool,
 }
 
@@ -43,7 +48,7 @@ impl SystemResolver {
     /// }
     /// ```
     #[instrument(
-        name = "OperationsExecutor::resolve"
+        name = "SystemResolver::resolve"
         skip_all
         )]
     pub async fn resolve<'e>(
@@ -51,37 +56,97 @@ impl SystemResolver {
         operations_payload: OperationsPayload,
         request_context: &'e RequestContext<'e>,
     ) -> Result<Vec<(String, QueryResponse)>, ExecutionError> {
-        // let operation = self.validate_operation(operations_payload)?;
+        let operation = self.validate_operation(operations_payload)?;
 
-        todo!()
+        operation
+            .resolve_fields(&operation.fields, self, request_context)
+            .await
     }
 
-    pub fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
-        self.subsystem_resolvers
-            .iter()
-            .fold(vec![], |mut acc, resolver| {
-                acc.extend(resolver.schema_queries());
-                acc
-            })
+    #[instrument(skip(self, operations_payload))]
+    fn validate_operation<'e>(
+        &'e self,
+        operations_payload: OperationsPayload,
+    ) -> Result<ValidatedOperation, ValidationError> {
+        let document = parse_query(operations_payload.query)?;
+
+        let document_validator = DocumentValidator::new(
+            &self.schema,
+            operations_payload.operation_name,
+            operations_payload.variables,
+        );
+
+        document_validator.validate(document)
     }
 
-    pub fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>> {
-        self.subsystem_resolvers
-            .iter()
-            .fold(vec![], |mut acc, resolver| {
-                acc.extend(resolver.schema_mutations());
-                acc
-            })
+    /// Resolve the provided top-level operation.
+    ///
+    /// # Returns
+    /// A function that captures the SystemContext and returns a function that takes the operation and request
+    /// context and returns a future that resolves the operation.
+    ///
+    /// # Implementation notes
+    /// We use MaybeOwned<RequestContext> since in a few cases (see claytip_execute_query) we need to pass a newly created owned object and in
+    /// most other cases we need to pass an existing reference.
+    pub fn resolve_operation_fn<'r>(&'r self) -> ResolveOperationFn<'r> {
+        Box::new(
+            move |input: OperationsPayload, request_context: MaybeOwned<'r, RequestContext<'r>>| {
+                Box::pin(async move {
+                    self.resolve(input, &request_context)
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+                })
+            },
+        )
     }
+}
 
-    pub fn schema_types(&self) -> Vec<TypeDefinition> {
-        self.subsystem_resolvers
-            .iter()
-            .fold(vec![], |mut acc, resolver| {
-                acc.extend(resolver.schema_types());
-                acc
-            })
-    }
+#[instrument(name = "system_context::parse_query")]
+fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
+    async_graphql_parser::parse_query(query).map_err(|error| {
+        error!(%error, "Failed to parse query");
+        let (message, pos1, pos2) = match error {
+            async_graphql_parser::Error::Syntax {
+                message,
+                start,
+                end,
+            } => (format!("Syntax error {message}"), start, end),
+            async_graphql_parser::Error::MultipleRoots { root, schema, pos } => {
+                (format!("Multiple roots of {root} type"), schema, Some(pos))
+            }
+            async_graphql_parser::Error::MissingQueryRoot { pos } => {
+                ("Missing query root".to_string(), pos, None)
+            }
+            async_graphql_parser::Error::MultipleOperations {
+                anonymous,
+                operation,
+            } => (
+                "Multiple operations".to_string(),
+                anonymous,
+                Some(operation),
+            ),
+            async_graphql_parser::Error::OperationDuplicated {
+                operation: _,
+                first,
+                second,
+            } => ("Operation duplicated".to_string(), first, Some(second)),
+            async_graphql_parser::Error::FragmentDuplicated {
+                fragment,
+                first,
+                second,
+            } => (
+                format!("Fragment {fragment} duplicated"),
+                first,
+                Some(second),
+            ),
+            async_graphql_parser::Error::MissingOperation => {
+                ("Missing operation".to_string(), Pos::default(), None)
+            }
+            _ => ("Unknown error".to_string(), Pos::default(), None),
+        };
+
+        ValidationError::QueryParsingFailed(message, pos1, pos2)
+    })
 }
 
 // Temporary
@@ -92,6 +157,12 @@ pub enum ExecutionError {
 
     #[error("{0}")]
     Validation(#[from] ValidationError),
+
+    #[error("{0}")]
+    SubsystemResolutionError(#[from] SubsystemResolutionError),
+
+    #[error("Invalid field {0} for {1}")]
+    InvalidField(String, &'static str), // (field name, container type)
 }
 
 impl ExecutionError {
@@ -99,6 +170,6 @@ impl ExecutionError {
     // This should hide any internal details of the error.
     // TODO: Log the details of the error.
     pub fn user_error_message(&self) -> String {
-        "todo".to_string()
+        format!("todo ExecutionError::user_error_message {:?}", self)
     }
 }

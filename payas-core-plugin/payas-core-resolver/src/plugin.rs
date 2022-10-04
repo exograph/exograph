@@ -51,6 +51,9 @@ pub enum SubsystemResolutionError {
 
     #[error("Subsystem error: {0}")]
     Generic(String),
+
+    #[error("Invalid field {0} for {1}")]
+    InvalidField(String, &'static str), // (field name, container type)
 }
 
 #[derive(Error, Debug)]

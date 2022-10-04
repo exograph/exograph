@@ -3,6 +3,7 @@ use payas_core_model::{
     system_serializer::SystemSerializer,
 };
 use payas_core_resolver::{
+    introspection::definition::schema::Schema,
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
     system::SystemResolver,
 };
@@ -54,22 +55,31 @@ impl SystemLoader {
             })
             .collect();
         let mut subsystem_resolvers = subsystem_resolvers?;
+        let schema = Schema::new(&subsystem_resolvers);
 
-        // let introspection_resolver = Self::create_introspection_resolver(&subsystem_resolvers);
-        // subsystem_resolvers.push(introspection_resolver);
+        if let Some(introspection_resolver) =
+            Self::create_introspection_resolver(&subsystem_resolvers)
+        {
+            subsystem_resolvers.push(introspection_resolver);
+        }
 
         Ok(SystemResolver {
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
+            schema,
             allow_introspection: true, // TODO: Fix this
         })
     }
 
     fn create_introspection_resolver(
-        subsystem_resolvers: &Vec<Box<dyn SubsystemResolver>>,
-    ) -> Box<dyn SubsystemResolver> {
-        todo!()
+        subsystem_resolvers: &Vec<Box<dyn SubsystemResolver + Send + Sync>>,
+    ) -> Option<Box<dyn SubsystemResolver + Send + Sync>> {
+        let schema = Schema::new(subsystem_resolvers);
+
+        Some(Box::new(
+            payas_introspection_resolver::IntrospectionResolver::new(schema),
+        ))
     }
 }
 

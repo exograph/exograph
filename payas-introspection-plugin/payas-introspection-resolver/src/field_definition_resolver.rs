@@ -1,24 +1,24 @@
 use async_graphql_parser::types::FieldDefinition;
 use async_trait::async_trait;
+use payas_core_resolver::introspection::definition::schema::Schema;
+use payas_core_resolver::plugin::SubsystemResolutionError;
 use serde_json::Value;
 
 use payas_core_resolver::request_context::RequestContext;
 use payas_core_resolver::validation::field::ValidatedField;
 
-use crate::graphql::execution::field_resolver::FieldResolver;
-use crate::graphql::execution::system_context::SystemContext;
-use crate::graphql::execution_error::ExecutionError;
+use crate::field_resolver::FieldResolver;
 
 use super::resolver_support::Resolver;
 
 #[async_trait]
-impl FieldResolver<Value, ExecutionError, SystemContext> for FieldDefinition {
+impl FieldResolver<Value, SubsystemResolutionError> for FieldDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        system_context: &'e SystemContext,
+        schema: &Schema,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value, ExecutionError> {
+    ) -> Result<Value, SubsystemResolutionError> {
         match field.name.as_str() {
             "name" => Ok(Value::String(self.name.node.as_str().to_owned())),
             "description" => Ok(self
@@ -28,18 +28,21 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for FieldDefinition {
                 .unwrap_or(Value::Null)),
             "type" => {
                 self.ty
-                    .resolve_value(&field.subfields, system_context, request_context)
+                    .resolve_value(&field.subfields, schema, request_context)
                     .await
             }
             "args" => {
                 self.arguments
-                    .resolve_value(&field.subfields, system_context, request_context)
+                    .resolve_value(&field.subfields, schema, request_context)
                     .await
             }
             "isDeprecated" => Ok(Value::Bool(false)), // TODO
             "deprecationReason" => Ok(Value::Null),   // TODO
             "__typename" => Ok(Value::String("__Field".to_string())),
-            field_name => Err(ExecutionError::InvalidField(field_name.to_owned(), "Field")),
+            field_name => Err(SubsystemResolutionError::InvalidField(
+                field_name.to_owned(),
+                "Field",
+            )),
         }
     }
 }

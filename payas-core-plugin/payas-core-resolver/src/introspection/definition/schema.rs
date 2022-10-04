@@ -10,7 +10,7 @@ use payas_core_model::type_normalization::{
     default_positioned, default_positioned_name, TypeDefinitionIntrospection,
 };
 
-use crate::system::SystemResolver;
+use crate::plugin::SubsystemResolver;
 
 #[derive(Debug, Clone)]
 pub struct Schema {
@@ -26,11 +26,25 @@ pub const MUTATION_ROOT_TYPENAME: &str = "Mutation";
 pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
 impl Schema {
-    pub fn new(system: &SystemResolver) -> Schema {
-        let mut type_definitions: Vec<TypeDefinition> = system.schema_types();
+    pub fn new(subsystem_resolvers: &Vec<Box<dyn SubsystemResolver + Send + Sync>>) -> Schema {
+        let mut type_definitions: Vec<TypeDefinition> = {
+            subsystem_resolvers
+                .iter()
+                .fold(vec![], |mut acc, resolver| {
+                    acc.extend(resolver.schema_types());
+                    acc
+                })
+        };
 
         let query_type_definition = {
-            let queries = system.schema_queries();
+            let queries = {
+                subsystem_resolvers
+                    .iter()
+                    .fold(vec![], |mut acc, resolver| {
+                        acc.extend(resolver.schema_queries());
+                        acc
+                    })
+            };
 
             // Even though we resolve __type and __schema fields for the Query
             // type, GraphQL spec doesn't allow them to be exposed as an
@@ -49,7 +63,14 @@ impl Schema {
         };
 
         let mutation_type_definition = {
-            let mutations = system.schema_mutations();
+            let mutations = {
+                subsystem_resolvers
+                    .iter()
+                    .fold(vec![], |mut acc, resolver| {
+                        acc.extend(resolver.schema_mutations());
+                        acc
+                    })
+            };
 
             TypeDefinition {
                 extend: false,

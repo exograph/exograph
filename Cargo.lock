@@ -3740,6 +3740,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-introspection-resolver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "futures",
+ "maybe-owned",
+ "payas-core-model",
+ "payas-core-resolver",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "payas-model"
 version = "0.1.0"
 dependencies = [
@@ -3867,6 +3885,7 @@ dependencies = [
  "payas-deno",
  "payas-deno-model",
  "payas-deno-resolver",
+ "payas-introspection-resolver",
  "payas-model",
  "payas-parser",
  "payas-sql",

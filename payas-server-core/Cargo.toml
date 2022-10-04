@@ -46,6 +46,7 @@ payas-deno-model = { path = "../payas-deno-plugin/payas-deno-model" }
 payas-deno-resolver = { path = "../payas-deno-plugin/payas-deno-resolver" }
 payas-wasm-model = { path = "../payas-wasm-plugin/payas-wasm-model" }
 payas-wasm-resolver = { path = "../payas-wasm-plugin/payas-wasm-resolver" }
+payas-introspection-resolver = { path = "../payas-introspection-plugin/payas-introspection-resolver" }
 
 [dev-dependencies]
 insta = "1.14.0"

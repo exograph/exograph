@@ -1,5 +1,7 @@
+mod field_resolver;
 pub mod introspection;
 mod operation_payload;
+pub mod operation_resolver;
 pub mod plugin;
 mod query_response;
 pub mod request_context;
@@ -8,6 +10,7 @@ pub mod validation;
 
 use std::{future::Future, pin::Pin};
 
+pub use field_resolver::FieldResolver;
 use maybe_owned::MaybeOwned;
 pub use operation_payload::OperationsPayload;
 pub use query_response::{QueryResponse, QueryResponseBody};

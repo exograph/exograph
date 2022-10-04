@@ -1,14 +1,14 @@
-use payas_core_model::type_normalization::TypeDefinitionIntrospection;
-use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::introspection::definition::schema::Schema;
 use payas_core_resolver::validation::field::ValidatedField;
+use payas_core_resolver::{plugin::SubsystemResolutionError, request_context::RequestContext};
 
 use async_graphql_parser::types::{BaseType, Type, TypeDefinition};
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::graphql::execution::field_resolver::FieldResolver;
-use crate::graphql::execution::system_context::SystemContext;
-use crate::graphql::execution_error::ExecutionError;
+use crate::field_resolver::FieldResolver;
+
+use payas_core_model::type_normalization::TypeDefinitionIntrospection;
 
 use super::resolver_support::Resolver;
 
@@ -19,38 +19,38 @@ struct BoxedType<'a> {
 }
 
 #[async_trait]
-impl FieldResolver<Value, ExecutionError, SystemContext> for TypeDefinition {
+impl FieldResolver<Value, SubsystemResolutionError> for TypeDefinition {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        system_context: &'e SystemContext,
+        schema: &Schema,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value, ExecutionError> {
+    ) -> Result<Value, SubsystemResolutionError> {
         match field.name.as_str() {
             "name" => Ok(Value::String(self.name())),
             "kind" => Ok(Value::String(self.kind())),
             "description" => Ok(self.description().map(Value::String).unwrap_or(Value::Null)),
             "fields" => {
                 self.fields()
-                    .resolve_value(&field.subfields, system_context, request_context)
+                    .resolve_value(&field.subfields, schema, request_context)
                     .await
             }
             "interfaces" => Ok(Value::Array(vec![])), // TODO
             "possibleTypes" => Ok(Value::Null),       // TODO
             "enumValues" => {
                 self.enum_values()
-                    .resolve_value(&field.subfields, system_context, request_context)
+                    .resolve_value(&field.subfields, schema, request_context)
                     .await
             }
             "inputFields" => {
                 self.input_fields()
-                    .resolve_value(&field.subfields, system_context, request_context)
+                    .resolve_value(&field.subfields, schema, request_context)
                     .await
             }
             "ofType" => Ok(Value::Null),
             "specifiedByUrl" => Ok(Value::Null),
             "__typename" => Ok(Value::String("__Type".to_string())),
-            field_name => Err(ExecutionError::InvalidField(
+            field_name => Err(SubsystemResolutionError::InvalidField(
                 field_name.to_owned(),
                 "TypeDefinition",
             )),
@@ -59,13 +59,13 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for TypeDefinition {
 }
 
 #[async_trait]
-impl FieldResolver<Value, ExecutionError, SystemContext> for Type {
+impl FieldResolver<Value, SubsystemResolutionError> for Type {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        system_context: &'e SystemContext,
+        schema: &Schema,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value, ExecutionError> {
+    ) -> Result<Value, SubsystemResolutionError> {
         let base_type = &self.base;
 
         if !self.nullable {
@@ -78,19 +78,17 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for Type {
                 type_kind: "NON_NULL",
             };
             boxed_type
-                .resolve_field(field, system_context, request_context)
+                .resolve_field(field, schema, request_context)
                 .await
         } else {
             match base_type {
                 BaseType::Named(name) => {
                     // See commented out derivation of FieldResolver for Option<T>
                     //system_context.schema.get_type_definition(name).resolve_field(system_context, field)
-                    let tpe = system_context.schema.get_type_definition(name);
+
+                    let tpe = schema.get_type_definition(name);
                     match tpe {
-                        Some(tpe) => {
-                            tpe.resolve_field(field, system_context, request_context)
-                                .await
-                        }
+                        Some(tpe) => tpe.resolve_field(field, schema, request_context).await,
                         None => Ok(Value::Null),
                     }
                 }
@@ -100,7 +98,7 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for Type {
                         type_kind: "LIST",
                     };
                     boxed_type
-                        .resolve_field(field, system_context, request_context)
+                        .resolve_field(field, schema, request_context)
                         .await
                 }
             }
@@ -112,23 +110,23 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for Type {
 /// determines the `ofType` value and the type_kind determines the `kind`, all
 /// other fields evaluate to null
 #[async_trait]
-impl<'a> FieldResolver<Value, ExecutionError, SystemContext> for BoxedType<'a> {
+impl<'a> FieldResolver<Value, SubsystemResolutionError> for BoxedType<'a> {
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        system_context: &'e SystemContext,
+        schema: &Schema,
         request_context: &'e RequestContext<'e>,
-    ) -> Result<Value, ExecutionError> {
+    ) -> Result<Value, SubsystemResolutionError> {
         match field.name.as_str() {
             "kind" => Ok(Value::String(self.type_kind.to_owned())),
             "ofType" => {
                 self.tpe
-                    .resolve_value(&field.subfields, system_context, request_context)
+                    .resolve_value(&field.subfields, schema, request_context)
                     .await
             }
             "name" | "description" | "specifiedByUrl" | "fields" | "interfaces"
             | "possibleTypes" | "enumValues" | "inoutFields" => Ok(Value::Null),
-            field_name => Err(ExecutionError::InvalidField(
+            field_name => Err(SubsystemResolutionError::InvalidField(
                 field_name.to_owned(),
                 "List/NonNull type",
             )),

@@ -1,9 +1,8 @@
 use async_trait::async_trait;
 
-use payas_core_resolver::introspection::definition::root_element::IntrospectionRootElement;
 use payas_core_resolver::validation::field::ValidatedField;
 use payas_core_resolver::validation::operation::ValidatedOperation;
-use payas_core_resolver::{request_context::RequestContext, QueryResponse, QueryResponseBody};
+use payas_core_resolver::{request_context::RequestContext, QueryResponse};
 
 use super::system_context::SystemContext;
 use crate::graphql::{
@@ -26,19 +25,21 @@ impl FieldResolver<QueryResponse, ExecutionError, SystemContext> for ValidatedOp
         let name = field.name.as_str();
 
         if name.starts_with("__") {
-            let introspection_root = IntrospectionRootElement {
-                operation_type: &self.typ,
-                name,
-            };
+            todo!()
 
-            let body = introspection_root
-                .resolve_field(field, system_context, request_context)
-                .await?;
+        //     let introspection_root = IntrospectionRootElement {
+        //         operation_type: &self.typ,
+        //         name,
+        //     };
 
-            Ok(QueryResponse {
-                body: QueryResponseBody::Json(body),
-                headers: vec![],
-            })
+        //     let body = introspection_root
+        //         .resolve_field(field, system_context, request_context)
+        //         .await?;
+
+        //     Ok(QueryResponse {
+        //         body: QueryResponseBody::Json(body),
+        //         headers: vec![],
+        //     })
         } else {
             let data_root = DataRootElement {
                 operation_type: &self.typ,
