@@ -4,9 +4,9 @@ use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
 use payas_core_resolver::{
     request_context::{ContextParsingError, RequestContext},
-    system::SystemResolver,
+    system_resolver::SystemResolver,
+    OperationsPayload,
 };
-use payas_server_core::OperationsPayload;
 use request::LambdaRequest;
 use serde_json::{json, Value};
 use std::sync::Arc;

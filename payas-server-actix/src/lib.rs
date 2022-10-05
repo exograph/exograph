@@ -4,8 +4,8 @@ use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
 use payas_core_resolver::request_context::{ContextParsingError, RequestContext};
-use payas_core_resolver::system::SystemResolver;
-use payas_server_core::OperationsPayload;
+use payas_core_resolver::system_resolver::SystemResolver;
+use payas_core_resolver::OperationsPayload;
 use request::ActixRequest;
 use serde_json::Value;
 

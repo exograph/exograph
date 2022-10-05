@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 
 use crate::plugin::SystemResolutionError;
-use crate::system::SystemResolver;
+use crate::system_resolver::SystemResolver;
 use crate::validation::field::ValidatedField;
 use crate::validation::operation::ValidatedOperation;
 use crate::{request_context::RequestContext, QueryResponse};

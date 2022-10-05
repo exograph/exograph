@@ -1,11 +1,12 @@
 mod field_resolver;
+mod interception;
 pub mod introspection;
 mod operation_payload;
 pub mod operation_resolver;
 pub mod plugin;
 mod query_response;
 pub mod request_context;
-pub mod system;
+pub mod system_resolver;
 pub mod validation;
 
 use std::{future::Future, pin::Pin};

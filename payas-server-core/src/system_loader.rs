@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 use payas_core_model::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
     system_serializer::SystemSerializer,
@@ -5,12 +7,11 @@ use payas_core_model::{
 use payas_core_resolver::{
     introspection::definition::schema::Schema,
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
-    system::SystemResolver,
+    system_resolver::SystemResolver,
 };
 use payas_database_resolver::DatabaseSubsystemLoader;
 use payas_deno_resolver::DenoSubsystemLoader;
 use payas_wasm_resolver::WasmSubsystemLoader;
-use thiserror::Error;
 
 pub struct SystemLoader;
 

@@ -1,7 +1,7 @@
 use actix_cors::Cors;
 use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
-use payas_core_resolver::system::SystemResolver;
+use payas_core_resolver::system_resolver::SystemResolver;
 use payas_server_actix::resolve;
 use payas_server_core::{
     create_system_resolver_or_exit, get_endpoint_http_path, get_playground_http_path, graphiql,

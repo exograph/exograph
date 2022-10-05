@@ -1,7 +1,7 @@
 use include_dir::{include_dir, Dir};
 use std::path::Path;
 
-use crate::{get_endpoint_http_path, get_playground_http_path};
+use crate::root_resolver::{get_endpoint_http_path, get_playground_http_path};
 
 static GRAPHIQL_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../graphiql/build");
 
