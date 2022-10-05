@@ -47,14 +47,14 @@ pub enum SubsystemLoadingError {
 
 #[derive(Error, Debug)]
 pub enum SubsystemResolutionError {
-    #[error("{0}")]
-    BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-
     #[error("Invalid field {0} for {1}")]
     InvalidField(String, &'static str), // (field name, container type)
 
     #[error("Not authorized")]
     Authorization,
+
+    #[error("{0}")]
+    UserDisplayError(String), // Error message to be displayed to the user (subsystems should hide internal errors through this)
 }
 
 impl SubsystemResolutionError {
@@ -64,7 +64,7 @@ impl SubsystemResolutionError {
                 format!("Invalid field {} for {}", field_name, container_type)
             }
             SubsystemResolutionError::Authorization => "Not authorized".to_string(),
-            SubsystemResolutionError::BoxedError(e) => e.to_string(),
+            SubsystemResolutionError::UserDisplayError(message) => message.to_string(),
         }
     }
 }
@@ -91,26 +91,33 @@ impl SystemResolutionError {
     pub fn user_error_message(&self) -> String {
         match self {
             SystemResolutionError::BoxedError(_) => todo!(),
-            SystemResolutionError::Validation(_) => todo!(),
+            SystemResolutionError::Validation(error) => error.to_string(),
             SystemResolutionError::SubsystemResolutionError(error) => error.user_error_message(),
             SystemResolutionError::Generic(_) => todo!(),
         }
     }
 }
-/*
 
-            ExecutionError::Database(error) => error.user_error_message(),
-            ExecutionError::Deno(error) => match error {
-                DenoExecutionError::Delegate(underlying) => {
-                    match underlying.downcast_ref::<ExecutionError>() {
-                        Some(error) => error.user_error_message(),
-                        None => error.user_error_message(),
-                    }
-                }
-                _ => error.user_error_message(),
-            },
-            _ => match self.source() {
-                Some(source) => source.to_string(),
-                None => self.to_string(),
-            },
-*/
+// impl ExecutionError {
+//     // Message that should be emitted when the error is returned to the user.
+//     // This should hide any internal details of the error.
+//     // TODO: Log the details of the error.
+//     pub fn user_error_message(&self) -> String {
+//         match self {
+//             ExecutionError::Database(error) => error.user_error_message(),
+//             ExecutionError::Deno(error) => match error {
+//                 DenoExecutionError::Delegate(underlying) => {
+//                     match underlying.downcast_ref::<ExecutionError>() {
+//                         Some(error) => error.user_error_message(),
+//                         None => error.user_error_message(),
+//                     }
+//                 }
+//                 _ => error.user_error_message(),
+//             },
+//             _ => match self.source() {
+//                 Some(source) => source.to_string(),
+//                 None => self.to_string(),
+//             },
+//         }
+//     }
+// }

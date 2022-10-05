@@ -41,7 +41,8 @@ fn deserialize_database_subsystem(
                 None
             }
         })
-        .ok_or_else(|| ParserError::Generic("No database subsystem found in model".into()))?
+        // If there is no database subsystem in the serialized system, create an empty one
+        .unwrap_or_else(|| Ok(ModelDatabaseSystem::new()))
         .map_err(|e| {
             ParserError::Generic(format!(
                 "Error while deserializing database subsystem: {}",

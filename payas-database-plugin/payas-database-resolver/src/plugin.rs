@@ -164,7 +164,7 @@ impl From<DatabaseExecutionError> for SubsystemResolutionError {
     fn from(e: DatabaseExecutionError) -> Self {
         match e {
             DatabaseExecutionError::Authorization => SubsystemResolutionError::Authorization,
-            _ => SubsystemResolutionError::BoxedError(Box::new(e)),
+            _ => SubsystemResolutionError::UserDisplayError(e.user_error_message()),
         }
     }
 }

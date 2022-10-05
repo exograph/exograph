@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use payas_core_resolver::validation::validation_error::ValidationError;
 use payas_database_resolver::DatabaseExecutionError;
 use payas_wasm_resolver::WasmExecutionError;
@@ -29,28 +27,4 @@ pub enum ExecutionError {
 
     #[error("Invalid field {0} for {1}")]
     InvalidField(String, &'static str), // (field name, container type)
-}
-
-impl ExecutionError {
-    // Message that should be emitted when the error is returned to the user.
-    // This should hide any internal details of the error.
-    // TODO: Log the details of the error.
-    pub fn user_error_message(&self) -> String {
-        match self {
-            ExecutionError::Database(error) => error.user_error_message(),
-            ExecutionError::Deno(error) => match error {
-                DenoExecutionError::Delegate(underlying) => {
-                    match underlying.downcast_ref::<ExecutionError>() {
-                        Some(error) => error.user_error_message(),
-                        None => error.user_error_message(),
-                    }
-                }
-                _ => error.user_error_message(),
-            },
-            _ => match self.source() {
-                Some(source) => source.to_string(),
-                None => self.to_string(),
-            },
-        }
-    }
 }
