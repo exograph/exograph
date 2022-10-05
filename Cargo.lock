@@ -3725,12 +3725,14 @@ name = "payas-deno-resolver"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-graphql-parser",
  "async-graphql-value",
  "async-recursion",
  "async-trait",
  "deno_core",
  "futures",
  "maybe-owned",
+ "payas-core-model",
  "payas-core-resolver",
  "payas-deno",
  "payas-deno-model",

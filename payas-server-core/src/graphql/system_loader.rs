@@ -8,6 +8,7 @@ use payas_core_resolver::{
     system::SystemResolver,
 };
 use payas_database_resolver::DatabaseSubsystemLoader;
+use payas_deno_resolver::DenoSubsystemLoader;
 use thiserror::Error;
 
 pub struct SystemLoader;
@@ -37,7 +38,8 @@ impl SystemLoader {
         } = serialized_system;
 
         let database_loader = DatabaseSubsystemLoader {};
-        let loaders: Vec<&dyn SubsystemLoader> = vec![&database_loader];
+        let deno_loader = DenoSubsystemLoader {};
+        let loaders: Vec<&dyn SubsystemLoader> = vec![&database_loader, &deno_loader];
 
         let subsystem_resolvers: Result<Vec<_>, _> = subsystems
             .into_iter()

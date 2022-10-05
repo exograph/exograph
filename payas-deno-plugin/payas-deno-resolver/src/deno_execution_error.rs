@@ -14,6 +14,9 @@ pub enum DenoExecutionError {
     Authorization,
 
     #[error("{0}")]
+    Generic(String),
+
+    #[error("{0}")]
     Delegate(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
