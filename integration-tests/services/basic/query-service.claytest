@@ -6,7 +6,7 @@ operation: |
 
       currentUnixEpoch
     
-      divide(x: $divisor, y: $dividend) {
+      divide(x: $dividend, y: $divisor) {
         quotient
         remainder
       }
@@ -30,10 +30,10 @@ response: |
           const currentTime = Math.floor(Date.now() / 1000);
           return (currentTime - t) < 5;
         }),
-        "divide": ((actual) => {
+        "divide": ((actual) => 
           (actual.quotient  == Math.floor($.dividend / $.divisor)) &&
           (actual.remainder == $.dividend % $.divisor)
-        }),
+        ),
         "shimQuery": "The `foos` with `baz` = 4 have IDs of " + $.foo1_id + ", " + $.foo2_id + ", "
       }
     } 
