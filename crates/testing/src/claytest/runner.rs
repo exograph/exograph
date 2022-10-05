@@ -12,7 +12,7 @@ use std::{
     ffi::OsStr,
     io::{BufRead, BufReader, Write},
     path::Path,
-    process::{Command, Stdio},
+    process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
     time::SystemTime,
 };
@@ -30,6 +30,71 @@ use super::{
 struct ClayPost {
     query: String,
     variables: Map<String, Value>,
+}
+
+type Server = Child;
+type Output = Arc<Mutex<String>>;
+type Endpoint = String;
+fn spawn_clay_server<I, K, V>(model_file: &Path, envs: I) -> Result<(Server, Output, Endpoint)>
+where
+    I: IntoIterator<Item = (K, V)>,
+    K: AsRef<OsStr>,
+    V: AsRef<OsStr>,
+{
+    let mut server = cmd("clay-server")
+        .arg(model_file.as_os_str())
+        .envs(envs) // add extra envs specified in testfile
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("clay-server failed to start")?;
+
+    // wait for it to start
+    const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
+
+    let mut server_stdout = BufReader::new(server.stdout.take().unwrap());
+    let mut server_stderr = BufReader::new(server.stderr.take().unwrap());
+
+    let mut line = String::new();
+    server_stdout.read_line(&mut line).context(format!(
+        r#"Failed to read output line for "{}" server"#,
+        model_file.display()
+    ))?;
+
+    if !line.starts_with(MAGIC_STRING) {
+        bail!(
+            r#"Unexpected output from clay-server "{}": {}"#,
+            model_file.display(),
+            line
+        )
+    }
+
+    // spawn threads to continually drain stdout and stderr
+    let output_mutex = Arc::new(Mutex::new(String::new()));
+
+    let stdout_output = output_mutex.clone();
+    let _stdout_drain = std::thread::spawn(move || loop {
+        let mut buf = String::new();
+        let _ = server_stdout.read_line(&mut buf);
+        stdout_output.lock().unwrap().push_str(&buf);
+    });
+
+    let stderr_output = output_mutex.clone();
+    let _stderr_drain = std::thread::spawn(move || loop {
+        let mut buf = String::new();
+        let _ = server_stderr.read_line(&mut buf);
+        stderr_output.lock().unwrap().push_str(&buf);
+    });
+
+    // take the digits part which represents the port (and ignore other information such as time to start the server)
+    let port: String = line
+        .trim_start_matches(MAGIC_STRING)
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    let endpoint = format!("http://127.0.0.1:{}/graphql", port);
+
+    Ok((server, output_mutex, endpoint))
 }
 
 pub(crate) fn run_testfile(
@@ -71,73 +136,35 @@ pub(crate) fn run_testfile(
         // spawn a clay instance
         println!("{} Initializing clay-server ...", log_prefix);
 
+        // Should have no effect so make it random
         let check_on_startup = if rand::random() { "true" } else { "false" };
 
-        let mut server = cmd("clay-server")
-            .args(vec![testfile.model_path_string()])
-            .env("CLAY_DATABASE_URL", &dburl_for_clay)
-            .env("CLAY_DATABASE_USER", dbusername)
-            .env("CLAY_JWT_SECRET", &jwtsecret)
-            .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
-            .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
-            .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
-            .env("CLAY_INTROSPECTION", "true")
-            .envs(testfile.extra_envs.iter()) // add extra envs specified in testfile
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .context("clay-server failed to start")?;
-
-        // wait for it to start
-        const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
-
-        let mut server_stdout = BufReader::new(server.stdout.take().unwrap());
-        let mut server_stderr = BufReader::new(server.stderr.take().unwrap());
-
-        let mut line = String::new();
-        server_stdout.read_line(&mut line).context(format!(
-            r#"Failed to read output line for "{}" server"#,
-            testfile.name()
-        ))?;
-
-        if !line.starts_with(MAGIC_STRING) {
-            bail!(
-                r#"Unexpected output from clay-server "{}": {}"#,
-                testfile.name(),
-                line
-            )
-        }
-
-        // spawn threads to continually drain stdout and stderr
-        let output_mutex = Arc::new(Mutex::new(String::new()));
-
-        let stdout_output = output_mutex.clone();
-        let _stdout_drain = std::thread::spawn(move || loop {
-            let mut buf = String::new();
-            let _ = server_stdout.read_line(&mut buf);
-            stdout_output.lock().unwrap().push_str(&buf);
-        });
-
-        let stderr_output = output_mutex.clone();
-        let _stderr_drain = std::thread::spawn(move || loop {
-            let mut buf = String::new();
-            let _ = server_stderr.read_line(&mut buf);
-            stderr_output.lock().unwrap().push_str(&buf);
-        });
+        let (server, output_mutex, endpoint) = spawn_clay_server(
+            &testfile.model_path,
+            [
+                ("CLAY_DATABASE_URL", dburl_for_clay.as_str()),
+                ("CLAY_DATABASE_USER", &dbusername),
+                ("CLAY_JWT_SECRET", &jwtsecret),
+                ("CLAY_CONNECTION_POOL_SIZE", "1"), // Otherwise we get a "too many connections" error
+                ("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup),
+                ("CLAY_SERVER_PORT", "0"), // ask clay-server to select a free port
+                ("CLAY_INTROSPECTION", "true"),
+            ]
+            .into_iter()
+            .chain(
+                // add extra envs specified in testfile
+                testfile
+                    .extra_envs
+                    .iter()
+                    .map(|(x, y)| (x.as_str(), y.as_str())),
+            ),
+        )?;
 
         // spawn an HttpClient for requests to clay
         let client = HttpClient::builder()
             .cookies()
             .build()
             .context("While initializing HttpClient")?;
-
-        // take the digits part which represents the port (and ignore other information such as time to start the server)
-        let port: String = line
-            .trim_start_matches(MAGIC_STRING)
-            .chars()
-            .take_while(|c| c.is_ascii_digit())
-            .collect();
-        let endpoint = format!("http://127.0.0.1:{}/graphql", port);
 
         TestfileContext {
             dbname,
