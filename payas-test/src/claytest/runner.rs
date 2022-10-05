@@ -237,14 +237,17 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
             expected_payload,
             auth,
             headers,
+            deno_prelude,
         } => {
             let mut req = Request::post(&ctx.endpoint);
+
+            let deno_prelude = deno_prelude.clone().unwrap_or_default();
 
             // process substitutions in query variables section
             // and extend our collection with the results
             let variables_map: Map<String, Value> = variables
                 .as_ref()
-                .map(|vars| evaluate_using_deno(vars, &ctx.testvariables))
+                .map(|vars| evaluate_using_deno(vars, &deno_prelude, &ctx.testvariables))
                 .transpose()?
                 .unwrap_or_else(|| Value::Object(Map::new()))
                 .as_object()
@@ -280,7 +283,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
             // add extra headers from testfile
             let headers = headers
                 .as_ref()
-                .map(|headers| evaluate_using_deno(headers, &ctx.testvariables))
+                .map(|headers| evaluate_using_deno(headers, &deno_prelude, &ctx.testvariables))
                 .transpose()?;
 
             if let Some(Value::Object(map)) = headers {
@@ -337,6 +340,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
                     match assertion::dynamic_assert_using_deno(
                         expected_payload,
                         body,
+                        &deno_prelude,
                         &ctx.testvariables,
                     ) {
                         Ok(()) => Ok(OperationResult::AssertPassed),

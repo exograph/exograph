@@ -1,6 +1,8 @@
 stages:
     # create Blobs
-    - operation: |
+    - deno: |
+        import { v4 } from "https://deno.land/std@0.140.0/uuid/mod.ts";
+      operation: |
         mutation ($sample_blob: String!) {
             createImages(data: [
                 { name: "foo", data: $sample_blob },
@@ -20,10 +22,8 @@ stages:
         {
             "data": {
                 "createImages": (actual) => {
-                    let uuid_v4_regex = new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-
                     for (const element of actual) {
-                        if (!uuid_v4_regex.test(element.id)) {
+                        if (!v4.validate(element.id)) {
                             throw new ClaytipError(id + " is not a valid UUID")
                         }
                     }

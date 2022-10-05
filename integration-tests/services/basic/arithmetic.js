@@ -3,6 +3,8 @@ export function add(x, y) {
 }
 
 export function divide(x, y) {
+    console.log(x, y);
+
     let quotient = Math.floor(x / y);
     let remainder = x % y;
 

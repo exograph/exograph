@@ -11,5 +11,8 @@ pub mod deno_executor_pool;
 pub mod deno_module;
 mod embedded_module_loader;
 
+#[cfg(feature = "typescript-loader")]
+mod typescript_module_loader;
+
 pub use deno_executor_pool::DenoExecutorPool;
 pub use deno_module::{Arg, DenoModule, DenoModuleSharedState, UserCode};

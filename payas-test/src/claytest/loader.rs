@@ -24,6 +24,7 @@ pub enum TestfileOperation {
         testvariable_bindings: TestvariableBindings,
         variables: Option<String>,        // stringified
         expected_payload: Option<String>, // stringified
+        deno_prelude: Option<String>,
         auth: Option<serde_json::Value>,
         headers: Option<String>, // stringified
     },
@@ -83,6 +84,7 @@ impl ParsedTestfile {
 pub struct TestfileStage {
     pub clayfile: Option<String>,
     pub headers: Option<String>,
+    pub deno: Option<String>,
     pub operation: String,
     pub variable: Option<String>,
     pub auth: Option<String>,
@@ -115,6 +117,7 @@ pub struct InitFile {
     pub operation: String,
     pub variable: Option<String>,
     pub auth: Option<String>,
+    pub deno: Option<String>,
 }
 
 /// Load and parse testfiles from a given directory.
@@ -292,6 +295,7 @@ Error as a multistage test: {}
                 variables: stage.variable,
                 expected_payload: stage.response,
                 headers: stage.headers,
+                deno_prelude: stage.deno,
             })
         })
         .collect::<Result<Vec<_>>>()?;
@@ -330,6 +334,7 @@ fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> 
                 variables: deserialized_initfile.variable,
                 headers: Default::default(),
                 expected_payload: None,
+                deno_prelude: deserialized_initfile.deno,
             })
         }
         _ => {
