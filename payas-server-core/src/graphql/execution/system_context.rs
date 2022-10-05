@@ -10,7 +10,7 @@ use payas_core_resolver::{
         document_validator::DocumentValidator, operation::ValidatedOperation,
         validation_error::ValidationError,
     },
-    OperationsPayload, QueryResponse, ResolveOperationFn,
+    FieldResolver, OperationsPayload, QueryResponse, ResolveOperationFn,
 };
 use payas_model::model::system::ModelSystem;
 
@@ -19,8 +19,6 @@ use payas_sql::DatabaseExecutor;
 use crate::graphql::execution_error::ExecutionError;
 use payas_deno_resolver::ClayDenoExecutorPool;
 use payas_wasm_resolver::WasmExecutorPool;
-
-use super::field_resolver::FieldResolver;
 
 /// Encapsulates the information required by the [crate::resolve] function.
 ///

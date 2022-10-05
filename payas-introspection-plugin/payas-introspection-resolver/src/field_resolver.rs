@@ -43,16 +43,3 @@ where
             .collect()
     }
 }
-
-// This might work after https://github.com/rust-lang/rfcs/blob/master/text/1210-impl-specialization.md
-// impl<T> FieldResolver<Value> for Option<&T>
-// where
-//     T: FieldResolver<Value>,
-// {
-//     fn resolve_field(&self, field: &ValidatedField, system_context: &SystemContext, request_context: &request_context::RequestContext<'_>,) -> Value {
-//         match self {
-//             Some(td) => td.resolve_field(system_context, field),
-//             None => Value::Null,
-//         }
-//     }
-// }

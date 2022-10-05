@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use futures::FutureExt;
 use payas_core_model::mapped_arena::SerializableSlabIndex;
+use payas_core_resolver::FieldResolver;
 use payas_deno_model::interceptor::Interceptor;
 use serde_json::Value;
 
@@ -10,8 +11,7 @@ use payas_deno_resolver::{DenoExecutionError, DenoSystemContext};
 
 use crate::graphql::{
     data::data_operation::DataOperation, data::interception::InterceptedOperation,
-    execution::field_resolver::FieldResolver, execution::system_context::SystemContext,
-    execution_error::ExecutionError,
+    execution::system_context::SystemContext, execution_error::ExecutionError,
 };
 
 #[async_trait]
@@ -19,7 +19,7 @@ impl FieldResolver<Value, ExecutionError, SystemContext> for Value {
     async fn resolve_field<'a>(
         &'a self,
         field: &ValidatedField,
-        _system_context: &'a SystemContext,
+        _resolution_context: &'a SystemContext,
         _request_context: &'a RequestContext<'a>,
     ) -> Result<Value, ExecutionError> {
         let field_name = field.name.as_str();

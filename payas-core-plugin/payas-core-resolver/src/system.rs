@@ -1,6 +1,8 @@
 use async_graphql_parser::{types::ExecutableDocument, Pos};
+use async_trait::async_trait;
 use maybe_owned::MaybeOwned;
 use payas_core_model::serializable_system::InterceptionMap;
+use serde_json::Value;
 use tracing::{error, instrument};
 
 use crate::{
@@ -8,8 +10,8 @@ use crate::{
     plugin::{SubsystemResolver, SystemResolutionError},
     request_context::RequestContext,
     validation::{
-        document_validator::DocumentValidator, operation::ValidatedOperation,
-        validation_error::ValidationError,
+        document_validator::DocumentValidator, field::ValidatedField,
+        operation::ValidatedOperation, validation_error::ValidationError,
     },
     FieldResolver, OperationsPayload, QueryResponse, ResolveOperationFn,
 };
@@ -146,4 +148,27 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
 
         ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
+}
+
+#[async_trait]
+impl FieldResolver<Value, SystemResolutionError, ()> for Value {
+    async fn resolve_field<'a>(
+        &'a self,
+        field: &ValidatedField,
+        _resolution_context: &'a (),
+        _request_context: &'a RequestContext<'a>,
+    ) -> Result<Value, SystemResolutionError> {
+        let field_name = field.name.as_str();
+
+        if let Value::Object(map) = self {
+            map.get(field_name).cloned().ok_or_else(|| {
+                SystemResolutionError::Generic(format!("No field named {} in Object", field_name))
+            })
+        } else {
+            Err(SystemResolutionError::Generic(format!(
+                "{} is not an Object and doesn't have any fields",
+                field_name
+            )))
+        }
+    }
 }

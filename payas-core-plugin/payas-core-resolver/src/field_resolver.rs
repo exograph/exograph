@@ -1,16 +1,15 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 
-use crate::{
-    request_context::RequestContext, system::SystemResolver, validation::field::ValidatedField,
-};
+use crate::{request_context::RequestContext, validation::field::ValidatedField};
 
 #[async_trait]
-pub trait FieldResolver<R, E>
+pub trait FieldResolver<R, E, C>
 where
     Self: std::fmt::Debug,
-    R: Send + Sync,
-    E: Send + Sync,
+    R: Send + Sync, // Response
+    E: Send + Sync, // Error
+    C: Send + Sync,
 {
     // {
     //   name: ???
@@ -19,19 +18,19 @@ where
     async fn resolve_field<'e>(
         &'e self,
         field: &ValidatedField,
-        system_resolver: &'e SystemResolver,
+        resolution_context: &'e C,
         request_context: &'e RequestContext<'e>,
     ) -> Result<R, E>;
 
     async fn resolve_fields(
         &self,
         fields: &[ValidatedField],
-        system_resolver: &SystemResolver,
+        resolution_context: &C,
         request_context: &RequestContext<'_>,
     ) -> Result<Vec<(String, R)>, E> {
         futures::stream::iter(fields.iter())
             .then(|field| async {
-                self.resolve_field(field, system_resolver, request_context)
+                self.resolve_field(field, resolution_context, request_context)
                     .await
                     .map(|value| (field.output_name(), value))
             })
