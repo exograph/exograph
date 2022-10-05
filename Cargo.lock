@@ -4000,11 +4000,13 @@ name = "payas-wasm-resolver"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-graphql-parser",
  "async-graphql-value",
  "async-recursion",
  "async-trait",
  "futures",
  "maybe-owned",
+ "payas-core-model",
  "payas-core-resolver",
  "payas-wasm",
  "payas-wasm-model",
