@@ -1,3 +1,4 @@
+use payas_core_resolver::plugin::{SubsystemResolutionError, SystemResolutionError};
 use thiserror::Error;
 
 use payas_deno::deno_error::DenoError;
@@ -46,9 +47,20 @@ impl DenoExecutionError {
         }
 
         let root_error = root_error(self);
+
+        // To deal with nested exceptions, we need to check if it is an explicit error (direct
+        // invocation, so DenoError::Explicit suffices), or did it invoke it in nested fashion
+        // (indirect invocation, SubsystemResolutionError), or it invoked another subsystem (cross
+        // invocation, SystemResolutionError).
         match root_error.downcast_ref::<DenoError>() {
             Some(DenoError::Explicit(error)) => Some(error.to_string()),
-            _ => None,
+            _ => match root_error.downcast_ref::<SubsystemResolutionError>() {
+                Some(error) => Some(error.user_error_message()),
+                _ => match root_error.downcast_ref::<SystemResolutionError>() {
+                    Some(error) => Some(error.user_error_message()),
+                    _ => None,
+                },
+            },
         }
     }
 }
