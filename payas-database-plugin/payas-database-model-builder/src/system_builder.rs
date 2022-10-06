@@ -118,7 +118,6 @@ impl SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
-    use payas_model::model::mapped_arena::SerializableSlab;
     use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;

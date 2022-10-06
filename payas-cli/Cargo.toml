@@ -21,7 +21,6 @@ tracing = "0.1"
 
 payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
-payas-model = { path = "../payas-model" }
 payas-test = { path = "../payas-test" }
 payas-core-model = { path = "../payas-core-plugin/payas-core-model" }
 payas-core-model-builder = { path = "../payas-core-plugin/payas-core-model-builder" }

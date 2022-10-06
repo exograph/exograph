@@ -3564,7 +3564,6 @@ dependencies = [
  "payas-core-model",
  "payas-core-model-builder",
  "payas-database-model",
- "payas-model",
  "payas-parser",
  "payas-sql",
  "payas-test",
@@ -3760,18 +3759,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "payas-model"
-version = "0.1.0"
-dependencies = [
- "payas-core-model",
- "payas-database-model",
- "payas-deno-model",
- "payas-wasm-model",
- "serde",
- "typed-generational-arena",
-]
-
-[[package]]
 name = "payas-parser"
 version = "0.1.0"
 dependencies = [
@@ -3785,7 +3772,6 @@ dependencies = [
  "payas-database-model-builder",
  "payas-deno-model",
  "payas-deno-model-builder",
- "payas-model",
  "payas-sql",
  "payas-wasm-model",
  "payas-wasm-model-builder",
@@ -3888,7 +3874,6 @@ dependencies = [
  "payas-deno-model",
  "payas-deno-resolver",
  "payas-introspection-resolver",
- "payas-model",
  "payas-parser",
  "payas-sql",
  "payas-wasm-model",
