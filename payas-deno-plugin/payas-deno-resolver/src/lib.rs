@@ -30,7 +30,11 @@ macro_rules! claytip_execute_query {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                context_override: serde_json::Value| {
+            use futures::FutureExt;
             use maybe_owned::MaybeOwned;
+            use payas_core_resolver::plugin::SystemResolutionError;
+            use payas_core_resolver::QueryResponseBody;
+
             let new_request_context = $request_context.with_override(context_override);
             async move {
                 // execute query
@@ -43,7 +47,7 @@ macro_rules! claytip_execute_query {
                     MaybeOwned::Owned(new_request_context),
                 )
                 .await
-                .map_err(|e| DenoExecutionError::Delegate(e))?;
+                .map_err(|e| SystemResolutionError::BoxedError(e))?;
 
                 // collate result into a single QueryResponse
 

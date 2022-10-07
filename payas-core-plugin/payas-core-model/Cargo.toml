@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+async-recursion = "1.0.0"
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 serde = "1.0"
 async-graphql-parser = "4.0.5"

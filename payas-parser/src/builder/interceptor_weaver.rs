@@ -1,6 +1,6 @@
 use payas_core_model::{
     interceptor_kind::InterceptorKind,
-    serializable_system::{InterceptionMap, InterceptorIndexWithSubsystemIndex},
+    serializable_system::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
 };
 use payas_core_model_builder::{
     ast::ast_types::{AstExpr, LogicalOp},
@@ -37,7 +37,7 @@ fn matching_interceptors(
     subsystem_interceptions: &[(usize, Vec<Interception>)],
     operation_name: &str,
     operation_kind: OperationKind,
-) -> Vec<InterceptorIndexWithSubsystemIndex> {
+) -> InterceptionTree {
     let matching_interceptions: Vec<(usize, &Interception)> = subsystem_interceptions
         .iter()
         .flat_map(|(subsystem_index, interceptions)| {
@@ -91,19 +91,112 @@ fn matches_str(expr: &str, operation_name: &str, operation_kind: OperationKind) 
     wildmatch.matches(&format!("{} {}", input, operation_name))
 }
 
-fn ordered(interceptions: Vec<(usize, &Interception)>) -> Vec<InterceptorIndexWithSubsystemIndex> {
-    let mut processed = Vec::new();
-    let mut deferred = Vec::new();
+/// Determine the order and nesting for interceptors.
+///
+/// TODO: Implement this scheme
+///
+/// The core idea (matches that in AspectJ):
+/// - execute all the before interceptors prior to the operation, and all the after interceptors post the operation.
+/// - a before interceptor defined earlier has a higher priority; it is the opposite for the after interceptors.
+/// - an around interceptor defined earlier has a higher priority.
+/// - all before/after interceptors defined earlier than an around interceptor execute by the time the around interceptor is executed.
+///
+/// Note that even for intra-service interceptors, this ides still holds true. All we need a preprocessing step to flatten the interceptors
+/// to put the higher priority service's interceptors first.
+///
+/// Example: A service is set up with multiple interceptors in the following order (and identical
+/// interceptor expressions):
+///
+/// ```ignore
+/// @before 1
+/// @before 2
+/// @after  3   (has higher precedence than around 1, so must execute prior to finishing around 1)
+/// @around 1
+///
+/// @before 3   (has higher precedence than around 2, so must execute prior to starting around 2)
+/// @after  4   (has higher precedence than around 2, so must execute prior to finishing around 2)
+/// @around 2
+///
+/// @before 4   (even when defined after around 2, must execute before the operation and after around 2 started (which has higher precedence than before 4))
+///
+/// @after  1   (has higher precedence than after 2, so must execute once after 2 finishes)
+/// @after  2
+/// ```
+///
+/// We want to execute the interceptors in the following order.
+///
+/// ```ignore
+/// <before 1/>
+/// <before 2/>
+/// <around 1>
+///     <before 3/>
+///     <around 2>
+///         <before 4/>
+///         <OPERATION>
+///         <after 4/>
+///     </around 2>
+///     <after 3/>
+/// </around 1>
+/// <after 2/>
+/// <after 1/>
+/// ```
+///
+/// Will translate to:
+///
+/// ```ignore
+/// InterceptedOperation::Intercepted (
+///     before: [
+///         Interception::NonProceedingInterception(before 1)
+///         Interception::NonProceedingInterception(before 2)
+///     ],
+///     core: Interception::ProceedingInterception(around 1, InterceptionChain(
+///         Interception::NonProceedingInterception(before 3)
+///         Interception::ProceedingInterception(around 2, InterceptionChain(
+///             Interception::NonProceedingInterception(before 4),
+///             Interception::Operation(OPERATION),
+///             Interception::NonProceedingInterception(after 1)
+///         )),
+///         Interception::NonProceedingInterception(after 2)
+///     )),
+///     after: [
+///         Interception::NonProceedingInterception(after 3)
+///         Interception::NonProceedingInterception(after 4)
+///     ]
+/// )
+/// ```
+fn ordered(interceptions: Vec<(usize, &Interception)>) -> InterceptionTree {
+    if interceptions.is_empty() {
+        InterceptionTree::Plain
+    } else {
+        let mut before = vec![];
+        let mut after = vec![];
+        let mut around = vec![];
 
-    for (subsystem_index, interception) in interceptions {
-        let interceptor =
-            InterceptorIndexWithSubsystemIndex::new(subsystem_index, interception.index.clone());
-        if interception.kind == InterceptorKind::Before {
-            processed.push(interceptor);
-        } else {
-            deferred.push(interceptor);
+        interceptions
+            .into_iter()
+            .for_each(|(subsystem_index, interception)| {
+                let interceptor = InterceptorIndexWithSubsystemIndex::new(
+                    subsystem_index,
+                    interception.index.clone(),
+                );
+
+                match interception.kind {
+                    InterceptorKind::Before => before.push(interceptor),
+                    InterceptorKind::After => after.push(interceptor),
+                    InterceptorKind::Around => around.push(interceptor),
+                }
+            });
+
+        let core = Box::new(InterceptionTree::Plain);
+
+        let core = around.into_iter().fold(core, |core, interceptor| {
+            Box::new(InterceptionTree::Around { core, interceptor })
+        });
+
+        InterceptionTree::Intercepted {
+            before,
+            core,
+            after,
         }
     }
-    processed.extend(deferred.into_iter());
-    processed
 }

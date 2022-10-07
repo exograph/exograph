@@ -5,14 +5,16 @@ use async_trait::async_trait;
 use futures::future::BoxFuture;
 use serde_json::Value;
 
-use payas_core_resolver::QueryResponse;
+use payas_core_resolver::{
+    plugin::SystemResolutionError, system_resolver::FnClaytipExecuteQuery, QueryResponse,
+};
 use payas_deno::{
     deno_executor::CallbackProcessor,
     deno_executor_pool::DenoExecutorConfig,
     deno_module::{DenoModule, DenoModuleSharedState},
 };
 
-use super::{claytip_ops::InterceptedOperationInfo, DenoExecutionError};
+use super::claytip_ops::InterceptedOperationInfo;
 
 #[derive(Default, Debug)]
 pub struct ClaytipMethodResponse {
@@ -32,20 +34,12 @@ pub enum RequestFromDenoMessage {
 }
 
 pub enum ResponseForDenoMessage {
-    InterceptedOperationProceed(Result<QueryResponse, DenoExecutionError>),
-    ClaytipExecute(Result<QueryResponse, DenoExecutionError>),
+    InterceptedOperationProceed(Result<QueryResponse, SystemResolutionError>),
+    ClaytipExecute(Result<QueryResponse, SystemResolutionError>),
 }
 
-pub type FnClaytipExecuteQuery<'a> = (dyn Fn(
-    String,
-    Option<serde_json::Map<String, Value>>,
-    Value,
-) -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>>
-     + 'a
-     + Send
-     + Sync);
 pub type FnClaytipInterceptorProceed<'a> =
-    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>> + 'a + Send + Sync);
+    (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>> + 'a + Send + Sync);
 
 pub struct ClayCallbackProcessor<'a> {
     pub claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,

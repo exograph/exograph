@@ -2,12 +2,14 @@ use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
     Positioned,
 };
+use payas_core_model::serializable_system::{InterceptionTree, InterceptorIndex};
 use payas_core_resolver::{
     introspection::definition::schema::Schema,
     plugin::{SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
+    system_resolver::SystemResolver,
     validation::field::ValidatedField,
-    QueryResponse, QueryResponseBody, ResolveOperationFn,
+    QueryResponse, QueryResponseBody,
 };
 
 use crate::{field_resolver::FieldResolver, root_element::IntrospectionRootElement};
@@ -28,7 +30,7 @@ impl SubsystemResolver for IntrospectionResolver {
         field: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext,
-        _resolve_operation_fn: ResolveOperationFn<'a>,
+        _system_resolver: &'a SystemResolver,
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
         let name = field.name.as_str();
 
@@ -52,6 +54,17 @@ impl SubsystemResolver for IntrospectionResolver {
         } else {
             None
         }
+    }
+
+    async fn invoke_interceptor<'a>(
+        &'a self,
+        _operation: &'a ValidatedField,
+        _interceptor_index: InterceptorIndex,
+        _proceeding_interception_tree: Option<&'a InterceptionTree>,
+        _request_context: &'a RequestContext<'a>,
+        _system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
+        Ok(None)
     }
 
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {

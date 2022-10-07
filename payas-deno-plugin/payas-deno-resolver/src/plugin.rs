@@ -4,18 +4,26 @@ use async_graphql_parser::{
 };
 use async_trait::async_trait;
 
-use futures::TryFutureExt;
-use payas_core_model::{mapped_arena::SerializableSlabIndex, system_serializer::SystemSerializer};
+use futures::{FutureExt, TryFutureExt};
+use payas_core_model::{
+    mapped_arena::SerializableSlabIndex,
+    serializable_system::{InterceptionTree, InterceptorIndex},
+    system_serializer::SystemSerializer,
+};
 use payas_core_resolver::{
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
+    system_resolver::SystemResolver,
     validation::field::ValidatedField,
-    QueryResponse, ResolveOperationFn,
+    InterceptedOperation, QueryResponse, QueryResponseBody,
 };
 use payas_deno::DenoExecutorPool;
 use payas_deno_model::{model::ModelDenoSystem, service::ServiceMethod};
 
-use crate::{ClayDenoExecutorPool, DenoExecutionError, DenoOperation, DenoSystemContext};
+use crate::{
+    clay_execution::FnClaytipInterceptorProceed, ClayDenoExecutorPool, DenoExecutionError,
+    DenoOperation, DenoSystemContext,
+};
 
 pub struct DenoSubsystemLoader {}
 
@@ -48,24 +56,30 @@ pub struct DenoSubsystemResolver {
 impl SubsystemResolver for DenoSubsystemResolver {
     async fn resolve<'a>(
         &'a self,
-        field: &'a ValidatedField,
+        operation: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext<'a>,
-        resolve_operation_fn: ResolveOperationFn<'a>,
+        system_resolver: &'a SystemResolver,
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
-        let operation_name = &field.name;
+        let operation_name = &operation.name;
 
         let deno_system_context = DenoSystemContext {
             system: &self.subsystem,
             deno_execution_pool: &self.executor,
-            resolve_operation_fn,
+            resolve_operation_fn: system_resolver.resolve_operation_fn(),
         };
 
-        let operation = match operation_type {
+        let deno_operation = match operation_type {
             OperationType::Query => {
                 let query = self.subsystem.queries.get_by_key(operation_name);
                 query.map(|query| {
-                    create_deno_operation(&self.subsystem, &query.method_id, field, request_context)
+                    create_deno_operation(
+                        &self.subsystem,
+                        &query.method_id,
+                        operation,
+                        request_context,
+                        system_resolver,
+                    )
                 })
             }
             OperationType::Mutation => {
@@ -74,8 +88,9 @@ impl SubsystemResolver for DenoSubsystemResolver {
                     create_deno_operation(
                         &self.subsystem,
                         &mutation.method_id,
-                        field,
+                        operation,
                         request_context,
+                        system_resolver,
                     )
                 })
             }
@@ -84,7 +99,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
             ))),
         };
 
-        match operation {
+        match deno_operation {
             Some(Ok(operation)) => Some(
                 operation
                     .execute(&deno_system_context)
@@ -94,6 +109,54 @@ impl SubsystemResolver for DenoSubsystemResolver {
             Some(Err(e)) => Some(Err(e.into())),
             None => None,
         }
+    }
+
+    async fn invoke_interceptor<'a>(
+        &'a self,
+        operation: &'a ValidatedField,
+        interceptor_index: InterceptorIndex,
+        proceeding_interception_tree: Option<&'a InterceptionTree>,
+        request_context: &'a RequestContext<'a>,
+        system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
+        let interceptor =
+            &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
+
+        let proceeding_interceptor =
+            proceeding_interception_tree.map(|proceeding_interception_tree| {
+                InterceptedOperation::new(
+                    OperationType::Query, // TODO: Get the actual type
+                    operation,
+                    system_resolver,
+                )
+            });
+
+        let proceeding_interceptor = proceeding_interceptor.unwrap();
+
+        let claytip_execute_query =
+            super::claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
+        let (result, response) = super::interceptor_execution::execute_interceptor(
+            interceptor,
+            &self.subsystem,
+            &self.executor,
+            request_context,
+            &claytip_execute_query,
+            operation.name.to_string(),
+            operation,
+            Some(&|| proceeding_interceptor.resolve(request_context)),
+            system_resolver.resolve_operation_fn(),
+        )
+        .await?;
+
+        let body = match result {
+            serde_json::Value::String(value) => QueryResponseBody::Raw(Some(value)),
+            _ => QueryResponseBody::Json(result),
+        };
+
+        Ok(Some(QueryResponse {
+            body,
+            headers: response.map(|r| r.headers).unwrap_or_default(),
+        }))
     }
 
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
@@ -114,6 +177,7 @@ pub(crate) fn create_deno_operation<'a>(
     method_id: &Option<SerializableSlabIndex<ServiceMethod>>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
+    system_resolver: &'a SystemResolver,
 ) -> Result<DenoOperation<'a>, DenoExecutionError> {
     // TODO: Remove unwrap() by changing the type of method_id
     let method = &system.methods[method_id.unwrap()];
@@ -122,6 +186,7 @@ pub(crate) fn create_deno_operation<'a>(
         method,
         field,
         request_context,
+        system_resolver,
     })
 }
 

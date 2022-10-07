@@ -1,6 +1,7 @@
 use async_graphql_value::indexmap::IndexMap;
 use payas_core_resolver::{
-    request_context::RequestContext, validation::field::ValidatedField, ResolveOperationFn,
+    request_context::RequestContext, system_resolver::FnClaytipExecuteQuery,
+    validation::field::ValidatedField, ResolveOperationFn,
 };
 use payas_deno::Arg;
 use payas_deno_model::interceptor::Interceptor;
@@ -8,8 +9,6 @@ use payas_deno_model::model::ModelDenoSystem;
 use serde_json::Value;
 
 use crate::clay_execution::ClayCallbackProcessor;
-
-use super::clay_execution::FnClaytipExecuteQuery;
 
 use super::{
     clay_execution::{ClaytipMethodResponse, FnClaytipInterceptorProceed},

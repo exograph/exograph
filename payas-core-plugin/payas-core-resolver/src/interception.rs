@@ -1,269 +1,142 @@
-// use async_recursion::async_recursion;
-// use futures::{future::BoxFuture, FutureExt};
-// use payas_core_model::interceptor_kind::InterceptorKind;
+use async_graphql_parser::types::OperationType;
+use async_recursion::async_recursion;
 
-// use super::{
-//     request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
-//     QueryResponseBody,
-// };
-// use crate::graphql::execution::system_context::SystemContext;
-// use payas_deno_model::interceptor::Interceptor;
-// use payas_deno_resolver::{
-//     claytip_execute_query, execute_interceptor, DenoExecutionError, DenoSystemContext,
-// };
+use payas_core_model::serializable_system::{InterceptionTree, InterceptorIndexWithSubsystemIndex};
 
-// /// Determine the order and nesting for interceptors.
-// ///
-// /// TODO: Implement this scheme
-// ///
-// /// The core idea (matches that in AspectJ):
-// /// - execute all the before interceptors prior to the operation, and all the after interceptors post the operation.
-// /// - a before interceptor defined earlier has a higher priority; it is the opposite for the after interceptors.
-// /// - an around interceptor defined earlier has a higher priority.
-// /// - all before/after interceptors defined earlier than an around interceptor execute by the time the around interceptor is executed.
-// ///
-// /// Note that even for intra-service interceptors, this ides still holds true. All we need a preprocessing step to flatten the interceptors
-// /// to put the higher priority service's interceptors first.
-// ///
-// /// Example: A service is set up with multiple interceptors in the following order (and identical
-// /// interceptor expressions):
-// ///
-// /// ```ignore
-// /// @before 1
-// /// @before 2
-// /// @after  3   (has higher precedence than around 1, so must execute prior to finishing around 1)
-// /// @around 1
-// ///
-// /// @before 3   (has higher precedence than around 2, so must execute prior to starting around 2)
-// /// @after  4   (has higher precedence than around 2, so must execute prior to finishing around 2)
-// /// @around 2
-// ///
-// /// @before 4   (even when defined after around 2, must execute before the operation and after around 2 started (which has higher precedence than before 4))
-// ///
-// /// @after  1   (has higher precedence than after 2, so must execute once after 2 finishes)
-// /// @after  2
-// /// ```
-// ///
-// /// We want to execute the interceptors in the following order.
+use futures::StreamExt;
 
-// ///
-// /// ```ignore
-// /// <before 1/>
-// /// <before 2/>
-// /// <around 1>
-// ///     <before 3/>
-// ///     <around 2>
-// ///         <before 4/>
-// ///         <OPERATION>
-// ///         <after 4/>
-// ///     </around 2>
-// ///     <after 3/>
-// /// </around 1>
-// /// <after 2/>
-// /// <after 1/>
-// /// ```
-// ///
-// /// Will translate to:
-// ///
-// /// ```ignore
-// /// InterceptedOperation::Intercepted (
-// ///     before: [
-// ///         Interception::NonProceedingInterception(before 1)
-// ///         Interception::NonProceedingInterception(before 2)
-// ///     ],
-// ///     core: Interception::ProceedingInterception(around 1, InterceptionChain(
-// ///         Interception::NonProceedingInterception(before 3)
-// ///         Interception::ProceedingInterception(around 2, InterceptionChain(
-// ///             Interception::NonProceedingInterception(before 4),
-// ///             Interception::Operation(OPERATION),
-// ///             Interception::NonProceedingInterception(after 1)
-// ///         )),
-// ///         Interception::NonProceedingInterception(after 2)
-// ///     )),
-// ///     after: [
-// ///         Interception::NonProceedingInterception(after 3)
-// ///         Interception::NonProceedingInterception(after 4)
-// ///     ]
-// /// )
-// /// ```
+use super::{request_context::RequestContext, validation::field::ValidatedField, QueryResponse};
 
-// pub type ResolveFieldFn<'a> = (dyn Fn(
-//     &'a ValidatedField,
-//     &'a RequestContext<'a>,
-// ) -> BoxFuture<'a, Result<QueryResponse, DenoExecutionError>>
-//      + 'a
-//      + Send
-//      + Sync);
+use crate::{plugin::SystemResolutionError, system_resolver::SystemResolver};
 
-// #[allow(clippy::large_enum_variant)]
-// pub enum InterceptedOperation<'a> {
-//     // around
-//     Intercepted {
-//         operation_name: &'a str,
-//         before: Vec<&'a Interceptor>,
-//         core: Box<InterceptedOperation<'a>>,
-//         after: Vec<&'a Interceptor>,
-//     },
-//     Around {
-//         operation_name: &'a str,
-//         core: Box<InterceptedOperation<'a>>,
-//         interceptor: &'a Interceptor,
-//     },
-//     // query/mutation
-//     Plain,
-// }
+pub struct InterceptedOperation<'a> {
+    operation_type: OperationType,
+    field: &'a ValidatedField,
+    system_resolver: &'a SystemResolver,
+    interception_tree: Option<&'a InterceptionTree>,
+}
 
-// impl<'a> InterceptedOperation<'a> {
-//     pub fn new(operation_name: &'a str, interceptors: Vec<&'a Interceptor>) -> Self {
-//         if interceptors.is_empty() {
-//             Self::Plain
-//         } else {
-//             let mut before = vec![];
-//             let mut after = vec![];
-//             let mut around = vec![];
+impl<'a> InterceptedOperation<'a> {
+    pub fn new(
+        operation_type: OperationType,
+        field: &'a ValidatedField,
+        system_resolver: &'a SystemResolver,
+    ) -> Self {
+        Self {
+            operation_type,
+            field,
+            system_resolver,
+            interception_tree: system_resolver.applicable_interceptors(&field.name, operation_type),
+        }
+    }
 
-//             interceptors
-//                 .into_iter()
-//                 .for_each(|interceptor| match interceptor.interceptor_kind {
-//                     InterceptorKind::Before => before.push(interceptor),
-//                     InterceptorKind::After => after.push(interceptor),
-//                     InterceptorKind::Around => around.push(interceptor),
-//                 });
+    #[async_recursion]
+    pub async fn resolve(
+        &self,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<QueryResponse, SystemResolutionError> {
+        match self.interception_tree {
+            Some(interception_tree) => match interception_tree {
+                InterceptionTree::Intercepted {
+                    before,
+                    core,
+                    after,
+                } => {
+                    self.invoke_non_proceeding_interceptors(&before, request_context)
+                        .await?;
+                    let response = {
+                        let inner_intercepted_operation = InterceptedOperation {
+                            operation_type: self.operation_type,
+                            field: self.field,
+                            system_resolver: self.system_resolver,
+                            interception_tree: Some(core.as_ref()),
+                        };
 
-//             let core = Box::new(InterceptedOperation::Plain);
+                        inner_intercepted_operation.resolve(request_context).await?
+                    };
+                    self.invoke_non_proceeding_interceptors(after, request_context)
+                        .await?;
 
-//             let core = around.into_iter().fold(core, |core, interceptor| {
-//                 Box::new(InterceptedOperation::Around {
-//                     operation_name,
-//                     core,
-//                     interceptor,
-//                 })
-//             });
+                    Ok(response)
+                }
+                InterceptionTree::Around { core, interceptor } => {
+                    let raw_response = self
+                        .invoke_interceptor(interceptor, Some(core.as_ref()), request_context)
+                        .await?;
 
-//             Self::Intercepted {
-//                 operation_name,
-//                 before,
-//                 core,
-//                 after,
-//             }
-//         }
-//     }
+                    Ok(raw_response
+                        .ok_or(SystemResolutionError::AroundInterceptorReturnedNoResponse)?)
+                }
+                InterceptionTree::Plain => self.resolve_operation(request_context).await,
+            },
+            None => self.resolve_operation(request_context).await,
+        }
+    }
 
-//     /// Execute the intercepted operation
-//     ///
-//     /// # Arguments
-//     /// * `resolve` - Function to resolve the operation. This needs to be evaluated in the context of the intercepted operation, since
-//     ///               the intercepted operation may be invoked with overridden context (privileged execution) and access control must
-//     ///               be evaluated considering the overridden context.
-//     #[async_recursion]
-//     pub async fn execute(
-//         &self,
-//         field: &'a ValidatedField,
-//         system_context: &'a SystemContext,
-//         deno_system_context: &DenoSystemContext<'a>,
-//         request_context: &'a RequestContext<'a>,
-//         resolve_field: &ResolveFieldFn<'a>,
-//     ) -> Result<QueryResponse, DenoExecutionError> {
-//         let system = &system_context.system;
-//         let deno_execution_pool = &deno_system_context.deno_execution_pool;
-//         match self {
-//             InterceptedOperation::Intercepted {
-//                 operation_name,
-//                 before,
-//                 core,
-//                 after,
-//             } => {
-//                 for before_interceptor in before {
-//                     execute_interceptor(
-//                         before_interceptor,
-//                         &system.deno_subsystem,
-//                         deno_execution_pool,
-//                         request_context,
-//                         claytip_execute_query!(
-//                             deno_system_context.resolve_operation_fn,
-//                             request_context
-//                         ),
-//                         operation_name.to_string(),
-//                         field,
-//                         None,
-//                         system_context.resolve_operation_fn(),
-//                     )
-//                     .await?;
-//                 }
-//                 let res = core
-//                     .execute(
-//                         field,
-//                         system_context,
-//                         deno_system_context,
-//                         request_context,
-//                         resolve_field,
-//                     )
-//                     .await?;
-//                 for after_interceptor in after {
-//                     execute_interceptor(
-//                         after_interceptor,
-//                         &system.deno_subsystem,
-//                         deno_execution_pool,
-//                         request_context,
-//                         claytip_execute_query!(
-//                             deno_system_context.resolve_operation_fn,
-//                             request_context
-//                         ),
-//                         operation_name.to_string(),
-//                         field,
-//                         None,
-//                         system_context.resolve_operation_fn(),
-//                     )
-//                     .await?;
-//                 }
+    async fn resolve_operation<'e>(
+        &self,
+        request_context: &'e RequestContext<'e>,
+    ) -> Result<QueryResponse, SystemResolutionError> {
+        let stream = futures::stream::iter(self.system_resolver.subsystem_resolvers.iter()).then(
+            |resolver| async {
+                resolver
+                    .resolve(
+                        self.field,
+                        self.operation_type,
+                        request_context,
+                        self.system_resolver,
+                    )
+                    .await
+            },
+        );
 
-//                 Ok(res)
-//             }
+        futures::pin_mut!(stream);
 
-//             InterceptedOperation::Around {
-//                 operation_name,
-//                 core,
-//                 interceptor,
-//             } => {
-//                 let (result, response) = execute_interceptor(
-//                     interceptor,
-//                     &system.deno_subsystem,
-//                     deno_execution_pool,
-//                     request_context,
-//                     claytip_execute_query!(
-//                         deno_system_context.resolve_operation_fn,
-//                         request_context
-//                     ),
-//                     operation_name.to_string(),
-//                     field,
-//                     Some(&|| {
-//                         async move {
-//                             core.execute(
-//                                 field,
-//                                 system_context,
-//                                 deno_system_context,
-//                                 request_context,
-//                                 resolve_field,
-//                             )
-//                             .await
-//                         }
-//                         .boxed()
-//                     }),
-//                     system_context.resolve_operation_fn(),
-//                 )
-//                 .await?;
-//                 let body = match result {
-//                     serde_json::Value::String(value) => QueryResponseBody::Raw(Some(value)),
-//                     _ => QueryResponseBody::Json(result),
-//                 };
+        // Really a find_map(), but StreamExt::find_map() is not available
+        while let Some(next_val) = stream.next().await {
+            if let Some(val) = next_val {
+                // Found a resolver that could return a value (or an error), so we are done resolving
+                return val.map_err(|e| e.into());
+            }
+        }
 
-//                 Ok(QueryResponse {
-//                     body,
-//                     headers: response.map(|r| r.headers).unwrap_or_default(),
-//                 })
-//             }
+        Err(SystemResolutionError::Generic(
+            "No suitable resolver found".to_string(),
+        ))
+    }
 
-//             InterceptedOperation::Plain => resolve_field(field, request_context).await,
-//         }
-//     }
-// }
+    // Useful for before/after interceptors
+    async fn invoke_non_proceeding_interceptors(
+        &self,
+        interceptors: &Vec<InterceptorIndexWithSubsystemIndex>,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<(), SystemResolutionError> {
+        for interceptor in interceptors {
+            self.invoke_interceptor(interceptor, None, request_context)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn invoke_interceptor(
+        &'a self,
+        interceptor: &InterceptorIndexWithSubsystemIndex,
+        proceeding_interception_tree: Option<&'a InterceptionTree>,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<Option<QueryResponse>, SystemResolutionError> {
+        let interceptor_subsystem =
+            &self.system_resolver.subsystem_resolvers[interceptor.subsystem_index];
+
+        interceptor_subsystem
+            .invoke_interceptor(
+                self.field,
+                interceptor.interceptor_index,
+                proceeding_interception_tree,
+                request_context,
+                self.system_resolver,
+            )
+            .await
+            .map_err(|e| e.into())
+    }
+}

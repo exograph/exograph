@@ -1,7 +1,11 @@
-use async_graphql_parser::{types::ExecutableDocument, Pos};
+use async_graphql_parser::{
+    types::{ExecutableDocument, OperationType},
+    Pos,
+};
 use async_trait::async_trait;
+use futures::future::BoxFuture;
 use maybe_owned::MaybeOwned;
-use payas_core_model::serializable_system::InterceptionMap;
+use payas_core_model::serializable_system::{InterceptionMap, InterceptionTree};
 use serde_json::Value;
 use tracing::{error, instrument};
 
@@ -13,7 +17,7 @@ use crate::{
         document_validator::DocumentValidator, field::ValidatedField,
         operation::ValidatedOperation, validation_error::ValidationError,
     },
-    FieldResolver, OperationsPayload, QueryResponse, ResolveOperationFn,
+    FieldResolver, OperationsPayload, QueryResponse, QueryResponseBody, ResolveOperationFn,
 };
 
 pub struct SystemResolver {
@@ -64,6 +68,18 @@ impl SystemResolver {
             .await
     }
 
+    pub fn applicable_interceptors(
+        &self,
+        operation_name: &str,
+        operation_type: OperationType,
+    ) -> Option<&InterceptionTree> {
+        match operation_type {
+            OperationType::Query => self.query_interception_map.get(operation_name),
+            OperationType::Mutation => self.mutation_interception_map.get(operation_name),
+            OperationType::Subscription => None,
+        }
+    }
+
     #[instrument(skip(self, operations_payload))]
     fn validate_operation<'e>(
         &'e self,
@@ -83,12 +99,13 @@ impl SystemResolver {
     /// Resolve the provided top-level operation.
     ///
     /// # Returns
-    /// A function that captures the SystemContext and returns a function that takes the operation and request
-    /// context and returns a future that resolves the operation.
+    /// A function that captures the SystemResolver (`self`) and returns a function that takes the
+    /// operation and request context and returns a future that resolves the operation.
     ///
     /// # Implementation notes
-    /// We use MaybeOwned<RequestContext> since in a few cases (see claytip_execute_query) we need to pass a newly created owned object and in
-    /// most other cases we need to pass an existing reference.
+    /// We use MaybeOwned<RequestContext> since in a few cases (see claytip_execute_query) we need
+    /// to pass a newly created owned object and in most other cases we need to pass an existing
+    /// reference.
     pub fn resolve_operation_fn<'r>(&'r self) -> ResolveOperationFn<'r> {
         Box::new(
             move |input: OperationsPayload, request_context: MaybeOwned<'r, RequestContext<'r>>| {
@@ -100,7 +117,58 @@ impl SystemResolver {
             },
         )
     }
+
+    pub fn claytip_execute_query<'a>(
+        &'a self,
+        request_context: &'a RequestContext<'a>,
+    ) -> Box<FnClaytipExecuteQuery<'a>> {
+        Box::new(
+            move |query: String,
+                  variables: Option<serde_json::Map<String, Value>>,
+                  context_override: Value| {
+                Box::pin(async move {
+                    let new_request_context = request_context.with_override(context_override);
+                    let operations_payload = OperationsPayload {
+                        query,
+                        operation_name: None,
+                        variables,
+                    };
+
+                    let result = self.resolve_operation_fn()(
+                        operations_payload,
+                        MaybeOwned::Owned(new_request_context),
+                    )
+                    .await?;
+
+                    let headers = result
+                        .iter()
+                        .flat_map(|(_, response)| response.headers.clone())
+                        .collect::<Vec<_>>();
+
+                    // generate the body
+                    let body = result
+                        .into_iter()
+                        .map(|(name, response)| (name, response.body.to_json().unwrap()))
+                        .collect::<serde_json::Map<_, _>>();
+
+                    Ok(QueryResponse {
+                        body: QueryResponseBody::Json(serde_json::Value::Object(body)),
+                        headers,
+                    })
+                })
+            },
+        )
+    }
 }
+
+pub type FnClaytipExecuteQuery<'a> = dyn Fn(
+        String,
+        Option<serde_json::Map<String, Value>>,
+        Value,
+    ) -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>>
+    + 'a
+    + Send
+    + Sync;
 
 #[instrument(name = "system_context::parse_query")]
 fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {

@@ -1,11 +1,10 @@
 use anyhow::{anyhow, bail, Result};
 use deno_core::{error::AnyError, op, OpState};
 
+use payas_core_resolver::plugin::SystemResolutionError;
 use serde_json::Value;
 use std::{cell::RefCell, rc::Rc};
 use tokio::sync::mpsc::Sender;
-
-use crate::DenoExecutionError;
 
 use super::clay_execution::{
     ClaytipMethodResponse, RequestFromDenoMessage, ResponseForDenoMessage,
@@ -174,9 +173,10 @@ pub fn op_add_header(state: &mut OpState, header: String, value: String) -> Resu
 // thrown using ClaytipError) and if so, we throw a custom error with the message.
 //
 // Without this logic, the original error will be lost and a generic "Internal server error" will be sent to the client.
-fn process_execution_error<T>(result: Result<T, DenoExecutionError>) -> Result<T, AnyError> {
-    result.map_err(|err| match err.explicit_message() {
-        Some(msg) => anyhow!(deno_core::error::custom_error("ClaytipError", msg)),
-        None => anyhow!(err),
-    })
+fn process_execution_error<T>(result: Result<T, SystemResolutionError>) -> Result<T, AnyError> {
+    // result.map_err(|err| match err.explicit_message() {
+    //     Some(msg) => anyhow!(deno_core::error::custom_error("ClaytipError", msg)),
+    //     None => anyhow!(err),
+    // })
+    result.map_err(|err| anyhow!(err))
 }

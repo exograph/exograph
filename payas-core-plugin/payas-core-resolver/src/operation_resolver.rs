@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use futures::StreamExt;
 
+use crate::interception::InterceptedOperation;
 use crate::plugin::SystemResolutionError;
 use crate::system_resolver::SystemResolver;
 use crate::validation::field::ValidatedField;
@@ -20,41 +20,13 @@ impl FieldResolver<QueryResponse, SystemResolutionError, SystemResolver> for Val
         system_resolver: &'e SystemResolver,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse, SystemResolutionError> {
-        let stream = futures::stream::iter(system_resolver.subsystem_resolvers.iter()).then(
-            |resolver| async {
-                resolver
-                    .resolve(
-                        field,
-                        self.typ,
-                        request_context,
-                        system_resolver.resolve_operation_fn(),
-                    )
-                    .await
-            },
-        );
+        let intercepted_operation = InterceptedOperation::new(self.typ, field, system_resolver);
 
-        futures::pin_mut!(stream);
+        let QueryResponse { body, headers } =
+            intercepted_operation.resolve(request_context).await?;
 
-        // Really find_map(), but StreamExt::find_map() is not available.
-        let QueryResponse { body, headers } = loop {
-            match stream.next().await {
-                Some(next_val) => {
-                    // Found a resolver that could return a value (or an error).
-                    if let Some(val) = next_val {
-                        break val.map_err(|e| e.into());
-                    }
-                }
-                None => {
-                    // The steam has been exhausted, so return error.
-                    break Err(SystemResolutionError::Generic(
-                        "No suitable resolver found".to_string(),
-                    ));
-                }
-            }
-        }?;
-
-        // A proceed call in an around interceptor may have returned more fields that necessary (just like a normal service),
-        // so we need to filter out the fields that are not needed.
+        // A proceed call in an around interceptor or a service call may have returned more fields
+        // that necessary, so we need to filter out the fields that are not needed.
         // TODO: Validate that all requested fields are present in the response.
         let field_selected_response_body = match body {
             QueryResponseBody::Json(value @ serde_json::Value::Object(_)) => {

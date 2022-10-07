@@ -5,12 +5,17 @@ use async_graphql_parser::{
 use async_trait::async_trait;
 
 use futures::TryFutureExt;
-use payas_core_model::{mapped_arena::SerializableSlabIndex, system_serializer::SystemSerializer};
+use payas_core_model::{
+    mapped_arena::SerializableSlabIndex,
+    serializable_system::{InterceptionTree, InterceptorIndex},
+    system_serializer::SystemSerializer,
+};
 use payas_core_resolver::{
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
+    system_resolver::SystemResolver,
     validation::field::ValidatedField,
-    QueryResponse, ResolveOperationFn,
+    QueryResponse,
 };
 use payas_wasm::WasmExecutorPool;
 use payas_wasm_model::{model::ModelWasmSystem, service::ServiceMethod};
@@ -51,14 +56,14 @@ impl SubsystemResolver for WasmSubsystemResolver {
         field: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext<'a>,
-        resolve_operation_fn: ResolveOperationFn<'a>,
+        system_resolver: &'a SystemResolver,
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
         let operation_name = &field.name;
 
         let wasm_system_context = WasmSystemContext {
             system: &self.subsystem,
             executor_pool: &self.executor,
-            resolve_operation_fn,
+            resolve_operation_fn: system_resolver.resolve_operation_fn(),
         };
 
         let operation = match operation_type {
@@ -94,6 +99,17 @@ impl SubsystemResolver for WasmSubsystemResolver {
             Some(Err(e)) => Some(Err(e.into())),
             None => None,
         }
+    }
+
+    async fn invoke_interceptor<'a>(
+        &'a self,
+        _operation: &'a ValidatedField,
+        _interceptor_index: InterceptorIndex,
+        _proceeding_interception_tree: Option<&'a InterceptionTree>,
+        _request_context: &'a RequestContext<'a>,
+        _system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
+        Ok(None)
     }
 
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {

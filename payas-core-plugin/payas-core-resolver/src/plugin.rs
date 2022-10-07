@@ -1,14 +1,18 @@
 use crate::{
     request_context::RequestContext,
+    system_resolver::SystemResolver,
     validation::{field::ValidatedField, validation_error::ValidationError},
-    QueryResponse, ResolveOperationFn,
+    QueryResponse,
 };
 use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
     Positioned,
 };
 use async_trait::async_trait;
-use payas_core_model::error::ModelSerializationError;
+use payas_core_model::{
+    error::ModelSerializationError,
+    serializable_system::{InterceptionTree, InterceptorIndex},
+};
 use thiserror::Error;
 
 pub trait SubsystemLoader {
@@ -25,11 +29,20 @@ pub trait SubsystemLoader {
 pub trait SubsystemResolver {
     async fn resolve<'a>(
         &'a self,
-        field: &'a ValidatedField,
+        operation: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext,
-        resolve_operation_fn: ResolveOperationFn<'a>,
+        system_resolver: &'a SystemResolver,
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>>;
+
+    async fn invoke_interceptor<'a>(
+        &'a self,
+        operation: &'a ValidatedField,
+        interceptor_index: InterceptorIndex,
+        proceeding_interception_tree: Option<&'a InterceptionTree>,
+        request_context: &'a RequestContext<'a>,
+        system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
 
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>>;
     fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>>;
@@ -82,6 +95,9 @@ pub enum SystemResolutionError {
 
     #[error("Subsystem error: {0}")]
     Generic(String),
+
+    #[error("Around interceptor returned no response")]
+    AroundInterceptorReturnedNoResponse,
 }
 
 impl SystemResolutionError {
@@ -89,11 +105,13 @@ impl SystemResolutionError {
     // This should hide any internal details of the error.
     // TODO: Log the details of the error.
     pub fn user_error_message(&self) -> String {
+        let default_message = "Internal server error".to_string();
         match self {
-            SystemResolutionError::BoxedError(_) => todo!(),
+            SystemResolutionError::BoxedError(_) => default_message,
             SystemResolutionError::Validation(error) => error.to_string(),
             SystemResolutionError::SubsystemResolutionError(error) => error.user_error_message(),
-            SystemResolutionError::Generic(_) => todo!(),
+            SystemResolutionError::Generic(_) => default_message,
+            SystemResolutionError::AroundInterceptorReturnedNoResponse => default_message,
         }
     }
 }

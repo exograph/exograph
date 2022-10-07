@@ -3580,6 +3580,7 @@ version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
+ "async-recursion",
  "bincode",
  "bytes",
  "serde",

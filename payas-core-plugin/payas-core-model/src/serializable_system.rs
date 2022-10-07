@@ -8,11 +8,11 @@ use crate::{error::ModelSerializationError, system_serializer::SystemSerializer}
 ///
 /// This (instead of a simple `usize`) is used to make it intentional that the index is not
 /// used for anything else than indexing into the interceptor list.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct InterceptorIndex(pub usize);
 
 /// A type to represent the index of an interceptor across subsystems.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct InterceptorIndexWithSubsystemIndex {
     pub subsystem_index: usize,
     pub interceptor_index: InterceptorIndex,
@@ -25,6 +25,22 @@ impl InterceptorIndexWithSubsystemIndex {
             interceptor_index,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum InterceptionTree {
+    // before/after
+    Intercepted {
+        before: Vec<InterceptorIndexWithSubsystemIndex>,
+        core: Box<InterceptionTree>,
+        after: Vec<InterceptorIndexWithSubsystemIndex>,
+    },
+    Around {
+        core: Box<InterceptionTree>,
+        interceptor: InterceptorIndexWithSubsystemIndex,
+    },
+    // query/mutation
+    Plain,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -57,11 +73,11 @@ impl SystemSerializer for SerializableSystem {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InterceptionMap {
-    pub map: HashMap<String, Vec<InterceptorIndexWithSubsystemIndex>>,
+    pub map: HashMap<String, InterceptionTree>,
 }
 
 impl InterceptionMap {
-    pub fn get(&self, operation_name: &str) -> Option<&Vec<InterceptorIndexWithSubsystemIndex>> {
+    pub fn get(&self, operation_name: &str) -> Option<&InterceptionTree> {
         self.map.get(operation_name)
     }
 }

@@ -1,8 +1,9 @@
 use async_graphql_value::indexmap::IndexMap;
 use async_graphql_value::ConstValue;
-use futures::FutureExt;
 use futures::StreamExt;
 use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::system_resolver::FnClaytipExecuteQuery;
+use payas_core_resolver::system_resolver::SystemResolver;
 use payas_core_resolver::ResolveOperationFn;
 use payas_deno_model::model::ModelDenoSystem;
 use payas_deno_model::operation::OperationReturnType;
@@ -27,6 +28,7 @@ pub struct DenoOperation<'a> {
     pub method: &'a ServiceMethod,
     pub field: &'a ValidatedField,
     pub request_context: &'a RequestContext<'a>,
+    pub system_resolver: &'a SystemResolver,
 }
 
 impl<'a> DenoOperation<'a> {
@@ -166,8 +168,12 @@ async fn resolve_deno<'a>(
 ) -> Result<QueryResponse, DenoExecutionError> {
     let script = &deno_system_context.system.scripts[method.script];
 
-    let claytip_execute_query =
+    let claytip_execute_query: &FnClaytipExecuteQuery =
         super::claytip_execute_query!(deno_system_context.resolve_operation_fn, request_context);
+    // let claytip_execute_query: Box<FnClaytipExecuteQuery> =
+    //     system_resolver.claytip_execute_query(request_context);
+
+    // let claytip_execute_query = claytip_execute_query.as_ref();
 
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &field.arguments,
@@ -179,7 +185,7 @@ async fn resolve_deno<'a>(
     .await?;
 
     let callback_processor = ClayCallbackProcessor {
-        claytip_execute_query,
+        claytip_execute_query: claytip_execute_query,
         claytip_proceed: None,
     };
 

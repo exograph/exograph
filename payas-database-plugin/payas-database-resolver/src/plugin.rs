@@ -4,12 +4,16 @@ use async_graphql_parser::{
 };
 use async_trait::async_trait;
 
-use payas_core_model::system_serializer::SystemSerializer;
+use payas_core_model::{
+    serializable_system::{InterceptionTree, InterceptorIndex},
+    system_serializer::SystemSerializer,
+};
 use payas_core_resolver::{
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
+    system_resolver::SystemResolver,
     validation::field::ValidatedField,
-    QueryResponse, ResolveOperationFn,
+    QueryResponse,
 };
 use payas_database_model::{
     model::ModelDatabaseSystem,
@@ -58,14 +62,14 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
         field: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext<'a>,
-        resolve_operation_fn: ResolveOperationFn<'a>,
+        system_resolver: &'a SystemResolver,
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
         let operation_name = &field.name;
 
         let database_system_context = DatabaseSystemContext {
             system: &self.subsystem,
             database_executor: &self.executor,
-            resolve_operation_fn,
+            resolve_operation_fn: system_resolver.resolve_operation_fn(),
         };
 
         let operation = match operation_type {
@@ -119,6 +123,17 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
             Some(Err(e)) => Some(Err(e.into())),
             None => None,
         }
+    }
+
+    async fn invoke_interceptor<'a>(
+        &'a self,
+        _operation: &'a ValidatedField,
+        _interceptor_index: InterceptorIndex,
+        _proceeding_interception_tree: Option<&'a InterceptionTree>,
+        _request_context: &'a RequestContext<'a>,
+        _system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
+        Ok(None)
     }
 
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
