@@ -6,7 +6,8 @@ use futures::future::BoxFuture;
 use serde_json::Value;
 
 use payas_core_resolver::{
-    plugin::SystemResolutionError, system_resolver::FnClaytipExecuteQuery, QueryResponse,
+    system_resolver::{FnClaytipExecuteQuery, SystemResolutionError},
+    QueryResponse,
 };
 use payas_deno::{
     deno_executor::CallbackProcessor,

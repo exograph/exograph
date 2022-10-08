@@ -1,29 +1,14 @@
 use crate::{
-    request_context::RequestContext,
-    system_resolver::SystemResolver,
-    validation::{field::ValidatedField, validation_error::ValidationError},
-    QueryResponse,
+    request_context::RequestContext, system_resolver::SystemResolver,
+    validation::field::ValidatedField, QueryResponse,
 };
 use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
     Positioned,
 };
 use async_trait::async_trait;
-use payas_core_model::{
-    error::ModelSerializationError,
-    serializable_system::{InterceptionTree, InterceptorIndex},
-};
+use payas_core_model::serializable_system::{InterceptionTree, InterceptorIndex};
 use thiserror::Error;
-
-pub trait SubsystemLoader {
-    fn id(&self) -> &'static str;
-
-    // TODO: Should `resolve_operation_fn: ResolveOperationFn,` go here?
-    fn init(
-        &self,
-        serialized_subsystem: Vec<u8>,
-    ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError>;
-}
 
 #[async_trait]
 pub trait SubsystemResolver {
@@ -62,15 +47,6 @@ pub trait SubsystemResolver {
 }
 
 #[derive(Error, Debug)]
-pub enum SubsystemLoadingError {
-    #[error("System serialization error: {0}")]
-    Init(#[from] ModelSerializationError),
-
-    #[error("{0}")]
-    BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
-}
-
-#[derive(Error, Debug)]
 pub enum SubsystemResolutionError {
     #[error("Invalid field {0} for {1}")]
     InvalidField(String, &'static str), // (field name, container type)
@@ -101,48 +77,6 @@ impl SubsystemResolutionError {
             SubsystemResolutionError::Delegate(error) => error
                 .downcast_ref::<SubsystemResolutionError>()
                 .and_then(|error| error.user_error_message()),
-        }
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum SystemResolutionError {
-    #[error("{0}")]
-    Delegate(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
-
-    #[error("{0}")]
-    Validation(#[from] ValidationError),
-
-    #[error("No subsystem resolver found")]
-    NoResolverFound,
-
-    #[error("{0}")]
-    SubsystemResolutionError(#[from] SubsystemResolutionError),
-
-    #[error("Subsystem error: {0}")]
-    Generic(String),
-
-    #[error("Around interceptor returned no response")]
-    AroundInterceptorReturnedNoResponse,
-}
-
-impl SystemResolutionError {
-    // Message that should be emitted when the error is returned to the user.
-    // This should hide any internal details of the error.
-    // TODO: Log the details of the error.
-    pub fn user_error_message(&self) -> String {
-        self.explicit_message()
-            .unwrap_or("Internal server error".to_string())
-    }
-
-    pub fn explicit_message(&self) -> Option<String> {
-        match self {
-            SystemResolutionError::Validation(error) => Some(error.to_string()),
-            SystemResolutionError::SubsystemResolutionError(error) => error.user_error_message(),
-            SystemResolutionError::Delegate(error) => error
-                .downcast_ref::<SystemResolutionError>()
-                .map(|error| error.user_error_message()),
-            _ => None,
         }
     }
 }

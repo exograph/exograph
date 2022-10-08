@@ -10,7 +10,7 @@ use async_graphql_parser::Pos;
 use async_stream::try_stream;
 use bytes::Bytes;
 use futures::Stream;
-use payas_core_resolver::plugin::SystemResolutionError;
+use payas_core_resolver::system_resolver::SystemResolutionError;
 use payas_core_resolver::system_resolver::SystemResolver;
 pub use payas_core_resolver::OperationsPayload;
 use payas_core_resolver::{request_context::RequestContext, QueryResponseBody};
@@ -142,7 +142,6 @@ fn create_system_resolver(claypot_file: &str) -> Result<SystemResolver, SystemLo
 
 pub fn create_system_resolver_from_serialized_bytes(
     bytes: Vec<u8>,
-    _claypot_file: &str, // For error formation purposes only
 ) -> Result<SystemResolver, SystemLoadingError> {
     SystemLoader::load_from_bytes(bytes)
 }

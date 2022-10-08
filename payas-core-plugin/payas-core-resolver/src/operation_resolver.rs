@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 
 use crate::interception::InterceptedOperation;
-use crate::plugin::SystemResolutionError;
-use crate::system_resolver::SystemResolver;
+use crate::system_resolver::{SystemResolutionError, SystemResolver};
 use crate::validation::field::ValidatedField;
 use crate::validation::operation::ValidatedOperation;
 use crate::{request_context::RequestContext, QueryResponse};

@@ -1,4 +1,6 @@
-use payas_core_resolver::plugin::{SubsystemResolutionError, SystemResolutionError};
+use payas_core_resolver::{
+    plugin::SubsystemResolutionError, system_resolver::SystemResolutionError,
+};
 use thiserror::Error;
 
 use payas_deno::deno_error::DenoError;

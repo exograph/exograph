@@ -32,7 +32,7 @@ macro_rules! claytip_execute_query {
                context_override: serde_json::Value| {
             use futures::FutureExt;
             use maybe_owned::MaybeOwned;
-            use payas_core_resolver::plugin::SystemResolutionError;
+            use payas_core_resolver::system_resolver::SystemResolutionError;
             use payas_core_resolver::QueryResponseBody;
 
             let new_request_context = $request_context.with_override(context_override);

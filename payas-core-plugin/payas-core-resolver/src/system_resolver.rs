@@ -7,11 +7,12 @@ use futures::future::BoxFuture;
 use maybe_owned::MaybeOwned;
 use payas_core_model::serializable_system::{InterceptionMap, InterceptionTree};
 use serde_json::Value;
+use thiserror::Error;
 use tracing::{error, instrument};
 
 use crate::{
     introspection::definition::schema::Schema,
-    plugin::{SubsystemResolver, SystemResolutionError},
+    plugin::{subsystem_resolver::SubsystemResolver, SubsystemResolutionError},
     request_context::RequestContext,
     validation::{
         document_validator::DocumentValidator, field::ValidatedField,
@@ -180,6 +181,48 @@ fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
 
         ValidationError::QueryParsingFailed(message, pos1, pos2)
     })
+}
+
+#[derive(Error, Debug)]
+pub enum SystemResolutionError {
+    #[error("{0}")]
+    Delegate(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+
+    #[error("{0}")]
+    Validation(#[from] ValidationError),
+
+    #[error("No subsystem resolver found")]
+    NoResolverFound,
+
+    #[error("{0}")]
+    SubsystemResolutionError(#[from] SubsystemResolutionError),
+
+    #[error("Subsystem error: {0}")]
+    Generic(String),
+
+    #[error("Around interceptor returned no response")]
+    AroundInterceptorReturnedNoResponse,
+}
+
+impl SystemResolutionError {
+    // Message that should be emitted when the error is returned to the user.
+    // This should hide any internal details of the error.
+    // TODO: Log the details of the error.
+    pub fn user_error_message(&self) -> String {
+        self.explicit_message()
+            .unwrap_or("Internal server error".to_string())
+    }
+
+    pub fn explicit_message(&self) -> Option<String> {
+        match self {
+            SystemResolutionError::Validation(error) => Some(error.to_string()),
+            SystemResolutionError::SubsystemResolutionError(error) => error.user_error_message(),
+            SystemResolutionError::Delegate(error) => error
+                .downcast_ref::<SystemResolutionError>()
+                .map(|error| error.user_error_message()),
+            _ => None,
+        }
+    }
 }
 
 #[async_trait]

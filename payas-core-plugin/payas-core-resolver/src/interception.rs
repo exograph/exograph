@@ -7,7 +7,7 @@ use futures::StreamExt;
 
 use super::{request_context::RequestContext, validation::field::ValidatedField, QueryResponse};
 
-use crate::{plugin::SystemResolutionError, system_resolver::SystemResolver};
+use crate::system_resolver::{SystemResolutionError, SystemResolver};
 
 pub struct InterceptedOperation<'a> {
     operation_type: OperationType,
