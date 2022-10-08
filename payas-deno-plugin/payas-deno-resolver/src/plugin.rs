@@ -117,6 +117,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
     async fn invoke_interceptor<'a>(
         &'a self,
         operation: &'a ValidatedField,
+        operation_type: OperationType,
         interceptor_index: InterceptorIndex,
         proceeding_interception_tree: Option<&'a InterceptionTree>,
         request_context: &'a RequestContext<'a>,
@@ -128,7 +129,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
         let proceeding_interceptor =
             proceeding_interception_tree.map(|proceeding_interception_tree| {
                 InterceptedOperation::new(
-                    OperationType::Query, // TODO: Get the actual type
+                    operation_type,
                     operation,
                     proceeding_interception_tree.core(),
                     system_resolver,

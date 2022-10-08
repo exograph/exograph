@@ -110,6 +110,7 @@ impl SubsystemResolver for WasmSubsystemResolver {
     async fn invoke_interceptor<'a>(
         &'a self,
         _operation: &'a ValidatedField,
+        _operation_type: OperationType,
         _interceptor_index: InterceptorIndex,
         _proceeding_interception_tree: Option<&'a InterceptionTree>,
         _request_context: &'a RequestContext<'a>,

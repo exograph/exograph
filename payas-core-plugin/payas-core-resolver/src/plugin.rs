@@ -40,6 +40,7 @@ pub trait SubsystemResolver {
     async fn invoke_interceptor<'a>(
         &'a self,
         operation: &'a ValidatedField,
+        operation_type: OperationType,
         interceptor_index: InterceptorIndex,
         proceeding_interception_tree: Option<&'a InterceptionTree>,
         request_context: &'a RequestContext<'a>,

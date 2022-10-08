@@ -130,6 +130,7 @@ impl<'a> InterceptedOperation<'a> {
         interceptor_subsystem
             .invoke_interceptor(
                 self.operation,
+                self.operation_type,
                 interceptor.interceptor_index,
                 proceeding_interception_tree,
                 request_context,
