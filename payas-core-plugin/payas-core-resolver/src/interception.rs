@@ -11,22 +11,23 @@ use crate::{plugin::SystemResolutionError, system_resolver::SystemResolver};
 
 pub struct InterceptedOperation<'a> {
     operation_type: OperationType,
-    field: &'a ValidatedField,
-    system_resolver: &'a SystemResolver,
+    operation: &'a ValidatedField,
     interception_tree: Option<&'a InterceptionTree>,
+    system_resolver: &'a SystemResolver,
 }
 
 impl<'a> InterceptedOperation<'a> {
     pub fn new(
         operation_type: OperationType,
-        field: &'a ValidatedField,
+        operation: &'a ValidatedField,
+        interception_tree: Option<&'a InterceptionTree>,
         system_resolver: &'a SystemResolver,
     ) -> Self {
         Self {
             operation_type,
-            field,
+            operation,
             system_resolver,
-            interception_tree: system_resolver.applicable_interceptors(&field.name, operation_type),
+            interception_tree,
         }
     }
 
@@ -47,7 +48,7 @@ impl<'a> InterceptedOperation<'a> {
                     let response = {
                         let inner_intercepted_operation = InterceptedOperation {
                             operation_type: self.operation_type,
-                            field: self.field,
+                            operation: self.operation,
                             system_resolver: self.system_resolver,
                             interception_tree: Some(core.as_ref()),
                         };
@@ -81,7 +82,7 @@ impl<'a> InterceptedOperation<'a> {
             |resolver| async {
                 resolver
                     .resolve(
-                        self.field,
+                        self.operation,
                         self.operation_type,
                         request_context,
                         self.system_resolver,
@@ -100,9 +101,7 @@ impl<'a> InterceptedOperation<'a> {
             }
         }
 
-        Err(SystemResolutionError::Generic(
-            "No suitable resolver found".to_string(),
-        ))
+        Err(SystemResolutionError::NoResolverFound)
     }
 
     // Useful for before/after interceptors
@@ -130,7 +129,7 @@ impl<'a> InterceptedOperation<'a> {
 
         interceptor_subsystem
             .invoke_interceptor(
-                self.field,
+                self.operation,
                 interceptor.interceptor_index,
                 proceeding_interception_tree,
                 request_context,

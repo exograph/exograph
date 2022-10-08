@@ -125,13 +125,15 @@ impl SubsystemResolver for DenoSubsystemResolver {
         let interceptor =
             &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
 
-        let proceeding_interceptor = proceeding_interception_tree.map(|_| {
-            InterceptedOperation::new(
-                OperationType::Query, // TODO: Get the actual type
-                operation,
-                system_resolver,
-            )
-        });
+        let proceeding_interceptor =
+            proceeding_interception_tree.map(|proceeding_interception_tree| {
+                InterceptedOperation::new(
+                    OperationType::Query, // TODO: Get the actual type
+                    operation,
+                    proceeding_interception_tree.core(),
+                    system_resolver,
+                )
+            });
 
         let proceeding_interceptor = proceeding_interceptor.unwrap();
 
@@ -196,7 +198,10 @@ impl From<DenoExecutionError> for SubsystemResolutionError {
     fn from(e: DenoExecutionError) -> Self {
         match e {
             DenoExecutionError::Authorization => SubsystemResolutionError::Authorization,
-            _ => SubsystemResolutionError::UserDisplayError(e.user_error_message()),
+            _ => SubsystemResolutionError::UserDisplayError(
+                e.user_error_message()
+                    .unwrap_or("Internal server error".to_string()),
+            ),
         }
     }
 }

@@ -20,7 +20,12 @@ impl FieldResolver<QueryResponse, SystemResolutionError, SystemResolver> for Val
         system_resolver: &'e SystemResolver,
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse, SystemResolutionError> {
-        let intercepted_operation = InterceptedOperation::new(self.typ, field, system_resolver);
+        let intercepted_operation = InterceptedOperation::new(
+            self.typ,
+            field,
+            system_resolver.applicable_interceptors(&field.name, self.typ),
+            system_resolver,
+        );
 
         let QueryResponse { body, headers } =
             intercepted_operation.resolve(request_context).await?;

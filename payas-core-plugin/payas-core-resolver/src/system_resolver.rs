@@ -17,7 +17,7 @@ use crate::{
         document_validator::DocumentValidator, field::ValidatedField,
         operation::ValidatedOperation, validation_error::ValidationError,
     },
-    FieldResolver, OperationsPayload, QueryResponse, QueryResponseBody, ResolveOperationFn,
+    FieldResolver, OperationsPayload, QueryResponse, ResolveOperationFn,
 };
 
 pub struct SystemResolver {
@@ -113,48 +113,6 @@ impl SystemResolver {
                     self.resolve(input, &request_context)
                         .await
                         .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-                })
-            },
-        )
-    }
-
-    pub fn claytip_execute_query<'a>(
-        &'a self,
-        request_context: &'a RequestContext<'a>,
-    ) -> Box<FnClaytipExecuteQuery<'a>> {
-        Box::new(
-            move |query: String,
-                  variables: Option<serde_json::Map<String, Value>>,
-                  context_override: Value| {
-                Box::pin(async move {
-                    let new_request_context = request_context.with_override(context_override);
-                    let operations_payload = OperationsPayload {
-                        query,
-                        operation_name: None,
-                        variables,
-                    };
-
-                    let result = self.resolve_operation_fn()(
-                        operations_payload,
-                        MaybeOwned::Owned(new_request_context),
-                    )
-                    .await?;
-
-                    let headers = result
-                        .iter()
-                        .flat_map(|(_, response)| response.headers.clone())
-                        .collect::<Vec<_>>();
-
-                    // generate the body
-                    let body = result
-                        .into_iter()
-                        .map(|(name, response)| (name, response.body.to_json().unwrap()))
-                        .collect::<serde_json::Map<_, _>>();
-
-                    Ok(QueryResponse {
-                        body: QueryResponseBody::Json(serde_json::Value::Object(body)),
-                        headers,
-                    })
                 })
             },
         )

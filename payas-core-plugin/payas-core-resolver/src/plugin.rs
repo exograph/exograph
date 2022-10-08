@@ -73,17 +73,24 @@ pub enum SubsystemResolutionError {
 
     #[error("No interceptor found")]
     NoInterceptorFound, // Almost certainly a programming error (we asked a wrong subsystem)
+
+    #[error("{0}")]
+    Delegate(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl SubsystemResolutionError {
-    pub fn user_error_message(&self) -> String {
+    pub fn user_error_message(&self) -> Option<String> {
         match self {
-            SubsystemResolutionError::InvalidField(field_name, container_type) => {
-                format!("Invalid field {} for {}", field_name, container_type)
-            }
-            SubsystemResolutionError::Authorization => "Not authorized".to_string(),
-            SubsystemResolutionError::UserDisplayError(message) => message.to_string(),
-            SubsystemResolutionError::NoInterceptorFound => "Internal server error".to_string(),
+            SubsystemResolutionError::InvalidField(field_name, container_type) => Some(format!(
+                "Invalid field {} for {}",
+                field_name, container_type
+            )),
+            SubsystemResolutionError::Authorization => Some("Not authorized".to_string()),
+            SubsystemResolutionError::UserDisplayError(message) => Some(message.to_string()),
+            SubsystemResolutionError::NoInterceptorFound => None,
+            SubsystemResolutionError::Delegate(error) => error
+                .downcast_ref::<SubsystemResolutionError>()
+                .and_then(|error| error.user_error_message()),
         }
     }
 }
@@ -91,10 +98,13 @@ impl SubsystemResolutionError {
 #[derive(Error, Debug)]
 pub enum SystemResolutionError {
     #[error("{0}")]
-    BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
+    Delegate(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
     #[error("{0}")]
     Validation(#[from] ValidationError),
+
+    #[error("No subsystem resolver found")]
+    NoResolverFound,
 
     #[error("{0}")]
     SubsystemResolutionError(#[from] SubsystemResolutionError),
@@ -111,13 +121,18 @@ impl SystemResolutionError {
     // This should hide any internal details of the error.
     // TODO: Log the details of the error.
     pub fn user_error_message(&self) -> String {
-        let default_message = "Internal server error".to_string();
+        self.explicit_message()
+            .unwrap_or("Internal server error".to_string())
+    }
+
+    pub fn explicit_message(&self) -> Option<String> {
         match self {
-            SystemResolutionError::BoxedError(_) => default_message,
-            SystemResolutionError::Validation(error) => error.to_string(),
+            SystemResolutionError::Validation(error) => Some(error.to_string()),
             SystemResolutionError::SubsystemResolutionError(error) => error.user_error_message(),
-            SystemResolutionError::Generic(_) => default_message,
-            SystemResolutionError::AroundInterceptorReturnedNoResponse => default_message,
+            SystemResolutionError::Delegate(error) => error
+                .downcast_ref::<SystemResolutionError>()
+                .map(|error| error.user_error_message()),
+            _ => None,
         }
     }
 }

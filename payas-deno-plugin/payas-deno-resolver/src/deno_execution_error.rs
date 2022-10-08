@@ -16,23 +16,14 @@ pub enum DenoExecutionError {
 
     #[error("{0}")]
     Generic(String),
-
-    #[error("{0}")]
-    Delegate(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl DenoExecutionError {
-    pub fn user_error_message(&self) -> String {
+    pub fn user_error_message(&self) -> Option<String> {
         match self {
-            DenoExecutionError::Authorization => "Not authorized".to_string(),
-            DenoExecutionError::Deno(DenoError::Explicit(error)) => error.to_string(),
-            DenoExecutionError::Delegate(error) => {
-                match error.downcast_ref::<DenoExecutionError>() {
-                    Some(error) => error.user_error_message(),
-                    None => "Internal server error".to_string(),
-                }
-            }
-            _ => "Internal server error".to_string(), // Do not reveal too much information about the error
+            DenoExecutionError::Authorization => Some("Not authorized".to_string()),
+            DenoExecutionError::Deno(DenoError::Explicit(error)) => Some(error.to_string()),
+            _ => self.explicit_message(),
         }
     }
 
@@ -55,7 +46,7 @@ impl DenoExecutionError {
         match root_error.downcast_ref::<DenoError>() {
             Some(DenoError::Explicit(error)) => Some(error.to_string()),
             _ => match root_error.downcast_ref::<SubsystemResolutionError>() {
-                Some(error) => Some(error.user_error_message()),
+                Some(error) => error.user_error_message(),
                 _ => match root_error.downcast_ref::<SystemResolutionError>() {
                     Some(error) => Some(error.user_error_message()),
                     _ => None,

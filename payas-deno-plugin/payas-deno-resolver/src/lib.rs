@@ -47,7 +47,7 @@ macro_rules! claytip_execute_query {
                     MaybeOwned::Owned(new_request_context),
                 )
                 .await
-                .map_err(|e| SystemResolutionError::BoxedError(e))?;
+                .map_err(SystemResolutionError::Delegate)?;
 
                 // collate result into a single QueryResponse
 

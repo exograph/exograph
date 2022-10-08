@@ -174,9 +174,8 @@ pub fn op_add_header(state: &mut OpState, header: String, value: String) -> Resu
 //
 // Without this logic, the original error will be lost and a generic "Internal server error" will be sent to the client.
 fn process_execution_error<T>(result: Result<T, SystemResolutionError>) -> Result<T, AnyError> {
-    // result.map_err(|err| match err.explicit_message() {
-    //     Some(msg) => anyhow!(deno_core::error::custom_error("ClaytipError", msg)),
-    //     None => anyhow!(err),
-    // })
-    result.map_err(|err| anyhow!(err))
+    result.map_err(|err| match err.explicit_message() {
+        Some(msg) => anyhow!(deno_core::error::custom_error("ClaytipError", msg)),
+        None => anyhow!(err),
+    })
 }
