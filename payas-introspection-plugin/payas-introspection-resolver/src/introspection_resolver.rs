@@ -25,6 +25,10 @@ impl IntrospectionResolver {
 
 #[async_trait::async_trait]
 impl SubsystemResolver for IntrospectionResolver {
+    fn id(&self) -> &'static str {
+        "introspection"
+    }
+
     async fn resolve<'a>(
         &'a self,
         field: &'a ValidatedField,
@@ -64,7 +68,7 @@ impl SubsystemResolver for IntrospectionResolver {
         _request_context: &'a RequestContext<'a>,
         _system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
-        Ok(None)
+        Err(SubsystemResolutionError::NoInterceptorFound)
     }
 
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {

@@ -4,7 +4,7 @@ use async_graphql_parser::{
 };
 use async_trait::async_trait;
 
-use futures::{FutureExt, TryFutureExt};
+use futures::TryFutureExt;
 use payas_core_model::{
     mapped_arena::SerializableSlabIndex,
     serializable_system::{InterceptionTree, InterceptorIndex},
@@ -20,10 +20,7 @@ use payas_core_resolver::{
 use payas_deno::DenoExecutorPool;
 use payas_deno_model::{model::ModelDenoSystem, service::ServiceMethod};
 
-use crate::{
-    clay_execution::FnClaytipInterceptorProceed, ClayDenoExecutorPool, DenoExecutionError,
-    DenoOperation, DenoSystemContext,
-};
+use crate::{ClayDenoExecutorPool, DenoExecutionError, DenoOperation, DenoSystemContext};
 
 pub struct DenoSubsystemLoader {}
 
@@ -41,6 +38,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
         let executor = DenoExecutorPool::new_from_config(crate::clay_config());
 
         Ok(Box::new(DenoSubsystemResolver {
+            id: self.id(),
             subsystem,
             executor,
         }))
@@ -48,12 +46,17 @@ impl SubsystemLoader for DenoSubsystemLoader {
 }
 
 pub struct DenoSubsystemResolver {
+    pub id: &'static str,
     pub subsystem: ModelDenoSystem,
     pub executor: ClayDenoExecutorPool,
 }
 
 #[async_trait]
 impl SubsystemResolver for DenoSubsystemResolver {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
     async fn resolve<'a>(
         &'a self,
         operation: &'a ValidatedField,
@@ -122,14 +125,13 @@ impl SubsystemResolver for DenoSubsystemResolver {
         let interceptor =
             &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
 
-        let proceeding_interceptor =
-            proceeding_interception_tree.map(|proceeding_interception_tree| {
-                InterceptedOperation::new(
-                    OperationType::Query, // TODO: Get the actual type
-                    operation,
-                    system_resolver,
-                )
-            });
+        let proceeding_interceptor = proceeding_interception_tree.map(|_| {
+            InterceptedOperation::new(
+                OperationType::Query, // TODO: Get the actual type
+                operation,
+                system_resolver,
+            )
+        });
 
         let proceeding_interceptor = proceeding_interceptor.unwrap();
 

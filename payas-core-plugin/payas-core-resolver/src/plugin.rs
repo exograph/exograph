@@ -27,6 +27,8 @@ pub trait SubsystemLoader {
 
 #[async_trait]
 pub trait SubsystemResolver {
+    fn id(&self) -> &'static str;
+
     async fn resolve<'a>(
         &'a self,
         operation: &'a ValidatedField,
@@ -68,6 +70,9 @@ pub enum SubsystemResolutionError {
 
     #[error("{0}")]
     UserDisplayError(String), // Error message to be displayed to the user (subsystems should hide internal errors through this)
+
+    #[error("No interceptor found")]
+    NoInterceptorFound, // Almost certainly a programming error (we asked a wrong subsystem)
 }
 
 impl SubsystemResolutionError {
@@ -78,6 +83,7 @@ impl SubsystemResolutionError {
             }
             SubsystemResolutionError::Authorization => "Not authorized".to_string(),
             SubsystemResolutionError::UserDisplayError(message) => message.to_string(),
+            SubsystemResolutionError::NoInterceptorFound => "Internal server error".to_string(),
         }
     }
 }

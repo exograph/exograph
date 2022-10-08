@@ -44,6 +44,7 @@ impl SubsystemLoader for DatabaseSubsystemLoader {
         let executor = DatabaseExecutor { database };
 
         Ok(Box::new(DatabaseSubsystemResolver {
+            id: self.id(),
             subsystem,
             executor,
         }))
@@ -51,12 +52,17 @@ impl SubsystemLoader for DatabaseSubsystemLoader {
 }
 
 pub struct DatabaseSubsystemResolver {
+    pub id: &'static str,
     pub subsystem: ModelDatabaseSystem,
     pub executor: DatabaseExecutor,
 }
 
 #[async_trait]
 impl SubsystemResolver for DatabaseSubsystemResolver {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
     async fn resolve<'a>(
         &'a self,
         field: &'a ValidatedField,
@@ -133,7 +139,7 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
         _request_context: &'a RequestContext<'a>,
         _system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
-        Ok(None)
+        Err(SubsystemResolutionError::NoInterceptorFound)
     }
 
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {

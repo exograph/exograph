@@ -38,6 +38,7 @@ impl SubsystemLoader for WasmSubsystemLoader {
         let executor = WasmExecutorPool::default();
 
         Ok(Box::new(WasmSubsystemResolver {
+            id: self.id(),
             subsystem,
             executor,
         }))
@@ -45,12 +46,17 @@ impl SubsystemLoader for WasmSubsystemLoader {
 }
 
 pub struct WasmSubsystemResolver {
+    pub id: &'static str,
     pub subsystem: ModelWasmSystem,
     pub executor: WasmExecutorPool,
 }
 
 #[async_trait]
 impl SubsystemResolver for WasmSubsystemResolver {
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
     async fn resolve<'a>(
         &'a self,
         field: &'a ValidatedField,
@@ -109,7 +115,7 @@ impl SubsystemResolver for WasmSubsystemResolver {
         _request_context: &'a RequestContext<'a>,
         _system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
-        Ok(None)
+        Err(SubsystemResolutionError::NoInterceptorFound)
     }
 
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {

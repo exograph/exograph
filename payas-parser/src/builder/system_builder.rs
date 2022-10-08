@@ -44,23 +44,24 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<Vec<u8>, ModelBuil
     let mut query_names = vec![];
     let mut mutation_names = vec![];
 
+    // We must enumerate() over the result of running each builder, since that will filter out any
+    // subsystem that don't need serialization (empty subsystems). This will ensure that we assign
+    // the correct subsystem indices (which will be eventually used to dispatch interceptors to the
+    // correct subsystem)
     let subsystems: Vec<SerializableSubsystem> = subsystem_builders
         .iter()
+        .flat_map(|builder| builder.build(&typechecked_system, &base_system))
         .enumerate()
-        .flat_map(|(subsystem_index, builder)| {
-            let build_info = builder.build(&typechecked_system, &base_system);
+        .map(|(subsystem_index, build_info)| {
+            let build_info = build_info?;
+            subsystem_interceptions.push((subsystem_index, build_info.interceptions));
+            query_names.extend(build_info.query_names);
+            mutation_names.extend(build_info.mutation_names);
 
-            build_info.map(|build_info| {
-                let build_info = build_info?;
-                subsystem_interceptions.push((subsystem_index, build_info.interceptions));
-                query_names.extend(build_info.query_names);
-                mutation_names.extend(build_info.mutation_names);
-
-                Ok(SerializableSubsystem {
-                    id: build_info.id,
-                    subsystem_index,
-                    serialized_subsystem: build_info.serialized_subsystem,
-                })
+            Ok(SerializableSubsystem {
+                id: build_info.id,
+                subsystem_index,
+                serialized_subsystem: build_info.serialized_subsystem,
             })
         })
         .collect::<Result<Vec<_>, ModelBuildingError>>()?;

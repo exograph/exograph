@@ -59,6 +59,7 @@ impl SystemLoader {
                     .map_err(SystemLoadingError::SubsystemLoadingError)
             })
             .collect();
+
         let mut subsystem_resolvers = subsystem_resolvers?;
         let schema = Schema::new(&subsystem_resolvers);
 

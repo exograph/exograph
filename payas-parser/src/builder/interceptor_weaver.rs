@@ -175,10 +175,8 @@ fn ordered(interceptions: Vec<(usize, &Interception)>) -> InterceptionTree {
         interceptions
             .into_iter()
             .for_each(|(subsystem_index, interception)| {
-                let interceptor = InterceptorIndexWithSubsystemIndex::new(
-                    subsystem_index,
-                    interception.index.clone(),
-                );
+                let interceptor =
+                    InterceptorIndexWithSubsystemIndex::new(subsystem_index, interception.index);
 
                 match interception.kind {
                     InterceptorKind::Before => before.push(interceptor),
