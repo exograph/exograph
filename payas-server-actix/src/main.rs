@@ -114,7 +114,7 @@ fn get_claypot_file_name() -> String {
 }
 
 async fn playground(req: HttpRequest, resolver: web::Data<SystemResolver>) -> impl Responder {
-    if !resolver.allow_introspection {
+    if !resolver.allow_introspection() {
         return HttpResponse::Forbidden().body("Introspection is not enabled");
     }
 

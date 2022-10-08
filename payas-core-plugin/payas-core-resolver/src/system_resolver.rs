@@ -26,7 +26,6 @@ pub struct SystemResolver {
     pub mutation_interception_map: InterceptionMap,
 
     pub schema: Schema,
-    pub allow_introspection: bool,
 }
 
 impl SystemResolver {
@@ -116,6 +115,13 @@ impl SystemResolver {
                 })
             },
         )
+    }
+
+    pub fn allow_introspection(&self) -> bool {
+        self.subsystem_resolvers
+            .iter()
+            .find(|subsystem_resolver| subsystem_resolver.id() == "introspection")
+            .is_some()
     }
 }
 

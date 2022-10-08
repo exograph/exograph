@@ -2,6 +2,8 @@ use std::pin::Pin;
 use std::process::exit;
 use std::{fs::File, io::BufReader, path::Path};
 
+use crate::system_loader::SystemLoadingError;
+
 use super::system_loader::SystemLoader;
 use ::tracing::instrument;
 use async_graphql_parser::Pos;
@@ -12,8 +14,6 @@ use payas_core_resolver::plugin::SystemResolutionError;
 use payas_core_resolver::system_resolver::SystemResolver;
 pub use payas_core_resolver::OperationsPayload;
 use payas_core_resolver::{request_context::RequestContext, QueryResponseBody};
-
-use super::initialization_error::InitializationError;
 
 pub type Headers = Vec<(String, String)>;
 
@@ -126,27 +126,25 @@ pub fn get_endpoint_http_path() -> String {
     std::env::var("CLAY_ENDPOINT_HTTP_PATH").unwrap_or_else(|_| "/graphql".to_string())
 }
 
-fn create_system_resolver(claypot_file: &str) -> Result<SystemResolver, InitializationError> {
+fn create_system_resolver(claypot_file: &str) -> Result<SystemResolver, SystemLoadingError> {
     if !Path::new(&claypot_file).exists() {
-        return Err(InitializationError::FileNotFound(claypot_file.to_string()));
+        return Err(SystemLoadingError::FileNotFound(claypot_file.to_string()));
     }
     match File::open(&claypot_file) {
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
 
             SystemLoader::load(claypot_file_buffer)
-                .map_err(|e| InitializationError::ModelSerializationError(claypot_file.into(), e))
         }
-        Err(e) => Err(InitializationError::FileOpen(claypot_file.into(), e)),
+        Err(e) => Err(SystemLoadingError::FileOpen(claypot_file.into(), e)),
     }
 }
 
 pub fn create_system_resolver_from_serialized_bytes(
     bytes: Vec<u8>,
-    claypot_file: &str, // For error formation purposes only
-) -> Result<SystemResolver, InitializationError> {
+    _claypot_file: &str, // For error formation purposes only
+) -> Result<SystemResolver, SystemLoadingError> {
     SystemLoader::load_from_bytes(bytes)
-        .map_err(|e| InitializationError::ModelSerializationError(claypot_file.into(), e))
 }
 
 pub fn create_system_resolver_or_exit(claypot_file: &str) -> SystemResolver {
