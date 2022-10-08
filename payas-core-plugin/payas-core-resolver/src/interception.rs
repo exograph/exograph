@@ -127,16 +127,26 @@ impl<'a> InterceptedOperation<'a> {
         let interceptor_subsystem =
             &self.system_resolver.subsystem_resolvers[interceptor.subsystem_index];
 
-        interceptor_subsystem
-            .invoke_interceptor(
+        match proceeding_interception_tree {
+            Some(proceeding_interception_tree) => interceptor_subsystem
+                .invoke_proceeding_interceptor(
+                    self.operation,
+                    self.operation_type,
+                    interceptor.interceptor_index,
+                    proceeding_interception_tree,
+                    request_context,
+                    self.system_resolver,
+                ),
+
+            None => interceptor_subsystem.invoke_non_proceeding_interceptor(
                 self.operation,
                 self.operation_type,
                 interceptor.interceptor_index,
-                proceeding_interception_tree,
                 request_context,
                 self.system_resolver,
-            )
-            .await
-            .map_err(|e| e.into())
+            ),
+        }
+        .await
+        .map_err(|e| e.into())
     }
 }

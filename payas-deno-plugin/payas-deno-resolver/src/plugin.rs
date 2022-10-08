@@ -114,29 +114,61 @@ impl SubsystemResolver for DenoSubsystemResolver {
         }
     }
 
-    async fn invoke_interceptor<'a>(
+    async fn invoke_non_proceeding_interceptor<'a>(
         &'a self,
         operation: &'a ValidatedField,
-        operation_type: OperationType,
+        _operation_type: OperationType,
         interceptor_index: InterceptorIndex,
-        proceeding_interception_tree: Option<&'a InterceptionTree>,
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let interceptor =
             &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
 
-        let proceeding_interceptor =
-            proceeding_interception_tree.map(|proceeding_interception_tree| {
-                InterceptedOperation::new(
-                    operation_type,
-                    operation,
-                    proceeding_interception_tree.core(),
-                    system_resolver,
-                )
-            });
+        let claytip_execute_query =
+            super::claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
+        let (result, response) = super::interceptor_execution::execute_interceptor(
+            interceptor,
+            &self.subsystem,
+            &self.executor,
+            request_context,
+            &claytip_execute_query,
+            operation.name.to_string(),
+            operation,
+            None,
+            system_resolver.resolve_operation_fn(),
+        )
+        .await?;
 
-        let proceeding_interceptor = proceeding_interceptor.unwrap();
+        let body = match result {
+            serde_json::Value::String(value) => QueryResponseBody::Raw(Some(value)),
+            _ => QueryResponseBody::Json(result),
+        };
+
+        Ok(Some(QueryResponse {
+            body,
+            headers: response.map(|r| r.headers).unwrap_or_default(),
+        }))
+    }
+
+    async fn invoke_proceeding_interceptor<'a>(
+        &'a self,
+        operation: &'a ValidatedField,
+        operation_type: OperationType,
+        interceptor_index: InterceptorIndex,
+        proceeding_interception_tree: &'a InterceptionTree,
+        request_context: &'a RequestContext<'a>,
+        system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
+        let interceptor =
+            &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
+
+        let proceeding_interceptor = InterceptedOperation::new(
+            operation_type,
+            operation,
+            Some(proceeding_interception_tree),
+            system_resolver,
+        );
 
         let claytip_execute_query =
             super::claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);

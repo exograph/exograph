@@ -43,16 +43,6 @@ pub enum InterceptionTree {
     Plain,
 }
 
-impl InterceptionTree {
-    pub fn core(&self) -> Option<&InterceptionTree> {
-        match self {
-            InterceptionTree::Intercepted { core, .. } => Some(core.as_ref()),
-            InterceptionTree::Around { core, .. } => Some(core.as_ref()),
-            InterceptionTree::Plain => None,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SerializableSubsystem {
     pub id: String,

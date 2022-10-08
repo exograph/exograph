@@ -37,12 +37,21 @@ pub trait SubsystemResolver {
         system_resolver: &'a SystemResolver,
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>>;
 
-    async fn invoke_interceptor<'a>(
+    async fn invoke_non_proceeding_interceptor<'a>(
         &'a self,
         operation: &'a ValidatedField,
         operation_type: OperationType,
         interceptor_index: InterceptorIndex,
-        proceeding_interception_tree: Option<&'a InterceptionTree>,
+        request_context: &'a RequestContext<'a>,
+        system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
+
+    async fn invoke_proceeding_interceptor<'a>(
+        &'a self,
+        operation: &'a ValidatedField,
+        operation_type: OperationType,
+        interceptor_index: InterceptorIndex,
+        proceeding_interception_tree: &'a InterceptionTree,
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
