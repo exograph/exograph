@@ -26,7 +26,6 @@ use super::{
     claytip_ops::InterceptedOperationInfo,
     deno_execution_error::DenoExecutionError,
     deno_operation::DenoOperation,
-    deno_system_context::DenoSystemContext,
 };
 
 pub type ClayDenoExecutorPool = DenoExecutorPool<
@@ -78,12 +77,6 @@ impl SubsystemResolver for DenoSubsystemResolver {
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
         let operation_name = &operation.name;
 
-        let deno_system_context = DenoSystemContext {
-            system: &self.subsystem,
-            deno_execution_pool: &self.executor,
-            resolve_operation_fn: system_resolver.resolve_operation_fn(),
-        };
-
         let deno_operation = match operation_type {
             OperationType::Query => {
                 let query = self.subsystem.queries.get_by_key(operation_name);
@@ -93,6 +86,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
                         &query.method_id,
                         operation,
                         request_context,
+                        self,
                         system_resolver,
                     )
                 })
@@ -105,6 +99,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
                         &mutation.method_id,
                         operation,
                         request_context,
+                        self,
                         system_resolver,
                     )
                 })
@@ -115,12 +110,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
         };
 
         match deno_operation {
-            Some(Ok(operation)) => Some(
-                operation
-                    .execute(&deno_system_context)
-                    .map_err(|e| e.into())
-                    .await,
-            ),
+            Some(Ok(operation)) => Some(operation.execute().map_err(|e| e.into()).await),
             Some(Err(e)) => Some(Err(e.into())),
             None => None,
         }
@@ -141,11 +131,9 @@ impl SubsystemResolver for DenoSubsystemResolver {
             claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
-            &self.subsystem,
-            &self.executor,
+            &self,
             request_context,
             &claytip_execute_query,
-            operation.name.to_string(),
             operation,
             None,
             system_resolver.resolve_operation_fn(),
@@ -186,11 +174,9 @@ impl SubsystemResolver for DenoSubsystemResolver {
             claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
-            &self.subsystem,
-            &self.executor,
+            &self,
             request_context,
             &claytip_execute_query,
-            operation.name.to_string(),
             operation,
             Some(&|| proceeding_interceptor.resolve(request_context)),
             system_resolver.resolve_operation_fn(),
@@ -226,6 +212,7 @@ pub(crate) fn create_deno_operation<'a>(
     method_id: &Option<SerializableSlabIndex<ServiceMethod>>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
+    subsystem_resolver: &'a DenoSubsystemResolver,
     system_resolver: &'a SystemResolver,
 ) -> Result<DenoOperation<'a>, DenoExecutionError> {
     // TODO: Remove unwrap() by changing the type of method_id
@@ -235,6 +222,7 @@ pub(crate) fn create_deno_operation<'a>(
         method,
         field,
         request_context,
+        subsystem_resolver,
         system_resolver,
     })
 }

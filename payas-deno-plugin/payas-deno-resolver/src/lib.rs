@@ -5,7 +5,6 @@ mod clay_execution;
 mod claytip_ops;
 mod deno_execution_error;
 mod deno_operation;
-mod deno_system_context;
 mod interceptor_execution;
 mod plugin;
 mod service_access_predicate;

@@ -5,36 +5,31 @@ use payas_core_resolver::{
 };
 use payas_deno::Arg;
 use payas_deno_model::interceptor::Interceptor;
-use payas_deno_model::model::ModelDenoSystem;
 use serde_json::Value;
+
+use crate::{deno_operation::construct_arg_sequence, plugin::DenoSubsystemResolver};
 
 use super::{
     clay_execution::{ClayCallbackProcessor, ClaytipMethodResponse, FnClaytipInterceptorProceed},
     claytip_ops::InterceptedOperationInfo,
     deno_execution_error::DenoExecutionError,
-    deno_operation::construct_arg_sequence,
-    plugin::ClayDenoExecutorPool,
 };
 
-// For now allow too many arguments (we need to clean this to be able to work with DenoSystemContext, anyway)
-#[allow(clippy::too_many_arguments)]
 pub async fn execute_interceptor<'a>(
     interceptor: &'a Interceptor,
-    system: &'a ModelDenoSystem,
-    deno_execution_pool: &'a ClayDenoExecutorPool,
+    subsystem_resolver: &'a DenoSubsystemResolver,
     request_context: &'a RequestContext<'a>,
     claytip_execute_query: &'a ClaytipExecuteQueryFn<'a>,
-    operation_name: String,
-    operation_query: &'a ValidatedField,
+    operation: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
     resolve_operation: ResolveOperationFn<'a>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>), DenoExecutionError> {
-    let script = &system.scripts[interceptor.script];
+    let script = &subsystem_resolver.subsystem.scripts[interceptor.script];
 
     let arg_sequence: Vec<Arg> = construct_arg_sequence(
         &IndexMap::new(),
         &interceptor.arguments,
-        system,
+        &subsystem_resolver.subsystem,
         &resolve_operation,
         request_context,
     )
@@ -45,15 +40,16 @@ pub async fn execute_interceptor<'a>(
         claytip_proceed: claytip_proceed_operation,
     };
 
-    deno_execution_pool
+    subsystem_resolver
+        .executor
         .execute_and_get_r(
             &script.path,
             &script.script,
             &interceptor.name,
             arg_sequence,
             Some(InterceptedOperationInfo {
-                name: operation_name,
-                query: serde_json::to_value(operation_query).unwrap(),
+                name: operation.name.to_string(),
+                query: serde_json::to_value(operation).unwrap(),
             }),
             callback_processor,
         )

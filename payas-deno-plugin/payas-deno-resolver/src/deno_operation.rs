@@ -6,20 +6,19 @@ use payas_core_resolver::system_resolver::ClaytipExecuteQueryFn;
 use payas_core_resolver::system_resolver::SystemResolver;
 use payas_core_resolver::ResolveOperationFn;
 use payas_deno_model::model::ModelDenoSystem;
-use payas_deno_model::operation::OperationReturnType;
+use payas_deno_model::service::Argument;
 use std::collections::HashMap;
 
 use payas_core_resolver::validation::field::ValidatedField;
 use payas_deno::Arg;
-use payas_deno_model::service::{Argument, ServiceMethod};
+use payas_deno_model::service::ServiceMethod;
 use payas_deno_model::types::{ServiceCompositeType, ServiceTypeKind};
 
 use crate::access_solver;
 use crate::clay_execution::ClayCallbackProcessor;
 use crate::deno_execution_error::DenoExecutionError;
+use crate::plugin::DenoSubsystemResolver;
 use crate::service_access_predicate::ServiceAccessPredicate;
-
-use super::deno_system_context::DenoSystemContext;
 
 use payas_core_resolver::{QueryResponse, QueryResponseBody};
 
@@ -29,76 +28,104 @@ pub struct DenoOperation<'a> {
     pub method: &'a ServiceMethod,
     pub field: &'a ValidatedField,
     pub request_context: &'a RequestContext<'a>,
+    pub subsystem_resolver: &'a DenoSubsystemResolver,
     pub system_resolver: &'a SystemResolver,
 }
 
 impl<'a> DenoOperation<'a> {
-    pub async fn execute(
-        &self,
-        deno_system_context: &DenoSystemContext<'a>,
-    ) -> Result<QueryResponse, DenoExecutionError> {
-        let access_predicate = compute_service_access_predicate(
-            &self.method.return_type,
-            self.method,
-            deno_system_context,
-            self.request_context,
-        )
-        .await;
+    pub async fn execute(&self) -> Result<QueryResponse, DenoExecutionError> {
+        let access_predicate = self.compute_service_access_predicate().await;
 
         if !access_predicate {
             return Err(DenoExecutionError::Authorization);
         }
 
-        resolve_deno(
-            self.method,
-            self.field,
-            deno_system_context,
+        self.resolve_deno().await
+    }
+
+    async fn compute_service_access_predicate(&self) -> bool {
+        let subsystem = &self.subsystem();
+        let return_type = self.method.return_type.typ(&subsystem.service_types);
+        let resolve = &self.system_resolver.resolve_operation_fn();
+
+        let type_level_access = match &return_type.kind {
+            ServiceTypeKind::Primitive => true,
+            ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => {
+                let access_expr = &access.value;
+
+                access_solver::solve_access(access_expr, self.request_context, subsystem, resolve)
+                    .await
+                    .into()
+            }
+        };
+
+        let method_access_expr = &self.method.access.value;
+
+        let method_level_access = access_solver::solve_access(
+            method_access_expr,
+            self.request_context,
+            subsystem,
+            resolve,
+        )
+        .await;
+
+        let method_level_access = method_level_access;
+
+        // deny if either access check fails
+        !(matches!(type_level_access, false)
+            || matches!(method_level_access, ServiceAccessPredicate::False))
+    }
+
+    async fn resolve_deno(&self) -> Result<QueryResponse, DenoExecutionError> {
+        let subsystem = &self.subsystem();
+        let script = &subsystem.scripts[self.method.script];
+
+        let claytip_execute_query: &ClaytipExecuteQueryFn = claytip_execute_query!(
+            self.system_resolver.resolve_operation_fn(),
+            self.request_context
+        );
+
+        let arg_sequence: Vec<Arg> = self.construct_arg_sequence().await?;
+
+        let callback_processor = ClayCallbackProcessor {
+            claytip_execute_query: claytip_execute_query,
+            claytip_proceed: None,
+        };
+
+        let (result, response) = self
+            .subsystem_resolver
+            .executor
+            .execute_and_get_r(
+                &script.path,
+                &script.script,
+                &self.method.name,
+                arg_sequence,
+                None,
+                callback_processor,
+            )
+            .await
+            .map_err(DenoExecutionError::Deno)?;
+
+        Ok(QueryResponse {
+            body: QueryResponseBody::Json(result),
+            headers: response.map(|r| r.headers).unwrap_or_default(),
+        })
+    }
+
+    pub async fn construct_arg_sequence(&self) -> Result<Vec<Arg>, DenoExecutionError> {
+        construct_arg_sequence(
+            &self.field.arguments,
+            &self.method.arguments,
+            self.subsystem(),
+            &self.system_resolver.resolve_operation_fn(),
             self.request_context,
         )
         .await
     }
-}
 
-async fn compute_service_access_predicate<'a>(
-    return_type: &OperationReturnType,
-    method: &'a ServiceMethod,
-    system_context: &DenoSystemContext<'a>,
-    request_context: &'a RequestContext<'a>,
-) -> bool {
-    let return_type = return_type.typ(&system_context.system.service_types);
-    let resolve = &system_context.resolve_operation_fn;
-
-    let type_level_access = match &return_type.kind {
-        ServiceTypeKind::Primitive => true,
-        ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => {
-            let access_expr = &access.value;
-
-            access_solver::solve_access(
-                access_expr,
-                request_context,
-                system_context.system,
-                resolve,
-            )
-            .await
-            .into()
-        }
-    };
-
-    let method_access_expr = &method.access.value;
-
-    let method_level_access = access_solver::solve_access(
-        method_access_expr,
-        request_context,
-        system_context.system,
-        resolve,
-    )
-    .await;
-
-    let method_level_access = method_level_access;
-
-    // deny if either access check fails
-    !(matches!(type_level_access, false)
-        || matches!(method_level_access, ServiceAccessPredicate::False))
+    fn subsystem(&self) -> &ModelDenoSystem {
+        &self.subsystem_resolver.subsystem
+    }
 }
 
 pub async fn construct_arg_sequence<'a>(
@@ -159,48 +186,4 @@ pub async fn construct_arg_sequence<'a>(
         .await
         .into_iter()
         .collect::<Result<_, _>>()
-}
-
-async fn resolve_deno<'a>(
-    method: &ServiceMethod,
-    field: &ValidatedField,
-    deno_system_context: &DenoSystemContext<'a>,
-    request_context: &'a RequestContext<'a>,
-) -> Result<QueryResponse, DenoExecutionError> {
-    let script = &deno_system_context.system.scripts[method.script];
-
-    let claytip_execute_query: &ClaytipExecuteQueryFn =
-        claytip_execute_query!(deno_system_context.resolve_operation_fn, request_context);
-
-    let arg_sequence: Vec<Arg> = construct_arg_sequence(
-        &field.arguments,
-        &method.arguments,
-        deno_system_context.system,
-        &deno_system_context.resolve_operation_fn,
-        request_context,
-    )
-    .await?;
-
-    let callback_processor = ClayCallbackProcessor {
-        claytip_execute_query: claytip_execute_query,
-        claytip_proceed: None,
-    };
-
-    let (result, response) = deno_system_context
-        .deno_execution_pool
-        .execute_and_get_r(
-            &script.path,
-            &script.script,
-            &method.name,
-            arg_sequence,
-            None,
-            callback_processor,
-        )
-        .await
-        .map_err(DenoExecutionError::Deno)?;
-
-    Ok(QueryResponse {
-        body: QueryResponseBody::Json(result),
-        headers: response.map(|r| r.headers).unwrap_or_default(),
-    })
 }

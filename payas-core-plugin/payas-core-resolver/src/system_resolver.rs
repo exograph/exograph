@@ -150,7 +150,7 @@ impl SystemResolver {
 
 #[macro_export]
 macro_rules! claytip_execute_query {
-    ($resolve_query_fn:expr, $request_context:ident) => {
+    ($resolve_query_fn:expr, $request_context:expr) => {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                context_override: serde_json::Value| {
