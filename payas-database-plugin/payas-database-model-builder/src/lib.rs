@@ -1,3 +1,5 @@
+pub use plugin::DatabaseSubsystemBuilder;
+
 mod access_builder;
 mod access_utils;
 mod builder;
@@ -15,5 +17,3 @@ mod resolved_builder;
 mod system_builder;
 mod type_builder;
 mod update_mutation_builder;
-
-pub use plugin::DatabaseSubsystemBuilder;

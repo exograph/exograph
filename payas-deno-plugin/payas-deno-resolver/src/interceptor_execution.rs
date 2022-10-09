@@ -8,12 +8,12 @@ use payas_deno_model::interceptor::Interceptor;
 use payas_deno_model::model::ModelDenoSystem;
 use serde_json::Value;
 
-use crate::clay_execution::ClayCallbackProcessor;
-
 use super::{
-    clay_execution::{ClaytipMethodResponse, FnClaytipInterceptorProceed},
+    clay_execution::{ClayCallbackProcessor, ClaytipMethodResponse, FnClaytipInterceptorProceed},
+    claytip_ops::InterceptedOperationInfo,
+    deno_execution_error::DenoExecutionError,
     deno_operation::construct_arg_sequence,
-    ClayDenoExecutorPool, DenoExecutionError, InterceptedOperationInfo,
+    plugin::ClayDenoExecutorPool,
 };
 
 // For now allow too many arguments (we need to clean this to be able to work with DenoSystemContext, anyway)

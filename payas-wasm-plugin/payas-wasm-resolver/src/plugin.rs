@@ -20,7 +20,10 @@ use payas_core_resolver::{
 use payas_wasm::WasmExecutorPool;
 use payas_wasm_model::{model::ModelWasmSystem, service::ServiceMethod};
 
-use crate::{WasmExecutionError, WasmOperation, WasmSystemContext};
+use crate::{
+    wasm_execution_error::WasmExecutionError, wasm_operation::WasmOperation,
+    wasm_system_context::WasmSystemContext,
+};
 
 pub struct WasmSubsystemLoader {}
 

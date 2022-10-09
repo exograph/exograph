@@ -16,13 +16,13 @@ use payas_deno_model::types::{ServiceCompositeType, ServiceTypeKind};
 
 use crate::access_solver;
 use crate::clay_execution::ClayCallbackProcessor;
+use crate::deno_execution_error::DenoExecutionError;
 use crate::service_access_predicate::ServiceAccessPredicate;
 
 use super::deno_system_context::DenoSystemContext;
 
 use payas_core_resolver::{QueryResponse, QueryResponseBody};
 
-use super::DenoExecutionError;
 use payas_core_resolver::claytip_execute_query;
 
 pub struct DenoOperation<'a> {

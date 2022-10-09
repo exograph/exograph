@@ -1,7 +1,6 @@
 use payas_core_resolver::ResolveOperationFn;
+use payas_wasm::WasmExecutorPool;
 use payas_wasm_model::model::ModelWasmSystem;
-
-use super::WasmExecutorPool;
 
 pub struct WasmSystemContext<'r> {
     pub system: &'r ModelWasmSystem,

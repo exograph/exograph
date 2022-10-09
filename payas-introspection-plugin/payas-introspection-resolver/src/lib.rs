@@ -1,3 +1,5 @@
+pub use introspection_resolver::IntrospectionResolver;
+
 mod directive_resolver;
 mod enum_value_resolver;
 mod field_definition_resolver;
@@ -9,5 +11,3 @@ mod root_element;
 mod root_resolver;
 mod schema_resolver;
 mod type_resolver;
-
-pub use introspection_resolver::IntrospectionResolver;

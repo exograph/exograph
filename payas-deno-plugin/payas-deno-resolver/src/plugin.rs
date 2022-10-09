@@ -21,8 +21,19 @@ use payas_core_resolver::{
 use payas_deno::DenoExecutorPool;
 use payas_deno_model::{model::ModelDenoSystem, service::ServiceMethod};
 
-use crate::{ClayDenoExecutorPool, DenoExecutionError, DenoOperation, DenoSystemContext};
+use super::{
+    clay_execution::{clay_config, ClaytipMethodResponse, RequestFromDenoMessage},
+    claytip_ops::InterceptedOperationInfo,
+    deno_execution_error::DenoExecutionError,
+    deno_operation::DenoOperation,
+    deno_system_context::DenoSystemContext,
+};
 
+pub type ClayDenoExecutorPool = DenoExecutorPool<
+    Option<InterceptedOperationInfo>,
+    RequestFromDenoMessage,
+    ClaytipMethodResponse,
+>;
 pub struct DenoSubsystemLoader {}
 
 impl SubsystemLoader for DenoSubsystemLoader {
@@ -36,7 +47,7 @@ impl SubsystemLoader for DenoSubsystemLoader {
     ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
         let subsystem = ModelDenoSystem::deserialize(serialized_subsystem)?;
 
-        let executor = DenoExecutorPool::new_from_config(crate::clay_config());
+        let executor = DenoExecutorPool::new_from_config(clay_config());
 
         Ok(Box::new(DenoSubsystemResolver {
             id: self.id(),

@@ -1,7 +1,7 @@
 use payas_core_resolver::ResolveOperationFn;
 use payas_deno_model::model::ModelDenoSystem;
 
-use super::ClayDenoExecutorPool;
+use super::plugin::ClayDenoExecutorPool;
 
 pub struct DenoSystemContext<'r> {
     pub system: &'r ModelDenoSystem,
