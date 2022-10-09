@@ -2,26 +2,25 @@ use std::collections::HashMap;
 
 use async_graphql_value::ConstValue;
 use payas_core_resolver::{
-    request_context::RequestContext, validation::field::ValidatedField, QueryResponse,
-    QueryResponseBody,
+    request_context::RequestContext, system_resolver::SystemResolver,
+    validation::field::ValidatedField, QueryResponse, QueryResponseBody,
 };
 use payas_wasm_model::service::ServiceMethod;
 use wasmtime::Val;
 
-use crate::{wasm_execution_error::WasmExecutionError, wasm_system_context::WasmSystemContext};
+use crate::{plugin::WasmSubsystemResolver, wasm_execution_error::WasmExecutionError};
 
 pub struct WasmOperation<'a> {
     pub method: &'a ServiceMethod,
     pub field: &'a ValidatedField,
     pub request_context: &'a RequestContext<'a>,
+    pub subsystem_resolver: &'a WasmSubsystemResolver,
+    pub system_resolver: &'a SystemResolver,
 }
 
 impl<'a> WasmOperation<'a> {
-    pub async fn execute(
-        &self,
-        wasm_system_context: &WasmSystemContext<'a>,
-    ) -> Result<QueryResponse, WasmExecutionError> {
-        let script = &wasm_system_context.system.scripts[self.method.script];
+    pub async fn execute(&self) -> Result<QueryResponse, WasmExecutionError> {
+        let script = &self.subsystem_resolver.subsystem.scripts[self.method.script];
 
         let mapped_args: HashMap<String, Val> = self
             .field
@@ -57,8 +56,9 @@ impl<'a> WasmOperation<'a> {
             })
             .collect();
 
-        let result = wasm_system_context
-            .executor_pool
+        let result = self
+            .subsystem_resolver
+            .executor
             .execute(&script.path, &script.script, &self.method.name, args)
             .await
             .map_err(WasmExecutionError::Wasm)?;

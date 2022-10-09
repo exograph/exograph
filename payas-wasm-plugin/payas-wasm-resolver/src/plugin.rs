@@ -20,10 +20,7 @@ use payas_core_resolver::{
 use payas_wasm::WasmExecutorPool;
 use payas_wasm_model::{model::ModelWasmSystem, service::ServiceMethod};
 
-use crate::{
-    wasm_execution_error::WasmExecutionError, wasm_operation::WasmOperation,
-    wasm_system_context::WasmSystemContext,
-};
+use crate::{wasm_execution_error::WasmExecutionError, wasm_operation::WasmOperation};
 
 pub struct WasmSubsystemLoader {}
 
@@ -69,17 +66,18 @@ impl SubsystemResolver for WasmSubsystemResolver {
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
         let operation_name = &field.name;
 
-        let wasm_system_context = WasmSystemContext {
-            system: &self.subsystem,
-            executor_pool: &self.executor,
-            resolve_operation_fn: system_resolver.resolve_operation_fn(),
-        };
-
         let operation = match operation_type {
             OperationType::Query => {
                 let query = self.subsystem.queries.get_by_key(operation_name);
                 query.map(|query| {
-                    create_wasm_operation(&self.subsystem, &query.method_id, field, request_context)
+                    create_wasm_operation(
+                        &self.subsystem,
+                        &query.method_id,
+                        field,
+                        request_context,
+                        self,
+                        system_resolver,
+                    )
                 })
             }
             OperationType::Mutation => {
@@ -90,6 +88,8 @@ impl SubsystemResolver for WasmSubsystemResolver {
                         &mutation.method_id,
                         field,
                         request_context,
+                        self,
+                        system_resolver,
                     )
                 })
             }
@@ -99,12 +99,7 @@ impl SubsystemResolver for WasmSubsystemResolver {
         };
 
         match operation {
-            Some(Ok(operation)) => Some(
-                operation
-                    .execute(&wasm_system_context)
-                    .map_err(|e| e.into())
-                    .await,
-            ),
+            Some(Ok(operation)) => Some(operation.execute().map_err(|e| e.into()).await),
             Some(Err(e)) => Some(Err(e.into())),
             None => None,
         }
@@ -151,6 +146,8 @@ pub(crate) fn create_wasm_operation<'a>(
     method_id: &Option<SerializableSlabIndex<ServiceMethod>>,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
+    subsystem_resolver: &'a WasmSubsystemResolver,
+    system_resolver: &'a SystemResolver,
 ) -> Result<WasmOperation<'a>, WasmExecutionError> {
     // TODO: Remove unwrap() by changing the type of method_id
     let method = &system.methods[method_id.unwrap()];
@@ -159,6 +156,8 @@ pub(crate) fn create_wasm_operation<'a>(
         method,
         field,
         request_context,
+        subsystem_resolver,
+        system_resolver,
     })
 }
 
