@@ -62,7 +62,6 @@ pub struct DenoModule {
 /// * `shared_state` - A shared state object to pass to the worker.
 /// * `explicit_error_class_name` - The name of the class whose message will be used to report errors.
 impl DenoModule {
-    #[allow(clippy::manual_async_fn)]
     pub async fn new(
         user_code: UserCode,
         user_agent_name: &str,

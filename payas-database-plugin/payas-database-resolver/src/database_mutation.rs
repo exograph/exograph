@@ -82,7 +82,6 @@ pub async fn operation<'content>(
     })
 }
 
-#[allow(clippy::manual_async_fn)]
 async fn create_operation<'content>(
     mutation: &'content DatabaseMutation,
     data_param: &'content CreateDataParameter,
@@ -117,7 +116,6 @@ async fn create_operation<'content>(
     )
 }
 
-#[allow(clippy::manual_async_fn)]
 async fn delete_operation<'content>(
     mutation: &'content DatabaseMutation,
     predicate_param: &'content PredicateParameter,
@@ -160,7 +158,6 @@ async fn delete_operation<'content>(
     })
 }
 
-#[allow(clippy::manual_async_fn)]
 async fn update_operation<'content>(
     mutation: &'content DatabaseMutation,
     data_param: &'content UpdateDataParameter,
