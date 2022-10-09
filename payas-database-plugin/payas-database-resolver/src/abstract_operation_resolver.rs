@@ -4,7 +4,10 @@ use payas_core_resolver::{request_context::RequestContext, QueryResponse, QueryR
 use postgres_types::FromSqlOwned;
 use tokio_postgres::Row;
 
-use super::{DatabaseExecutionError, DatabaseSystemContext};
+use crate::{
+    database_execution_error::DatabaseExecutionError,
+    database_system_context::DatabaseSystemContext,
+};
 
 pub async fn resolve_operation<'e>(
     op: &AbstractOperation<'e>,

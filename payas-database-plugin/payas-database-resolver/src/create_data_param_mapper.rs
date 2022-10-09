@@ -81,7 +81,7 @@ fn map_single<'a>(
         .flat_map(|field| {
             // Process fields that map to a column in the current table
             let field_self_column = field.relation.self_column();
-            let field_arg = super::get_argument_field(argument, &field.name);
+            let field_arg = super::util::get_argument_field(argument, &field.name);
 
             field_arg.map(|field_arg| match field_self_column {
                 Some(field_self_column) => {
@@ -117,7 +117,7 @@ fn map_self_column<'a>(
                         other_type.name, field.name
                     ))
                 })?;
-            match super::get_argument_field(argument, other_type_pk_field_name) {
+            match super::util::get_argument_field(argument, other_type_pk_field_name) {
                 Some(other_type_pk_arg) => other_type_pk_arg,
                 None => todo!(),
             }

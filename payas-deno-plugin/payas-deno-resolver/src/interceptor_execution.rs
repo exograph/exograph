@@ -1,6 +1,6 @@
 use async_graphql_value::indexmap::IndexMap;
 use payas_core_resolver::{
-    request_context::RequestContext, system_resolver::FnClaytipExecuteQuery,
+    request_context::RequestContext, system_resolver::ClaytipExecuteQueryFn,
     validation::field::ValidatedField, ResolveOperationFn,
 };
 use payas_deno::Arg;
@@ -23,7 +23,7 @@ pub async fn execute_interceptor<'a>(
     system: &'a ModelDenoSystem,
     deno_execution_pool: &'a ClayDenoExecutorPool,
     request_context: &'a RequestContext<'a>,
-    claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
+    claytip_execute_query: &'a ClaytipExecuteQueryFn<'a>,
     operation_name: String,
     operation_query: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,

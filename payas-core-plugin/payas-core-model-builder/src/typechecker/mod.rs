@@ -1,22 +1,19 @@
 pub mod annotation;
 pub mod annotation_map;
+pub use annotation_map::AnnotationMap;
+pub mod typ;
 
 mod expression;
 mod field_type;
 mod logical_op;
-
 mod selection;
-
-pub mod typ;
 mod util;
-
-use serde::{Deserialize, Serialize};
-
-pub use annotation_map::AnnotationMap;
 
 pub(super) use typ::Type;
 
 use crate::ast::ast_types::NodeTypedness;
+
+use serde::{Deserialize, Serialize};
 
 pub struct Scope {
     pub enclosing_model: Option<String>,

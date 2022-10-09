@@ -11,7 +11,6 @@ use deno_runtime::permissions::Permissions;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
-use fix_hidden_lifetime_bug::fix_hidden_lifetime_bug;
 use tracing::error;
 
 use std::cell::RefCell;
@@ -64,7 +63,6 @@ pub struct DenoModule {
 /// * `explicit_error_class_name` - The name of the class whose message will be used to report errors.
 impl DenoModule {
     #[allow(clippy::manual_async_fn)]
-    #[fix_hidden_lifetime_bug]
     pub async fn new(
         user_code: UserCode,
         user_agent_name: &str,

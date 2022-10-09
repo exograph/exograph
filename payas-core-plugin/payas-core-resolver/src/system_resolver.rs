@@ -18,8 +18,30 @@ use crate::{
         document_validator::DocumentValidator, field::ValidatedField,
         operation::ValidatedOperation, validation_error::ValidationError,
     },
-    FieldResolver, OperationsPayload, QueryResponse, ResolveOperationFn,
+    FieldResolver, OperationsPayload, QueryResponse,
 };
+
+pub type ResolveOperationFn<'r> = Box<
+    dyn Fn(
+            OperationsPayload,
+            MaybeOwned<'r, RequestContext<'r>>,
+        ) -> BoxFuture<
+            'r,
+            Result<Vec<(String, QueryResponse)>, Box<dyn std::error::Error + Send + Sync>>,
+        >
+        + 'r
+        + Send
+        + Sync,
+>;
+
+pub type ClaytipExecuteQueryFn<'a> = dyn Fn(
+        String,
+        Option<serde_json::Map<String, Value>>,
+        Value,
+    ) -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>>
+    + 'a
+    + Send
+    + Sync;
 
 pub struct SystemResolver {
     pub subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
@@ -126,14 +148,55 @@ impl SystemResolver {
     }
 }
 
-pub type FnClaytipExecuteQuery<'a> = dyn Fn(
-        String,
-        Option<serde_json::Map<String, Value>>,
-        Value,
-    ) -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>>
-    + 'a
-    + Send
-    + Sync;
+#[macro_export]
+macro_rules! claytip_execute_query {
+    ($resolve_query_fn:expr, $request_context:ident) => {
+        &move |query_string: String,
+               variables: Option<serde_json::Map<String, serde_json::Value>>,
+               context_override: serde_json::Value| {
+            use futures::FutureExt;
+            use maybe_owned::MaybeOwned;
+            use payas_core_resolver::system_resolver::SystemResolutionError;
+            use payas_core_resolver::QueryResponseBody;
+
+            let new_request_context = $request_context.with_override(context_override);
+            async move {
+                // execute query
+                let result = $resolve_query_fn(
+                    payas_core_resolver::OperationsPayload {
+                        operation_name: None,
+                        query: query_string,
+                        variables,
+                    },
+                    MaybeOwned::Owned(new_request_context),
+                )
+                .await
+                .map_err(SystemResolutionError::Delegate)?;
+
+                // collate result into a single QueryResponse
+
+                // since query execution results in a Vec<(String, QueryResponse)>, we want to
+                // extract and collect all HTTP headers generated in QueryResponses
+                let headers = result
+                    .iter()
+                    .flat_map(|(_, response)| response.headers.clone())
+                    .collect::<Vec<_>>();
+
+                // generate the body
+                let body = result
+                    .into_iter()
+                    .map(|(name, response)| (name, response.body.to_json().unwrap()))
+                    .collect::<serde_json::Map<_, _>>();
+
+                Ok(QueryResponse {
+                    body: QueryResponseBody::Json(serde_json::Value::Object(body)),
+                    headers,
+                })
+            }
+            .boxed()
+        }
+    };
+}
 
 #[instrument(name = "system_context::parse_query")]
 fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {

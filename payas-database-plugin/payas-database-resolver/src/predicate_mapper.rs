@@ -6,11 +6,14 @@ use payas_database_model::{
 };
 use payas_sql::{AbstractPredicate, ColumnPath};
 
-use crate::column_path_util::to_column_path;
+use crate::{
+    column_path_util::to_column_path,
+    util::{find_arg, get_argument_field, to_column_id_path, Arguments},
+};
 
 use super::{
     cast::cast_value, database_execution_error::DatabaseExecutionError,
-    database_system_context::DatabaseSystemContext, to_column_id_path,
+    database_system_context::DatabaseSystemContext,
 };
 
 pub(crate) trait PredicateParameterMapper<'a> {
@@ -47,7 +50,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     parameters
                         .iter()
                         .fold(AbstractPredicate::True, |acc, parameter| {
-                            let arg = super::get_argument_field(argument_value, &parameter.name);
+                            let arg = get_argument_field(argument_value, &parameter.name);
                             let new_predicate = match arg {
                                 Some(op_value) => {
                                     let (op_key_column, op_value_column) = operands(
@@ -81,7 +84,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .map(|parameter| {
                         (
                             parameter.name.as_str(),
-                            super::get_argument_field(argument_value, &parameter.name),
+                            get_argument_field(argument_value, &parameter.name),
                         )
                     })
                     .fold(Ok(("", None)), |acc, (name, result)| {
@@ -168,7 +171,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                         let mut new_predicate = AbstractPredicate::True;
 
                         for parameter in field_params.iter() {
-                            let arg = super::get_argument_field(argument_value, &parameter.name);
+                            let arg = get_argument_field(argument_value, &parameter.name);
 
                             let new_column_path =
                                 to_column_id_path(&parent_column_path, &self.column_path_link);
@@ -220,4 +223,30 @@ fn operands<'a>(
             )
         })
         .map_err(DatabaseExecutionError::CastError)
+}
+
+pub fn compute_predicate<'a>(
+    predicate_param: Option<&'a PredicateParameter>,
+    arguments: &'a Arguments,
+    additional_predicate: AbstractPredicate<'a>,
+    system_context: &DatabaseSystemContext<'a>,
+) -> Result<AbstractPredicate<'a>, DatabaseExecutionError> {
+    let mapped = predicate_param
+        .as_ref()
+        .and_then(|predicate_parameter| {
+            let argument_value = find_arg(arguments, &predicate_parameter.name);
+            argument_value.map(|argument_value| {
+                predicate_parameter.map_to_predicate(argument_value, None, system_context)
+            })
+        })
+        .transpose()?;
+
+    let res = match mapped {
+        Some(predicate) => {
+            AbstractPredicate::And(Box::new(predicate), Box::new(additional_predicate))
+        }
+        None => additional_predicate,
+    };
+
+    Ok(res)
 }

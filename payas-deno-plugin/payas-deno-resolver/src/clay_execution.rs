@@ -6,7 +6,7 @@ use futures::future::BoxFuture;
 use serde_json::Value;
 
 use payas_core_resolver::{
-    system_resolver::{FnClaytipExecuteQuery, SystemResolutionError},
+    system_resolver::{ClaytipExecuteQueryFn, SystemResolutionError},
     QueryResponse,
 };
 use payas_deno::{
@@ -43,7 +43,7 @@ pub type FnClaytipInterceptorProceed<'a> =
     (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>> + 'a + Send + Sync);
 
 pub struct ClayCallbackProcessor<'a> {
-    pub claytip_execute_query: &'a FnClaytipExecuteQuery<'a>,
+    pub claytip_execute_query: &'a ClaytipExecuteQueryFn<'a>,
     pub claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
 }
 

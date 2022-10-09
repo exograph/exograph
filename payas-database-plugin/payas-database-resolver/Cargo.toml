@@ -20,8 +20,6 @@ chrono = "0.4.20"
 pg_bigdecimal = "0.1.4"
 uuid = "1.1.2"
 
-fix-hidden-lifetime-bug = "0.2.5"
-
 payas-sql = { path = "../../payas-sql" }
 payas-core-model = { path = "../../payas-core-plugin/payas-core-model" }
 payas-core-resolver = { path = "../../payas-core-plugin/payas-core-resolver" }

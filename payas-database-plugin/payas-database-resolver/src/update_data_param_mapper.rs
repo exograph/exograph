@@ -12,6 +12,8 @@ use payas_sql::{
     NestedElementRelation, PhysicalColumn, PhysicalColumnType, Selection,
 };
 
+use crate::util::{get_argument_field, return_type_info};
+
 use super::{
     cast, database_execution_error::DatabaseExecutionError,
     database_system_context::DatabaseSystemContext, sql_mapper::SQLUpdateMapper,
@@ -30,7 +32,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         let data_type = &system.mutation_types[self.type_id];
 
         let self_update_columns = compute_update_columns(data_type, argument, system_context);
-        let (table, _, _) = super::return_type_info(return_type, system_context);
+        let (table, _, _) = return_type_info(return_type, system_context);
 
         let container_model_type = return_type.typ(system);
 
@@ -64,7 +66,7 @@ fn compute_update_columns<'a>(
             .iter()
             .flat_map(|field| {
                 field.relation.self_column().and_then(|key_column_id| {
-                    super::get_argument_field(argument, &field.name).map(|argument_value| {
+                    get_argument_field(argument, &field.name).map(|argument_value| {
                         let key_column = key_column_id.get_column(system);
                         let argument_value = match &field.relation {
                             DatabaseRelation::ManyToOne { other_type_id, .. } => {
@@ -73,10 +75,7 @@ fn compute_update_columns<'a>(
                                     .pk_column_id()
                                     .map(|column_id| &column_id.get_column(system).column_name)
                                     .unwrap();
-                                match super::get_argument_field(
-                                    argument_value,
-                                    other_type_pk_field_name,
-                                ) {
+                                match get_argument_field(argument_value, other_type_pk_field_name) {
                                     Some(other_type_pk_arg) => other_type_pk_arg,
                                     None => todo!(),
                                 }
@@ -121,7 +120,7 @@ fn compute_nested_ops<'a>(
                 if let DatabaseRelation::OneToMany { other_type_id, .. } = &field.relation {
                     let field_model_type = &system.database_types[*other_type_id]; // TODO: This is a model type but should be a data type
 
-                    if let Some(argument) = super::get_argument_field(argument, &field.name) {
+                    if let Some(argument) = get_argument_field(argument, &field.name) {
                         nested_updates.extend(compute_nested_update(
                             field_model_type,
                             argument,
@@ -195,7 +194,7 @@ fn compute_nested_update<'a>(
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-    let update_arg = super::get_argument_field(argument, "update");
+    let update_arg = get_argument_field(argument, "update");
 
     match update_arg {
         Some(update_arg) => match update_arg {
@@ -335,7 +334,7 @@ fn compute_nested_inserts<'a>(
         })
     }
 
-    let create_arg = super::get_argument_field(argument, "create");
+    let create_arg = get_argument_field(argument, "create");
 
     match create_arg {
         Some(create_arg) => match create_arg {
@@ -372,7 +371,7 @@ fn compute_nested_delete<'a>(
     let nested_reference_col =
         compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
 
-    let delete_arg = super::get_argument_field(argument, "delete");
+    let delete_arg = get_argument_field(argument, "delete");
 
     match delete_arg {
         Some(update_arg) => match update_arg {

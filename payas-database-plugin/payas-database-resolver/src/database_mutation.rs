@@ -1,5 +1,4 @@
-use payas_core_resolver::request_context::RequestContext;
-use payas_core_resolver::validation::field::ValidatedField;
+use payas_core_resolver::{request_context::RequestContext, validation::field::ValidatedField};
 use payas_database_model::{
     operation::{CreateDataParameter, DatabaseMutation, DatabaseMutationKind, UpdateDataParameter},
     predicate::PredicateParameter,
@@ -10,13 +9,12 @@ use payas_sql::{
     AbstractUpdate,
 };
 
-use crate::database_query::compute_select;
-
 use super::{
-    compute_sql_access_predicate,
     database_execution_error::{DatabaseExecutionError, WithContext},
+    database_query::compute_select,
     database_system_context::DatabaseSystemContext,
     sql_mapper::{SQLInsertMapper, SQLOperationKind, SQLUpdateMapper},
+    util::{compute_sql_access_predicate, find_arg, return_type_info},
 };
 
 pub async fn operation<'content>(
@@ -27,7 +25,7 @@ pub async fn operation<'content>(
 ) -> Result<AbstractOperation<'content>, DatabaseExecutionError> {
     let abstract_select = {
         let return_type = &mutation.return_type;
-        let (_, pk_query, collection_query) = super::return_type_info(return_type, system_context);
+        let (_, pk_query, collection_query) = return_type_info(return_type, system_context);
         let selection_query = match return_type.type_modifier {
             DatabaseTypeModifier::List => collection_query,
             DatabaseTypeModifier::NonNull | DatabaseTypeModifier::Optional => pk_query,
@@ -85,7 +83,6 @@ pub async fn operation<'content>(
 }
 
 #[allow(clippy::manual_async_fn)]
-#[fix_hidden_lifetime_bug]
 async fn create_operation<'content>(
     mutation: &'content DatabaseMutation,
     data_param: &'content CreateDataParameter,
@@ -110,7 +107,7 @@ async fn create_operation<'content>(
         return Err(DatabaseExecutionError::Authorization);
     }
 
-    let argument_value = super::find_arg(&field.arguments, &data_param.name).unwrap();
+    let argument_value = find_arg(&field.arguments, &data_param.name).unwrap();
 
     data_param.insert_operation(
         mutation.return_type.clone(),
@@ -121,7 +118,6 @@ async fn create_operation<'content>(
 }
 
 #[allow(clippy::manual_async_fn)]
-#[fix_hidden_lifetime_bug]
 async fn delete_operation<'content>(
     mutation: &'content DatabaseMutation,
     predicate_param: &'content PredicateParameter,
@@ -130,7 +126,7 @@ async fn delete_operation<'content>(
     system_context: &DatabaseSystemContext<'content>,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractDelete<'content>, DatabaseExecutionError> {
-    let (table, _, _) = super::return_type_info(&mutation.return_type, system_context);
+    let (table, _, _) = return_type_info(&mutation.return_type, system_context);
 
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
@@ -146,7 +142,7 @@ async fn delete_operation<'content>(
         return Err(DatabaseExecutionError::Authorization);
     }
 
-    let predicate = super::compute_predicate(
+    let predicate = super::predicate_mapper::compute_predicate(
         Some(predicate_param),
         &field.arguments,
         AbstractPredicate::True,
@@ -165,7 +161,6 @@ async fn delete_operation<'content>(
 }
 
 #[allow(clippy::manual_async_fn)]
-#[fix_hidden_lifetime_bug]
 async fn update_operation<'content>(
     mutation: &'content DatabaseMutation,
     data_param: &'content UpdateDataParameter,
@@ -178,7 +173,7 @@ async fn update_operation<'content>(
     // Access control as well as predicate computation isn't working fully yet. Specifically,
     // nested predicates aren't working.
     // TODO: https://github.com/payalabs/payas/issues/343
-    let access_predicate = super::compute_sql_access_predicate(
+    let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Update,
         system_context,
@@ -192,7 +187,7 @@ async fn update_operation<'content>(
     }
 
     // TODO: https://github.com/payalabs/payas/issues/343
-    let predicate = super::compute_predicate(
+    let predicate = super::predicate_mapper::compute_predicate(
         Some(predicate_param),
         &field.arguments,
         AbstractPredicate::True,
@@ -203,7 +198,7 @@ async fn update_operation<'content>(
         predicate_param.name
     ))?;
 
-    let argument_value = super::find_arg(&field.arguments, &data_param.name);
+    let argument_value = find_arg(&field.arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
             data_param.update_operation(

@@ -22,8 +22,9 @@ use payas_database_model::{
 use payas_sql::{AbstractOperation, AbstractPredicate, Database, DatabaseExecutor};
 
 use crate::{
-    database_mutation::operation, database_query::compute_select, DatabaseExecutionError,
-    DatabaseSystemContext,
+    abstract_operation_resolver::resolve_operation,
+    database_execution_error::DatabaseExecutionError, database_mutation::operation,
+    database_query::compute_select, database_system_context::DatabaseSystemContext,
 };
 
 pub struct DatabaseSubsystemLoader {}
@@ -122,7 +123,7 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
 
         match operation {
             Some(Ok(operation)) => Some(
-                super::resolve_operation(&operation, database_system_context, request_context)
+                resolve_operation(&operation, database_system_context, request_context)
                     .await
                     .map_err(|e| e.into()),
             ),

@@ -11,6 +11,7 @@ use payas_core_model::{
     system_serializer::SystemSerializer,
 };
 use payas_core_resolver::{
+    claytip_execute_query,
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
     system_resolver::SystemResolver,
@@ -126,7 +127,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
             &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
 
         let claytip_execute_query =
-            super::claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
+            claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
             &self.subsystem,
@@ -171,7 +172,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
         );
 
         let claytip_execute_query =
-            super::claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
+            claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
             &self.subsystem,

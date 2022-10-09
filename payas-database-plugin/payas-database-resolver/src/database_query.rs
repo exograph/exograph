@@ -14,13 +14,14 @@ use payas_sql::{
     Offset, SelectionCardinality, SelectionElement,
 };
 
+use crate::util::find_arg;
+
 use super::{
-    compute_sql_access_predicate,
     database_execution_error::DatabaseExecutionError,
     database_system_context::DatabaseSystemContext,
     order_by_mapper::OrderByParameterMapper,
     sql_mapper::{SQLMapper, SQLOperationKind},
-    Arguments,
+    util::{compute_sql_access_predicate, Arguments},
 };
 
 pub async fn compute_select<'content>(
@@ -45,7 +46,7 @@ pub async fn compute_select<'content>(
         return Err(DatabaseExecutionError::Authorization);
     }
 
-    let predicate = super::compute_predicate(
+    let predicate = super::predicate_mapper::compute_predicate(
         predicate_param.as_ref(),
         &field.arguments,
         additional_predicate,
@@ -106,7 +107,7 @@ fn compute_order_by<'content>(
     order_by_param
         .as_ref()
         .and_then(|order_by_param| {
-            let argument_value = super::find_arg(arguments, &order_by_param.name);
+            let argument_value = find_arg(arguments, &order_by_param.name);
             argument_value.map(|argument_value| {
                 order_by_param.map_to_order_by(argument_value, None, system_context)
             })
@@ -138,7 +139,7 @@ fn compute_limit<'content>(
     limit_param
         .as_ref()
         .and_then(|limit_param| {
-            let argument_value = super::find_arg(arguments, &limit_param.name);
+            let argument_value = find_arg(arguments, &limit_param.name);
             argument_value
                 .map(|argument_value| limit_param.map_to_sql(argument_value, system_context))
         })
@@ -155,7 +156,7 @@ fn compute_offset<'content>(
     offset_param
         .as_ref()
         .and_then(|offset_param| {
-            let argument_value = super::find_arg(arguments, &offset_param.name);
+            let argument_value = find_arg(arguments, &offset_param.name);
             argument_value
                 .map(|argument_value| offset_param.map_to_sql(argument_value, system_context))
         })
