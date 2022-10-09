@@ -13,7 +13,7 @@ service MathService {
         remainder: Int
     }
 
-    input type LogMessage {
+    type LogMessage {
         level: String
         message: String
     }

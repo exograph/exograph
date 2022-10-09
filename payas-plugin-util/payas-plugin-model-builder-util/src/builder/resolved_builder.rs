@@ -4,6 +4,7 @@ use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 
 use payas_core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
+use payas_core_model_builder::ast::ast_types::AstFieldType;
 use payas_core_model_builder::builder::resolved_builder::AnnotationMapHelper;
 use payas_core_model_builder::typechecker::AnnotationMap;
 use payas_core_model_builder::{
@@ -32,6 +33,13 @@ impl ResolvedType {
         match self {
             ResolvedType::Primitive(pt) => pt.name(),
             ResolvedType::Composite(ResolvedCompositeType { name, .. }) => name.to_owned(),
+        }
+    }
+
+    pub fn is_primitive(&self) -> bool {
+        match self {
+            ResolvedType::Primitive(_) => true,
+            _ => false,
         }
     }
 }
@@ -169,7 +177,7 @@ fn resolve(
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     Ok(ResolvedServiceSystem {
-        service_types: resolve_service_types(types)?,
+        service_types: resolve_service_types(errors, types)?,
         services: resolve_services(types, errors, service_selection_predicate, &process_script)?,
     })
 }
@@ -322,10 +330,110 @@ fn resolve_argument(arg: &AstArgument<Typed>, types: &MappedArena<Type>) -> Reso
     }
 }
 
+fn resolve_service_input_types(
+    errors: &mut Vec<Diagnostic>,
+    resolved_service_types: &MappedArena<ResolvedType>,
+    types: &MappedArena<Type>,
+) -> Result<Vec<String>, ModelBuildingError> {
+    // 1. collect types used as arguments (input) and return types (output)
+    type IsInput = bool;
+    let mut types_used: Vec<(AstFieldType<Typed>, IsInput)> = vec![];
+
+    for (_, typ) in types.iter() {
+        match typ {
+            Type::Service(service) => {
+                for method in service.methods.iter() {
+                    for argument in method.arguments.iter() {
+                        types_used.push((argument.typ.clone(), true))
+                    }
+
+                    types_used.push((method.return_type.clone(), false))
+                }
+
+                for interceptor in service.interceptors.iter() {
+                    for argument in interceptor.arguments.iter() {
+                        types_used.push((argument.typ.clone(), true))
+                    }
+                }
+            }
+
+            _ => {}
+        }
+    }
+
+    // 2. filter out primitives
+    let types_used = types_used.iter().filter(|(arg, _)| {
+        if let Some(typ) = resolved_service_types.get_by_key(&arg.name()) {
+            !typ.is_primitive()
+        } else {
+            true
+        }
+    });
+
+    let (input_types, output_types): (Vec<_>, Vec<_>) =
+        types_used.clone().partition(|(_, is_input)| *is_input);
+
+    // 3. check types
+    for (typ, is_input) in types_used {
+        let (opposite_descriptor, opposite_types) = if *is_input {
+            ("an output type", &output_types)
+        } else {
+            ("an input type", &input_types)
+        };
+
+        // check type against opposite list
+        if let Some(opposite_type) = opposite_types
+            .iter()
+            .find(|(opposite_typ, _)| opposite_typ.name() == typ.name())
+        {
+            // FIXME: add a resolved builder snapshot unit test case for this error
+            errors.push(
+                Diagnostic {
+                level: Level::Error,
+                message: format!("Type {} was used as {} somewhere else in the model. Types may only be used as either an input type or an output type.", typ.name(), opposite_descriptor),
+                code: Some("C000".to_string()),
+                spans: vec![
+                    SpanLabel {
+                        span: typ.span(),
+                        style: SpanStyle::Primary,
+                        label: Some("conflicting usage".to_owned()),
+                    },
+                    SpanLabel {
+                        span: opposite_type.0.span(),
+                        style: SpanStyle::Secondary,
+                        label: Some(opposite_descriptor.to_string()),
+                    },
+                ],
+            });
+
+            return Err(ModelBuildingError::Diagnosis(errors.clone()));
+        }
+    }
+
+    let mut input_type_names = vec![];
+    for (input_type, _) in input_types.iter() {
+        if !input_type_names.contains(&input_type.name()) {
+            input_type_names.push(input_type.name())
+        }
+    }
+
+    Ok(input_type_names)
+}
+
 fn resolve_service_types(
+    errors: &mut Vec<Diagnostic>,
     types: &MappedArena<Type>,
 ) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
+
+    for (_, typ) in types.iter() {
+        if let Type::Primitive(pt) = typ {
+            // Adopt the primitive types as a ServiceType
+            resolved_service_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
+        }
+    }
+
+    let input_types = resolve_service_input_types(errors, &resolved_service_types, types)?;
 
     for (_, typ) in types.iter() {
         match typ {
@@ -334,9 +442,7 @@ fn resolve_service_types(
                 resolved_service_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
             Type::Composite(ct) => {
-                if ct.kind == AstModelKind::NonPersistent
-                    || ct.kind == AstModelKind::NonPersistentInput
-                {
+                if ct.kind == AstModelKind::NonPersistent {
                     let access = build_access(ct.annotations.get("access"));
                     let resolved_fields = ct
                         .fields
@@ -353,7 +459,7 @@ fn resolve_service_types(
                         ResolvedType::Composite(ResolvedCompositeType {
                             name: ct.name.clone(),
                             fields: resolved_fields,
-                            is_input: matches!(ct.kind, AstModelKind::NonPersistentInput),
+                            is_input: input_types.contains(&ct.name),
                             access,
                         }),
                     );

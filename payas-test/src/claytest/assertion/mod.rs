@@ -23,12 +23,14 @@ const ASSERT_JS: &str = include_str!("./assert.js");
 pub fn dynamic_assert_using_deno(
     expected: &str,
     actual: serde_json::Value,
+    prelude: &str,
     testvariables: &HashMap<String, serde_json::Value>,
 ) -> Result<()> {
     let testvariables_json = serde_json::to_value(testvariables)?;
 
     // first substitute expected variables
     let script = ASSERT_JS.to_owned();
+    let script = script.replace("\"%%PRELUDE%%\"", prelude);
     let script = script.replace("\"%%JSON%%\"", expected);
 
     let deno_module_future = DenoModule::new(
@@ -70,12 +72,14 @@ pub fn dynamic_assert_using_deno(
 // Evaluates substitutions only in a stringified 'JSON' payload.
 pub fn evaluate_using_deno(
     not_really_json: &str,
+    prelude: &str,
     testvariables: &HashMap<String, serde_json::Value>,
 ) -> Result<serde_json::Value> {
     let testvariables_json = serde_json::to_value(testvariables)?;
 
     // first substitute expected variables
     let script = ASSERT_JS.to_owned();
+    let script = script.replace("\"%%PRELUDE%%\"", prelude);
     let script = script.replace("\"%%JSON%%\"", not_really_json);
 
     let deno_module_future = DenoModule::new(
@@ -143,7 +147,7 @@ mod tests {
         .into_iter()
         .collect();
 
-        dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap();
+        dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables).unwrap();
     }
 
     #[test]
@@ -165,7 +169,7 @@ mod tests {
         .into_iter()
         .collect();
 
-        let result = evaluate_using_deno(payload, &testvariables).unwrap();
+        let result = evaluate_using_deno(payload, "", &testvariables).unwrap();
 
         insta::with_settings!({sort_maps => true}, {
             insta::assert_yaml_snapshot!(result);
@@ -187,7 +191,7 @@ mod tests {
         let testvariables = vec![].into_iter().collect();
 
         let err =
-            dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap_err();
+            dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables).unwrap_err();
 
         assert!(err
             .to_string()
@@ -209,10 +213,32 @@ mod tests {
         let testvariables = vec![].into_iter().collect();
 
         let err =
-            dynamic_assert_using_deno(expected, actual_payload(), &testvariables).unwrap_err();
+            dynamic_assert_using_deno(expected, actual_payload(), "", &testvariables).unwrap_err();
 
         assert!(err
             .to_string()
             .starts_with("assert function failed for field c!"));
+    }
+
+    #[test]
+    fn test_deno_prelude_and_async() {
+        let prelude = r#"
+            function someAsyncOp() {
+                return new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        "#;
+
+        let expected = r#"
+            {
+                "data": {
+                    "a": 1, 
+                    "b": ["foo", "bar"],
+                    "c": async function(actual) { return await someAsyncOp(); }
+                }
+            }
+        "#;
+
+        let testvariables = vec![].into_iter().collect();
+        dynamic_assert_using_deno(expected, actual_payload(), prelude, &testvariables).unwrap();
     }
 }

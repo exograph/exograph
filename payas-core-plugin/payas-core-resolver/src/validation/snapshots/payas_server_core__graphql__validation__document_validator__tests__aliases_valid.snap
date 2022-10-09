@@ -1,6 +1,5 @@
 ---
 source: payas-server-core/src/graphql/validation/document_validator.rs
-assertion_line: 303
 expression: validator.validate(create_query_document(query))
 ---
 Ok(
@@ -19,9 +18,7 @@ Ok(
                 ),
                 arguments: {
                     "id": Number(
-                        Number(
-                            1,
-                        ),
+                        Number(1),
                     ),
                 },
                 subfields: [

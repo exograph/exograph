@@ -9,7 +9,7 @@ async-graphql-parser = "4.0.6"
 async-graphql-value = "4.0.5"
 async-recursion = "1.0.0"
 async-trait = "0.1.53"
-deno_core = "0.146.0"
+deno_core = "0.153.0"
 futures = "0.3"
 maybe-owned = "0.3.4"
 serde_json = { version = "1.0", features = ["preserve_order"] }

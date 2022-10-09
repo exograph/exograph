@@ -104,7 +104,7 @@
       "patterns": [
         {
           "name": "meta.typedef.claytip",
-          "begin": "(input)?{{ws}}(type){{ws}}({{identifier}}){{opt_ws}}{?",
+          "begin": "(type){{ws}}({{identifier}}){{opt_ws}}{?",
           "beginCaptures": {
             "1": {
               "name": "keyword.type.claytip"

@@ -1,19 +1,21 @@
 use deno_core::error::AnyError;
 use deno_core::futures::FutureExt;
-use deno_core::FsModuleLoader;
+use deno_core::resolve_import;
 use deno_core::ModuleLoader;
 use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::pin::Pin;
+use std::sync::Arc;
 
 /// A module loader that allows loading source code from memory for the given module specifier;
 /// otherwise, loading it from an FsModuleLoader
 /// Based on https://deno.land/x/deno@v1.15.0/cli/standalone.rs
 pub(super) struct EmbeddedModuleLoader {
-    pub source_code_map: HashMap<String, Vec<u8>>,
+    pub source_code_map: Arc<RefCell<HashMap<ModuleSpecifier, Vec<u8>>>>,
 }
 
 impl ModuleLoader for EmbeddedModuleLoader {
@@ -21,15 +23,9 @@ impl ModuleLoader for EmbeddedModuleLoader {
         &self,
         specifier: &str,
         referrer: &str,
-        is_main: bool,
+        _is_main: bool,
     ) -> Result<ModuleSpecifier, AnyError> {
-        // If the specifier matches this modules specifier, return that
-        if let Ok(module_specifier) = deno_core::resolve_url(specifier) {
-            if self.source_code_map.get(specifier).is_some() {
-                return Ok(module_specifier);
-            }
-        }
-        FsModuleLoader.resolve(specifier, referrer, is_main)
+        Ok(resolve_import(specifier, referrer)?)
     }
 
     fn load(
@@ -38,23 +34,46 @@ impl ModuleLoader for EmbeddedModuleLoader {
         maybe_referrer: Option<ModuleSpecifier>,
         is_dynamic: bool,
     ) -> Pin<Box<deno_core::ModuleSourceFuture>> {
-        // If the specifier matches this modules specifier, return the source code
-        if let Some(script) = self.source_code_map.get(module_specifier.as_str()) {
-            let module_specifier = module_specifier.clone();
-            let script = script.to_owned();
-            async move {
-                let specifier = module_specifier.to_string();
+        // do we have the module source in-memory?
+        if let Some(script) = self.source_code_map.borrow().get(module_specifier) {
+            // return copy of module source in memory
 
+            let script = script.clone();
+            let module_specifier = module_specifier.clone();
+            async move {
                 Ok(ModuleSource {
-                    code: script.into_boxed_slice(),
-                    module_url_specified: specifier.clone(),
-                    module_url_found: specifier,
+                    code: script.into(),
+                    module_url_specified: module_specifier.to_string(),
+                    module_url_found: module_specifier.to_string(),
                     module_type: ModuleType::JavaScript,
                 })
             }
             .boxed_local()
         } else {
-            FsModuleLoader.load(module_specifier, maybe_referrer, is_dynamic)
+            // we will have to load it ourselves
+
+            let source_code_map = self.source_code_map.clone();
+            let module_specifier = module_specifier.clone();
+
+            async move {
+                #[cfg(feature = "typescript-loader")]
+                let loader = crate::typescript_module_loader::TypescriptLoader;
+
+                #[cfg(not(feature = "typescript-loader"))]
+                let loader = deno_core::FsModuleLoader;
+
+                // use the configured loader to load the script from an external source
+                let module_source = loader
+                    .load(&module_specifier, maybe_referrer, is_dynamic)
+                    .await?;
+
+                // cache result for later
+                let mut map = source_code_map.borrow_mut();
+                map.insert(module_specifier, module_source.code.clone().into());
+
+                Ok(module_source)
+            }
+            .boxed_local()
         }
     }
 }

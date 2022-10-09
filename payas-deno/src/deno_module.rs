@@ -3,6 +3,7 @@ use deno_core::error::JsError;
 use deno_core::serde_json;
 use deno_core::v8;
 use deno_core::Extension;
+use deno_core::ModuleSpecifier;
 use deno_runtime::deno_broadcast_channel::InMemoryBroadcastChannel;
 use deno_runtime::deno_web::BlobStore;
 use deno_runtime::ops::io::Stdio;
@@ -10,8 +11,10 @@ use deno_runtime::permissions::Permissions;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
+use fix_hidden_lifetime_bug::fix_hidden_lifetime_bug;
 use tracing::error;
 
+use std::cell::RefCell;
 use std::path::PathBuf;
 use tracing::instrument;
 
@@ -60,6 +63,8 @@ pub struct DenoModule {
 /// * `shared_state` - A shared state object to pass to the worker.
 /// * `explicit_error_class_name` - The name of the class whose message will be used to report errors.
 impl DenoModule {
+    #[allow(clippy::manual_async_fn)]
+    #[fix_hidden_lifetime_bug]
     pub async fn new(
         user_code: UserCode,
         user_agent_name: &str,
@@ -100,15 +105,24 @@ impl DenoModule {
 
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
-            source_code_map: match &user_code {
-                UserCode::LoadFromFs(_) => vec![("file:///main.js".to_owned(), source_code)],
-                UserCode::LoadFromMemory { path, script } => vec![
-                    ("file:///main.js".to_owned(), source_code),
-                    (format!("file:///{path}"), script.to_owned()),
-                ],
-            }
-            .into_iter()
-            .collect(),
+            source_code_map: {
+                let map: HashMap<ModuleSpecifier, Vec<u8>> = match &user_code {
+                    UserCode::LoadFromFs(_) => {
+                        vec![(ModuleSpecifier::parse("file:///main.js")?, source_code)]
+                    }
+                    UserCode::LoadFromMemory { path, script } => vec![
+                        (ModuleSpecifier::parse("file:///main.js")?, source_code),
+                        (
+                            ModuleSpecifier::parse(&format!("file:///{path}"))?,
+                            script.to_owned(),
+                        ),
+                    ],
+                }
+                .into_iter()
+                .collect();
+
+                Arc::new(RefCell::new(map))
+            },
         });
 
         let create_web_worker_cb = Arc::new(|_| {
@@ -128,6 +142,7 @@ impl DenoModule {
                 unstable: true,
                 is_tty: false,
                 user_agent: user_agent_name.to_string(),
+                inspect: false,
             },
             extensions,
             unsafely_ignore_certificate_errors: None,
@@ -147,6 +162,9 @@ impl DenoModule {
             source_map_getter: None,
             format_js_error_fn: None,
             stdio: Stdio::default(),
+            npm_resolver: None,
+            web_worker_pre_execute_module_cb: Arc::new(|_| todo!()),
+            cache_storage_dir: None,
         };
 
         let main_module = deno_core::resolve_url(&main_module_specifier)?;
