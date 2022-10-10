@@ -17,13 +17,13 @@ typed-generational-arena = { version = "0.2", features = ["serde"] }
 wildmatch = "2.1.0"
 thiserror = "1.0.30"
 payas-sql = { path = "../payas-sql" }
-payas-core-model = { path = "../payas-core-plugin/payas-core-model" }
-payas-core-model-builder = { path = "../payas-core-plugin/payas-core-model-builder" }
-payas-database-model-builder = { path = "../payas-database-plugin/payas-database-model-builder" }
-payas-deno-model = { path = "../payas-deno-plugin/payas-deno-model" }
-payas-deno-model-builder = { path = "../payas-deno-plugin/payas-deno-model-builder" }
-payas-wasm-model = { path = "../payas-wasm-plugin/payas-wasm-model" }
-payas-wasm-model-builder = { path = "../payas-wasm-plugin/payas-wasm-model-builder" }
+payas-core-model = { path = "../payas-core-subsystem/payas-core-model" }
+payas-core-model-builder = { path = "../payas-core-subsystem/payas-core-model-builder" }
+payas-database-model-builder = { path = "../payas-database-subsystem/payas-database-model-builder" }
+payas-deno-model = { path = "../payas-deno-subsystem/payas-deno-model" }
+payas-deno-model-builder = { path = "../payas-deno-subsystem/payas-deno-model-builder" }
+payas-wasm-model = { path = "../payas-wasm-subsystem/payas-wasm-model" }
+payas-wasm-model-builder = { path = "../payas-wasm-subsystem/payas-wasm-model-builder" }
 
 [build-dependencies]
 cc = "*"

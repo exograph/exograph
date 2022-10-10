@@ -18,8 +18,8 @@ WORKDIR /usr/src
 ## Build and cache the dependencies
 ### Create empty projects with the right type (lib/bin)
 RUN USER=root cargo new --vcs none --bin payas-cli
-RUN USER=root cargo new --vcs none --lib payas-core-plugin/payas-core-model-builder
-RUN USER=root cargo new --vcs none --lib payas-database-plugin/payas-database-model-builder
+RUN USER=root cargo new --vcs none --lib payas-core-subsystem/payas-core-model-builder
+RUN USER=root cargo new --vcs none --lib payas-database-subsystem/payas-database-model-builder
 RUN USER=root cargo new --vcs none --lib payas-deno
 RUN USER=root cargo new --vcs none --lib payas-model
 RUN USER=root cargo new --vcs none --lib payas-parser
@@ -40,8 +40,8 @@ RUN USER=root cargo new --vcs none --lib payas-wasm
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
 COPY ./payas-cli/Cargo.toml ./payas-cli/Cargo.toml
-COPY ./payas-core-plugin/payas-core-model-builder/Cargo.toml ./payas-core-plugin/payas-core-model-builder/Cargo.toml
-COPY ./payas-database-plugin/payas-database-model-builder/Cargo.toml ./payas-database-plugin/payas-database-model-builder/Cargo.toml
+COPY ./payas-core-subsystem/payas-core-model-builder/Cargo.toml ./payas-core-subsystem/payas-core-model-builder/Cargo.toml
+COPY ./payas-database-subsystem/payas-database-model-builder/Cargo.toml ./payas-database-subsystem/payas-database-model-builder/Cargo.toml
 COPY ./payas-deno/Cargo.toml ./payas-deno/Cargo.toml
 COPY ./payas-model/Cargo.toml ./payas-model/Cargo.toml
 COPY ./payas-parser/Cargo.toml ./payas-parser/Cargo.toml
@@ -67,8 +67,8 @@ RUN cd graphiql && npm install
 ## Build the actual image
 ### Copy over the source files
 ADD payas-cli payas-cli/
-ADD payas-core-plugin/payas-core-model-builder/ payas-core-plugin/payas-core-model-builder/
-ADD payas-database-plugin/payas-database-model-builder payas-database-plugin/payas-database-model-builder/
+ADD payas-core-subsystem/payas-core-model-builder/ payas-core-subsystem/payas-core-model-builder/
+ADD payas-database-subsystem/payas-database-model-builder payas-database-subsystem/payas-database-model-builder/
 ADD payas-deno payas-deno/
 ADD payas-model payas-model/
 ADD payas-parser payas-parser/
@@ -79,7 +79,7 @@ ADD payas-wasm-resolver payas-wasm-resolver/
 ADD payas-server-actix payas-server-actix/
 ADD payas-server-aws-lambda payas-server-aws-lambda/
 ADD payas-server-core payas-server-core/
-ADD payas-deno-plugin/payas-deno-model-builder/ payas-deno-plugin/payas-deno-model-builder/ 
+ADD payas-deno-subsystem/payas-deno-model-builder/ payas-deno-subsystem/payas-deno-model-builder/ 
 ADD payas-sql payas-sql/
 ADD payas-test payas-test/
 ADD payas-wasm payas-wasm/

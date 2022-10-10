@@ -4153,7 +4153,7 @@ dependencies = [
  "bincode",
  "payas-core-model",
  "payas-core-model-builder",
- "payas-plugin-model-util",
+ "payas-subsystem-model-util",
  "serde",
 ]
 
@@ -4165,7 +4165,7 @@ dependencies = [
  "payas-core-model",
  "payas-core-model-builder",
  "payas-deno-model",
- "payas-plugin-model-builder-util",
+ "payas-subsystem-model-builder-util",
 ]
 
 [[package]]
@@ -4230,33 +4230,6 @@ dependencies = [
  "tree-sitter",
  "typed-generational-arena",
  "wildmatch",
-]
-
-[[package]]
-name = "payas-plugin-model-builder-util"
-version = "0.1.0"
-dependencies = [
- "codemap",
- "codemap-diagnostic",
- "lazy_static",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-plugin-model-util",
- "serde",
- "thiserror",
- "typed-generational-arena",
- "wildmatch",
-]
-
-[[package]]
-name = "payas-plugin-model-util"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "payas-core-model",
- "serde",
- "typed-generational-arena",
 ]
 
 [[package]]
@@ -4364,6 +4337,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "payas-subsystem-model-builder-util"
+version = "0.1.0"
+dependencies = [
+ "codemap",
+ "codemap-diagnostic",
+ "lazy_static",
+ "payas-core-model",
+ "payas-core-model-builder",
+ "payas-subsystem-model-util",
+ "serde",
+ "thiserror",
+ "typed-generational-arena",
+ "wildmatch",
+]
+
+[[package]]
+name = "payas-subsystem-model-util"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "payas-core-model",
+ "serde",
+ "typed-generational-arena",
+]
+
+[[package]]
 name = "payas-test"
 version = "0.1.0"
 dependencies = [
@@ -4413,7 +4413,7 @@ dependencies = [
  "bincode",
  "payas-core-model",
  "payas-core-model-builder",
- "payas-plugin-model-util",
+ "payas-subsystem-model-util",
  "serde",
 ]
 
@@ -4424,7 +4424,7 @@ dependencies = [
  "bincode",
  "payas-core-model",
  "payas-core-model-builder",
- "payas-plugin-model-builder-util",
+ "payas-subsystem-model-builder-util",
  "payas-wasm-model",
 ]
 

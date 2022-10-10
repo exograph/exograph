@@ -16,7 +16,7 @@ bytes = "1.1.0"
 tokio = { version = "1", features = ["full"] }
 
 payas-server-core = { path = "../payas-server-core" }
-payas-core-resolver = { path = "../payas-core-plugin/payas-core-resolver" }
+payas-core-resolver = { path = "../payas-core-subsystem/payas-core-resolver" }
 
 [dev-dependencies]
 payas-parser = { path = "../payas-parser" }
