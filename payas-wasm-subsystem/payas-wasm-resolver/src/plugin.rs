@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use futures::TryFutureExt;
 use payas_core_model::mapped_arena::SerializableSlabIndex;
 use payas_core_plugin::{
-    serializable_system::{InterceptionTree, InterceptorIndex},
+    interception::{InterceptionTree, InterceptorIndex},
     system_serializer::SystemSerializer,
 };
 use payas_core_resolver::{

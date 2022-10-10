@@ -4,7 +4,7 @@ use async_graphql_parser::{
 };
 use async_trait::async_trait;
 
-use payas_core_plugin::serializable_system::{InterceptionTree, InterceptorIndex};
+use payas_core_plugin::interception::{InterceptionTree, InterceptorIndex};
 use payas_core_resolver::{
     plugin::{SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,

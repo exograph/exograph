@@ -1,5 +1,5 @@
 use payas_core_model::mapped_arena::MappedArena;
-use payas_core_plugin::{interceptor_kind::InterceptorKind, serializable_system::InterceptorIndex};
+use payas_core_plugin::interception::{InterceptorIndex, InterceptorKind};
 
 use crate::{
     ast::ast_types::AstExpr,

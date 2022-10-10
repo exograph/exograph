@@ -5,9 +5,7 @@ use payas_core_model_builder::{
     plugin::{Interception, SubsystemBuild, SubsystemBuilder},
     typechecker::typ::Type,
 };
-use payas_core_plugin::{
-    serializable_system::InterceptorIndex, system_serializer::SystemSerializer,
-};
+use payas_core_plugin::{interception::InterceptorIndex, system_serializer::SystemSerializer};
 
 use crate::system_builder::ModelWasmSystemWithInterceptors;
 

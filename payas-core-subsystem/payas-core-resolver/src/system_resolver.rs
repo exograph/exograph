@@ -4,7 +4,7 @@ use async_graphql_parser::{
 };
 use futures::{future::BoxFuture, StreamExt};
 use maybe_owned::MaybeOwned;
-use payas_core_plugin::serializable_system::{
+use payas_core_plugin::interception::{
     InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex,
 };
 use serde_json::Value;

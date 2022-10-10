@@ -2,6 +2,13 @@ use bytes::{Buf, Bytes};
 
 use crate::error::ModelSerializationError;
 
+/// Serialize and deserialize the underlying type
+/// Used to serialize and deserialize subsystems as well as the whole system
+///
+/// Implementations must ensure that the serialization and deserialization is
+/// compatible with the same version of the underlying type. Other than that
+/// there is no constraint of the serialization format. For example, one subsystem
+/// may use the bincode format, while another subsystem may use JSON.
 pub trait SystemSerializer {
     type Underlying;
 

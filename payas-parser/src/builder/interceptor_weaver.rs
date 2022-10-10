@@ -3,9 +3,8 @@ use payas_core_model_builder::{
     plugin::Interception,
     typechecker::Typed,
 };
-use payas_core_plugin::{
-    interceptor_kind::InterceptorKind,
-    serializable_system::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
+use payas_core_plugin::interception::{
+    InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex, InterceptorKind,
 };
 
 use wildmatch::WildMatch;
