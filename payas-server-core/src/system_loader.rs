@@ -70,12 +70,12 @@ impl SystemLoader {
             subsystem_resolvers.push(introspection_resolver);
         }
 
-        Ok(SystemResolver {
+        Ok(SystemResolver::new(
             subsystem_resolvers,
             query_interception_map,
             mutation_interception_map,
             schema,
-        })
+        ))
     }
 
     fn create_introspection_resolver(

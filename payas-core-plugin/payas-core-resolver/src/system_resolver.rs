@@ -3,9 +3,11 @@ use async_graphql_parser::{
     Pos,
 };
 use async_trait::async_trait;
-use futures::future::BoxFuture;
+use futures::{future::BoxFuture, StreamExt};
 use maybe_owned::MaybeOwned;
-use payas_core_model::serializable_system::{InterceptionMap, InterceptionTree};
+use payas_core_model::serializable_system::{
+    InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex,
+};
 use serde_json::Value;
 use thiserror::Error;
 use tracing::{error, instrument};
@@ -44,15 +46,28 @@ pub type ClaytipExecuteQueryFn<'a> = dyn Fn(
     + Sync;
 
 pub struct SystemResolver {
-    pub subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
-    pub query_interception_map: InterceptionMap,
-    pub mutation_interception_map: InterceptionMap,
-
-    pub schema: Schema,
+    subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
+    query_interception_map: InterceptionMap,
+    mutation_interception_map: InterceptionMap,
+    schema: Schema,
 }
 
 impl SystemResolver {
-    /// Resolve the provided top-level operation.
+    pub fn new(
+        subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
+        query_interception_map: InterceptionMap,
+        mutation_interception_map: InterceptionMap,
+        schema: Schema,
+    ) -> Self {
+        Self {
+            subsystem_resolvers,
+            query_interception_map,
+            mutation_interception_map,
+            schema,
+        }
+    }
+
+    /// Resolve the provided top-level operation (which may contain multiple queries, mutations, or subscription).
     ///
     /// Goes through the FieldResolver for ValidatedOperation (and thus get free support for `resolve_fields`)
     /// so that we can support fragments in top-level queries in such as:
@@ -75,10 +90,10 @@ impl SystemResolver {
     /// }
     /// ```
     #[instrument(
-        name = "SystemResolver::resolve"
+        name = "SystemResolver::resolve_root"
         skip_all
         )]
-    pub async fn resolve<'e>(
+    pub async fn resolve_operations<'e>(
         &'e self,
         operations_payload: OperationsPayload,
         request_context: &'e RequestContext<'e>,
@@ -88,6 +103,32 @@ impl SystemResolver {
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
+    }
+
+    pub(super) async fn resolve_operation<'a>(
+        &self,
+        operation_type: OperationType,
+        operation: &'a ValidatedField,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<QueryResponse, SystemResolutionError> {
+        let stream =
+            futures::stream::iter(self.subsystem_resolvers.iter()).then(|resolver| async {
+                resolver
+                    .resolve(operation, operation_type, request_context, self)
+                    .await
+            });
+
+        futures::pin_mut!(stream);
+
+        // Really a find_map(), but StreamExt::find_map() is not available
+        while let Some(next_val) = stream.next().await {
+            if let Some(val) = next_val {
+                // Found a resolver that could return a value (or an error), so we are done resolving
+                return val.map_err(|e| e.into());
+            }
+        }
+
+        Err(SystemResolutionError::NoResolverFound)
     }
 
     pub fn applicable_interceptors(
@@ -118,6 +159,39 @@ impl SystemResolver {
         document_validator.validate(document)
     }
 
+    pub(super) async fn invoke_interceptor<'a>(
+        &'a self,
+        interceptor: &InterceptorIndexWithSubsystemIndex,
+        operation_type: OperationType,
+        operation: &'a ValidatedField,
+        proceeding_interception_tree: Option<&'a InterceptionTree>,
+        request_context: &'a RequestContext<'a>,
+    ) -> Result<Option<QueryResponse>, SystemResolutionError> {
+        let interceptor_subsystem = &self.subsystem_resolvers[interceptor.subsystem_index];
+
+        match proceeding_interception_tree {
+            Some(proceeding_interception_tree) => interceptor_subsystem
+                .invoke_proceeding_interceptor(
+                    operation,
+                    operation_type,
+                    interceptor.interceptor_index,
+                    proceeding_interception_tree,
+                    request_context,
+                    self,
+                ),
+
+            None => interceptor_subsystem.invoke_non_proceeding_interceptor(
+                operation,
+                operation_type,
+                interceptor.interceptor_index,
+                request_context,
+                self,
+            ),
+        }
+        .await
+        .map_err(|e| e.into())
+    }
+
     /// Resolve the provided top-level operation.
     ///
     /// # Returns
@@ -132,7 +206,7 @@ impl SystemResolver {
         Box::new(
             move |input: OperationsPayload, request_context: MaybeOwned<'r, RequestContext<'r>>| {
                 Box::pin(async move {
-                    self.resolve(input, &request_context)
+                    self.resolve_operations(input, &request_context)
                         .await
                         .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
                 })

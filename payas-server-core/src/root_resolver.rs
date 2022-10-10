@@ -34,7 +34,7 @@ pub async fn resolve<'a, E: 'static>(
     request_context: RequestContext<'a>,
 ) -> (Pin<Box<dyn Stream<Item = Result<Bytes, E>>>>, Headers) {
     let response = system_resolver
-        .resolve(operations_payload, &request_context)
+        .resolve_operations(operations_payload, &request_context)
         .await;
 
     let headers = if let Ok(ref response) = response {

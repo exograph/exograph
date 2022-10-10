@@ -13,6 +13,4 @@ payas-core-model = { path = "../payas-core-model" }
 
 [dev-dependencies]
 
-
-
 [lib]

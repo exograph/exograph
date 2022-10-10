@@ -8,6 +8,6 @@ pub struct ValidatedOperation {
     pub name: Option<String>,
     /// The type of operation.
     pub typ: OperationType,
-    /// The operation's fields.
+    /// The operation's fields (individual queries or mutations).
     pub fields: Vec<ValidatedField>,
 }
