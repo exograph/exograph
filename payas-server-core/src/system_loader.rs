@@ -45,6 +45,7 @@ impl SystemLoader {
         let wasm_loader = WasmSubsystemLoader {};
         let loaders: Vec<&dyn SubsystemLoader> = vec![&database_loader, &deno_loader, &wasm_loader];
 
+        // First build subsystem resolvers
         let subsystem_resolvers: Result<Vec<_>, _> = subsystems
             .into_iter()
             .map(|serialized_subsystem| {
@@ -62,6 +63,8 @@ impl SystemLoader {
             .collect();
 
         let mut subsystem_resolvers = subsystem_resolvers?;
+
+        // Then use those resolvers to build the schema
         let schema = Schema::new(&subsystem_resolvers);
 
         if let Some(introspection_resolver) =
@@ -107,9 +110,6 @@ impl SystemLoader {
 pub enum SystemLoadingError {
     #[error("System serialization error: {0}")]
     ModelSerializationError(#[from] ModelSerializationError),
-
-    #[error("{0}")]
-    BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 
     #[error("Subsystem loader for '{0}' not found")]
     SubsystemLoaderNotFound(String),

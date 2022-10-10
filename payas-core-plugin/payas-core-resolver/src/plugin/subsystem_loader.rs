@@ -6,7 +6,6 @@ use super::subsystem_resolver::SubsystemResolver;
 pub trait SubsystemLoader {
     fn id(&self) -> &'static str;
 
-    // TODO: Should `resolve_operation_fn: ResolveOperationFn,` go here?
     fn init(
         &self,
         serialized_subsystem: Vec<u8>,
@@ -16,7 +15,7 @@ pub trait SubsystemLoader {
 #[derive(Error, Debug)]
 pub enum SubsystemLoadingError {
     #[error("System serialization error: {0}")]
-    Init(#[from] ModelSerializationError),
+    ModelSerializationError(#[from] ModelSerializationError),
 
     #[error("{0}")]
     BoxedError(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),

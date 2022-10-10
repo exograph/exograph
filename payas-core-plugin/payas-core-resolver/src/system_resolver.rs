@@ -2,7 +2,6 @@ use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
     Pos,
 };
-use async_trait::async_trait;
 use futures::{future::BoxFuture, StreamExt};
 use maybe_owned::MaybeOwned;
 use payas_core_model::serializable_system::{
@@ -45,6 +44,9 @@ pub type ClaytipExecuteQueryFn<'a> = dyn Fn(
     + Send
     + Sync;
 
+/// The top-level system resolver.
+///
+/// Delegates to subsystem resolvers to resolve individual operations.
 pub struct SystemResolver {
     subsystem_resolvers: Vec<Box<dyn SubsystemResolver + Send + Sync>>,
     query_interception_map: InterceptionMap,
@@ -93,10 +95,10 @@ impl SystemResolver {
         name = "SystemResolver::resolve_root"
         skip_all
         )]
-    pub async fn resolve_operations<'e>(
-        &'e self,
+    pub async fn resolve_operations<'a>(
+        &self,
         operations_payload: OperationsPayload,
-        request_context: &'e RequestContext<'e>,
+        request_context: &RequestContext<'a>,
     ) -> Result<Vec<(String, QueryResponse)>, SystemResolutionError> {
         let operation = self.validate_operation(operations_payload)?;
 
@@ -105,11 +107,57 @@ impl SystemResolver {
             .await
     }
 
+    /// Resolve the provided top-level operation.
+    ///
+    /// # Returns
+    /// A function that captures the SystemResolver (`self`) and returns a function that takes the
+    /// operation and request context and returns a future that resolves the operation.
+    ///
+    /// # Implementation notes
+    /// We use MaybeOwned<RequestContext> since in a few cases (see claytip_execute_query) we need
+    /// to pass a newly created owned object and in most other cases we need to pass an existing
+    /// reference.
+    pub fn resolve_operation_fn<'r>(&'r self) -> ResolveOperationFn<'r> {
+        Box::new(
+            move |input: OperationsPayload, request_context: MaybeOwned<'r, RequestContext<'r>>| {
+                Box::pin(async move {
+                    self.resolve_operations(input, &request_context)
+                        .await
+                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+                })
+            },
+        )
+    }
+
+    /// Should we allow introspection queries?
+    ///
+    /// Implementation note: This works in conjunction with `SystemLoader`, which doesn't create the
+    /// "introspection" subsystem if introspection is disabled.
+    pub fn allow_introspection(&self) -> bool {
+        self.subsystem_resolvers
+            .iter()
+            .find(|subsystem_resolver| subsystem_resolver.id() == "introspection")
+            .is_some()
+    }
+
+    /// Obtain the interception tree associated with the given operation
+    pub fn applicable_interceptors(
+        &self,
+        operation_name: &str,
+        operation_type: OperationType,
+    ) -> Option<&InterceptionTree> {
+        match operation_type {
+            OperationType::Query => self.query_interception_map.get(operation_name),
+            OperationType::Mutation => self.mutation_interception_map.get(operation_name),
+            OperationType::Subscription => None,
+        }
+    }
+
     pub(super) async fn resolve_operation<'a>(
         &self,
         operation_type: OperationType,
-        operation: &'a ValidatedField,
-        request_context: &'a RequestContext<'a>,
+        operation: &ValidatedField,
+        request_context: &RequestContext<'a>,
     ) -> Result<QueryResponse, SystemResolutionError> {
         let stream =
             futures::stream::iter(self.subsystem_resolvers.iter()).then(|resolver| async {
@@ -131,41 +179,13 @@ impl SystemResolver {
         Err(SystemResolutionError::NoResolverFound)
     }
 
-    pub fn applicable_interceptors(
-        &self,
-        operation_name: &str,
-        operation_type: OperationType,
-    ) -> Option<&InterceptionTree> {
-        match operation_type {
-            OperationType::Query => self.query_interception_map.get(operation_name),
-            OperationType::Mutation => self.mutation_interception_map.get(operation_name),
-            OperationType::Subscription => None,
-        }
-    }
-
-    #[instrument(skip(self, operations_payload))]
-    fn validate_operation<'e>(
-        &'e self,
-        operations_payload: OperationsPayload,
-    ) -> Result<ValidatedOperation, ValidationError> {
-        let document = parse_query(operations_payload.query)?;
-
-        let document_validator = DocumentValidator::new(
-            &self.schema,
-            operations_payload.operation_name,
-            operations_payload.variables,
-        );
-
-        document_validator.validate(document)
-    }
-
     pub(super) async fn invoke_interceptor<'a>(
-        &'a self,
+        &self,
         interceptor: &InterceptorIndexWithSubsystemIndex,
         operation_type: OperationType,
-        operation: &'a ValidatedField,
-        proceeding_interception_tree: Option<&'a InterceptionTree>,
-        request_context: &'a RequestContext<'a>,
+        operation: &ValidatedField,
+        proceeding_interception_tree: Option<&InterceptionTree>,
+        request_context: &RequestContext<'a>,
     ) -> Result<Option<QueryResponse>, SystemResolutionError> {
         let interceptor_subsystem = &self.subsystem_resolvers[interceptor.subsystem_index];
 
@@ -192,33 +212,20 @@ impl SystemResolver {
         .map_err(|e| e.into())
     }
 
-    /// Resolve the provided top-level operation.
-    ///
-    /// # Returns
-    /// A function that captures the SystemResolver (`self`) and returns a function that takes the
-    /// operation and request context and returns a future that resolves the operation.
-    ///
-    /// # Implementation notes
-    /// We use MaybeOwned<RequestContext> since in a few cases (see claytip_execute_query) we need
-    /// to pass a newly created owned object and in most other cases we need to pass an existing
-    /// reference.
-    pub fn resolve_operation_fn<'r>(&'r self) -> ResolveOperationFn<'r> {
-        Box::new(
-            move |input: OperationsPayload, request_context: MaybeOwned<'r, RequestContext<'r>>| {
-                Box::pin(async move {
-                    self.resolve_operations(input, &request_context)
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-                })
-            },
-        )
-    }
+    #[instrument(skip(self, operations_payload))]
+    fn validate_operation(
+        &self,
+        operations_payload: OperationsPayload,
+    ) -> Result<ValidatedOperation, ValidationError> {
+        let document = parse_query(operations_payload.query)?;
 
-    pub fn allow_introspection(&self) -> bool {
-        self.subsystem_resolvers
-            .iter()
-            .find(|subsystem_resolver| subsystem_resolver.id() == "introspection")
-            .is_some()
+        let document_validator = DocumentValidator::new(
+            &self.schema,
+            operations_payload.operation_name,
+            operations_payload.variables,
+        );
+
+        document_validator.validate(document)
     }
 }
 
@@ -362,29 +369,6 @@ impl SystemResolutionError {
                 .downcast_ref::<SystemResolutionError>()
                 .map(|error| error.user_error_message()),
             _ => None,
-        }
-    }
-}
-
-#[async_trait]
-impl FieldResolver<Value, SystemResolutionError, ()> for Value {
-    async fn resolve_field<'a>(
-        &'a self,
-        field: &ValidatedField,
-        _resolution_context: &'a (),
-        _request_context: &'a RequestContext<'a>,
-    ) -> Result<Value, SystemResolutionError> {
-        let field_name = field.name.as_str();
-
-        if let Value::Object(map) = self {
-            map.get(field_name).cloned().ok_or_else(|| {
-                SystemResolutionError::Generic(format!("No field named {} in Object", field_name))
-            })
-        } else {
-            Err(SystemResolutionError::Generic(format!(
-                "{} is not an Object and doesn't have any fields",
-                field_name
-            )))
         }
     }
 }

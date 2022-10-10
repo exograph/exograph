@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use serde_json::Value;
 
 use crate::interception::InterceptedOperation;
 use crate::system_resolver::{SystemResolutionError, SystemResolver};
@@ -48,5 +49,28 @@ impl FieldResolver<QueryResponse, SystemResolutionError, SystemResolver> for Val
             body: field_selected_response_body,
             headers,
         })
+    }
+}
+
+#[async_trait]
+impl FieldResolver<Value, SystemResolutionError, ()> for Value {
+    async fn resolve_field<'a>(
+        &'a self,
+        field: &ValidatedField,
+        _resolution_context: &'a (),
+        _request_context: &'a RequestContext<'a>,
+    ) -> Result<Value, SystemResolutionError> {
+        let field_name = field.name.as_str();
+
+        if let Value::Object(map) = self {
+            map.get(field_name).cloned().ok_or_else(|| {
+                SystemResolutionError::Generic(format!("No field named {} in Object", field_name))
+            })
+        } else {
+            Err(SystemResolutionError::Generic(format!(
+                "{} is not an Object and doesn't have any fields",
+                field_name
+            )))
+        }
     }
 }

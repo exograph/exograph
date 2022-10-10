@@ -12,8 +12,12 @@ use thiserror::Error;
 
 #[async_trait]
 pub trait SubsystemResolver {
+    /// The id of the subsystem (for debugging purposes)
     fn id(&self) -> &'static str;
 
+    /// Resolve an individual operation
+    ///
+    /// Returns `None` if the operation is not handled by this subsystem
     async fn resolve<'a>(
         &'a self,
         operation: &'a ValidatedField,
@@ -22,15 +26,10 @@ pub trait SubsystemResolver {
         system_resolver: &'a SystemResolver,
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>>;
 
-    async fn invoke_non_proceeding_interceptor<'a>(
-        &'a self,
-        operation: &'a ValidatedField,
-        operation_type: OperationType,
-        interceptor_index: InterceptorIndex,
-        request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
-    ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
-
+    /// Involves an interceptor
+    ///
+    /// Returns `None` for `QueryResponse` if the interceptor is of before/after type (which is not
+    /// expected to return a value)
     async fn invoke_proceeding_interceptor<'a>(
         &'a self,
         operation: &'a ValidatedField,
@@ -41,8 +40,24 @@ pub trait SubsystemResolver {
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
 
+    /// NOTE: See https://github.com/payalabs/payas/issues/528
+    async fn invoke_non_proceeding_interceptor<'a>(
+        &'a self,
+        operation: &'a ValidatedField,
+        operation_type: OperationType,
+        interceptor_index: InterceptorIndex,
+        request_context: &'a RequestContext<'a>,
+        system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
+
+    // Support for schema creation (and in turn, validation)
+
+    /// Queries supported by this subsystem
     fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>>;
+    /// Mutations supported by this subsystem
     fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>>;
+    /// Types supported by this subsystem. This includes types explicitly defined by user model as
+    /// well as types derived from user model (such as for predicates)
     fn schema_types(&self) -> Vec<TypeDefinition>;
 }
 
@@ -59,9 +74,6 @@ pub enum SubsystemResolutionError {
 
     #[error("No interceptor found")]
     NoInterceptorFound, // Almost certainly a programming error (we asked a wrong subsystem)
-
-    #[error("{0}")]
-    Delegate(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 impl SubsystemResolutionError {
@@ -74,9 +86,6 @@ impl SubsystemResolutionError {
             SubsystemResolutionError::Authorization => Some("Not authorized".to_string()),
             SubsystemResolutionError::UserDisplayError(message) => Some(message.to_string()),
             SubsystemResolutionError::NoInterceptorFound => None,
-            SubsystemResolutionError::Delegate(error) => error
-                .downcast_ref::<SubsystemResolutionError>()
-                .and_then(|error| error.user_error_message()),
         }
     }
 }
