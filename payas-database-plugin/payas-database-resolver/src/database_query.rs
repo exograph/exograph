@@ -2,8 +2,10 @@ use async_recursion::async_recursion;
 use futures::StreamExt;
 
 use payas_core_resolver::request_context::RequestContext;
+use payas_core_resolver::system_resolver::SystemResolver;
 use payas_core_resolver::validation::field::ValidatedField;
 use payas_database_model::{
+    model::ModelDatabaseSystem,
     operation::{DatabaseQuery, DatabaseQueryParameter},
     relation::{DatabaseRelation, RelationCardinality},
     types::{DatabaseTypeKind, DatabaseTypeModifier},
@@ -18,7 +20,6 @@ use crate::util::find_arg;
 
 use super::{
     database_execution_error::DatabaseExecutionError,
-    database_system_context::DatabaseSystemContext,
     order_by_mapper::OrderByParameterMapper,
     sql_mapper::{SQLMapper, SQLOperationKind},
     util::{compute_sql_access_predicate, Arguments},
@@ -28,7 +29,8 @@ pub async fn compute_select<'content>(
     query: &'content DatabaseQuery,
     field: &'content ValidatedField,
     additional_predicate: AbstractPredicate<'content>,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
+    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect<'content>, DatabaseExecutionError> {
     let DatabaseQueryParameter {
@@ -37,7 +39,8 @@ pub async fn compute_select<'content>(
     let access_predicate = compute_sql_access_predicate(
         &query.return_type,
         &SQLOperationKind::Retrieve,
-        system_context,
+        subsystem,
+        system_resolver,
         request_context,
     )
     .await;
@@ -50,7 +53,8 @@ pub async fn compute_select<'content>(
         predicate_param.as_ref(),
         &field.arguments,
         additional_predicate,
-        system_context,
+        subsystem,
+        system_resolver,
     )
     .map_err(|e| match e {
         DatabaseExecutionError::Validation(message) => DatabaseExecutionError::Validation(format!(
@@ -60,22 +64,26 @@ pub async fn compute_select<'content>(
         e => e,
     })?;
 
-    let order_by = compute_order_by(query, &field.arguments, system_context)?;
+    let order_by = compute_order_by(query, &field.arguments, subsystem)?;
 
     let predicate = AbstractPredicate::and(predicate, access_predicate);
 
-    let content_object =
-        content_select(query, &field.subfields, system_context, request_context).await?;
+    let content_object = content_select(
+        query,
+        &field.subfields,
+        subsystem,
+        system_resolver,
+        request_context,
+    )
+    .await?;
 
-    let system = &system_context.system;
-
-    let limit = compute_limit(query, &field.arguments, system_context);
-    let offset = compute_offset(query, &field.arguments, system_context);
+    let limit = compute_limit(query, &field.arguments, subsystem);
+    let offset = compute_offset(query, &field.arguments, subsystem);
 
     let root_physical_table = if let DatabaseTypeKind::Composite(composite_root_type) =
-        &query.return_type.typ(system).kind
+        &query.return_type.typ(subsystem).kind
     {
-        &system.tables[composite_root_type.table_id]
+        &subsystem.tables[composite_root_type.table_id]
     } else {
         return Err(DatabaseExecutionError::Generic(
             "Expected a composite type".into(),
@@ -101,7 +109,7 @@ pub async fn compute_select<'content>(
 fn compute_order_by<'content>(
     query: &'content DatabaseQuery,
     arguments: &'content Arguments,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
 ) -> Result<Option<AbstractOrderBy<'content>>, DatabaseExecutionError> {
     let DatabaseQueryParameter { order_by_param, .. } = &query.parameter;
     order_by_param
@@ -109,7 +117,7 @@ fn compute_order_by<'content>(
         .and_then(|order_by_param| {
             let argument_value = find_arg(arguments, &order_by_param.name);
             argument_value.map(|argument_value| {
-                order_by_param.map_to_order_by(argument_value, None, system_context)
+                order_by_param.map_to_order_by(argument_value, None, subsystem)
             })
         })
         .transpose()
@@ -119,11 +127,14 @@ fn compute_order_by<'content>(
 async fn content_select<'content>(
     query: &DatabaseQuery,
     fields: &'content [ValidatedField],
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
+    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<Vec<ColumnSelection<'content>>, DatabaseExecutionError> {
     futures::stream::iter(fields.iter())
-        .then(|field| async { map_field(query, field, system_context, request_context).await })
+        .then(|field| async {
+            map_field(query, field, subsystem, system_resolver, request_context).await
+        })
         .collect::<Vec<Result<_, _>>>()
         .await
         .into_iter()
@@ -133,15 +144,14 @@ async fn content_select<'content>(
 fn compute_limit<'content>(
     query: &'content DatabaseQuery,
     arguments: &'content Arguments,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
 ) -> Option<Limit> {
     let DatabaseQueryParameter { limit_param, .. } = &query.parameter;
     limit_param
         .as_ref()
         .and_then(|limit_param| {
             let argument_value = find_arg(arguments, &limit_param.name);
-            argument_value
-                .map(|argument_value| limit_param.map_to_sql(argument_value, system_context))
+            argument_value.map(|argument_value| limit_param.map_to_sql(argument_value, subsystem))
         })
         .transpose()
         .unwrap()
@@ -150,15 +160,14 @@ fn compute_limit<'content>(
 fn compute_offset<'content>(
     query: &'content DatabaseQuery,
     arguments: &'content Arguments,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
 ) -> Option<Offset> {
     let DatabaseQueryParameter { offset_param, .. } = &query.parameter;
     offset_param
         .as_ref()
         .and_then(|offset_param| {
             let argument_value = find_arg(arguments, &offset_param.name);
-            argument_value
-                .map(|argument_value| offset_param.map_to_sql(argument_value, system_context))
+            argument_value.map(|argument_value| offset_param.map_to_sql(argument_value, subsystem))
         })
         .transpose()
         .unwrap()
@@ -167,11 +176,11 @@ fn compute_offset<'content>(
 async fn map_field<'content>(
     query: &DatabaseQuery,
     field: &'content ValidatedField,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
+    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, DatabaseExecutionError> {
-    let system = &system_context.system;
-    let return_type = query.return_type.typ(system);
+    let return_type = query.return_type.typ(subsystem);
 
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.clone())
@@ -180,7 +189,7 @@ async fn map_field<'content>(
 
         match &model_field.relation {
             DatabaseRelation::Pk { column_id } | DatabaseRelation::Scalar { column_id } => {
-                let column = column_id.get_column(system);
+                let column = column_id.get_column(subsystem);
                 SelectionElement::Physical(column)
             }
             DatabaseRelation::ManyToOne {
@@ -188,18 +197,18 @@ async fn map_field<'content>(
                 other_type_id,
                 ..
             } => {
-                let other_type = &system.database_types[*other_type_id];
-                let other_table = &system.tables[other_type.table_id().unwrap()];
+                let other_type = &subsystem.database_types[*other_type_id];
+                let other_table = &subsystem.tables[other_type.table_id().unwrap()];
 
                 let other_table_pk_query = match &other_type.kind {
                     DatabaseTypeKind::Primitive => panic!(""),
-                    DatabaseTypeKind::Composite(kind) => &system.queries[kind.pk_query],
+                    DatabaseTypeKind::Composite(kind) => &subsystem.queries[kind.pk_query],
                 };
-                let self_table = &system.tables[return_type
+                let self_table = &subsystem.tables[return_type
                     .table_id()
                     .expect("No table for a composite type")];
                 let relation_link = ColumnPathLink {
-                    self_column: (column_id.get_column(system), self_table),
+                    self_column: (column_id.get_column(subsystem), self_table),
                     linked_column: Some((
                         other_table
                             .get_pk_physical_column()
@@ -212,7 +221,8 @@ async fn map_field<'content>(
                     other_table_pk_query,
                     field,
                     AbstractPredicate::True,
-                    system_context,
+                    subsystem,
+                    system_resolver,
                     request_context,
                 )
                 .await?;
@@ -223,36 +233,37 @@ async fn map_field<'content>(
                 other_type_id,
                 cardinality,
             } => {
-                let other_type = &system.database_types[*other_type_id];
+                let other_type = &subsystem.database_types[*other_type_id];
                 let other_table_query = {
                     match &other_type.kind {
                         DatabaseTypeKind::Primitive => panic!(""),
                         DatabaseTypeKind::Composite(kind) => {
                             // Get an appropriate query based on the cardinality of the relation
                             if cardinality == &RelationCardinality::Unbounded {
-                                &system.queries[kind.collection_query]
+                                &subsystem.queries[kind.collection_query]
                             } else {
-                                &system.queries[kind.pk_query]
+                                &subsystem.queries[kind.pk_query]
                             }
                         }
                     }
                 };
-                let self_table = &system.tables[return_type.table_id().unwrap()];
+                let self_table = &subsystem.tables[return_type.table_id().unwrap()];
                 let self_table_pk_column = self_table
                     .get_pk_physical_column()
                     .expect("No primary key column found");
                 let relation_link = ColumnPathLink {
                     self_column: (self_table_pk_column, self_table),
                     linked_column: Some((
-                        other_type_column_id.get_column(system),
-                        &system.tables[other_type.table_id().unwrap()],
+                        other_type_column_id.get_column(subsystem),
+                        &subsystem.tables[other_type.table_id().unwrap()],
                     )),
                 };
                 let nested_abstract_select = compute_select(
                     other_table_query,
                     field,
                     AbstractPredicate::True,
-                    system_context,
+                    subsystem,
+                    system_resolver,
                     request_context,
                 )
                 .await?;

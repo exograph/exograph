@@ -4,7 +4,6 @@ use futures::StreamExt;
 use payas_core_resolver::request_context::RequestContext;
 use payas_core_resolver::system_resolver::ClaytipExecuteQueryFn;
 use payas_core_resolver::system_resolver::SystemResolver;
-use payas_core_resolver::ResolveOperationFn;
 use payas_deno_model::model::ModelDenoSystem;
 use payas_deno_model::service::Argument;
 use std::collections::HashMap;
@@ -46,16 +45,20 @@ impl<'a> DenoOperation<'a> {
     async fn compute_service_access_predicate(&self) -> bool {
         let subsystem = &self.subsystem();
         let return_type = self.method.return_type.typ(&subsystem.service_types);
-        let resolve = &self.system_resolver.resolve_operation_fn();
 
         let type_level_access = match &return_type.kind {
             ServiceTypeKind::Primitive => true,
             ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => {
                 let access_expr = &access.value;
 
-                access_solver::solve_access(access_expr, self.request_context, subsystem, resolve)
-                    .await
-                    .into()
+                access_solver::solve_access(
+                    access_expr,
+                    self.request_context,
+                    subsystem,
+                    self.system_resolver,
+                )
+                .await
+                .into()
             }
         };
 
@@ -65,7 +68,7 @@ impl<'a> DenoOperation<'a> {
             method_access_expr,
             self.request_context,
             subsystem,
-            resolve,
+            self.system_resolver,
         )
         .await;
 
@@ -117,7 +120,7 @@ impl<'a> DenoOperation<'a> {
             &self.field.arguments,
             &self.method.arguments,
             self.subsystem(),
-            &self.system_resolver.resolve_operation_fn(),
+            &self.system_resolver,
             self.request_context,
         )
         .await
@@ -132,7 +135,7 @@ pub async fn construct_arg_sequence<'a>(
     field_args: &IndexMap<String, ConstValue>,
     args: &[Argument],
     system: &'a ModelDenoSystem,
-    resolve_query: &ResolveOperationFn<'a>,
+    system_resolver: &'a SystemResolver,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
     let mapped_args = field_args
@@ -162,7 +165,7 @@ pub async fn construct_arg_sequence<'a>(
                 {
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = request_context
-                        .extract_context(context, resolve_query)
+                        .extract_context(context, system_resolver)
                         .await
                         .unwrap_or_else(|_| {
                             panic!(

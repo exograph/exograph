@@ -4,12 +4,9 @@ use async_graphql_parser::{
 };
 use async_trait::async_trait;
 
-use payas_core_model::{
-    serializable_system::{InterceptionTree, InterceptorIndex},
-    system_serializer::SystemSerializer,
-};
+use payas_core_model::serializable_system::{InterceptionTree, InterceptorIndex};
 use payas_core_resolver::{
-    plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolutionError, SubsystemResolver},
+    plugin::{SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
     system_resolver::SystemResolver,
     validation::field::ValidatedField,
@@ -19,38 +16,13 @@ use payas_database_model::{
     model::ModelDatabaseSystem,
     operation::{DatabaseMutation, DatabaseQuery},
 };
-use payas_sql::{AbstractOperation, AbstractPredicate, Database, DatabaseExecutor};
+use payas_sql::{AbstractOperation, AbstractPredicate, DatabaseExecutor};
 
 use crate::{
     abstract_operation_resolver::resolve_operation,
     database_execution_error::DatabaseExecutionError, database_mutation::operation,
-    database_query::compute_select, database_system_context::DatabaseSystemContext,
+    database_query::compute_select,
 };
-
-pub struct DatabaseSubsystemLoader {}
-
-impl SubsystemLoader for DatabaseSubsystemLoader {
-    fn id(&self) -> &'static str {
-        "database"
-    }
-
-    fn init<'a>(
-        &self,
-        serialized_subsystem: Vec<u8>,
-    ) -> Result<Box<dyn SubsystemResolver + Send + Sync>, SubsystemLoadingError> {
-        let subsystem = ModelDatabaseSystem::deserialize(serialized_subsystem)?;
-
-        let database =
-            Database::from_env(None).map_err(|e| SubsystemLoadingError::BoxedError(Box::new(e)))?;
-        let executor = DatabaseExecutor { database };
-
-        Ok(Box::new(DatabaseSubsystemResolver {
-            id: self.id(),
-            subsystem,
-            executor,
-        }))
-    }
-}
 
 pub struct DatabaseSubsystemResolver {
     pub id: &'static str,
@@ -73,12 +45,6 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
         let operation_name = &field.name;
 
-        let database_system_context = DatabaseSystemContext {
-            system: &self.subsystem,
-            database_executor: &self.executor,
-            resolve_operation_fn: system_resolver.resolve_operation_fn(),
-        };
-
         let operation = match operation_type {
             OperationType::Query => {
                 let query = self.subsystem.queries.get_by_key(operation_name);
@@ -89,7 +55,8 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
                             query,
                             field,
                             request_context,
-                            &database_system_context,
+                            &self.subsystem,
+                            system_resolver,
                         )
                         .await,
                     ),
@@ -107,7 +74,8 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
                             mutation,
                             field,
                             request_context,
-                            &database_system_context,
+                            &self.subsystem,
+                            system_resolver,
                         )
                         .await,
                     ),
@@ -123,7 +91,7 @@ impl SubsystemResolver for DatabaseSubsystemResolver {
 
         match operation {
             Some(Ok(operation)) => Some(
-                resolve_operation(&operation, database_system_context, request_context)
+                resolve_operation(&operation, self, request_context)
                     .await
                     .map_err(|e| e.into()),
             ),
@@ -172,13 +140,15 @@ async fn compute_query_sql_operation<'a>(
     query: &'a DatabaseQuery,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
-    database_system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
 ) -> Result<AbstractOperation<'a>, DatabaseExecutionError> {
     compute_select(
         query,
         field,
         AbstractPredicate::True,
-        &database_system_context,
+        subsystem,
+        system_resolver,
         request_context,
     )
     .await
@@ -189,9 +159,10 @@ async fn compute_mutation_sql_operation<'a>(
     mutation: &'a DatabaseMutation,
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
-    database_system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
 ) -> Result<AbstractOperation<'a>, DatabaseExecutionError> {
-    operation(mutation, field, &database_system_context, request_context).await
+    operation(mutation, field, subsystem, system_resolver, request_context).await
 }
 
 impl From<DatabaseExecutionError> for SubsystemResolutionError {

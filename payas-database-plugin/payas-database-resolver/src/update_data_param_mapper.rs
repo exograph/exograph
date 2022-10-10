@@ -1,5 +1,6 @@
 use async_graphql_value::ConstValue;
 
+use payas_core_resolver::system_resolver::SystemResolver;
 use payas_database_model::{
     model::ModelDatabaseSystem,
     operation::{OperationReturnType, UpdateDataParameter},
@@ -14,10 +15,7 @@ use payas_sql::{
 
 use crate::util::{get_argument_field, return_type_info};
 
-use super::{
-    cast, database_execution_error::DatabaseExecutionError,
-    database_system_context::DatabaseSystemContext, sql_mapper::SQLUpdateMapper,
-};
+use super::{cast, database_execution_error::DatabaseExecutionError, sql_mapper::SQLUpdateMapper};
 
 impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
     fn update_operation(
@@ -26,18 +24,23 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         predicate: AbstractPredicate<'a>,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
+        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractUpdate<'a>, DatabaseExecutionError> {
-        let system = &system_context.system;
-        let data_type = &system.mutation_types[self.type_id];
+        let data_type = &subsystem.mutation_types[self.type_id];
 
-        let self_update_columns = compute_update_columns(data_type, argument, system_context);
-        let (table, _, _) = return_type_info(return_type, system_context);
+        let self_update_columns = compute_update_columns(data_type, argument, subsystem);
+        let (table, _, _) = return_type_info(return_type, subsystem);
 
-        let container_model_type = return_type.typ(system);
+        let container_model_type = return_type.typ(subsystem);
 
-        let (nested_updates, nested_inserts, nested_deletes) =
-            compute_nested_ops(data_type, argument, container_model_type, system_context);
+        let (nested_updates, nested_inserts, nested_deletes) = compute_nested_ops(
+            data_type,
+            argument,
+            container_model_type,
+            subsystem,
+            system_resolver,
+        );
 
         let abs_update = AbstractUpdate {
             table,
@@ -56,10 +59,8 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 fn compute_update_columns<'a>(
     data_type: &'a DatabaseType,
     argument: &'a ConstValue,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
-    let system = &system_context.system;
-
     match &data_type.kind {
         DatabaseTypeKind::Primitive => panic!(),
         DatabaseTypeKind::Composite(DatabaseCompositeType { fields, .. }) => fields
@@ -67,13 +68,13 @@ fn compute_update_columns<'a>(
             .flat_map(|field| {
                 field.relation.self_column().and_then(|key_column_id| {
                     get_argument_field(argument, &field.name).map(|argument_value| {
-                        let key_column = key_column_id.get_column(system);
+                        let key_column = key_column_id.get_column(subsystem);
                         let argument_value = match &field.relation {
                             DatabaseRelation::ManyToOne { other_type_id, .. } => {
-                                let other_type = &system.database_types[*other_type_id];
+                                let other_type = &subsystem.database_types[*other_type_id];
                                 let other_type_pk_field_name = other_type
                                     .pk_column_id()
-                                    .map(|column_id| &column_id.get_column(system).column_name)
+                                    .map(|column_id| &column_id.get_column(subsystem).column_name)
                                     .unwrap();
                                 match get_argument_field(argument_value, other_type_pk_field_name) {
                                     Some(other_type_pk_arg) => other_type_pk_arg,
@@ -101,14 +102,13 @@ fn compute_nested_ops<'a>(
     field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
     container_model_type: &'a DatabaseType,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
     Vec<NestedAbstractInsert<'a>>,
     Vec<NestedAbstractDelete<'a>>,
 ) {
-    let system = &system_context.system;
-
     let mut nested_updates = vec![];
     let mut nested_inserts = vec![];
     let mut nested_deletes = vec![];
@@ -118,27 +118,28 @@ fn compute_nested_ops<'a>(
         DatabaseTypeKind::Composite(DatabaseCompositeType { fields, .. }) => {
             fields.iter().for_each(|field| {
                 if let DatabaseRelation::OneToMany { other_type_id, .. } = &field.relation {
-                    let field_model_type = &system.database_types[*other_type_id]; // TODO: This is a model type but should be a data type
+                    let field_model_type = &subsystem.database_types[*other_type_id]; // TODO: This is a model type but should be a data type
 
                     if let Some(argument) = get_argument_field(argument, &field.name) {
                         nested_updates.extend(compute_nested_update(
                             field_model_type,
                             argument,
                             container_model_type,
-                            system_context,
+                            subsystem,
                         ));
 
                         nested_inserts.extend(compute_nested_inserts(
                             field_model_type,
                             argument,
                             container_model_type,
-                            system_context,
+                            subsystem,
+                            system_resolver,
                         ));
 
                         nested_deletes.extend(compute_nested_delete(
                             field_model_type,
                             argument,
-                            system_context,
+                            subsystem,
                             container_model_type,
                         ));
                     }
@@ -187,12 +188,10 @@ fn compute_nested_update<'a>(
     field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
     container_model_type: &'a DatabaseType,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
 ) -> Vec<NestedAbstractUpdate<'a>> {
-    let system = &system_context.system;
-
     let nested_reference_col =
-        compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
+        compute_nested_reference_column(field_model_type, container_model_type, subsystem).unwrap();
 
     let update_arg = get_argument_field(argument, "update");
 
@@ -203,7 +202,7 @@ fn compute_nested_update<'a>(
                     field_model_type,
                     arg,
                     nested_reference_col,
-                    system_context,
+                    subsystem,
                 )]
             }
             ConstValue::List(update_arg) => update_arg
@@ -213,7 +212,7 @@ fn compute_nested_update<'a>(
                         field_model_type,
                         arg,
                         nested_reference_col,
-                        system_context,
+                        subsystem,
                     )
                 })
                 .collect(),
@@ -228,14 +227,13 @@ fn compute_nested_update_object_arg<'a>(
     field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
 ) -> NestedAbstractUpdate<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
-    let system = &system_context.system;
-    let table = &system.tables[field_model_type.table_id().unwrap()];
+    let table = &subsystem.tables[field_model_type.table_id().unwrap()];
 
-    let nested = compute_update_columns(field_model_type, argument, system_context);
+    let nested = compute_update_columns(field_model_type, argument, subsystem);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
 
     // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let
@@ -290,28 +288,27 @@ fn compute_nested_inserts<'a>(
     field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
     container_model_type: &'a DatabaseType,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
 ) -> Vec<NestedAbstractInsert<'a>> {
     fn create_nested<'a>(
         field_model_type: &'a DatabaseType,
         argument: &'a ConstValue,
         container_model_type: &'a DatabaseType,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
+        system_resolver: &'a SystemResolver,
     ) -> Result<NestedAbstractInsert<'a>, DatabaseExecutionError> {
-        let nested_reference_col = compute_nested_reference_column(
-            field_model_type,
-            container_model_type,
-            system_context.system,
-        )
-        .unwrap();
-        let system = &system_context.system;
+        let nested_reference_col =
+            compute_nested_reference_column(field_model_type, container_model_type, subsystem)
+                .unwrap();
 
-        let table = &system.tables[field_model_type.table_id().unwrap()];
+        let table = &subsystem.tables[field_model_type.table_id().unwrap()];
 
         let rows = super::create_data_param_mapper::map_argument(
             field_model_type,
             argument,
-            system_context,
+            subsystem,
+            system_resolver,
         )?;
 
         Ok(NestedAbstractInsert {
@@ -342,14 +339,21 @@ fn compute_nested_inserts<'a>(
                 field_model_type,
                 create_arg,
                 container_model_type,
-                system_context,
+                subsystem,
+                system_resolver,
             )
             .unwrap()],
             ConstValue::List(create_arg) => create_arg
                 .iter()
                 .map(|arg| {
-                    create_nested(field_model_type, arg, container_model_type, system_context)
-                        .unwrap()
+                    create_nested(
+                        field_model_type,
+                        arg,
+                        container_model_type,
+                        subsystem,
+                        system_resolver,
+                    )
+                    .unwrap()
                 })
                 .collect(),
             _ => panic!("Object or list expected"),
@@ -361,15 +365,14 @@ fn compute_nested_inserts<'a>(
 fn compute_nested_delete<'a>(
     field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
     container_model_type: &'a DatabaseType,
 ) -> Vec<NestedAbstractDelete<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
-    let system = &system_context.system;
 
     let nested_reference_col =
-        compute_nested_reference_column(field_model_type, container_model_type, system).unwrap();
+        compute_nested_reference_column(field_model_type, container_model_type, subsystem).unwrap();
 
     let delete_arg = get_argument_field(argument, "delete");
 
@@ -380,7 +383,7 @@ fn compute_nested_delete<'a>(
                     field_model_type,
                     arg,
                     nested_reference_col,
-                    system_context,
+                    subsystem,
                 )]
             }
             ConstValue::List(update_arg) => update_arg
@@ -390,7 +393,7 @@ fn compute_nested_delete<'a>(
                         field_model_type,
                         arg,
                         nested_reference_col,
-                        system_context,
+                        subsystem,
                     )
                 })
                 .collect(),
@@ -405,15 +408,14 @@ fn compute_nested_delete_object_arg<'a>(
     field_model_type: &'a DatabaseType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
 ) -> NestedAbstractDelete<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
-    let system = &system_context.system;
-    let table = &system.tables[field_model_type.table_id().unwrap()];
+    let table = &subsystem.tables[field_model_type.table_id().unwrap()];
 
     //
-    let nested = compute_update_columns(field_model_type, argument, system_context);
+    let nested = compute_update_columns(field_model_type, argument, subsystem);
     let (pk_columns, _nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
 
     // This computation of predicate based on the id column is not quite correct, but it is a flaw of how we let

@@ -1,12 +1,12 @@
 use async_graphql_value::ConstValue;
 
-use payas_database_model::limit_offset::{LimitParameter, OffsetParameter};
+use payas_database_model::{
+    limit_offset::{LimitParameter, OffsetParameter},
+    model::ModelDatabaseSystem,
+};
 use payas_sql::{Limit, Offset};
 
-use super::{
-    database_execution_error::DatabaseExecutionError,
-    database_system_context::DatabaseSystemContext, sql_mapper::SQLMapper,
-};
+use super::{database_execution_error::DatabaseExecutionError, sql_mapper::SQLMapper};
 
 fn cast_to_i64(argument: &ConstValue) -> Result<i64, DatabaseExecutionError> {
     match argument {
@@ -21,7 +21,7 @@ impl<'a> SQLMapper<'a, Limit> for LimitParameter {
     fn map_to_sql(
         &self,
         argument: &'a ConstValue,
-        _system_context: &DatabaseSystemContext<'a>,
+        _subsystem: &'a ModelDatabaseSystem,
     ) -> Result<Limit, DatabaseExecutionError> {
         cast_to_i64(argument).map(Limit)
     }
@@ -31,7 +31,7 @@ impl<'a> SQLMapper<'a, Offset> for OffsetParameter {
     fn map_to_sql(
         &self,
         argument: &'a ConstValue,
-        _system_context: &DatabaseSystemContext<'a>,
+        _subsystem: &'a ModelDatabaseSystem,
     ) -> Result<Offset, DatabaseExecutionError> {
         cast_to_i64(argument).map(Offset)
     }

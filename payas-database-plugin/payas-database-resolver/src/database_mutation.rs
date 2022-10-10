@@ -1,5 +1,9 @@
-use payas_core_resolver::{request_context::RequestContext, validation::field::ValidatedField};
+use payas_core_resolver::{
+    request_context::RequestContext, system_resolver::SystemResolver,
+    validation::field::ValidatedField,
+};
 use payas_database_model::{
+    model::ModelDatabaseSystem,
     operation::{CreateDataParameter, DatabaseMutation, DatabaseMutationKind, UpdateDataParameter},
     predicate::PredicateParameter,
     types::DatabaseTypeModifier,
@@ -12,7 +16,6 @@ use payas_sql::{
 use super::{
     database_execution_error::{DatabaseExecutionError, WithContext},
     database_query::compute_select,
-    database_system_context::DatabaseSystemContext,
     sql_mapper::{SQLInsertMapper, SQLOperationKind, SQLUpdateMapper},
     util::{compute_sql_access_predicate, find_arg, return_type_info},
 };
@@ -20,12 +23,13 @@ use super::{
 pub async fn operation<'content>(
     mutation: &'content DatabaseMutation,
     field: &'content ValidatedField,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
+    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractOperation<'content>, DatabaseExecutionError> {
     let abstract_select = {
         let return_type = &mutation.return_type;
-        let (_, pk_query, collection_query) = return_type_info(return_type, system_context);
+        let (_, pk_query, collection_query) = return_type_info(return_type, subsystem);
         let selection_query = match return_type.type_modifier {
             DatabaseTypeModifier::List => collection_query,
             DatabaseTypeModifier::NonNull | DatabaseTypeModifier::Optional => pk_query,
@@ -35,7 +39,8 @@ pub async fn operation<'content>(
             selection_query,
             field,
             AbstractPredicate::True,
-            system_context,
+            subsystem,
+            system_resolver,
             request_context,
         )
         .await?
@@ -48,7 +53,8 @@ pub async fn operation<'content>(
                 data_param,
                 field,
                 abstract_select,
-                system_context,
+                subsystem,
+                system_resolver,
                 request_context,
             )
             .await?,
@@ -59,7 +65,8 @@ pub async fn operation<'content>(
                 predicate_param,
                 field,
                 abstract_select,
-                system_context,
+                subsystem,
+                system_resolver,
                 request_context,
             )
             .await?,
@@ -74,7 +81,8 @@ pub async fn operation<'content>(
                 predicate_param,
                 field,
                 abstract_select,
-                system_context,
+                subsystem,
+                system_resolver,
                 request_context,
             )
             .await?,
@@ -87,14 +95,16 @@ async fn create_operation<'content>(
     data_param: &'content CreateDataParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
+    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractInsert<'content>, DatabaseExecutionError> {
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Create,
-        system_context,
+        subsystem,
+        system_resolver,
         request_context,
     )
     .await;
@@ -112,7 +122,8 @@ async fn create_operation<'content>(
         mutation.return_type.clone(),
         select,
         argument_value,
-        system_context,
+        subsystem,
+        system_resolver,
     )
 }
 
@@ -121,16 +132,18 @@ async fn delete_operation<'content>(
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
+    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractDelete<'content>, DatabaseExecutionError> {
-    let (table, _, _) = return_type_info(&mutation.return_type, system_context);
+    let (table, _, _) = return_type_info(&mutation.return_type, subsystem);
 
     // TODO: https://github.com/payalabs/payas/issues/343
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Delete,
-        system_context,
+        subsystem,
+        system_resolver,
         request_context,
     )
     .await;
@@ -144,7 +157,8 @@ async fn delete_operation<'content>(
         Some(predicate_param),
         &field.arguments,
         AbstractPredicate::True,
-        system_context,
+        subsystem,
+        system_resolver,
     )
     .with_context(format!(
         "During predicate computation for parameter {}",
@@ -164,7 +178,8 @@ async fn update_operation<'content>(
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
-    system_context: &DatabaseSystemContext<'content>,
+    subsystem: &'content ModelDatabaseSystem,
+    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractUpdate<'content>, DatabaseExecutionError> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
@@ -173,7 +188,8 @@ async fn update_operation<'content>(
     let access_predicate = compute_sql_access_predicate(
         &mutation.return_type,
         &SQLOperationKind::Update,
-        system_context,
+        subsystem,
+        system_resolver,
         request_context,
     )
     .await;
@@ -188,7 +204,8 @@ async fn update_operation<'content>(
         Some(predicate_param),
         &field.arguments,
         AbstractPredicate::True,
-        system_context,
+        subsystem,
+        system_resolver,
     )
     .with_context(format!(
         "During predicate computation for parameter {}",
@@ -203,7 +220,8 @@ async fn update_operation<'content>(
                 predicate,
                 select,
                 argument_value,
-                system_context,
+                subsystem,
+                system_resolver,
             )
         })
         .unwrap()

@@ -8,7 +8,6 @@ mod create_data_param_mapper;
 mod database_execution_error;
 mod database_mutation;
 mod database_query;
-mod database_system_context;
 mod limit_offset_mapper;
 mod order_by_mapper;
 mod plugin;

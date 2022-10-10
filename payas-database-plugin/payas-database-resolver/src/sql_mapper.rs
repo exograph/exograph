@@ -1,12 +1,10 @@
 use async_graphql_value::ConstValue;
 
-use payas_database_model::operation::OperationReturnType;
+use payas_core_resolver::system_resolver::SystemResolver;
+use payas_database_model::{model::ModelDatabaseSystem, operation::OperationReturnType};
 use payas_sql::{AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate};
 
-use super::{
-    database_execution_error::DatabaseExecutionError,
-    database_system_context::DatabaseSystemContext,
-};
+use super::database_execution_error::DatabaseExecutionError;
 pub(crate) enum SQLOperationKind {
     Create,
     Retrieve,
@@ -18,7 +16,7 @@ pub(crate) trait SQLMapper<'a, R> {
     fn map_to_sql(
         &'a self,
         argument: &'a ConstValue,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
     ) -> Result<R, DatabaseExecutionError>;
 }
 
@@ -28,7 +26,8 @@ pub trait SQLInsertMapper<'a> {
         return_type: OperationReturnType,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
+        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractInsert, DatabaseExecutionError>;
 }
 
@@ -39,6 +38,7 @@ pub(crate) trait SQLUpdateMapper<'a> {
         predicate: AbstractPredicate<'a>,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
+        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractUpdate, DatabaseExecutionError>;
 }

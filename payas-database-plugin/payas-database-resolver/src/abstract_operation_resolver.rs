@@ -6,19 +6,19 @@ use tokio_postgres::Row;
 
 use crate::{
     database_execution_error::DatabaseExecutionError,
-    database_system_context::DatabaseSystemContext,
+    plugin::subsystem_resolver::DatabaseSubsystemResolver,
 };
 
 pub async fn resolve_operation<'e>(
     op: &AbstractOperation<'e>,
-    system_context: DatabaseSystemContext<'e>,
+    subsystem_resolver: &'e DatabaseSubsystemResolver,
     request_context: &'e RequestContext<'e>,
 ) -> Result<QueryResponse, DatabaseExecutionError> {
     let ctx = request_context.get_base_context();
     let mut tx = ctx.transaction_holder.try_lock().unwrap();
 
-    let mut result = system_context
-        .database_executor
+    let mut result = subsystem_resolver
+        .executor
         .execute(op, &mut tx)
         .await
         .map_err(DatabaseExecutionError::Database)?;

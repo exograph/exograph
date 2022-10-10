@@ -3,20 +3,19 @@ use async_graphql_value::ConstValue;
 use crate::{column_path_util::to_column_path, database_execution_error::DatabaseExecutionError};
 use payas_database_model::{
     column_path::ColumnIdPath,
+    model::ModelDatabaseSystem,
     order::{OrderByParameter, OrderByParameterType, OrderByParameterTypeKind},
 };
 use payas_sql::{AbstractOrderBy, Ordering};
 
 use crate::util::to_column_id_path;
 
-use super::database_system_context::DatabaseSystemContext;
-
 pub(crate) trait OrderByParameterMapper<'a> {
     fn map_to_order_by(
         &'a self,
         argument: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
     ) -> Result<AbstractOrderBy<'a>, DatabaseExecutionError>;
 }
 
@@ -25,9 +24,9 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
         &'a self,
         argument: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
     ) -> Result<AbstractOrderBy<'a>, DatabaseExecutionError> {
-        let parameter_type = &system_context.system.order_by_types[self.typ.type_id];
+        let parameter_type = &subsystem.order_by_types[self.typ.type_id];
         fn flatten<E>(order_bys: Result<Vec<AbstractOrderBy>, E>) -> Result<AbstractOrderBy, E> {
             let mapped = order_bys?.into_iter().flat_map(|elem| elem.0).collect();
             Ok(AbstractOrderBy(mapped))
@@ -43,7 +42,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
                             elem.0,
                             elem.1,
                             parent_column_path.clone(),
-                            system_context,
+                            subsystem,
                         )
                     })
                     .collect();
@@ -53,9 +52,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
             ConstValue::List(elems) => {
                 let mapped = elems
                     .iter()
-                    .map(|elem| {
-                        self.map_to_order_by(elem, parent_column_path.clone(), system_context)
-                    })
+                    .map(|elem| self.map_to_order_by(elem, parent_column_path.clone(), subsystem))
                     .collect();
 
                 flatten(mapped)
@@ -71,7 +68,7 @@ fn order_by_pair<'a>(
     parameter_name: &str,
     parameter_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
 ) -> Result<AbstractOrderBy<'a>, DatabaseExecutionError> {
     let parameter = match &typ.kind {
         OrderByParameterTypeKind::Composite { parameters } => {
@@ -90,16 +87,13 @@ fn order_by_pair<'a>(
     // If this is a leaf node ({something: ASC} kind), then resolve the ordering. If not, then recurse with a new parent column path.
     // TODO: This feels a bit of a hack (we need a better way to find if this is a leaf parameter). Revisit this after we have a improved validation (#483)
     if &parameter.type_name == "Ordering" {
-        let new_column_path = to_column_path(
-            &parent_column_path,
-            &parameter.column_path_link,
-            system_context.system,
-        );
+        let new_column_path =
+            to_column_path(&parent_column_path, &parameter.column_path_link, subsystem);
         ordering(parameter_value).map(|ordering| AbstractOrderBy(vec![(new_column_path, ordering)]))
     } else {
         let new_parent_column_path =
             to_column_id_path(&parent_column_path, &parameter.column_path_link);
-        parameter.map_to_order_by(parameter_value, new_parent_column_path, system_context)
+        parameter.map_to_order_by(parameter_value, new_parent_column_path, subsystem)
     }
 }
 

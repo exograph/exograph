@@ -1,7 +1,9 @@
 use async_graphql_value::ConstValue;
 
+use payas_core_resolver::system_resolver::SystemResolver;
 use payas_database_model::{
     column_path::ColumnIdPath,
+    model::ModelDatabaseSystem,
     predicate::{PredicateParameter, PredicateParameterTypeKind},
 };
 use payas_sql::{AbstractPredicate, ColumnPath};
@@ -11,17 +13,15 @@ use crate::{
     util::{find_arg, get_argument_field, to_column_id_path, Arguments},
 };
 
-use super::{
-    cast::cast_value, database_execution_error::DatabaseExecutionError,
-    database_system_context::DatabaseSystemContext,
-};
+use super::{cast::cast_value, database_execution_error::DatabaseExecutionError};
 
 pub(crate) trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
+        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractPredicate<'a>, DatabaseExecutionError>;
 }
 
@@ -30,15 +30,16 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         &'a self,
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
+        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractPredicate<'a>, DatabaseExecutionError> {
-        let system = &system_context.system;
+        let system = &subsystem;
         let parameter_type = &system.predicate_types[self.typ.type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_path, op_value_path) =
-                    operands(self, argument_value, parent_column_path, system_context)?;
+                    operands(self, argument_value, parent_column_path, subsystem)?;
 
                 Ok(AbstractPredicate::Eq(
                     op_key_path.into(),
@@ -57,7 +58,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                         self,
                                         op_value,
                                         parent_column_path.clone(),
-                                        system_context,
+                                        subsystem,
                                     )
                                     .expect("Could not get operands");
                                     AbstractPredicate::from_name(
@@ -134,7 +135,8 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                         let arg_predicate = self.map_to_predicate(
                                             argument,
                                             parent_column_path.clone(),
-                                            system_context,
+                                            subsystem,
+                                            system_resolver,
                                         )?;
                                         new_predicate = predicate_connector(
                                             Box::new(new_predicate),
@@ -155,7 +157,8 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 let arg_predicate = self.map_to_predicate(
                                     logical_op_argument_value,
                                     parent_column_path,
-                                    system_context,
+                                    subsystem,
+                                    system_resolver,
                                 )?;
 
                                 Ok(AbstractPredicate::Not(Box::new(arg_predicate)))
@@ -180,7 +183,8 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 Some(argument_value_component) => parameter.map_to_predicate(
                                     argument_value_component,
                                     new_column_path,
-                                    system_context,
+                                    subsystem,
+                                    system_resolver,
                                 )?,
                                 None => AbstractPredicate::True,
                             };
@@ -203,22 +207,20 @@ fn operands<'a>(
     param: &'a PredicateParameter,
     op_value: &'a ConstValue,
     parent_column_path: Option<ColumnIdPath>,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
 ) -> Result<(ColumnPath<'a>, ColumnPath<'a>), DatabaseExecutionError> {
-    let system = &system_context.system;
-
     let op_physical_column = &param
         .column_path_link
         .as_ref()
         .expect("Could not find column path link while forming operands")
         .self_column_id
-        .get_column(system);
+        .get_column(subsystem);
     let op_value = cast_value(op_value, &op_physical_column.typ);
 
     op_value
         .map(move |op_value| {
             (
-                to_column_path(&parent_column_path, &param.column_path_link, system),
+                to_column_path(&parent_column_path, &param.column_path_link, subsystem),
                 ColumnPath::Literal(op_value.unwrap().into()),
             )
         })
@@ -229,14 +231,20 @@ pub fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     additional_predicate: AbstractPredicate<'a>,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
 ) -> Result<AbstractPredicate<'a>, DatabaseExecutionError> {
     let mapped = predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
             let argument_value = find_arg(arguments, &predicate_parameter.name);
             argument_value.map(|argument_value| {
-                predicate_parameter.map_to_predicate(argument_value, None, system_context)
+                predicate_parameter.map_to_predicate(
+                    argument_value,
+                    None,
+                    subsystem,
+                    system_resolver,
+                )
             })
         })
         .transpose()?;

@@ -1,5 +1,6 @@
 use async_graphql_value::ConstValue;
 
+use payas_core_resolver::system_resolver::SystemResolver;
 use payas_database_model::{
     column_id::ColumnId,
     model::ModelDatabaseSystem,
@@ -15,7 +16,6 @@ use payas_sql::{
 use super::{
     cast,
     database_execution_error::{DatabaseExecutionError, WithContext},
-    database_system_context::DatabaseSystemContext,
     sql_mapper::SQLInsertMapper,
 };
 
@@ -25,15 +25,14 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
         return_type: OperationReturnType,
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
-        system_context: &DatabaseSystemContext<'a>,
+        subsystem: &'a ModelDatabaseSystem,
+        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractInsert, DatabaseExecutionError> {
-        let system = &system_context.system;
+        let table = return_type.physical_table(subsystem);
 
-        let table = return_type.physical_table(system);
+        let data_type = &subsystem.mutation_types[self.typ.type_id];
 
-        let data_type = &system.mutation_types[self.typ.type_id];
-
-        let rows = map_argument(data_type, argument, system_context)?;
+        let rows = map_argument(data_type, argument, subsystem, system_resolver)?;
 
         let abs_insert = AbstractInsert {
             table,
@@ -48,16 +47,22 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
 pub(crate) fn map_argument<'a>(
     input_data_type: &'a DatabaseType,
     argument: &'a ConstValue,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
 ) -> Result<Vec<InsertionRow<'a>>, DatabaseExecutionError> {
     match argument {
         ConstValue::List(arguments) => arguments
             .iter()
-            .map(|argument| map_single(input_data_type, argument, system_context))
+            .map(|argument| map_single(input_data_type, argument, subsystem, system_resolver))
             .collect::<Result<Vec<_>, _>>(),
-        _ => vec![map_single(input_data_type, argument, system_context)]
-            .into_iter()
-            .collect(),
+        _ => vec![map_single(
+            input_data_type,
+            argument,
+            subsystem,
+            system_resolver,
+        )]
+        .into_iter()
+        .collect(),
     }
 }
 
@@ -65,7 +70,8 @@ pub(crate) fn map_argument<'a>(
 fn map_single<'a>(
     input_data_type: &'a DatabaseType,
     argument: &'a ConstValue,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
 ) -> Result<InsertionRow<'a>, DatabaseExecutionError> {
     let fields = match &input_data_type.kind {
         DatabaseTypeKind::Primitive => {
@@ -85,9 +91,15 @@ fn map_single<'a>(
 
             field_arg.map(|field_arg| match field_self_column {
                 Some(field_self_column) => {
-                    map_self_column(field_self_column, field, field_arg, system_context)
+                    map_self_column(field_self_column, field, field_arg, subsystem)
                 }
-                None => map_foreign(field, field_arg, input_data_type, system_context),
+                None => map_foreign(
+                    field,
+                    field_arg,
+                    input_data_type,
+                    subsystem,
+                    system_resolver,
+                ),
             })
         })
         .collect();
@@ -99,18 +111,16 @@ fn map_self_column<'a>(
     key_column_id: ColumnId,
     field: &'a DatabaseField,
     argument: &'a ConstValue,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
 ) -> Result<InsertionElement<'a>, DatabaseExecutionError> {
-    let system = &system_context.system;
-
-    let key_column = key_column_id.get_column(system);
+    let key_column = key_column_id.get_column(subsystem);
     let argument_value = match &field.relation {
         DatabaseRelation::ManyToOne { other_type_id, .. } => {
             // TODO: Include enough information in the ManyToOne relation to not need this much logic here
-            let other_type = &system.database_types[*other_type_id];
+            let other_type = &subsystem.database_types[*other_type_id];
             let other_type_pk_field_name = other_type
                 .pk_column_id()
-                .map(|column_id| &column_id.get_column(system).column_name)
+                .map(|column_id| &column_id.get_column(subsystem).column_name)
                 .ok_or_else(|| {
                     DatabaseExecutionError::Generic(format!(
                         "{} did not have a primary key field when computing many-to-one for {}",
@@ -143,10 +153,9 @@ fn map_foreign<'a>(
     field: &'a DatabaseField,
     argument: &'a ConstValue,
     parent_data_type: &'a DatabaseType,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
 ) -> Result<InsertionElement<'a>, DatabaseExecutionError> {
-    let system = &system_context.system;
-
     fn underlying_type<'a>(
         data_type: &'a DatabaseType,
         system: &'a ModelDatabaseSystem,
@@ -161,7 +170,7 @@ fn map_foreign<'a>(
         }
     }
 
-    let field_type = field.typ.base_type(&system.mutation_types);
+    let field_type = field.typ.base_type(&subsystem.mutation_types);
 
     // TODO: Cleanup in the next round
 
@@ -170,20 +179,20 @@ fn map_foreign<'a>(
     // `createVenue(data: {name: "V1", published: true, concerts: [{title: "C1V1", published: true}, {title: "C1V2", published: false}]})`
     // we need to create a column that evaluates to `select "venues"."id" from "venues"`
 
-    let parent_type = underlying_type(parent_data_type, system);
-    let parent_table = &system.tables[parent_type.table_id().unwrap()];
+    let parent_type = underlying_type(parent_data_type, subsystem);
+    let parent_table = &subsystem.tables[parent_type.table_id().unwrap()];
 
-    let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(system);
+    let parent_pk_physical_column = parent_type.pk_column_id().unwrap().get_column(subsystem);
 
     // Find the column that the current entity refers to in the parent entity
     // In the above example, this would be "venue_id"
-    let self_type = underlying_type(field_type, system);
-    let self_table = &system.tables[self_type.table_id().unwrap()];
+    let self_type = underlying_type(field_type, subsystem);
+    let self_table = &subsystem.tables[self_type.table_id().unwrap()];
     let self_reference_column = self_type
         .model_fields()
         .iter()
         .find(|self_field| match self_field.relation.self_column() {
-            Some(column_id) => match &column_id.get_column(system).typ {
+            Some(column_id) => match &column_id.get_column(subsystem).typ {
                 payas_sql::PhysicalColumnType::ColumnReference {
                     ref_table_name,
                     ref_column_name,
@@ -200,9 +209,9 @@ fn map_foreign<'a>(
         .relation
         .self_column()
         .unwrap()
-        .get_column(system);
+        .get_column(subsystem);
 
-    let insertion = map_argument(field_type, argument, system_context)?;
+    let insertion = map_argument(field_type, argument, subsystem, system_resolver)?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
         relation: NestedElementRelation {

@@ -1,11 +1,10 @@
 use async_graphql_value::{indexmap::IndexMap, ConstValue};
 
-use crate::{
-    access_solver, database_system_context::DatabaseSystemContext, sql_mapper::SQLOperationKind,
-};
-use payas_core_resolver::request_context::RequestContext;
+use crate::{access_solver, sql_mapper::SQLOperationKind};
+use payas_core_resolver::{request_context::RequestContext, system_resolver::SystemResolver};
 use payas_database_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},
+    model::ModelDatabaseSystem,
     operation::{DatabaseQuery, OperationReturnType},
     types::{DatabaseCompositeType, DatabaseTypeKind},
 };
@@ -16,10 +15,11 @@ pub type Arguments = IndexMap<String, ConstValue>;
 pub(crate) async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
+    system_resolver: &'a SystemResolver,
     request_context: &'a RequestContext<'a>,
 ) -> AbstractPredicate<'a> {
-    let return_type = return_type.typ(system_context.system);
+    let return_type = return_type.typ(subsystem);
 
     match &return_type.kind {
         DatabaseTypeKind::Primitive => AbstractPredicate::True,
@@ -30,13 +30,8 @@ pub(crate) async fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver::solve_access(
-                access_expr,
-                request_context,
-                system_context.system,
-                &system_context.resolve_operation_fn,
-            )
-            .await
+            access_solver::solve_access(access_expr, request_context, subsystem, &system_resolver)
+                .await
         }
     }
 }
@@ -85,17 +80,16 @@ pub(crate) fn get_argument_field<'a>(
 /// - A (table associated with the return type, pk query, collection query) tuple.
 pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType,
-    system_context: &DatabaseSystemContext<'a>,
+    subsystem: &'a ModelDatabaseSystem,
 ) -> (&'a PhysicalTable, &'a DatabaseQuery, &'a DatabaseQuery) {
-    let system = &system_context.system;
-    let typ = return_type.typ(system);
+    let typ = return_type.typ(subsystem);
 
     match &typ.kind {
         DatabaseTypeKind::Primitive => panic!(""),
         DatabaseTypeKind::Composite(kind) => (
-            &system.tables[kind.table_id],
-            &system.queries[kind.pk_query],
-            &system.queries[kind.collection_query],
+            &subsystem.tables[kind.table_id],
+            &subsystem.queries[kind.pk_query],
+            &subsystem.queries[kind.collection_query],
         ),
     }
 }
