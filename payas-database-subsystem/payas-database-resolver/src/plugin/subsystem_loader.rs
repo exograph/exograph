@@ -1,4 +1,4 @@
-use payas_core_model::system_serializer::SystemSerializer;
+use payas_core_plugin::system_serializer::SystemSerializer;
 use payas_core_resolver::plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver};
 use payas_database_model::model::ModelDatabaseSystem;
 use payas_sql::{Database, DatabaseExecutor};

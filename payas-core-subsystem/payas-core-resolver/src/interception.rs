@@ -1,7 +1,9 @@
 use async_graphql_parser::types::OperationType;
 use async_recursion::async_recursion;
 
-use payas_core_model::serializable_system::{InterceptionTree, InterceptorIndexWithSubsystemIndex};
+use payas_core_plugin::serializable_system::{
+    InterceptionTree, InterceptorIndexWithSubsystemIndex,
+};
 
 use super::{request_context::RequestContext, validation::field::ValidatedField, QueryResponse};
 

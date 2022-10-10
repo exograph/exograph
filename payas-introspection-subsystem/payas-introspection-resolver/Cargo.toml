@@ -17,6 +17,7 @@ tokio = "1"
 
 payas-core-resolver = { path = "../../payas-core-subsystem/payas-core-resolver" }
 payas-core-model = { path = "../../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../../payas-core-subsystem/payas-core-plugin" }
 
 
 [dev-dependencies]

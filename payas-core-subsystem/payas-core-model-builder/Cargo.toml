@@ -10,6 +10,7 @@ codemap-diagnostic = "0.1.1"
 thiserror = "1.0.30"
 
 payas-core-model = { path = "../payas-core-model" }
+payas-core-plugin = { path = "../payas-core-plugin" }
 
 [dev-dependencies]
 

@@ -2,7 +2,7 @@ use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
     Positioned,
 };
-use payas_core_model::serializable_system::{InterceptionTree, InterceptorIndex};
+use payas_core_plugin::serializable_system::{InterceptionTree, InterceptorIndex};
 use payas_core_resolver::{
     introspection::definition::schema::Schema,
     plugin::{SubsystemResolutionError, SubsystemResolver},

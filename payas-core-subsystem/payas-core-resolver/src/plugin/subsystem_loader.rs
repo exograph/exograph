@@ -1,4 +1,4 @@
-use payas_core_model::error::ModelSerializationError;
+use payas_core_plugin::error::ModelSerializationError;
 use thiserror::Error;
 
 use super::subsystem_resolver::SubsystemResolver;

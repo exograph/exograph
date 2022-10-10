@@ -1,7 +1,5 @@
-use payas_core_model::{
-    interceptor_kind::InterceptorKind,
-    mapped_arena::{MappedArena, SerializableSlabIndex},
-};
+use payas_core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use payas_core_plugin::interceptor_kind::InterceptorKind;
 use payas_subsystem_model_util::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterType},

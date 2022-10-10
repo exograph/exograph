@@ -1,21 +1,18 @@
 [package]
-name = "payas-database-model"
+name = "payas-core-plugin"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+async-recursion = "1.0.0"
 typed-generational-arena = { version = "0.2", features = ["serde"] }
 serde = "1.0"
 async-graphql-parser = "4.0.5"
 async-graphql-value = "4.0.5"
 bincode = "1.3.3"
-
-payas-sql = { path = "../../payas-sql" }
-payas-core-model = { path = "../../payas-core-subsystem/payas-core-model" }
-payas-core-plugin = { path = "../../payas-core-subsystem/payas-core-plugin" }
+thiserror = "1.0.30"
+bytes = "1"
 
 [dev-dependencies]
-
-
 
 [lib]

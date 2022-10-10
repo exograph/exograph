@@ -1,10 +1,11 @@
-use payas_core_model::{mapped_arena::MappedArena, system_serializer::SystemSerializer};
+use payas_core_model::mapped_arena::MappedArena;
 use payas_core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
     plugin::{SubsystemBuild, SubsystemBuilder},
     typechecker::typ::Type,
 };
+use payas_core_plugin::system_serializer::SystemSerializer;
 
 pub struct DatabaseSubsystemBuilder {}
 

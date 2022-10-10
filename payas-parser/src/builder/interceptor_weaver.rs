@@ -1,11 +1,11 @@
-use payas_core_model::{
-    interceptor_kind::InterceptorKind,
-    serializable_system::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
-};
 use payas_core_model_builder::{
     ast::ast_types::{AstExpr, LogicalOp},
     plugin::Interception,
     typechecker::Typed,
+};
+use payas_core_plugin::{
+    interceptor_kind::InterceptorKind,
+    serializable_system::{InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex},
 };
 
 use wildmatch::WildMatch;

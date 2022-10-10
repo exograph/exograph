@@ -22,6 +22,7 @@ uuid = "1.1.2"
 
 payas-sql = { path = "../../payas-sql" }
 payas-core-model = { path = "../../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../../payas-core-subsystem/payas-core-plugin" }
 payas-core-resolver = { path = "../../payas-core-subsystem/payas-core-resolver" }
 payas-database-model = { path = "../payas-database-model" }
 

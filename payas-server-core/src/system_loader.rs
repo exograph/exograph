@@ -1,7 +1,7 @@
 use payas_introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
 
-use payas_core_model::{
+use payas_core_plugin::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
     system_serializer::SystemSerializer,
 };

@@ -1,13 +1,11 @@
-use payas_core_model::{
-    mapped_arena::MappedArena,
-    serializable_system::{SerializableSubsystem, SerializableSystem},
-    system_serializer::SystemSerializer,
-};
+use super::interceptor_weaver::{self, OperationKind};
+use payas_core_model::mapped_arena::MappedArena;
 use payas_core_model_builder::{
     error::ModelBuildingError, plugin::SubsystemBuilder, typechecker::typ::Type,
 };
-
-use super::interceptor_weaver::{self, OperationKind};
+use payas_core_plugin::serializable_system::SerializableSubsystem;
+use payas_core_plugin::serializable_system::SerializableSystem;
+use payas_core_plugin::system_serializer::SystemSerializer;
 
 /// Build a [ModelSystem] given an [AstSystem].
 ///

@@ -23,6 +23,7 @@ payas-sql = { path = "../payas-sql" }
 payas-parser = { path = "../payas-parser" }
 payas-test = { path = "../payas-test" }
 payas-core-model = { path = "../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../payas-core-subsystem/payas-core-plugin" }
 payas-core-model-builder = { path = "../payas-core-subsystem/payas-core-model-builder" }
 payas-database-model = { path = "../payas-database-subsystem/payas-database-model" }
 

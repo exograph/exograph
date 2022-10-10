@@ -1,12 +1,12 @@
-use payas_core_model::{
-    mapped_arena::MappedArena, serializable_system::InterceptorIndex,
-    system_serializer::SystemSerializer,
-};
+use payas_core_model::mapped_arena::MappedArena;
 use payas_core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
     plugin::{Interception, SubsystemBuild, SubsystemBuilder},
     typechecker::typ::Type,
+};
+use payas_core_plugin::{
+    serializable_system::InterceptorIndex, system_serializer::SystemSerializer,
 };
 
 use crate::system_builder::ModelDenoSystemWithInterceptors;

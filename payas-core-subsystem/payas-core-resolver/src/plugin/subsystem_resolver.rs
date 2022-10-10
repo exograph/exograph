@@ -7,7 +7,7 @@ use async_graphql_parser::{
     Positioned,
 };
 use async_trait::async_trait;
-use payas_core_model::serializable_system::{InterceptionTree, InterceptorIndex};
+use payas_core_plugin::serializable_system::{InterceptionTree, InterceptorIndex};
 use thiserror::Error;
 
 #[async_trait]

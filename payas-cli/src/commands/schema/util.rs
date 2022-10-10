@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use payas_core_model::{
+use payas_core_plugin::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
 use payas_database_model::model::ModelDatabaseSystem;

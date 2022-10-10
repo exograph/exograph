@@ -6,11 +6,10 @@ use async_graphql_parser::{
 };
 use payas_core_model::{
     context_type::ContextType,
-    error::ModelSerializationError,
     mapped_arena::{MappedArena, SerializableSlab},
-    system_serializer::SystemSerializer,
     type_normalization::{default_positioned, FieldDefinitionProvider, TypeDefinitionProvider},
 };
+use payas_core_plugin::{error::ModelSerializationError, system_serializer::SystemSerializer};
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 

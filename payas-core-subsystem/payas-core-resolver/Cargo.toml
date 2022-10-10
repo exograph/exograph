@@ -25,6 +25,7 @@ tracing = "0.1"
 
 payas-sql = { path = "../../payas-sql" }
 payas-core-model = { path = "../payas-core-model" }
+payas-core-plugin = { path = "../payas-core-plugin" }
 
 [dev-dependencies]
 tokio = "1"

@@ -19,6 +19,7 @@ wasmtime-wasi = "0.39.1"
 
 payas-wasm = { path = "../../payas-wasm" }
 payas-core-model = { path = "../../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../../payas-core-subsystem/payas-core-plugin" }
 payas-core-resolver = { path = "../../payas-core-subsystem/payas-core-resolver" }
 payas-wasm-model = { path = "../payas-wasm-model" }
 

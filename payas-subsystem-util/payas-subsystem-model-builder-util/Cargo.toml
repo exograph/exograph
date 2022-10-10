@@ -13,6 +13,7 @@ wildmatch = "2.1.0"
 thiserror = "1.0.30"
 
 payas-core-model = { path = "../../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../../payas-core-subsystem/payas-core-plugin" }
 payas-core-model-builder = { path = "../../payas-core-subsystem/payas-core-model-builder" }
 payas-subsystem-model-util = { path = "../payas-subsystem-model-util" }
 

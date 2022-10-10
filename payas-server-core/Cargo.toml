@@ -37,6 +37,7 @@ pretty_env_logger = "0.4"
 payas-sql = { path = "../payas-sql" }
 payas-deno = { path = "../payas-deno" }
 payas-core-model = { path = "../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../payas-core-subsystem/payas-core-plugin" }
 payas-core-resolver = { path = "../payas-core-subsystem/payas-core-resolver" }
 payas-database-model = { path = "../payas-database-subsystem/payas-database-model" }
 payas-database-resolver = { path = "../payas-database-subsystem/payas-database-resolver" }

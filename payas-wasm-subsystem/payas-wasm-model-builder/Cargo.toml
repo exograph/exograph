@@ -7,6 +7,7 @@ edition = "2021"
 bincode = "1.3.3"
 
 payas-core-model = { path = "../../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../../payas-core-subsystem/payas-core-plugin" }
 payas-core-model-builder = { path = "../../payas-core-subsystem/payas-core-model-builder" }
 
 payas-wasm-model = { path = "../payas-wasm-model" }

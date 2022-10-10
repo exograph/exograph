@@ -11,6 +11,7 @@ bincode = "1.3.3"
 
 payas-subsystem-model-util = { path = "../../payas-subsystem-util/payas-subsystem-model-util" }
 payas-core-model = { path = "../../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../../payas-core-subsystem/payas-core-plugin" }
 payas-core-model-builder = { path = "../../payas-core-subsystem/payas-core-model-builder" }
 
 [dev-dependencies]

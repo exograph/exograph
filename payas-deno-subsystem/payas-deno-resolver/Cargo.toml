@@ -18,6 +18,7 @@ tokio = "1"
 
 payas-deno = { path = "../../payas-deno" }
 payas-core-model = { path = "../../payas-core-subsystem/payas-core-model" }
+payas-core-plugin = { path = "../../payas-core-subsystem/payas-core-plugin" }
 payas-core-resolver = { path = "../../payas-core-subsystem/payas-core-resolver" }
 payas-deno-model = { path = "../payas-deno-model" }
 
