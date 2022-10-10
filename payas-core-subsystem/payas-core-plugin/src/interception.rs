@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// A map of interceptors, where the key the the name of the operation and the value is the interception tree.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct InterceptionMap {
     pub map: HashMap<String, InterceptionTree>,
@@ -12,6 +13,7 @@ impl InterceptionMap {
     }
 }
 
+/// Nested structure of interceptors to be applied to an operation.
 #[derive(Serialize, Deserialize, Debug)]
 pub enum InterceptionTree {
     // before/after
@@ -25,7 +27,7 @@ pub enum InterceptionTree {
         interceptor: InterceptorIndexWithSubsystemIndex,
     },
     // query/mutation
-    Plain,
+    Operation,
 }
 
 /// A type to represent the index of an interceptor across subsystems.

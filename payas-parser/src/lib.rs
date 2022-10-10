@@ -48,7 +48,7 @@ fn build_from_ast_system(
 ) -> Result<Vec<u8>, ParserError> {
     ast_system
         .and_then(typechecker::build)
-        .and_then(|types| builder::system_builder::build(types).map_err(|e| e.into()))
+        .and_then(|types| builder::build(types).map_err(|e| e.into()))
         .map_err(|err| {
             emit_diagnostics(&err, &codemap);
             err

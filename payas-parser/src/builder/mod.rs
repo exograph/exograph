@@ -1,2 +1,4 @@
 mod interceptor_weaver;
-pub mod system_builder;
+mod system_builder;
+
+pub(crate) use system_builder::build;

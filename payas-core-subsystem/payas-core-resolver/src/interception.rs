@@ -73,7 +73,7 @@ impl<'a> InterceptedOperation<'a> {
                     Ok(raw_response
                         .ok_or(SystemResolutionError::AroundInterceptorReturnedNoResponse)?)
                 }
-                InterceptionTree::Plain => self.resolve_operation(request_context).await,
+                InterceptionTree::Operation => self.resolve_operation(request_context).await,
             },
             None => self.resolve_operation(request_context).await,
         }

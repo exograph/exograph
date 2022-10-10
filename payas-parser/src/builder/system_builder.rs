@@ -64,14 +64,11 @@ pub fn build(typechecked_system: MappedArena<Type>) -> Result<Vec<u8>, ModelBuil
         })
         .collect::<Result<Vec<_>, ModelBuildingError>>()?;
 
-    let query_interception_map = interceptor_weaver::weave(
-        query_names.iter().map(|n| n.as_str()),
-        &subsystem_interceptions,
-        OperationKind::Query,
-    );
+    let query_interception_map =
+        interceptor_weaver::weave(&query_names, &subsystem_interceptions, OperationKind::Query);
 
     let mutation_interception_map = interceptor_weaver::weave(
-        mutation_names.iter().map(|n| n.as_str()),
+        &mutation_names,
         &subsystem_interceptions,
         OperationKind::Mutation,
     );

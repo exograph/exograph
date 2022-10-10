@@ -15,13 +15,15 @@ pub enum OperationKind {
     Mutation,
 }
 
-pub fn weave<'a>(
-    operation_names: impl Iterator<Item = &'a str>,
+/// Weave interceptors into operation production and interception map
+pub fn weave(
+    operation_names: &[String],
     subsystem_interceptions: &[(usize, Vec<Interception>)],
     operation_kind: OperationKind,
 ) -> InterceptionMap {
     InterceptionMap {
         map: operation_names
+            .iter()
             .map(|operation_name| {
                 (
                     operation_name.to_owned(),
@@ -165,7 +167,7 @@ fn matches_str(expr: &str, operation_name: &str, operation_kind: OperationKind) 
 /// ```
 fn ordered(interceptions: Vec<(usize, &Interception)>) -> InterceptionTree {
     if interceptions.is_empty() {
-        InterceptionTree::Plain
+        InterceptionTree::Operation
     } else {
         let mut before = vec![];
         let mut after = vec![];
@@ -184,7 +186,7 @@ fn ordered(interceptions: Vec<(usize, &Interception)>) -> InterceptionTree {
                 }
             });
 
-        let core = Box::new(InterceptionTree::Plain);
+        let core = Box::new(InterceptionTree::Operation);
 
         let core = around.into_iter().fold(core, |core, interceptor| {
             Box::new(InterceptionTree::Around { core, interceptor })
