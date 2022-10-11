@@ -1,5 +1,5 @@
 [package]
-name = "payas-server-core"
+name = "payas-resolver"
 version = "0.1.0"
 edition = "2021"
 

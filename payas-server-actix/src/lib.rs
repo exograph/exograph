@@ -30,7 +30,7 @@ pub async fn resolve(
 
             match operations_payload {
                 Ok(operations_payload) => {
-                    let (stream, headers) = payas_server_core::resolve::<Error>(
+                    let (stream, headers) = payas_resolver::resolve::<Error>(
                         operations_payload,
                         system_context.as_ref(),
                         request_context,

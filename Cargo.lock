@@ -4258,43 +4258,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "payas-server-actix"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-files",
- "actix-web",
- "async-trait",
- "futures",
- "jsonwebtoken",
- "payas-core-resolver",
- "payas-server-core",
- "serde_json",
- "tracing",
- "tracing-actix-web",
-]
-
-[[package]]
-name = "payas-server-aws-lambda"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bytes",
- "cookie",
- "futures",
- "jsonwebtoken",
- "lambda_runtime",
- "opentelemetry",
- "opentelemetry-jaeger",
- "payas-builder",
- "payas-core-resolver",
- "payas-server-core",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "payas-server-core"
+name = "payas-resolver"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4337,6 +4301,42 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typed-generational-arena",
+]
+
+[[package]]
+name = "payas-server-actix"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-files",
+ "actix-web",
+ "async-trait",
+ "futures",
+ "jsonwebtoken",
+ "payas-core-resolver",
+ "payas-resolver",
+ "serde_json",
+ "tracing",
+ "tracing-actix-web",
+]
+
+[[package]]
+name = "payas-server-aws-lambda"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "cookie",
+ "futures",
+ "jsonwebtoken",
+ "lambda_runtime",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "payas-builder",
+ "payas-core-resolver",
+ "payas-resolver",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

@@ -1,8 +1,8 @@
 use lambda_runtime::Error;
 use lambda_runtime::LambdaEvent;
 
+use payas_resolver::create_system_resolver_or_exit;
 use payas_server_aws_lambda::resolve;
-use payas_server_core::create_system_resolver_or_exit;
 use serde_json::Value;
 
 use std::sync::Arc;
@@ -13,7 +13,7 @@ use std::{env, process::exit};
 async fn main() -> Result<(), Error> {
     let claypot_file = get_claypot_file_name();
 
-    payas_server_core::init();
+    payas_resolver::init();
 
     let system_context = Arc::new(create_system_resolver_or_exit(&claypot_file));
     let service = lambda_runtime::service_fn(|event: LambdaEvent<Value>| async {

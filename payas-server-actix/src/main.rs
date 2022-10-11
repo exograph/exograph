@@ -2,10 +2,10 @@ use actix_cors::Cors;
 use actix_web::http::header::{CacheControl, CacheDirective};
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use payas_core_resolver::system_resolver::SystemResolver;
-use payas_server_actix::resolve;
-use payas_server_core::{
+use payas_resolver::{
     create_system_resolver_or_exit, get_endpoint_http_path, get_playground_http_path, graphiql,
 };
+use payas_server_actix::resolve;
 use tracing_actix_web::TracingLogger;
 
 use std::io::ErrorKind;
@@ -19,7 +19,7 @@ async fn main() -> std::io::Result<()> {
     let start_time = time::SystemTime::now();
     let claypot_file = get_claypot_file_name();
 
-    payas_server_core::init();
+    payas_resolver::init();
 
     let system_context = web::Data::new(create_system_resolver_or_exit(&claypot_file));
 

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use payas_resolver::create_system_resolver_from_serialized_bytes;
 use payas_server_aws_lambda::resolve;
-use payas_server_core::create_system_resolver_from_serialized_bytes;
 use serde_json::Value;
 
 pub async fn test_query(json_input: Value, clay_model: &str, expected: Value) {

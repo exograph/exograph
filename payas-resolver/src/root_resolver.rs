@@ -25,7 +25,7 @@ pub type Headers = Vec<(String, String)>;
 /// first call `create_system_context` to create a [SystemContext] object, and
 /// then call `resolve` with that object.
 #[instrument(
-    name = "payas-server-core::resolve"
+    name = "payas-resolver::resolve"
     skip(system_resolver, request_context)
     )]
 pub async fn resolve<'a, E: 'static>(
@@ -156,7 +156,7 @@ pub fn create_system_resolver_or_exit(claypot_file: &str) -> SystemResolver {
     }
 }
 
-/// Initializes logging for payas-server-core.
+/// Initializes logging for payas-resolver.
 pub fn init() {
     super::logging_tracing::init()
 }
