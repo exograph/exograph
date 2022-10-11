@@ -22,7 +22,7 @@ RUN USER=root cargo new --vcs none --lib payas-core-subsystem/payas-core-model-b
 RUN USER=root cargo new --vcs none --lib payas-database-subsystem/payas-database-model-builder
 RUN USER=root cargo new --vcs none --lib payas-deno
 RUN USER=root cargo new --vcs none --lib payas-model
-RUN USER=root cargo new --vcs none --lib payas-parser
+RUN USER=root cargo new --vcs none --lib payas-builder
 RUN USER=root cargo new --vcs none --lib payas-core-resolver
 RUN USER=root cargo new --vcs none --lib payas-database-resolver
 RUN USER=root cargo new --vcs none --lib payas-deno-resolver
@@ -44,7 +44,7 @@ COPY ./payas-core-subsystem/payas-core-model-builder/Cargo.toml ./payas-core-sub
 COPY ./payas-database-subsystem/payas-database-model-builder/Cargo.toml ./payas-database-subsystem/payas-database-model-builder/Cargo.toml
 COPY ./payas-deno/Cargo.toml ./payas-deno/Cargo.toml
 COPY ./payas-model/Cargo.toml ./payas-model/Cargo.toml
-COPY ./payas-parser/Cargo.toml ./payas-parser/Cargo.toml
+COPY ./payas-builder/Cargo.toml ./payas-builder/Cargo.toml
 COPY ./payas-core-resolver/Cargo.toml ./payas-core-resolver/Cargo.toml
 COPY ./payas-database-resolver/Cargo.toml ./payas-database-resolver/Cargo.toml
 COPY ./payas-deno-resolver/Cargo.toml ./payas-deno-resolver/Cargo.toml
@@ -71,7 +71,7 @@ ADD payas-core-subsystem/payas-core-model-builder/ payas-core-subsystem/payas-co
 ADD payas-database-subsystem/payas-database-model-builder payas-database-subsystem/payas-database-model-builder/
 ADD payas-deno payas-deno/
 ADD payas-model payas-model/
-ADD payas-parser payas-parser/
+ADD payas-builder payas-builder/
 ADD payas-core-resolver payas-core-resolver/
 ADD payas-database-resolver payas-database-resolver/
 ADD payas-deno-resolver payas-deno-resolver/

@@ -1,5 +1,5 @@
 ---
-source: payas-parser/src/typechecker/mod.rs
+source: payas-builder/src/typechecker/mod.rs
 expression: build(src).unwrap()
 ---
 values:

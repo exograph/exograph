@@ -190,7 +190,7 @@ impl<'a> ArgumentValidator<'a> {
         number: &Number,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        // TODO: Use the types from PrimitiveType (but that is currently in the payas-parser crate, which we don't want to depend on)
+        // TODO: Use the types from PrimitiveType (but that is currently in the payas-builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Number",
             &["Int", "Float"],
@@ -206,7 +206,7 @@ impl<'a> ArgumentValidator<'a> {
         boolean: &bool,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        // TODO: Use the types from PrimitiveType (but that is currently in the payas-parser crate, which we don't want to depend on)
+        // TODO: Use the types from PrimitiveType (but that is currently in the payas-builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "Boolean",
             &["Boolean"],
@@ -222,7 +222,7 @@ impl<'a> ArgumentValidator<'a> {
         string: &str,
         pos: Pos,
     ) -> Result<ConstValue, ValidationError> {
-        // TODO: Use the types from PrimitiveType (but that is currently in the payas-parser crate, which we don't want to depend on)
+        // TODO: Use the types from PrimitiveType (but that is currently in the payas-builder crate, which we don't want to depend on)
         self.validate_scalar_argument(
             "String",
             &[

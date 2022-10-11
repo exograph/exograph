@@ -4000,6 +4000,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
+name = "payas-builder"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "codemap",
+ "codemap-diagnostic",
+ "insta",
+ "lazy_static",
+ "payas-core-model",
+ "payas-core-model-builder",
+ "payas-core-plugin",
+ "payas-database-model-builder",
+ "payas-deno-model",
+ "payas-deno-model-builder",
+ "payas-sql",
+ "payas-wasm-model",
+ "payas-wasm-model-builder",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "typed-generational-arena",
+ "wildmatch",
+]
+
+[[package]]
 name = "payas-cli"
 version = "0.1.0"
 dependencies = [
@@ -4008,11 +4034,11 @@ dependencies = [
  "ctrlc",
  "heck",
  "notify 4.0.17",
+ "payas-builder",
  "payas-core-model",
  "payas-core-model-builder",
  "payas-core-plugin",
  "payas-database-model",
- "payas-parser",
  "payas-sql",
  "payas-test",
  "rand",
@@ -4232,32 +4258,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "payas-parser"
-version = "0.1.0"
-dependencies = [
- "cc",
- "codemap",
- "codemap-diagnostic",
- "insta",
- "lazy_static",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-core-plugin",
- "payas-database-model-builder",
- "payas-deno-model",
- "payas-deno-model-builder",
- "payas-sql",
- "payas-wasm-model",
- "payas-wasm-model-builder",
- "serde",
- "serde_json",
- "thiserror",
- "tree-sitter",
- "typed-generational-arena",
- "wildmatch",
-]
-
-[[package]]
 name = "payas-server-actix"
 version = "0.1.0"
 dependencies = [
@@ -4286,8 +4286,8 @@ dependencies = [
  "lambda_runtime",
  "opentelemetry",
  "opentelemetry-jaeger",
+ "payas-builder",
  "payas-core-resolver",
- "payas-parser",
  "payas-server-core",
  "serde_json",
  "tokio",
@@ -4312,6 +4312,7 @@ dependencies = [
  "maybe-owned",
  "opentelemetry",
  "opentelemetry-jaeger",
+ "payas-builder",
  "payas-core-model",
  "payas-core-plugin",
  "payas-core-resolver",
@@ -4321,7 +4322,6 @@ dependencies = [
  "payas-deno-model",
  "payas-deno-resolver",
  "payas-introspection-resolver",
- "payas-parser",
  "payas-sql",
  "payas-wasm-model",
  "payas-wasm-resolver",

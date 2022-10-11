@@ -26,7 +26,7 @@ payas-wasm-model = { path = "../payas-wasm-model" }
 
 [dev-dependencies]
 tokio = "1"
-payas-parser = { path = "../../payas-parser" }
+payas-builder = { path = "../../payas-builder" }
 
 
 [lib]

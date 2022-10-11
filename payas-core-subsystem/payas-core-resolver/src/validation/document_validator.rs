@@ -418,7 +418,7 @@ mod tests {
             }
         "#;
         let system =
-            payas_parser::build_system_from_str(test_clay, "test.clay".to_string()).unwrap();
+            payas_builder::build_system_from_str(test_clay, "test.clay".to_string()).unwrap();
         Schema::new(&system)
     }
 

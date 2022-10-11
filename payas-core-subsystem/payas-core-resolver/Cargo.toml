@@ -29,7 +29,7 @@ payas-core-plugin = { path = "../payas-core-plugin" }
 
 [dev-dependencies]
 tokio = "1"
-payas-parser = { path = "../../payas-parser", features = ["test-context"]}
+payas-builder = { path = "../../payas-builder", features = ["test-context"]}
 
 
 [lib]

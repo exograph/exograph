@@ -1,5 +1,5 @@
 ---
-source: payas-parser/src/typechecker/mod.rs
+source: payas-builder/src/typechecker/mod.rs
 expression: build(src).unwrap()
 ---
 values:
@@ -74,44 +74,44 @@ values:
                 - []
                 - true
             annotations:
-              annotations: {}
+              annotations:
+                access:
+                  name: access
+                  params:
+                    Single:
+                      - LogicalOp:
+                          Or:
+                            - RelationalOp:
+                                Eq:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            - - AuthContext
+                                            - Reference:
+                                                index: 15
+                                                generation: ~
+                                        - - role
+                                        - Reference:
+                                            index: 4
+                                            generation: ~
+                                  - StringLiteral:
+                                      - ROLE_ADMIN
+                                  - Primitive: Boolean
+                            - FieldSelection:
+                                Select:
+                                  - Single:
+                                      - - self
+                                      - Reference:
+                                          index: 16
+                                          generation: ~
+                                  - - is_public
+                                  - Reference:
+                                      index: 0
+                                      generation: ~
+                            - Primitive: Boolean
             default_value: ~
         annotations:
-          annotations:
-            access:
-              name: access
-              params:
-                Single:
-                  - LogicalOp:
-                      Or:
-                        - RelationalOp:
-                            Eq:
-                              - FieldSelection:
-                                  Select:
-                                    - Single:
-                                        - - AuthContext
-                                        - Reference:
-                                            index: 15
-                                            generation: ~
-                                    - - role
-                                    - Reference:
-                                        index: 4
-                                        generation: ~
-                              - StringLiteral:
-                                  - ROLE_ADMIN
-                              - Primitive: Boolean
-                        - FieldSelection:
-                            Select:
-                              - Single:
-                                  - - self
-                                  - Reference:
-                                      index: 16
-                                      generation: ~
-                              - - is_public
-                              - Reference:
-                                  index: 0
-                                  generation: ~
-                        - Primitive: Boolean
+          annotations: {}
   - ~
   - ~
   - ~

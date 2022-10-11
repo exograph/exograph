@@ -356,7 +356,7 @@ mod tests {
     }
 
     fn test_system() -> TestSystem {
-        let system = payas_parser::build_system_from_str(
+        let system = payas_builder::build_system_from_str(
             r#"
                 context AccessContext {
                     role: String @test("role")

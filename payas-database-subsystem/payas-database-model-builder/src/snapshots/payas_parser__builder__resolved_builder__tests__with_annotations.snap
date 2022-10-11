@@ -1,5 +1,5 @@
 ---
-source: payas-parser/src/builder/resolved_builder.rs
+source: payas-builder/src/builder/resolved_builder.rs
 expression: resolved
 ---
 primitive_types:

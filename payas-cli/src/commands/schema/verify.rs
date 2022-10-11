@@ -1,7 +1,7 @@
 //! Subcommands under the `schema` subcommand
 
 use anyhow::{anyhow, Result};
-use payas_parser::error::ParserError;
+use payas_builder::error::ParserError;
 use payas_sql::{
     database_error::DatabaseError,
     schema::{op::SchemaOp, spec::SchemaSpec},

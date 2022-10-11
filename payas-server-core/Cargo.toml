@@ -50,4 +50,4 @@ payas-introspection-resolver = { path = "../payas-introspection-subsystem/payas-
 [dev-dependencies]
 insta = "1.14.0"
 tokio = "1"
-payas-parser = { path = "../payas-parser" }
+payas-builder = { path = "../payas-builder" }

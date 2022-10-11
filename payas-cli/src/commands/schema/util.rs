@@ -1,15 +1,15 @@
 use std::path::Path;
 
+use payas_builder::error::ParserError;
 use payas_core_plugin::{
     serializable_system::SerializableSystem, system_serializer::SystemSerializer,
 };
 use payas_database_model::model::ModelDatabaseSystem;
-use payas_parser::error::ParserError;
 
 pub(crate) fn create_database_system(
     model_file: impl AsRef<Path>,
 ) -> Result<ModelDatabaseSystem, ParserError> {
-    let serialized_system = payas_parser::build_system(&model_file)?;
+    let serialized_system = payas_builder::build_system(&model_file)?;
     let system = SerializableSystem::deserialize(serialized_system)?;
 
     deserialize_database_subsystem(system)
@@ -20,7 +20,7 @@ pub(crate) fn create_database_system_from_str(
     model_str: &str,
     file_name: String,
 ) -> Result<ModelDatabaseSystem, ParserError> {
-    let serialized_system = payas_parser::build_system_from_str(model_str, file_name)?;
+    let serialized_system = payas_builder::build_system_from_str(model_str, file_name)?;
     let system = SerializableSystem::deserialize(serialized_system)?;
 
     deserialize_database_subsystem(system)

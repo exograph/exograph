@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use payas_parser::error::ParserError;
+use payas_builder::error::ParserError;
 
 use std::error::Error;
 use std::ffi::OsStr;
@@ -51,7 +51,7 @@ pub(crate) fn build(
     system_start_time: Option<SystemTime>,
     print_message: bool,
 ) -> Result<(), BuildError> {
-    let serialized_system = payas_parser::build_system(&model).map_err(BuildError::ParserError)?;
+    let serialized_system = payas_builder::build_system(&model).map_err(BuildError::ParserError)?;
 
     let claypot_file_name = {
         if let Some("clay") = model.extension().and_then(OsStr::to_str) {

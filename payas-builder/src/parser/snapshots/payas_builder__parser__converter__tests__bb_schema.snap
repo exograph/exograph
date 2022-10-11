@@ -1,5 +1,5 @@
 ---
-source: payas-parser/src/parser/converter.rs
+source: payas-builder/src/parser/converter.rs
 expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span,\n             Path::new(\"input.payas\")).unwrap()"
 
 ---
