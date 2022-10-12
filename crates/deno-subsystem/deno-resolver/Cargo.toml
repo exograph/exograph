@@ -1,0 +1,31 @@
+[package]
+name = "deno-resolver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+async-graphql-parser = "4.0.6"
+async-graphql-value = "4.0.5"
+async-recursion = "1.0.0"
+async-trait = "0.1.53"
+deno_core = "0.153.0"
+futures = "0.3"
+maybe-owned = "0.3.4"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+thiserror = "1.0.30"
+tokio = "1"
+
+payas-deno = { path = "../../../libs/payas-deno" }
+core-model = { path = "../../core-subsystem/core-model" }
+core-plugin = { path = "../../core-subsystem/core-plugin" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
+deno-model = { path = "../deno-model" }
+
+
+[dev-dependencies]
+tokio = "1"
+builder = { path = "../../builder" }
+
+
+[lib]

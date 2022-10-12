@@ -1,37 +1,40 @@
 # See https://github.com/mozilla/application-services/blob/main/Cargo.toml for the reasons why we use this structure
 [workspace]
 members = [
-    "payas-builder",
-    "payas-cli",
-    "payas-resolver",
-    "payas-server-actix",
-    "payas-server-aws-lambda",
-    "payas-deno",
-    "payas-sql",
-    "payas-test",
-    "payas-core-subsystem/*",
-    "payas-database-subsystem/*",
-    "payas-deno-subsystem/*",
-    "payas-wasm-subsystem/*",
-    "payas-subsystem-util/*",
-    "payas-introspection-subsystem/*",
+    "crates/builder",
+    "crates/cli",
+    "crates/resolver",
+    "crates/server-actix",
+    "crates/server-aws-lambda",
+    "crates/testing",
+    "crates/core-subsystem/*",
+    "crates/database-subsystem/*",
+    "crates/deno-subsystem/*",
+    "crates/wasm-subsystem/*",
+    "crates/subsystem-util/*",
+    "crates/introspection-subsystem/*",
+    "libs/payas-deno",
+    "libs/payas-sql",
+    "libs/payas-wasm"
 ]
 
-# The default workspace member to run `cargo` commands on (we exclude payas-server-aws-lambda here. Pass --all to `cargo` to include it)
+# The default workspace member to run `cargo` commands on (we exclude server-aws-lambda here, since we don't need to build it during normal development)
+# Pass --all to `cargo` to include it)
 default-members = [
-    "payas-builder",
-    "payas-cli",
-    "payas-resolver",
-    "payas-server-actix",
-    "payas-deno",
-    "payas-sql",
-    "payas-test",
-    "payas-core-subsystem/*",
-    "payas-database-subsystem/*",
-    "payas-deno-subsystem/*",
-    "payas-wasm-subsystem/*",
-    "payas-subsystem-util/*",
-    "payas-introspection-subsystem/*",
+    "crates/builder",
+    "crates/cli",
+    "crates/resolver",
+    "crates/server-actix",
+    "crates/testing",
+    "crates/core-subsystem/*",
+    "crates/database-subsystem/*",
+    "crates/deno-subsystem/*",
+    "crates/wasm-subsystem/*",
+    "crates/subsystem-util/*",
+    "crates/introspection-subsystem/*",
+    "libs/payas-deno",
+    "libs/payas-sql",
+    "libs/payas-wasm"
 ]  
 resolver = "2"
 

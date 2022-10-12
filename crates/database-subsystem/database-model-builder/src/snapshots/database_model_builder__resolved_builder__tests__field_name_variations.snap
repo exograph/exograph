@@ -1,0 +1,172 @@
+---
+source: database-subsystem/database-model-builder/src/resolved_builder.rs
+assertion_line: 1097
+expression: resolved
+---
+values:
+  - - ~
+    - Primitive: Boolean
+  - - ~
+    - Primitive: Int
+  - - ~
+    - Primitive: Float
+  - - ~
+    - Primitive: Decimal
+  - - ~
+    - Primitive: String
+  - - ~
+    - Primitive: LocalTime
+  - - ~
+    - Primitive: LocalDateTime
+  - - ~
+    - Primitive: LocalDate
+  - - ~
+    - Primitive: Instant
+  - - ~
+    - Primitive: Json
+  - - ~
+    - Primitive: Blob
+  - - ~
+    - Primitive: Uuid
+  - - ~
+    - Primitive: Claytip
+  - - ~
+    - Primitive: ClaytipPriv
+  - - ~
+    - Primitive:
+        Interception: Operation
+  - - ~
+    - Composite:
+        name: Entity
+        plural_name: Entitys
+        fields:
+          - name: _id
+            typ:
+              Plain:
+                type_name: Int
+                is_primitive: true
+            column_name: id
+            self_column: true
+            is_pk: true
+            type_hint: ~
+            unique_constraints: []
+            default_value: Autoincrement
+          - name: title_main
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_name: title_main
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: title_main1
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_name: title_main1
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: public1
+            typ:
+              Plain:
+                type_name: Boolean
+                is_primitive: true
+            column_name: public1
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: PUBLIC2
+            typ:
+              Plain:
+                type_name: Boolean
+                is_primitive: true
+            column_name: public2
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: foo123
+            typ:
+              Plain:
+                type_name: Int
+                is_primitive: true
+            column_name: foo123
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+        table_name: entitys
+        access:
+          creation:
+            BooleanLiteral:
+              - true
+          read:
+            BooleanLiteral:
+              - true
+          update:
+            BooleanLiteral:
+              - true
+          delete:
+            BooleanLiteral:
+              - true
+map:
+  Blob:
+    index: 10
+    generation: ~
+  Boolean:
+    index: 0
+    generation: ~
+  Claytip:
+    index: 12
+    generation: ~
+  ClaytipPriv:
+    index: 13
+    generation: ~
+  Decimal:
+    index: 3
+    generation: ~
+  Entity:
+    index: 15
+    generation: ~
+  Float:
+    index: 2
+    generation: ~
+  Instant:
+    index: 8
+    generation: ~
+  Int:
+    index: 1
+    generation: ~
+  Json:
+    index: 9
+    generation: ~
+  LocalDate:
+    index: 7
+    generation: ~
+  LocalDateTime:
+    index: 6
+    generation: ~
+  LocalTime:
+    index: 5
+    generation: ~
+  Operation:
+    index: 14
+    generation: ~
+  String:
+    index: 4
+    generation: ~
+  Uuid:
+    index: 11
+    generation: ~
+

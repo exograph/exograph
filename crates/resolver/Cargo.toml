@@ -1,0 +1,53 @@
+[package]
+name = "resolver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+async-recursion = "1.0.0"
+async-graphql-parser = "4.0.5"
+async-graphql-value = "4.0.5"
+async-stream = "0.3.3"
+async-trait = "0.1.53"
+bytes = "1"
+futures = "0.3"
+futures-util = "0.3"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio-postgres = "0.7.6"
+
+typed-generational-arena = { version = "0.2", features = ["serde"] }
+maybe-owned = "0.3.4"
+thiserror = "1.0.30"
+include_dir = "0.7.2"
+bincode = "1.3.3"
+tokio = "1"
+
+opentelemetry = { version = "0.17", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.16"
+tracing = { version = "0.1", features = ["log"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.1"
+tracing-opentelemetry = "0.17.2"
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+pretty_env_logger = "0.4"
+
+
+payas-sql = { path = "../../libs/payas-sql" }
+payas-deno = { path = "../../libs/payas-deno" }
+core-model = { path = "../core-subsystem/core-model" }
+core-plugin = { path = "../core-subsystem/core-plugin" }
+core-resolver = { path = "../core-subsystem/core-resolver" }
+database-model = { path = "../database-subsystem/database-model" }
+database-resolver = { path = "../database-subsystem/database-resolver" }
+deno-model = { path = "../deno-subsystem/deno-model" }
+deno-resolver = { path = "../deno-subsystem/deno-resolver" }
+wasm-model = { path = "../wasm-subsystem/wasm-model" }
+wasm-resolver = { path = "../wasm-subsystem/wasm-resolver" }
+introspection-resolver = { path = "../introspection-subsystem/introspection-resolver" }
+
+[dev-dependencies]
+insta = "1.14.0"
+tokio = "1"
+builder = { path = "../builder" }

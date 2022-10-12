@@ -660,6 +660,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "builder"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "codemap",
+ "codemap-diagnostic",
+ "core-model",
+ "core-model-builder",
+ "core-plugin",
+ "database-model-builder",
+ "deno-model",
+ "deno-model-builder",
+ "insta",
+ "lazy_static",
+ "payas-sql",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "typed-generational-arena",
+ "wasm-model",
+ "wasm-model-builder",
+ "wildmatch",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -858,6 +884,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "builder",
+ "clap",
+ "core-model",
+ "core-model-builder",
+ "core-plugin",
+ "ctrlc",
+ "database-model",
+ "heck",
+ "notify 4.0.17",
+ "payas-sql",
+ "rand",
+ "serde",
+ "stripmargin",
+ "testing",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "codemap"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -961,6 +1010,68 @@ dependencies = [
  "core-foundation",
  "foreign-types",
  "libc",
+]
+
+[[package]]
+name = "core-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "bytes",
+ "serde",
+ "thiserror",
+ "typed-generational-arena",
+]
+
+[[package]]
+name = "core-model-builder"
+version = "0.1.0"
+dependencies = [
+ "codemap",
+ "codemap-diagnostic",
+ "core-model",
+ "core-plugin",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "core-plugin"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bytes",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "core-resolver"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "builder",
+ "bytes",
+ "cookie",
+ "core-model",
+ "core-plugin",
+ "database-model",
+ "database-resolver",
+ "futures",
+ "insta",
+ "jsonwebtoken",
+ "maybe-owned",
+ "payas-sql",
+ "resolver",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1309,6 +1420,70 @@ dependencies = [
 ]
 
 [[package]]
+name = "database-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "bincode",
+ "core-model",
+ "core-plugin",
+ "payas-sql",
+ "serde",
+ "typed-generational-arena",
+]
+
+[[package]]
+name = "database-model-builder"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "builder",
+ "codemap",
+ "codemap-diagnostic",
+ "core-model",
+ "core-model-builder",
+ "core-plugin",
+ "database-model",
+ "heck",
+ "insta",
+ "lazy_static",
+ "payas-sql",
+ "serde",
+ "thiserror",
+ "typed-generational-arena",
+]
+
+[[package]]
+name = "database-resolver"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "base64",
+ "builder",
+ "chrono",
+ "core-model",
+ "core-plugin",
+ "core-resolver",
+ "database-model",
+ "futures",
+ "maybe-owned",
+ "payas-sql",
+ "pg_bigdecimal",
+ "postgres-types",
+ "resolver",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "uuid",
+]
+
+[[package]]
 name = "deadpool"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1349,6 +1524,54 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a032eac705ca39214d169f83e3d3da290af06d8d1d344d1baad2fd002dca4b3"
 dependencies = [
  "unreachable",
+]
+
+[[package]]
+name = "deno-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "bincode",
+ "core-model",
+ "core-plugin",
+ "serde",
+ "subsystem-model-util",
+]
+
+[[package]]
+name = "deno-model-builder"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "core-model",
+ "core-model-builder",
+ "core-plugin",
+ "deno-model",
+ "subsystem-model-builder-util",
+]
+
+[[package]]
+name = "deno-resolver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "builder",
+ "core-model",
+ "core-plugin",
+ "core-resolver",
+ "deno-model",
+ "deno_core",
+ "futures",
+ "maybe-owned",
+ "payas-deno",
+ "serde_json",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -2860,6 +3083,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8bb03732005da905c88227371639bf1ad885cc712789c011c31c5fb3ab3ccf02"
 
 [[package]]
+name = "introspection-resolver"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "core-model",
+ "core-plugin",
+ "core-resolver",
+ "futures",
+ "maybe-owned",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "io-extras"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4016,181 +4257,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
-name = "payas-builder"
-version = "0.1.0"
-dependencies = [
- "cc",
- "codemap",
- "codemap-diagnostic",
- "insta",
- "lazy_static",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-core-plugin",
- "payas-database-model-builder",
- "payas-deno-model",
- "payas-deno-model-builder",
- "payas-sql",
- "payas-wasm-model",
- "payas-wasm-model-builder",
- "serde",
- "serde_json",
- "thiserror",
- "tree-sitter",
- "typed-generational-arena",
- "wildmatch",
-]
-
-[[package]]
-name = "payas-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "ctrlc",
- "heck",
- "notify 4.0.17",
- "payas-builder",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-core-plugin",
- "payas-database-model",
- "payas-sql",
- "payas-test",
- "rand",
- "serde",
- "stripmargin",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "payas-core-model"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "bytes",
- "serde",
- "thiserror",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "payas-core-model-builder"
-version = "0.1.0"
-dependencies = [
- "codemap",
- "codemap-diagnostic",
- "payas-core-model",
- "payas-core-plugin",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "payas-core-plugin"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "bytes",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "payas-core-resolver"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "bytes",
- "cookie",
- "futures",
- "insta",
- "jsonwebtoken",
- "maybe-owned",
- "payas-builder",
- "payas-core-model",
- "payas-core-plugin",
- "payas-database-model",
- "payas-database-resolver",
- "payas-resolver",
- "payas-sql",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "payas-database-model"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "bincode",
- "payas-core-model",
- "payas-core-plugin",
- "payas-sql",
- "serde",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "payas-database-model-builder"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "codemap",
- "codemap-diagnostic",
- "heck",
- "insta",
- "lazy_static",
- "payas-builder",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-core-plugin",
- "payas-database-model",
- "payas-sql",
- "serde",
- "thiserror",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "payas-database-resolver"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "base64",
- "chrono",
- "futures",
- "maybe-owned",
- "payas-builder",
- "payas-core-model",
- "payas-core-plugin",
- "payas-core-resolver",
- "payas-database-model",
- "payas-resolver",
- "payas-sql",
- "pg_bigdecimal",
- "postgres-types",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "uuid",
-]
-
-[[package]]
 name = "payas-deno"
 version = "0.1.0"
 dependencies = [
@@ -4207,154 +4273,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
-]
-
-[[package]]
-name = "payas-deno-model"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "bincode",
- "payas-core-model",
- "payas-core-plugin",
- "payas-subsystem-model-util",
- "serde",
-]
-
-[[package]]
-name = "payas-deno-model-builder"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-core-plugin",
- "payas-deno-model",
- "payas-subsystem-model-builder-util",
-]
-
-[[package]]
-name = "payas-deno-resolver"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "deno_core",
- "futures",
- "maybe-owned",
- "payas-builder",
- "payas-core-model",
- "payas-core-plugin",
- "payas-core-resolver",
- "payas-deno",
- "payas-deno-model",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "payas-introspection-resolver"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "futures",
- "maybe-owned",
- "payas-core-model",
- "payas-core-plugin",
- "payas-core-resolver",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "payas-resolver"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-stream",
- "async-trait",
- "bincode",
- "bytes",
- "futures",
- "futures-util",
- "include_dir",
- "insta",
- "maybe-owned",
- "opentelemetry",
- "opentelemetry-jaeger",
- "payas-builder",
- "payas-core-model",
- "payas-core-plugin",
- "payas-core-resolver",
- "payas-database-model",
- "payas-database-resolver",
- "payas-deno",
- "payas-deno-model",
- "payas-deno-resolver",
- "payas-introspection-resolver",
- "payas-sql",
- "payas-wasm-model",
- "payas-wasm-resolver",
- "pretty_env_logger",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "tracing",
- "tracing-bunyan-formatter",
- "tracing-log",
- "tracing-opentelemetry",
- "tracing-subscriber",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "payas-server-actix"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-files",
- "actix-web",
- "async-trait",
- "futures",
- "jsonwebtoken",
- "payas-core-resolver",
- "payas-resolver",
- "serde_json",
- "tracing",
- "tracing-actix-web",
-]
-
-[[package]]
-name = "payas-server-aws-lambda"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bytes",
- "cookie",
- "futures",
- "jsonwebtoken",
- "lambda_runtime",
- "opentelemetry",
- "opentelemetry-jaeger",
- "payas-builder",
- "payas-core-resolver",
- "payas-resolver",
- "serde_json",
- "tokio",
 ]
 
 [[package]]
@@ -4381,58 +4299,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "payas-subsystem-model-builder-util"
-version = "0.1.0"
-dependencies = [
- "codemap",
- "codemap-diagnostic",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-core-plugin",
- "payas-subsystem-model-util",
- "serde",
- "thiserror",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "payas-subsystem-model-util"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "payas-core-model",
- "payas-core-plugin",
- "serde",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "payas-test"
-version = "0.1.0"
-dependencies = [
- "ansi_term",
- "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
- "insta",
- "isahc",
- "jsonwebtoken",
- "md5",
- "num_cpus",
- "payas-deno",
- "postgres",
- "rand",
- "rayon",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "tokio",
- "wildmatch",
-]
-
-[[package]]
 name = "payas-wasm"
 version = "0.1.0"
 dependencies = [
@@ -4444,55 +4310,6 @@ dependencies = [
  "thiserror",
  "tracing",
  "wasi-common",
- "wasmtime",
- "wasmtime-wasi",
-]
-
-[[package]]
-name = "payas-wasm-model"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "bincode",
- "payas-core-model",
- "payas-core-plugin",
- "payas-subsystem-model-util",
- "serde",
-]
-
-[[package]]
-name = "payas-wasm-model-builder"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "payas-core-model",
- "payas-core-model-builder",
- "payas-core-plugin",
- "payas-subsystem-model-builder-util",
- "payas-wasm-model",
-]
-
-[[package]]
-name = "payas-wasm-resolver"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "futures",
- "maybe-owned",
- "payas-builder",
- "payas-core-model",
- "payas-core-plugin",
- "payas-core-resolver",
- "payas-wasm",
- "payas-wasm-model",
- "serde_json",
- "thiserror",
- "tokio",
  "wasmtime",
  "wasmtime-wasi",
 ]
@@ -5111,6 +4928,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "resolver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-stream",
+ "async-trait",
+ "bincode",
+ "builder",
+ "bytes",
+ "core-model",
+ "core-plugin",
+ "core-resolver",
+ "database-model",
+ "database-resolver",
+ "deno-model",
+ "deno-resolver",
+ "futures",
+ "futures-util",
+ "include_dir",
+ "insta",
+ "introspection-resolver",
+ "maybe-owned",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "payas-deno",
+ "payas-sql",
+ "pretty_env_logger",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "tracing",
+ "tracing-bunyan-formatter",
+ "tracing-log",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "typed-generational-arena",
+ "wasm-model",
+ "wasm-resolver",
+]
+
+[[package]]
 name = "retain_mut"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5463,6 +5326,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "server-actix"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-files",
+ "actix-web",
+ "async-trait",
+ "core-resolver",
+ "futures",
+ "jsonwebtoken",
+ "resolver",
+ "serde_json",
+ "tracing",
+ "tracing-actix-web",
+]
+
+[[package]]
+name = "server-aws-lambda"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "builder",
+ "bytes",
+ "cookie",
+ "core-resolver",
+ "futures",
+ "jsonwebtoken",
+ "lambda_runtime",
+ "opentelemetry",
+ "opentelemetry-jaeger",
+ "resolver",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "sha-1"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5756,6 +5655,33 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "subsystem-model-builder-util"
+version = "0.1.0"
+dependencies = [
+ "codemap",
+ "codemap-diagnostic",
+ "core-model",
+ "core-model-builder",
+ "core-plugin",
+ "serde",
+ "subsystem-model-util",
+ "thiserror",
+ "typed-generational-arena",
+]
+
+[[package]]
+name = "subsystem-model-util"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "core-model",
+ "core-plugin",
+ "serde",
+ "typed-generational-arena",
+]
 
 [[package]]
 name = "subtle"
@@ -6197,6 +6123,31 @@ checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
 dependencies = [
  "libc",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "testing"
+version = "0.1.0"
+dependencies = [
+ "ansi_term",
+ "anyhow",
+ "async-graphql-parser",
+ "async-graphql-value",
+ "insta",
+ "isahc",
+ "jsonwebtoken",
+ "md5",
+ "num_cpus",
+ "payas-deno",
+ "postgres",
+ "rand",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tokio",
+ "wildmatch",
 ]
 
 [[package]]
@@ -7071,6 +7022,55 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c64ac98d5d61192cc45c701b7e4bd0b9aff91e2edfc7a088406cfe2288581e2c"
 dependencies = [
  "leb128",
+]
+
+[[package]]
+name = "wasm-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "bincode",
+ "core-model",
+ "core-plugin",
+ "serde",
+ "subsystem-model-util",
+]
+
+[[package]]
+name = "wasm-model-builder"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "core-model",
+ "core-model-builder",
+ "core-plugin",
+ "subsystem-model-builder-util",
+ "wasm-model",
+]
+
+[[package]]
+name = "wasm-resolver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "builder",
+ "core-model",
+ "core-plugin",
+ "core-resolver",
+ "futures",
+ "maybe-owned",
+ "payas-wasm",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "wasm-model",
+ "wasmtime",
+ "wasmtime-wasi",
 ]
 
 [[package]]
