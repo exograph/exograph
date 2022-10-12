@@ -2,8 +2,11 @@ mod request;
 
 use futures::StreamExt;
 use lambda_runtime::{Error, LambdaEvent};
-use payas_core_resolver::request_context::{ContextParsingError, RequestContext};
-use payas_server_core::{OperationsPayload, SystemContext};
+use payas_core_resolver::{
+    request_context::{ContextParsingError, RequestContext},
+    system_resolver::SystemResolver,
+    OperationsPayload,
+};
 use request::LambdaRequest;
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -20,7 +23,7 @@ fn error_msg(message: &str, status_code: usize) -> Value {
 
 pub async fn resolve(
     event: LambdaEvent<Value>,
-    system_context: Arc<SystemContext>,
+    system_context: Arc<SystemResolver>,
 ) -> Result<Value, Error> {
     let request = LambdaRequest::new(&event);
     let request_context = RequestContext::parse_context(&request, vec![]);
@@ -35,7 +38,7 @@ pub async fn resolve(
 
             match operations_payload {
                 Some(operations_payload) => {
-                    let (stream, headers) = payas_server_core::resolve::<Error>(
+                    let (stream, headers) = payas_resolver::resolve::<Error>(
                         operations_payload,
                         &system_context,
                         request_context,

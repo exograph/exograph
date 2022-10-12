@@ -4,7 +4,8 @@ use actix_web::web::Bytes;
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 
 use payas_core_resolver::request_context::{ContextParsingError, RequestContext};
-use payas_server_core::{OperationsPayload, SystemContext};
+use payas_core_resolver::system_resolver::SystemResolver;
+use payas_core_resolver::OperationsPayload;
 use request::ActixRequest;
 use serde_json::Value;
 
@@ -17,7 +18,7 @@ macro_rules! error_msg {
 pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
-    system_context: web::Data<SystemContext>,
+    system_context: web::Data<SystemResolver>,
 ) -> impl Responder {
     let request = ActixRequest::from_request(req);
     let request_context = RequestContext::parse_context(&request, vec![]);
@@ -29,7 +30,7 @@ pub async fn resolve(
 
             match operations_payload {
                 Ok(operations_payload) => {
-                    let (stream, headers) = payas_server_core::resolve::<Error>(
+                    let (stream, headers) = payas_resolver::resolve::<Error>(
                         operations_payload,
                         system_context.as_ref(),
                         request_context,

@@ -1,0 +1,7 @@
+---
+source: payas-resolver/src/graphql/validation/document_validator.rs
+expression: validator.validate(create_query_document(query))
+---
+Err(
+    MultipleOperationsNoOperationName,
+)

@@ -48,6 +48,8 @@ pub(crate) fn migration_statements(
 
 #[cfg(test)]
 mod tests {
+    use crate::commands::schema::util;
+
     use super::*;
     use payas_sql::schema::spec::SchemaSpec;
     use stripmargin::StripMargin;
@@ -589,8 +591,10 @@ mod tests {
     }
 
     fn compute_spec(model: &str) -> SchemaSpec {
-        let system = payas_parser::build_system_from_str(model, "test.clay".to_string()).unwrap();
-        SchemaSpec::from_model(system.database_subsystem.tables.into_iter().collect())
+        let database_subsystem =
+            util::create_database_system_from_str(model, "test.clay".to_string()).unwrap();
+
+        SchemaSpec::from_model(database_subsystem.tables.into_iter().collect())
     }
 
     fn assert_changes(

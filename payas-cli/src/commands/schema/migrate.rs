@@ -5,7 +5,7 @@ use crate::{
     util::{open_database, open_file_for_output},
 };
 
-use super::migration_helper::migration_statements;
+use super::{migration_helper::migration_statements, util};
 use anyhow::Result;
 use payas_sql::schema::spec::SchemaSpec;
 
@@ -36,9 +36,10 @@ impl Command for MigrateCommand {
                 eprintln!("{}", issue);
             }
 
-            let new_system = payas_parser::build_system(&self.model)?;
+            let new_database_subsystem = util::create_database_system(&self.model)?;
+
             let new_schema =
-                SchemaSpec::from_model(new_system.database_subsystem.tables.into_iter().collect());
+                SchemaSpec::from_model(new_database_subsystem.tables.into_iter().collect());
 
             let statements = migration_statements(&old_schema.value, &new_schema);
 

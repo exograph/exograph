@@ -17,7 +17,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_v8 = "0.64.0"
 serde_json = "1.0"
 tracing = "0.1"
-fix-hidden-lifetime-bug = "0.2.5"
 
 [lib]
 
