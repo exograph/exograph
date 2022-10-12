@@ -30,6 +30,6 @@ payas-database-model = { path = "../payas-database-model" }
 tokio = "1"
 payas-builder = { path = "../../payas-builder" }
 payas-core-resolver = { path = "../../payas-core-subsystem/payas-core-resolver", features = ["test-context"] }
-
+payas-resolver = { path = "../../payas-resolver" }
 
 [lib]

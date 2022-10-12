@@ -40,7 +40,7 @@ impl ToPlural for ResolvedCompositeType {
 pub fn build(types: &MappedArena<Type>) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut errors = Vec::new();
 
-    let resolved_system = resolve(&types, &mut errors)?;
+    let resolved_system = resolve(types, &mut errors)?;
 
     if errors.is_empty() {
         Ok(resolved_system)
@@ -932,7 +932,7 @@ mod tests {
     use codemap::CodeMap;
 
     use super::*;
-    use crate::{parser, typechecker};
+    use payas_builder::{parser, typechecker};
     use std::fs::File;
 
     // FIXME: separate out unit tests into respective plugins
@@ -1188,10 +1188,12 @@ mod tests {
         });
     }
 
-    fn create_resolved_system(src: &str) -> Result<ResolvedSystem, ModelBuildingError> {
+    fn create_resolved_system(src: &str) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
         let mut codemap = CodeMap::new();
-        let parsed = parser::parse_str(src, &mut codemap, "input.clay")?;
-        let types = typechecker::build(parsed)?;
-        build(types)
+        let parsed = parser::parse_str(src, &mut codemap, "input.clay")
+            .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+        let types = typechecker::build(parsed)
+            .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+        build(&types)
     }
 }

@@ -65,7 +65,7 @@ impl SystemLoader {
         let mut subsystem_resolvers = subsystem_resolvers?;
 
         // Then use those resolvers to build the schema
-        let schema = Schema::new(&subsystem_resolvers);
+        let schema = Schema::new_from_resolvers(&subsystem_resolvers);
 
         if let Some(introspection_resolver) =
             Self::create_introspection_resolver(&subsystem_resolvers)?
@@ -82,9 +82,9 @@ impl SystemLoader {
     }
 
     fn create_introspection_resolver(
-        subsystem_resolvers: &Vec<Box<dyn SubsystemResolver + Send + Sync>>,
+        subsystem_resolvers: &[Box<dyn SubsystemResolver + Send + Sync>],
     ) -> Result<Option<Box<IntrospectionResolver>>, SystemLoadingError> {
-        let schema = Schema::new(subsystem_resolvers);
+        let schema = Schema::new_from_resolvers(subsystem_resolvers);
 
         let allow_introspection = match std::env::var("CLAY_INTROSPECTION").ok() {
             Some(e) => match e.parse::<bool>() {

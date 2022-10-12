@@ -93,6 +93,9 @@ impl<'a> DocumentValidator<'a> {
 mod tests {
     use super::*;
     use async_graphql_parser::parse_query;
+    use payas_core_plugin::{
+        serializable_system::SerializableSystem, system_serializer::SystemSerializer,
+    };
 
     #[test]
     fn argument_valid() {
@@ -417,12 +420,48 @@ mod tests {
                 concerts: Set<Concert>
             }
         "#;
-        let system =
-            payas_builder::build_system_from_str(test_clay, "test.clay".to_string()).unwrap();
-        Schema::new(&system)
+        let database_subsystem =
+            create_database_system_from_str(test_clay, "test.clay".to_string());
+
+        Schema::new(
+            database_subsystem.schema_types(),
+            database_subsystem.schema_queries(),
+            database_subsystem.schema_mutations(),
+        )
     }
 
     fn create_query_document(query_str: &str) -> ExecutableDocument {
         parse_query(query_str).unwrap()
+    }
+
+    // TODO: Rethink this approach, where core (even though it's a test) depends on a specific subsystem (database)
+
+    use payas_database_model::model::ModelDatabaseSystem;
+    pub fn create_database_system_from_str(
+        model_str: &str,
+        file_name: String,
+    ) -> ModelDatabaseSystem {
+        let serialized_system = payas_builder::build_system_from_str(model_str, file_name).unwrap();
+        let system = SerializableSystem::deserialize(serialized_system).unwrap();
+
+        deserialize_database_subsystem(system)
+    }
+
+    fn deserialize_database_subsystem(system: SerializableSystem) -> ModelDatabaseSystem {
+        system
+            .subsystems
+            .into_iter()
+            .find_map(|subsystem| {
+                if subsystem.id == "database" {
+                    Some(ModelDatabaseSystem::deserialize(
+                        subsystem.serialized_subsystem,
+                    ))
+                } else {
+                    None
+                }
+            })
+            // If there is no database subsystem in the serialized system, create an empty one
+            .unwrap_or_else(|| Ok(ModelDatabaseSystem::default()))
+            .unwrap()
     }
 }

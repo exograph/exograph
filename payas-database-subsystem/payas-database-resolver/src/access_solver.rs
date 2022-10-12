@@ -1,6 +1,6 @@
 use async_recursion::async_recursion;
 use maybe_owned::MaybeOwned;
-use payas_core_resolver::{request_context::RequestContext, system_resolver::SystemResolver};
+use payas_core_resolver::{request_context::RequestContext, ResolveOperationFn};
 use payas_database_model::{
     access::{
         AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
@@ -24,9 +24,6 @@ pub fn to_column_path<'a>(
     column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
 }
 
-// TODO: This doesn't really belong in this crate, but currently both database and deno uses it.
-//       We will separate this out.
-
 /// Solve access control logic.
 /// The access control logic is expressed as a predicate expression. This method
 /// tries to produce a simplest possible `Predicate` given the request context. It tries
@@ -38,9 +35,9 @@ pub async fn solve_access<'s, 'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelDatabaseSystem,
-    system_resolver: &'a SystemResolver,
+    resolver: &ResolveOperationFn<'a>,
 ) -> AbstractPredicate<'a> {
-    solve_predicate_expression(expr, request_context, system, system_resolver).await
+    solve_predicate_expression(expr, request_context, system, resolver).await
 }
 
 #[async_recursion]
@@ -48,14 +45,14 @@ async fn solve_predicate_expression<'a>(
     expr: &'a AccessPredicateExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelDatabaseSystem,
-    system_resolver: &'a SystemResolver,
+    resolver: &ResolveOperationFn<'a>,
 ) -> AbstractPredicate<'a> {
     match expr {
         AccessPredicateExpression::LogicalOp(op) => {
-            solve_logical_op(op, request_context, system, system_resolver).await
+            solve_logical_op(op, request_context, system, resolver).await
         }
         AccessPredicateExpression::RelationalOp(op) => {
-            solve_relational_op(op, request_context, system, system_resolver).await
+            solve_relational_op(op, request_context, system, resolver).await
         }
         AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
         AccessPredicateExpression::BooleanColumn(column_path) => {
@@ -68,7 +65,7 @@ async fn solve_predicate_expression<'a>(
         }
         AccessPredicateExpression::BooleanContextSelection(selection) => {
             let context_value =
-                solve_context_selection(selection, request_context, system, system_resolver).await;
+                solve_context_selection(selection, request_context, system, resolver).await;
             context_value
                 .map(|value| {
                     match value {
@@ -87,18 +84,15 @@ async fn solve_context_selection<'a>(
     context_selection: &AccessContextSelection,
     value: &'a RequestContext<'a>,
     system: &'a ModelDatabaseSystem,
-    system_resolver: &'a SystemResolver,
+    resolver: &ResolveOperationFn<'a>,
 ) -> Option<Value> {
     match context_selection {
         AccessContextSelection::Context(context_name) => {
             let context_type = system.contexts.get_by_key(context_name).unwrap();
-            value
-                .extract_context(context_type, system_resolver)
-                .await
-                .ok()
+            value.extract_context(context_type, resolver).await.ok()
         }
         AccessContextSelection::Select(path, key) => {
-            solve_context_selection(path, value, system, system_resolver)
+            solve_context_selection(path, value, system, resolver)
                 .await
                 .and_then(|value| value.get(key).cloned())
         }
@@ -123,7 +117,7 @@ async fn solve_relational_op<'a>(
     op: &'a AccessRelationalOp,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelDatabaseSystem,
-    system_resolver: &'a SystemResolver,
+    resolver: &ResolveOperationFn<'a>,
 ) -> AbstractPredicate<'a> {
     #[derive(Debug)]
     enum SolvedPrimitiveExpression<'a> {
@@ -136,11 +130,11 @@ async fn solve_relational_op<'a>(
         expr: &'a AccessPrimitiveExpression,
         request_context: &'a RequestContext<'a>,
         system: &'a ModelDatabaseSystem,
-        system_resolver: &'a SystemResolver,
+        resolver: &ResolveOperationFn<'a>,
     ) -> SolvedPrimitiveExpression<'a> {
         match expr {
             AccessPrimitiveExpression::ContextSelection(selection) => {
-                solve_context_selection(selection, request_context, system, system_resolver)
+                solve_context_selection(selection, request_context, system, resolver)
                     .await
                     .map(SolvedPrimitiveExpression::Value)
                     .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection))
@@ -161,8 +155,8 @@ async fn solve_relational_op<'a>(
     }
 
     let (left, right) = op.sides();
-    let left = reduce_primitive_expression(left, request_context, system, system_resolver).await;
-    let right = reduce_primitive_expression(right, request_context, system, system_resolver).await;
+    let left = reduce_primitive_expression(left, request_context, system, resolver).await;
+    let right = reduce_primitive_expression(right, request_context, system, resolver).await;
 
     type ColumnPredicateFn<'a> =
         fn(MaybeOwned<'a, ColumnPath<'a>>, MaybeOwned<'a, ColumnPath<'a>>) -> AbstractPredicate<'a>;
@@ -248,20 +242,19 @@ async fn solve_logical_op<'a>(
     op: &'a AccessLogicalExpression,
     request_context: &'a RequestContext<'a>,
     system: &'a ModelDatabaseSystem,
-    system_resolver: &'a SystemResolver,
+    resolver: &ResolveOperationFn<'a>,
 ) -> AbstractPredicate<'a> {
     match op {
         AccessLogicalExpression::Not(underlying) => {
             let underlying_predicate =
-                solve_predicate_expression(underlying, request_context, system, system_resolver)
-                    .await;
+                solve_predicate_expression(underlying, request_context, system, resolver).await;
             underlying_predicate.not()
         }
         AccessLogicalExpression::And(left, right) => {
             let left_predicate =
-                solve_predicate_expression(left, request_context, system, system_resolver).await;
+                solve_predicate_expression(left, request_context, system, resolver).await;
             let right_predicate =
-                solve_predicate_expression(right, request_context, system, system_resolver).await;
+                solve_predicate_expression(right, request_context, system, resolver).await;
 
             match (left_predicate, right_predicate) {
                 (AbstractPredicate::False, _) | (_, AbstractPredicate::False) => {
@@ -277,9 +270,9 @@ async fn solve_logical_op<'a>(
         }
         AccessLogicalExpression::Or(left, right) => {
             let left_predicate =
-                solve_predicate_expression(left, request_context, system, system_resolver).await;
+                solve_predicate_expression(left, request_context, system, resolver).await;
             let right_predicate =
-                solve_predicate_expression(right, request_context, system, system_resolver).await;
+                solve_predicate_expression(right, request_context, system, resolver).await;
 
             match (left_predicate, right_predicate) {
                 (AbstractPredicate::True, _) | (_, AbstractPredicate::True) => {
@@ -298,8 +291,7 @@ async fn solve_logical_op<'a>(
 
 #[cfg(test)]
 mod tests {
-
-    use payas_core_resolver::{request_context::Request, OperationsPayload};
+    use payas_core_resolver::{request_context::Request, OperationsPayload, ResolveOperationFn};
     use payas_database_model::{column_id::ColumnId, column_path::ColumnIdPathLink};
     use serde_json::json;
 
@@ -356,7 +348,7 @@ mod tests {
     }
 
     fn test_system() -> TestSystem {
-        let system = payas_builder::build_system_from_str(
+        let database_subsystem = crate::test_utils::create_database_system_from_str(
             r#"
                 context AccessContext {
                     role: String @test("role")
@@ -381,8 +373,7 @@ mod tests {
             "test.clay".to_string(),
         )
         .unwrap();
-        let (table_id, table) = system
-            .database_subsystem
+        let (table_id, table) = database_subsystem
             .tables
             .iter()
             .find(|table| table.1.name == "articles")
@@ -428,7 +419,7 @@ mod tests {
         };
 
         TestSystem {
-            system: system.database_subsystem,
+            system: database_subsystem,
             published_column_path,
             owner_id_column_path,
             dept1_id_column_path,
@@ -1131,7 +1122,7 @@ mod tests {
     #[tokio::test]
     async fn top_level_boolean_literal() {
         // Scenario: true or false
-        let system = ModelDatabaseSystem::new();
+        let system = ModelDatabaseSystem::default();
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(true);
         let context = test_request_context(Value::Null); // irrelevant context content

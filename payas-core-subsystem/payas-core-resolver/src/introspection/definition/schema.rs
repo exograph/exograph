@@ -24,8 +24,10 @@ pub const MUTATION_ROOT_TYPENAME: &str = "Mutation";
 pub const SUBSCRIPTION_ROOT_TYPENAME: &str = "Subscription";
 
 impl Schema {
-    pub fn new(subsystem_resolvers: &Vec<Box<dyn SubsystemResolver + Send + Sync>>) -> Schema {
-        let mut type_definitions: Vec<TypeDefinition> = {
+    pub fn new_from_resolvers(
+        subsystem_resolvers: &[Box<dyn SubsystemResolver + Send + Sync>],
+    ) -> Schema {
+        let type_definitions: Vec<TypeDefinition> = {
             subsystem_resolvers
                 .iter()
                 .fold(vec![], |mut acc, resolver| {
@@ -34,16 +36,35 @@ impl Schema {
                 })
         };
 
-        let query_type_definition = {
-            let queries = {
-                subsystem_resolvers
-                    .iter()
-                    .fold(vec![], |mut acc, resolver| {
-                        acc.extend(resolver.schema_queries());
-                        acc
-                    })
-            };
+        let queries = {
+            subsystem_resolvers
+                .iter()
+                .fold(vec![], |mut acc, resolver| {
+                    acc.extend(resolver.schema_queries());
+                    acc
+                })
+        };
 
+        let mutations = {
+            subsystem_resolvers
+                .iter()
+                .fold(vec![], |mut acc, resolver| {
+                    acc.extend(resolver.schema_mutations());
+                    acc
+                })
+        };
+
+        Self::new(type_definitions, queries, mutations)
+    }
+
+    pub fn new(
+        type_definitions: Vec<TypeDefinition>,
+        queries: Vec<Positioned<FieldDefinition>>,
+        mutations: Vec<Positioned<FieldDefinition>>,
+    ) -> Schema {
+        let mut type_definitions = type_definitions;
+
+        let query_type_definition = {
             // Even though we resolve __type and __schema fields for the Query
             // type, GraphQL spec doesn't allow them to be exposed as an
             // ordinary field. Therefore, we have to treat them specially (see
@@ -61,15 +82,6 @@ impl Schema {
         };
 
         let mutation_type_definition = {
-            let mutations = {
-                subsystem_resolvers
-                    .iter()
-                    .fold(vec![], |mut acc, resolver| {
-                        acc.extend(resolver.schema_mutations());
-                        acc
-                    })
-            };
-
             TypeDefinition {
                 extend: false,
                 description: None,

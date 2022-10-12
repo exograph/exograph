@@ -49,10 +49,9 @@ impl DenoExecutionError {
             Some(DenoError::Explicit(error)) => Some(error.to_string()),
             _ => match root_error.downcast_ref::<SubsystemResolutionError>() {
                 Some(error) => error.user_error_message(),
-                _ => match root_error.downcast_ref::<SystemResolutionError>() {
-                    Some(error) => Some(error.user_error_message()),
-                    _ => None,
-                },
+                _ => root_error
+                    .downcast_ref::<SystemResolutionError>()
+                    .map(|error| error.user_error_message()),
             },
         }
     }

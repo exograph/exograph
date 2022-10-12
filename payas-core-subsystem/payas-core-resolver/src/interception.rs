@@ -41,7 +41,7 @@ impl<'a> InterceptedOperation<'a> {
                     core,
                     after,
                 } => {
-                    self.invoke_non_proceeding_interceptors(&before, request_context)
+                    self.invoke_non_proceeding_interceptors(before, request_context)
                         .await?;
                     let response = {
                         let inner_intercepted_operation = InterceptedOperation {

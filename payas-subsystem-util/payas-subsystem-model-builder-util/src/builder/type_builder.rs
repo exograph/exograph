@@ -192,7 +192,7 @@ fn expand_type_access(
     if let ServiceTypeKind::Composite(self_type_info) = &existing_type.kind {
         let expr = compute_access_composite_types(
             &resolved_type.access,
-            &self_type_info,
+            self_type_info,
             resolved_env,
             building,
         )?;
@@ -234,7 +234,7 @@ fn create_shallow_context(context: &ContextType, building: &mut SystemContextBui
         is_input: false,
     };
 
-    building.types.add(&type_name, typ);
+    building.types.add(type_name, typ);
 }
 
 fn compute_access_method(

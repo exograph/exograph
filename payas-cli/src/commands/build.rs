@@ -39,7 +39,8 @@ impl Display for BuildError {
     }
 }
 
-/// Build claytip server binary
+/// Build claypot file
+///
 /// # Arguments
 /// * `model` - claytip model path
 /// * `system_start_time` - system start time. If specified, it will print a message indicated the time it took to build the model

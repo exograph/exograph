@@ -23,7 +23,7 @@ pub fn build(types: &MappedArena<Type>) -> Result<BaseModelSystem, ModelBuilding
         contexts: MappedArena::default(),
     };
 
-    type_builder::build_primitives(&types, &mut building);
+    type_builder::build_primitives(types, &mut building);
 
     let resolved = resolved_builder::build(types)?;
 

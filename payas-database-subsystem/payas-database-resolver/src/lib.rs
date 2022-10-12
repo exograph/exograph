@@ -15,3 +15,6 @@ mod predicate_mapper;
 mod sql_mapper;
 mod update_data_param_mapper;
 mod util;
+
+#[cfg(test)]
+mod test_utils;

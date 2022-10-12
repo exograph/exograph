@@ -65,12 +65,12 @@ impl SystemSerializer for ModelDenoSystem {
     type Underlying = Self;
 
     fn serialize(&self) -> Result<Vec<u8>, ModelSerializationError> {
-        bincode::serialize(self).map_err(|e| ModelSerializationError::Serialize(e))
+        bincode::serialize(self).map_err(ModelSerializationError::Serialize)
     }
 
     fn deserialize_reader(
         reader: impl std::io::Read,
     ) -> Result<Self::Underlying, ModelSerializationError> {
-        bincode::deserialize_from(reader).map_err(|e| ModelSerializationError::Deserialize(e))
+        bincode::deserialize_from(reader).map_err(ModelSerializationError::Deserialize)
     }
 }

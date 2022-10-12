@@ -63,7 +63,7 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
 
     let expanded_context = ContextType {
         name: existing_context.name.clone(),
-        fields: context_fields.clone(),
+        fields: context_fields,
     };
     building.contexts[existing_context_id] = expanded_context;
 }

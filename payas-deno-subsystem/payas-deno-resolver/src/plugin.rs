@@ -131,7 +131,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
             claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
-            &self,
+            self,
             request_context,
             &claytip_execute_query,
             operation,
@@ -174,7 +174,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
             claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
-            &self,
+            self,
             request_context,
             &claytip_execute_query,
             operation,
@@ -233,7 +233,7 @@ impl From<DenoExecutionError> for SubsystemResolutionError {
             DenoExecutionError::Authorization => SubsystemResolutionError::Authorization,
             _ => SubsystemResolutionError::UserDisplayError(
                 e.user_error_message()
-                    .unwrap_or("Internal server error".to_string()),
+                    .unwrap_or_else(|| "Internal server error".to_string()),
             ),
         }
     }

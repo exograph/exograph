@@ -17,7 +17,7 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
         typechecked_system: &MappedArena<Type>,
         base_system: &BaseModelSystem,
     ) -> Option<Result<SubsystemBuild, ModelBuildingError>> {
-        crate::system_builder::build(&typechecked_system, &base_system).map(|subsystem| {
+        crate::system_builder::build(typechecked_system, base_system).map(|subsystem| {
             let ModelWasmSystemWithInterceptors {
                 underlying: subsystem,
                 interceptors,
@@ -25,7 +25,7 @@ impl SubsystemBuilder for WasmSubsystemBuilder {
 
             let serialized_subsystem = subsystem
                 .serialize()
-                .map_err(|e| ModelBuildingError::Serialize(e))?;
+                .map_err(ModelBuildingError::Serialize)?;
 
             let interceptions = interceptors
                 .into_iter()

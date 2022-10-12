@@ -15,14 +15,14 @@ impl SubsystemBuilder for DatabaseSubsystemBuilder {
         typechecked_system: &MappedArena<Type>,
         base_system: &BaseModelSystem,
     ) -> Option<Result<SubsystemBuild, ModelBuildingError>> {
-        let subsystem = crate::system_builder::build(&typechecked_system, &base_system);
+        let subsystem = crate::system_builder::build(typechecked_system, base_system);
 
         subsystem.map(|subsystem| {
             let subsystem = subsystem?;
 
             let serialized_subsystem = subsystem
                 .serialize()
-                .map_err(|e| ModelBuildingError::Serialize(e))?;
+                .map_err(ModelBuildingError::Serialize)?;
 
             Ok(SubsystemBuild {
                 id: "database".to_string(),

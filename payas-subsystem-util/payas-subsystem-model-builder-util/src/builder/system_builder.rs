@@ -53,7 +53,7 @@ pub fn build_with_selection(
 ) -> Result<ModelServiceSystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
     let resolved_system = resolved_builder::build(
-        &typechecked_system,
+        typechecked_system,
         service_selection_predicate,
         process_script,
     )?;
@@ -107,7 +107,7 @@ fn build_shallow_service(resolved_env: &ResolvedTypeEnv, building: &mut SystemCo
     let resolved_service_types = &resolved_env.resolved_types;
     let resolved_services = &resolved_env.resolved_services;
 
-    type_builder::build_shallow(resolved_service_types, &resolved_env.contexts, building);
+    type_builder::build_shallow(resolved_service_types, resolved_env.contexts, building);
 
     service_builder::build_shallow(resolved_service_types, resolved_services, building);
 }

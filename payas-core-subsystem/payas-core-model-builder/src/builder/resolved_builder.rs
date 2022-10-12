@@ -72,7 +72,7 @@ pub(crate) struct ResolvedBaseSystem {
 pub(crate) fn build(types: &MappedArena<Type>) -> Result<ResolvedBaseSystem, ModelBuildingError> {
     let mut errors = Vec::new();
 
-    let resolved_system = resolve(&types, &mut errors)?;
+    let resolved_system = resolve(types, &mut errors)?;
 
     if errors.is_empty() {
         Ok(resolved_system)
@@ -127,7 +127,7 @@ fn resolve_shallow_contexts(
 
 fn resolve_context_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedContextFieldType {
     match typ.deref(types) {
-        Type::Primitive(pt) => ResolvedContextFieldType::Plain(pt.clone()),
+        Type::Primitive(pt) => ResolvedContextFieldType::Plain(pt),
         Type::Optional(underlying) => ResolvedContextFieldType::Optional(Box::new(
             resolve_context_field_type(&underlying, types),
         )),

@@ -1,0 +1,251 @@
+---
+source: payas-database-subsystem/payas-database-model-builder/src/resolved_builder.rs
+assertion_line: 1078
+expression: resolved
+---
+values:
+  - - ~
+    - Primitive: Boolean
+  - - ~
+    - Primitive: Int
+  - - ~
+    - Primitive: Float
+  - - ~
+    - Primitive: Decimal
+  - - ~
+    - Primitive: String
+  - - ~
+    - Primitive: LocalTime
+  - - ~
+    - Primitive: LocalDateTime
+  - - ~
+    - Primitive: LocalDate
+  - - ~
+    - Primitive: Instant
+  - - ~
+    - Primitive: Json
+  - - ~
+    - Primitive: Blob
+  - - ~
+    - Primitive: Uuid
+  - - ~
+    - Primitive: Claytip
+  - - ~
+    - Primitive: ClaytipPriv
+  - - ~
+    - Primitive:
+        Interception: Operation
+  - - ~
+    - Composite:
+        name: Concert
+        plural_name: Concerts
+        fields:
+          - name: id
+            typ:
+              Plain:
+                type_name: Int
+                is_primitive: true
+            column_name: id
+            self_column: true
+            is_pk: true
+            type_hint: ~
+            unique_constraints: []
+            default_value: Autoincrement
+          - name: title
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_name: title
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: public
+            typ:
+              Plain:
+                type_name: Boolean
+                is_primitive: true
+            column_name: public
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+        table_name: concerts
+        access:
+          creation:
+            LogicalOp:
+              Or:
+                - RelationalOp:
+                    Eq:
+                      - FieldSelection:
+                          Select:
+                            - Single:
+                                - - AuthContext
+                                - Reference:
+                                    index: 15
+                                    generation: ~
+                            - - role
+                            - Reference:
+                                index: 4
+                                generation: ~
+                      - StringLiteral:
+                          - ROLE_ADMIN
+                      - Primitive: Boolean
+                - FieldSelection:
+                    Select:
+                      - Single:
+                          - - self
+                          - Reference:
+                              index: 16
+                              generation: ~
+                      - - public
+                      - Reference:
+                          index: 0
+                          generation: ~
+                - Primitive: Boolean
+          read:
+            LogicalOp:
+              Or:
+                - RelationalOp:
+                    Eq:
+                      - FieldSelection:
+                          Select:
+                            - Single:
+                                - - AuthContext
+                                - Reference:
+                                    index: 15
+                                    generation: ~
+                            - - role
+                            - Reference:
+                                index: 4
+                                generation: ~
+                      - StringLiteral:
+                          - ROLE_ADMIN
+                      - Primitive: Boolean
+                - FieldSelection:
+                    Select:
+                      - Single:
+                          - - self
+                          - Reference:
+                              index: 16
+                              generation: ~
+                      - - public
+                      - Reference:
+                          index: 0
+                          generation: ~
+                - Primitive: Boolean
+          update:
+            LogicalOp:
+              Or:
+                - RelationalOp:
+                    Eq:
+                      - FieldSelection:
+                          Select:
+                            - Single:
+                                - - AuthContext
+                                - Reference:
+                                    index: 15
+                                    generation: ~
+                            - - role
+                            - Reference:
+                                index: 4
+                                generation: ~
+                      - StringLiteral:
+                          - ROLE_ADMIN
+                      - Primitive: Boolean
+                - FieldSelection:
+                    Select:
+                      - Single:
+                          - - self
+                          - Reference:
+                              index: 16
+                              generation: ~
+                      - - public
+                      - Reference:
+                          index: 0
+                          generation: ~
+                - Primitive: Boolean
+          delete:
+            LogicalOp:
+              Or:
+                - RelationalOp:
+                    Eq:
+                      - FieldSelection:
+                          Select:
+                            - Single:
+                                - - AuthContext
+                                - Reference:
+                                    index: 15
+                                    generation: ~
+                            - - role
+                            - Reference:
+                                index: 4
+                                generation: ~
+                      - StringLiteral:
+                          - ROLE_ADMIN
+                      - Primitive: Boolean
+                - FieldSelection:
+                    Select:
+                      - Single:
+                          - - self
+                          - Reference:
+                              index: 16
+                              generation: ~
+                      - - public
+                      - Reference:
+                          index: 0
+                          generation: ~
+                - Primitive: Boolean
+map:
+  Blob:
+    index: 10
+    generation: ~
+  Boolean:
+    index: 0
+    generation: ~
+  Claytip:
+    index: 12
+    generation: ~
+  ClaytipPriv:
+    index: 13
+    generation: ~
+  Concert:
+    index: 15
+    generation: ~
+  Decimal:
+    index: 3
+    generation: ~
+  Float:
+    index: 2
+    generation: ~
+  Instant:
+    index: 8
+    generation: ~
+  Int:
+    index: 1
+    generation: ~
+  Json:
+    index: 9
+    generation: ~
+  LocalDate:
+    index: 7
+    generation: ~
+  LocalDateTime:
+    index: 6
+    generation: ~
+  LocalTime:
+    index: 5
+    generation: ~
+  Operation:
+    index: 14
+    generation: ~
+  String:
+    index: 4
+    generation: ~
+  Uuid:
+    index: 11
+    generation: ~
+

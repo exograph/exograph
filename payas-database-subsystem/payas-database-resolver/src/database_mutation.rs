@@ -172,6 +172,7 @@ async fn delete_operation<'content>(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn update_operation<'content>(
     mutation: &'content DatabaseMutation,
     data_param: &'content UpdateDataParameter,

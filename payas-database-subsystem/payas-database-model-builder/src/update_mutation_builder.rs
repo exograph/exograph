@@ -253,8 +253,8 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     DatabaseCompositeType {
                         fields,
                         table_id: *table_id,
-                        pk_query: pk_query.clone(),
-                        collection_query: collection_query.clone(),
+                        pk_query: *pk_query,
+                        collection_query: *collection_query,
                         access: Access::restrictive(),
                     },
                 )];

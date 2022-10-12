@@ -106,8 +106,8 @@ fn process_script(
         Ok(bundler_output.stdout)
     } else {
         std::io::stdout().write_all(&bundler_output.stderr).unwrap();
-        return Err(ModelBuildingError::Generic(
+        Err(ModelBuildingError::Generic(
             "Deno bundler did not exit successfully".to_string(),
-        ));
+        ))
     }
 }

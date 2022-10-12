@@ -146,10 +146,7 @@ pub trait DataParamBuilder<D> {
                     if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
                         typ.deref_subsystem_type(resolved_types)
                     {
-                        Self::data_param_field_one_to_many_type_names(
-                            &name,
-                            resolved_composite_type,
-                        )
+                        Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
                     } else {
                         vec![]
                     }
@@ -324,8 +321,8 @@ pub trait DataParamBuilder<D> {
                 DatabaseCompositeType {
                     fields: input_type_fields,
                     table_id: *table_id,
-                    pk_query: pk_query.clone(),
-                    collection_query: collection_query.clone(),
+                    pk_query: *pk_query,
+                    collection_query: *collection_query,
                     access: access.clone(),
                 },
             ));
@@ -336,6 +333,7 @@ pub trait DataParamBuilder<D> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn expand_one_to_many(
         &self,
         model_type: &DatabaseType,

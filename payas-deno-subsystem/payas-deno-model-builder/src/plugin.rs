@@ -17,7 +17,7 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
         typechecked_system: &MappedArena<Type>,
         base_system: &BaseModelSystem,
     ) -> Option<Result<SubsystemBuild, ModelBuildingError>> {
-        let subsystem = crate::system_builder::build(&typechecked_system, &base_system);
+        let subsystem = crate::system_builder::build(typechecked_system, base_system);
 
         subsystem.map(|subsystem| {
             let ModelDenoSystemWithInterceptors {
@@ -27,7 +27,7 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
 
             let serialized_subsystem = subsystem
                 .serialize()
-                .map_err(|e| ModelBuildingError::Serialize(e))?;
+                .map_err(ModelBuildingError::Serialize)?;
 
             let interceptions = interceptors
                 .into_iter()

@@ -30,8 +30,13 @@ pub(crate) async fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver::solve_access(access_expr, request_context, subsystem, &system_resolver)
-                .await
+            access_solver::solve_access(
+                access_expr,
+                request_context,
+                subsystem,
+                &system_resolver.resolve_operation_fn(),
+            )
+            .await
         }
     }
 }

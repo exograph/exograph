@@ -16,7 +16,6 @@ use payas_sql::TransactionHolder;
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::system_resolver::SystemResolver;
 use crate::ResolveOperationFn;
 
 use self::cookie::CookieExtractor;
@@ -133,14 +132,11 @@ impl<'a> RequestContext<'a> {
     pub async fn extract_context<'s>(
         &'a self,
         context: &ContextType,
-        system_resolver: &'a SystemResolver,
+        resolver: &ResolveOperationFn<'a>,
     ) -> Result<Value, ContextParsingError> {
         Ok(Value::Object(
             futures::stream::iter(context.fields.iter())
-                .then(|field| async {
-                    self.extract_context_field(context, field, system_resolver)
-                        .await
-                })
+                .then(|field| async { self.extract_context_field(context, field, resolver).await })
                 .collect::<Vec<Result<_, _>>>()
                 .await
                 .into_iter()
@@ -157,7 +153,7 @@ impl<'a> RequestContext<'a> {
         &'a self,
         parsed_context_map: &HashMap<String, BoxedParsedContext>,
         request: &'a (dyn Request + Send + Sync),
-        system_resolver: &'a SystemResolver,
+        resolver: &ResolveOperationFn<'a>,
         annotation_name: &str,
         value: Option<&str>,
     ) -> Result<Option<Value>, ContextParsingError> {
@@ -166,12 +162,7 @@ impl<'a> RequestContext<'a> {
             .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(
-                value,
-                &system_resolver.resolve_operation_fn(),
-                self,
-                request,
-            )
+            .extract_context_field(value, resolver, self, request)
             .await)
     }
 
@@ -180,7 +171,7 @@ impl<'a> RequestContext<'a> {
         &'a self,
         context: &ContextType,
         field: &ContextField,
-        system_resolver: &'a SystemResolver,
+        resolver: &ResolveOperationFn<'a>,
     ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
             RequestContext::User(UserRequestContext {
@@ -192,7 +183,7 @@ impl<'a> RequestContext<'a> {
                     .extract_context_field_from_source(
                         parsed_context_map,
                         *request,
-                        system_resolver,
+                        resolver,
                         &field.source.annotation_name,
                         field.source.value.as_deref(),
                     )
@@ -211,7 +202,7 @@ impl<'a> RequestContext<'a> {
                     Some(value) => Ok(Some((field.name.clone(), value.clone()))),
                     None => {
                         base_context
-                            .extract_context_field(context, field, system_resolver)
+                            .extract_context_field(context, field, resolver)
                             .await
                     }
                 }

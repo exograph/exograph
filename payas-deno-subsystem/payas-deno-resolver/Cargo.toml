@@ -25,7 +25,7 @@ payas-deno-model = { path = "../payas-deno-model" }
 
 [dev-dependencies]
 tokio = "1"
-payas-builder = { path = "../payas-builder" }
+payas-builder = { path = "../../payas-builder" }
 
 
 [lib]

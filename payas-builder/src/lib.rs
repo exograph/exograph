@@ -6,8 +6,8 @@ use error::ParserError;
 
 mod builder;
 pub mod error;
-mod parser;
-mod typechecker;
+pub mod parser;
+pub mod typechecker;
 mod util;
 
 use payas_core_model_builder::{

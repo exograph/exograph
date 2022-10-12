@@ -48,13 +48,10 @@ impl SubsystemResolver for IntrospectionResolver {
                 .resolve_field(field, &self.schema, request_context)
                 .await;
 
-            Some(
-                body.map(|body| QueryResponse {
-                    body: QueryResponseBody::Json(body),
-                    headers: vec![],
-                })
-                .map_err(|e| e.into()),
-            )
+            Some(body.map(|body| QueryResponse {
+                body: QueryResponseBody::Json(body),
+                headers: vec![],
+            }))
         } else {
             None
         }

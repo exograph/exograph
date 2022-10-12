@@ -55,7 +55,7 @@ impl<'a> DenoOperation<'a> {
                     access_expr,
                     self.request_context,
                     subsystem,
-                    self.system_resolver,
+                    &self.system_resolver.resolve_operation_fn(),
                 )
                 .await
                 .into()
@@ -68,7 +68,7 @@ impl<'a> DenoOperation<'a> {
             method_access_expr,
             self.request_context,
             subsystem,
-            self.system_resolver,
+            &self.system_resolver.resolve_operation_fn(),
         )
         .await;
 
@@ -91,7 +91,7 @@ impl<'a> DenoOperation<'a> {
         let arg_sequence: Vec<Arg> = self.construct_arg_sequence().await?;
 
         let callback_processor = ClayCallbackProcessor {
-            claytip_execute_query: claytip_execute_query,
+            claytip_execute_query,
             claytip_proceed: None,
         };
 
@@ -120,7 +120,7 @@ impl<'a> DenoOperation<'a> {
             &self.field.arguments,
             &self.method.arguments,
             self.subsystem(),
-            &self.system_resolver,
+            self.system_resolver,
             self.request_context,
         )
         .await
@@ -165,7 +165,7 @@ pub async fn construct_arg_sequence<'a>(
                 {
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = request_context
-                        .extract_context(context, system_resolver)
+                        .extract_context(context, &system_resolver.resolve_operation_fn())
                         .await
                         .unwrap_or_else(|_| {
                             panic!(

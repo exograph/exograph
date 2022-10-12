@@ -136,8 +136,7 @@ impl SystemResolver {
     pub fn allow_introspection(&self) -> bool {
         self.subsystem_resolvers
             .iter()
-            .find(|subsystem_resolver| subsystem_resolver.id() == "introspection")
-            .is_some()
+            .any(|subsystem_resolver| subsystem_resolver.id() == "introspection")
     }
 
     /// Obtain the interception tree associated with the given operation
@@ -358,7 +357,7 @@ impl SystemResolutionError {
     // TODO: Log the details of the error.
     pub fn user_error_message(&self) -> String {
         self.explicit_message()
-            .unwrap_or("Internal server error".to_string())
+            .unwrap_or_else(|| "Internal server error".to_string())
     }
 
     pub fn explicit_message(&self) -> Option<String> {

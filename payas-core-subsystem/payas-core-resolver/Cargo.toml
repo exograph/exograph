@@ -29,7 +29,11 @@ payas-core-plugin = { path = "../payas-core-plugin" }
 
 [dev-dependencies]
 tokio = "1"
-payas-builder = { path = "../../payas-builder", features = ["test-context"]}
+insta = "1.14.0"
 
+payas-builder = { path = "../../payas-builder", features = ["test-context"]}
+payas-resolver = { path = "../../payas-resolver"}
+payas-database-model = { path = "../../payas-database-subsystem/payas-database-model"}
+payas-database-resolver = { path = "../../payas-database-subsystem/payas-database-resolver"}
 
 [lib]

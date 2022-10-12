@@ -173,7 +173,7 @@ fn argument_param(
         .map(|arg| {
             let arg_typename = arg.typ.get_underlying_typename();
             let type_modifier = arg.typ.get_modifier();
-            let input_type_id = building.types.get_id(&arg_typename);
+            let input_type_id = building.types.get_id(arg_typename);
 
             if let Some(input_type_id) = input_type_id {
                 ArgumentParameter {

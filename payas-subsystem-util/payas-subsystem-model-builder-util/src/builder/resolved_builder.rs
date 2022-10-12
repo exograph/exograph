@@ -37,10 +37,7 @@ impl ResolvedType {
     }
 
     pub fn is_primitive(&self) -> bool {
-        match self {
-            ResolvedType::Primitive(_) => true,
-            _ => false,
-        }
+        matches!(self, ResolvedType::Primitive(_))
     }
 }
 
@@ -157,7 +154,7 @@ pub fn build(
     let mut errors = Vec::new();
 
     let resolved_system = resolve(
-        &types,
+        types,
         &mut errors,
         service_selection_predicate,
         process_script,
@@ -340,24 +337,20 @@ fn resolve_service_input_types(
     let mut types_used: Vec<(AstFieldType<Typed>, IsInput)> = vec![];
 
     for (_, typ) in types.iter() {
-        match typ {
-            Type::Service(service) => {
-                for method in service.methods.iter() {
-                    for argument in method.arguments.iter() {
-                        types_used.push((argument.typ.clone(), true))
-                    }
-
-                    types_used.push((method.return_type.clone(), false))
+        if let Type::Service(service) = typ {
+            for method in service.methods.iter() {
+                for argument in method.arguments.iter() {
+                    types_used.push((argument.typ.clone(), true))
                 }
 
-                for interceptor in service.interceptors.iter() {
-                    for argument in interceptor.arguments.iter() {
-                        types_used.push((argument.typ.clone(), true))
-                    }
-                }
+                types_used.push((method.return_type.clone(), false))
             }
 
-            _ => {}
+            for interceptor in service.interceptors.iter() {
+                for argument in interceptor.arguments.iter() {
+                    types_used.push((argument.typ.clone(), true))
+                }
+            }
         }
     }
 

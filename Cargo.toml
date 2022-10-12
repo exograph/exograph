@@ -1,6 +1,57 @@
 [workspace]
-members = ["payas-*", "payas-*-subsystem/*", "payas-subsystem-util/*"]
-exclude = ["payas-core-subsystem", "payas-database-subsystem", "payas-deno-subsystem", "payas-wasm-subsystem", "payas-introspection-subsystem", "payas-subsystem-util"]
+members = [
+    "payas-builder", 
+    "payas-cli",
+    "payas-core-subsystem/payas-core-model",
+    "payas-core-subsystem/payas-core-model-builder",
+    "payas-core-subsystem/payas-core-plugin",
+    "payas-core-subsystem/payas-core-resolver",
+    "payas-database-subsystem/payas-database-model",
+    "payas-database-subsystem/payas-database-model-builder",
+    "payas-database-subsystem/payas-database-resolver",
+    "payas-deno",
+    "payas-deno-subsystem/payas-deno-model",
+    "payas-deno-subsystem/payas-deno-model-builder",
+    "payas-deno-subsystem/payas-deno-resolver",
+    "payas-introspection-subsystem/payas-introspection-resolver",
+    "payas-resolver",
+    "payas-server-actix",
+    "payas-server-aws-lambda",
+    "payas-sql",
+    "payas-subsystem-util/payas-subsystem-model-builder-util",
+    "payas-subsystem-util/payas-subsystem-model-util",
+    "payas-test",
+    "payas-wasm-subsystem/payas-wasm-model",
+    "payas-wasm-subsystem/payas-wasm-model-builder",
+    "payas-wasm-subsystem/payas-wasm-resolver"
+]
+
+default-members = [
+  "payas-builder", 
+  "payas-cli",
+  "payas-core-subsystem/payas-core-model",
+  "payas-core-subsystem/payas-core-model-builder",
+  "payas-core-subsystem/payas-core-plugin",
+  "payas-core-subsystem/payas-core-resolver",
+  "payas-database-subsystem/payas-database-model",
+  "payas-database-subsystem/payas-database-model-builder",
+  "payas-database-subsystem/payas-database-resolver",
+  "payas-deno",
+  "payas-deno-subsystem/payas-deno-model",
+  "payas-deno-subsystem/payas-deno-model-builder",
+  "payas-deno-subsystem/payas-deno-resolver",
+  "payas-introspection-subsystem/payas-introspection-resolver",
+  "payas-resolver",
+  "payas-server-actix",
+  "payas-server-aws-lambda",
+  "payas-sql",
+  "payas-subsystem-util/payas-subsystem-model-builder-util",
+  "payas-subsystem-util/payas-subsystem-model-util",
+  "payas-test",
+  "payas-wasm-subsystem/payas-wasm-model",
+  "payas-wasm-subsystem/payas-wasm-model-builder",
+  "payas-wasm-subsystem/payas-wasm-resolver"
+]  
 resolver = "2"
 
 [profile.release]

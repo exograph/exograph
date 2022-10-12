@@ -24,7 +24,7 @@ pub fn build(
 ) -> Option<Result<ModelDatabaseSystem, ModelBuildingError>> {
     let mut building = SystemContextBuilding::default();
 
-    let resolved_types = resolved_builder::build(&typechecked_system);
+    let resolved_types = resolved_builder::build(typechecked_system);
 
     let system = resolved_types.and_then(|resolved_types| {
         let resolved_env = ResolvedTypeEnv {
@@ -118,6 +118,7 @@ impl SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
+    use payas_core_model::mapped_arena::SerializableSlab;
     use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;
@@ -335,7 +336,7 @@ mod tests {
         panic!("No such column {}", name)
     }
 
-    fn create_system(src: &str) -> ModelSystem {
-        crate::build_system_from_str(src, "input.clay".to_string()).unwrap()
+    fn create_system(src: &str) -> ModelDatabaseSystem {
+        crate::test_utils::create_database_system_from_str(src, "test.clay".to_string()).unwrap()
     }
 }

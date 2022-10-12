@@ -51,7 +51,7 @@ pub(crate) fn build_expanded(
 
     for (_, model_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_persistent_type_fields(c, building, &resolved_env);
+            expand_persistent_type_fields(c, building, resolved_env);
         }
     }
 
@@ -157,7 +157,7 @@ fn expand_persistent_type_fields(
         let model_fields: Vec<DatabaseField> = resolved_type
             .fields
             .iter()
-            .map(|field| create_persistent_field(field, &table_id, building, resolved_env))
+            .map(|field| create_persistent_field(field, table_id, building, resolved_env))
             .collect();
 
         let kind = DatabaseTypeKind::Composite(DatabaseCompositeType {
@@ -314,7 +314,7 @@ fn create_column(
                 ResolvedType::Primitive(pt) => Some(PhysicalColumn {
                     table_name: table_name.to_string(),
                     column_name: field.column_name.to_string(),
-                    typ: determine_column_type(&pt, field),
+                    typ: determine_column_type(pt, field),
                     is_pk: field.is_pk,
                     is_autoincrement: if field.get_is_autoincrement() {
                         assert!(typ.deref(env) == &ResolvedType::Primitive(PrimitiveType::Int));

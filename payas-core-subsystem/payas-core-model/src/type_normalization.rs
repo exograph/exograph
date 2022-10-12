@@ -188,7 +188,7 @@ impl<T: Operation, S> FieldDefinitionProvider<S> for T {
             arguments: fields,
             directives: vec![],
             ty: default_positioned(value_type(
-                &self.return_type_name(),
+                self.return_type_name(),
                 &self.return_type_modifier(),
             )),
         }
