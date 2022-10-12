@@ -1,0 +1,32 @@
+[package]
+name = "wasm-resolver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+async-graphql-parser = "4.0.5"
+async-graphql-value = "4.0.5"
+async-recursion = "1.0.0"
+async-trait = "0.1.53"
+futures = "0.3"
+maybe-owned = "0.3.4"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+thiserror = "1.0.30"
+tokio = "1"
+wasmtime = "0.39.1"
+wasmtime-wasi = "0.39.1"
+
+payas-wasm = { path = "../../../libs/payas-wasm" }
+core-model = { path = "../../core-subsystem/core-model" }
+core-plugin = { path = "../../core-subsystem/core-plugin" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
+wasm-model = { path = "../wasm-model" }
+
+
+[dev-dependencies]
+tokio = "1"
+builder = { path = "../../builder" }
+
+
+[lib]

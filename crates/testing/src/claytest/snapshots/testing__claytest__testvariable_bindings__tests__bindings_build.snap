@@ -1,0 +1,14 @@
+---
+source: test/src/claytest/testvariable_bindings.rs
+expression: bindings
+
+---
+createLog_id:
+  - data
+  - createLog
+  - id
+log1_ids:
+  - data
+  - log1
+  - id
+

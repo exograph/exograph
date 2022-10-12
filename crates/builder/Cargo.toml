@@ -1,0 +1,36 @@
+[package]
+name = "builder"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+test-context = []
+
+[dependencies]
+tree-sitter = "0.20.6"
+serde = { version = "1.0.136", features = ["derive"] }
+lazy_static = "1.4.0"
+codemap = "0.1.3"
+codemap-diagnostic = "0.1.1"
+
+typed-generational-arena = { version = "0.2", features = ["serde"] }
+wildmatch = "2.1.0"
+thiserror = "1.0.30"
+payas-sql = { path = "../../libs/payas-sql" }
+core-model = { path = "../core-subsystem/core-model" }
+core-plugin = { path = "../core-subsystem/core-plugin" }
+core-model-builder = { path = "../core-subsystem/core-model-builder" }
+database-model-builder = { path = "../database-subsystem/database-model-builder" }
+deno-model = { path = "../deno-subsystem/deno-model" }
+deno-model-builder = { path = "../deno-subsystem/deno-model-builder" }
+wasm-model = { path = "../wasm-subsystem/wasm-model" }
+wasm-model-builder = { path = "../wasm-subsystem/wasm-model-builder" }
+
+[build-dependencies]
+cc = "*"
+
+[dev-dependencies]
+insta = "1.14.0"
+serde_json = "1.0"
+
+[lib]

@@ -1,0 +1,32 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "clay"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+clap = "3.2.16"
+heck = "0.4.0"
+notify = "4.0.17"
+serde = { version = "1.0", features = ["derive"] }
+tokio = "1"
+rand = "0.8"
+ctrlc = "3.2"
+
+tracing = "0.1"
+
+payas-sql = { path = "../../libs/payas-sql" }
+builder = { path = "../builder" }
+testing = { path = "../testing" }
+core-model = { path = "../core-subsystem/core-model" }
+core-plugin = { path = "../core-subsystem/core-plugin" }
+core-model-builder = { path = "../core-subsystem/core-model-builder" }
+database-model = { path = "../database-subsystem/database-model" }
+
+
+[dev-dependencies]
+stripmargin = "0.1.1"
