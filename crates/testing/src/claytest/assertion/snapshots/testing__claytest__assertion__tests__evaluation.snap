@@ -1,0 +1,11 @@
+---
+source: test/src/claytest/assertion/mod.rs
+expression: result
+
+---
+data:
+  a: 1
+  b:
+    - foo
+    - bar
+

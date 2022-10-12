@@ -1,0 +1,59 @@
+---
+source: builder/src/parser/converter.rs
+expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span,\n             Path::new(\"input.clay\")).unwrap()"
+
+---
+models:
+  - name: Foo
+    kind: Persistent
+    fields:
+      - name: bar
+        typ:
+          Plain:
+            - Baz
+            - []
+            - ~
+        annotations:
+          - name: column
+            params:
+              Single:
+                - StringLiteral:
+                    - custom_column
+          - name: access
+            params:
+              Single:
+                - LogicalOp:
+                    Or:
+                      - RelationalOp:
+                          Eq:
+                            - LogicalOp:
+                                Not:
+                                  - FieldSelection:
+                                      Select:
+                                        - Single:
+                                            - - self
+                                            - ~
+                                        - - role
+                                        - ~
+                                  - ~
+                            - StringLiteral:
+                                - role_admin
+                            - ~
+                      - RelationalOp:
+                          Eq:
+                            - FieldSelection:
+                                Select:
+                                  - Single:
+                                      - - self
+                                      - ~
+                                  - - role
+                                  - ~
+                            - StringLiteral:
+                                - role_superuser
+                            - ~
+                      - ~
+        default_value: ~
+    annotations: []
+services: []
+imports: []
+

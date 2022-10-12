@@ -17,44 +17,44 @@ WORKDIR /usr/src
 
 ## Build and cache the dependencies
 ### Create empty projects with the right type (lib/bin)
-RUN USER=root cargo new --vcs none --bin payas-cli
-RUN USER=root cargo new --vcs none --lib payas-core-subsystem/payas-core-model-builder
-RUN USER=root cargo new --vcs none --lib payas-database-subsystem/payas-database-model-builder
+RUN USER=root cargo new --vcs none --bin cli
+RUN USER=root cargo new --vcs none --lib core-subsystem/core-model-builder
+RUN USER=root cargo new --vcs none --lib database-subsystem/database-model-builder
 RUN USER=root cargo new --vcs none --lib payas-deno
 RUN USER=root cargo new --vcs none --lib payas-model
-RUN USER=root cargo new --vcs none --lib payas-builder
-RUN USER=root cargo new --vcs none --lib payas-core-resolver
-RUN USER=root cargo new --vcs none --lib payas-database-resolver
-RUN USER=root cargo new --vcs none --lib payas-deno-resolver
-RUN USER=root cargo new --vcs none --lib payas-wasm-resolver
-RUN USER=root cargo new --vcs none --bin payas-server-actix
-RUN USER=root cargo new --vcs none --bin payas-server-aws-lambda
-RUN USER=root cargo new --vcs none --lib payas-resolver
-RUN USER=root cargo new --vcs none --lib payas-deno-plugin/payas-deno-model-builder
+RUN USER=root cargo new --vcs none --lib builder
+RUN USER=root cargo new --vcs none --lib core-resolver
+RUN USER=root cargo new --vcs none --lib database-resolver
+RUN USER=root cargo new --vcs none --lib deno-resolver
+RUN USER=root cargo new --vcs none --lib wasm-resolver
+RUN USER=root cargo new --vcs none --bin server-actix
+RUN USER=root cargo new --vcs none --bin server-aws-lambda
+RUN USER=root cargo new --vcs none --lib resolver
+RUN USER=root cargo new --vcs none --lib deno-plugin/deno-model-builder
 RUN USER=root cargo new --vcs none --lib payas-sql
-RUN USER=root cargo new --vcs none --lib payas-test
+RUN USER=root cargo new --vcs none --lib test
 RUN USER=root cargo new --vcs none --lib payas-wasm
 
 ### Copy over Cargo.toml and Cargo.lock files so that we can build just
 ### the dependencies and cache this layer when only source files change
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
-COPY ./payas-cli/Cargo.toml ./payas-cli/Cargo.toml
-COPY ./payas-core-subsystem/payas-core-model-builder/Cargo.toml ./payas-core-subsystem/payas-core-model-builder/Cargo.toml
-COPY ./payas-database-subsystem/payas-database-model-builder/Cargo.toml ./payas-database-subsystem/payas-database-model-builder/Cargo.toml
+COPY ./cli/Cargo.toml ./cli/Cargo.toml
+COPY ./core-subsystem/core-model-builder/Cargo.toml ./core-subsystem/core-model-builder/Cargo.toml
+COPY ./database-subsystem/database-model-builder/Cargo.toml ./database-subsystem/database-model-builder/Cargo.toml
 COPY ./payas-deno/Cargo.toml ./payas-deno/Cargo.toml
 COPY ./payas-model/Cargo.toml ./payas-model/Cargo.toml
-COPY ./payas-builder/Cargo.toml ./payas-builder/Cargo.toml
-COPY ./payas-core-resolver/Cargo.toml ./payas-core-resolver/Cargo.toml
-COPY ./payas-database-resolver/Cargo.toml ./payas-database-resolver/Cargo.toml
-COPY ./payas-deno-resolver/Cargo.toml ./payas-deno-resolver/Cargo.toml
-COPY ./payas-wasm-resolver/Cargo.toml ./payas-wasm-resolver/Cargo.toml
-COPY ./payas-server-actix/Cargo.toml ./payas-server-actix/Cargo.toml
-COPY ./payas-server-aws-lambda/Cargo.toml ./payas-server-aws-lambda/Cargo.toml
-COPY ./payas-resolver/Cargo.toml ./payas-resolver/Cargo.toml
-COPY ./payas-deno-plugin/payas-deno-model-builder/Cargo.toml ./payas-deno-plugin/payas-deno-model-builder/Cargo.toml
+COPY ./builder/Cargo.toml ./builder/Cargo.toml
+COPY ./core-resolver/Cargo.toml ./core-resolver/Cargo.toml
+COPY ./database-resolver/Cargo.toml ./database-resolver/Cargo.toml
+COPY ./deno-resolver/Cargo.toml ./deno-resolver/Cargo.toml
+COPY ./wasm-resolver/Cargo.toml ./wasm-resolver/Cargo.toml
+COPY ./server-actix/Cargo.toml ./server-actix/Cargo.toml
+COPY ./server-aws-lambda/Cargo.toml ./server-aws-lambda/Cargo.toml
+COPY ./resolver/Cargo.toml ./resolver/Cargo.toml
+COPY ./deno-plugin/deno-model-builder/Cargo.toml ./deno-plugin/deno-model-builder/Cargo.toml
 COPY ./payas-sql/Cargo.toml ./payas-sql/Cargo.toml
-COPY ./payas-test/Cargo.toml ./payas-test/Cargo.toml
+COPY ./test/Cargo.toml ./test/Cargo.toml
 COPY ./payas-wasm/Cargo.toml ./payas-wasm/Cargo.toml
 
 COPY ./graphiql/package.json ./graphiql/package.json
@@ -66,22 +66,22 @@ RUN cd graphiql && npm install
 
 ## Build the actual image
 ### Copy over the source files
-ADD payas-cli payas-cli/
-ADD payas-core-subsystem/payas-core-model-builder/ payas-core-subsystem/payas-core-model-builder/
-ADD payas-database-subsystem/payas-database-model-builder payas-database-subsystem/payas-database-model-builder/
+ADD cli cli/
+ADD core-subsystem/core-model-builder/ core-subsystem/core-model-builder/
+ADD database-subsystem/database-model-builder database-subsystem/database-model-builder/
 ADD payas-deno payas-deno/
 ADD payas-model payas-model/
-ADD payas-builder payas-builder/
-ADD payas-core-resolver payas-core-resolver/
-ADD payas-database-resolver payas-database-resolver/
-ADD payas-deno-resolver payas-deno-resolver/
-ADD payas-wasm-resolver payas-wasm-resolver/
-ADD payas-server-actix payas-server-actix/
-ADD payas-server-aws-lambda payas-server-aws-lambda/
-ADD payas-resolver payas-resolver/
-ADD payas-deno-subsystem/payas-deno-model-builder/ payas-deno-subsystem/payas-deno-model-builder/ 
+ADD builder builder/
+ADD core-resolver core-resolver/
+ADD database-resolver database-resolver/
+ADD deno-resolver deno-resolver/
+ADD wasm-resolver wasm-resolver/
+ADD server-actix server-actix/
+ADD server-aws-lambda server-aws-lambda/
+ADD resolver resolver/
+ADD deno-subsystem/deno-model-builder/ deno-subsystem/deno-model-builder/ 
 ADD payas-sql payas-sql/
-ADD payas-test payas-test/
+ADD test test/
 ADD payas-wasm payas-wasm/
 
 ADD graphiql graphiql/

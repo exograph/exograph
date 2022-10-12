@@ -1,0 +1,39 @@
+[package]
+name = "core-resolver"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+test-context = []
+
+[dependencies]
+async-graphql-parser = "4.0.5"
+async-graphql-value = "4.0.5"
+async-recursion = "1.0.0"
+async-trait = "0.1.53"
+bytes = "1"
+futures = "0.3"
+maybe-owned = "0.3.4"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0.30"
+jsonwebtoken = "8.1.1"
+cookie = "0.16"
+tokio = "1"
+
+tracing = "0.1"
+
+payas-sql = { path = "../../../libs/payas-sql" }
+core-model = { path = "../core-model" }
+core-plugin = { path = "../core-plugin" }
+
+[dev-dependencies]
+tokio = "1"
+insta = "1.14.0"
+
+builder = { path = "../../builder", features = ["test-context"]}
+resolver = { path = "../../resolver"}
+database-model = { path = "../../database-subsystem/database-model"}
+database-resolver = { path = "../../database-subsystem/database-resolver"}
+
+[lib]
