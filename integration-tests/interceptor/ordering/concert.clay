@@ -47,7 +47,7 @@ service Logging {
   @around("query *")
   interceptor timingQuery(operation: Operation, claytip: Claytip)
 
-  // TODO: Make this work (and drop the requirement that the interceptor expression is a string)
+  // TODO: Make this work
   // @before("mutation *" && !"mutation *Log")
   // interceptor enterMutation(operation: Operation, claytip: Claytip)
 }

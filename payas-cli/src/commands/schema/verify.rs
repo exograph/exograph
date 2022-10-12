@@ -1,7 +1,7 @@
 //! Subcommands under the `schema` subcommand
 
 use anyhow::{anyhow, Result};
-use payas_parser::error::ParserError;
+use payas_builder::error::ParserError;
 use payas_sql::{
     database_error::DatabaseError,
     schema::{op::SchemaOp, spec::SchemaSpec},
@@ -13,6 +13,8 @@ use std::{
 };
 
 use crate::{commands::command::Command, util::open_database};
+
+use super::util;
 
 /// Verify that a schema is compatible with a claytip model
 pub struct VerifyCommand {
@@ -77,8 +79,8 @@ pub fn verify(model: &Path, database: Option<&str>) -> Result<(), VerificationEr
             }
 
             // parse provided model
-            let model_system = payas_parser::build_system(model).map_err(VerificationErrors::ParserError)?;
-            let model_schema = SchemaSpec::from_model(model_system.database_subsystem.tables.into_iter().collect());
+            let database_subsystem = util::create_database_system(model).map_err(VerificationErrors::ParserError)?;
+            let model_schema = SchemaSpec::from_model(database_subsystem.tables.into_iter().collect());
 
             // generate diff
             let migration = db_schema.value.diff(&model_schema);

@@ -10,8 +10,8 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
+use payas_builder::error::ParserError;
 use payas_core_model_builder::error::ModelBuildingError;
-use payas_parser::error::ParserError;
 
 use crate::commands::build::{build, BuildError};
 

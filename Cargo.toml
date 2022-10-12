@@ -1,6 +1,38 @@
+# See https://github.com/mozilla/application-services/blob/main/Cargo.toml for the reasons why we use this structure
 [workspace]
-members = ["payas-*", "payas-*-plugin/*", "payas-plugin-util/*"]
-exclude = ["payas-core-plugin", "payas-database-plugin", "payas-deno-plugin", "payas-wasm-plugin", "payas-plugin-util"]
+members = [
+    "payas-builder",
+    "payas-cli",
+    "payas-resolver",
+    "payas-server-actix",
+    "payas-server-aws-lambda",
+    "payas-deno",
+    "payas-sql",
+    "payas-test",
+    "payas-core-subsystem/*",
+    "payas-database-subsystem/*",
+    "payas-deno-subsystem/*",
+    "payas-wasm-subsystem/*",
+    "payas-subsystem-util/*",
+    "payas-introspection-subsystem/*",
+]
+
+# The default workspace member to run `cargo` commands on (we exclude payas-server-aws-lambda here. Pass --all to `cargo` to include it)
+default-members = [
+    "payas-builder",
+    "payas-cli",
+    "payas-resolver",
+    "payas-server-actix",
+    "payas-deno",
+    "payas-sql",
+    "payas-test",
+    "payas-core-subsystem/*",
+    "payas-database-subsystem/*",
+    "payas-deno-subsystem/*",
+    "payas-wasm-subsystem/*",
+    "payas-subsystem-util/*",
+    "payas-introspection-subsystem/*",
+]  
 resolver = "2"
 
 [profile.release]

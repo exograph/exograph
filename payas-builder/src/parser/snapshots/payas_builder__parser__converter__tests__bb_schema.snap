@@ -1,0 +1,100 @@
+---
+source: payas-builder/src/parser/converter.rs
+expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span,\n             Path::new(\"input.payas\")).unwrap()"
+
+---
+models:
+  - name: Concert
+    kind: Persistent
+    fields:
+      - name: id
+        typ:
+          Plain:
+            - Int
+            - []
+            - ~
+        annotations:
+          - name: pk
+            params: None
+        default_value:
+          kind:
+            Function:
+              - autoincrement
+              - []
+      - name: title
+        typ:
+          Plain:
+            - String
+            - []
+            - ~
+        annotations: []
+        default_value: ~
+      - name: venue
+        typ:
+          Plain:
+            - Venue
+            - []
+            - ~
+        annotations:
+          - name: column
+            params:
+              Single:
+                - StringLiteral:
+                    - venueid
+        default_value: ~
+    annotations:
+      - name: table
+        params:
+          Single:
+            - StringLiteral:
+                - concerts
+  - name: Venue
+    kind: Persistent
+    fields:
+      - name: id
+        typ:
+          Plain:
+            - Int
+            - []
+            - ~
+        annotations:
+          - name: pk
+            params: None
+        default_value:
+          kind:
+            Function:
+              - autoincrement
+              - []
+      - name: name
+        typ:
+          Plain:
+            - String
+            - []
+            - ~
+        annotations: []
+        default_value: ~
+      - name: concerts
+        typ:
+          Plain:
+            - Set
+            - - Plain:
+                  - Concert
+                  - []
+                  - ~
+            - ~
+        annotations:
+          - name: column
+            params:
+              Single:
+                - StringLiteral:
+                    - venueid
+        default_value: ~
+    annotations:
+      - name: table
+        params:
+          Single:
+            - StringLiteral:
+                - venues
+services: []
+imports: []
+
