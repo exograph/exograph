@@ -16,7 +16,7 @@
 /// specify how to go about doing so.
 ///
 /// To allow expressing complex operations such as predicates based on nested
-/// elements, the library requires the use of [ColumPath]s in the predicates and
+/// elements, the library requires the use of [ColumnPath]s in the predicates and
 /// order by expressions. A [ColumnPath] is a path from the root table of the
 /// operation to the intended column. Similarly, to allow inserting nested elements,
 /// the library requires expressing the columns to be inserted as
