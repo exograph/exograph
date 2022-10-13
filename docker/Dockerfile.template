@@ -17,78 +17,37 @@ WORKDIR /usr/src
 
 ## Build and cache the dependencies
 ### Create empty projects with the right type (lib/bin)
-RUN USER=root cargo new --vcs none --bin cli
-RUN USER=root cargo new --vcs none --lib core-subsystem/core-model-builder
-RUN USER=root cargo new --vcs none --lib database-subsystem/database-model-builder
-RUN USER=root cargo new --vcs none --lib payas-deno
-RUN USER=root cargo new --vcs none --lib payas-model
-RUN USER=root cargo new --vcs none --lib builder
-RUN USER=root cargo new --vcs none --lib core-resolver
-RUN USER=root cargo new --vcs none --lib database-resolver
-RUN USER=root cargo new --vcs none --lib deno-resolver
-RUN USER=root cargo new --vcs none --lib wasm-resolver
-RUN USER=root cargo new --vcs none --bin server-actix
-RUN USER=root cargo new --vcs none --bin server-aws-lambda
-RUN USER=root cargo new --vcs none --lib resolver
-RUN USER=root cargo new --vcs none --lib deno-plugin/deno-model-builder
-RUN USER=root cargo new --vcs none --lib payas-sql
-RUN USER=root cargo new --vcs none --lib test
-RUN USER=root cargo new --vcs none --lib payas-wasm
+
+%%CREATE_EMPTY_PROJECTS%%
 
 ### Copy over Cargo.toml and Cargo.lock files so that we can build just
 ### the dependencies and cache this layer when only source files change
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
-COPY ./cli/Cargo.toml ./cli/Cargo.toml
-COPY ./core-subsystem/core-model-builder/Cargo.toml ./core-subsystem/core-model-builder/Cargo.toml
-COPY ./database-subsystem/database-model-builder/Cargo.toml ./database-subsystem/database-model-builder/Cargo.toml
-COPY ./payas-deno/Cargo.toml ./payas-deno/Cargo.toml
-COPY ./payas-model/Cargo.toml ./payas-model/Cargo.toml
-COPY ./builder/Cargo.toml ./builder/Cargo.toml
-COPY ./core-resolver/Cargo.toml ./core-resolver/Cargo.toml
-COPY ./database-resolver/Cargo.toml ./database-resolver/Cargo.toml
-COPY ./deno-resolver/Cargo.toml ./deno-resolver/Cargo.toml
-COPY ./wasm-resolver/Cargo.toml ./wasm-resolver/Cargo.toml
-COPY ./server-actix/Cargo.toml ./server-actix/Cargo.toml
-COPY ./server-aws-lambda/Cargo.toml ./server-aws-lambda/Cargo.toml
-COPY ./resolver/Cargo.toml ./resolver/Cargo.toml
-COPY ./deno-plugin/deno-model-builder/Cargo.toml ./deno-plugin/deno-model-builder/Cargo.toml
-COPY ./payas-sql/Cargo.toml ./payas-sql/Cargo.toml
-COPY ./test/Cargo.toml ./test/Cargo.toml
-COPY ./payas-wasm/Cargo.toml ./payas-wasm/Cargo.toml
+
+%%COPY_CARGO_TOMLS%%
+
 
 COPY ./graphiql/package.json ./graphiql/package.json
 COPY ./graphiql/package-lock.json ./graphiql/package-lock.json
 
 ### Compile the depdencies and remove artifacts related to the non-dependency parts (so that when we use real code, they get rebuilt)
-RUN cargo build ${BUILD_FLAG} && rm */src/*.rs && rm target/${BUILD_DIR}/deps/payas* && rm -rf target/${BUILD_DIR}/.fingerprint/payas* 
+RUN cargo build --all ${BUILD_FLAG} 
+
+%%RM_DEPS%% 
+## Build GraphiQL bundle
 RUN cd graphiql && npm install
 
 ## Build the actual image
 ### Copy over the source files
-ADD cli cli/
-ADD core-subsystem/core-model-builder/ core-subsystem/core-model-builder/
-ADD database-subsystem/database-model-builder database-subsystem/database-model-builder/
-ADD payas-deno payas-deno/
-ADD payas-model payas-model/
-ADD builder builder/
-ADD core-resolver core-resolver/
-ADD database-resolver database-resolver/
-ADD deno-resolver deno-resolver/
-ADD wasm-resolver wasm-resolver/
-ADD server-actix server-actix/
-ADD server-aws-lambda server-aws-lambda/
-ADD resolver resolver/
-ADD deno-subsystem/deno-model-builder/ deno-subsystem/deno-model-builder/ 
-ADD payas-sql payas-sql/
-ADD test test/
-ADD payas-wasm payas-wasm/
-
+ADD crates crates/
+ADD libs libs/
 ADD graphiql graphiql/
+
 
 ### Build the binaries (first the graphiql app and then the rest)
 RUN cd graphiql && npm run prod-build
-RUN cargo build ${BUILD_FLAG}
+RUN cargo build --all ${BUILD_FLAG}
 
 # Create an image to include the compiled binaries
 ARG BASE_IMAGE
