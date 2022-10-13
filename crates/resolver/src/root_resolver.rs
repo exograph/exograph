@@ -22,7 +22,7 @@ pub type Headers = Vec<(String, String)>;
 /// if something went wrong.
 ///
 /// In a typical use case (for example server-actix), the caller will
-/// first call `create_system_context` to create a [SystemContext] object, and
+/// first call `create_system_resolver_or_exit` to create a [SystemResolver object, and
 /// then call `resolve` with that object.
 #[instrument(
     name = "resolver::resolve"

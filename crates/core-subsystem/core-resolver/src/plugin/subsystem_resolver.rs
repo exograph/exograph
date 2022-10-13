@@ -40,7 +40,7 @@ pub trait SubsystemResolver {
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
 
-    /// NOTE: See https://github.com/payalabs/payas/issues/528
+    /// NOTE: See <https://github.com/payalabs/payas/issues/528>
     async fn invoke_non_proceeding_interceptor<'a>(
         &'a self,
         operation: &'a ValidatedField,

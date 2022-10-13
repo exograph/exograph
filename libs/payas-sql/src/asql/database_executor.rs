@@ -51,7 +51,7 @@ pub struct TransactionHolder {
 /// # Safety
 ///
 /// This is needed to mark mut pointers in TransactionHolder as Send
-/// https://internals.rust-lang.org/t/shouldnt-pointers-be-send-sync-or/8818/4
+/// <https://internals.rust-lang.org/t/shouldnt-pointers-be-send-sync-or/8818/4>
 ///
 /// As the base types are Send, this should not be a problem.
 unsafe impl Send for TransactionHolder {}
