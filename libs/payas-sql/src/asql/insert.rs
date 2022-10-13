@@ -26,7 +26,7 @@ impl<'a> ColumnValuePair<'a> {
 }
 
 /// Logical element to be inserted. Each element could be thought of as an
-/// attribute of the logical document. For example, with Venue <-> [Concert]
+/// attribute of the logical document. For example, with `Venue <-> [Concert]`
 /// model, logical elements in in `Venue` includes its own columns (name,
 /// address, etc.), which would be represented as the `SelfInsert` variant. It
 /// also includes the logically nested "concerts" element, which would be
