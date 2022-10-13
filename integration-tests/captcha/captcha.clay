@@ -34,7 +34,7 @@ service CaptchaService {
     ): Boolean
 }
 
-// Database record of a CAPTCHA challenge issued to a client.
+// Postgres record of a CAPTCHA challenge issued to a client.
 // Can be referred to by UUID. 
 model CaptchaChallengeRecord {
     uuid: Uuid = generate_uuid() @pk

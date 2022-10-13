@@ -20,7 +20,7 @@ payas-sql = { path = "../../libs/payas-sql" }
 core-model = { path = "../core-subsystem/core-model" }
 core-plugin = { path = "../core-subsystem/core-plugin" }
 core-model-builder = { path = "../core-subsystem/core-model-builder" }
-database-model-builder = { path = "../database-subsystem/database-model-builder" }
+postgres-model-builder = { path = "../postgres-subsystem/postgres-model-builder" }
 deno-model = { path = "../deno-subsystem/deno-model" }
 deno-model-builder = { path = "../deno-subsystem/deno-model-builder" }
 wasm-model = { path = "../wasm-subsystem/wasm-model" }

@@ -25,7 +25,7 @@ testing = { path = "../testing" }
 core-model = { path = "../core-subsystem/core-model" }
 core-plugin = { path = "../core-subsystem/core-plugin" }
 core-model-builder = { path = "../core-subsystem/core-model-builder" }
-database-model = { path = "../database-subsystem/database-model" }
+postgres-model = { path = "../postgres-subsystem/postgres-model" }
 
 
 [dev-dependencies]

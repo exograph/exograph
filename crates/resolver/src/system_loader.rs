@@ -10,8 +10,8 @@ use core_resolver::{
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
     system_resolver::SystemResolver,
 };
-use database_resolver::DatabaseSubsystemLoader;
 use deno_resolver::DenoSubsystemLoader;
+use postgres_resolver::PostgresSubsystemLoader;
 use wasm_resolver::WasmSubsystemLoader;
 
 pub struct SystemLoader;
@@ -40,10 +40,10 @@ impl SystemLoader {
             mutation_interception_map,
         } = serialized_system;
 
-        let database_loader = DatabaseSubsystemLoader {};
+        let postgres_loader = PostgresSubsystemLoader {};
         let deno_loader = DenoSubsystemLoader {};
         let wasm_loader = WasmSubsystemLoader {};
-        let loaders: Vec<&dyn SubsystemLoader> = vec![&database_loader, &deno_loader, &wasm_loader];
+        let loaders: Vec<&dyn SubsystemLoader> = vec![&postgres_loader, &deno_loader, &wasm_loader];
 
         // First build subsystem resolvers
         let subsystem_resolvers: Result<Vec<_>, _> = subsystems

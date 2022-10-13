@@ -591,10 +591,10 @@ mod tests {
     }
 
     fn compute_spec(model: &str) -> SchemaSpec {
-        let database_subsystem =
-            util::create_database_system_from_str(model, "test.clay".to_string()).unwrap();
+        let postgres_subsystem =
+            util::create_postgres_system_from_str(model, "test.clay".to_string()).unwrap();
 
-        SchemaSpec::from_model(database_subsystem.tables.into_iter().collect())
+        SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect())
     }
 
     fn assert_changes(

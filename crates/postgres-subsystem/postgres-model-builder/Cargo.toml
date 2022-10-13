@@ -1,0 +1,30 @@
+[package]
+name = "postgres-model-builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+heck = "0.4.0"
+bincode = "1.3.3"
+serde = { version = "1.0.136", features = ["derive"] }
+codemap = "0.1.3"
+codemap-diagnostic = "0.1.1"
+lazy_static = "1.4.0"
+typed-generational-arena = { version = "0.2", features = ["serde"] }
+thiserror = "1.0.30"
+
+core-model = { path = "../../core-subsystem/core-model" }
+core-plugin = { path = "../../core-subsystem/core-plugin" }
+core-model-builder = { path = "../../core-subsystem/core-model-builder" }
+
+postgres-model = { path = "../postgres-model" }
+payas-sql = { path = "../../../libs/payas-sql" }
+
+
+
+[dev-dependencies]
+insta = "1.14.0"
+builder = { path = "../../builder" }
+
+
+[lib]

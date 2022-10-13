@@ -41,7 +41,7 @@ impl Command for VerifyCommand {
 }
 
 pub enum VerificationErrors {
-    DatabaseError(DatabaseError),
+    PostgresError(DatabaseError),
     ParserError(ParserError),
     ModelNotCompatible(Vec<String>),
 }
@@ -49,7 +49,7 @@ pub enum VerificationErrors {
 impl Display for VerificationErrors {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VerificationErrors::DatabaseError(e) => write!(f, "Database error: {}", e),
+            VerificationErrors::PostgresError(e) => write!(f, "Postgres error: {}", e),
             VerificationErrors::ParserError(e) => write!(f, "Error while parsing model: {}", e),
             VerificationErrors::ModelNotCompatible(e) => {
                 for error in e.iter() {
@@ -69,18 +69,18 @@ pub fn verify(model: &Path, database: Option<&str>) -> Result<(), VerificationEr
         .unwrap();
 
     rt.block_on(async {
-            let database = open_database(database).map_err(VerificationErrors::DatabaseError)?;
-            let client = database.get_client().await.map_err(VerificationErrors::DatabaseError)?;
+            let database = open_database(database).map_err(VerificationErrors::PostgresError)?;
+            let client = database.get_client().await.map_err(VerificationErrors::PostgresError)?;
 
             // import schema from db
-            let db_schema = SchemaSpec::from_db(&client).await.map_err(VerificationErrors::DatabaseError)?;
+            let db_schema = SchemaSpec::from_db(&client).await.map_err(VerificationErrors::PostgresError)?;
             for issue in &db_schema.issues {
                 println!("{}", issue);
             }
 
             // parse provided model
-            let database_subsystem = util::create_database_system(model).map_err(VerificationErrors::ParserError)?;
-            let model_schema = SchemaSpec::from_model(database_subsystem.tables.into_iter().collect());
+            let postgres_subsystem = util::create_postgres_system(model).map_err(VerificationErrors::ParserError)?;
+            let model_schema = SchemaSpec::from_model(postgres_subsystem.tables.into_iter().collect());
 
             // generate diff
             let migration = db_schema.value.diff(&model_schema);

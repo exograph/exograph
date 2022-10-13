@@ -1,9 +1,9 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   clay-aws 
 
-  Sample SAM Template for Claytip. 
+  Sample SAM Template for Claytip.
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -11,21 +11,21 @@ Globals:
     Timeout: 3
     VpcConfig:
       SubnetIds:
-        - !Ref ClaytipSubnetAZ1 
+        - !Ref ClaytipSubnetAZ1
         - !Ref ClaytipSubnetAZ2
       SecurityGroupIds:
         - !Ref ClaytipSecurityGroup
 
 Parameters:
-  ClaytipDatabaseUsername:
+  ClaytipPostgresUsername:
     Type: String
     Default: clay
     Description: The master username of the Claytip RDS DBInstance.
-  ClaytipDatabasePassword:
+  ClaytipPostgresPassword:
     Type: String
     Default: claytipdbpassword
     Description: The master password of the Claytip RDS DBInstance.
-  ClaytipDatabaseName:
+  ClaytipPostgresName:
     Type: String
     Default: claytipdb
     Description: The database name of the Claytip RDS DBInstance.
@@ -35,7 +35,7 @@ Parameters:
     Description: Enable introspection.
   ClaytipSubnetAZ1:
     Type: AWS::EC2::Subnet::Id
-    Description: > 
+    Description: >
       A subnet allocation for Claytip in one AZ. This subnet should have egress access to the internet.
   ClaytipSubnetAZ2:
     Type: AWS::EC2::Subnet::Id
@@ -44,45 +44,45 @@ Parameters:
   ClaytipSecurityGroup:
     Type: AWS::EC2::SecurityGroup::Id
     Description: >
-      The security group to use with these subnets. 
+      The security group to use with these subnets.
 
 Resources:
   # Amazon RDS instance for Claytip
-  ClaytipDatabase:
+  ClaytipPostgres:
     Type: AWS::RDS::DBInstance
     Properties:
-      AllocatedStorage: '5'
+      AllocatedStorage: "5"
       DBInstanceClass: db.t3.micro
       Engine: postgres
-      MasterUsername: !Ref ClaytipDatabaseUsername
-      MasterUserPassword: !Ref ClaytipDatabasePassword
-      DBSubnetGroupName: !Ref ClaytipDatabaseSubnetGroup
+      MasterUsername: !Ref ClaytipPostgresUsername
+      MasterUserPassword: !Ref ClaytipPostgresPassword
+      DBSubnetGroupName: !Ref ClaytipPostgresSubnetGroup
       StorageType: gp2
   # Amazon RDS requires a DB instance to have subnets in two different AZs
-  ClaytipDatabaseSubnetGroup:
+  ClaytipPostgresSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       SubnetIds:
-        - !Ref ClaytipSubnetAZ1 
+        - !Ref ClaytipSubnetAZ1
         - !Ref ClaytipSubnetAZ2
       DBSubnetGroupDescription: "Claytip RDS private subnet group"
 
   # Claytip schema initialization.
   #
   # When deploying a fresh CloudFormation stack, Claytip must first initialize the PostgreSQL
-  # database. This is accomplished through the ClaytipDatabaseInit custom resource. On creation
-  # of the stack, ClaytipDatabaseInitFn will be invoked to initialize the database from the SQL file
+  # database. This is accomplished through the ClaytipPostgresInit custom resource. On creation
+  # of the stack, ClaytipPostgresInitFn will be invoked to initialize the database from the SQL file
   # `aws-cf-func/index.sql` (which is populated by build.sh in this directory).
   #
   # In production, we recommend initializing the database manually instead with an EC2 instance attached to
   # your VPC. The two blocks below can be removed without problem.
-  ClaytipDatabaseInit: 
-    DependsOn: ClaytipDatabase
-    Type: "Custom::ClaytipDatabaseInit"
+  ClaytipPostgresInit:
+    DependsOn: ClaytipPostgres
+    Type: "Custom::ClaytipPostgresInit"
     Properties:
-      # invoke ClaytipDatabaseInitFn for stack events
-      ServiceToken: !GetAtt ClaytipDatabaseInitFn.Arn
-  ClaytipDatabaseInitFn:
+      # invoke ClaytipPostgresInitFn for stack events
+      ServiceToken: !GetAtt ClaytipPostgresInitFn.Arn
+  ClaytipPostgresInitFn:
     Type: AWS::Serverless::Function
     Properties:
       Handler: lambda_function.handler
@@ -91,15 +91,15 @@ Resources:
       CodeUri: aws-cf-func/.
       Environment:
         Variables:
-          CLAY_DATABASE_HOST: !GetAtt [ClaytipDatabase, Endpoint.Address]
-          CLAY_DATABASE_HOST_PORT: !GetAtt [ClaytipDatabase, Endpoint.Port]
-          CLAY_DATABASE_USER: !Ref ClaytipDatabaseUsername
-          CLAY_DATABASE_PASSWORD: !Ref ClaytipDatabasePassword
-          CLAY_DATABASE_NAME: !Ref ClaytipDatabaseName
+          CLAY_DATABASE_HOST: !GetAtt [ClaytipPostgres, Endpoint.Address]
+          CLAY_DATABASE_HOST_PORT: !GetAtt [ClaytipPostgres, Endpoint.Port]
+          CLAY_DATABASE_USER: !Ref ClaytipPostgresUsername
+          CLAY_DATABASE_PASSWORD: !Ref ClaytipPostgresPassword
+          CLAY_DATABASE_NAME: !Ref ClaytipPostgresName
           CLAY_INTROSPECTION: !Ref ClaytipIntrospection
 
   # The real Claytip Lambda function.
-  # This is the lambda that actually serves Claytip API requests. 
+  # This is the lambda that actually serves Claytip API requests.
   ClaytipFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -117,17 +117,17 @@ Resources:
       Environment:
         Variables:
           CLAY_JWT_SECRET: "abcd"
-          CLAY_CORS_DOMAINS: "*" 
+          CLAY_CORS_DOMAINS: "*"
           CLAY_CONNECTION_POOL_SIZE: 1
-          CLAY_CHECK_CONNECTION_ON_STARTUP: false 
-          CLAY_DATABASE_USER: !Ref ClaytipDatabaseUsername
-          CLAY_DATABASE_URL: !Sub 
-            - "postgresql://${Username}:${Password}@${IP}:${Port}/${Database}"
-            - IP: !GetAtt [ClaytipDatabase, Endpoint.Address]
-              Port: !GetAtt [ClaytipDatabase, Endpoint.Port]
-              Username: !Ref ClaytipDatabaseUsername
-              Password: !Ref ClaytipDatabasePassword
-              Database: !Ref ClaytipDatabaseName
+          CLAY_CHECK_CONNECTION_ON_STARTUP: false
+          CLAY_DATABASE_USER: !Ref ClaytipPostgresUsername
+          CLAY_DATABASE_URL: !Sub
+            - "postgresql://${Username}:${Password}@${IP}:${Port}/${Postgres}"
+            - IP: !GetAtt [ClaytipPostgres, Endpoint.Address]
+              Port: !GetAtt [ClaytipPostgres, Endpoint.Port]
+              Username: !Ref ClaytipPostgresUsername
+              Password: !Ref ClaytipPostgresPassword
+              Postgres: !Ref ClaytipPostgresName
           CLAY_INTROSPECTION: !Ref ClaytipIntrospection
 
 Outputs:
