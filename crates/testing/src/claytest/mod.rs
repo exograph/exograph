@@ -1,6 +1,7 @@
 mod assertion;
-pub mod dbutils;
+pub(crate) mod common;
+pub(crate) mod dbutils;
+pub(crate) mod integration_tests;
+pub(crate) mod introspection_tests;
 pub(crate) mod loader;
-pub mod model;
-pub(crate) mod runner;
 mod testvariable_bindings;

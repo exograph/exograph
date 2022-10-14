@@ -10,12 +10,16 @@ use deno_core::ModuleSource;
 use deno_core::ModuleSpecifier;
 use deno_core::ModuleType;
 use futures::FutureExt;
+use include_dir::Dir;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::pin::Pin;
 
 /// Loads TypeScript and TypeScript-compatible files by either downloading them
 /// or reading them off disk.
-pub struct TypescriptLoader;
+pub struct TypescriptLoader {
+    pub embedded_dirs: HashMap<String, &'static Dir<'static>>,
+}
 
 impl ModuleLoader for TypescriptLoader {
     fn resolve(
@@ -58,6 +62,7 @@ impl ModuleLoader for TypescriptLoader {
         }
 
         let module_specifier = module_specifier.clone();
+        let embedded_dirs = self.embedded_dirs.clone();
 
         // adapted from https://github.com/denoland/deno/blob/94d369ebc65a55bd9fbf378a765c8ed88a4efe2c/core/examples/ts_module_loader.rs
         async move {
@@ -79,7 +84,36 @@ impl ModuleLoader for TypescriptLoader {
                     let path = module_specifier
                         .to_file_path()
                         .map_err(|()| anyhow!("Failed to get file path"))?;
-                    (Code::Vec(std::fs::read(&path)?), MediaType::from(&path))
+
+                    let code = std::fs::read(&path).ok().map(Code::Vec).ok_or_else(|| {
+                        anyhow!(
+                            "Could not get contents of {} from filesystem",
+                            path.display()
+                        )
+                    })?;
+
+                    (code, MediaType::from(&path))
+                }
+
+                "embedded" => {
+                    let host = module_specifier
+                        .host()
+                        .ok_or_else(|| anyhow!("No key specified in embedded URL"))?
+                        .to_string();
+                    let path = PathBuf::from(module_specifier.path()[1..].to_string()); // [1..]: trim the root slash
+
+                    let code = embedded_dirs
+                        .get(&host)
+                        .and_then(|embedded_dir| {
+                            embedded_dir
+                                .get_file(&path)
+                                .map(|source| Code::Slice(source.contents()))
+                        })
+                        .ok_or_else(|| {
+                            anyhow!("Could not get embedded contents of {}", path.display())
+                        })?;
+
+                    (code, MediaType::from(&path))
                 }
 
                 scheme => bail!("Unknown protocol scheme {}", scheme),

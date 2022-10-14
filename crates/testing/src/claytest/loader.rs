@@ -33,7 +33,7 @@ pub enum TestfileOperation {
 #[derive(Debug, Clone)]
 pub struct ParsedTestfile {
     root_directory: PathBuf, // Root directory specified when invoking `clay test <root_directory>
-    model_path: PathBuf,
+    pub model_path: PathBuf,
     testfile_path: PathBuf,
     pub extra_envs: HashMap<String, String>, // extra envvars to set for the entire testfile
     pub init_operations: Vec<TestfileOperation>,

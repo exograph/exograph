@@ -7,19 +7,16 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 
 use std::{
-    collections::HashMap,
-    env,
-    ffi::OsStr,
-    io::{BufRead, BufReader, Write},
-    path::Path,
-    process::{Command, Stdio},
-    sync::{Arc, Mutex},
-    time::SystemTime,
+    collections::HashMap, ffi::OsStr, io::Write, path::Path, process::Command, time::SystemTime,
 };
 
-use crate::claytest::dbutils::{createdb_psql, dropdb_psql, run_psql};
+use crate::claytest::common::{TestResult, TestResultKind, TestfileContext};
+use crate::claytest::dbutils::dropdb_psql;
 use crate::claytest::loader::{ParsedTestfile, TestfileOperation};
-use crate::claytest::model::{TestOutput, TestResult, TestfileContext};
+use crate::claytest::{
+    common::{cmd, spawn_clay_server},
+    dbutils::{createdb_psql, run_psql},
+};
 
 use super::{
     assertion::{self, evaluate_using_deno},
@@ -35,7 +32,7 @@ struct ClayPost {
 pub(crate) fn run_testfile(
     testfile: &ParsedTestfile,
     bootstrap_dburl: String,
-) -> Result<TestOutput> {
+) -> Result<TestResult> {
     let log_prefix = ansi_term::Color::Purple.paint(format!("({})\n :: ", testfile.name()));
 
     // iterate through our tests
@@ -49,9 +46,11 @@ pub(crate) fn run_testfile(
             .map(char::from)
             .collect();
 
+        // drop any previously-existing databases
+        dropdb_psql(&dbname, &bootstrap_dburl).ok();
+
         // create a database
-        dropdb_psql(&dbname, &bootstrap_dburl).ok(); // clear any existing databases
-        let (dburl_for_clay, dbusername) = createdb_psql(&dbname, &bootstrap_dburl)?;
+        let db = createdb_psql(&dbname, &bootstrap_dburl)?;
 
         // create the schema
         println!("{} Initializing schema in {} ...", log_prefix, dbname);
@@ -66,64 +65,34 @@ pub(crate) fn run_testfile(
         }
 
         let query = std::str::from_utf8(&cli_child.stdout)?;
-        run_psql(query, &dburl_for_clay)?;
+        run_psql(query, &db)?;
 
         // spawn a clay instance
         println!("{} Initializing clay-server ...", log_prefix);
 
+        // Should have no effect so make it random
         let check_on_startup = if rand::random() { "true" } else { "false" };
 
-        let mut server = cmd("clay-server")
-            .args(vec![testfile.model_path_string()])
-            .env("CLAY_DATABASE_URL", &dburl_for_clay)
-            .env("CLAY_DATABASE_USER", dbusername)
-            .env("CLAY_JWT_SECRET", &jwtsecret)
-            .env("CLAY_CONNECTION_POOL_SIZE", "1") // Otherwise we get a "too many connections" error
-            .env("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup) // Should have no effect so make it random
-            .env("CLAY_SERVER_PORT", "0") // ask clay-server to select a free port
-            .env("CLAY_INTROSPECTION", "true")
-            .envs(testfile.extra_envs.iter()) // add extra envs specified in testfile
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .context("clay-server failed to start")?;
-
-        // wait for it to start
-        const MAGIC_STRING: &str = "Started server on 0.0.0.0:";
-
-        let mut server_stdout = BufReader::new(server.stdout.take().unwrap());
-        let mut server_stderr = BufReader::new(server.stderr.take().unwrap());
-
-        let mut line = String::new();
-        server_stdout.read_line(&mut line).context(format!(
-            r#"Failed to read output line for "{}" server"#,
-            testfile.name()
-        ))?;
-
-        if !line.starts_with(MAGIC_STRING) {
-            bail!(
-                r#"Unexpected output from clay-server "{}": {}"#,
-                testfile.name(),
-                line
-            )
-        }
-
-        // spawn threads to continually drain stdout and stderr
-        let output_mutex = Arc::new(Mutex::new(String::new()));
-
-        let stdout_output = output_mutex.clone();
-        let _stdout_drain = std::thread::spawn(move || loop {
-            let mut buf = String::new();
-            let _ = server_stdout.read_line(&mut buf);
-            stdout_output.lock().unwrap().push_str(&buf);
-        });
-
-        let stderr_output = output_mutex.clone();
-        let _stderr_drain = std::thread::spawn(move || loop {
-            let mut buf = String::new();
-            let _ = server_stderr.read_line(&mut buf);
-            stderr_output.lock().unwrap().push_str(&buf);
-        });
+        let server = spawn_clay_server(
+            &testfile.model_path,
+            [
+                ("CLAY_DATABASE_URL", db.connection_string.as_str()),
+                ("CLAY_DATABASE_USER", &db.db_username),
+                ("CLAY_JWT_SECRET", &jwtsecret),
+                ("CLAY_CONNECTION_POOL_SIZE", "1"), // Otherwise we get a "too many connections" error
+                ("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup),
+                ("CLAY_SERVER_PORT", "0"), // ask clay-server to select a free port
+                ("CLAY_INTROSPECTION", "true"),
+            ]
+            .into_iter()
+            .chain(
+                // add extra envs specified in testfile
+                testfile
+                    .extra_envs
+                    .iter()
+                    .map(|(x, y)| (x.as_str(), y.as_str())),
+            ),
+        )?;
 
         // spawn an HttpClient for requests to clay
         let client = HttpClient::builder()
@@ -131,22 +100,11 @@ pub(crate) fn run_testfile(
             .build()
             .context("While initializing HttpClient")?;
 
-        // take the digits part which represents the port (and ignore other information such as time to start the server)
-        let port: String = line
-            .trim_start_matches(MAGIC_STRING)
-            .chars()
-            .take_while(|c| c.is_ascii_digit())
-            .collect();
-        let endpoint = format!("http://127.0.0.1:{}/graphql", port);
-
         TestfileContext {
-            dbname,
-            dburl: dburl_for_clay,
+            db,
             server,
-            endpoint,
             jwtsecret,
             client,
-            output_mutex,
             testvariables: HashMap::new(),
         }
     };
@@ -155,7 +113,7 @@ pub(crate) fn run_testfile(
     println!("{} Initializing database...", log_prefix);
     for operation in testfile.init_operations.iter() {
         let result = run_operation(operation, &mut ctx).with_context(|| {
-            let output: String = ctx.output_mutex.lock().unwrap().clone();
+            let output: String = ctx.server.output.lock().unwrap().clone();
             println!("{}", output);
 
             format!(
@@ -184,42 +142,27 @@ pub(crate) fn run_testfile(
             Ok(op_result) => match op_result {
                 OperationResult::AssertPassed | OperationResult::Finished => {}
                 OperationResult::AssertFailed(e) => {
-                    fail = Some(TestResult::AssertionFail(e));
+                    fail = Some(TestResultKind::Fail(e));
                     break;
                 }
             },
 
             Err(e) => {
-                fail = Some(TestResult::SetupFail(e));
+                fail = Some(TestResultKind::SetupFail(e));
                 break;
             }
         };
     }
 
-    let success = fail.unwrap_or(TestResult::Success);
-    let output: String = ctx.output_mutex.lock().unwrap().clone();
+    let success = fail.unwrap_or(TestResultKind::Success);
+    let output: String = ctx.server.output.lock().unwrap().clone();
 
-    Ok(TestOutput {
+    Ok(TestResult {
         log_prefix: log_prefix.to_string(),
         result: success,
         output,
     })
     // implicit ctx drop
-}
-
-fn cmd(binary_name: &str) -> Command {
-    // Pick up the current executable path and replace the file with the specified binary
-    // This allows us to invoke `target/debug/clay test ...` or `target/release/clay test ...`
-    // without updating the PATH env.
-    // Thus, for the former invocation if the `binary_name` is `clay-server` the command will become
-    // `<full-path-to>/target/debug/clay-server`
-    let mut executable = env::current_exe().expect("Could not retrive the current executable");
-    executable.set_file_name(binary_name);
-    Command::new(
-        executable
-            .to_str()
-            .expect("Could not convert executable path to a string"),
-    )
 }
 
 enum OperationResult {
@@ -239,7 +182,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
             headers,
             deno_prelude,
         } => {
-            let mut req = Request::post(&ctx.endpoint);
+            let mut req = Request::post(&ctx.server.endpoint);
 
             let deno_prelude = deno_prelude.clone().unwrap_or_default();
 
@@ -357,7 +300,7 @@ fn run_operation(gql: &TestfileOperation, ctx: &mut TestfileContext) -> Result<O
         }
 
         TestfileOperation::Sql(query) => {
-            run_psql(query, &ctx.dburl)?;
+            run_psql(query, &ctx.db)?;
             Ok(OperationResult::Finished)
         }
     }
@@ -385,21 +328,21 @@ fn build_prerequisites(directory: &Path) -> Result<()> {
         run_command(
             "sh",
             vec![build_file.to_str().unwrap()],
-            Some(directory),
-            "Error building claypot file",
+            None,
+            &format!("Build script at {} failed to run", build_file.display()),
         )?
     }
 
     Ok(())
 }
 
-pub(crate) fn build_claypot_file(path: &str) -> Result<()> {
-    build_prerequisites(Path::new(path).parent().unwrap())?;
+pub(crate) fn build_claypot_file(path: &Path) -> Result<()> {
+    build_prerequisites(path.parent().unwrap())?;
 
     // Use std::env::current_exe() so that we run the same "clay" that invoked us (specifically, avoid using another clay on $PATH)
     run_command(
         std::env::current_exe()?.as_os_str().to_str().unwrap(),
-        ["build", path],
+        [OsStr::new("build"), path.as_os_str()],
         None,
         "Could not build the claypot.",
     )
@@ -410,7 +353,7 @@ fn run_command<I, S>(
     program: &str,
     args: I,
     current_dir: Option<&Path>,
-    failure_message: &'static str,
+    failure_message: &str,
 ) -> Result<()>
 where
     I: IntoIterator<Item = S>,
@@ -426,7 +369,7 @@ where
     if !build_child.status.success() {
         std::io::stdout().write_all(&build_child.stdout).unwrap();
         std::io::stderr().write_all(&build_child.stderr).unwrap();
-        bail!(failure_message);
+        bail!(failure_message.to_string());
     }
 
     Ok(())

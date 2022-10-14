@@ -17,6 +17,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_v8 = "0.64.0"
 serde_json = "1.0"
 tracing = "0.1"
+include_dir = "0.7.2"
 
 [lib]
 
