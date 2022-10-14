@@ -11,6 +11,7 @@ use deno_runtime::permissions::Permissions;
 use deno_runtime::worker::MainWorker;
 use deno_runtime::worker::WorkerOptions;
 use deno_runtime::BootstrapOptions;
+use include_dir::Dir;
 use tracing::error;
 
 use std::cell::RefCell;
@@ -61,7 +62,17 @@ pub struct DenoModule {
 /// * `extensions` - A list of extensions to load.
 /// * `shared_state` - A shared state object to pass to the worker.
 /// * `explicit_error_class_name` - The name of the class whose message will be used to report errors.
+/// * `embedded_script_dirs` - A HashMap containing include_dir!() directories to provide to the script.
+///                            They may be accessed through the `embedded://` module specifier:
+///                            ```ts
+///                            import { example } from "embedded://key/path/in/directory";
+///                            ```
+/// * `extra_sources` - A Vec of (URL, code) pairs to include in the source map.
+///                     As the source map is the first thing queried during module resolution, this is useful for overriding
+///                     scripts at certain paths with your own version.
+///                     
 impl DenoModule {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         user_code: UserCode,
         user_agent_name: &str,
@@ -70,6 +81,8 @@ impl DenoModule {
         extensions: Vec<Extension>,
         shared_state: DenoModuleSharedState,
         explicit_error_class_name: Option<&'static str>,
+        embedded_script_dirs: Option<HashMap<String, &'static Dir<'static>>>,
+        extra_sources: Option<Vec<(&str, String)>>,
     ) -> Result<Self, AnyError> {
         let shim_source_code = {
             let shims_source_codes: Vec<_> = shims
@@ -103,7 +116,7 @@ impl DenoModule {
         let main_module_specifier = "file:///main.js".to_string();
         let module_loader = Rc::new(EmbeddedModuleLoader {
             source_code_map: {
-                let map: HashMap<ModuleSpecifier, Vec<u8>> = match &user_code {
+                let mut map: HashMap<ModuleSpecifier, Vec<u8>> = match &user_code {
                     UserCode::LoadFromFs(_) => {
                         vec![(ModuleSpecifier::parse("file:///main.js")?, source_code)]
                     }
@@ -118,8 +131,16 @@ impl DenoModule {
                 .into_iter()
                 .collect();
 
+                // override entries with provided extra_sources
+                if let Some(extra_sources) = extra_sources {
+                    for (url, source) in extra_sources {
+                        map.insert(ModuleSpecifier::parse(url)?, source.into_bytes());
+                    }
+                }
+
                 Arc::new(RefCell::new(map))
             },
+            embedded_dirs: embedded_script_dirs.unwrap_or_default(),
         });
 
         let create_web_worker_cb = Arc::new(|_| {
@@ -392,6 +413,8 @@ mod tests {
             vec![],
             DenoModuleSharedState::default(),
             None,
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -419,6 +442,8 @@ mod tests {
             vec![],
             vec![],
             DenoModuleSharedState::default(),
+            None,
+            None,
             None,
         )
         .await
@@ -455,6 +480,8 @@ mod tests {
             vec![],
             vec![],
             DenoModuleSharedState::default(),
+            None,
+            None,
             None,
         )
         .await
@@ -498,6 +525,8 @@ mod tests {
             vec![],
             vec![],
             DenoModuleSharedState::default(),
+            None,
+            None,
             None,
         )
         .await
@@ -549,6 +578,8 @@ mod tests {
             vec![],
             vec![Extension::builder().ops(vec![rust_impl::decl()]).build()],
             DenoModuleSharedState::default(),
+            None,
+            None,
             None,
         )
         .await

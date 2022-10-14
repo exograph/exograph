@@ -121,6 +121,8 @@ where
                     extension_ops(),
                     shared_state,
                     explicit_error_class_name,
+                    None,
+                    None,
                 )
                 .await
                 .expect("Could not create new DenoModule in DenoActor thread");

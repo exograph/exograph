@@ -1,7 +1,9 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
+use include_dir::{include_dir, Dir};
 use isahc::{HttpClient, ReadResponseExt, Request};
+use payas_deno::{DenoModule, DenoModuleSharedState, UserCode};
 use serde_json::{json, Value};
-use std::{collections::HashSet, path::Path};
+use std::{collections::HashMap, path::Path};
 
 use crate::claytest::{
     common::{spawn_clay_server, TestResultKind},
@@ -11,6 +13,9 @@ use crate::claytest::{
 use super::common::TestResult;
 
 const INTROSPECTION_QUERY: &str = include_str!("introspection-query.gql");
+const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
+const GRAPHQL_NODE_MODULE: Dir<'static> =
+    include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/node_modules/graphql");
 
 pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     let log_prefix =
@@ -43,10 +48,10 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
 
     match response {
         Ok(mut result) => {
-            let result: Value = result.json()?;
+            let response: Value = result.json()?;
             let output: String = server.output.lock().unwrap().clone();
 
-            Ok(match check_introspection(result) {
+            Ok(match check_introspection(response) {
                 Ok(()) => TestResult {
                     log_prefix: log_prefix.to_string(),
                     result: TestResultKind::Success,
@@ -66,109 +71,49 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     }
 }
 
-fn check_introspection(introspection: Value) -> Result<()> {
-    check_query_mutation_duplication(&introspection)?;
+fn check_introspection(response: Value) -> Result<()> {
+    let response = response.to_string();
+    let script = INTROSPECTION_ASSERT_JS;
+    let script = script.replace("\"%%RESPONSE%%\"", &response);
 
-    Ok(())
-}
+    let deno_module_future = DenoModule::new(
+        UserCode::LoadFromMemory {
+            path: "internal/introspection_tests.js".to_owned(),
+            script: script.into(),
+        },
+        "ClaytipTest",
+        vec![],
+        vec![],
+        vec![],
+        DenoModuleSharedState::default(),
+        None,
+        Some(HashMap::from([(
+            "graphql".to_string(),
+            &GRAPHQL_NODE_MODULE,
+        )])),
+        Some(vec![(
+            // TODO: move to a Rust-based solution
+            // maybe juniper: https://github.com/graphql-rust/juniper/issues/217
 
-fn check_query_mutation_duplication(introspection: &serde_json::Value) -> Result<()> {
-    let (query, mutation) = get_query_and_mutation_type(introspection)?;
+            // We are currently importing the `graphql` NPM module used by graphiql and running it through Deno to perform schema validation
+            // As it only depends on deno_core and deno_runtime, our integration of Deno does not include the NPM implementation provided through deno_cli
+            // Therefore, we need to patch certain things in this module through extra_sources to get scripts to run in Deno
 
-    fn check_duplication(obj: &Object) -> Result<()> {
-        let obj_name = obj.get("name").unwrap().as_str().unwrap();
+            // ReferenceError: process is not defined
+            //    at embedded://graphql/jsutils/instanceOf.mjs:11:16
+            "embedded://graphql/jsutils/instanceOf.mjs",
+            GRAPHQL_NODE_MODULE
+                .get_file("jsutils/instanceOf.mjs")
+                .unwrap()
+                .contents_utf8()
+                .unwrap()
+                .replace("process.env.NODE_ENV === 'production'", "false"),
+        )]),
+    );
 
-        let fields = obj
-            .get("fields")
-            .ok_or_else(|| anyhow!("No entry named fields in {}", obj_name))?;
-
-        let fields = fields
-            .as_array()
-            .ok_or_else(|| anyhow!("fields is not an array"))?;
-
-        let mut set: HashSet<&str> = HashSet::new();
-        for field in fields {
-            let name = field
-                .get("name")
-                .ok_or_else(|| anyhow!("No name field for method: {}", field.to_string()))?
-                .as_str()
-                .ok_or_else(|| anyhow!("Method name is not a string: {}", field.to_string()))?;
-
-            if !set.insert(name) {
-                bail!("Method {} is duplicated in {}", name, obj_name)
-            }
-        }
-
-        Ok(())
+    let runtime = tokio::runtime::Runtime::new()?;
+    match runtime.block_on(deno_module_future) {
+        Ok(_) => Ok(()),
+        Err(e) => bail!("{}", e),
     }
-
-    check_duplication(query)?;
-    check_duplication(mutation)?;
-
-    Ok(())
-}
-
-type Object = serde_json::Map<String, Value>;
-
-fn get_schema(introspection: &Value) -> Result<&Value> {
-    let schema = introspection
-        .get("data")
-        .ok_or_else(|| anyhow!("No data field in introspection"))?
-        .get("__schema")
-        .ok_or_else(|| anyhow!("No __schema field in response data"))?;
-
-    Ok(schema)
-}
-
-fn get_type<'a>(introspection: &'a Value, name: &'a str) -> Result<Option<&Object>> {
-    let schema = get_schema(introspection)?;
-    let types = schema
-        .get("types")
-        .ok_or_else(|| anyhow!("No types in schema"))?
-        .as_array()
-        .ok_or_else(|| anyhow!("types field in schema is not an array"))?;
-
-    for typ in types {
-        if let Value::Object(obj) = typ {
-            let typ_name = obj
-                .get("name")
-                .ok_or_else(|| anyhow!("No name field in type"))?
-                .as_str()
-                .ok_or_else(|| anyhow!("name field in type is not string"))?;
-
-            if typ_name == name {
-                return Ok(Some(obj));
-            }
-        } else {
-            bail!("Type is not an object: {}", typ.to_string())
-        }
-    }
-
-    Ok(None)
-}
-
-fn get_query_and_mutation_type(introspection: &Value) -> Result<(&Object, &Object)> {
-    let schema = get_schema(introspection)?;
-    let query_type = schema
-        .get("queryType")
-        .ok_or_else(|| anyhow!("No queryType field in schema"))?
-        .get("name")
-        .ok_or_else(|| anyhow!("queryType is missing name"))?
-        .as_str()
-        .ok_or_else(|| anyhow!("queryType.name is not a string"))?;
-
-    let mutation_type = schema
-        .get("mutationType")
-        .ok_or_else(|| anyhow!("No mutationType field in schema"))?
-        .get("name")
-        .ok_or_else(|| anyhow!("mutationType is missing name"))?
-        .as_str()
-        .ok_or_else(|| anyhow!("mutationType.name is not a string"))?;
-
-    let query =
-        get_type(introspection, query_type)?.ok_or_else(|| anyhow!("No query type exists"))?;
-    let mutation = get_type(introspection, mutation_type)?
-        .ok_or_else(|| anyhow!("No mutation type exists"))?;
-
-    Ok((query, mutation))
 }
