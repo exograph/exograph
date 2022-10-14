@@ -3,7 +3,10 @@ use isahc::{HttpClient, ReadResponseExt, Request};
 use serde_json::{json, Value};
 use std::{collections::HashSet, path::Path};
 
-use crate::claytest::common::{spawn_clay_server, TestResultKind};
+use crate::claytest::{
+    common::{spawn_clay_server, TestResultKind},
+    integration_tests::build_claypot_file,
+};
 
 use super::common::TestResult;
 
@@ -13,6 +16,8 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
     let log_prefix =
         ansi_term::Color::Purple.paint(format!("(introspection: {})\n :: ", model_path.display()));
     println!("{} Running introspection tests...", log_prefix);
+
+    build_claypot_file(model_path)?;
 
     let server = spawn_clay_server(
         model_path,
