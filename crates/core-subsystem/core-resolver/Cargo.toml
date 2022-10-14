@@ -33,7 +33,7 @@ insta = "1.14.0"
 
 builder = { path = "../../builder", features = ["test-context"]}
 resolver = { path = "../../resolver"}
-database-model = { path = "../../database-subsystem/database-model"}
-database-resolver = { path = "../../database-subsystem/database-resolver"}
+postgres-model = { path = "../../postgres-subsystem/postgres-model"}
+postgres-resolver = { path = "../../postgres-subsystem/postgres-resolver"}
 
 [lib]

@@ -1,0 +1,35 @@
+[package]
+name = "postgres-resolver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-graphql-parser = "4.0.6"
+async-graphql-value = "4.0.6"
+async-recursion = "1.0.0"
+async-trait = "0.1.57"
+futures = "0.3"
+maybe-owned = "0.3.4"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0.32"
+tokio-postgres = "0.7.6"
+postgres-types = "0.2"
+base64 = "0.13"
+chrono = "0.4.20"
+pg_bigdecimal = "0.1.4"
+uuid = "1.1.2"
+
+payas-sql = { path = "../../../libs/payas-sql" }
+core-model = { path = "../../core-subsystem/core-model" }
+core-plugin = { path = "../../core-subsystem/core-plugin" }
+core-resolver = { path = "../../core-subsystem/core-resolver" }
+postgres-model = { path = "../postgres-model" }
+
+[dev-dependencies]
+tokio = "1"
+builder = { path = "../../builder" }
+core-resolver = { path = "../../core-subsystem/core-resolver", features = ["test-context"] }
+resolver = { path = "../../resolver" }
+
+[lib]
