@@ -420,13 +420,13 @@ mod tests {
                 concerts: Set<Concert>
             }
         "#;
-        let database_subsystem =
-            create_database_system_from_str(test_clay, "test.clay".to_string());
+        let postgres_subsystem =
+            create_postgres_system_from_str(test_clay, "test.clay".to_string());
 
         Schema::new(
-            database_subsystem.schema_types(),
-            database_subsystem.schema_queries(),
-            database_subsystem.schema_mutations(),
+            postgres_subsystem.schema_types(),
+            postgres_subsystem.schema_queries(),
+            postgres_subsystem.schema_mutations(),
         )
     }
 
@@ -436,24 +436,24 @@ mod tests {
 
     // TODO: Rethink this approach, where core (even though it's a test) depends on a specific subsystem (database)
 
-    use database_model::model::ModelDatabaseSystem;
-    pub fn create_database_system_from_str(
+    use postgres_model::model::ModelPostgresSystem;
+    pub fn create_postgres_system_from_str(
         model_str: &str,
         file_name: String,
-    ) -> ModelDatabaseSystem {
+    ) -> ModelPostgresSystem {
         let serialized_system = builder::build_system_from_str(model_str, file_name).unwrap();
         let system = SerializableSystem::deserialize(serialized_system).unwrap();
 
-        deserialize_database_subsystem(system)
+        deserialize_postgres_subsystem(system)
     }
 
-    fn deserialize_database_subsystem(system: SerializableSystem) -> ModelDatabaseSystem {
+    fn deserialize_postgres_subsystem(system: SerializableSystem) -> ModelPostgresSystem {
         system
             .subsystems
             .into_iter()
             .find_map(|subsystem| {
-                if subsystem.id == "database" {
-                    Some(ModelDatabaseSystem::deserialize(
+                if subsystem.id == "postgres" {
+                    Some(ModelPostgresSystem::deserialize(
                         subsystem.serialized_subsystem,
                     ))
                 } else {
@@ -461,7 +461,7 @@ mod tests {
                 }
             })
             // If there is no database subsystem in the serialized system, create an empty one
-            .unwrap_or_else(|| Ok(ModelDatabaseSystem::default()))
+            .unwrap_or_else(|| Ok(ModelPostgresSystem::default()))
             .unwrap()
     }
 }

@@ -30,7 +30,7 @@ response: |
     {
       "errors": [
         {
-            "message": "Database operation failed",
+            "message": "Postgres operation failed",
         }
       ]
     }

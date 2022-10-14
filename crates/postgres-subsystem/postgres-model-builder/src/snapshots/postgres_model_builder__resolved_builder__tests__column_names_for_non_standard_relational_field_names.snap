@@ -1,0 +1,232 @@
+---
+source: postgres-subsystem/postgres-model-builder/src/resolved_builder.rs
+assertion_line: 1122
+expression: resolved
+---
+values:
+  - - ~
+    - Primitive: Boolean
+  - - ~
+    - Primitive: Int
+  - - ~
+    - Primitive: Float
+  - - ~
+    - Primitive: Decimal
+  - - ~
+    - Primitive: String
+  - - ~
+    - Primitive: LocalTime
+  - - ~
+    - Primitive: LocalDateTime
+  - - ~
+    - Primitive: LocalDate
+  - - ~
+    - Primitive: Instant
+  - - ~
+    - Primitive: Json
+  - - ~
+    - Primitive: Blob
+  - - ~
+    - Primitive: Uuid
+  - - ~
+    - Primitive: Claytip
+  - - ~
+    - Primitive: ClaytipPriv
+  - - ~
+    - Primitive:
+        Interception: Operation
+  - - ~
+    - Composite:
+        name: Concert
+        plural_name: Concerts
+        fields:
+          - name: id
+            typ:
+              Plain:
+                type_name: Int
+                is_primitive: true
+            column_name: id
+            self_column: true
+            is_pk: true
+            type_hint: ~
+            unique_constraints: []
+            default_value: Autoincrement
+          - name: title
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_name: title
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: venuex
+            typ:
+              Plain:
+                type_name: Venue
+                is_primitive: false
+            column_name: venuex_id
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: published
+            typ:
+              Plain:
+                type_name: Boolean
+                is_primitive: true
+            column_name: published
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+        table_name: concerts
+        access:
+          creation:
+            BooleanLiteral:
+              - true
+          read:
+            BooleanLiteral:
+              - true
+          update:
+            BooleanLiteral:
+              - true
+          delete:
+            BooleanLiteral:
+              - true
+  - - ~
+    - Composite:
+        name: Venue
+        plural_name: Venues
+        fields:
+          - name: id
+            typ:
+              Plain:
+                type_name: Int
+                is_primitive: true
+            column_name: id
+            self_column: true
+            is_pk: true
+            type_hint: ~
+            unique_constraints: []
+            default_value: Autoincrement
+          - name: name
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_name: name
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: concerts
+            typ:
+              List:
+                Plain:
+                  type_name: Concert
+                  is_primitive: false
+            column_name: venuex_id
+            self_column: false
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+          - name: published
+            typ:
+              Plain:
+                type_name: Boolean
+                is_primitive: true
+            column_name: published
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+        table_name: venues
+        access:
+          creation:
+            BooleanLiteral:
+              - true
+          read:
+            BooleanLiteral:
+              - true
+          update:
+            BooleanLiteral:
+              - true
+          delete:
+            BooleanLiteral:
+              - true
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+map:
+  Blob:
+    index: 10
+    generation: ~
+  Boolean:
+    index: 0
+    generation: ~
+  Claytip:
+    index: 12
+    generation: ~
+  ClaytipPriv:
+    index: 13
+    generation: ~
+  Concert:
+    index: 15
+    generation: ~
+  Decimal:
+    index: 3
+    generation: ~
+  Float:
+    index: 2
+    generation: ~
+  Instant:
+    index: 8
+    generation: ~
+  Int:
+    index: 1
+    generation: ~
+  Json:
+    index: 9
+    generation: ~
+  LocalDate:
+    index: 7
+    generation: ~
+  LocalDateTime:
+    index: 6
+    generation: ~
+  LocalTime:
+    index: 5
+    generation: ~
+  Operation:
+    index: 14
+    generation: ~
+  String:
+    index: 4
+    generation: ~
+  Uuid:
+    index: 11
+    generation: ~
+  Venue:
+    index: 16
+    generation: ~
+

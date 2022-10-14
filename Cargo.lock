@@ -669,12 +669,12 @@ dependencies = [
  "core-model",
  "core-model-builder",
  "core-plugin",
- "database-model-builder",
  "deno-model",
  "deno-model-builder",
  "insta",
  "lazy_static",
  "payas-sql",
+ "postgres-model-builder",
  "serde",
  "serde_json",
  "thiserror",
@@ -894,10 +894,10 @@ dependencies = [
  "core-model-builder",
  "core-plugin",
  "ctrlc",
- "database-model",
  "heck",
  "notify 4.0.17",
  "payas-sql",
+ "postgres-model",
  "rand",
  "serde",
  "stripmargin",
@@ -1059,13 +1059,13 @@ dependencies = [
  "cookie",
  "core-model",
  "core-plugin",
- "database-model",
- "database-resolver",
  "futures",
  "insta",
  "jsonwebtoken",
  "maybe-owned",
  "payas-sql",
+ "postgres-model",
+ "postgres-resolver",
  "resolver",
  "serde",
  "serde_json",
@@ -1417,70 +1417,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a30bfce702bcfa94e906ef82421f2c0e61c076ad76030c16ee5d2e9a32fe193"
 dependencies = [
  "matches",
-]
-
-[[package]]
-name = "database-model"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "bincode",
- "core-model",
- "core-plugin",
- "payas-sql",
- "serde",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "database-model-builder"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "builder",
- "codemap",
- "codemap-diagnostic",
- "core-model",
- "core-model-builder",
- "core-plugin",
- "database-model",
- "heck",
- "insta",
- "lazy_static",
- "payas-sql",
- "serde",
- "thiserror",
- "typed-generational-arena",
-]
-
-[[package]]
-name = "database-resolver"
-version = "0.1.0"
-dependencies = [
- "async-graphql-parser",
- "async-graphql-value",
- "async-recursion",
- "async-trait",
- "base64",
- "builder",
- "chrono",
- "core-model",
- "core-plugin",
- "core-resolver",
- "database-model",
- "futures",
- "maybe-owned",
- "payas-sql",
- "pg_bigdecimal",
- "postgres-types",
- "resolver",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-postgres",
- "uuid",
 ]
 
 [[package]]
@@ -4535,6 +4471,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "postgres-model"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "bincode",
+ "core-model",
+ "core-plugin",
+ "payas-sql",
+ "serde",
+ "typed-generational-arena",
+]
+
+[[package]]
+name = "postgres-model-builder"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "builder",
+ "codemap",
+ "codemap-diagnostic",
+ "core-model",
+ "core-model-builder",
+ "core-plugin",
+ "heck",
+ "insta",
+ "lazy_static",
+ "payas-sql",
+ "postgres-model",
+ "serde",
+ "thiserror",
+ "typed-generational-arena",
+]
+
+[[package]]
 name = "postgres-openssl"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4563,6 +4534,35 @@ dependencies = [
  "rand",
  "sha2 0.10.6",
  "stringprep",
+]
+
+[[package]]
+name = "postgres-resolver"
+version = "0.1.0"
+dependencies = [
+ "async-graphql-parser",
+ "async-graphql-value",
+ "async-recursion",
+ "async-trait",
+ "base64",
+ "builder",
+ "chrono",
+ "core-model",
+ "core-plugin",
+ "core-resolver",
+ "futures",
+ "maybe-owned",
+ "payas-sql",
+ "pg_bigdecimal",
+ "postgres-model",
+ "postgres-types",
+ "resolver",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-postgres",
+ "uuid",
 ]
 
 [[package]]
@@ -4943,8 +4943,6 @@ dependencies = [
  "core-model",
  "core-plugin",
  "core-resolver",
- "database-model",
- "database-resolver",
  "deno-model",
  "deno-resolver",
  "futures",
@@ -4957,6 +4955,8 @@ dependencies = [
  "opentelemetry-jaeger",
  "payas-deno",
  "payas-sql",
+ "postgres-model",
+ "postgres-resolver",
  "pretty_env_logger",
  "serde",
  "serde_json",

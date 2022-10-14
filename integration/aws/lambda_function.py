@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Source of ClaytipDatabaseInitFn, the lambda that is invoked at 
+# Source of ClaytipPostgresInitFn, the lambda that is invoked at 
 # stack creation time to initialize the database.
 
 import os

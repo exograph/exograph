@@ -27,12 +27,12 @@ use core_plugin::system_serializer::SystemSerializer;
 pub fn build(typechecked_system: MappedArena<Type>) -> Result<Vec<u8>, ModelBuildingError> {
     let base_system = core_model_builder::builder::system_builder::build(&typechecked_system)?;
 
-    let database_subsystem_builder = database_model_builder::DatabaseSubsystemBuilder {};
+    let postgres_subsystem_builder = postgres_model_builder::PostgresSubsystemBuilder {};
     let deno_subsystem_builder = deno_model_builder::DenoSubsystemBuilder {};
     let wasm_subsystem_builder = wasm_model_builder::WasmSubsystemBuilder {};
 
     let subsystem_builders: Vec<&dyn SubsystemBuilder> = vec![
-        &database_subsystem_builder,
+        &postgres_subsystem_builder,
         &deno_subsystem_builder,
         &wasm_subsystem_builder,
     ];

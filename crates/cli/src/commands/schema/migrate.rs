@@ -36,10 +36,10 @@ impl Command for MigrateCommand {
                 eprintln!("{}", issue);
             }
 
-            let new_database_subsystem = util::create_database_system(&self.model)?;
+            let new_postgres_subsystem = util::create_postgres_system(&self.model)?;
 
             let new_schema =
-                SchemaSpec::from_model(new_database_subsystem.tables.into_iter().collect());
+                SchemaSpec::from_model(new_postgres_subsystem.tables.into_iter().collect());
 
             let statements = migration_statements(&old_schema.value, &new_schema);
 

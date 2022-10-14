@@ -56,7 +56,7 @@ impl Command for YoloCommand {
             std::env::set_var("CLAY_CORS_DOMAINS", "*");
 
             println!("JWT secret is {}", &jwt_secret);
-            println!("Database URL is {}", &db.connection_url);
+            println!("Postgres URL is {}", &db.connection_url);
 
             // generate migrations for current database
             println!("Generating migrations...");
@@ -71,9 +71,9 @@ impl Command for YoloCommand {
                 println!("{}", issue);
             }
 
-            let new_database_subsystem = crate::schema::util::create_database_system(&self.model)?;
+            let new_postgres_subsystem = crate::schema::util::create_postgres_system(&self.model)?;
             let new_schema =
-                SchemaSpec::from_model(new_database_subsystem.tables.into_iter().collect());
+                SchemaSpec::from_model(new_postgres_subsystem.tables.into_iter().collect());
 
             let statements = migration_statements(&old_schema.value, &new_schema);
 
@@ -107,7 +107,7 @@ impl Command for YoloCommand {
                     Ok("p") => {
                         println!("=====");
                         println!(
-                            "Pausing for manual repair. Database URL is {}",
+                            "Pausing for manual repair. Postgres URL is {}",
                             db.connection_url
                         );
                         println!("Press enter to continue.");

@@ -28,7 +28,7 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
     let start_time = std::time::Instant::now();
     let cpus = num_cpus::get();
 
-    let database_url =
+    let postgres_url =
         std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL must be specified");
 
     let testfiles = load_testfiles_from_dir(root_directory, pattern).with_context(|| {
@@ -65,7 +65,7 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
     for (model_path, testfiles) in model_file_deps {
         let model_path = model_path.clone();
         let tx = tx.clone();
-        let url = database_url.clone();
+        let url = postgres_url.clone();
 
         pool.spawn(move || match build_claypot_file(&model_path) {
             Ok(()) => {
