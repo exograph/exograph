@@ -1,8 +1,7 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, Result};
 use include_dir::{include_dir, Dir};
-use isahc::{HttpClient, ReadResponseExt, Request};
-use payas_deno::{DenoModule, DenoModuleSharedState, UserCode};
-use serde_json::{json, Value};
+use payas_deno::{deno_error::DenoError, Arg, DenoModule, DenoModuleSharedState, UserCode};
+use serde_json::Value;
 use std::{collections::HashMap, path::Path};
 
 use crate::claytest::{
@@ -12,7 +11,6 @@ use crate::claytest::{
 
 use super::common::TestResult;
 
-const INTROSPECTION_QUERY: &str = include_str!("introspection-query.gql");
 const INTROSPECTION_ASSERT_JS: &str = include_str!("introspection_tests.js");
 const GRAPHQL_NODE_MODULE: Dir<'static> =
     include_dir!("$CARGO_MANIFEST_DIR/../../graphiql/node_modules/graphql");
@@ -35,46 +33,26 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
         .into_iter(),
     )?;
 
-    // spawn an HttpClient for requests to clay
-    let client = HttpClient::builder().build()?;
+    let result = check_introspection(&server.endpoint)?;
+    let output: String = server.output.lock().unwrap().clone();
 
-    let response = client.send(
-        Request::post(&server.endpoint)
-            .header("Content-Type", "application/json")
-            .body(serde_json::to_string(&json!({
-                "query": INTROSPECTION_QUERY
-            }))?)?,
-    );
+    match result {
+        Ok(()) => Ok(TestResult {
+            log_prefix: log_prefix.to_string(),
+            result: TestResultKind::Success,
+            output,
+        }),
 
-    match response {
-        Ok(mut result) => {
-            let response: Value = result.json()?;
-            let output: String = server.output.lock().unwrap().clone();
-
-            Ok(match check_introspection(response) {
-                Ok(()) => TestResult {
-                    log_prefix: log_prefix.to_string(),
-                    result: TestResultKind::Success,
-                    output,
-                },
-
-                Err(e) => TestResult {
-                    log_prefix: log_prefix.to_string(),
-                    result: TestResultKind::Fail(e),
-                    output,
-                },
-            })
-        }
-        Err(e) => {
-            bail!("Error while making request: {}", e)
-        }
+        Err(e) => Ok(TestResult {
+            log_prefix: log_prefix.to_string(),
+            result: TestResultKind::Fail(e),
+            output,
+        }),
     }
 }
 
-fn check_introspection(response: Value) -> Result<()> {
-    let response = response.to_string();
+fn check_introspection(endpoint: &str) -> Result<Result<()>> {
     let script = INTROSPECTION_ASSERT_JS;
-    let script = script.replace("\"%%RESPONSE%%\"", &response);
 
     let deno_module_future = DenoModule::new(
         UserCode::LoadFromMemory {
@@ -86,7 +64,7 @@ fn check_introspection(response: Value) -> Result<()> {
         vec![],
         vec![],
         DenoModuleSharedState::default(),
-        None,
+        Some("Error"),
         Some(HashMap::from([(
             "graphql".to_string(),
             &GRAPHQL_NODE_MODULE,
@@ -112,8 +90,18 @@ fn check_introspection(response: Value) -> Result<()> {
     );
 
     let runtime = tokio::runtime::Runtime::new()?;
-    match runtime.block_on(deno_module_future) {
-        Ok(_) => Ok(()),
-        Err(e) => bail!("{}", e),
+    let mut deno_module = runtime.block_on(deno_module_future)?;
+
+    let result = runtime.block_on(deno_module.execute_function(
+        "assertSchema",
+        vec![Arg::Serde(Value::String(endpoint.to_string()))],
+    ));
+
+    match result {
+        Ok(_) => Ok(Ok(())),
+        Err(e) => match e {
+            DenoError::Explicit(e) => Ok(Err(anyhow!(e))),
+            e => Err(anyhow!(e)),
+        },
     }
 }
