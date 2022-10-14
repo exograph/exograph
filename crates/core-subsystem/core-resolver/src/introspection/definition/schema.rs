@@ -64,25 +64,30 @@ impl Schema {
     ) -> Schema {
         let mut type_definitions = type_definitions;
 
-        let query_type_definition = {
-            // Even though we resolve __type and __schema fields for the Query
-            // type, GraphQL spec doesn't allow them to be exposed as an
-            // ordinary field. Therefore, we have to treat them specially (see
-            // SelectionSetValidator::validate_field)
-            TypeDefinition {
-                extend: false,
-                description: None,
-                name: default_positioned_name(QUERY_ROOT_TYPENAME),
-                directives: vec![],
-                kind: TypeKind::Object(ObjectType {
-                    implements: vec![],
-                    fields: queries,
-                }),
-            }
-        };
+        // Ideally, we should surround it with `if !queries.is_empty() {` (like we do for mutations next)
+        // but GraphQL spec requires a `Query` type to be present in the schema.
+        // https://spec.graphql.org/June2018/#sec-Root-Operation-Types
+        // "The query root operation type must be provided and must be an Object type."
+        // So we always add a `Query` type to the schema. This means introspection will fail
+        // if there are no queries. See https://github.com/payalabs/payas/issues/480
+        //
+        // Even though we resolve __type and __schema fields for the Query
+        // type, GraphQL spec doesn't allow them to be exposed as an
+        // ordinary field. Therefore, we have to treat them specially (see
+        // SelectionSetValidator::validate_field)
+        type_definitions.push(TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(QUERY_ROOT_TYPENAME),
+            directives: vec![],
+            kind: TypeKind::Object(ObjectType {
+                implements: vec![],
+                fields: queries,
+            }),
+        });
 
-        let mutation_type_definition = {
-            TypeDefinition {
+        if !mutations.is_empty() {
+            type_definitions.push(TypeDefinition {
                 extend: false,
                 description: None,
                 name: default_positioned_name(MUTATION_ROOT_TYPENAME),
@@ -91,7 +96,7 @@ impl Schema {
                     implements: vec![],
                     fields: mutations,
                 }),
-            }
+            });
         };
 
         type_definitions.push(Self::create_schema_type_definition());
@@ -100,9 +105,6 @@ impl Schema {
         type_definitions.push(Self::create_directive_definition());
         type_definitions.push(Self::create_directive_location_definition());
         type_definitions.push(Self::create_input_value_definition());
-
-        type_definitions.push(query_type_definition);
-        type_definitions.push(mutation_type_definition);
 
         Schema {
             type_definitions,
