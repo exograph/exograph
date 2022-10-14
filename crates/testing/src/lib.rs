@@ -1,16 +1,22 @@
 mod claytest;
 
 use anyhow::{bail, Context, Result};
+use claytest::integration_tests::{build_claypot_file, run_testfile};
 use claytest::loader::{load_testfiles_from_dir, ParsedTestfile};
-use claytest::runner::{build_claypot_file, run_testfile};
 use rayon::ThreadPoolBuilder;
 use std::cmp::min;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
+use crate::claytest::introspection_tests::run_introspection_test;
+
 /// Loads test files from the supplied directory and runs them using a thread pool.
-pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
+pub fn run(
+    root_directory: &Path,
+    pattern: &Option<String>,
+    run_introspection_tests: bool,
+) -> Result<()> {
     let root_directory_str = root_directory.to_str().unwrap();
 
     println!(
@@ -25,6 +31,7 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
             .unwrap_or_else(|| "".to_string()),
         ansi_term::Color::Blue.bold().paint("..."),
     );
+
     let start_time = std::time::Instant::now();
     let cpus = num_cpus::get();
 
@@ -37,23 +44,45 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
             root_directory_str
         )
     })?;
-
-    let number_of_tests = testfiles.len();
+    let number_of_integration_tests = testfiles.len();
 
     // Work out which tests share a common clay file so we only build it once for all the
     // dependent tests, avoiding accidental corruption from overwriting.
-    let mut model_file_deps: HashMap<String, Vec<ParsedTestfile>> = HashMap::new();
+    let mut model_file_deps: HashMap<PathBuf, Vec<ParsedTestfile>> = HashMap::new();
 
-    for f in testfiles.iter() {
-        if let Some(files) = model_file_deps.get_mut(&f.model_path_string()) {
-            files.push(f.clone());
+    for f in testfiles.into_iter() {
+        if let Some(files) = model_file_deps.get_mut(&f.model_path) {
+            files.push(f);
         } else {
-            model_file_deps.insert(f.model_path_string(), vec![f.clone()]);
+            model_file_deps.insert(f.model_path.clone(), vec![f]);
         }
     }
 
+    let mut test_results = vec![];
+
+    // test introspection for all model files
+    if run_introspection_tests {
+        println!(
+            "{}",
+            ansi_term::Color::Blue
+                .bold()
+                .paint("** Introspection tests enabled, running")
+        );
+
+        for model_path in model_file_deps.keys() {
+            test_results.push(run_introspection_test(model_path));
+        }
+    };
+
+    println!(
+        "{}",
+        ansi_term::Color::Blue
+            .bold()
+            .paint("** Running integration tests")
+    );
+
     // Estimate an optimal pool size
-    let pool_size = min(number_of_tests, cpus * 2);
+    let pool_size = min(number_of_integration_tests, cpus * 2);
     let pool = ThreadPoolBuilder::new()
         .num_threads(pool_size)
         .build()
@@ -76,7 +105,10 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
             }
             Err(e) => tx
                 .send(Err(e).with_context(|| {
-                    format!("While trying to build claypot file for {}", model_path)
+                    format!(
+                        "While trying to build claypot file for {}",
+                        model_path.display()
+                    )
                 }))
                 .unwrap(),
         });
@@ -84,12 +116,11 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
 
     drop(tx);
 
-    let mut test_results: Vec<_> = rx.into_iter().collect();
-
-    test_results.sort_by(|a, b| {
-        if a.is_ok() && b.is_err() {
+    let mut integration_test_results: Vec<_> = rx.into_iter().collect();
+    integration_test_results.sort_by(|a, b| {
+        if a.is_err() && b.is_ok() {
             std::cmp::Ordering::Greater
-        } else if a.is_err() && b.is_ok() {
+        } else if a.is_ok() && b.is_err() {
             std::cmp::Ordering::Less
         } else if let Ok(a) = a.as_ref() {
             if let Ok(b) = b.as_ref() {
@@ -101,8 +132,10 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
             std::cmp::Ordering::Equal
         }
     });
+    test_results.extend(integration_test_results.into_iter());
 
     let mut number_of_succeeded_tests = 0;
+
     for result in test_results.iter() {
         match result {
             Ok(result) => {
@@ -114,14 +147,22 @@ pub fn run(root_directory: &Path, pattern: &Option<String>) -> Result<()> {
             }
 
             Err(e) => {
-                println!("Testfile failure: {:?}", e)
+                println!(
+                    "{}",
+                    ansi_term::Color::Red.paint("A testfile errored while running.")
+                );
+                println!(
+                    "{}\n",
+                    ansi_term::Color::Fixed(240).paint(format!("{:?}", e))
+                );
             }
         }
     }
 
+    let number_of_tests = test_results.len();
     let success = number_of_succeeded_tests == number_of_tests;
     let status = if success {
-        ansi_term::Color::Green.paint("OK.")
+        ansi_term::Color::Green.paint("PASS.")
     } else {
         ansi_term::Color::Red.paint("FAIL.")
     };

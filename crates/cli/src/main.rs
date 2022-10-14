@@ -145,7 +145,13 @@ fn main() -> Result<()> {
                         .help("Glob pattern to choose which tests to run.")
                         .required(false)
                         .index(2),
-                ),
+                )
+                .arg(
+                    Arg::new("run-introspection-tests")
+                        .help("When specified, run standard introspection tests on the tests' model files")
+                        .required(false)
+                        .long("run-introspection-tests")
+                )
         )
         .subcommand(
             Command::new("yolo")
@@ -201,6 +207,7 @@ fn main() -> Result<()> {
         Some(("test", matches)) => Box::new(TestCommand {
             dir: get_required(matches, "dir")?,
             pattern: get(matches, "pattern"),
+            run_introspection_tests: matches.contains_id("run-introspection-tests"),
         }),
         Some(("yolo", matches)) => Box::new(YoloCommand {
             model: get_required(matches, "model")?,
