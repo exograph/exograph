@@ -45,19 +45,6 @@ async fn solve_predicate_expression<'a>(
             solve_relational_op(op, request_context, system, resolver).await
         }
         AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
-        AccessPredicateExpression::BooleanContextSelection(selection) => {
-            let context_value =
-                solve_context_selection(selection, request_context, system, resolver).await;
-            context_value
-                .map(|value| {
-                    match value {
-                        Value::Bool(value) => value,
-                        _ => unreachable!("Context selection must be a boolean"), // access_utils ensures that only boolean values are allowed
-                    }
-                })
-                .unwrap_or(false) // context value wasn't found, so treat it as false
-                .into()
-        }
     }
 }
 

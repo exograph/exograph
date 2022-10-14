@@ -55,27 +55,6 @@ async fn solve_predicate_expression<'a>(
             solve_relational_op(op, request_context, system, resolver).await
         }
         AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
-        AccessPredicateExpression::BooleanColumn(column_path) => {
-            // Special case we have a boolean literal column by itself, so we create an equivalent Predicate::Eq.
-            // This allows supporting expressions such as `self.published` (and not require `self.published = true`)
-            AbstractPredicate::Eq(
-                to_column_path(column_path, system).into(),
-                ColumnPath::Literal(MaybeOwned::Owned(Box::new(true))).into(),
-            )
-        }
-        AccessPredicateExpression::BooleanContextSelection(selection) => {
-            let context_value =
-                solve_context_selection(selection, request_context, system, resolver).await;
-            context_value
-                .map(|value| {
-                    match value {
-                        Value::Bool(value) => value,
-                        _ => unreachable!("Context selection must be a boolean"), // access_utils ensures that only boolean values are allowed
-                    }
-                })
-                .unwrap_or(false) // context value wasn't found, so treat it as false
-                .into()
-        }
     }
 }
 
@@ -443,6 +422,26 @@ mod tests {
         ))
     }
 
+    // AuthContext.is_admin => AuthContext.is_admin == true
+    fn boolean_context_selection(
+        context_selection: AccessContextSelection,
+    ) -> AccessPredicateExpression {
+        AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+            Box::new(AccessPrimitiveExpression::ContextSelection(
+                context_selection,
+            )),
+            Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
+        ))
+    }
+
+    // self.published => self.published == true
+    fn boolean_column_selection(column_path: ColumnIdPath) -> AccessPredicateExpression {
+        AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
+            Box::new(AccessPrimitiveExpression::Column(column_path)),
+            Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
+        ))
+    }
+
     async fn test_relational_op<'a>(
         test_system: &'a TestSystem,
         op: fn(
@@ -726,18 +725,14 @@ mod tests {
 
             for (c1, c2, expected) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(op(
-                    Box::new(AccessPredicateExpression::BooleanContextSelection(
-                        AccessContextSelection::Select(
-                            Box::new(AccessContextSelection::Context("AccessContext".to_string())),
-                            c1.to_string(),
-                        ),
-                    )),
-                    Box::new(AccessPredicateExpression::BooleanContextSelection(
-                        AccessContextSelection::Select(
-                            Box::new(AccessContextSelection::Context("AccessContext".to_string())),
-                            c2.to_string(),
-                        ),
-                    )),
+                    Box::new(boolean_context_selection(context_selection(
+                        "AccessContext",
+                        &[c1],
+                    ))),
+                    Box::new(boolean_context_selection(context_selection(
+                        "AccessContext",
+                        &[c2],
+                    ))),
                 ));
 
                 let solved_predicate =
@@ -756,9 +751,7 @@ mod tests {
             for (l, predicate_fn) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(op(
                     Box::new(AccessPredicateExpression::BooleanLiteral(*l)),
-                    Box::new(AccessPredicateExpression::BooleanColumn(
-                        dept1_id_column_path.clone(),
-                    )),
+                    Box::new(boolean_column_selection(dept1_id_column_path.clone())),
                 ));
 
                 let solved_predicate =
@@ -773,9 +766,7 @@ mod tests {
 
                 // The swapped version
                 let test_ae = AccessPredicateExpression::LogicalOp(op(
-                    Box::new(AccessPredicateExpression::BooleanColumn(
-                        dept1_id_column_path.clone(),
-                    )),
+                    Box::new(boolean_column_selection(dept1_id_column_path.clone())),
                     Box::new(AccessPredicateExpression::BooleanLiteral(*l)),
                 ));
 
@@ -794,12 +785,8 @@ mod tests {
         {
             // Two columns
             let test_ae = AccessPredicateExpression::LogicalOp(op(
-                Box::new(AccessPredicateExpression::BooleanColumn(
-                    dept1_id_column_path.clone(),
-                )),
-                Box::new(AccessPredicateExpression::BooleanColumn(
-                    dept2_id_column_path.clone(),
-                )),
+                Box::new(boolean_column_selection(dept1_id_column_path.clone())),
+                Box::new(boolean_column_selection(dept2_id_column_path.clone())),
             ));
 
             let context = test_request_context(Value::Null); // context is irrelevant
@@ -891,12 +878,10 @@ mod tests {
 
             for (c1, expected) in scenarios.iter() {
                 let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(
-                    Box::new(AccessPredicateExpression::BooleanContextSelection(
-                        AccessContextSelection::Select(
-                            Box::new(AccessContextSelection::Context("AccessContext".to_string())),
-                            c1.to_string(),
-                        ),
-                    )),
+                    Box::new(boolean_context_selection(AccessContextSelection::Select(
+                        Box::new(AccessContextSelection::Context("AccessContext".to_string())),
+                        c1.to_string(),
+                    ))),
                 ));
 
                 let solved_predicate =
@@ -907,10 +892,9 @@ mod tests {
 
         {
             // Two columns
-            let test_ae =
-                AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(Box::new(
-                    AccessPredicateExpression::BooleanColumn(dept1_id_column_id.clone()),
-                )));
+            let test_ae = AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Not(
+                Box::new(boolean_column_selection(dept1_id_column_id.clone())),
+            ));
 
             let context = test_request_context(Value::Null); // context is irrelevant
             let solved_predicate =
@@ -967,12 +951,7 @@ mod tests {
                     "ROLE_ADMIN".to_owned(),
                 )),
             ));
-            let user_access = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
-                Box::new(AccessPrimitiveExpression::Column(
-                    published_column_path.clone(),
-                )),
-                Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
-            ));
+            let user_access = boolean_column_selection(published_column_path.clone());
 
             AccessPredicateExpression::LogicalOp(AccessLogicalExpression::Or(
                 Box::new(admin_access),
@@ -1148,7 +1127,7 @@ mod tests {
             ..
         } = &test_system;
 
-        let test_ae = AccessPredicateExpression::BooleanColumn(published_column_id.clone());
+        let test_ae = boolean_column_selection(published_column_id.clone());
 
         let context = test_request_context(Value::Null); // irrelevant context content
         let solved_predicate =
@@ -1169,10 +1148,7 @@ mod tests {
         let test_system = test_system();
         let TestSystem { system, .. } = &test_system;
 
-        let test_ae = AccessPredicateExpression::BooleanContextSelection(context_selection(
-            "AccessContext",
-            &["is_admin"],
-        ));
+        let test_ae = boolean_context_selection(context_selection("AccessContext", &["is_admin"]));
 
         let context = test_request_context(json!({"is_admin": true}));
         let solved_predicate =

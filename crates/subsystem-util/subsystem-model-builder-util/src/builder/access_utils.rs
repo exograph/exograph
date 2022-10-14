@@ -30,8 +30,15 @@ pub fn compute_predicate_expression(
         AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
             PathSelection::Context(context_selection, field_type) => {
                 if field_type.primitive_type() == &PrimitiveType::Boolean {
-                    Ok(AccessPredicateExpression::BooleanContextSelection(
-                        context_selection,
+                    // Treat boolean context expressions in the same way as an "eq" relational expression
+                    // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
+                    Ok(AccessPredicateExpression::RelationalOp(
+                        AccessRelationalOp::Eq(
+                            Box::new(AccessPrimitiveExpression::ContextSelection(
+                                context_selection,
+                            )),
+                            Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
+                        ),
                     ))
                 } else {
                     Err(ModelBuildingError::Generic(

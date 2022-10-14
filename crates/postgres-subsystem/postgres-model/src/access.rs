@@ -42,10 +42,6 @@ pub enum AccessPredicateExpression {
     LogicalOp(AccessLogicalExpression),
     RelationalOp(AccessRelationalOp),
     BooleanLiteral(bool),
-    // This allows specifying access rule such as `self.published` instead of `self.published == true`
-    BooleanColumn(ColumnIdPath),
-    // Similarly, this allows specifying access rule such as `AuthContext.superUser` instead of `AuthContext.superUser == true`
-    BooleanContextSelection(AccessContextSelection),
 }
 
 /// A path representing context selection such as `AuthContext.role`

@@ -35,7 +35,14 @@ pub fn compute_predicate_expression(
             match compute_selection(selection, self_type_info, resolved_env, subsystem_types) {
                 PathSelection::Column(column_path, column_type) => {
                     if column_type.base_type(&subsystem_types.values).name == "Boolean" {
-                        Ok(AccessPredicateExpression::BooleanColumn(column_path))
+                        // Treat boolean columns in the same way as an "eq" relational expression
+                        // For example, treat `self.published` the same as `self.published == true`
+                        Ok(AccessPredicateExpression::RelationalOp(
+                            AccessRelationalOp::Eq(
+                                Box::new(AccessPrimitiveExpression::Column(column_path)),
+                                Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
+                            ),
+                        ))
                     } else {
                         Err(ModelBuildingError::Generic(
                             "Field selection must be a boolean".to_string(),
@@ -44,8 +51,15 @@ pub fn compute_predicate_expression(
                 }
                 PathSelection::Context(context_selection, field_type) => {
                     if field_type.primitive_type() == &PrimitiveType::Boolean {
-                        Ok(AccessPredicateExpression::BooleanContextSelection(
-                            context_selection,
+                        // Treat boolean context expressions in the same way as an "eq" relational expression
+                        // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
+                        Ok(AccessPredicateExpression::RelationalOp(
+                            AccessRelationalOp::Eq(
+                                Box::new(AccessPrimitiveExpression::ContextSelection(
+                                    context_selection,
+                                )),
+                                Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
+                            ),
                         ))
                     } else {
                         Err(ModelBuildingError::Generic(
