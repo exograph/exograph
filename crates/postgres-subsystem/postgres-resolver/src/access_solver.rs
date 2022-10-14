@@ -1,4 +1,6 @@
 use async_recursion::async_recursion;
+use async_trait::async_trait;
+use core_resolver::system_resolver::SystemResolver;
 use core_resolver::{request_context::RequestContext, ResolveOperationFn};
 use maybe_owned::MaybeOwned;
 use postgres_model::{
@@ -17,27 +19,60 @@ use serde_json::Value;
 
 use std::ops::Not;
 
-pub fn to_column_path<'a>(
-    column_id: &ColumnIdPath,
-    system: &'a ModelPostgresSystem,
-) -> ColumnPath<'a> {
-    column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
+/// Solve access control logic.
+///
+/// # Parameters
+/// - PrimExpr: Primitive Expression
+/// - Res: Result type
+#[async_trait]
+pub trait AccessSolver<'a, _PrimExpr, Res> {
+    async fn solve(&self, expr: &'a AccessPredicateExpression) -> AbstractPredicate<'a>;
 }
 
-/// Solve access control logic.
-/// The access control logic is expressed as a predicate expression. This method
-/// tries to produce a simplest possible `Predicate` given the request context. It tries
-/// to produce `Predicate::True` or `Predicate::False` when sufficient information is available
-/// to make such determination. This allows (in case of `Predicate::True`) to skip the database
-/// filtering and (in case of `Predicate::False`) to return a "Not authorized" error (instead of an
-/// empty/null result).
-pub async fn solve_access<'s, 'a>(
-    expr: &'a AccessPredicateExpression,
+pub struct PostgresAccessSolver<'a> {
     request_context: &'a RequestContext<'a>,
     system: &'a ModelPostgresSystem,
-    resolver: &ResolveOperationFn<'a>,
-) -> AbstractPredicate<'a> {
-    solve_predicate_expression(expr, request_context, system, resolver).await
+    system_resolver: &'a SystemResolver,
+}
+
+impl PostgresAccessSolver<'_> {
+    pub fn new<'a>(
+        request_context: &'a RequestContext<'a>,
+        system: &'a ModelPostgresSystem,
+        system_resolver: &'a SystemResolver,
+    ) -> PostgresAccessSolver<'a> {
+        PostgresAccessSolver {
+            request_context,
+            system,
+            system_resolver,
+        }
+    }
+}
+
+#[async_trait]
+impl<'a> AccessSolver<'a, AccessPrimitiveExpression, AbstractPredicate<'a>>
+    for PostgresAccessSolver<'a>
+{
+    /// Solve access control logic.
+    /// The access control logic is expressed as a predicate expression. This method
+    /// tries to produce a simplest possible `Predicate` given the request context. It tries
+    /// to produce `Predicate::True` or `Predicate::False` when sufficient information is available
+    /// to make such determination. This allows (in case of `Predicate::True`) to skip the database
+    /// filtering and (in case of `Predicate::False`) to return a "Not authorized" error (instead of an
+    /// empty/null result).
+    async fn solve(&self, expr: &'a AccessPredicateExpression) -> AbstractPredicate<'a> {
+        solve_predicate_expression(
+            expr,
+            self.request_context,
+            self.system,
+            &self.system_resolver.resolve_operation_fn(),
+        )
+        .await
+    }
+}
+
+fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelPostgresSystem) -> ColumnPath<'a> {
+    column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
 }
 
 #[async_recursion]
@@ -270,7 +305,11 @@ async fn solve_logical_op<'a>(
 
 #[cfg(test)]
 mod tests {
-    use core_resolver::{request_context::Request, OperationsPayload, ResolveOperationFn};
+    use std::collections::HashMap;
+
+    use core_plugin::interception::InterceptionMap;
+    use core_resolver::introspection::definition::schema::Schema;
+    use core_resolver::request_context::Request;
     use postgres_model::{column_id::ColumnId, column_path::ColumnIdPathLink};
     use serde_json::json;
 
@@ -282,6 +321,7 @@ mod tests {
         owner_id_column_path: ColumnIdPath,
         dept1_id_column_path: ColumnIdPath,
         dept2_id_column_path: ColumnIdPath,
+        test_system_resolver: SystemResolver,
     }
 
     struct TestRequest {}
@@ -314,16 +354,6 @@ mod tests {
         fn dept2_id_column(&self) -> MaybeOwned<ColumnPath> {
             super::to_column_path(&self.dept2_id_column_path, &self.system).into()
         }
-    }
-
-    // An implementation of curried_resolve that doesn't not depend on SystemContext (we don't construct it in the tests)
-    pub fn test_curried_resolve<'r>() -> ResolveOperationFn<'r> {
-        Box::new(
-            move |_input: OperationsPayload,
-                  _request_context: MaybeOwned<'r, RequestContext<'r>>| {
-                Box::pin(async move { Ok(vec![]) })
-            },
-        )
     }
 
     fn test_system() -> TestSystem {
@@ -397,12 +427,26 @@ mod tests {
             }],
         };
 
+        // Create an empty SystemResolver. Since in tests we never invoke the resolver (since we don't have @query context),
+        // we don't need to populate it.
+        let test_system_resolver = SystemResolver::new(
+            vec![],
+            InterceptionMap {
+                map: HashMap::new(),
+            },
+            InterceptionMap {
+                map: HashMap::new(),
+            },
+            Schema::new(vec![], vec![], vec![]),
+        );
+
         TestSystem {
             system: postgres_subsystem,
             published_column_path,
             owner_id_column_path,
             dept1_id_column_path,
             dept2_id_column_path,
+            test_system_resolver,
         }
     }
 
@@ -442,6 +486,17 @@ mod tests {
         ))
     }
 
+    async fn solve_access<'a>(
+        expr: &'a AccessPredicateExpression,
+        request_context: &'a RequestContext<'a>,
+        subsystem_model: &'a ModelPostgresSystem,
+        test_system_resolver: &'a SystemResolver,
+    ) -> AbstractPredicate<'a> {
+        let access_solver =
+            PostgresAccessSolver::new(request_context, subsystem_model, test_system_resolver);
+        access_solver.solve(expr).await
+    }
+
     async fn test_relational_op<'a>(
         test_system: &'a TestSystem,
         op: fn(
@@ -471,6 +526,7 @@ mod tests {
             owner_id_column_path,
             dept1_id_column_path,
             dept2_id_column_path,
+            test_system_resolver,
             ..
         } = &test_system;
 
@@ -481,10 +537,10 @@ mod tests {
                 context_selection_expr("AccessContext", &["token2"]),
             ));
 
-            let context =
+            let request_context =
                 test_request_context(json!({"token1": "token_value", "token2": "token_value"}));
             let solved_predicate =
-                solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                solve_access(&test_ae, &request_context, system, test_system_resolver).await;
             assert_eq!(
                 solved_predicate,
                 context_match_predicate(
@@ -499,10 +555,10 @@ mod tests {
             // (to reduce obvious matches such as 5 < 6 => Predicate::True/False) in those cases,
             // the unoptimized predicate created works for both match and mismatch cases.
 
-            let context =
+            let request_context =
                 test_request_context(json!({"token1": "token_value1", "token2": "token_value2"}));
             let solved_predicate =
-                solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                solve_access(&test_ae, &request_context, system, test_system_resolver).await;
             assert_eq!(
                 solved_predicate,
                 context_mismatch_predicate(
@@ -520,7 +576,7 @@ mod tests {
                 let test_ae = test_ae;
                 let context = test_request_context(json!({"user_id": "u1"}));
                 let solved_predicate =
-                    solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                    solve_access(&test_ae, &context, system, test_system_resolver).await;
                 assert_eq!(
                     solved_predicate,
                     context_value_predicate(
@@ -532,7 +588,7 @@ mod tests {
                 // No user_id, so we can definitely declare it Predicate::False
                 let context = test_request_context(json!({}));
                 let solved_predicate =
-                    solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                    solve_access(&test_ae, &context, system, test_system_resolver).await;
                 assert_eq!(&solved_predicate, &context_missing_predicate);
             };
 
@@ -568,7 +624,7 @@ mod tests {
             // context is irrelevant
             let context = test_request_context(Value::Null);
             let solved_predicate =
-                solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                solve_access(&test_ae, &context, system, test_system_resolver).await;
             assert_eq!(
                 solved_predicate,
                 column_column_predicate(
@@ -684,6 +740,7 @@ mod tests {
             system,
             dept1_id_column_path,
             dept2_id_column_path,
+            test_system_resolver,
             ..
         } = &test_system;
 
@@ -706,7 +763,7 @@ mod tests {
                 ));
 
                 let solved_predicate =
-                    solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                    solve_access(&test_ae, &context, system, test_system_resolver).await;
                 assert_eq!(&&solved_predicate, expected);
             }
         }
@@ -736,7 +793,7 @@ mod tests {
                 ));
 
                 let solved_predicate =
-                    solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                    solve_access(&test_ae, &context, system, test_system_resolver).await;
                 assert_eq!(&&solved_predicate, expected);
             }
         }
@@ -755,7 +812,7 @@ mod tests {
                 ));
 
                 let solved_predicate =
-                    solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                    solve_access(&test_ae, &context, system, test_system_resolver).await;
                 assert_eq!(
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
@@ -771,7 +828,7 @@ mod tests {
                 ));
 
                 let solved_predicate =
-                    solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                    solve_access(&test_ae, &context, system, test_system_resolver).await;
                 assert_eq!(
                     solved_predicate,
                     predicate_fn(AbstractPredicate::Eq(
@@ -791,7 +848,7 @@ mod tests {
 
             let context = test_request_context(Value::Null); // context is irrelevant
             let solved_predicate =
-                solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                solve_access(&test_ae, &context, system, test_system_resolver).await;
             assert_eq!(
                 solved_predicate,
                 both_columns(
@@ -844,6 +901,7 @@ mod tests {
         let TestSystem {
             system,
             dept1_id_column_path: dept1_id_column_id,
+            test_system_resolver,
             ..
         } = &test_system;
 
@@ -863,7 +921,7 @@ mod tests {
                 ));
 
                 let solved_predicate =
-                    solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                    solve_access(&test_ae, &context, system, test_system_resolver).await;
                 assert_eq!(&solved_predicate, expected);
             }
         }
@@ -885,7 +943,7 @@ mod tests {
                 ));
 
                 let solved_predicate =
-                    solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                    solve_access(&test_ae, &context, system, test_system_resolver).await;
                 assert_eq!(&solved_predicate, expected);
             }
         }
@@ -898,7 +956,7 @@ mod tests {
 
             let context = test_request_context(Value::Null); // context is irrelevant
             let solved_predicate =
-                solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+                solve_access(&test_ae, &context, system, test_system_resolver).await;
             assert_eq!(
                 solved_predicate,
                 AbstractPredicate::Neq(
@@ -913,7 +971,11 @@ mod tests {
     async fn context_only() {
         // Scenario: AuthContext.role == "ROLE_ADMIN"
 
-        let TestSystem { system, .. } = test_system();
+        let TestSystem {
+            system,
+            test_system_resolver,
+            ..
+        } = test_system();
 
         let test_ae = AccessPredicateExpression::RelationalOp(AccessRelationalOp::Eq(
             context_selection_expr("AccessContext", &["role"]),
@@ -924,12 +986,12 @@ mod tests {
 
         let context = test_request_context(json!({"role": "ROLE_ADMIN"} ));
         let solved_predicate =
-            solve_access(&test_ae, &context, &system, &test_curried_resolve()).await;
+            solve_access(&test_ae, &context, &system, &test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         let context = test_request_context(json!({"role": "ROLE_USER"} ));
         let solved_predicate =
-            solve_access(&test_ae, &context, &system, &test_curried_resolve()).await;
+            solve_access(&test_ae, &context, &system, &test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
 
@@ -941,6 +1003,7 @@ mod tests {
         let TestSystem {
             system,
             published_column_path,
+            test_system_resolver,
             ..
         } = &test_system;
 
@@ -960,13 +1023,11 @@ mod tests {
         };
 
         let context = test_request_context(json!({"role": "ROLE_ADMIN"} ));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         let context = test_request_context(json!({"role": "ROLE_USER"} ));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
@@ -984,6 +1045,7 @@ mod tests {
         let TestSystem {
             system,
             owner_id_column_path,
+            test_system_resolver,
             ..
         } = &test_system;
 
@@ -995,8 +1057,7 @@ mod tests {
         ));
 
         let context = test_request_context(json!({"user_id": "1"}));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
@@ -1006,8 +1067,7 @@ mod tests {
         );
 
         let context = test_request_context(json!({"user_id": "2"}));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
@@ -1025,6 +1085,7 @@ mod tests {
         let TestSystem {
             system,
             published_column_path,
+            test_system_resolver,
             ..
         } = &test_system;
 
@@ -1063,14 +1124,12 @@ mod tests {
 
         // For admins, allow access without any further restrictions
         let context = test_request_context(json!({"role": "ROLE_ADMIN"}));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         // For users, allow only if the article is published
         let context = test_request_context(json!({"role": "ROLE_USER"}));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
@@ -1081,38 +1140,41 @@ mod tests {
 
         // For other roles, do not allow
         let context = test_request_context(json!({"role": "ROLE_GUEST"}));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
         // For anonymous users, too, do not allow (irrelevant context content that doesn't define a user role)
         let context = test_request_context(json!({ "Foo": "bar" }));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
         // For anonymous users, too, do not allow (no context content)
         let context = test_request_context(Value::Null);
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
 
     #[tokio::test]
     async fn top_level_boolean_literal() {
+        let test_system = test_system();
+        let TestSystem {
+            test_system_resolver,
+            ..
+        } = &test_system;
+
         // Scenario: true or false
         let system = ModelPostgresSystem::default();
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(true);
         let context = test_request_context(Value::Null); // irrelevant context content
         let solved_predicate =
-            solve_access(&test_ae, &context, &system, &test_curried_resolve()).await;
+            solve_access(&test_ae, &context, &system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         let test_ae = AccessPredicateExpression::BooleanLiteral(false);
         let context = test_request_context(Value::Null); // irrelevant context content
         let solved_predicate =
-            solve_access(&test_ae, &context, &system, &test_curried_resolve()).await;
+            solve_access(&test_ae, &context, &system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
 
@@ -1124,14 +1186,14 @@ mod tests {
         let TestSystem {
             system,
             published_column_path: published_column_id,
+            test_system_resolver,
             ..
         } = &test_system;
 
         let test_ae = boolean_column_selection(published_column_id.clone());
 
         let context = test_request_context(Value::Null); // irrelevant context content
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(
             solved_predicate,
             AbstractPredicate::Eq(
@@ -1146,23 +1208,24 @@ mod tests {
         // Scenario: AuthContext.is_admin
 
         let test_system = test_system();
-        let TestSystem { system, .. } = &test_system;
+        let TestSystem {
+            system,
+            test_system_resolver,
+            ..
+        } = &test_system;
 
         let test_ae = boolean_context_selection(context_selection("AccessContext", &["is_admin"]));
 
         let context = test_request_context(json!({"is_admin": true}));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::True);
 
         let context = test_request_context(json!({"is_admin": false}));
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
 
         let context = test_request_context(Value::Null); // context not provided, so we should assume that the user is not an admin
-        let solved_predicate =
-            solve_access(&test_ae, &context, system, &test_curried_resolve()).await;
+        let solved_predicate = solve_access(&test_ae, &context, system, test_system_resolver).await;
         assert_eq!(solved_predicate, AbstractPredicate::False);
     }
 
