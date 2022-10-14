@@ -116,8 +116,12 @@ pub fn run(
 
     drop(tx);
 
-    let mut integration_test_results: Vec<_> = rx.into_iter().collect();
-    integration_test_results.sort_by(|a, b| {
+    {
+        let integration_test_results = rx.into_iter();
+        test_results.extend(integration_test_results.into_iter());
+    }
+
+    test_results.sort_by(|a, b| {
         if a.is_err() && b.is_ok() {
             std::cmp::Ordering::Greater
         } else if a.is_ok() && b.is_err() {
@@ -132,7 +136,6 @@ pub fn run(
             std::cmp::Ordering::Equal
         }
     });
-    test_results.extend(integration_test_results.into_iter());
 
     let mut number_of_succeeded_tests = 0;
 
