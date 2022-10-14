@@ -11,10 +11,13 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use include_dir::Dir;
+
 /// A module loader that allows loading source code from memory for the given module specifier;
 /// otherwise, loading it from an FsModuleLoader
 /// Based on https://deno.land/x/deno@v1.15.0/cli/standalone.rs
 pub(super) struct EmbeddedModuleLoader {
+    pub embedded_dirs: HashMap<String, &'static Dir<'static>>,
     pub source_code_map: Arc<RefCell<HashMap<ModuleSpecifier, Vec<u8>>>>,
 }
 
@@ -54,10 +57,11 @@ impl ModuleLoader for EmbeddedModuleLoader {
 
             let source_code_map = self.source_code_map.clone();
             let module_specifier = module_specifier.clone();
+            let embedded_dirs = self.embedded_dirs.clone();
 
             async move {
                 #[cfg(feature = "typescript-loader")]
-                let loader = crate::typescript_module_loader::TypescriptLoader;
+                let loader = crate::typescript_module_loader::TypescriptLoader { embedded_dirs };
 
                 #[cfg(not(feature = "typescript-loader"))]
                 let loader = deno_core::FsModuleLoader;

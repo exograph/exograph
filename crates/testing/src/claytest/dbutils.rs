@@ -2,12 +2,21 @@ use anyhow::{bail, Context, Result};
 use postgres::NoTls;
 use postgres::{config::Host, Client, Config};
 
-type ConnectionString = String;
-type DbUsername = String;
+pub(crate) struct CreatedPostgresDb {
+    pub connection_string: String,
+    pub db_username: String,
+    pub db_name: String,
+}
+
+impl Drop for CreatedPostgresDb {
+    fn drop(&mut self) {
+        dropdb_psql(&self.db_name, &self.connection_string).unwrap()
+    }
+}
 
 /// Create a database with the specified name at the specified PostgreSQL server and return
 /// a connection string and username for the database on successful creation.
-pub fn createdb_psql(dbname: &str, url: &str) -> Result<(ConnectionString, DbUsername)> {
+pub(crate) fn createdb_psql(dbname: &str, url: &str) -> Result<CreatedPostgresDb> {
     // TODO validate dbname
 
     // parse connection string
@@ -63,12 +72,16 @@ pub fn createdb_psql(dbname: &str, url: &str) -> Result<(ConnectionString, DbUse
     connectionparams += "?options=-c%20TimeZone%3DUTC%2B00"; // -c TimeZone=UTC+00
 
     // return
-    Ok((connectionparams, username.to_string()))
+    Ok(CreatedPostgresDb {
+        connection_string: connectionparams,
+        db_username: username.to_string(),
+        db_name: dbname.to_string(),
+    })
 }
 
 /// Connect to the specified PostgreSQL database and attempt to run a query.
-pub fn run_psql(query: &str, url: &str) -> Result<()> {
-    let mut client = url.parse::<Config>()?.connect(NoTls)?;
+pub(crate) fn run_psql(query: &str, db: &CreatedPostgresDb) -> Result<()> {
+    let mut client = db.connection_string.parse::<Config>()?.connect(NoTls)?;
     client
         .simple_query(query)
         .context(format!("PostgreSQL query failed: {}", query))

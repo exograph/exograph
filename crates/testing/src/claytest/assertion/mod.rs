@@ -46,6 +46,8 @@ pub fn dynamic_assert_using_deno(
         vec![],
         DenoModuleSharedState::default(),
         Some("ClaytipError"),
+        None,
+        None,
     );
 
     let runtime = tokio::runtime::Runtime::new()?;
@@ -92,6 +94,8 @@ pub fn evaluate_using_deno(
         vec![],
         vec![],
         DenoModuleSharedState::default(),
+        None,
+        None,
         None,
     );
 

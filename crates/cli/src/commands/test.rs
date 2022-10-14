@@ -7,10 +7,11 @@ use anyhow::Result;
 pub struct TestCommand {
     pub dir: PathBuf,
     pub pattern: Option<String>, // glob pattern indicating tests to be executed
+    pub run_introspection_tests: bool,
 }
 
 impl Command for TestCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        testing::run(&self.dir, &self.pattern)
+        testing::run(&self.dir, &self.pattern, self.run_introspection_tests)
     }
 }
