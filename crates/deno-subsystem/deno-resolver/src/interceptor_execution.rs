@@ -1,7 +1,6 @@
 use async_graphql_value::indexmap::IndexMap;
 use core_resolver::{
-    request_context::RequestContext,
-    system_resolver::{ClaytipExecuteQueryFn, SystemResolver},
+    request_context::RequestContext, system_resolver::ClaytipExecuteQueryFn,
     validation::field::ValidatedField,
 };
 use deno_model::interceptor::Interceptor;
@@ -23,7 +22,6 @@ pub async fn execute_interceptor<'a>(
     claytip_execute_query: &'a ClaytipExecuteQueryFn<'a>,
     operation: &'a ValidatedField,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
-    system_resolver: &'a SystemResolver,
 ) -> Result<(Value, Option<ClaytipMethodResponse>), DenoExecutionError> {
     let script = &subsystem_resolver.subsystem.scripts[interceptor.script];
 
@@ -31,7 +29,6 @@ pub async fn execute_interceptor<'a>(
         &IndexMap::new(),
         &interceptor.arguments,
         &subsystem_resolver.subsystem,
-        system_resolver,
         request_context,
     )
     .await?;

@@ -51,26 +51,16 @@ impl<'a> DenoOperation<'a> {
             ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => {
                 let access_expr = &access.value;
 
-                access_solver::solve_access(
-                    access_expr,
-                    self.request_context,
-                    subsystem,
-                    &self.system_resolver.resolve_operation_fn(),
-                )
-                .await
-                .into()
+                access_solver::solve_access(access_expr, self.request_context, subsystem)
+                    .await
+                    .into()
             }
         };
 
         let method_access_expr = &self.method.access.value;
 
-        let method_level_access = access_solver::solve_access(
-            method_access_expr,
-            self.request_context,
-            subsystem,
-            &self.system_resolver.resolve_operation_fn(),
-        )
-        .await;
+        let method_level_access =
+            access_solver::solve_access(method_access_expr, self.request_context, subsystem).await;
 
         let method_level_access = method_level_access;
 
@@ -120,7 +110,6 @@ impl<'a> DenoOperation<'a> {
             &self.field.arguments,
             &self.method.arguments,
             self.subsystem(),
-            self.system_resolver,
             self.request_context,
         )
         .await
@@ -135,7 +124,6 @@ pub async fn construct_arg_sequence<'a>(
     field_args: &IndexMap<String, ConstValue>,
     args: &[Argument],
     system: &'a ModelDenoSystem,
-    system_resolver: &'a SystemResolver,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
     let mapped_args = field_args
@@ -165,7 +153,7 @@ pub async fn construct_arg_sequence<'a>(
                 {
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = request_context
-                        .extract_context(context, &system_resolver.resolve_operation_fn())
+                        .extract_context(context)
                         .await
                         .unwrap_or_else(|_| {
                             panic!(

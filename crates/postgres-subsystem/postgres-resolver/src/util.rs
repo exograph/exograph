@@ -4,7 +4,7 @@ use crate::{
     access_solver::{AccessSolver, PostgresAccessSolver},
     sql_mapper::SQLOperationKind,
 };
-use core_resolver::{request_context::RequestContext, system_resolver::SystemResolver};
+use core_resolver::request_context::RequestContext;
 use payas_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},
@@ -19,11 +19,10 @@ pub(crate) async fn compute_sql_access_predicate<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
     request_context: &'a RequestContext<'a>,
 ) -> AbstractPredicate<'a> {
     let return_type = return_type.typ(subsystem);
-    let access_solver = PostgresAccessSolver::new(request_context, subsystem, system_resolver);
+    let access_solver = PostgresAccessSolver::new(request_context, subsystem);
 
     match &return_type.kind {
         PostgresTypeKind::Primitive => AbstractPredicate::True,

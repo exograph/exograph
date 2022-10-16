@@ -21,7 +21,7 @@ pub async fn resolve(
     system_context: web::Data<SystemResolver>,
 ) -> impl Responder {
     let request = ActixRequest::from_request(req);
-    let request_context = RequestContext::parse_context(&request, vec![]);
+    let request_context = RequestContext::parse_context(&request, vec![], system_context.as_ref());
 
     match request_context {
         Ok(request_context) => {
