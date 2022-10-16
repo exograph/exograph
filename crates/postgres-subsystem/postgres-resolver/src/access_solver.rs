@@ -1,7 +1,6 @@
-use async_recursion::async_recursion;
 use async_trait::async_trait;
+use core_resolver::request_context::RequestContext;
 use core_resolver::system_resolver::SystemResolver;
-use core_resolver::{request_context::RequestContext, ResolveOperationFn};
 use maybe_owned::MaybeOwned;
 use postgres_model::{
     access::{
@@ -27,6 +26,27 @@ use std::ops::Not;
 #[async_trait]
 pub trait AccessSolver<'a, _PrimExpr, Res> {
     async fn solve(&self, expr: &'a AccessPredicateExpression) -> AbstractPredicate<'a>;
+
+    async fn solve_context_selection(
+        &self,
+        context_selection: &AccessContextSelection,
+    ) -> Option<Value>;
+
+    async fn solve_relational_op(&self, op: &'a AccessRelationalOp) -> AbstractPredicate<'a>;
+
+    async fn solve_logical_op(&self, op: &'a AccessLogicalExpression) -> AbstractPredicate<'a>;
+
+    async fn reduce_primitive_expression(
+        &self,
+        expr: &'a AccessPrimitiveExpression,
+    ) -> SolvedPrimitiveExpression<'a>;
+}
+
+#[derive(Debug)]
+pub enum SolvedPrimitiveExpression<'a> {
+    Value(Value),
+    Column(ColumnIdPath),
+    UnresolvedContext(&'a AccessContextSelection), // For example, AuthContext.role for an anonymous user
 }
 
 pub struct PostgresAccessSolver<'a> {
@@ -61,98 +81,172 @@ impl<'a> AccessSolver<'a, AccessPrimitiveExpression, AbstractPredicate<'a>>
     /// filtering and (in case of `Predicate::False`) to return a "Not authorized" error (instead of an
     /// empty/null result).
     async fn solve(&self, expr: &'a AccessPredicateExpression) -> AbstractPredicate<'a> {
-        solve_predicate_expression(
-            expr,
-            self.request_context,
-            self.system,
-            &self.system_resolver.resolve_operation_fn(),
-        )
-        .await
+        match expr {
+            AccessPredicateExpression::LogicalOp(op) => self.solve_logical_op(op).await,
+            AccessPredicateExpression::RelationalOp(op) => self.solve_relational_op(op).await,
+            AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
+        }
     }
-}
 
-fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelPostgresSystem) -> ColumnPath<'a> {
-    column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
-}
+    async fn solve_relational_op(&self, op: &'a AccessRelationalOp) -> AbstractPredicate<'a> {
+        let (left, right) = op.sides();
+        let left = self.reduce_primitive_expression(left).await;
+        let right = self.reduce_primitive_expression(right).await;
 
-#[async_recursion]
-async fn solve_predicate_expression<'a>(
-    expr: &'a AccessPredicateExpression,
-    request_context: &'a RequestContext<'a>,
-    system: &'a ModelPostgresSystem,
-    resolver: &ResolveOperationFn<'a>,
-) -> AbstractPredicate<'a> {
-    match expr {
-        AccessPredicateExpression::LogicalOp(op) => {
-            solve_logical_op(op, request_context, system, resolver).await
+        type ColumnPredicateFn<'a> = fn(
+            MaybeOwned<'a, ColumnPath<'a>>,
+            MaybeOwned<'a, ColumnPath<'a>>,
+        ) -> AbstractPredicate<'a>;
+        type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
+
+        let helper = |unresolved_context_predicate: AbstractPredicate<'static>,
+                      column_predicate: ColumnPredicateFn<'a>,
+                      value_predicate: ValuePredicateFn<'a>|
+         -> AbstractPredicate<'a> {
+            match (left, right) {
+                (SolvedPrimitiveExpression::UnresolvedContext(_), _)
+                | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => {
+                    unresolved_context_predicate
+                }
+                (
+                    SolvedPrimitiveExpression::Column(left_col),
+                    SolvedPrimitiveExpression::Column(right_col),
+                ) => column_predicate(
+                    to_column_path(&left_col, self.system).into(),
+                    to_column_path(&right_col, self.system).into(),
+                ),
+
+                (
+                    SolvedPrimitiveExpression::Value(left_value),
+                    SolvedPrimitiveExpression::Value(right_value),
+                ) => value_predicate(left_value, right_value),
+                (
+                    SolvedPrimitiveExpression::Value(value),
+                    SolvedPrimitiveExpression::Column(column),
+                )
+                | (
+                    SolvedPrimitiveExpression::Column(column),
+                    SolvedPrimitiveExpression::Value(value),
+                ) => column_predicate(
+                    to_column_path(&column, self.system).into(),
+                    literal_column(value),
+                ),
+            }
+        };
+
+        match op {
+            AccessRelationalOp::Eq(..) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::eq,
+                |val1, val2| (val1 == val2).into(),
+            ),
+            AccessRelationalOp::Neq(_, _) => helper(
+                AbstractPredicate::True, // If a context is undefined, declare the expression as a match. For example, `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
+                AbstractPredicate::neq,
+                |val1, val2| (val1 != val2).into(),
+            ),
+            // For the next four, we could better optimize cases where values are known, but for now, we generate a predicate and let database handle it
+            AccessRelationalOp::Lt(_, _) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::Lt,
+                |val1, val2| AbstractPredicate::Lt(literal_column(val1), literal_column(val2)),
+            ),
+            AccessRelationalOp::Lte(_, _) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::Lte,
+                |val1, val2| AbstractPredicate::Lte(literal_column(val1), literal_column(val2)),
+            ),
+            AccessRelationalOp::Gt(_, _) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::Gt,
+                |val1, val2| AbstractPredicate::Gt(literal_column(val1), literal_column(val2)),
+            ),
+            AccessRelationalOp::Gte(_, _) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::Gte,
+                |val1, val2| AbstractPredicate::Gte(literal_column(val1), literal_column(val2)),
+            ),
+            AccessRelationalOp::In(..) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::In,
+                |left_value, right_value| match right_value {
+                    Value::Array(values) => values.contains(&left_value).into(),
+                    _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
+                },
+            ),
         }
-        AccessPredicateExpression::RelationalOp(op) => {
-            solve_relational_op(op, request_context, system, resolver).await
-        }
-        AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
     }
-}
 
-#[async_recursion]
-async fn solve_context_selection<'a>(
-    context_selection: &AccessContextSelection,
-    value: &'a RequestContext<'a>,
-    system: &'a ModelPostgresSystem,
-    resolver: &ResolveOperationFn<'a>,
-) -> Option<Value> {
-    match context_selection {
-        AccessContextSelection::Context(context_name) => {
-            let context_type = system.contexts.get_by_key(context_name).unwrap();
-            value.extract_context(context_type, resolver).await.ok()
+    async fn solve_logical_op(&self, op: &'a AccessLogicalExpression) -> AbstractPredicate<'a> {
+        match op {
+            AccessLogicalExpression::Not(underlying) => {
+                let underlying_predicate = self.solve(underlying).await;
+                underlying_predicate.not()
+            }
+            AccessLogicalExpression::And(left, right) => {
+                let left_predicate = self.solve(left).await;
+                let right_predicate = self.solve(right).await;
+
+                match (left_predicate, right_predicate) {
+                    (AbstractPredicate::False, _) | (_, AbstractPredicate::False) => {
+                        AbstractPredicate::False
+                    }
+
+                    (AbstractPredicate::True, right_predicate) => right_predicate,
+                    (left_predicate, AbstractPredicate::True) => left_predicate,
+                    (left_predicate, right_predicate) => {
+                        AbstractPredicate::and(left_predicate, right_predicate)
+                    }
+                }
+            }
+            AccessLogicalExpression::Or(left, right) => {
+                let left_predicate = self.solve(left).await;
+                let right_predicate = self.solve(right).await;
+
+                match (left_predicate, right_predicate) {
+                    (AbstractPredicate::True, _) | (_, AbstractPredicate::True) => {
+                        AbstractPredicate::True
+                    }
+
+                    (AbstractPredicate::False, right_predicate) => right_predicate,
+                    (left_predicate, AbstractPredicate::False) => left_predicate,
+                    (left_predicate, right_predicate) => {
+                        AbstractPredicate::or(left_predicate, right_predicate)
+                    }
+                }
+            }
         }
-        AccessContextSelection::Select(path, key) => {
-            solve_context_selection(path, value, system, resolver)
+    }
+
+    async fn solve_context_selection(
+        &self,
+        context_selection: &AccessContextSelection,
+    ) -> Option<Value> {
+        match context_selection {
+            AccessContextSelection::Context(context_name) => {
+                let context_type = self.system.contexts.get_by_key(context_name).unwrap();
+                self.request_context
+                    .extract_context(context_type, &self.system_resolver.resolve_operation_fn())
+                    .await
+                    .ok()
+            }
+            AccessContextSelection::Select(path, key) => self
+                .solve_context_selection(path)
                 .await
-                .and_then(|value| value.get(key).cloned())
+                .and_then(|value| value.get(key).cloned()),
         }
     }
-}
 
-fn literal_column(value: Value) -> MaybeOwned<'static, ColumnPath<'static>> {
-    match value {
-        Value::Null => ColumnPath::Null,
-        Value::Bool(v) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(v))),
-        Value::Number(v) => {
-            ColumnPath::Literal(MaybeOwned::Owned(Box::new(v.as_i64().unwrap() as i32)))
-        } // TODO: Deal with the exact number type
-        Value::String(v) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(v))),
-        Value::Array(values) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(values))),
-        Value::Object(_) => todo!(),
-    }
-    .into()
-}
-
-async fn solve_relational_op<'a>(
-    op: &'a AccessRelationalOp,
-    request_context: &'a RequestContext<'a>,
-    system: &'a ModelPostgresSystem,
-    resolver: &ResolveOperationFn<'a>,
-) -> AbstractPredicate<'a> {
-    #[derive(Debug)]
-    enum SolvedPrimitiveExpression<'a> {
-        Value(Value),
-        Column(ColumnIdPath),
-        UnresolvedContext(&'a AccessContextSelection), // For example, AuthContext.role for an anonymous user
-    }
-
-    async fn reduce_primitive_expression<'a>(
+    async fn reduce_primitive_expression(
+        &self,
         expr: &'a AccessPrimitiveExpression,
-        request_context: &'a RequestContext<'a>,
-        system: &'a ModelPostgresSystem,
-        resolver: &ResolveOperationFn<'a>,
     ) -> SolvedPrimitiveExpression<'a> {
         match expr {
-            AccessPrimitiveExpression::ContextSelection(selection) => {
-                solve_context_selection(selection, request_context, system, resolver)
-                    .await
-                    .map(SolvedPrimitiveExpression::Value)
-                    .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection))
-            }
+            AccessPrimitiveExpression::ContextSelection(selection) => self
+                .solve_context_selection(selection)
+                .await
+                .map(SolvedPrimitiveExpression::Value)
+                .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
             AccessPrimitiveExpression::Column(column_path) => {
                 SolvedPrimitiveExpression::Column(column_path.clone())
             }
@@ -167,140 +261,24 @@ async fn solve_relational_op<'a>(
             }
         }
     }
-
-    let (left, right) = op.sides();
-    let left = reduce_primitive_expression(left, request_context, system, resolver).await;
-    let right = reduce_primitive_expression(right, request_context, system, resolver).await;
-
-    type ColumnPredicateFn<'a> =
-        fn(MaybeOwned<'a, ColumnPath<'a>>, MaybeOwned<'a, ColumnPath<'a>>) -> AbstractPredicate<'a>;
-    type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
-
-    let helper = |unresolved_context_predicate: AbstractPredicate<'static>,
-                  column_predicate: ColumnPredicateFn<'a>,
-                  value_predicate: ValuePredicateFn<'a>|
-     -> AbstractPredicate<'a> {
-        match (left, right) {
-            (SolvedPrimitiveExpression::UnresolvedContext(_), _)
-            | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => unresolved_context_predicate,
-            (
-                SolvedPrimitiveExpression::Column(left_col),
-                SolvedPrimitiveExpression::Column(right_col),
-            ) => column_predicate(
-                to_column_path(&left_col, system).into(),
-                to_column_path(&right_col, system).into(),
-            ),
-
-            (
-                SolvedPrimitiveExpression::Value(left_value),
-                SolvedPrimitiveExpression::Value(right_value),
-            ) => value_predicate(left_value, right_value),
-            (
-                SolvedPrimitiveExpression::Value(value),
-                SolvedPrimitiveExpression::Column(column),
-            )
-            | (
-                SolvedPrimitiveExpression::Column(column),
-                SolvedPrimitiveExpression::Value(value),
-            ) => column_predicate(
-                to_column_path(&column, system).into(),
-                literal_column(value),
-            ),
-        }
-    };
-
-    match op {
-        AccessRelationalOp::Eq(..) => helper(
-            AbstractPredicate::False,
-            AbstractPredicate::eq,
-            |val1, val2| (val1 == val2).into(),
-        ),
-        AccessRelationalOp::Neq(_, _) => helper(
-            AbstractPredicate::True, // If a context is undefined, declare the expression as a match. For example, `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
-            AbstractPredicate::neq,
-            |val1, val2| (val1 != val2).into(),
-        ),
-        // For the next four, we could better optimize cases where values are known, but for now, we generate a predicate and let database handle it
-        AccessRelationalOp::Lt(_, _) => helper(
-            AbstractPredicate::False,
-            AbstractPredicate::Lt,
-            |val1, val2| AbstractPredicate::Lt(literal_column(val1), literal_column(val2)),
-        ),
-        AccessRelationalOp::Lte(_, _) => helper(
-            AbstractPredicate::False,
-            AbstractPredicate::Lte,
-            |val1, val2| AbstractPredicate::Lte(literal_column(val1), literal_column(val2)),
-        ),
-        AccessRelationalOp::Gt(_, _) => helper(
-            AbstractPredicate::False,
-            AbstractPredicate::Gt,
-            |val1, val2| AbstractPredicate::Gt(literal_column(val1), literal_column(val2)),
-        ),
-        AccessRelationalOp::Gte(_, _) => helper(
-            AbstractPredicate::False,
-            AbstractPredicate::Gte,
-            |val1, val2| AbstractPredicate::Gte(literal_column(val1), literal_column(val2)),
-        ),
-        AccessRelationalOp::In(..) => helper(
-            AbstractPredicate::False,
-            AbstractPredicate::In,
-            |left_value, right_value| match right_value {
-                Value::Array(values) => values.contains(&left_value).into(),
-                _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
-            },
-        ),
-    }
 }
 
-async fn solve_logical_op<'a>(
-    op: &'a AccessLogicalExpression,
-    request_context: &'a RequestContext<'a>,
-    system: &'a ModelPostgresSystem,
-    resolver: &ResolveOperationFn<'a>,
-) -> AbstractPredicate<'a> {
-    match op {
-        AccessLogicalExpression::Not(underlying) => {
-            let underlying_predicate =
-                solve_predicate_expression(underlying, request_context, system, resolver).await;
-            underlying_predicate.not()
-        }
-        AccessLogicalExpression::And(left, right) => {
-            let left_predicate =
-                solve_predicate_expression(left, request_context, system, resolver).await;
-            let right_predicate =
-                solve_predicate_expression(right, request_context, system, resolver).await;
+fn to_column_path<'a>(column_id: &ColumnIdPath, system: &'a ModelPostgresSystem) -> ColumnPath<'a> {
+    column_path_util::to_column_path(&Some(column_id.clone()), &None, system)
+}
 
-            match (left_predicate, right_predicate) {
-                (AbstractPredicate::False, _) | (_, AbstractPredicate::False) => {
-                    AbstractPredicate::False
-                }
-
-                (AbstractPredicate::True, right_predicate) => right_predicate,
-                (left_predicate, AbstractPredicate::True) => left_predicate,
-                (left_predicate, right_predicate) => {
-                    AbstractPredicate::and(left_predicate, right_predicate)
-                }
-            }
-        }
-        AccessLogicalExpression::Or(left, right) => {
-            let left_predicate =
-                solve_predicate_expression(left, request_context, system, resolver).await;
-            let right_predicate =
-                solve_predicate_expression(right, request_context, system, resolver).await;
-
-            match (left_predicate, right_predicate) {
-                (AbstractPredicate::True, _) | (_, AbstractPredicate::True) => {
-                    AbstractPredicate::True
-                }
-
-                (AbstractPredicate::False, right_predicate) => right_predicate,
-                (left_predicate, AbstractPredicate::False) => left_predicate,
-                (left_predicate, right_predicate) => {
-                    AbstractPredicate::or(left_predicate, right_predicate)
-                }
-            }
-        }
+fn literal_column(value: Value) -> MaybeOwned<'static, ColumnPath<'static>> {
+    match value {
+        Value::Null => ColumnPath::Null,
+        Value::Bool(v) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(v))),
+        Value::Number(v) => {
+            ColumnPath::Literal(MaybeOwned::Owned(Box::new(v.as_i64().unwrap() as i32)))
+        } // TODO: Deal with the exact number type
+        Value::String(v) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(v))),
+        Value::Array(values) => ColumnPath::Literal(MaybeOwned::Owned(Box::new(values))),
+        Value::Object(_) => todo!(),
     }
+    .into()
 }
 
 #[cfg(test)]
