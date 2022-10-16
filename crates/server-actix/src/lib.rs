@@ -18,10 +18,10 @@ macro_rules! error_msg {
 pub async fn resolve(
     req: HttpRequest,
     body: web::Json<Value>,
-    system_context: web::Data<SystemResolver>,
+    system_resolver: web::Data<SystemResolver>,
 ) -> impl Responder {
     let request = ActixRequest::from_request(req);
-    let request_context = RequestContext::parse_context(&request, vec![], system_context.as_ref());
+    let request_context = RequestContext::parse_context(&request, vec![], system_resolver.as_ref());
 
     match request_context {
         Ok(request_context) => {
@@ -32,7 +32,7 @@ pub async fn resolve(
                 Ok(operations_payload) => {
                     let (stream, headers) = resolver::resolve::<Error>(
                         operations_payload,
-                        system_context.as_ref(),
+                        system_resolver.as_ref(),
                         request_context,
                     )
                     .await;

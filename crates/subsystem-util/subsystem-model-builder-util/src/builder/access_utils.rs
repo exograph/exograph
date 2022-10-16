@@ -1,5 +1,6 @@
 use core_model::{
-    context_type::ContextFieldType, mapped_arena::MappedArena, primitive_type::PrimitiveType,
+    access::AccessContextSelection, context_type::ContextFieldType, mapped_arena::MappedArena,
+    primitive_type::PrimitiveType,
 };
 use core_model_builder::{
     ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
@@ -8,8 +9,8 @@ use core_model_builder::{
 };
 use subsystem_model_util::{
     access::{
-        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
-        AccessPrimitiveExpression, AccessRelationalOp,
+        AccessLogicalExpression, AccessPredicateExpression, AccessPrimitiveExpression,
+        AccessRelationalOp,
     },
     types::{ServiceCompositeType, ServiceType},
 };

@@ -1,10 +1,11 @@
 use async_trait::async_trait;
+use core_model::access::AccessContextSelection;
 use core_resolver::request_context::RequestContext;
 use maybe_owned::MaybeOwned;
 use postgres_model::{
     access::{
-        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
-        AccessPrimitiveExpression, AccessRelationalOp,
+        AccessLogicalExpression, AccessPredicateExpression, AccessPrimitiveExpression,
+        AccessRelationalOp,
     },
     column_path::ColumnIdPath,
     model::ModelPostgresSystem,

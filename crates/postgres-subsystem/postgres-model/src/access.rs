@@ -1,5 +1,6 @@
 // use super::column_path::ColumnIdPath;
 
+use core_model::access::AccessContextSelection;
 use serde::{Deserialize, Serialize};
 
 use crate::column_path::ColumnIdPath;
@@ -42,13 +43,6 @@ pub enum AccessPredicateExpression {
     LogicalOp(AccessLogicalExpression),
     RelationalOp(AccessRelationalOp),
     BooleanLiteral(bool),
-}
-
-/// A path representing context selection such as `AuthContext.role`
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessContextSelection {
-    Context(String),                             // for example, `AuthContext`
-    Select(Box<AccessContextSelection>, String), // for example, `AuthContext.role`
 }
 
 /// Logical operation created from `AccessPredicateExpression`s
