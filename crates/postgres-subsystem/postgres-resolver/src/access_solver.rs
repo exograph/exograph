@@ -24,15 +24,124 @@ use std::ops::Not;
 /// - Res: Result type
 #[async_trait]
 pub trait AccessSolver<'a, _PrimExpr, Res> {
-    async fn solve(&self, expr: &'a AccessPredicateExpression) -> AbstractPredicate<'a>;
+    async fn extract_context(&self, context_name: &str) -> Option<Value>;
+    fn to_column_path(&self, path: &ColumnIdPath) -> ColumnPath<'a>;
+
+    /// Solve access control logic.
+    /// The access control logic is expressed as a predicate expression. This method
+    /// tries to produce a simplest possible `Predicate` given the request context. It tries
+    /// to produce `Predicate::True` or `Predicate::False` when sufficient information is available
+    /// to make such determination. This allows (in case of `Predicate::True`) to skip the database
+    /// filtering and (in case of `Predicate::False`) to return a "Not authorized" error (instead of an
+    /// empty/null result).
+    async fn solve(&self, expr: &'a AccessPredicateExpression) -> AbstractPredicate<'a> {
+        match expr {
+            AccessPredicateExpression::LogicalOp(op) => self.solve_logical_op(op).await,
+            AccessPredicateExpression::RelationalOp(op) => self.solve_relational_op(op).await,
+            AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
+        }
+    }
 
     async fn solve_context_selection(
         &self,
         context_selection: &AccessContextSelection,
-    ) -> Option<Value>;
+    ) -> Option<Value> {
+        match context_selection {
+            AccessContextSelection::Context(context_name) => {
+                self.extract_context(context_name).await
+            }
+            AccessContextSelection::Select(path, key) => self
+                .solve_context_selection(path)
+                .await
+                .and_then(|value| value.get(key).cloned()),
+        }
+    }
 
-    async fn solve_relational_op(&self, op: &'a AccessRelationalOp) -> AbstractPredicate<'a>;
+    async fn solve_relational_op(&self, op: &'a AccessRelationalOp) -> AbstractPredicate<'a> {
+        let (left, right) = op.sides();
+        let left = self.reduce_primitive_expression(left).await;
+        let right = self.reduce_primitive_expression(right).await;
 
+        type ColumnPredicateFn<'a> = fn(
+            MaybeOwned<'a, ColumnPath<'a>>,
+            MaybeOwned<'a, ColumnPath<'a>>,
+        ) -> AbstractPredicate<'a>;
+        type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
+
+        let helper = |unresolved_context_predicate: AbstractPredicate<'static>,
+                      column_predicate: ColumnPredicateFn<'a>,
+                      value_predicate: ValuePredicateFn<'a>|
+         -> AbstractPredicate<'a> {
+            match (left, right) {
+                (SolvedPrimitiveExpression::UnresolvedContext(_), _)
+                | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => {
+                    unresolved_context_predicate
+                }
+                (
+                    SolvedPrimitiveExpression::Column(left_col),
+                    SolvedPrimitiveExpression::Column(right_col),
+                ) => column_predicate(
+                    self.to_column_path(&left_col).into(),
+                    self.to_column_path(&right_col).into(),
+                ),
+
+                (
+                    SolvedPrimitiveExpression::Value(left_value),
+                    SolvedPrimitiveExpression::Value(right_value),
+                ) => value_predicate(left_value, right_value),
+                (
+                    SolvedPrimitiveExpression::Value(value),
+                    SolvedPrimitiveExpression::Column(column),
+                )
+                | (
+                    SolvedPrimitiveExpression::Column(column),
+                    SolvedPrimitiveExpression::Value(value),
+                ) => column_predicate(self.to_column_path(&column).into(), literal_column(value)),
+            }
+        };
+
+        match op {
+            AccessRelationalOp::Eq(..) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::eq,
+                |val1, val2| (val1 == val2).into(),
+            ),
+            AccessRelationalOp::Neq(_, _) => helper(
+                AbstractPredicate::True, // If a context is undefined, declare the expression as a match. For example, `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
+                AbstractPredicate::neq,
+                |val1, val2| (val1 != val2).into(),
+            ),
+            // For the next four, we could better optimize cases where values are known, but for now, we generate a predicate and let database handle it
+            AccessRelationalOp::Lt(_, _) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::Lt,
+                |val1, val2| AbstractPredicate::Lt(literal_column(val1), literal_column(val2)),
+            ),
+            AccessRelationalOp::Lte(_, _) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::Lte,
+                |val1, val2| AbstractPredicate::Lte(literal_column(val1), literal_column(val2)),
+            ),
+            AccessRelationalOp::Gt(_, _) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::Gt,
+                |val1, val2| AbstractPredicate::Gt(literal_column(val1), literal_column(val2)),
+            ),
+            AccessRelationalOp::Gte(_, _) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::Gte,
+                |val1, val2| AbstractPredicate::Gte(literal_column(val1), literal_column(val2)),
+            ),
+            AccessRelationalOp::In(..) => helper(
+                AbstractPredicate::False,
+                AbstractPredicate::In,
+                |left_value, right_value| match right_value {
+                    Value::Array(values) => values.contains(&left_value).into(),
+                    _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
+                },
+            ),
+        }
+    }
     async fn solve_logical_op(&self, op: &'a AccessLogicalExpression) -> AbstractPredicate<'a> {
         match op {
             AccessLogicalExpression::Not(underlying) => {
@@ -128,127 +237,16 @@ impl PostgresAccessSolver<'_> {
 impl<'a> AccessSolver<'a, AccessPrimitiveExpression, AbstractPredicate<'a>>
     for PostgresAccessSolver<'a>
 {
-    /// Solve access control logic.
-    /// The access control logic is expressed as a predicate expression. This method
-    /// tries to produce a simplest possible `Predicate` given the request context. It tries
-    /// to produce `Predicate::True` or `Predicate::False` when sufficient information is available
-    /// to make such determination. This allows (in case of `Predicate::True`) to skip the database
-    /// filtering and (in case of `Predicate::False`) to return a "Not authorized" error (instead of an
-    /// empty/null result).
-    async fn solve(&self, expr: &'a AccessPredicateExpression) -> AbstractPredicate<'a> {
-        match expr {
-            AccessPredicateExpression::LogicalOp(op) => self.solve_logical_op(op).await,
-            AccessPredicateExpression::RelationalOp(op) => self.solve_relational_op(op).await,
-            AccessPredicateExpression::BooleanLiteral(value) => (*value).into(),
-        }
+    async fn extract_context(&self, context_name: &str) -> Option<Value> {
+        let context_type = self.system.contexts.get_by_key(context_name).unwrap();
+        self.request_context
+            .extract_context(context_type)
+            .await
+            .ok()
     }
 
-    async fn solve_relational_op(&self, op: &'a AccessRelationalOp) -> AbstractPredicate<'a> {
-        let (left, right) = op.sides();
-        let left = self.reduce_primitive_expression(left).await;
-        let right = self.reduce_primitive_expression(right).await;
-
-        type ColumnPredicateFn<'a> = fn(
-            MaybeOwned<'a, ColumnPath<'a>>,
-            MaybeOwned<'a, ColumnPath<'a>>,
-        ) -> AbstractPredicate<'a>;
-        type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
-
-        let helper = |unresolved_context_predicate: AbstractPredicate<'static>,
-                      column_predicate: ColumnPredicateFn<'a>,
-                      value_predicate: ValuePredicateFn<'a>|
-         -> AbstractPredicate<'a> {
-            match (left, right) {
-                (SolvedPrimitiveExpression::UnresolvedContext(_), _)
-                | (_, SolvedPrimitiveExpression::UnresolvedContext(_)) => {
-                    unresolved_context_predicate
-                }
-                (
-                    SolvedPrimitiveExpression::Column(left_col),
-                    SolvedPrimitiveExpression::Column(right_col),
-                ) => column_predicate(
-                    to_column_path(&left_col, self.system).into(),
-                    to_column_path(&right_col, self.system).into(),
-                ),
-
-                (
-                    SolvedPrimitiveExpression::Value(left_value),
-                    SolvedPrimitiveExpression::Value(right_value),
-                ) => value_predicate(left_value, right_value),
-                (
-                    SolvedPrimitiveExpression::Value(value),
-                    SolvedPrimitiveExpression::Column(column),
-                )
-                | (
-                    SolvedPrimitiveExpression::Column(column),
-                    SolvedPrimitiveExpression::Value(value),
-                ) => column_predicate(
-                    to_column_path(&column, self.system).into(),
-                    literal_column(value),
-                ),
-            }
-        };
-
-        match op {
-            AccessRelationalOp::Eq(..) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::eq,
-                |val1, val2| (val1 == val2).into(),
-            ),
-            AccessRelationalOp::Neq(_, _) => helper(
-                AbstractPredicate::True, // If a context is undefined, declare the expression as a match. For example, `AuthContext.role != "ADMIN"` for anonymous user evaluates to true
-                AbstractPredicate::neq,
-                |val1, val2| (val1 != val2).into(),
-            ),
-            // For the next four, we could better optimize cases where values are known, but for now, we generate a predicate and let database handle it
-            AccessRelationalOp::Lt(_, _) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::Lt,
-                |val1, val2| AbstractPredicate::Lt(literal_column(val1), literal_column(val2)),
-            ),
-            AccessRelationalOp::Lte(_, _) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::Lte,
-                |val1, val2| AbstractPredicate::Lte(literal_column(val1), literal_column(val2)),
-            ),
-            AccessRelationalOp::Gt(_, _) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::Gt,
-                |val1, val2| AbstractPredicate::Gt(literal_column(val1), literal_column(val2)),
-            ),
-            AccessRelationalOp::Gte(_, _) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::Gte,
-                |val1, val2| AbstractPredicate::Gte(literal_column(val1), literal_column(val2)),
-            ),
-            AccessRelationalOp::In(..) => helper(
-                AbstractPredicate::False,
-                AbstractPredicate::In,
-                |left_value, right_value| match right_value {
-                    Value::Array(values) => values.contains(&left_value).into(),
-                    _ => unreachable!("The right side operand of `in` operator must be an array"), // This never happens see relational_op::in_relation_match
-                },
-            ),
-        }
-    }
-
-    async fn solve_context_selection(
-        &self,
-        context_selection: &AccessContextSelection,
-    ) -> Option<Value> {
-        match context_selection {
-            AccessContextSelection::Context(context_name) => {
-                let context_type = self.system.contexts.get_by_key(context_name).unwrap();
-                self.request_context
-                    .extract_context(context_type)
-                    .await
-                    .ok()
-            }
-            AccessContextSelection::Select(path, key) => self
-                .solve_context_selection(path)
-                .await
-                .and_then(|value| value.get(key).cloned()),
-        }
+    fn to_column_path(&self, path: &ColumnIdPath) -> ColumnPath<'a> {
+        to_column_path(path, self.system)
     }
 }
 
