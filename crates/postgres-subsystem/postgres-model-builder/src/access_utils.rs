@@ -9,8 +9,8 @@ use core_model_builder::{
 };
 use postgres_model::{
     access::{
-        AccessLogicalExpression, AccessPredicateExpression, AccessPrimitiveExpression,
-        AccessRelationalOp,
+        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
+        DatabaseAccessPrimitiveExpression,
     },
     column_path::{ColumnIdPath, ColumnIdPathLink},
     types::{PostgresCompositeType, PostgresFieldType, PostgresType, PostgresTypeKind},
@@ -30,7 +30,7 @@ pub fn compute_predicate_expression(
     self_type_info: Option<&PostgresCompositeType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_types: &MappedArena<PostgresType>,
-) -> Result<AccessPredicateExpression, ModelBuildingError> {
+) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
         AstExpr::FieldSelection(selection) => {
             match compute_selection(selection, self_type_info, resolved_env, subsystem_types) {
@@ -40,8 +40,8 @@ pub fn compute_predicate_expression(
                         // For example, treat `self.published` the same as `self.published == true`
                         Ok(AccessPredicateExpression::RelationalOp(
                             AccessRelationalOp::Eq(
-                                Box::new(AccessPrimitiveExpression::Column(column_path)),
-                                Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
+                                Box::new(DatabaseAccessPrimitiveExpression::Column(column_path)),
+                                Box::new(DatabaseAccessPrimitiveExpression::BooleanLiteral(true)),
                             ),
                         ))
                     } else {
@@ -56,10 +56,10 @@ pub fn compute_predicate_expression(
                         // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                         Ok(AccessPredicateExpression::RelationalOp(
                             AccessRelationalOp::Eq(
-                                Box::new(AccessPrimitiveExpression::ContextSelection(
+                                Box::new(DatabaseAccessPrimitiveExpression::ContextSelection(
                                     context_selection,
                                 )),
-                                Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
+                                Box::new(DatabaseAccessPrimitiveExpression::BooleanLiteral(true)),
                             ),
                         ))
                     } else {
@@ -133,19 +133,27 @@ fn compute_primitive_expr(
     self_type_info: Option<&PostgresCompositeType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_types: &MappedArena<PostgresType>,
-) -> AccessPrimitiveExpression {
+) -> DatabaseAccessPrimitiveExpression {
     match expr {
         AstExpr::FieldSelection(selection) => {
             match compute_selection(selection, self_type_info, resolved_env, subsystem_types) {
                 PathSelection::Column(column_path, _) => {
-                    AccessPrimitiveExpression::Column(column_path)
+                    DatabaseAccessPrimitiveExpression::Column(column_path)
                 }
-                PathSelection::Context(c, _) => AccessPrimitiveExpression::ContextSelection(c),
+                PathSelection::Context(c, _) => {
+                    DatabaseAccessPrimitiveExpression::ContextSelection(c)
+                }
             }
         }
-        AstExpr::StringLiteral(value, _) => AccessPrimitiveExpression::StringLiteral(value.clone()),
-        AstExpr::BooleanLiteral(value, _) => AccessPrimitiveExpression::BooleanLiteral(*value),
-        AstExpr::NumberLiteral(value, _) => AccessPrimitiveExpression::NumberLiteral(*value),
+        AstExpr::StringLiteral(value, _) => {
+            DatabaseAccessPrimitiveExpression::StringLiteral(value.clone())
+        }
+        AstExpr::BooleanLiteral(value, _) => {
+            DatabaseAccessPrimitiveExpression::BooleanLiteral(*value)
+        }
+        AstExpr::NumberLiteral(value, _) => {
+            DatabaseAccessPrimitiveExpression::NumberLiteral(*value)
+        }
         AstExpr::StringList(_, _) => panic!("Access expressions do not support lists yet"),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions

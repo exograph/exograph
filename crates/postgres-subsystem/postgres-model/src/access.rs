@@ -8,10 +8,10 @@ use crate::column_path::ColumnIdPath;
 /// Access specification for a model
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Access {
-    pub creation: AccessPredicateExpression,
-    pub read: AccessPredicateExpression,
-    pub update: AccessPredicateExpression,
-    pub delete: AccessPredicateExpression,
+    pub creation: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub read: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub update: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
+    pub delete: AccessPredicateExpression<DatabaseAccessPrimitiveExpression>,
 }
 
 impl Access {
@@ -29,7 +29,7 @@ impl Access {
 /// Used as sides of `AccessRelationalExpression` to form more complex expressions
 /// such as equal and less than.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessPrimitiveExpression {
+pub enum DatabaseAccessPrimitiveExpression {
     ContextSelection(AccessContextSelection), // for example, AuthContext.role
     Column(ColumnIdPath),                     // for example, self.id
     StringLiteral(String),                    // for example, "ROLE_ADMIN"
@@ -39,61 +39,52 @@ pub enum AccessPrimitiveExpression {
 
 /// An expression that can be evaluated to a `Predicate`.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessPredicateExpression {
-    LogicalOp(AccessLogicalExpression),
-    RelationalOp(AccessRelationalOp),
+pub enum AccessPredicateExpression<PrimExpr>
+where
+    PrimExpr: Send + Sync,
+{
+    LogicalOp(AccessLogicalExpression<PrimExpr>),
+    RelationalOp(AccessRelationalOp<PrimExpr>),
     BooleanLiteral(bool),
 }
 
 /// Logical operation created from `AccessPredicateExpression`s
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessLogicalExpression {
-    Not(Box<AccessPredicateExpression>),
+pub enum AccessLogicalExpression<PrimExpr>
+where
+    PrimExpr: Send + Sync,
+{
+    Not(Box<AccessPredicateExpression<PrimExpr>>),
     And(
-        Box<AccessPredicateExpression>,
-        Box<AccessPredicateExpression>,
+        Box<AccessPredicateExpression<PrimExpr>>,
+        Box<AccessPredicateExpression<PrimExpr>>,
     ),
     Or(
-        Box<AccessPredicateExpression>,
-        Box<AccessPredicateExpression>,
+        Box<AccessPredicateExpression<PrimExpr>>,
+        Box<AccessPredicateExpression<PrimExpr>>,
     ),
 }
 
 /// Relational operators expressing a relation between two primitive expressions
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum AccessRelationalOp {
-    Eq(
-        Box<AccessPrimitiveExpression>,
-        Box<AccessPrimitiveExpression>,
-    ),
-    Neq(
-        Box<AccessPrimitiveExpression>,
-        Box<AccessPrimitiveExpression>,
-    ),
-    Lt(
-        Box<AccessPrimitiveExpression>,
-        Box<AccessPrimitiveExpression>,
-    ),
-    Lte(
-        Box<AccessPrimitiveExpression>,
-        Box<AccessPrimitiveExpression>,
-    ),
-    Gt(
-        Box<AccessPrimitiveExpression>,
-        Box<AccessPrimitiveExpression>,
-    ),
-    Gte(
-        Box<AccessPrimitiveExpression>,
-        Box<AccessPrimitiveExpression>,
-    ),
-    In(
-        Box<AccessPrimitiveExpression>,
-        Box<AccessPrimitiveExpression>,
-    ),
+pub enum AccessRelationalOp<PrimExpr>
+where
+    PrimExpr: Send + Sync,
+{
+    Eq(Box<PrimExpr>, Box<PrimExpr>),
+    Neq(Box<PrimExpr>, Box<PrimExpr>),
+    Lt(Box<PrimExpr>, Box<PrimExpr>),
+    Lte(Box<PrimExpr>, Box<PrimExpr>),
+    Gt(Box<PrimExpr>, Box<PrimExpr>),
+    Gte(Box<PrimExpr>, Box<PrimExpr>),
+    In(Box<PrimExpr>, Box<PrimExpr>),
 }
 
-impl AccessRelationalOp {
-    pub fn sides(&self) -> (&AccessPrimitiveExpression, &AccessPrimitiveExpression) {
+impl<PrimExpr> AccessRelationalOp<PrimExpr>
+where
+    PrimExpr: Send + Sync,
+{
+    pub fn sides(&self) -> (&PrimExpr, &PrimExpr) {
         match self {
             AccessRelationalOp::Eq(left, right) => (left, right),
             AccessRelationalOp::Neq(left, right) => (left, right),
