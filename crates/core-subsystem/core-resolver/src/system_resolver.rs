@@ -152,27 +152,35 @@ impl SystemResolver {
     ) -> Result<Option<QueryResponse>, SystemResolutionError> {
         let interceptor_subsystem = &self.subsystem_resolvers[interceptor.subsystem_index];
 
-        match proceeding_interception_tree {
-            Some(proceeding_interception_tree) => interceptor_subsystem
-                .invoke_proceeding_interceptor(
-                    operation,
-                    operation_type,
-                    interceptor.interceptor_index,
-                    proceeding_interception_tree,
-                    request_context,
-                    self,
-                ),
-
-            None => interceptor_subsystem.invoke_non_proceeding_interceptor(
+        interceptor_subsystem
+            .invoke_interceptor(
                 operation,
                 operation_type,
                 interceptor.interceptor_index,
+                proceeding_interception_tree,
                 request_context,
                 self,
-            ),
-        }
-        .await
-        .map_err(|e| e.into())
+            )
+            // match proceeding_interception_tree {
+            //     Some(proceeding_interception_tree) => interceptor_subsystem
+            //         .invoke_proceeding_interceptor(
+            //             operation,
+            //             operation_type,
+            //             interceptor.interceptor_index,
+            //             proceeding_interception_tree,
+            //             request_context,
+            //             self,
+            //         ),
+            //     None => interceptor_subsystem.invoke_non_proceeding_interceptor(
+            //         operation,
+            //         operation_type,
+            //         interceptor.interceptor_index,
+            //         request_context,
+            //         self,
+            //     ),
+            // }
+            .await
+            .map_err(|e| e.into())
     }
 
     #[instrument(skip(self, operations_payload))]

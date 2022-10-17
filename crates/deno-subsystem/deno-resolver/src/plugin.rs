@@ -116,45 +116,12 @@ impl SubsystemResolver for DenoSubsystemResolver {
         }
     }
 
-    async fn invoke_non_proceeding_interceptor<'a>(
-        &'a self,
-        operation: &'a ValidatedField,
-        _operation_type: OperationType,
-        interceptor_index: InterceptorIndex,
-        request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
-    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
-        let interceptor =
-            &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
-
-        let claytip_execute_query = claytip_execute_query!(system_resolver, request_context);
-        let (result, response) = super::interceptor_execution::execute_interceptor(
-            interceptor,
-            self,
-            request_context,
-            &claytip_execute_query,
-            operation,
-            None,
-        )
-        .await?;
-
-        let body = match result {
-            serde_json::Value::String(value) => QueryResponseBody::Raw(Some(value)),
-            _ => QueryResponseBody::Json(result),
-        };
-
-        Ok(Some(QueryResponse {
-            body,
-            headers: response.map(|r| r.headers).unwrap_or_default(),
-        }))
-    }
-
-    async fn invoke_proceeding_interceptor<'a>(
+    async fn invoke_interceptor<'a>(
         &'a self,
         operation: &'a ValidatedField,
         operation_type: OperationType,
         interceptor_index: InterceptorIndex,
-        proceeding_interception_tree: &'a InterceptionTree,
+        proceeding_interception_tree: Option<&'a InterceptionTree>,
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
@@ -164,7 +131,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
         let proceeding_interceptor = InterceptedOperation::new(
             operation_type,
             operation,
-            Some(proceeding_interception_tree),
+            proceeding_interception_tree,
             system_resolver,
         );
 

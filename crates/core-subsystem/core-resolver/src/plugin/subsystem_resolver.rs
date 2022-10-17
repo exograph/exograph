@@ -30,22 +30,12 @@ pub trait SubsystemResolver {
     ///
     /// Returns `None` for `QueryResponse` if the interceptor is of before/after type (which is not
     /// expected to return a value)
-    async fn invoke_proceeding_interceptor<'a>(
+    async fn invoke_interceptor<'a>(
         &'a self,
         operation: &'a ValidatedField,
         operation_type: OperationType,
         interceptor_index: InterceptorIndex,
-        proceeding_interception_tree: &'a InterceptionTree,
-        request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
-    ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
-
-    /// NOTE: See <https://github.com/payalabs/payas/issues/528>
-    async fn invoke_non_proceeding_interceptor<'a>(
-        &'a self,
-        operation: &'a ValidatedField,
-        operation_type: OperationType,
-        interceptor_index: InterceptorIndex,
+        proceeding_interception_tree: Option<&'a InterceptionTree>,
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
