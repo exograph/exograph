@@ -16,7 +16,22 @@ use payas_sql::{AbstractPredicate, ColumnPath};
 
 use serde_json::Value;
 
-use std::ops::Not;
+pub trait AccessPredicate<'a>:
+    From<bool> + std::ops::Not<Output = Self> + 'a + Send + Sync
+{
+    fn and(self, other: Self) -> Self;
+    fn or(self, other: Self) -> Self;
+}
+
+impl<'a> AccessPredicate<'a> for AbstractPredicate<'a> {
+    fn and(self, other: Self) -> Self {
+        AbstractPredicate::and(self, other)
+    }
+
+    fn or(self, other: Self) -> Self {
+        AbstractPredicate::or(self, other)
+    }
+}
 
 /// Solve access control logic.
 ///
@@ -24,7 +39,10 @@ use std::ops::Not;
 /// - PrimExpr: Primitive Expression
 /// - Res: Result type
 #[async_trait]
-pub trait AccessSolver<'a, _PrimExpr, Res> {
+pub trait AccessSolver<'a, _PrimExpr, Res>
+where
+    Res: AccessPredicate<'a>,
+{
     async fn extract_context(&self, context_name: &str) -> Option<Value>;
     fn to_column_path(&self, path: &ColumnIdPath) -> ColumnPath<'a>;
 
@@ -35,7 +53,7 @@ pub trait AccessSolver<'a, _PrimExpr, Res> {
     /// to make such determination. This allows (in case of `Predicate::True`) to skip the database
     /// filtering and (in case of `Predicate::False`) to return a "Not authorized" error (instead of an
     /// empty/null result).
-    async fn solve(&self, expr: &'a AccessPredicateExpression) -> AbstractPredicate<'a> {
+    async fn solve(&self, expr: &'a AccessPredicateExpression) -> Res {
         match expr {
             AccessPredicateExpression::LogicalOp(op) => self.solve_logical_op(op).await,
             AccessPredicateExpression::RelationalOp(op) => self.solve_relational_op(op).await,
@@ -58,6 +76,95 @@ pub trait AccessSolver<'a, _PrimExpr, Res> {
         }
     }
 
+    async fn solve_relational_op(&self, op: &'a AccessRelationalOp) -> Res;
+
+    async fn solve_logical_op(&self, op: &'a AccessLogicalExpression) -> Res {
+        match op {
+            AccessLogicalExpression::Not(underlying) => {
+                let underlying_predicate = self.solve(underlying).await;
+                underlying_predicate.not()
+            }
+            AccessLogicalExpression::And(left, right) => {
+                let left_predicate = self.solve(left).await;
+                let right_predicate = self.solve(right).await;
+
+                left_predicate.and(right_predicate)
+            }
+            AccessLogicalExpression::Or(left, right) => {
+                let left_predicate = self.solve(left).await;
+                let right_predicate = self.solve(right).await;
+
+                left_predicate.or(right_predicate)
+            }
+        }
+    }
+
+    async fn reduce_primitive_expression(
+        &self,
+        expr: &'a AccessPrimitiveExpression,
+    ) -> SolvedPrimitiveExpression<'a> {
+        match expr {
+            AccessPrimitiveExpression::ContextSelection(selection) => self
+                .solve_context_selection(selection)
+                .await
+                .map(SolvedPrimitiveExpression::Value)
+                .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
+            AccessPrimitiveExpression::Column(column_path) => {
+                SolvedPrimitiveExpression::Column(column_path.clone())
+            }
+            AccessPrimitiveExpression::StringLiteral(value) => {
+                SolvedPrimitiveExpression::Value(Value::String(value.clone()))
+            }
+            AccessPrimitiveExpression::BooleanLiteral(value) => {
+                SolvedPrimitiveExpression::Value(Value::Bool(*value))
+            }
+            AccessPrimitiveExpression::NumberLiteral(value) => {
+                SolvedPrimitiveExpression::Value(Value::Number((*value).into()))
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum SolvedPrimitiveExpression<'a> {
+    Value(Value),
+    Column(ColumnIdPath),
+    UnresolvedContext(&'a AccessContextSelection), // For example, AuthContext.role for an anonymous user
+}
+
+pub struct PostgresAccessSolver<'a> {
+    request_context: &'a RequestContext<'a>,
+    system: &'a ModelPostgresSystem,
+}
+
+impl PostgresAccessSolver<'_> {
+    pub fn new<'a>(
+        request_context: &'a RequestContext<'a>,
+        system: &'a ModelPostgresSystem,
+    ) -> PostgresAccessSolver<'a> {
+        PostgresAccessSolver {
+            request_context,
+            system,
+        }
+    }
+}
+
+#[async_trait]
+impl<'a> AccessSolver<'a, AccessPrimitiveExpression, AbstractPredicate<'a>>
+    for PostgresAccessSolver<'a>
+{
+    async fn extract_context(&self, context_name: &str) -> Option<Value> {
+        let context_type = self.system.contexts.get_by_key(context_name).unwrap();
+        self.request_context
+            .extract_context(context_type)
+            .await
+            .ok()
+    }
+
+    fn to_column_path(&self, path: &ColumnIdPath) -> ColumnPath<'a> {
+        to_column_path(path, self.system)
+    }
+
     async fn solve_relational_op(&self, op: &'a AccessRelationalOp) -> AbstractPredicate<'a> {
         let (left, right) = op.sides();
         let left = self.reduce_primitive_expression(left).await;
@@ -69,7 +176,7 @@ pub trait AccessSolver<'a, _PrimExpr, Res> {
         ) -> AbstractPredicate<'a>;
         type ValuePredicateFn<'a> = fn(Value, Value) -> AbstractPredicate<'a>;
 
-        let helper = |unresolved_context_predicate: AbstractPredicate<'static>,
+        let helper = |unresolved_context_predicate: AbstractPredicate<'a>,
                       column_predicate: ColumnPredicateFn<'a>,
                       value_predicate: ValuePredicateFn<'a>|
          -> AbstractPredicate<'a> {
@@ -142,112 +249,6 @@ pub trait AccessSolver<'a, _PrimExpr, Res> {
                 },
             ),
         }
-    }
-    async fn solve_logical_op(&self, op: &'a AccessLogicalExpression) -> AbstractPredicate<'a> {
-        match op {
-            AccessLogicalExpression::Not(underlying) => {
-                let underlying_predicate = self.solve(underlying).await;
-                underlying_predicate.not()
-            }
-            AccessLogicalExpression::And(left, right) => {
-                let left_predicate = self.solve(left).await;
-                let right_predicate = self.solve(right).await;
-
-                match (left_predicate, right_predicate) {
-                    (AbstractPredicate::False, _) | (_, AbstractPredicate::False) => {
-                        AbstractPredicate::False
-                    }
-
-                    (AbstractPredicate::True, right_predicate) => right_predicate,
-                    (left_predicate, AbstractPredicate::True) => left_predicate,
-                    (left_predicate, right_predicate) => {
-                        AbstractPredicate::and(left_predicate, right_predicate)
-                    }
-                }
-            }
-            AccessLogicalExpression::Or(left, right) => {
-                let left_predicate = self.solve(left).await;
-                let right_predicate = self.solve(right).await;
-
-                match (left_predicate, right_predicate) {
-                    (AbstractPredicate::True, _) | (_, AbstractPredicate::True) => {
-                        AbstractPredicate::True
-                    }
-
-                    (AbstractPredicate::False, right_predicate) => right_predicate,
-                    (left_predicate, AbstractPredicate::False) => left_predicate,
-                    (left_predicate, right_predicate) => {
-                        AbstractPredicate::or(left_predicate, right_predicate)
-                    }
-                }
-            }
-        }
-    }
-
-    async fn reduce_primitive_expression(
-        &self,
-        expr: &'a AccessPrimitiveExpression,
-    ) -> SolvedPrimitiveExpression<'a> {
-        match expr {
-            AccessPrimitiveExpression::ContextSelection(selection) => self
-                .solve_context_selection(selection)
-                .await
-                .map(SolvedPrimitiveExpression::Value)
-                .unwrap_or(SolvedPrimitiveExpression::UnresolvedContext(selection)),
-            AccessPrimitiveExpression::Column(column_path) => {
-                SolvedPrimitiveExpression::Column(column_path.clone())
-            }
-            AccessPrimitiveExpression::StringLiteral(value) => {
-                SolvedPrimitiveExpression::Value(Value::String(value.clone()))
-            }
-            AccessPrimitiveExpression::BooleanLiteral(value) => {
-                SolvedPrimitiveExpression::Value(Value::Bool(*value))
-            }
-            AccessPrimitiveExpression::NumberLiteral(value) => {
-                SolvedPrimitiveExpression::Value(Value::Number((*value).into()))
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum SolvedPrimitiveExpression<'a> {
-    Value(Value),
-    Column(ColumnIdPath),
-    UnresolvedContext(&'a AccessContextSelection), // For example, AuthContext.role for an anonymous user
-}
-
-pub struct PostgresAccessSolver<'a> {
-    request_context: &'a RequestContext<'a>,
-    system: &'a ModelPostgresSystem,
-}
-
-impl PostgresAccessSolver<'_> {
-    pub fn new<'a>(
-        request_context: &'a RequestContext<'a>,
-        system: &'a ModelPostgresSystem,
-    ) -> PostgresAccessSolver<'a> {
-        PostgresAccessSolver {
-            request_context,
-            system,
-        }
-    }
-}
-
-#[async_trait]
-impl<'a> AccessSolver<'a, AccessPrimitiveExpression, AbstractPredicate<'a>>
-    for PostgresAccessSolver<'a>
-{
-    async fn extract_context(&self, context_name: &str) -> Option<Value> {
-        let context_type = self.system.contexts.get_by_key(context_name).unwrap();
-        self.request_context
-            .extract_context(context_type)
-            .await
-            .ok()
-    }
-
-    fn to_column_path(&self, path: &ColumnIdPath) -> ColumnPath<'a> {
-        to_column_path(path, self.system)
     }
 }
 
