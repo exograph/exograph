@@ -1,7 +1,4 @@
-use crate::{
-    request_context::{ParsedContext, RequestContext},
-    ResolveOperationFn,
-};
+use crate::request_context::{ParsedContext, RequestContext};
 use async_trait::async_trait;
 use serde_json::Value;
 
@@ -18,7 +15,6 @@ impl ParsedContext for HeaderExtractor {
     async fn extract_context_field<'r>(
         &self,
         key: Option<&str>,
-        _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {

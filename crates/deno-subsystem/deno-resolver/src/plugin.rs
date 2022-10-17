@@ -127,8 +127,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
         let interceptor =
             &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
 
-        let claytip_execute_query =
-            claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
+        let claytip_execute_query = claytip_execute_query!(system_resolver, request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
             self,
@@ -169,8 +168,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
             system_resolver,
         );
 
-        let claytip_execute_query =
-            claytip_execute_query!(system_resolver.resolve_operation_fn(), request_context);
+        let claytip_execute_query = claytip_execute_query!(system_resolver, request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
             interceptor,
             self,
