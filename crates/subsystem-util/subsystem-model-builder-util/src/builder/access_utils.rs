@@ -1,5 +1,10 @@
 use core_model::{
-    access::AccessContextSelection, context_type::ContextFieldType, mapped_arena::MappedArena,
+    access::{
+        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
+        AccessRelationalOp,
+    },
+    context_type::ContextFieldType,
+    mapped_arena::MappedArena,
     primitive_type::PrimitiveType,
 };
 use core_model_builder::{
@@ -8,10 +13,7 @@ use core_model_builder::{
     typechecker::Typed,
 };
 use subsystem_model_util::{
-    access::{
-        AccessLogicalExpression, AccessPredicateExpression, AccessPrimitiveExpression,
-        AccessRelationalOp,
-    },
+    access::ServiceAccessPrimitiveExpression,
     types::{ServiceCompositeType, ServiceType},
 };
 
@@ -26,7 +28,7 @@ pub fn compute_predicate_expression(
     self_type_info: Option<&ServiceCompositeType>,
     resolved_env: &ResolvedTypeEnv,
     subsystem_types: &MappedArena<ServiceType>,
-) -> Result<AccessPredicateExpression, ModelBuildingError> {
+) -> Result<AccessPredicateExpression<ServiceAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
         AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
             PathSelection::Context(context_selection, field_type) => {
@@ -35,10 +37,10 @@ pub fn compute_predicate_expression(
                     // For example, treat `AuthContext.superUser` the same way as `AuthContext.superUser == true`
                     Ok(AccessPredicateExpression::RelationalOp(
                         AccessRelationalOp::Eq(
-                            Box::new(AccessPrimitiveExpression::ContextSelection(
+                            Box::new(ServiceAccessPrimitiveExpression::ContextSelection(
                                 context_selection,
                             )),
-                            Box::new(AccessPrimitiveExpression::BooleanLiteral(true)),
+                            Box::new(ServiceAccessPrimitiveExpression::BooleanLiteral(true)),
                         ),
                     ))
                 } else {
@@ -99,15 +101,19 @@ pub fn compute_predicate_expression(
 fn compute_primitive_expr(
     expr: &AstExpr<Typed>,
     resolved_env: &ResolvedTypeEnv,
-) -> AccessPrimitiveExpression {
+) -> ServiceAccessPrimitiveExpression {
     match expr {
         AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
-            PathSelection::Context(c, _) => AccessPrimitiveExpression::ContextSelection(c),
+            PathSelection::Context(c, _) => ServiceAccessPrimitiveExpression::ContextSelection(c),
         },
-        AstExpr::StringLiteral(value, _) => AccessPrimitiveExpression::StringLiteral(value.clone()),
-        AstExpr::BooleanLiteral(value, _) => AccessPrimitiveExpression::BooleanLiteral(*value),
-        AstExpr::NumberLiteral(value, _) => AccessPrimitiveExpression::NumberLiteral(*value),
-        AstExpr::StringList(_, _) => panic!("Access expressions do not support lists yet"),
+        AstExpr::StringLiteral(value, _) => {
+            ServiceAccessPrimitiveExpression::StringLiteral(value.clone())
+        }
+        AstExpr::BooleanLiteral(value, _) => {
+            ServiceAccessPrimitiveExpression::BooleanLiteral(*value)
+        }
+        AstExpr::NumberLiteral(value, _) => ServiceAccessPrimitiveExpression::NumberLiteral(*value),
+        AstExpr::StringList(_, _) => panic!("Service access expressions do not support lists yet"),
         AstExpr::LogicalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
         AstExpr::RelationalOp(_) => unreachable!(), // Parser has already ensures that the two sides are primitive expressions
     }
