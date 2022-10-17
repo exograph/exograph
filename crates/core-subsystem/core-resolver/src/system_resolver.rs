@@ -6,7 +6,6 @@ use core_plugin::interception::{
     InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex,
 };
 use futures::{future::BoxFuture, StreamExt};
-use maybe_owned::MaybeOwned;
 use serde_json::Value;
 use thiserror::Error;
 use tracing::{error, instrument};
@@ -21,19 +20,6 @@ use crate::{
     },
     FieldResolver, OperationsPayload, QueryResponse,
 };
-
-pub type ResolveOperationFn<'r> = Box<
-    dyn Fn(
-            OperationsPayload,
-            MaybeOwned<'r, RequestContext<'r>>,
-        ) -> BoxFuture<
-            'r,
-            Result<Vec<(String, QueryResponse)>, Box<dyn std::error::Error + Send + Sync>>,
-        >
-        + 'r
-        + Send
-        + Sync,
->;
 
 pub type ClaytipExecuteQueryFn<'a> = dyn Fn(
         String,
@@ -105,28 +91,6 @@ impl SystemResolver {
         operation
             .resolve_fields(&operation.fields, self, request_context)
             .await
-    }
-
-    /// Resolve the provided top-level operation.
-    ///
-    /// # Returns
-    /// A function that captures the SystemResolver (`self`) and returns a function that takes the
-    /// operation and request context and returns a future that resolves the operation.
-    ///
-    /// # Implementation notes
-    /// We use MaybeOwned<RequestContext> since in a few cases (see claytip_execute_query) we need
-    /// to pass a newly created owned object and in most other cases we need to pass an existing
-    /// reference.
-    pub fn resolve_operation_fn<'r>(&'r self) -> ResolveOperationFn<'r> {
-        Box::new(
-            move |input: OperationsPayload, request_context: MaybeOwned<'r, RequestContext<'r>>| {
-                Box::pin(async move {
-                    self.resolve_operations(input, &request_context)
-                        .await
-                        .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
-                })
-            },
-        )
     }
 
     /// Should we allow introspection queries?
@@ -230,28 +194,27 @@ impl SystemResolver {
 
 #[macro_export]
 macro_rules! claytip_execute_query {
-    ($resolve_query_fn:expr, $request_context:expr) => {
+    ($system_resolver:expr, $request_context:expr) => {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                context_override: serde_json::Value| {
             use core_resolver::system_resolver::SystemResolutionError;
             use core_resolver::QueryResponseBody;
             use futures::FutureExt;
-            use maybe_owned::MaybeOwned;
 
             let new_request_context = $request_context.with_override(context_override);
             async move {
                 // execute query
-                let result = $resolve_query_fn(
-                    core_resolver::OperationsPayload {
-                        operation_name: None,
-                        query: query_string,
-                        variables,
-                    },
-                    MaybeOwned::Owned(new_request_context),
-                )
-                .await
-                .map_err(SystemResolutionError::Delegate)?;
+                let result = $system_resolver
+                    .resolve_operations(
+                        core_resolver::OperationsPayload {
+                            operation_name: None,
+                            query: query_string,
+                            variables,
+                        },
+                        &new_request_context,
+                    )
+                    .await?;
 
                 // collate result into a single QueryResponse
 
