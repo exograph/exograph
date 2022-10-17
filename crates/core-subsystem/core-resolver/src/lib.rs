@@ -15,4 +15,3 @@ pub use field_resolver::FieldResolver;
 pub use interception::InterceptedOperation;
 pub use operation_payload::OperationsPayload;
 pub use query_response::{QueryResponse, QueryResponseBody};
-pub use system_resolver::ResolveOperationFn;

@@ -1,9 +1,6 @@
 use std::env;
 
-use crate::{
-    request_context::{BoxedParsedContext, ParsedContext, RequestContext},
-    ResolveOperationFn,
-};
+use crate::request_context::{BoxedParsedContext, ParsedContext, RequestContext};
 use async_trait::async_trait;
 use jsonwebtoken::errors::ErrorKind;
 use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
@@ -103,7 +100,6 @@ impl ParsedContext for ParsedJwtContext {
     async fn extract_context_field<'r>(
         &self,
         key: Option<&str>,
-        _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {

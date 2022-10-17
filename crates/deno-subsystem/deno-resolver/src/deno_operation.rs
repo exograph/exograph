@@ -69,10 +69,8 @@ impl<'a> DenoOperation<'a> {
         let subsystem = &self.subsystem();
         let script = &subsystem.scripts[self.method.script];
 
-        let claytip_execute_query: &ClaytipExecuteQueryFn = claytip_execute_query!(
-            self.system_resolver.resolve_operation_fn(),
-            self.request_context
-        );
+        let claytip_execute_query: &ClaytipExecuteQueryFn =
+            claytip_execute_query!(self.system_resolver, self.request_context);
 
         let arg_sequence: Vec<Arg> = self.construct_arg_sequence().await?;
 

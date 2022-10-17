@@ -17,7 +17,6 @@ use serde_json::Value;
 use thiserror::Error;
 
 use crate::system_resolver::SystemResolver;
-use crate::ResolveOperationFn;
 
 use self::cookie::CookieExtractor;
 use self::header::HeaderExtractor;
@@ -59,23 +58,22 @@ pub trait Request {
 /// Represent a request context extracted for a particular request
 pub struct UserRequestContext<'a> {
     // maps from an annotation to a parsed context
-    parsed_context_map: HashMap<String, BoxedParsedContext>,
+    parsed_context_map: HashMap<String, BoxedParsedContext<'a>>,
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn Request + Send + Sync),
-    system_resolver: &'a SystemResolver,
 }
 
 impl<'a> UserRequestContext<'a> {
     // Constructs a UserRequestContext from a vector of parsed contexts and a request.
     pub fn parse_context(
         request: &'a (dyn Request + Send + Sync),
-        parsed_contexts: Vec<BoxedParsedContext>,
+        parsed_contexts: Vec<BoxedParsedContext<'a>>,
         system_resolver: &'a SystemResolver,
     ) -> Result<UserRequestContext<'a>, ContextParsingError> {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedParsedContext> = vec![
             Box::new(EnvironmentContextExtractor),
-            Box::new(QueryExtractor),
+            Box::new(QueryExtractor::new(system_resolver)),
             Box::new(HeaderExtractor),
             Box::new(IpExtractor),
             CookieExtractor::parse_context(request)?,
@@ -92,7 +90,6 @@ impl<'a> UserRequestContext<'a> {
                 .collect(),
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
             request,
-            system_resolver,
         })
     }
 }
@@ -110,7 +107,7 @@ pub enum RequestContext<'a> {
 impl<'a> RequestContext<'a> {
     pub fn parse_context(
         request: &'a (dyn Request + Send + Sync),
-        parsed_contexts: Vec<BoxedParsedContext>,
+        parsed_contexts: Vec<BoxedParsedContext<'a>>,
         system_resolver: &'a SystemResolver,
     ) -> Result<RequestContext<'a>, ContextParsingError> {
         Ok(RequestContext::User(UserRequestContext::parse_context(
@@ -156,9 +153,8 @@ impl<'a> RequestContext<'a> {
     // extract a context field from the request context
     async fn extract_context_field_from_source<'s>(
         &'a self,
-        parsed_context_map: &HashMap<String, BoxedParsedContext>,
+        parsed_context_map: &HashMap<String, BoxedParsedContext<'a>>,
         request: &'a (dyn Request + Send + Sync),
-        resolver: &ResolveOperationFn<'a>,
         annotation_name: &str,
         value: Option<&str>,
     ) -> Result<Option<Value>, ContextParsingError> {
@@ -167,7 +163,7 @@ impl<'a> RequestContext<'a> {
             .ok_or_else(|| ContextParsingError::SourceNotFound(annotation_name.into()))?;
 
         Ok(parsed_context
-            .extract_context_field(value, resolver, self, request)
+            .extract_context_field(value, self, request)
             .await)
     }
 
@@ -181,14 +177,12 @@ impl<'a> RequestContext<'a> {
             RequestContext::User(UserRequestContext {
                 parsed_context_map,
                 request,
-                system_resolver,
                 ..
             }) => {
                 let field_value = self
                     .extract_context_field_from_source(
                         parsed_context_map,
                         *request,
-                        &system_resolver.resolve_operation_fn(),
                         &field.source.annotation_name,
                         field.source.value.as_deref(),
                     )
@@ -226,12 +220,11 @@ pub trait ParsedContext {
     async fn extract_context_field<'r>(
         &self,
         key: Option<&str>,
-        resolver: &ResolveOperationFn<'r>,
         request_context: &'r RequestContext<'r>,
         request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value>;
 }
-pub type BoxedParsedContext = Box<dyn ParsedContext + Send + Sync>;
+pub type BoxedParsedContext<'a> = Box<dyn ParsedContext + 'a + Send + Sync>;
 
 #[cfg(feature = "test-context")]
 pub struct TestRequestContext {
@@ -248,7 +241,6 @@ impl ParsedContext for TestRequestContext {
     async fn extract_context_field<'r>(
         &self,
         key: Option<&str>,
-        _resolver: &ResolveOperationFn<'r>,
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
