@@ -90,18 +90,16 @@ where
 
     pub fn and(lhs: Predicate<'a, C>, rhs: Predicate<'a, C>) -> Predicate<'a, C> {
         match (lhs, rhs) {
+            (Predicate::False, _) | (_, Predicate::False) => Predicate::False,
             (Predicate::True, rhs) => rhs,
             (lhs, Predicate::True) => lhs,
-            (Predicate::False, _) => Predicate::False,
-            (_, Predicate::False) => Predicate::False,
             (lhs, rhs) => Predicate::And(Box::new(lhs), Box::new(rhs)),
         }
     }
 
     pub fn or(lhs: Predicate<'a, C>, rhs: Predicate<'a, C>) -> Predicate<'a, C> {
         match (lhs, rhs) {
-            (Predicate::True, _) => Predicate::True,
-            (_, Predicate::True) => Predicate::True,
+            (Predicate::True, _) | (_, Predicate::True) => Predicate::True,
             (Predicate::False, rhs) => rhs,
             (lhs, Predicate::False) => lhs,
             (lhs, rhs) => Predicate::Or(Box::new(lhs), Box::new(rhs)),
@@ -109,11 +107,11 @@ where
     }
 }
 
-impl<C> From<bool> for Predicate<'static, C>
+impl<'a, C> From<bool> for Predicate<'a, C>
 where
     C: PartialEq + LiteralEquality,
 {
-    fn from(b: bool) -> Predicate<'static, C> {
+    fn from(b: bool) -> Predicate<'a, C> {
         if b {
             Predicate::True
         } else {

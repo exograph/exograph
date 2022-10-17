@@ -16,6 +16,7 @@ use payas_sql::TransactionHolder;
 use serde_json::Value;
 use thiserror::Error;
 
+use crate::system_resolver::SystemResolver;
 use crate::ResolveOperationFn;
 
 use self::cookie::CookieExtractor;
@@ -61,6 +62,7 @@ pub struct UserRequestContext<'a> {
     parsed_context_map: HashMap<String, BoxedParsedContext>,
     pub transaction_holder: Arc<Mutex<TransactionHolder>>,
     request: &'a (dyn Request + Send + Sync),
+    system_resolver: &'a SystemResolver,
 }
 
 impl<'a> UserRequestContext<'a> {
@@ -68,6 +70,7 @@ impl<'a> UserRequestContext<'a> {
     pub fn parse_context(
         request: &'a (dyn Request + Send + Sync),
         parsed_contexts: Vec<BoxedParsedContext>,
+        system_resolver: &'a SystemResolver,
     ) -> Result<UserRequestContext<'a>, ContextParsingError> {
         // a list of backend-agnostic contexts to also include
         let generic_contexts: Vec<BoxedParsedContext> = vec![
@@ -89,6 +92,7 @@ impl<'a> UserRequestContext<'a> {
                 .collect(),
             transaction_holder: Arc::new(Mutex::new(TransactionHolder::default())),
             request,
+            system_resolver,
         })
     }
 }
@@ -107,10 +111,12 @@ impl<'a> RequestContext<'a> {
     pub fn parse_context(
         request: &'a (dyn Request + Send + Sync),
         parsed_contexts: Vec<BoxedParsedContext>,
+        system_resolver: &'a SystemResolver,
     ) -> Result<RequestContext<'a>, ContextParsingError> {
         Ok(RequestContext::User(UserRequestContext::parse_context(
             request,
             parsed_contexts,
+            system_resolver,
         )?))
     }
 
@@ -132,11 +138,10 @@ impl<'a> RequestContext<'a> {
     pub async fn extract_context<'s>(
         &'a self,
         context: &ContextType,
-        resolver: &ResolveOperationFn<'a>,
     ) -> Result<Value, ContextParsingError> {
         Ok(Value::Object(
             futures::stream::iter(context.fields.iter())
-                .then(|field| async { self.extract_context_field(context, field, resolver).await })
+                .then(|field| async { self.extract_context_field(context, field).await })
                 .collect::<Vec<Result<_, _>>>()
                 .await
                 .into_iter()
@@ -171,19 +176,19 @@ impl<'a> RequestContext<'a> {
         &'a self,
         context: &ContextType,
         field: &ContextField,
-        resolver: &ResolveOperationFn<'a>,
     ) -> Result<Option<(String, Value)>, ContextParsingError> {
         match self {
             RequestContext::User(UserRequestContext {
                 parsed_context_map,
                 request,
+                system_resolver,
                 ..
             }) => {
                 let field_value = self
                     .extract_context_field_from_source(
                         parsed_context_map,
                         *request,
-                        resolver,
+                        &system_resolver.resolve_operation_fn(),
                         &field.source.annotation_name,
                         field.source.value.as_deref(),
                     )
@@ -200,11 +205,7 @@ impl<'a> RequestContext<'a> {
 
                 match overridden {
                     Some(value) => Ok(Some((field.name.clone(), value.clone()))),
-                    None => {
-                        base_context
-                            .extract_context_field(context, field, resolver)
-                            .await
-                    }
+                    None => base_context.extract_context_field(context, field).await,
                 }
             }
         }
