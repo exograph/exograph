@@ -161,24 +161,6 @@ impl SystemResolver {
                 request_context,
                 self,
             )
-            // match proceeding_interception_tree {
-            //     Some(proceeding_interception_tree) => interceptor_subsystem
-            //         .invoke_proceeding_interceptor(
-            //             operation,
-            //             operation_type,
-            //             interceptor.interceptor_index,
-            //             proceeding_interception_tree,
-            //             request_context,
-            //             self,
-            //         ),
-            //     None => interceptor_subsystem.invoke_non_proceeding_interceptor(
-            //         operation,
-            //         operation_type,
-            //         interceptor.interceptor_index,
-            //         request_context,
-            //         self,
-            //     ),
-            // }
             .await
             .map_err(|e| e.into())
     }
