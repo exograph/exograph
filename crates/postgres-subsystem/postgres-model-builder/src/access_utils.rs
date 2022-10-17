@@ -1,5 +1,10 @@
 use core_model::{
-    access::AccessContextSelection, context_type::ContextFieldType, mapped_arena::MappedArena,
+    access::{
+        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
+        AccessRelationalOp,
+    },
+    context_type::ContextFieldType,
+    mapped_arena::MappedArena,
     primitive_type::PrimitiveType,
 };
 use core_model_builder::{
@@ -8,10 +13,7 @@ use core_model_builder::{
     typechecker::Typed,
 };
 use postgres_model::{
-    access::{
-        AccessLogicalExpression, AccessPredicateExpression, AccessRelationalOp,
-        DatabaseAccessPrimitiveExpression,
-    },
+    access::DatabaseAccessPrimitiveExpression,
     column_path::{ColumnIdPath, ColumnIdPathLink},
     types::{PostgresCompositeType, PostgresFieldType, PostgresType, PostgresTypeKind},
 };

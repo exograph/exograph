@@ -1,9 +1,7 @@
 use async_graphql_value::{indexmap::IndexMap, ConstValue};
 
-use crate::{
-    access_solver::{AccessSolver, PostgresAccessSolver},
-    sql_mapper::SQLOperationKind,
-};
+use crate::{access_solver::PostgresAccessSolver, sql_mapper::SQLOperationKind};
+use core_resolver::access_solver::AccessSolver;
 use core_resolver::request_context::RequestContext;
 use payas_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
@@ -33,7 +31,7 @@ pub(crate) async fn compute_sql_access_predicate<'a>(
                 SQLOperationKind::Update => &access.update,
                 SQLOperationKind::Delete => &access.delete,
             };
-            access_solver.solve(access_expr).await
+            access_solver.solve(access_expr).await.0
         }
     }
 }
