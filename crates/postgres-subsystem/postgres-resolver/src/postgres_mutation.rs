@@ -104,7 +104,6 @@ async fn create_operation<'content>(
         &mutation.return_type,
         &SQLOperationKind::Create,
         subsystem,
-        system_resolver,
         request_context,
     )
     .await;
@@ -143,7 +142,6 @@ async fn delete_operation<'content>(
         &mutation.return_type,
         &SQLOperationKind::Delete,
         subsystem,
-        system_resolver,
         request_context,
     )
     .await;
@@ -190,7 +188,6 @@ async fn update_operation<'content>(
         &mutation.return_type,
         &SQLOperationKind::Update,
         subsystem,
-        system_resolver,
         request_context,
     )
     .await;

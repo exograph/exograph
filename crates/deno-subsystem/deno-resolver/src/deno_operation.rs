@@ -1,5 +1,6 @@
 use async_graphql_value::indexmap::IndexMap;
 use async_graphql_value::ConstValue;
+use core_resolver::access_solver::AccessSolver;
 use core_resolver::request_context::RequestContext;
 use core_resolver::system_resolver::ClaytipExecuteQueryFn;
 use core_resolver::system_resolver::SystemResolver;
@@ -13,7 +14,7 @@ use deno_model::service::ServiceMethod;
 use deno_model::types::{ServiceCompositeType, ServiceTypeKind};
 use payas_deno::Arg;
 
-use crate::access_solver;
+use crate::access_solver::DenoAccessSolver;
 use crate::clay_execution::ClayCallbackProcessor;
 use crate::deno_execution_error::DenoExecutionError;
 use crate::plugin::DenoSubsystemResolver;
@@ -46,31 +47,16 @@ impl<'a> DenoOperation<'a> {
         let subsystem = &self.subsystem();
         let return_type = self.method.return_type.typ(&subsystem.service_types);
 
+        let access_solver = DenoAccessSolver::new(self.request_context, self.subsystem());
+
         let type_level_access = match &return_type.kind {
             ServiceTypeKind::Primitive => true,
             ServiceTypeKind::Composite(ServiceCompositeType { access, .. }) => {
-                let access_expr = &access.value;
-
-                access_solver::solve_access(
-                    access_expr,
-                    self.request_context,
-                    subsystem,
-                    &self.system_resolver.resolve_operation_fn(),
-                )
-                .await
-                .into()
+                access_solver.solve(&access.value).await.0.into()
             }
         };
 
-        let method_access_expr = &self.method.access.value;
-
-        let method_level_access = access_solver::solve_access(
-            method_access_expr,
-            self.request_context,
-            subsystem,
-            &self.system_resolver.resolve_operation_fn(),
-        )
-        .await;
+        let method_level_access = access_solver.solve(&self.method.access.value).await.0;
 
         let method_level_access = method_level_access;
 
@@ -120,7 +106,6 @@ impl<'a> DenoOperation<'a> {
             &self.field.arguments,
             &self.method.arguments,
             self.subsystem(),
-            self.system_resolver,
             self.request_context,
         )
         .await
@@ -135,7 +120,6 @@ pub async fn construct_arg_sequence<'a>(
     field_args: &IndexMap<String, ConstValue>,
     args: &[Argument],
     system: &'a ModelDenoSystem,
-    system_resolver: &'a SystemResolver,
     request_context: &'a RequestContext<'a>,
 ) -> Result<Vec<Arg>, DenoExecutionError> {
     let mapped_args = field_args
@@ -165,7 +149,7 @@ pub async fn construct_arg_sequence<'a>(
                 {
                     // this argument is a context, get the value of the context and give it as an argument
                     let context_value = request_context
-                        .extract_context(context, &system_resolver.resolve_operation_fn())
+                        .extract_context(context)
                         .await
                         .unwrap_or_else(|_| {
                             panic!(

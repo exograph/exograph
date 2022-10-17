@@ -23,10 +23,10 @@ fn error_msg(message: &str, status_code: usize) -> Value {
 
 pub async fn resolve(
     event: LambdaEvent<Value>,
-    system_context: Arc<SystemResolver>,
+    system_resolver: Arc<SystemResolver>,
 ) -> Result<Value, Error> {
     let request = LambdaRequest::new(&event);
-    let request_context = RequestContext::parse_context(&request, vec![]);
+    let request_context = RequestContext::parse_context(&request, vec![], system_resolver.as_ref());
 
     let body = event.payload["body"].clone();
 
@@ -40,7 +40,7 @@ pub async fn resolve(
                 Some(operations_payload) => {
                     let (stream, headers) = resolver::resolve::<Error>(
                         operations_payload,
-                        &system_context,
+                        &system_resolver,
                         request_context,
                     )
                     .await;

@@ -40,7 +40,6 @@ pub async fn compute_select<'content>(
         &query.return_type,
         &SQLOperationKind::Retrieve,
         subsystem,
-        system_resolver,
         request_context,
     )
     .await;

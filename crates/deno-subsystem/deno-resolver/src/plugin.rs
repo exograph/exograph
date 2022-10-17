@@ -136,7 +136,6 @@ impl SubsystemResolver for DenoSubsystemResolver {
             &claytip_execute_query,
             operation,
             None,
-            system_resolver,
         )
         .await?;
 
@@ -179,7 +178,6 @@ impl SubsystemResolver for DenoSubsystemResolver {
             &claytip_execute_query,
             operation,
             Some(&|| proceeding_interceptor.resolve(request_context)),
-            system_resolver,
         )
         .await?;
 
