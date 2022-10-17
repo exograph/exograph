@@ -198,7 +198,6 @@ macro_rules! claytip_execute_query {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                context_override: serde_json::Value| {
-            use core_resolver::system_resolver::SystemResolutionError;
             use core_resolver::QueryResponseBody;
             use futures::FutureExt;
 
