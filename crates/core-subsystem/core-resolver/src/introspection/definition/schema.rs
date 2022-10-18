@@ -106,6 +106,25 @@ impl Schema {
         type_definitions.push(Self::create_directive_location_definition());
         type_definitions.push(Self::create_input_value_definition());
 
+        // strings and booleans are required for introspection
+        let mut create_primitive_if_not_present = |type_name: &str| {
+            if !type_definitions
+                .iter()
+                .any(|typedef| typedef.name.node.as_str() == type_name)
+            {
+                type_definitions.push(TypeDefinition {
+                    extend: false,
+                    description: None,
+                    name: default_positioned_name(type_name),
+                    directives: vec![],
+                    kind: TypeKind::Scalar,
+                });
+            }
+        };
+
+        create_primitive_if_not_present("String");
+        create_primitive_if_not_present("Boolean");
+
         Schema {
             type_definitions,
             schema_field_definition: Self::create_field(
