@@ -23,6 +23,7 @@ pub struct PostgresType {
     pub plural_name: String,
     pub kind: PostgresTypeKind,
     pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
+    pub exposed: bool,  // is this type to be exposed through introspection?
 }
 
 impl PostgresType {

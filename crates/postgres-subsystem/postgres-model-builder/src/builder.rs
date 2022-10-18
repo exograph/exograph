@@ -41,6 +41,7 @@ pub trait Builder {
                         plural_name: "".to_string(), // unused
                         kind: PostgresTypeKind::Primitive,
                         is_input: true,
+                        exposed: true,
                     },
                 );
             }

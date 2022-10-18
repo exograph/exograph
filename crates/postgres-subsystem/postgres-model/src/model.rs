@@ -57,6 +57,7 @@ impl ModelPostgresSystem {
 
         self.postgres_types
             .iter()
+            .filter(|(_, typ)| typ.exposed)
             .for_each(|model_type| all_type_definitions.push(model_type.1.type_definition(self)));
 
         self.order_by_types.iter().for_each(|parameter_type| {

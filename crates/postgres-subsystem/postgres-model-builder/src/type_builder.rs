@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::ResolvedFieldType};
 use core_model::context_type::ContextType;
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
@@ -61,6 +63,33 @@ pub(crate) fn build_expanded(
         }
     }
 
+    prune_unused_primitives(building)?;
+
+    Ok(())
+}
+
+fn prune_unused_primitives(building: &mut SystemContextBuilding) -> Result<(), ModelBuildingError> {
+    let mut used_primitives = HashSet::new();
+
+    for (_, typ) in building.postgres_types.iter() {
+        match &typ.kind {
+            PostgresTypeKind::Primitive => {}
+            PostgresTypeKind::Composite(PostgresCompositeType { fields, .. }) => {
+                for field in fields {
+                    if field.typ.is_primitive() {
+                        used_primitives.insert(*field.typ.type_id());
+                    }
+                }
+            }
+        }
+    }
+
+    for (type_id, typ) in building.postgres_types.iter_mut() {
+        if typ.is_primitive() && !used_primitives.contains(&type_id) {
+            typ.exposed = false;
+        }
+    }
+
     Ok(())
 }
 
@@ -78,6 +107,7 @@ fn create_shallow_type(
         plural_name: resolved_type.plural_name(),
         kind: PostgresTypeKind::Primitive,
         is_input: false,
+        exposed: true,
     };
 
     building.postgres_types.add(&type_name, typ);
