@@ -287,7 +287,21 @@ fn prune_unused_primitives(building: &mut SystemContextBuilding) -> Result<(), M
         add_method_types(&mutation.argument_param, &mutation.return_type)
     }
 
-    // 2. set unused types to not be exposed to introspection
+    // 2. collect primitives used in fields
+    for (_, typ) in building.types.iter() {
+        match &typ.kind {
+            ServiceTypeKind::Primitive => {}
+            ServiceTypeKind::Composite(ServiceCompositeType { fields, .. }) => {
+                for field in fields.iter() {
+                    if field.typ.is_primitive() {
+                        used_primitives.insert(*field.typ.type_id());
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. set unused types to not be exposed to introspection
 
     for (type_id, typ) in building.types.values.iter_mut() {
         if typ.is_primitive() && !used_primitives.contains(&type_id) {
