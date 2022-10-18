@@ -57,7 +57,7 @@ pub(super) fn build_service_expanded(
         expand_method_access(method, resolved_env, building)?
     }
 
-    prune_unused_primitives(building)?;
+    prune_unused_primitives_from_introspection(building)?;
 
     Ok(())
 }
@@ -260,7 +260,9 @@ fn compute_access_method(
     })
 }
 
-fn prune_unused_primitives(building: &mut SystemContextBuilding) -> Result<(), ModelBuildingError> {
+fn prune_unused_primitives_from_introspection(
+    building: &mut SystemContextBuilding,
+) -> Result<(), ModelBuildingError> {
     let mut used_primitives = HashSet::new();
     let type_is_primitive =
         |type_id: SerializableSlabIndex<ServiceType>| building.types[type_id].is_primitive();

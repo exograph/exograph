@@ -63,12 +63,14 @@ pub(crate) fn build_expanded(
         }
     }
 
-    prune_unused_primitives(building)?;
+    prune_unused_primitives_from_introspection(building)?;
 
     Ok(())
 }
 
-fn prune_unused_primitives(building: &mut SystemContextBuilding) -> Result<(), ModelBuildingError> {
+fn prune_unused_primitives_from_introspection(
+    building: &mut SystemContextBuilding,
+) -> Result<(), ModelBuildingError> {
     let mut used_primitives = HashSet::new();
 
     for (_, typ) in building.postgres_types.iter() {
