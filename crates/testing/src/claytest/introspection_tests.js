@@ -11,7 +11,13 @@ export async function assertSchema(endpoint) {
         body: JSON.stringify({"query": getIntrospectionQuery()})
     })
 
-    const schema = (await response.json())["data"]
+    let responseJson = await response.json();
+
+    if (responseJson["data"] === undefined && responseJson["errors"] !== undefined) {
+        throw new Error("Server gave us an error: " + JSON.stringify(responseJson["errors"]))
+    }
+
+    const schema = responseJson["data"]
     const clientSchema = buildClientSchema(schema)
 
     assertValidSchema(clientSchema)
