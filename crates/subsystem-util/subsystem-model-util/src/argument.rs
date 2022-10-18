@@ -23,8 +23,7 @@ pub struct ArgumentParameter {
 pub struct ArgumentParameterType {
     pub name: String,
     pub type_modifier: ServiceTypeModifier,
-    pub type_id: Option<SerializableSlabIndex<ServiceType>>,
-    pub is_primitive: bool,
+    pub type_id: SerializableSlabIndex<ServiceType>,
 }
 
 impl Parameter for ArgumentParameter {
@@ -45,7 +44,7 @@ impl Parameter for ArgumentParameter {
 impl TypeDefinitionProvider<SerializableSlab<ServiceType>> for ArgumentParameterType {
     fn type_definition(&self, service_types: &SerializableSlab<ServiceType>) -> TypeDefinition {
         let type_def = service_types
-            .get(self.type_id.unwrap())
+            .get(self.type_id)
             .unwrap()
             .type_definition(service_types);
 

@@ -21,6 +21,7 @@ pub struct ServiceType {
     pub name: String,
     pub kind: ServiceTypeKind,
     pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
+    pub exposed: bool, // Is this type to be exposed through introspection (i.e. is it used in a user-exposed method)?
 }
 
 impl ServiceType {

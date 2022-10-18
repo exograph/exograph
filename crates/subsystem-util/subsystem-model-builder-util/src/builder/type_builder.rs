@@ -1,7 +1,14 @@
-use core_model::{context_type::ContextType, mapped_arena::MappedArena};
+use std::collections::HashSet;
+
+use core_model::{
+    context_type::ContextType,
+    mapped_arena::{MappedArena, SerializableSlabIndex},
+};
 use core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed};
 use subsystem_model_util::{
     access::Access,
+    argument::ArgumentParameter,
+    operation::OperationReturnType,
     types::{ServiceCompositeType, ServiceField, ServiceFieldType, ServiceType, ServiceTypeKind},
 };
 
@@ -49,6 +56,8 @@ pub(super) fn build_service_expanded(
     for method in resolved_methods.iter() {
         expand_method_access(method, resolved_env, building)?
     }
+
+    prune_unused_primitives(building)?;
 
     Ok(())
 }
@@ -216,6 +225,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
         name: type_name.to_string(),
         kind: ServiceTypeKind::Primitive,
         is_input: false,
+        exposed: true,
     };
 
     building.types.add(&type_name, typ);
@@ -230,6 +240,7 @@ fn create_shallow_context(context: &ContextType, building: &mut SystemContextBui
         name: type_name.to_string(),
         kind: ServiceTypeKind::Primitive,
         is_input: false,
+        exposed: true,
     };
 
     building.types.add(type_name, typ);
@@ -247,4 +258,42 @@ fn compute_access_method(
     Ok(Access {
         value: access_expr(&resolved.value)?,
     })
+}
+
+fn prune_unused_primitives(building: &mut SystemContextBuilding) -> Result<(), ModelBuildingError> {
+    let mut used_primitives = HashSet::new();
+    let type_is_primitive =
+        |type_id: SerializableSlabIndex<ServiceType>| building.types[type_id].is_primitive();
+
+    let mut add_method_types = |args: &[ArgumentParameter], return_type: &OperationReturnType| {
+        for arg in args {
+            if type_is_primitive(arg.typ.type_id) {
+                used_primitives.insert(arg.typ.type_id);
+            }
+        }
+
+        if type_is_primitive(return_type.type_id) {
+            used_primitives.insert(return_type.type_id);
+        }
+    };
+
+    // 1. collect primitives used as arguments and return types from queries and mutations
+
+    for (_, query) in building.queries.iter() {
+        add_method_types(&query.argument_param, &query.return_type)
+    }
+
+    for (_, mutation) in building.mutations.iter() {
+        add_method_types(&mutation.argument_param, &mutation.return_type)
+    }
+
+    // 2. set unused types to not be exposed to introspection
+
+    for (type_id, typ) in building.types.values.iter_mut() {
+        if typ.is_primitive() && !used_primitives.contains(&type_id) {
+            typ.exposed = false;
+        }
+    }
+
+    Ok(())
 }

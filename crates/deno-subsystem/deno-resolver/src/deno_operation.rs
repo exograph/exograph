@@ -58,8 +58,6 @@ impl<'a> DenoOperation<'a> {
 
         let method_level_access = access_solver.solve(&self.method.access.value).await.0;
 
-        let method_level_access = method_level_access;
-
         // deny if either access check fails
         !(matches!(type_level_access, false)
             || matches!(method_level_access, ServiceAccessPredicate::False))

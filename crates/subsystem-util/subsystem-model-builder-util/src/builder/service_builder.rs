@@ -173,30 +173,15 @@ fn argument_param(
         .map(|arg| {
             let arg_typename = arg.typ.get_underlying_typename();
             let type_modifier = arg.typ.get_modifier();
-            let input_type_id = building.types.get_id(arg_typename);
+            let input_type_id = building.types.get_id(arg_typename).unwrap();
 
-            if let Some(input_type_id) = input_type_id {
-                ArgumentParameter {
-                    name: arg.name.clone(),
-                    typ: ArgumentParameterType {
-                        name: arg_typename.to_owned(),
-                        type_id: Some(input_type_id),
-                        type_modifier,
-                        is_primitive: false,
-                    },
-                }
-            } else {
-                // argument must be a primitive type
-
-                ArgumentParameter {
-                    name: arg.name.clone(),
-                    typ: ArgumentParameterType {
-                        name: arg_typename.to_string(),
-                        type_id: None,
-                        type_modifier,
-                        is_primitive: true,
-                    },
-                }
+            ArgumentParameter {
+                name: arg.name.clone(),
+                typ: ArgumentParameterType {
+                    name: arg_typename.to_owned(),
+                    type_id: input_type_id,
+                    type_modifier,
+                },
             }
         })
         .collect()
