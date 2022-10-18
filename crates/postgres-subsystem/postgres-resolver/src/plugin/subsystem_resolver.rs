@@ -100,23 +100,12 @@ impl SubsystemResolver for PostgresSubsystemResolver {
         }
     }
 
-    async fn invoke_proceeding_interceptor<'a>(
+    async fn invoke_interceptor<'a>(
         &'a self,
         _operation: &'a ValidatedField,
         _operation_type: OperationType,
         _interceptor_index: InterceptorIndex,
-        _proceeding_interception_tree: &'a InterceptionTree,
-        _request_context: &'a RequestContext<'a>,
-        _system_resolver: &'a SystemResolver,
-    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
-        Err(SubsystemResolutionError::NoInterceptorFound)
-    }
-
-    async fn invoke_non_proceeding_interceptor<'a>(
-        &'a self,
-        _operation: &'a ValidatedField,
-        _operation_type: OperationType,
-        _interceptor_index: InterceptorIndex,
+        _proceeding_interception_tree: Option<&'a InterceptionTree>,
         _request_context: &'a RequestContext<'a>,
         _system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
