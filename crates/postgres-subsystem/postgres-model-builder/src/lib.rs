@@ -6,6 +6,7 @@ mod builder;
 mod column_path_utils;
 mod create_mutation_builder;
 mod delete_mutation_builder;
+mod introspection;
 mod mutation_builder;
 mod naming;
 mod order_by_type_builder;

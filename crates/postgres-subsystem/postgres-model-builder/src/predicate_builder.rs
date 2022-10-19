@@ -27,7 +27,7 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
                     PredicateParameterType {
                         name: type_name.to_string(),
                         kind: PredicateParameterTypeKind::ImplicitEqual {},
-                        exposed: true,
+                        exposed: false, // don't duplicate introspection entries from regular primitives
                     },
                 );
 
@@ -53,27 +53,14 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (model_type_id, model_type) in building.postgres_types.iter() {
-        {
-            // set exposed flag based on primitives from postgres_types
-            let type_name = &model_type.name;
-            if let Some(typ) = building.predicate_types.get_by_key_mut(type_name) {
-                if model_type.is_primitive() {
-                    typ.exposed = model_type.exposed;
-                }
-            }
-        }
+        // Chain with primitives too to expand filters like "IntFilter"
+        let param_type_name = get_parameter_type_name(&model_type.name);
+        let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        {
-            // Chain with primitives too to expand filters like "IntFilter"
-            let param_type_name = get_parameter_type_name(&model_type.name);
-            let existing_param_id = building.predicate_types.get_id(&param_type_name);
+        let new_kind = expand_type(model_type_id, model_type, building);
+        let existing_param = &mut building.predicate_types[existing_param_id.unwrap()];
 
-            let new_kind = expand_type(model_type_id, model_type, building);
-            let existing_param = &mut building.predicate_types[existing_param_id.unwrap()];
-
-            existing_param.kind = new_kind;
-            existing_param.exposed = model_type.exposed;
-        }
+        existing_param.kind = new_kind;
     }
 }
 

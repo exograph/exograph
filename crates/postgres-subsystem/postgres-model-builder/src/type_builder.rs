@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::ResolvedFieldType};
 use core_model::context_type::ContextType;
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
@@ -60,43 +58,6 @@ pub(crate) fn build_expanded(
     for (_, model_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
             expand_type_access(c, resolved_env, building)?;
-        }
-    }
-
-    prune_unused_primitives_from_introspection(building)?;
-
-    Ok(())
-}
-
-fn prune_unused_primitives_from_introspection(
-    building: &mut SystemContextBuilding,
-) -> Result<(), ModelBuildingError> {
-    let mut used_primitives = HashSet::new();
-
-    // a list of primitives that should always be present in introspection
-    let primitive_whitelist = [
-        "Int", // Ints are used to specify parameters like limits and offsets
-    ];
-
-    for (_, typ) in building.postgres_types.iter() {
-        match &typ.kind {
-            PostgresTypeKind::Primitive => {}
-            PostgresTypeKind::Composite(PostgresCompositeType { fields, .. }) => {
-                for field in fields {
-                    if field.typ.is_primitive() {
-                        used_primitives.insert(*field.typ.type_id());
-                    }
-                }
-            }
-        }
-    }
-
-    for (type_id, typ) in building.postgres_types.iter_mut() {
-        if typ.is_primitive()
-            && !used_primitives.contains(&type_id)
-            && !primitive_whitelist.contains(&typ.name.as_str())
-        {
-            typ.exposed = false;
         }
     }
 

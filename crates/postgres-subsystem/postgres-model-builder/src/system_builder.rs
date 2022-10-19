@@ -12,6 +12,8 @@ use postgres_model::{
 
 use payas_sql::PhysicalTable;
 
+use crate::introspection::{self};
+
 use super::type_builder::ResolvedTypeEnv;
 use super::{
     mutation_builder, order_by_type_builder, predicate_builder, query_builder, resolved_builder,
@@ -91,6 +93,8 @@ fn build_expanded(
     // Finally expand queries, mutations, and service methods
     query_builder::build_expanded(building);
     mutation_builder::build_expanded(resolved_env, building);
+
+    introspection::prune_unused_primitives_from_introspection(building)?;
 
     Ok(())
 }
