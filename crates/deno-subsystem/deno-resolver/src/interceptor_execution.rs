@@ -9,18 +9,17 @@ use serde_json::Value;
 use crate::{deno_operation::construct_arg_sequence, plugin::DenoSubsystemResolver};
 
 use super::{
-    clay_execution::{ClayCallbackProcessor, ClaytipMethodResponse, FnClaytipInterceptorProceed},
+    clay_execution::{ClayCallbackProcessor, ClaytipMethodResponse},
     claytip_ops::InterceptedOperationInfo,
     deno_execution_error::DenoExecutionError,
 };
 
 pub async fn execute_interceptor<'a>(
-    interceptor: &'a Interceptor,
+    interceptor: &Interceptor,
     subsystem_resolver: &'a DenoSubsystemResolver,
     request_context: &'a RequestContext<'a>,
     claytip_execute_query: &'a ClaytipExecuteQueryFn<'a>,
     intercepted_operation: &'a InterceptedOperation<'a>,
-    claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>), DenoExecutionError> {
     let script = &subsystem_resolver.subsystem.scripts[interceptor.script];
 
@@ -32,9 +31,11 @@ pub async fn execute_interceptor<'a>(
     )
     .await?;
 
+    let intercepted_operation_resolver = || intercepted_operation.resolve(request_context);
+
     let callback_processor = ClayCallbackProcessor {
         claytip_execute_query,
-        claytip_proceed: claytip_proceed_operation,
+        claytip_proceed: Some(&intercepted_operation_resolver),
     };
 
     subsystem_resolver
@@ -45,8 +46,8 @@ pub async fn execute_interceptor<'a>(
             &interceptor.name,
             arg_sequence,
             Some(InterceptedOperationInfo {
-                name: intercepted_operation.operation.name.to_string(),
-                query: serde_json::to_value(intercepted_operation.operation).unwrap(),
+                name: intercepted_operation.operation().name.to_string(),
+                query: serde_json::to_value(intercepted_operation.operation()).unwrap(),
             }),
             callback_processor,
         )

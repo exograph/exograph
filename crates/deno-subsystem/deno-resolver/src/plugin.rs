@@ -130,7 +130,6 @@ impl SubsystemResolver for DenoSubsystemResolver {
             request_context,
             &claytip_execute_query,
             intercepted_operation,
-            Some(&|| intercepted_operation.resolve(request_context)),
         )
         .await?;
 

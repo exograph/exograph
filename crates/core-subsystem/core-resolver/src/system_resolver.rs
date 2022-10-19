@@ -104,7 +104,7 @@ impl SystemResolver {
     }
 
     /// Obtain the interception tree associated with the given operation
-    pub fn applicable_interceptors(
+    pub fn applicable_interception_tree(
         &self,
         operation_name: &str,
         operation_type: OperationType,
@@ -153,9 +153,9 @@ impl SystemResolver {
         let interceptor_subsystem = &self.subsystem_resolvers[interceptor.subsystem_index];
 
         let intercepted_operation = InterceptedOperation::new(
+            proceeding_interception_tree,
             operation_type,
             operation,
-            proceeding_interception_tree,
             self,
         );
 
@@ -306,6 +306,11 @@ pub enum SystemResolutionError {
 
     #[error("Around interceptor returned no response")]
     AroundInterceptorReturnedNoResponse,
+
+    #[error(
+        "Attempt to resolve empty interceptor (proceed called from before/after interceptor?)"
+    )]
+    NoInterceptionTree,
 }
 
 impl SystemResolutionError {

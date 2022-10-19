@@ -42,13 +42,13 @@ pub enum ResponseForDenoMessage {
 pub type FnClaytipInterceptorProceed<'a> =
     (dyn Fn() -> BoxFuture<'a, Result<QueryResponse, SystemResolutionError>> + 'a + Send + Sync);
 
-pub struct ClayCallbackProcessor<'a> {
+pub struct ClayCallbackProcessor<'a, 'b> {
     pub claytip_execute_query: &'a ClaytipExecuteQueryFn<'a>,
-    pub claytip_proceed: Option<&'a FnClaytipInterceptorProceed<'a>>,
+    pub claytip_proceed: Option<&'b FnClaytipInterceptorProceed<'a>>,
 }
 
 #[async_trait]
-impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a> {
+impl<'a> CallbackProcessor<RequestFromDenoMessage> for ClayCallbackProcessor<'a, '_> {
     async fn process_callback(&self, req: RequestFromDenoMessage) {
         match req {
             RequestFromDenoMessage::InterceptedOperationProceed { response_sender } => {
