@@ -64,9 +64,12 @@ impl ModelPostgresSystem {
             all_type_definitions.push(parameter_type.1.type_definition(self))
         });
 
-        self.predicate_types.iter().for_each(|parameter_type| {
-            all_type_definitions.push(parameter_type.1.type_definition(self))
-        });
+        self.predicate_types
+            .iter()
+            .filter(|(_, typ)| typ.exposed)
+            .for_each(|parameter_type| {
+                all_type_definitions.push(parameter_type.1.type_definition(self))
+            });
 
         self.mutation_types.iter().for_each(|parameter_type| {
             all_type_definitions.push(parameter_type.1.type_definition(self))

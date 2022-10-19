@@ -48,6 +48,7 @@ pub struct PredicateParameterTypeWithModifier {
 pub struct PredicateParameterType {
     pub name: String,
     pub kind: PredicateParameterTypeKind,
+    pub exposed: bool, // is this type exposed in introspection?
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
