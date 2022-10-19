@@ -5,10 +5,7 @@ use async_graphql_parser::{
 use async_trait::async_trait;
 
 use core_model::mapped_arena::SerializableSlabIndex;
-use core_plugin::{
-    interception::{InterceptionTree, InterceptorIndex},
-    system_serializer::SystemSerializer,
-};
+use core_plugin::{interception::InterceptorIndex, system_serializer::SystemSerializer};
 use core_resolver::{
     claytip_execute_query,
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolutionError, SubsystemResolver},
@@ -118,22 +115,13 @@ impl SubsystemResolver for DenoSubsystemResolver {
 
     async fn invoke_interceptor<'a>(
         &'a self,
-        operation: &'a ValidatedField,
-        operation_type: OperationType,
         interceptor_index: InterceptorIndex,
-        proceeding_interception_tree: Option<&'a InterceptionTree>,
+        intercepted_operation: &'a InterceptedOperation<'a>,
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let interceptor =
             &self.subsystem.interceptors[SerializableSlabIndex::from_idx(interceptor_index.0)];
-
-        let proceeding_interceptor = InterceptedOperation::new(
-            operation_type,
-            operation,
-            proceeding_interception_tree,
-            system_resolver,
-        );
 
         let claytip_execute_query = claytip_execute_query!(system_resolver, request_context);
         let (result, response) = super::interceptor_execution::execute_interceptor(
@@ -141,8 +129,8 @@ impl SubsystemResolver for DenoSubsystemResolver {
             self,
             request_context,
             &claytip_execute_query,
-            operation,
-            Some(&|| proceeding_interceptor.resolve(request_context)),
+            intercepted_operation,
+            Some(&|| intercepted_operation.resolve(request_context)),
         )
         .await?;
 

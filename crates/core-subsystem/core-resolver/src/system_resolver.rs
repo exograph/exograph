@@ -18,7 +18,7 @@ use crate::{
         document_validator::DocumentValidator, field::ValidatedField,
         operation::ValidatedOperation, validation_error::ValidationError,
     },
-    FieldResolver, OperationsPayload, QueryResponse,
+    FieldResolver, InterceptedOperation, OperationsPayload, QueryResponse,
 };
 
 pub type ClaytipExecuteQueryFn<'a> = dyn Fn(
@@ -152,12 +152,17 @@ impl SystemResolver {
     ) -> Result<Option<QueryResponse>, SystemResolutionError> {
         let interceptor_subsystem = &self.subsystem_resolvers[interceptor.subsystem_index];
 
+        let intercepted_operation = InterceptedOperation::new(
+            operation_type,
+            operation,
+            proceeding_interception_tree,
+            self,
+        );
+
         interceptor_subsystem
             .invoke_interceptor(
-                operation,
-                operation_type,
                 interceptor.interceptor_index,
-                proceeding_interception_tree,
+                &intercepted_operation,
                 request_context,
                 self,
             )

@@ -4,13 +4,13 @@ use async_graphql_parser::{
 };
 use async_trait::async_trait;
 
-use core_plugin::interception::{InterceptionTree, InterceptorIndex};
+use core_plugin::interception::InterceptorIndex;
 use core_resolver::{
     plugin::{SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
     system_resolver::SystemResolver,
     validation::field::ValidatedField,
-    QueryResponse,
+    InterceptedOperation, QueryResponse,
 };
 use payas_sql::{AbstractOperation, AbstractPredicate, DatabaseExecutor};
 use postgres_model::{
@@ -102,10 +102,8 @@ impl SubsystemResolver for PostgresSubsystemResolver {
 
     async fn invoke_interceptor<'a>(
         &'a self,
-        _operation: &'a ValidatedField,
-        _operation_type: OperationType,
         _interceptor_index: InterceptorIndex,
-        _proceeding_interception_tree: Option<&'a InterceptionTree>,
+        _intercepted_operation: &'a InterceptedOperation<'a>,
         _request_context: &'a RequestContext<'a>,
         _system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {

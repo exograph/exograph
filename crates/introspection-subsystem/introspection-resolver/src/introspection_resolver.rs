@@ -2,14 +2,14 @@ use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
     Positioned,
 };
-use core_plugin::interception::{InterceptionTree, InterceptorIndex};
+use core_plugin::interception::InterceptorIndex;
 use core_resolver::{
     introspection::definition::schema::Schema,
     plugin::{SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
     system_resolver::SystemResolver,
     validation::field::ValidatedField,
-    QueryResponse, QueryResponseBody,
+    InterceptedOperation, QueryResponse, QueryResponseBody,
 };
 
 use crate::{field_resolver::FieldResolver, root_element::IntrospectionRootElement};
@@ -59,10 +59,8 @@ impl SubsystemResolver for IntrospectionResolver {
 
     async fn invoke_interceptor<'a>(
         &'a self,
-        _operation: &'a ValidatedField,
-        _operation_type: OperationType,
         _interceptor_index: InterceptorIndex,
-        _proceeding_interception_tree: Option<&'a InterceptionTree>,
+        _proceeding_interceptor: &'a InterceptedOperation<'a>,
         _request_context: &'a RequestContext<'a>,
         _system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {

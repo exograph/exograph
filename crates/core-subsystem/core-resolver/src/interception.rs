@@ -9,7 +9,7 @@ use crate::system_resolver::{SystemResolutionError, SystemResolver};
 
 pub struct InterceptedOperation<'a> {
     operation_type: OperationType,
-    operation: &'a ValidatedField,
+    pub operation: &'a ValidatedField,
     interception_tree: Option<&'a InterceptionTree>,
     system_resolver: &'a SystemResolver,
 }

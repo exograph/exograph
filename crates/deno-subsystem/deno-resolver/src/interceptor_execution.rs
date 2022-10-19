@@ -1,7 +1,6 @@
 use async_graphql_value::indexmap::IndexMap;
 use core_resolver::{
-    request_context::RequestContext, system_resolver::ClaytipExecuteQueryFn,
-    validation::field::ValidatedField,
+    request_context::RequestContext, system_resolver::ClaytipExecuteQueryFn, InterceptedOperation,
 };
 use deno_model::interceptor::Interceptor;
 use payas_deno::Arg;
@@ -20,7 +19,7 @@ pub async fn execute_interceptor<'a>(
     subsystem_resolver: &'a DenoSubsystemResolver,
     request_context: &'a RequestContext<'a>,
     claytip_execute_query: &'a ClaytipExecuteQueryFn<'a>,
-    operation: &'a ValidatedField,
+    intercepted_operation: &'a InterceptedOperation<'a>,
     claytip_proceed_operation: Option<&'a FnClaytipInterceptorProceed<'a>>,
 ) -> Result<(Value, Option<ClaytipMethodResponse>), DenoExecutionError> {
     let script = &subsystem_resolver.subsystem.scripts[interceptor.script];
@@ -46,8 +45,8 @@ pub async fn execute_interceptor<'a>(
             &interceptor.name,
             arg_sequence,
             Some(InterceptedOperationInfo {
-                name: operation.name.to_string(),
-                query: serde_json::to_value(operation).unwrap(),
+                name: intercepted_operation.operation.name.to_string(),
+                query: serde_json::to_value(intercepted_operation.operation).unwrap(),
             }),
             callback_processor,
         )
