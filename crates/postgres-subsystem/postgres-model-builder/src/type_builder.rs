@@ -73,6 +73,11 @@ fn prune_unused_primitives_from_introspection(
 ) -> Result<(), ModelBuildingError> {
     let mut used_primitives = HashSet::new();
 
+    // a list of primitives that should always be present in introspection
+    let primitive_whitelist = [
+        "Int", // Ints are used to specify parameters like limits and offsets
+    ];
+
     for (_, typ) in building.postgres_types.iter() {
         match &typ.kind {
             PostgresTypeKind::Primitive => {}
@@ -87,7 +92,10 @@ fn prune_unused_primitives_from_introspection(
     }
 
     for (type_id, typ) in building.postgres_types.iter_mut() {
-        if typ.is_primitive() && !used_primitives.contains(&type_id) {
+        if typ.is_primitive()
+            && !used_primitives.contains(&type_id)
+            && !primitive_whitelist.contains(&typ.name.as_str())
+        {
             typ.exposed = false;
         }
     }

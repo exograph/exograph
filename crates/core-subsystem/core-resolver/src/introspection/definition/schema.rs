@@ -123,9 +123,8 @@ impl Schema {
             }
         };
 
-        create_primitive_if_not_present("String");
         create_primitive_if_not_present("Boolean");
-        create_primitive_if_not_present("Int");
+        create_primitive_if_not_present("String");
 
         Schema {
             type_definitions,
