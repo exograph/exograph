@@ -17,6 +17,13 @@ export async function assertSchema(endpoint) {
         throw new Error("Server gave us an error: " + JSON.stringify(responseJson["errors"]))
     }
 
+    const forbiddenType = [ "Claytip", "ClaytipPriv" ];
+    for (const obj of responseJson["data"]["__schema"]["types"]) {
+        if (forbiddenType.includes(obj.name)) {
+            throw new Error("A type that should not be in introspection was found: " + obj.name)
+        }
+    }
+
     const schema = responseJson["data"]
     const clientSchema = buildClientSchema(schema)
 
