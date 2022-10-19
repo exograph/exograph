@@ -56,6 +56,7 @@ impl ModelWasmSystem {
     pub fn schema_types(&self) -> Vec<TypeDefinition> {
         self.service_types
             .iter()
+            .filter(|(_, typ)| typ.exposed)
             .map(|typ| typ.1.type_definition(&self.service_types))
             .collect()
     }
