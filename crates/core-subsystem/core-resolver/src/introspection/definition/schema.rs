@@ -106,7 +106,8 @@ impl Schema {
         type_definitions.push(Self::create_directive_location_definition());
         type_definitions.push(Self::create_input_value_definition());
 
-        // strings and booleans are required for introspection
+        // strings and booleans are required for introspection, so validation will fail without them present
+        // add a base set of scalars that should always be supported
         let mut create_primitive_if_not_present = |type_name: &str| {
             if !type_definitions
                 .iter()
@@ -124,6 +125,7 @@ impl Schema {
 
         create_primitive_if_not_present("String");
         create_primitive_if_not_present("Boolean");
+        create_primitive_if_not_present("Int");
 
         Schema {
             type_definitions,
