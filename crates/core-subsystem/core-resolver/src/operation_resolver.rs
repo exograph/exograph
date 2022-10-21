@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use core_plugin::interception::InterceptionTree;
 use serde_json::Value;
 
 use crate::interception::InterceptedOperation;
@@ -21,9 +22,13 @@ impl FieldResolver<QueryResponse, SystemResolutionError, SystemResolver> for Val
         request_context: &'e RequestContext<'e>,
     ) -> Result<QueryResponse, SystemResolutionError> {
         let intercepted_operation = InterceptedOperation::new(
+            Some(
+                system_resolver
+                    .applicable_interception_tree(&field.name, self.typ)
+                    .unwrap_or(&InterceptionTree::Operation),
+            ),
             self.typ,
             field,
-            system_resolver.applicable_interceptors(&field.name, self.typ),
             system_resolver,
         );
 

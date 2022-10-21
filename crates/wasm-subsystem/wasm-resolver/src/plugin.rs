@@ -5,16 +5,13 @@ use async_graphql_parser::{
 use async_trait::async_trait;
 
 use core_model::mapped_arena::SerializableSlabIndex;
-use core_plugin::{
-    interception::{InterceptionTree, InterceptorIndex},
-    system_serializer::SystemSerializer,
-};
+use core_plugin::{interception::InterceptorIndex, system_serializer::SystemSerializer};
 use core_resolver::{
     plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
     system_resolver::SystemResolver,
     validation::field::ValidatedField,
-    QueryResponse,
+    InterceptedOperation, QueryResponse,
 };
 use futures::TryFutureExt;
 use payas_wasm::WasmExecutorPool;
@@ -107,10 +104,8 @@ impl SubsystemResolver for WasmSubsystemResolver {
 
     async fn invoke_interceptor<'a>(
         &'a self,
-        _operation: &'a ValidatedField,
-        _operation_type: OperationType,
         _interceptor_index: InterceptorIndex,
-        _proceeding_interception_tree: Option<&'a InterceptionTree>,
+        _intercepted_operation: &'a InterceptedOperation<'a>,
         _request_context: &'a RequestContext<'a>,
         _system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {

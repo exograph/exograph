@@ -1,13 +1,13 @@
 use crate::{
     request_context::RequestContext, system_resolver::SystemResolver,
-    validation::field::ValidatedField, QueryResponse,
+    validation::field::ValidatedField, InterceptedOperation, QueryResponse,
 };
 use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
     Positioned,
 };
 use async_trait::async_trait;
-use core_plugin::interception::{InterceptionTree, InterceptorIndex};
+use core_plugin::interception::InterceptorIndex;
 use thiserror::Error;
 
 #[async_trait]
@@ -32,10 +32,8 @@ pub trait SubsystemResolver {
     /// expected to return a value)
     async fn invoke_interceptor<'a>(
         &'a self,
-        operation: &'a ValidatedField,
-        operation_type: OperationType,
         interceptor_index: InterceptorIndex,
-        proceeding_interception_tree: Option<&'a InterceptionTree>,
+        intercepted_operation: &'a InterceptedOperation,
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
     ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;

@@ -8,17 +8,17 @@ use super::{request_context::RequestContext, validation::field::ValidatedField, 
 use crate::system_resolver::{SystemResolutionError, SystemResolver};
 
 pub struct InterceptedOperation<'a> {
+    interception_tree: Option<&'a InterceptionTree>,
     operation_type: OperationType,
     operation: &'a ValidatedField,
-    interception_tree: Option<&'a InterceptionTree>,
     system_resolver: &'a SystemResolver,
 }
 
 impl<'a> InterceptedOperation<'a> {
     pub fn new(
+        interception_tree: Option<&'a InterceptionTree>,
         operation_type: OperationType,
         operation: &'a ValidatedField,
-        interception_tree: Option<&'a InterceptionTree>,
         system_resolver: &'a SystemResolver,
     ) -> Self {
         Self {
@@ -27,6 +27,10 @@ impl<'a> InterceptedOperation<'a> {
             system_resolver,
             interception_tree,
         }
+    }
+
+    pub fn operation(&self) -> &ValidatedField {
+        self.operation
     }
 
     #[async_recursion]
@@ -75,7 +79,7 @@ impl<'a> InterceptedOperation<'a> {
                 }
                 InterceptionTree::Operation => self.resolve_operation(request_context).await,
             },
-            None => self.resolve_operation(request_context).await,
+            None => Err(SystemResolutionError::NoInterceptionTree),
         }
     }
 
