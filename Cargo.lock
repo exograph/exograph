@@ -669,18 +669,13 @@ dependencies = [
  "core-model",
  "core-model-builder",
  "core-plugin",
- "deno-model",
  "deno-model-builder",
  "insta",
- "lazy_static",
- "payas-sql",
  "postgres-model-builder",
  "serde",
  "serde_json",
  "thiserror",
  "tree-sitter",
- "typed-generational-arena",
- "wasm-model",
  "wasm-model-builder",
  "wildmatch",
 ]
@@ -903,7 +898,6 @@ dependencies = [
  "stripmargin",
  "testing",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -1018,9 +1012,7 @@ version = "0.1.0"
 dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
- "bytes",
  "serde",
- "thiserror",
  "typed-generational-arena",
 ]
 
@@ -1062,7 +1054,6 @@ dependencies = [
  "futures",
  "insta",
  "jsonwebtoken",
- "maybe-owned",
  "payas-sql",
  "postgres-model",
  "postgres-resolver",
@@ -3030,9 +3021,7 @@ dependencies = [
  "core-plugin",
  "core-resolver",
  "futures",
- "maybe-owned",
  "serde_json",
- "thiserror",
  "tokio",
 ]
 
@@ -4502,7 +4491,6 @@ dependencies = [
  "payas-sql",
  "postgres-model",
  "serde",
- "thiserror",
  "typed-generational-arena",
 ]
 
@@ -4947,11 +4935,9 @@ dependencies = [
  "deno-model",
  "deno-resolver",
  "futures",
- "futures-util",
  "include_dir",
  "insta",
  "introspection-resolver",
- "maybe-owned",
  "opentelemetry",
  "opentelemetry-jaeger",
  "payas-deno",
@@ -5336,7 +5322,6 @@ dependencies = [
  "async-trait",
  "core-resolver",
  "futures",
- "jsonwebtoken",
  "resolver",
  "serde_json",
  "tracing",
@@ -5349,11 +5334,8 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "builder",
- "bytes",
- "cookie",
  "core-resolver",
  "futures",
- "jsonwebtoken",
  "lambda_runtime",
  "opentelemetry",
  "opentelemetry-jaeger",
@@ -5668,8 +5650,6 @@ dependencies = [
  "core-plugin",
  "serde",
  "subsystem-model-util",
- "thiserror",
- "typed-generational-arena",
 ]
 
 [[package]]
@@ -7043,7 +7023,6 @@ dependencies = [
 name = "wasm-model-builder"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "core-model",
  "core-model-builder",
  "core-plugin",
@@ -7055,21 +7034,17 @@ dependencies = [
 name = "wasm-resolver"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "async-graphql-parser",
  "async-graphql-value",
  "async-recursion",
  "async-trait",
- "builder",
  "core-model",
  "core-plugin",
  "core-resolver",
  "futures",
- "maybe-owned",
  "payas-wasm",
  "serde_json",
  "thiserror",
- "tokio",
  "wasm-model",
  "wasmtime",
  "wasmtime-wasi",
