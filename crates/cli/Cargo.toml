@@ -17,8 +17,6 @@ tokio = "1"
 rand = "0.8"
 ctrlc = "3.2"
 
-tracing = "0.1"
-
 payas-sql = { path = "../../libs/payas-sql" }
 builder = { path = "../builder" }
 testing = { path = "../testing" }
