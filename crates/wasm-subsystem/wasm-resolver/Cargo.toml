@@ -11,8 +11,8 @@ async-trait = "0.1.53"
 futures = "0.3"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 thiserror = "1.0.30"
-wasmtime = "0.39.1"
-wasmtime-wasi = "0.39.1"
+wasmtime = "2.0.0"
+wasmtime-wasi = "2.0.0"
 
 payas-wasm = { path = "../../../libs/payas-wasm" }
 core-model = { path = "../../core-subsystem/core-model" }
