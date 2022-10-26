@@ -19,7 +19,7 @@ const DEFAULT_MODEL_FILE: &str = "index.clay";
 pub static SIGINT: AtomicBool = AtomicBool::new(false);
 pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
-fn model_file_arg() -> Arg<'static> {
+fn model_file_arg() -> Arg {
     Arg::new("model")
         .help("The path to the Claytip model file.")
         .hide_default_value(false)
@@ -29,14 +29,14 @@ fn model_file_arg() -> Arg<'static> {
         .index(1)
 }
 
-fn database_arg() -> Arg<'static> {
+fn database_arg() -> Arg {
     Arg::new("database")
         .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`CLAY_DATABASE_URL`).")
         .long("database")
         .required(false)
 }
 
-fn output_arg() -> Arg<'static> {
+fn output_arg() -> Arg {
     Arg::new("output")
         .help("Output file path")
         .help("If specified, the output will be written to this file path instead of stdout.")
@@ -44,10 +44,10 @@ fn output_arg() -> Arg<'static> {
         .long("output")
         .required(false)
         .value_parser(clap::value_parser!(PathBuf))
-        .takes_value(true)
+        .num_args(1)
 }
 
-fn port_arg() -> Arg<'static> {
+fn port_arg() -> Arg {
     Arg::new("port")
         .help("Listen port")
         .long_help("The port the server should listen for HTTP requests on.")
@@ -55,7 +55,7 @@ fn port_arg() -> Arg<'static> {
         .long("port")
         .required(false)
         .value_parser(clap::value_parser!(u32))
-        .takes_value(true)
+        .num_args(1)
 }
 
 fn main() -> Result<()> {
@@ -113,7 +113,7 @@ fn main() -> Result<()> {
                                 .help("By default, destructive changes in the model file are commented out. If specified, this option will uncomment such changes.")
                                 .long("allow-destructive-changes")
                                 .required(false)
-                                .takes_value(false),
+                                .num_args(0),
                         )
 
                 )
