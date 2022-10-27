@@ -1,7 +1,6 @@
 use core_resolver::{request_context::RequestContext, validation::field::ValidatedField};
 use payas_sql::{
-    AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
-    AbstractUpdate,
+    AbstractDelete, AbstractInsert, AbstractOperation, AbstractSelect, AbstractUpdate,
 };
 use postgres_model::{
     model::ModelPostgresSystem,
@@ -14,7 +13,7 @@ use super::{
     postgres_execution_error::{PostgresExecutionError, WithContext},
     postgres_query::compute_select,
     sql_mapper::{SQLInsertMapper, SQLOperationKind, SQLUpdateMapper},
-    util::{compute_sql_access_predicate, find_arg, return_type_info},
+    util::{check_access, find_arg, return_type_info},
 };
 
 pub async fn operation<'content>(
@@ -84,20 +83,13 @@ async fn create_operation<'content>(
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractInsert<'content>, PostgresExecutionError> {
     // TODO: https://github.com/payalabs/payas/issues/343
-    let access_predicate = compute_sql_access_predicate(
+    let _access_predicate = check_access(
         &mutation.return_type,
         &SQLOperationKind::Create,
         subsystem,
         request_context,
     )
-    .await;
-
-    // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
-    // See issue #69
-    if access_predicate == AbstractPredicate::False {
-        // Hard failure, no need to proceed to restrict the predicate in SQL
-        return Err(PostgresExecutionError::Authorization);
-    }
+    .await?;
 
     let argument_value = find_arg(&field.arguments, &data_param.name).unwrap();
 
@@ -120,18 +112,13 @@ async fn delete_operation<'content>(
     let (table, _, _) = return_type_info(&mutation.return_type, subsystem);
 
     // TODO: https://github.com/payalabs/payas/issues/343
-    let access_predicate = compute_sql_access_predicate(
+    let _access_predicate = check_access(
         &mutation.return_type,
         &SQLOperationKind::Delete,
         subsystem,
         request_context,
     )
-    .await;
-
-    if access_predicate == AbstractPredicate::False {
-        // Hard failure, no need to proceed to restrict the predicate in SQL
-        return Err(PostgresExecutionError::Authorization);
-    }
+    .await?;
 
     let predicate = super::predicate_mapper::compute_predicate(
         Some(predicate_param),
@@ -162,20 +149,14 @@ async fn update_operation<'content>(
     // Access control as well as predicate computation isn't working fully yet. Specifically,
     // nested predicates aren't working.
     // TODO: https://github.com/payalabs/payas/issues/343
-    let access_predicate = compute_sql_access_predicate(
+    let _access_predicate = check_access(
         &mutation.return_type,
         &SQLOperationKind::Update,
         subsystem,
         request_context,
     )
-    .await;
+    .await?;
 
-    if access_predicate == AbstractPredicate::False {
-        // Hard failure, no need to proceed to restrict the predicate in SQL
-        return Err(PostgresExecutionError::Authorization);
-    }
-
-    // TODO: https://github.com/payalabs/payas/issues/343
     let predicate = super::predicate_mapper::compute_predicate(
         Some(predicate_param),
         &field.arguments,

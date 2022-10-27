@@ -23,7 +23,7 @@ use super::{
     order_by_mapper::OrderByParameterMapper,
     postgres_execution_error::PostgresExecutionError,
     sql_mapper::{SQLMapper, SQLOperationKind},
-    util::{compute_sql_access_predicate, Arguments},
+    util::{check_access, Arguments},
 };
 
 pub async fn compute_select<'content>(
@@ -32,17 +32,13 @@ pub async fn compute_select<'content>(
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect<'content>, PostgresExecutionError> {
-    let access_predicate = compute_sql_access_predicate(
+    let access_predicate = check_access(
         &query.return_type,
         &SQLOperationKind::Retrieve,
         subsystem,
         request_context,
     )
-    .await;
-
-    if access_predicate == AbstractPredicate::False {
-        return Err(PostgresExecutionError::Authorization);
-    }
+    .await?;
 
     let PostgresQueryParameter {
         predicate_param,

@@ -1,6 +1,9 @@
 use async_graphql_value::{indexmap::IndexMap, ConstValue};
 
-use crate::{access_solver::PostgresAccessSolver, sql_mapper::SQLOperationKind};
+use crate::{
+    access_solver::PostgresAccessSolver, postgres_execution_error::PostgresExecutionError,
+    sql_mapper::SQLOperationKind,
+};
 use core_resolver::access_solver::AccessSolver;
 use core_resolver::request_context::RequestContext;
 use payas_sql::{AbstractPredicate, PhysicalTable};
@@ -13,16 +16,18 @@ use postgres_model::{
 
 pub type Arguments = IndexMap<String, ConstValue>;
 
-pub(crate) async fn compute_sql_access_predicate<'a>(
+// TODO: Allow access_predicate to have a residue that we can evaluate against data_param
+// See issue #69
+pub(crate) async fn check_access<'a>(
     return_type: &OperationReturnType,
     kind: &SQLOperationKind,
     subsystem: &'a ModelPostgresSystem,
     request_context: &'a RequestContext<'a>,
-) -> AbstractPredicate<'a> {
+) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     let return_type = return_type.typ(subsystem);
     let access_solver = PostgresAccessSolver::new(request_context, subsystem);
 
-    match &return_type.kind {
+    let access_predicate = match &return_type.kind {
         PostgresTypeKind::Primitive => AbstractPredicate::True,
         PostgresTypeKind::Composite(PostgresCompositeType { access, .. }) => {
             let access_expr = match kind {
@@ -33,6 +38,13 @@ pub(crate) async fn compute_sql_access_predicate<'a>(
             };
             access_solver.solve(access_expr).await.0
         }
+    };
+
+    if access_predicate == AbstractPredicate::False {
+        // Hard failure, no need to proceed to restrict the predicate in SQL
+        Err(PostgresExecutionError::Authorization)
+    } else {
+        Ok(access_predicate)
     }
 }
 
