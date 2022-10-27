@@ -1,6 +1,5 @@
 use async_graphql_value::ConstValue;
 
-use core_resolver::system_resolver::SystemResolver;
 use payas_sql::{AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate};
 use postgres_model::{model::ModelPostgresSystem, operation::OperationReturnType};
 
@@ -27,7 +26,6 @@ pub trait SQLInsertMapper<'a> {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,
-        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractInsert, PostgresExecutionError>;
 }
 
@@ -39,6 +37,5 @@ pub(crate) trait SQLUpdateMapper<'a> {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,
-        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractUpdate, PostgresExecutionError>;
 }

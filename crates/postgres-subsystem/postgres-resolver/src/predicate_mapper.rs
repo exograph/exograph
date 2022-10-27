@@ -1,6 +1,5 @@
 use async_graphql_value::ConstValue;
 
-use core_resolver::system_resolver::SystemResolver;
 use payas_sql::{AbstractPredicate, ColumnPath};
 use postgres_model::{
     column_path::ColumnIdPath,
@@ -21,7 +20,6 @@ pub(crate) trait PredicateParameterMapper<'a> {
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
         subsystem: &'a ModelPostgresSystem,
-        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractPredicate<'a>, PostgresExecutionError>;
 }
 
@@ -31,7 +29,6 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
         argument_value: &'a ConstValue,
         parent_column_path: Option<ColumnIdPath>,
         subsystem: &'a ModelPostgresSystem,
-        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
         let system = &subsystem;
         let parameter_type = &system.predicate_types[self.typ.type_id];
@@ -136,7 +133,6 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                             argument,
                                             parent_column_path.clone(),
                                             subsystem,
-                                            system_resolver,
                                         )?;
                                         new_predicate = predicate_connector(
                                             Box::new(new_predicate),
@@ -158,7 +154,6 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                     logical_op_argument_value,
                                     parent_column_path,
                                     subsystem,
-                                    system_resolver,
                                 )?;
 
                                 Ok(AbstractPredicate::Not(Box::new(arg_predicate)))
@@ -184,7 +179,6 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                     argument_value_component,
                                     new_column_path,
                                     subsystem,
-                                    system_resolver,
                                 )?,
                                 None => AbstractPredicate::True,
                             };
@@ -231,19 +225,13 @@ pub fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
             let argument_value = find_arg(arguments, &predicate_parameter.name);
             argument_value.map(|argument_value| {
-                predicate_parameter.map_to_predicate(
-                    argument_value,
-                    None,
-                    subsystem,
-                    system_resolver,
-                )
+                predicate_parameter.map_to_predicate(argument_value, None, subsystem)
             })
         })
         .transpose()

@@ -1,6 +1,5 @@
 use async_graphql_value::ConstValue;
 
-use core_resolver::system_resolver::SystemResolver;
 use payas_sql::{
     AbstractInsert, AbstractSelect, ColumnValuePair, InsertionElement, InsertionRow,
     NestedElementRelation, NestedInsertion,
@@ -26,13 +25,12 @@ impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,
-        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractInsert, PostgresExecutionError> {
         let table = return_type.physical_table(subsystem);
 
         let data_type = &subsystem.mutation_types[self.typ.type_id];
 
-        let rows = map_argument(data_type, argument, subsystem, system_resolver)?;
+        let rows = map_argument(data_type, argument, subsystem)?;
 
         let abs_insert = AbstractInsert {
             table,
@@ -48,21 +46,15 @@ pub(crate) fn map_argument<'a>(
     input_data_type: &'a PostgresType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
 ) -> Result<Vec<InsertionRow<'a>>, PostgresExecutionError> {
     match argument {
         ConstValue::List(arguments) => arguments
             .iter()
-            .map(|argument| map_single(input_data_type, argument, subsystem, system_resolver))
+            .map(|argument| map_single(input_data_type, argument, subsystem))
             .collect::<Result<Vec<_>, _>>(),
-        _ => vec![map_single(
-            input_data_type,
-            argument,
-            subsystem,
-            system_resolver,
-        )]
-        .into_iter()
-        .collect(),
+        _ => vec![map_single(input_data_type, argument, subsystem)]
+            .into_iter()
+            .collect(),
     }
 }
 
@@ -71,7 +63,6 @@ fn map_single<'a>(
     input_data_type: &'a PostgresType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
 ) -> Result<InsertionRow<'a>, PostgresExecutionError> {
     let fields = match &input_data_type.kind {
         PostgresTypeKind::Primitive => {
@@ -93,13 +84,7 @@ fn map_single<'a>(
                 Some(field_self_column) => {
                     map_self_column(field_self_column, field, field_arg, subsystem)
                 }
-                None => map_foreign(
-                    field,
-                    field_arg,
-                    input_data_type,
-                    subsystem,
-                    system_resolver,
-                ),
+                None => map_foreign(field, field_arg, input_data_type, subsystem),
             })
         })
         .collect();
@@ -154,7 +139,6 @@ fn map_foreign<'a>(
     argument: &'a ConstValue,
     parent_data_type: &'a PostgresType,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
 ) -> Result<InsertionElement<'a>, PostgresExecutionError> {
     fn underlying_type<'a>(
         data_type: &'a PostgresType,
@@ -211,7 +195,7 @@ fn map_foreign<'a>(
         .unwrap()
         .get_column(subsystem);
 
-    let insertion = map_argument(field_type, argument, subsystem, system_resolver)?;
+    let insertion = map_argument(field_type, argument, subsystem)?;
 
     Ok(InsertionElement::NestedInsert(NestedInsertion {
         relation: NestedElementRelation {

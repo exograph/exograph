@@ -2,7 +2,6 @@ use async_recursion::async_recursion;
 use futures::StreamExt;
 
 use core_resolver::request_context::RequestContext;
-use core_resolver::system_resolver::SystemResolver;
 use core_resolver::validation::field::ValidatedField;
 use postgres_model::{
     limit_offset::{LimitParameter, OffsetParameter},
@@ -31,7 +30,6 @@ pub async fn compute_select<'content>(
     query: &'content PostgresQuery,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
-    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect<'content>, PostgresExecutionError> {
     let access_predicate = compute_sql_access_predicate(
@@ -58,7 +56,6 @@ pub async fn compute_select<'content>(
         predicate_param.as_ref(),
         &field.arguments,
         subsystem,
-        system_resolver,
     )
     .map_err(|e| match e {
         PostgresExecutionError::Validation(message) => PostgresExecutionError::Validation(format!(
@@ -75,14 +72,8 @@ pub async fn compute_select<'content>(
 
     let return_type = query.return_type.typ(subsystem);
 
-    let content_object = content_select(
-        return_type,
-        &field.subfields,
-        subsystem,
-        system_resolver,
-        request_context,
-    )
-    .await?;
+    let content_object =
+        content_select(return_type, &field.subfields, subsystem, request_context).await?;
 
     let root_physical_table =
         if let PostgresTypeKind::Composite(composite_root_type) = &return_type.kind {
@@ -128,20 +119,10 @@ async fn content_select<'content>(
     return_type: &PostgresType,
     fields: &'content [ValidatedField],
     subsystem: &'content ModelPostgresSystem,
-    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<Vec<ColumnSelection<'content>>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
-        .then(|field| async {
-            map_field(
-                return_type,
-                field,
-                subsystem,
-                system_resolver,
-                request_context,
-            )
-            .await
-        })
+        .then(|field| async { map_field(return_type, field, subsystem, request_context).await })
         .collect::<Vec<Result<_, _>>>()
         .await
         .into_iter()
@@ -182,7 +163,6 @@ async fn map_field<'content>(
     return_type: &PostgresType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
-    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
@@ -220,14 +200,8 @@ async fn map_field<'content>(
                     )),
                 };
 
-                let nested_abstract_select = compute_select(
-                    other_table_pk_query,
-                    field,
-                    subsystem,
-                    system_resolver,
-                    request_context,
-                )
-                .await?;
+                let nested_abstract_select =
+                    compute_select(other_table_pk_query, field, subsystem, request_context).await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
             }
             PostgresRelation::OneToMany {
@@ -260,14 +234,8 @@ async fn map_field<'content>(
                         &subsystem.tables[other_type.table_id().unwrap()],
                     )),
                 };
-                let nested_abstract_select = compute_select(
-                    other_table_query,
-                    field,
-                    subsystem,
-                    system_resolver,
-                    request_context,
-                )
-                .await?;
+                let nested_abstract_select =
+                    compute_select(other_table_query, field, subsystem, request_context).await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
             }
         }

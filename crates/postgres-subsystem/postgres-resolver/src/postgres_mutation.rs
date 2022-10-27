@@ -1,7 +1,4 @@
-use core_resolver::{
-    request_context::RequestContext, system_resolver::SystemResolver,
-    validation::field::ValidatedField,
-};
+use core_resolver::{request_context::RequestContext, validation::field::ValidatedField};
 use payas_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractPredicate, AbstractSelect,
     AbstractUpdate,
@@ -24,7 +21,6 @@ pub async fn operation<'content>(
     mutation: &'content PostgresMutation,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
-    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractOperation<'content>, PostgresExecutionError> {
     let abstract_select = {
@@ -35,14 +31,7 @@ pub async fn operation<'content>(
             PostgresTypeModifier::NonNull | PostgresTypeModifier::Optional => pk_query,
         };
 
-        compute_select(
-            selection_query,
-            field,
-            subsystem,
-            system_resolver,
-            request_context,
-        )
-        .await?
+        compute_select(selection_query, field, subsystem, request_context).await?
     };
 
     Ok(match &mutation.kind {
@@ -53,7 +42,6 @@ pub async fn operation<'content>(
                 field,
                 abstract_select,
                 subsystem,
-                system_resolver,
                 request_context,
             )
             .await?,
@@ -65,7 +53,6 @@ pub async fn operation<'content>(
                 field,
                 abstract_select,
                 subsystem,
-                system_resolver,
                 request_context,
             )
             .await?,
@@ -81,7 +68,6 @@ pub async fn operation<'content>(
                 field,
                 abstract_select,
                 subsystem,
-                system_resolver,
                 request_context,
             )
             .await?,
@@ -95,7 +81,6 @@ async fn create_operation<'content>(
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
     subsystem: &'content ModelPostgresSystem,
-    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractInsert<'content>, PostgresExecutionError> {
     // TODO: https://github.com/payalabs/payas/issues/343
@@ -121,7 +106,6 @@ async fn create_operation<'content>(
         select,
         argument_value,
         subsystem,
-        system_resolver,
     )
 }
 
@@ -131,7 +115,6 @@ async fn delete_operation<'content>(
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
     subsystem: &'content ModelPostgresSystem,
-    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractDelete<'content>, PostgresExecutionError> {
     let (table, _, _) = return_type_info(&mutation.return_type, subsystem);
@@ -154,7 +137,6 @@ async fn delete_operation<'content>(
         Some(predicate_param),
         &field.arguments,
         subsystem,
-        system_resolver,
     )
     .with_context(format!(
         "During predicate computation for parameter {}",
@@ -168,7 +150,6 @@ async fn delete_operation<'content>(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn update_operation<'content>(
     mutation: &'content PostgresMutation,
     data_param: &'content UpdateDataParameter,
@@ -176,7 +157,6 @@ async fn update_operation<'content>(
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
     subsystem: &'content ModelPostgresSystem,
-    system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractUpdate<'content>, PostgresExecutionError> {
     // Access control as well as predicate computation isn't working fully yet. Specifically,
@@ -200,7 +180,6 @@ async fn update_operation<'content>(
         Some(predicate_param),
         &field.arguments,
         subsystem,
-        system_resolver,
     )
     .with_context(format!(
         "During predicate computation for parameter {}",
@@ -216,7 +195,6 @@ async fn update_operation<'content>(
                 select,
                 argument_value,
                 subsystem,
-                system_resolver,
             )
         })
         .unwrap()
