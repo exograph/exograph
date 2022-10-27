@@ -78,7 +78,7 @@ impl SystemResolver {
     /// }
     /// ```
     #[instrument(
-        name = "SystemResolver::resolve_root"
+        name = "SystemResolver::resolve_operations"
         skip_all
         )]
     pub async fn resolve_operations<'a>(

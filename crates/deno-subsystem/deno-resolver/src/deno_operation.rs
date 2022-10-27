@@ -47,7 +47,7 @@ impl<'a> DenoOperation<'a> {
         let subsystem = &self.subsystem();
         let return_type = self.method.return_type.typ(&subsystem.service_types);
 
-        let access_solver = DenoAccessSolver::new(self.request_context, self.subsystem());
+        let access_solver = DenoAccessSolver::new(self.request_context, subsystem);
 
         let type_level_access = match &return_type.kind {
             ServiceTypeKind::Primitive => true,

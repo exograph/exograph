@@ -12,7 +12,7 @@ use core_resolver::{
     validation::field::ValidatedField,
     InterceptedOperation, QueryResponse,
 };
-use payas_sql::{AbstractOperation, AbstractPredicate, DatabaseExecutor};
+use payas_sql::{AbstractOperation, DatabaseExecutor};
 use postgres_model::{
     model::ModelPostgresSystem,
     operation::{PostgresMutation, PostgresQuery},
@@ -130,16 +130,9 @@ async fn compute_query_sql_operation<'a>(
     subsystem: &'a ModelPostgresSystem,
     system_resolver: &'a SystemResolver,
 ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
-    compute_select(
-        query,
-        field,
-        AbstractPredicate::True,
-        subsystem,
-        system_resolver,
-        request_context,
-    )
-    .await
-    .map(AbstractOperation::Select)
+    compute_select(query, field, subsystem, system_resolver, request_context)
+        .await
+        .map(AbstractOperation::Select)
 }
 
 async fn compute_mutation_sql_operation<'a>(

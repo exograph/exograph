@@ -230,11 +230,10 @@ fn operands<'a>(
 pub fn compute_predicate<'a>(
     predicate_param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
-    additional_predicate: AbstractPredicate<'a>,
     subsystem: &'a ModelPostgresSystem,
     system_resolver: &'a SystemResolver,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
-    let mapped = predicate_param
+    predicate_param
         .as_ref()
         .and_then(|predicate_parameter| {
             let argument_value = find_arg(arguments, &predicate_parameter.name);
@@ -247,14 +246,6 @@ pub fn compute_predicate<'a>(
                 )
             })
         })
-        .transpose()?;
-
-    let res = match mapped {
-        Some(predicate) => {
-            AbstractPredicate::And(Box::new(predicate), Box::new(additional_predicate))
-        }
-        None => additional_predicate,
-    };
-
-    Ok(res)
+        .transpose()
+        .map(|p| p.unwrap_or(AbstractPredicate::True))
 }

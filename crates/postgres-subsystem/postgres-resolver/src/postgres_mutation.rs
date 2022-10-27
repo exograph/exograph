@@ -38,7 +38,6 @@ pub async fn operation<'content>(
         compute_select(
             selection_query,
             field,
-            AbstractPredicate::True,
             subsystem,
             system_resolver,
             request_context,
@@ -154,7 +153,6 @@ async fn delete_operation<'content>(
     let predicate = super::predicate_mapper::compute_predicate(
         Some(predicate_param),
         &field.arguments,
-        AbstractPredicate::True,
         subsystem,
         system_resolver,
     )
@@ -201,7 +199,6 @@ async fn update_operation<'content>(
     let predicate = super::predicate_mapper::compute_predicate(
         Some(predicate_param),
         &field.arguments,
-        AbstractPredicate::True,
         subsystem,
         system_resolver,
     )

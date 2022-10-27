@@ -5,10 +5,12 @@ use core_resolver::request_context::RequestContext;
 use core_resolver::system_resolver::SystemResolver;
 use core_resolver::validation::field::ValidatedField;
 use postgres_model::{
+    limit_offset::{LimitParameter, OffsetParameter},
     model::ModelPostgresSystem,
     operation::{PostgresQuery, PostgresQueryParameter},
+    order::OrderByParameter,
     relation::{PostgresRelation, RelationCardinality},
-    types::{PostgresTypeKind, PostgresTypeModifier},
+    types::{PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
 
 use payas_sql::{
@@ -28,14 +30,10 @@ use super::{
 pub async fn compute_select<'content>(
     query: &'content PostgresQuery,
     field: &'content ValidatedField,
-    additional_predicate: AbstractPredicate<'content>,
     subsystem: &'content ModelPostgresSystem,
     system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect<'content>, PostgresExecutionError> {
-    let PostgresQueryParameter {
-        predicate_param, ..
-    } = &query.parameter;
     let access_predicate = compute_sql_access_predicate(
         &query.return_type,
         &SQLOperationKind::Retrieve,
@@ -48,10 +46,17 @@ pub async fn compute_select<'content>(
         return Err(PostgresExecutionError::Authorization);
     }
 
-    let predicate = super::predicate_mapper::compute_predicate(
+    let PostgresQueryParameter {
+        predicate_param,
+        order_by_param,
+        limit_param,
+        offset_param,
+        ..
+    } = &query.parameter;
+
+    let query_predicate = super::predicate_mapper::compute_predicate(
         predicate_param.as_ref(),
         &field.arguments,
-        additional_predicate,
         subsystem,
         system_resolver,
     )
@@ -62,13 +67,16 @@ pub async fn compute_select<'content>(
         )),
         e => e,
     })?;
+    let predicate = AbstractPredicate::and(query_predicate, access_predicate);
 
-    let order_by = compute_order_by(query, &field.arguments, subsystem)?;
+    let order_by = compute_order_by(order_by_param, &field.arguments, subsystem)?;
+    let limit = compute_limit(limit_param, &field.arguments, subsystem);
+    let offset = compute_offset(offset_param, &field.arguments, subsystem);
 
-    let predicate = AbstractPredicate::and(predicate, access_predicate);
+    let return_type = query.return_type.typ(subsystem);
 
     let content_object = content_select(
-        query,
+        return_type,
         &field.subfields,
         subsystem,
         system_resolver,
@@ -76,41 +84,34 @@ pub async fn compute_select<'content>(
     )
     .await?;
 
-    let limit = compute_limit(query, &field.arguments, subsystem);
-    let offset = compute_offset(query, &field.arguments, subsystem);
-
-    let root_physical_table = if let PostgresTypeKind::Composite(composite_root_type) =
-        &query.return_type.typ(subsystem).kind
-    {
-        &subsystem.tables[composite_root_type.table_id]
-    } else {
-        return Err(PostgresExecutionError::Generic(
-            "Expected a composite type".into(),
-        ));
-    };
+    let root_physical_table =
+        if let PostgresTypeKind::Composite(composite_root_type) = &return_type.kind {
+            &subsystem.tables[composite_root_type.table_id]
+        } else {
+            return Err(PostgresExecutionError::Generic(
+                "Expected a composite type".into(),
+            ));
+        };
 
     let selection_cardinality = match query.return_type.type_modifier {
         PostgresTypeModifier::Optional | PostgresTypeModifier::NonNull => SelectionCardinality::One,
         PostgresTypeModifier::List => SelectionCardinality::Many,
     };
-    let aselect = AbstractSelect {
+    Ok(AbstractSelect {
         table: root_physical_table,
         selection: payas_sql::Selection::Json(content_object, selection_cardinality),
         predicate: Some(predicate),
         order_by,
         offset,
         limit,
-    };
-
-    Ok(aselect)
+    })
 }
 
 fn compute_order_by<'content>(
-    query: &'content PostgresQuery,
+    order_by_param: &'content Option<OrderByParameter>,
     arguments: &'content Arguments,
     subsystem: &'content ModelPostgresSystem,
 ) -> Result<Option<AbstractOrderBy<'content>>, PostgresExecutionError> {
-    let PostgresQueryParameter { order_by_param, .. } = &query.parameter;
     order_by_param
         .as_ref()
         .and_then(|order_by_param| {
@@ -124,7 +125,7 @@ fn compute_order_by<'content>(
 
 #[async_recursion]
 async fn content_select<'content>(
-    query: &PostgresQuery,
+    return_type: &PostgresType,
     fields: &'content [ValidatedField],
     subsystem: &'content ModelPostgresSystem,
     system_resolver: &'content SystemResolver,
@@ -132,7 +133,14 @@ async fn content_select<'content>(
 ) -> Result<Vec<ColumnSelection<'content>>, PostgresExecutionError> {
     futures::stream::iter(fields.iter())
         .then(|field| async {
-            map_field(query, field, subsystem, system_resolver, request_context).await
+            map_field(
+                return_type,
+                field,
+                subsystem,
+                system_resolver,
+                request_context,
+            )
+            .await
         })
         .collect::<Vec<Result<_, _>>>()
         .await
@@ -141,11 +149,10 @@ async fn content_select<'content>(
 }
 
 fn compute_limit<'content>(
-    query: &'content PostgresQuery,
+    limit_param: &'content Option<LimitParameter>,
     arguments: &'content Arguments,
     subsystem: &'content ModelPostgresSystem,
 ) -> Option<Limit> {
-    let PostgresQueryParameter { limit_param, .. } = &query.parameter;
     limit_param
         .as_ref()
         .and_then(|limit_param| {
@@ -157,11 +164,10 @@ fn compute_limit<'content>(
 }
 
 fn compute_offset<'content>(
-    query: &'content PostgresQuery,
+    offset_param: &'content Option<OffsetParameter>,
     arguments: &'content Arguments,
     subsystem: &'content ModelPostgresSystem,
 ) -> Option<Offset> {
-    let PostgresQueryParameter { offset_param, .. } = &query.parameter;
     offset_param
         .as_ref()
         .and_then(|offset_param| {
@@ -173,14 +179,12 @@ fn compute_offset<'content>(
 }
 
 async fn map_field<'content>(
-    query: &PostgresQuery,
+    return_type: &PostgresType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     system_resolver: &'content SystemResolver,
     request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
-    let return_type = query.return_type.typ(subsystem);
-
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.clone())
     } else {
@@ -219,7 +223,6 @@ async fn map_field<'content>(
                 let nested_abstract_select = compute_select(
                     other_table_pk_query,
                     field,
-                    AbstractPredicate::True,
                     subsystem,
                     system_resolver,
                     request_context,
@@ -260,7 +263,6 @@ async fn map_field<'content>(
                 let nested_abstract_select = compute_select(
                     other_table_query,
                     field,
-                    AbstractPredicate::True,
                     subsystem,
                     system_resolver,
                     request_context,
