@@ -3,7 +3,7 @@ use async_graphql_value::ConstValue;
 use payas_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
     ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-    NestedElementRelation, PhysicalColumn, PhysicalColumnType, Selection,
+    NestedElementRelation, PhysicalColumn, PhysicalColumnType, Predicate, Selection,
 };
 use postgres_model::{
     model::ModelPostgresSystem,
@@ -37,7 +37,7 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 
         let abs_update = AbstractUpdate {
             table,
-            predicate: predicate.into(),
+            predicate,
             column_values: self_update_columns,
             selection: select,
             nested_updates,
@@ -257,12 +257,12 @@ fn compute_nested_update_object_arg<'a>(
         },
         update: AbstractUpdate {
             table,
-            predicate: Some(predicate),
+            predicate,
             column_values: nested,
             selection: AbstractSelect {
                 table,
                 selection: Selection::Seq(vec![]),
-                predicate: None,
+                predicate: Predicate::True,
                 order_by: None,
                 offset: None,
                 limit: None,
@@ -307,7 +307,7 @@ fn compute_nested_inserts<'a>(
                 selection: AbstractSelect {
                     table,
                     selection: Selection::Seq(vec![]),
-                    predicate: None,
+                    predicate: Predicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -425,11 +425,11 @@ fn compute_nested_delete_object_arg<'a>(
         },
         delete: AbstractDelete {
             table,
-            predicate: Some(predicate),
+            predicate,
             selection: AbstractSelect {
                 table,
                 selection: Selection::Seq(vec![]),
-                predicate: None,
+                predicate: Predicate::True,
                 order_by: None,
                 offset: None,
                 limit: None,

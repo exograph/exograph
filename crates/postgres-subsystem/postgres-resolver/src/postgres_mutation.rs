@@ -132,7 +132,7 @@ async fn delete_operation<'content>(
 
     Ok(AbstractDelete {
         table,
-        predicate: Some(predicate),
+        predicate,
         selection: select,
     })
 }

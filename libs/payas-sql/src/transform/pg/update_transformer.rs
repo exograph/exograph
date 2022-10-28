@@ -44,11 +44,7 @@ impl UpdateTransformer for Postgres {
 
         // TODO: Consider the "join" aspect of the predicate
         let predicate = Predicate::and(
-            abstract_select
-                .predicate
-                .as_ref()
-                .map(|p| p.predicate())
-                .unwrap_or_else(|| Predicate::True),
+            abstract_select.predicate.predicate(),
             additional_predicate.unwrap_or(Predicate::True),
         );
 
@@ -157,12 +153,7 @@ fn update_op<'a>(
 
     TemplateSQLOperation::Update(TemplateUpdate {
         table: nested_update.update.table,
-        predicate: nested_update
-            .update
-            .predicate
-            .as_ref()
-            .map(|p| p.predicate())
-            .unwrap_or(Predicate::True),
+        predicate: nested_update.update.predicate.predicate(),
         column_values,
         returning: vec![],
     })
@@ -226,12 +217,7 @@ fn delete_op<'a>(
     //     ),
     // );
 
-    let predicate = nested_delete
-        .delete
-        .predicate
-        .as_ref()
-        .map(|p| p.predicate())
-        .unwrap_or_else(|| Predicate::True);
+    let predicate = nested_delete.delete.predicate.predicate();
 
     TemplateSQLOperation::Delete(TemplateDelete {
         table: nested_delete.delete.table,
@@ -276,7 +262,7 @@ mod tests {
 
                 let abs_update = AbstractUpdate {
                     table: venues_table,
-                    predicate: Some(predicate),
+                    predicate,
                     column_values: vec![(
                         venues_name_column,
                         Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
@@ -296,7 +282,7 @@ mod tests {
                             ),
                         ]),
                         table: venues_table,
-                        predicate: None,
+                        predicate: Predicate::True,
                         order_by: None,
                         offset: None,
                         limit: None,
@@ -338,7 +324,7 @@ mod tests {
                     },
                     update: AbstractUpdate {
                         table: concerts_table,
-                        predicate: None,
+                        predicate: Predicate::True,
                         column_values: vec![(
                             concerts_name_column,
                             Column::Literal(MaybeOwned::Owned(Box::new(
@@ -348,7 +334,7 @@ mod tests {
                         selection: AbstractSelect {
                             selection: Selection::Seq(vec![]),
                             table: venues_table,
-                            predicate: None,
+                            predicate: Predicate::True,
                             order_by: None,
                             offset: None,
                             limit: None,
@@ -361,7 +347,7 @@ mod tests {
 
                 let abs_update = AbstractUpdate {
                     table: venues_table,
-                    predicate: Some(predicate),
+                    predicate,
                     column_values: vec![(
                         venues_name_column,
                         Column::Literal(MaybeOwned::Owned(Box::new("new_name".to_string()))),
@@ -381,7 +367,7 @@ mod tests {
                             ),
                         ]),
                         table: venues_table,
-                        predicate: None,
+                        predicate: Predicate::True,
                         order_by: None,
                         offset: None,
                         limit: None,

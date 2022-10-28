@@ -87,7 +87,7 @@ pub async fn compute_select<'content>(
     Ok(AbstractSelect {
         table: root_physical_table,
         selection: payas_sql::Selection::Json(content_object, selection_cardinality),
-        predicate: Some(predicate),
+        predicate,
         order_by,
         offset,
         limit,
