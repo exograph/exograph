@@ -51,7 +51,7 @@ pub(crate) fn map_argument<'a>(
         ConstValue::List(arguments) => arguments
             .iter()
             .map(|argument| map_single(input_data_type, argument, subsystem))
-            .collect::<Result<Vec<_>, _>>(),
+            .collect(),
         _ => vec![map_single(input_data_type, argument, subsystem)]
             .into_iter()
             .collect(),

@@ -4,7 +4,10 @@ use payas_sql::{
 };
 use postgres_model::{
     model::ModelPostgresSystem,
-    operation::{CreateDataParameter, PostgresMutation, PostgresMutationKind, UpdateDataParameter},
+    operation::{
+        CreateDataParameter, OperationReturnType, PostgresMutation, PostgresMutationKind,
+        UpdateDataParameter,
+    },
     predicate::PredicateParameter,
     types::PostgresTypeModifier,
 };
@@ -22,8 +25,9 @@ pub async fn operation<'content>(
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractOperation<'content>, PostgresExecutionError> {
+    let return_type = &mutation.return_type;
+
     let abstract_select = {
-        let return_type = &mutation.return_type;
         let (_, pk_query, collection_query) = return_type_info(return_type, subsystem);
         let selection_query = match return_type.type_modifier {
             PostgresTypeModifier::List => collection_query,
@@ -36,7 +40,7 @@ pub async fn operation<'content>(
     Ok(match &mutation.kind {
         PostgresMutationKind::Create(data_param) => AbstractOperation::Insert(
             create_operation(
-                mutation,
+                return_type,
                 data_param,
                 field,
                 abstract_select,
@@ -47,7 +51,7 @@ pub async fn operation<'content>(
         ),
         PostgresMutationKind::Delete(predicate_param) => AbstractOperation::Delete(
             delete_operation(
-                mutation,
+                return_type,
                 predicate_param,
                 field,
                 abstract_select,
@@ -61,7 +65,7 @@ pub async fn operation<'content>(
             predicate_param,
         } => AbstractOperation::Update(
             update_operation(
-                mutation,
+                return_type,
                 data_param,
                 predicate_param,
                 field,
@@ -75,7 +79,7 @@ pub async fn operation<'content>(
 }
 
 async fn create_operation<'content>(
-    mutation: &'content PostgresMutation,
+    return_type: &'content OperationReturnType,
     data_param: &'content CreateDataParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
@@ -84,7 +88,7 @@ async fn create_operation<'content>(
 ) -> Result<AbstractInsert<'content>, PostgresExecutionError> {
     // TODO: https://github.com/payalabs/payas/issues/343
     let _access_predicate = check_access(
-        &mutation.return_type,
+        return_type,
         &SQLOperationKind::Create,
         subsystem,
         request_context,
@@ -93,27 +97,22 @@ async fn create_operation<'content>(
 
     let argument_value = find_arg(&field.arguments, &data_param.name).unwrap();
 
-    data_param.insert_operation(
-        mutation.return_type.clone(),
-        select,
-        argument_value,
-        subsystem,
-    )
+    data_param.insert_operation(return_type.clone(), select, argument_value, subsystem)
 }
 
 async fn delete_operation<'content>(
-    mutation: &'content PostgresMutation,
+    return_type: &'content OperationReturnType,
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
     select: AbstractSelect<'content>,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractDelete<'content>, PostgresExecutionError> {
-    let (table, _, _) = return_type_info(&mutation.return_type, subsystem);
+    let (table, _, _) = return_type_info(return_type, subsystem);
 
     // TODO: https://github.com/payalabs/payas/issues/343
     let _access_predicate = check_access(
-        &mutation.return_type,
+        return_type,
         &SQLOperationKind::Delete,
         subsystem,
         request_context,
@@ -138,7 +137,7 @@ async fn delete_operation<'content>(
 }
 
 async fn update_operation<'content>(
-    mutation: &'content PostgresMutation,
+    return_type: &'content OperationReturnType,
     data_param: &'content UpdateDataParameter,
     predicate_param: &'content PredicateParameter,
     field: &'content ValidatedField,
@@ -150,7 +149,7 @@ async fn update_operation<'content>(
     // nested predicates aren't working.
     // TODO: https://github.com/payalabs/payas/issues/343
     let _access_predicate = check_access(
-        &mutation.return_type,
+        return_type,
         &SQLOperationKind::Update,
         subsystem,
         request_context,
@@ -170,13 +169,7 @@ async fn update_operation<'content>(
     let argument_value = find_arg(&field.arguments, &data_param.name);
     argument_value
         .map(|argument_value| {
-            data_param.update_operation(
-                &mutation.return_type,
-                predicate,
-                select,
-                argument_value,
-                subsystem,
-            )
+            data_param.update_operation(return_type, predicate, select, argument_value, subsystem)
         })
         .unwrap()
 }

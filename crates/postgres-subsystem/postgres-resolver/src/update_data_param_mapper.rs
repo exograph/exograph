@@ -174,7 +174,7 @@ fn compute_nested_reference_column<'a>(
         })
 }
 
-// Looks for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
+// Look for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
     field_model_type: &'a PostgresType,
     argument: &'a ConstValue,
