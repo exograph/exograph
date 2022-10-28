@@ -19,14 +19,6 @@ use super::{
     types::{PostgresType, PostgresTypeModifier},
 };
 
-pub trait GraphQLOperation: Debug {
-    fn name(&self) -> &str;
-
-    fn is_query(&self) -> bool;
-
-    fn return_type(&self) -> &OperationReturnType;
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresQuery {
     pub name: String,
@@ -40,20 +32,6 @@ pub struct PostgresQueryParameter {
     pub order_by_param: Option<OrderByParameter>,
     pub limit_param: Option<LimitParameter>,
     pub offset_param: Option<OffsetParameter>,
-}
-
-impl GraphQLOperation for PostgresQuery {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn is_query(&self) -> bool {
-        true
-    }
-
-    fn return_type(&self) -> &OperationReturnType {
-        &self.return_type
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -91,20 +69,6 @@ pub struct CreateDataParameterTypeWithModifier {
     pub type_name: String,
     pub type_id: SerializableSlabIndex<PostgresType>,
     pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
-}
-
-impl GraphQLOperation for PostgresMutation {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn is_query(&self) -> bool {
-        false
-    }
-
-    fn return_type(&self) -> &OperationReturnType {
-        &self.return_type
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
