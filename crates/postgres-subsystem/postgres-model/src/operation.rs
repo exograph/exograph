@@ -74,7 +74,6 @@ pub struct CreateDataParameterTypeWithModifier {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {
     pub type_id: SerializableSlabIndex<PostgresType>,
-    pub is_primitive: bool,
     pub type_name: String,
     pub type_modifier: PostgresTypeModifier,
 }

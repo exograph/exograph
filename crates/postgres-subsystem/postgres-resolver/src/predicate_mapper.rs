@@ -14,7 +14,7 @@ use crate::{
 
 use super::{cast::cast_value, postgres_execution_error::PostgresExecutionError};
 
-pub(crate) trait PredicateParameterMapper<'a> {
+trait PredicateParameterMapper<'a> {
     fn map_to_predicate(
         &'a self,
         argument_value: &'a ConstValue,
@@ -203,7 +203,7 @@ fn operands<'a>(
     parent_column_path: Option<ColumnIdPath>,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<(ColumnPath<'a>, ColumnPath<'a>), PostgresExecutionError> {
-    let op_physical_column = &param
+    let op_physical_column = param
         .column_path_link
         .as_ref()
         .expect("Could not find column path link while forming operands")
@@ -227,7 +227,6 @@ pub fn compute_predicate<'a>(
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     predicate_param
-        .as_ref()
         .and_then(|predicate_parameter| {
             let argument_value = find_arg(arguments, &predicate_parameter.name);
             argument_value.map(|argument_value| {
