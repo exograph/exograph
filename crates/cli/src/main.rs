@@ -150,7 +150,7 @@ fn main() -> Result<()> {
                     Arg::new("run-introspection-tests")
                         .help("When specified, run standard introspection tests on the tests' model files")
                         .required(false)
-                        .long("run-introspection-tests")
+                        .long("run-introspection-tests").num_args(0)
                 )
         )
         .subcommand(
