@@ -16,7 +16,7 @@ use super::{
 #[derive(Debug)]
 pub struct AbstractUpdate<'a> {
     pub table: &'a PhysicalTable,
-    pub predicate: Option<AbstractPredicate<'a>>,
+    pub predicate: AbstractPredicate<'a>,
     pub column_values: Vec<(&'a PhysicalColumn, Column<'a>)>,
     pub selection: AbstractSelect<'a>,
     pub nested_updates: Vec<NestedAbstractUpdate<'a>>,

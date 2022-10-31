@@ -44,11 +44,8 @@ impl SelectTransformer for Postgres {
                 .collect()
         }
 
-        let predicate_column_paths: Vec<Vec<ColumnPathLink>> = abstract_select
-            .predicate
-            .as_ref()
-            .map(|predicate| column_path_owned(predicate.column_paths()))
-            .unwrap_or_else(Vec::new);
+        let predicate_column_paths: Vec<Vec<ColumnPathLink>> =
+            column_path_owned(abstract_select.predicate.column_paths());
 
         let order_by_column_paths = abstract_select
             .order_by
@@ -69,11 +66,7 @@ impl SelectTransformer for Postgres {
         };
 
         let predicate = Predicate::and(
-            abstract_select
-                .predicate
-                .as_ref()
-                .map(|p| p.predicate())
-                .unwrap_or_else(|| Predicate::True),
+            abstract_select.predicate.predicate(),
             additional_predicate.unwrap_or(Predicate::True),
         )
         .into();
@@ -181,7 +174,7 @@ mod tests {
         },
         sql::ExpressionContext,
         transform::{pg::Postgres, test_util::TestSetup, transformer::SelectTransformer},
-        AbstractOrderBy, Ordering,
+        AbstractOrderBy, Ordering, Predicate,
     };
 
     use super::AbstractSelect;
@@ -201,7 +194,7 @@ mod tests {
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
-                    predicate: None,
+                    predicate: Predicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -236,7 +229,7 @@ mod tests {
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
-                    predicate: Some(predicate),
+                    predicate,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -271,7 +264,7 @@ mod tests {
                         )],
                         SelectionCardinality::Many,
                     ),
-                    predicate: None,
+                    predicate: Predicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -329,7 +322,7 @@ mod tests {
                                             )],
                                             SelectionCardinality::One,
                                         ),
-                                        predicate: None,
+                                        predicate: Predicate::True,
                                         order_by: None,
                                         offset: None,
                                         limit: None,
@@ -339,7 +332,7 @@ mod tests {
                         ],
                         SelectionCardinality::Many,
                     ),
-                    predicate: None,
+                    predicate: Predicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -391,7 +384,7 @@ mod tests {
                                             )],
                                             SelectionCardinality::Many,
                                         ),
-                                        predicate: None,
+                                        predicate: Predicate::True,
                                         order_by: None,
                                         offset: None,
                                         limit: None,
@@ -401,7 +394,7 @@ mod tests {
                         ],
                         SelectionCardinality::Many,
                     ),
-                    predicate: None,
+                    predicate: Predicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -458,7 +451,7 @@ mod tests {
                         )],
                         SelectionCardinality::Many,
                     ),
-                    predicate: Some(predicate),
+                    predicate,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -496,7 +489,7 @@ mod tests {
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
-                    predicate: None,
+                    predicate: Predicate::True,
                     order_by: Some(AbstractOrderBy(vec![(concert_name_path, Ordering::Asc)])),
                     offset: None,
                     limit: None,
@@ -542,7 +535,7 @@ mod tests {
                         "id".to_string(),
                         SelectionElement::Physical(concerts_id_column),
                     )]),
-                    predicate: None,
+                    predicate: Predicate::True,
                     order_by: Some(AbstractOrderBy(vec![(venues_name_path, Ordering::Asc)])),
                     offset: None,
                     limit: None,

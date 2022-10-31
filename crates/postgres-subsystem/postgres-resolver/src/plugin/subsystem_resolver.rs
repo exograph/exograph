@@ -12,7 +12,7 @@ use core_resolver::{
     validation::field::ValidatedField,
     InterceptedOperation, QueryResponse,
 };
-use payas_sql::{AbstractOperation, AbstractPredicate, DatabaseExecutor};
+use payas_sql::{AbstractOperation, DatabaseExecutor};
 use postgres_model::{
     model::ModelPostgresSystem,
     operation::{PostgresMutation, PostgresQuery},
@@ -41,7 +41,7 @@ impl SubsystemResolver for PostgresSubsystemResolver {
         field: &'a ValidatedField,
         operation_type: OperationType,
         request_context: &'a RequestContext<'a>,
-        system_resolver: &'a SystemResolver,
+        _system_resolver: &'a SystemResolver,
     ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
         let operation_name = &field.name;
 
@@ -51,14 +51,8 @@ impl SubsystemResolver for PostgresSubsystemResolver {
 
                 match query {
                     Some(query) => Some(
-                        compute_query_sql_operation(
-                            query,
-                            field,
-                            request_context,
-                            &self.subsystem,
-                            system_resolver,
-                        )
-                        .await,
+                        compute_query_sql_operation(query, field, request_context, &self.subsystem)
+                            .await,
                     ),
                     None => {
                         return None;
@@ -75,7 +69,6 @@ impl SubsystemResolver for PostgresSubsystemResolver {
                             field,
                             request_context,
                             &self.subsystem,
-                            system_resolver,
                         )
                         .await,
                     ),
@@ -128,18 +121,10 @@ async fn compute_query_sql_operation<'a>(
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
 ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
-    compute_select(
-        query,
-        field,
-        AbstractPredicate::True,
-        subsystem,
-        system_resolver,
-        request_context,
-    )
-    .await
-    .map(AbstractOperation::Select)
+    compute_select(query, field, subsystem, request_context)
+        .await
+        .map(AbstractOperation::Select)
 }
 
 async fn compute_mutation_sql_operation<'a>(
@@ -147,9 +132,8 @@ async fn compute_mutation_sql_operation<'a>(
     field: &'a ValidatedField,
     request_context: &'a RequestContext<'a>,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
 ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
-    operation(mutation, field, subsystem, system_resolver, request_context).await
+    operation(mutation, field, subsystem, request_context).await
 }
 
 impl From<PostgresExecutionError> for SubsystemResolutionError {

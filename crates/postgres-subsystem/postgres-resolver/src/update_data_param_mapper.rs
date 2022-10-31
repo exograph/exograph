@@ -1,10 +1,9 @@
 use async_graphql_value::ConstValue;
 
-use core_resolver::system_resolver::SystemResolver;
 use payas_sql::{
     AbstractDelete, AbstractPredicate, AbstractSelect, AbstractUpdate, Column, ColumnPath,
     ColumnPathLink, NestedAbstractDelete, NestedAbstractInsert, NestedAbstractUpdate,
-    NestedElementRelation, PhysicalColumn, PhysicalColumnType, Selection,
+    NestedElementRelation, PhysicalColumn, PhysicalColumnType, Predicate, Selection,
 };
 use postgres_model::{
     model::ModelPostgresSystem,
@@ -25,7 +24,6 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
         select: AbstractSelect<'a>,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,
-        system_resolver: &'a SystemResolver,
     ) -> Result<AbstractUpdate<'a>, PostgresExecutionError> {
         let data_type = &subsystem.mutation_types[self.type_id];
 
@@ -34,17 +32,12 @@ impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
 
         let container_model_type = return_type.typ(subsystem);
 
-        let (nested_updates, nested_inserts, nested_deletes) = compute_nested_ops(
-            data_type,
-            argument,
-            container_model_type,
-            subsystem,
-            system_resolver,
-        );
+        let (nested_updates, nested_inserts, nested_deletes) =
+            compute_nested_ops(data_type, argument, container_model_type, subsystem);
 
         let abs_update = AbstractUpdate {
             table,
-            predicate: predicate.into(),
+            predicate,
             column_values: self_update_columns,
             selection: select,
             nested_updates,
@@ -103,7 +96,6 @@ fn compute_nested_ops<'a>(
     argument: &'a ConstValue,
     container_model_type: &'a PostgresType,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
     Vec<NestedAbstractInsert<'a>>,
@@ -133,7 +125,6 @@ fn compute_nested_ops<'a>(
                             argument,
                             container_model_type,
                             subsystem,
-                            system_resolver,
                         ));
 
                         nested_deletes.extend(compute_nested_delete(
@@ -183,7 +174,7 @@ fn compute_nested_reference_column<'a>(
         })
 }
 
-// Looks for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
+// Look for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
     field_model_type: &'a PostgresType,
     argument: &'a ConstValue,
@@ -266,12 +257,12 @@ fn compute_nested_update_object_arg<'a>(
         },
         update: AbstractUpdate {
             table,
-            predicate: Some(predicate),
+            predicate,
             column_values: nested,
             selection: AbstractSelect {
                 table,
                 selection: Selection::Seq(vec![]),
-                predicate: None,
+                predicate: Predicate::True,
                 order_by: None,
                 offset: None,
                 limit: None,
@@ -289,14 +280,12 @@ fn compute_nested_inserts<'a>(
     argument: &'a ConstValue,
     container_model_type: &'a PostgresType,
     subsystem: &'a ModelPostgresSystem,
-    system_resolver: &'a SystemResolver,
 ) -> Vec<NestedAbstractInsert<'a>> {
     fn create_nested<'a>(
         field_model_type: &'a PostgresType,
         argument: &'a ConstValue,
         container_model_type: &'a PostgresType,
         subsystem: &'a ModelPostgresSystem,
-        system_resolver: &'a SystemResolver,
     ) -> Result<NestedAbstractInsert<'a>, PostgresExecutionError> {
         let nested_reference_col =
             compute_nested_reference_column(field_model_type, container_model_type, subsystem)
@@ -304,12 +293,8 @@ fn compute_nested_inserts<'a>(
 
         let table = &subsystem.tables[field_model_type.table_id().unwrap()];
 
-        let rows = super::create_data_param_mapper::map_argument(
-            field_model_type,
-            argument,
-            subsystem,
-            system_resolver,
-        )?;
+        let rows =
+            super::create_data_param_mapper::map_argument(field_model_type, argument, subsystem)?;
 
         Ok(NestedAbstractInsert {
             relation: NestedElementRelation {
@@ -322,7 +307,7 @@ fn compute_nested_inserts<'a>(
                 selection: AbstractSelect {
                     table,
                     selection: Selection::Seq(vec![]),
-                    predicate: None,
+                    predicate: Predicate::True,
                     order_by: None,
                     offset: None,
                     limit: None,
@@ -340,20 +325,12 @@ fn compute_nested_inserts<'a>(
                 create_arg,
                 container_model_type,
                 subsystem,
-                system_resolver,
             )
             .unwrap()],
             ConstValue::List(create_arg) => create_arg
                 .iter()
                 .map(|arg| {
-                    create_nested(
-                        field_model_type,
-                        arg,
-                        container_model_type,
-                        subsystem,
-                        system_resolver,
-                    )
-                    .unwrap()
+                    create_nested(field_model_type, arg, container_model_type, subsystem).unwrap()
                 })
                 .collect(),
             _ => panic!("Object or list expected"),
@@ -448,11 +425,11 @@ fn compute_nested_delete_object_arg<'a>(
         },
         delete: AbstractDelete {
             table,
-            predicate: Some(predicate),
+            predicate,
             selection: AbstractSelect {
                 table,
                 selection: Selection::Seq(vec![]),
-                predicate: None,
+                predicate: Predicate::True,
                 order_by: None,
                 offset: None,
                 limit: None,

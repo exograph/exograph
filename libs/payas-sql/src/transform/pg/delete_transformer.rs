@@ -26,11 +26,7 @@ impl DeleteTransformer for Postgres {
     ) -> TransactionScript<'a> {
         // TODO: Consider the "join" aspect of the predicate
         let predicate = Predicate::and(
-            abstract_delete
-                .predicate
-                .as_ref()
-                .map(|p| p.predicate())
-                .unwrap_or_else(|| Predicate::True),
+            abstract_delete.predicate.predicate(),
             additional_predicate.unwrap_or(Predicate::True),
         );
 
