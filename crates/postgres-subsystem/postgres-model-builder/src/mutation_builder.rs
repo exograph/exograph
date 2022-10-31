@@ -68,7 +68,6 @@ pub trait MutationBuilder {
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
-                is_primitive: false,
                 type_modifier: PostgresTypeModifier::Optional,
             },
         };
@@ -79,7 +78,6 @@ pub trait MutationBuilder {
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
-                is_primitive: false,
                 type_modifier: PostgresTypeModifier::List,
             },
         };

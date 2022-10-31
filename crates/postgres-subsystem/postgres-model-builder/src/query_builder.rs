@@ -65,7 +65,6 @@ fn shallow_pk_query(
         },
         return_type: OperationReturnType {
             type_id: model_type_id,
-            is_primitive: false,
             type_name: typ.name.clone(),
             type_modifier: PostgresTypeModifier::NonNull,
         },
@@ -138,7 +137,6 @@ fn shallow_collection_query(
         return_type: OperationReturnType {
             type_id: model_type_id,
             type_name: model.name.clone(),
-            is_primitive: false,
             type_modifier: PostgresTypeModifier::List,
         },
     }

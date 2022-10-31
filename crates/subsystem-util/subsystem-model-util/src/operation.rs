@@ -24,12 +24,6 @@ pub struct ServiceMutation {
     pub return_type: OperationReturnType,
 }
 
-pub trait GraphQLOperation: Debug {
-    fn name(&self) -> &str;
-
-    fn is_query(&self) -> bool;
-}
-
 // TODO: This is nearly duplicated from the database version. We should consolidate them.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {

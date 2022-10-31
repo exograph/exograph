@@ -117,6 +117,6 @@ fn ordering(argument: &ConstValue) -> Result<Ordering, PostgresExecutionError> {
         arg => Err(PostgresExecutionError::Generic(format!(
             "Unable to process ordering argument {}",
             arg
-        ))), // return an error
+        ))),
     }
 }
