@@ -7,8 +7,8 @@ pub enum PostgresExecutionError {
     #[error("{0}")]
     Generic(String),
 
-    #[error("{0}")]
-    Validation(String),
+    #[error("Invalid field '{0}': {1}")]
+    Validation(String, String),
 
     #[error("{0}")]
     Postgres(#[from] payas_sql::database_error::DatabaseError),
@@ -37,7 +37,7 @@ impl PostgresExecutionError {
     pub fn user_error_message(&self) -> String {
         match self {
             PostgresExecutionError::Authorization => "Not authorized".to_string(),
-            PostgresExecutionError::Validation(message) => message.to_string(),
+            PostgresExecutionError::Validation(_, _) => self.to_string(),
             // Do not reveal the underlying database error as it may expose sensitive details (such as column names or data involved in constraint violation).
             _ => "Postgres operation failed".to_string(),
         }

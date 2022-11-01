@@ -74,13 +74,15 @@ fn order_by_pair<'a>(
         OrderByParameterTypeKind::Composite { parameters } => {
             match parameters.iter().find(|p| p.name == parameter_name) {
                 Some(parameter) => Ok(parameter),
-                None => Err(PostgresExecutionError::Validation(format!(
-                    "Invalid order by parameter {parameter_name}"
-                ))),
+                None => Err(PostgresExecutionError::Validation(
+                    parameter_name.into(),
+                    "Invalid order by parameter".into(),
+                )),
             }
         }
         _ => Err(PostgresExecutionError::Validation(
-            "Invalid primitive order by parameter".to_string(),
+            parameter_name.into(),
+            "Invalid primitive order by parameter".into(),
         )),
     }?;
 

@@ -88,7 +88,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .fold(Ok(("", None)), |acc, (name, result)| {
                         acc.and_then(|(acc_name, acc_result)| {
                                     if acc_result.is_some() && result.is_some() {
-                                        Err(PostgresExecutionError::Validation("Cannot specify more than one logical operation on the same level".into()))
+                                        Err(PostgresExecutionError::Validation(self.name.to_string(), "Cannot specify more than one logical operation on the same level".into()))
                                     } else if acc_result.is_some() && result.is_none() {
                                         Ok((acc_name, acc_result))
                                     } else {
@@ -110,7 +110,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 if let ConstValue::List(arguments) = logical_op_argument_value {
                                     // first make sure we have arguments
                                     if arguments.is_empty() {
-                                        return Err(PostgresExecutionError::Validation("Logical operation predicate does not have any arguments".into()));
+                                        return Err(PostgresExecutionError::Validation(self.name.clone(), "Logical operation predicate does not have any arguments".into()));
                                     }
 
                                     // build our predicate chain from the array of arguments provided
@@ -143,6 +143,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                     Ok(new_predicate)
                                 } else {
                                     Err(PostgresExecutionError::Validation(
+                                        self.name.clone(),
                                         "This logical operation predicate needs a list of queries"
                                             .into(),
                                     ))
@@ -227,10 +228,10 @@ pub fn compute_predicate<'a>(
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     predicate_param
-        .and_then(|predicate_parameter| {
-            let argument_value = find_arg(arguments, &predicate_parameter.name);
+        .and_then(|predicate_param| {
+            let argument_value = find_arg(arguments, &predicate_param.name);
             argument_value.map(|argument_value| {
-                predicate_parameter.map_to_predicate(argument_value, None, subsystem)
+                predicate_param.map_to_predicate(argument_value, None, subsystem)
             })
         })
         .transpose()

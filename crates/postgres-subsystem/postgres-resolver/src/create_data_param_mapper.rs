@@ -12,30 +12,35 @@ use postgres_model::{
     types::{PostgresCompositeType, PostgresField, PostgresType, PostgresTypeKind},
 };
 
+use crate::sql_mapper::SQLMapper;
+
 use super::{
     cast,
     postgres_execution_error::{PostgresExecutionError, WithContext},
-    sql_mapper::SQLInsertMapper,
 };
 
-impl<'a> SQLInsertMapper<'a> for CreateDataParameter {
-    fn insert_operation(
-        &'a self,
-        return_type: OperationReturnType,
-        select: AbstractSelect<'a>,
+pub struct InsertOperation<'a> {
+    pub data_param: &'a CreateDataParameter,
+    pub return_type: &'a OperationReturnType,
+    pub select: AbstractSelect<'a>,
+}
+
+impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
+    fn map_to_sql(
+        self,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,
-    ) -> Result<AbstractInsert, PostgresExecutionError> {
-        let table = return_type.physical_table(subsystem);
+    ) -> Result<AbstractInsert<'a>, PostgresExecutionError> {
+        let table = self.return_type.physical_table(subsystem);
 
-        let data_type = &subsystem.mutation_types[self.typ.type_id];
+        let data_type = &subsystem.mutation_types[self.data_param.typ.type_id];
 
         let rows = map_argument(data_type, argument, subsystem)?;
 
         let abs_insert = AbstractInsert {
             table,
             rows,
-            selection: select,
+            selection: self.select,
         };
 
         Ok(abs_insert)

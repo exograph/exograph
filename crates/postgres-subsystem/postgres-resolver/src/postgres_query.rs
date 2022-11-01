@@ -67,14 +67,7 @@ pub async fn compute_select<'content>(
         predicate_param.as_ref(),
         &field.arguments,
         subsystem,
-    )
-    .map_err(|e| match e {
-        PostgresExecutionError::Validation(message) => PostgresExecutionError::Validation(format!(
-            "Error computing predicate for field '{}': {}",
-            field.name, message
-        )),
-        e => e,
-    })?;
+    )?;
     let predicate = AbstractPredicate::and(query_predicate, access_predicate);
 
     let order_by = compute_order_by(order_by_param, &field.arguments, subsystem)?;

@@ -13,12 +13,15 @@ use postgres_model::{
     types::PostgresTypeModifier,
 };
 
-use crate::operation_resolver::OperationResolver;
+use crate::{
+    create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
+    sql_mapper::SQLMapper, update_data_param_mapper::UpdateOperation,
+};
 
 use super::{
-    postgres_execution_error::{PostgresExecutionError, WithContext},
+    postgres_execution_error::PostgresExecutionError,
     postgres_query::compute_select,
-    sql_mapper::{SQLInsertMapper, SQLOperationKind, SQLUpdateMapper},
+    sql_mapper::SQLOperationKind,
     util::{check_access, find_arg, return_type_info},
 };
 
@@ -101,9 +104,14 @@ async fn create_operation<'content>(
     )
     .await?;
 
-    let argument_value = find_arg(&field.arguments, &data_param.name).unwrap();
+    let argument = find_arg(&field.arguments, &data_param.name).unwrap();
 
-    data_param.insert_operation(return_type.clone(), select, argument_value, subsystem)
+    InsertOperation {
+        data_param,
+        select,
+        return_type,
+    }
+    .map_to_sql(argument, subsystem)
 }
 
 async fn delete_operation<'content>(
@@ -129,11 +137,7 @@ async fn delete_operation<'content>(
         Some(predicate_param),
         &field.arguments,
         subsystem,
-    )
-    .with_context(format!(
-        "During predicate computation for parameter {}",
-        predicate_param.name
-    ))?;
+    )?;
 
     Ok(AbstractDelete {
         table,
@@ -166,16 +170,14 @@ async fn update_operation<'content>(
         Some(predicate_param),
         &field.arguments,
         subsystem,
-    )
-    .with_context(format!(
-        "During predicate computation for parameter {}",
-        predicate_param.name
-    ))?;
+    )?;
 
-    let argument_value = find_arg(&field.arguments, &data_param.name);
-    argument_value
-        .map(|argument_value| {
-            data_param.update_operation(return_type, predicate, select, argument_value, subsystem)
-        })
-        .unwrap()
+    let argument = find_arg(&field.arguments, &data_param.name).unwrap();
+    UpdateOperation {
+        data_param,
+        predicate,
+        select,
+        return_type,
+    }
+    .map_to_sql(argument, subsystem)
 }
