@@ -1,4 +1,5 @@
 use async_recursion::async_recursion;
+use async_trait::async_trait;
 use futures::StreamExt;
 
 use core_resolver::request_context::RequestContext;
@@ -13,11 +14,11 @@ use postgres_model::{
 };
 
 use payas_sql::{
-    AbstractOrderBy, AbstractPredicate, AbstractSelect, ColumnPathLink, ColumnSelection, Limit,
-    Offset, SelectionCardinality, SelectionElement,
+    AbstractOperation, AbstractOrderBy, AbstractPredicate, AbstractSelect, ColumnPathLink,
+    ColumnSelection, Limit, Offset, SelectionCardinality, SelectionElement,
 };
 
-use crate::util::find_arg;
+use crate::{operation_resolver::OperationResolver, util::find_arg};
 
 use super::{
     order_by_mapper::OrderByParameterMapper,
@@ -25,6 +26,20 @@ use super::{
     sql_mapper::{SQLMapper, SQLOperationKind},
     util::{check_access, Arguments},
 };
+
+#[async_trait]
+impl OperationResolver for PostgresQuery {
+    async fn resolve<'a>(
+        &'a self,
+        field: &'a ValidatedField,
+        request_context: &'a RequestContext<'a>,
+        subsystem: &'a ModelPostgresSystem,
+    ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
+        let abstract_select = compute_select(self, field, subsystem, request_context).await?;
+
+        Ok(AbstractOperation::Select(abstract_select))
+    }
+}
 
 pub async fn compute_select<'content>(
     query: &'content PostgresQuery,

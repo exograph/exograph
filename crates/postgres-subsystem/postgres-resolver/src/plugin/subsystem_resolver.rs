@@ -12,16 +12,12 @@ use core_resolver::{
     validation::field::ValidatedField,
     InterceptedOperation, QueryResponse,
 };
-use payas_sql::{AbstractOperation, DatabaseExecutor};
-use postgres_model::{
-    model::ModelPostgresSystem,
-    operation::{PostgresMutation, PostgresQuery},
-};
+use payas_sql::DatabaseExecutor;
+use postgres_model::model::ModelPostgresSystem;
 
 use crate::{
-    abstract_operation_resolver::resolve_operation,
-    postgres_execution_error::PostgresExecutionError, postgres_mutation::operation,
-    postgres_query::compute_select,
+    abstract_operation_resolver::resolve_operation, operation_resolver::OperationResolver,
+    postgres_execution_error::PostgresExecutionError,
 };
 
 pub struct PostgresSubsystemResolver {
@@ -50,13 +46,10 @@ impl SubsystemResolver for PostgresSubsystemResolver {
                 let query = self.subsystem.queries.get_by_key(operation_name);
 
                 match query {
-                    Some(query) => Some(
-                        compute_query_sql_operation(query, field, request_context, &self.subsystem)
-                            .await,
-                    ),
-                    None => {
-                        return None;
+                    Some(query) => {
+                        Some(query.resolve(field, request_context, &self.subsystem).await)
                     }
+                    None => None,
                 }
             }
             OperationType::Mutation => {
@@ -64,17 +57,11 @@ impl SubsystemResolver for PostgresSubsystemResolver {
 
                 match mutation {
                     Some(mutation) => Some(
-                        compute_mutation_sql_operation(
-                            mutation,
-                            field,
-                            request_context,
-                            &self.subsystem,
-                        )
-                        .await,
+                        mutation
+                            .resolve(field, request_context, &self.subsystem)
+                            .await,
                     ),
-                    None => {
-                        return None;
-                    }
+                    None => None,
                 }
             }
             OperationType::Subscription => Some(Err(PostgresExecutionError::Generic(
@@ -114,26 +101,6 @@ impl SubsystemResolver for PostgresSubsystemResolver {
     fn schema_types(&self) -> Vec<TypeDefinition> {
         self.subsystem.schema_types()
     }
-}
-
-async fn compute_query_sql_operation<'a>(
-    query: &'a PostgresQuery,
-    field: &'a ValidatedField,
-    request_context: &'a RequestContext<'a>,
-    subsystem: &'a ModelPostgresSystem,
-) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
-    compute_select(query, field, subsystem, request_context)
-        .await
-        .map(AbstractOperation::Select)
-}
-
-async fn compute_mutation_sql_operation<'a>(
-    mutation: &'a PostgresMutation,
-    field: &'a ValidatedField,
-    request_context: &'a RequestContext<'a>,
-    subsystem: &'a ModelPostgresSystem,
-) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
-    operation(mutation, field, subsystem, request_context).await
 }
 
 impl From<PostgresExecutionError> for SubsystemResolutionError {
