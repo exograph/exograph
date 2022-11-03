@@ -65,6 +65,10 @@ impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
             _ => todo!(), // Invalid
         }
     }
+
+    fn param_name(&self) -> &str {
+        &self.param.name
+    }
 }
 
 fn order_by_pair<'a>(

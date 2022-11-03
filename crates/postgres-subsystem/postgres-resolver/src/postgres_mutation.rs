@@ -15,7 +15,8 @@ use postgres_model::{
 
 use crate::{
     create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
-    sql_mapper::SQLMapper, update_data_param_mapper::UpdateOperation,
+    predicate_mapper::compute_predicate, sql_mapper::SQLMapper,
+    update_data_param_mapper::UpdateOperation,
 };
 
 use super::{
@@ -104,14 +105,17 @@ async fn create_operation<'content>(
     )
     .await?;
 
-    let argument = find_arg(&field.arguments, &data_param.name).unwrap();
-
-    InsertOperation {
-        data_param,
-        select,
-        return_type,
+    match find_arg(&field.arguments, &data_param.name) {
+        Some(argument) => InsertOperation {
+            data_param,
+            select,
+            return_type,
+        }
+        .to_sql(argument, subsystem),
+        None => Err(PostgresExecutionError::MissingArgument(
+            data_param.name.clone(),
+        )),
     }
-    .to_sql(argument, subsystem)
 }
 
 async fn delete_operation<'content>(
@@ -133,11 +137,7 @@ async fn delete_operation<'content>(
     )
     .await?;
 
-    let predicate = super::predicate_mapper::compute_predicate(
-        Some(predicate_param),
-        &field.arguments,
-        subsystem,
-    )?;
+    let predicate = compute_predicate(Some(predicate_param), &field.arguments, subsystem)?;
 
     Ok(AbstractDelete {
         table,
@@ -166,18 +166,18 @@ async fn update_operation<'content>(
     )
     .await?;
 
-    let predicate = super::predicate_mapper::compute_predicate(
-        Some(predicate_param),
-        &field.arguments,
-        subsystem,
-    )?;
+    let predicate = compute_predicate(Some(predicate_param), &field.arguments, subsystem)?;
 
-    let argument = find_arg(&field.arguments, &data_param.name).unwrap();
-    UpdateOperation {
-        data_param,
-        predicate,
-        select,
-        return_type,
+    match find_arg(&field.arguments, &data_param.name) {
+        Some(argument) => UpdateOperation {
+            data_param,
+            predicate,
+            select,
+            return_type,
+        }
+        .to_sql(argument, subsystem),
+        None => Err(PostgresExecutionError::MissingArgument(
+            data_param.name.clone(),
+        )),
     }
-    .to_sql(argument, subsystem)
 }

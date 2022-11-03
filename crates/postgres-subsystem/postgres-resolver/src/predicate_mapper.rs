@@ -9,8 +9,8 @@ use postgres_model::{
 
 use crate::{
     column_path_util::to_column_path,
-    sql_mapper::SQLMapper,
-    util::{find_arg, get_argument_field, to_column_id_path, Arguments},
+    sql_mapper::{extract_and_map, SQLMapper},
+    util::{get_argument_field, to_column_id_path, Arguments},
 };
 
 use super::{cast::cast_value, postgres_execution_error::PostgresExecutionError};
@@ -195,6 +195,10 @@ impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
             }
         }
     }
+
+    fn param_name(&self) -> &str {
+        &self.param.name
+    }
 }
 
 fn operands<'a>(
@@ -222,21 +226,17 @@ fn operands<'a>(
 }
 
 pub fn compute_predicate<'a>(
-    predicate_param: Option<&'a PredicateParameter>,
+    param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
-    predicate_param
-        .and_then(|predicate_param| {
-            let argument_value = find_arg(arguments, &predicate_param.name);
-            argument_value.map(|argument_value| {
-                PredicateParamInput {
-                    param: predicate_param,
-                    parent_column_path: None,
-                }
-                .to_sql(argument_value, subsystem)
-            })
-        })
-        .transpose()
-        .map(|p| p.unwrap_or(AbstractPredicate::True))
+    extract_and_map(
+        param.as_ref().map(|param| PredicateParamInput {
+            param,
+            parent_column_path: None,
+        }),
+        arguments,
+        subsystem,
+    )
+    .map(|predicate| predicate.unwrap_or(AbstractPredicate::True))
 }

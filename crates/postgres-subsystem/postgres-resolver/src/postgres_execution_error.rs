@@ -27,6 +27,9 @@ pub enum PostgresExecutionError {
 
     #[error("{0} {1}")]
     WithContext(String, #[source] Box<PostgresExecutionError>),
+
+    #[error("Missing argument '{0}'")]
+    MissingArgument(String),
 }
 
 impl PostgresExecutionError {

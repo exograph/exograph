@@ -54,6 +54,10 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
 
         Ok(abs_update)
     }
+
+    fn param_name(&self) -> &str {
+        &self.data_param.name
+    }
 }
 
 fn compute_update_columns<'a>(

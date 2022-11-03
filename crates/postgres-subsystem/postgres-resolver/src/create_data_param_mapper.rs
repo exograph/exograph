@@ -45,19 +45,23 @@ impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
 
         Ok(abs_insert)
     }
+
+    fn param_name(&self) -> &str {
+        &self.data_param.name
+    }
 }
 
 pub(crate) fn map_argument<'a>(
-    input_data_type: &'a PostgresType,
+    data_type: &'a PostgresType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<Vec<InsertionRow<'a>>, PostgresExecutionError> {
     match argument {
         ConstValue::List(arguments) => arguments
             .iter()
-            .map(|argument| map_single(input_data_type, argument, subsystem))
+            .map(|argument| map_single(data_type, argument, subsystem))
             .collect(),
-        _ => vec![map_single(input_data_type, argument, subsystem)]
+        _ => vec![map_single(data_type, argument, subsystem)]
             .into_iter()
             .collect(),
     }
@@ -65,11 +69,11 @@ pub(crate) fn map_argument<'a>(
 
 /// Map a single item from the data parameter
 fn map_single<'a>(
-    input_data_type: &'a PostgresType,
+    data_type: &'a PostgresType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<InsertionRow<'a>, PostgresExecutionError> {
-    let fields = match &input_data_type.kind {
+    let fields = match &data_type.kind {
         PostgresTypeKind::Primitive => {
             return Err(PostgresExecutionError::Generic(
                 "Query attempted on a primitive type".into(),
@@ -89,7 +93,7 @@ fn map_single<'a>(
                 Some(field_self_column) => {
                     map_self_column(field_self_column, field, field_arg, subsystem)
                 }
-                None => map_foreign(field, field_arg, input_data_type, subsystem),
+                None => map_foreign(field, field_arg, data_type, subsystem),
             })
         })
         .collect();

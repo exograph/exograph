@@ -25,6 +25,10 @@ impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
     ) -> Result<Limit, PostgresExecutionError> {
         cast_to_i64(argument).map(Limit)
     }
+
+    fn param_name(&self) -> &str {
+        &self.name
+    }
 }
 
 impl<'a> SQLMapper<'a, Offset> for &OffsetParameter {
@@ -34,5 +38,9 @@ impl<'a> SQLMapper<'a, Offset> for &OffsetParameter {
         _subsystem: &'a ModelPostgresSystem,
     ) -> Result<Offset, PostgresExecutionError> {
         cast_to_i64(argument).map(Offset)
+    }
+
+    fn param_name(&self) -> &str {
+        &self.name
     }
 }
