@@ -11,7 +11,7 @@ pub(crate) enum SQLOperationKind {
 }
 
 pub(crate) trait SQLMapper<'a, R> {
-    fn map_to_sql(
+    fn to_sql(
         self,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,

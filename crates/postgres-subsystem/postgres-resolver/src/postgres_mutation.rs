@@ -111,7 +111,7 @@ async fn create_operation<'content>(
         select,
         return_type,
     }
-    .map_to_sql(argument, subsystem)
+    .to_sql(argument, subsystem)
 }
 
 async fn delete_operation<'content>(
@@ -179,5 +179,5 @@ async fn update_operation<'content>(
         select,
         return_type,
     }
-    .map_to_sql(argument, subsystem)
+    .to_sql(argument, subsystem)
 }

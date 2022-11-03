@@ -26,7 +26,7 @@ pub struct InsertOperation<'a> {
 }
 
 impl<'a> SQLMapper<'a, AbstractInsert<'a>> for InsertOperation<'a> {
-    fn map_to_sql(
+    fn to_sql(
         self,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,

@@ -27,7 +27,7 @@ pub struct UpdateOperation<'a> {
 }
 
 impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
-    fn map_to_sql(
+    fn to_sql(
         self,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,

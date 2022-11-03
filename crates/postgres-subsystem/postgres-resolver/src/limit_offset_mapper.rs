@@ -18,7 +18,7 @@ fn cast_to_i64(argument: &ConstValue) -> Result<i64, PostgresExecutionError> {
 }
 
 impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
-    fn map_to_sql(
+    fn to_sql(
         self,
         argument: &'a ConstValue,
         _subsystem: &'a ModelPostgresSystem,
@@ -28,7 +28,7 @@ impl<'a> SQLMapper<'a, Limit> for &LimitParameter {
 }
 
 impl<'a> SQLMapper<'a, Offset> for &OffsetParameter {
-    fn map_to_sql(
+    fn to_sql(
         self,
         argument: &'a ConstValue,
         _subsystem: &'a ModelPostgresSystem,

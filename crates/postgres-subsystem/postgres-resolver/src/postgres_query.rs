@@ -18,10 +18,11 @@ use payas_sql::{
     ColumnSelection, Limit, Offset, SelectionCardinality, SelectionElement,
 };
 
-use crate::{operation_resolver::OperationResolver, util::find_arg};
+use crate::{
+    operation_resolver::OperationResolver, order_by_mapper::OrderByParameterInput, util::find_arg,
+};
 
 use super::{
-    order_by_mapper::OrderByParameterMapper,
     postgres_execution_error::PostgresExecutionError,
     sql_mapper::{SQLMapper, SQLOperationKind},
     util::{check_access, Arguments},
@@ -109,10 +110,14 @@ fn compute_order_by<'content>(
 ) -> Result<Option<AbstractOrderBy<'content>>, PostgresExecutionError> {
     order_by_param
         .as_ref()
-        .and_then(|order_by_param| {
-            let argument_value = find_arg(arguments, &order_by_param.name);
+        .and_then(|param| {
+            let argument_value = find_arg(arguments, &param.name);
             argument_value.map(|argument_value| {
-                order_by_param.map_to_order_by(argument_value, None, subsystem)
+                OrderByParameterInput {
+                    param,
+                    parent_column_path: None,
+                }
+                .to_sql(argument_value, subsystem)
             })
         })
         .transpose()
@@ -142,7 +147,7 @@ fn compute_limit<'content>(
         .as_ref()
         .and_then(|limit_param| {
             let argument_value = find_arg(arguments, &limit_param.name);
-            argument_value.map(|argument_value| limit_param.map_to_sql(argument_value, subsystem))
+            argument_value.map(|argument_value| limit_param.to_sql(argument_value, subsystem))
         })
         .transpose()
         .unwrap()
@@ -157,7 +162,7 @@ fn compute_offset<'content>(
         .as_ref()
         .and_then(|offset_param| {
             let argument_value = find_arg(arguments, &offset_param.name);
-            argument_value.map(|argument_value| offset_param.map_to_sql(argument_value, subsystem))
+            argument_value.map(|argument_value| offset_param.to_sql(argument_value, subsystem))
         })
         .transpose()
         .unwrap()
