@@ -1,13 +1,13 @@
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
-    builder::system_builder::BaseModelSystem,
-    error::ModelBuildingError,
-    plugin::{SubsystemBuild, SubsystemBuilder},
+    builder::system_builder::BaseModelSystem, error::ModelBuildingError, plugin::SubsystemBuild,
     typechecker::typ::Type,
 };
-use core_plugin::system_serializer::SystemSerializer;
+use core_plugin_interface::interface::SubsystemBuilder;
+use core_plugin_shared::system_serializer::SystemSerializer;
 
 pub struct PostgresSubsystemBuilder {}
+core_plugin_interface::export_subsystem_builder!(PostgresSubsystemBuilder {});
 
 impl SubsystemBuilder for PostgresSubsystemBuilder {
     fn build(

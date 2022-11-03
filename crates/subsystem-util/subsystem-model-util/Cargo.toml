@@ -10,7 +10,7 @@ async-graphql-parser = "4.0.5"
 async-graphql-value = "4.0.5"
 
 core-model = { path = "../../core-subsystem/core-model" }
-core-plugin = { path = "../../core-subsystem/core-plugin" }
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 
 [dev-dependencies]
 

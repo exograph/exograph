@@ -2,14 +2,16 @@ use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    plugin::{Interception, SubsystemBuild, SubsystemBuilder},
+    plugin::{Interception, SubsystemBuild},
     typechecker::typ::Type,
 };
-use core_plugin::{interception::InterceptorIndex, system_serializer::SystemSerializer};
+use core_plugin_shared::{interception::InterceptorIndex, system_serializer::SystemSerializer};
 
 use crate::system_builder::ModelDenoSystemWithInterceptors;
+use core_plugin_interface::interface::SubsystemBuilder;
 
 pub struct DenoSubsystemBuilder {}
+core_plugin_interface::export_subsystem_builder!(DenoSubsystemBuilder {});
 
 impl SubsystemBuilder for DenoSubsystemBuilder {
     fn build(

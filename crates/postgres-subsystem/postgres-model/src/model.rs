@@ -9,7 +9,7 @@ use core_model::{
     mapped_arena::{MappedArena, SerializableSlab},
     type_normalization::{default_positioned, FieldDefinitionProvider, TypeDefinitionProvider},
 };
-use core_plugin::{error::ModelSerializationError, system_serializer::SystemSerializer};
+use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 

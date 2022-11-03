@@ -2,12 +2,13 @@ use async_graphql_parser::{
     types::{ExecutableDocument, OperationType},
     Pos,
 };
-use core_plugin::interception::{
+use core_plugin_shared::interception::{
     InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex,
 };
 use futures::{future::BoxFuture, StreamExt};
 use serde_json::Value;
 use thiserror::Error;
+use tokio::runtime::Handle;
 use tracing::{error, instrument};
 
 use crate::{
@@ -125,7 +126,13 @@ impl SystemResolver {
         let stream =
             futures::stream::iter(self.subsystem_resolvers.iter()).then(|resolver| async {
                 resolver
-                    .resolve(operation, operation_type, request_context, self)
+                    .resolve_cdylib(
+                        Handle::current(),
+                        operation,
+                        operation_type,
+                        request_context,
+                        self,
+                    )
                     .await
             });
 
@@ -160,7 +167,8 @@ impl SystemResolver {
         );
 
         interceptor_subsystem
-            .invoke_interceptor(
+            .invoke_interceptor_cdylib(
+                Handle::current(),
                 interceptor.interceptor_index,
                 &intercepted_operation,
                 request_context,

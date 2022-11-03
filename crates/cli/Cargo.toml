@@ -21,7 +21,7 @@ payas-sql = { path = "../../libs/payas-sql" }
 builder = { path = "../builder" }
 testing = { path = "../testing" }
 core-model = { path = "../core-subsystem/core-model" }
-core-plugin = { path = "../core-subsystem/core-plugin" }
+core-plugin-shared = { path = "../core-subsystem/core-plugin-shared" }
 core-model-builder = { path = "../core-subsystem/core-model-builder" }
 postgres-model = { path = "../postgres-subsystem/postgres-model" }
 

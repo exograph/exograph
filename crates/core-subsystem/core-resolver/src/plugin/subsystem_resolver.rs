@@ -7,13 +7,59 @@ use async_graphql_parser::{
     Positioned,
 };
 use async_trait::async_trait;
-use core_plugin::interception::InterceptorIndex;
+use core_plugin_shared::interception::InterceptorIndex;
 use thiserror::Error;
+use tokio::runtime::Handle;
 
+/// Provides resolution of operations and interceptor methods for a subsystem.
+///
+/// When using a [SubsystemResolver] that has been loaded as a `cdylib`, it is
+/// necessary to pass a [Handle]. This is because each dynamic library loaded
+/// has its own thread-local storage (TLS), and does not inherit the Tokio context
+/// necessary from the calling code. It is necessary to enter the context explicitly
+/// by passing the current handle and entering it, otherwise async operations present in
+/// the resolver that need a Tokio context will fail.
+///
+/// Shim methods has been provided for the asynchronous methods present in this trait. They
+/// take an additional argument (a [Handle]), and sets up the necessary context before
+/// invoking the actual implementation.
 #[async_trait]
-pub trait SubsystemResolver {
+pub trait SubsystemResolver: Sync {
     /// The id of the subsystem (for debugging purposes)
     fn id(&self) -> &'static str;
+
+    /// Shim method for `resolve`
+    async fn resolve_cdylib<'a>(
+        &'a self,
+        handle: Handle,
+        operation: &'a ValidatedField,
+        operation_type: OperationType,
+        request_context: &'a RequestContext,
+        system_resolver: &'a SystemResolver,
+    ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
+        let _guard = handle.enter();
+        self.resolve(operation, operation_type, request_context, system_resolver)
+            .await
+    }
+
+    /// Shim method for `invoke_interceptor`
+    async fn invoke_interceptor_cdylib<'a>(
+        &'a self,
+        handle: Handle,
+        interceptor_index: InterceptorIndex,
+        intercepted_operation: &'a InterceptedOperation,
+        request_context: &'a RequestContext<'a>,
+        system_resolver: &'a SystemResolver,
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
+        let _guard = handle.enter();
+        self.invoke_interceptor(
+            interceptor_index,
+            intercepted_operation,
+            request_context,
+            system_resolver,
+        )
+        .await
+    }
 
     /// Resolve an individual operation
     ///

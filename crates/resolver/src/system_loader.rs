@@ -1,19 +1,16 @@
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
 
-use core_plugin::{
+use core_plugin_interface::interface::{
+    LibraryLoadingError, SubsystemLoader, SubsystemLoadingError,
+};
+use core_plugin_shared::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
     system_serializer::SystemSerializer,
 };
-use core_resolver::{
-    introspection::definition::schema::Schema,
-    plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolver},
-    system_resolver::SystemResolver,
-};
-use deno_resolver::DenoSubsystemLoader;
-use postgres_resolver::PostgresSubsystemLoader;
-use wasm_resolver::WasmSubsystemLoader;
 
+use core_resolver::plugin::SubsystemResolver;
+use core_resolver::{introspection::definition::schema::Schema, system_resolver::SystemResolver};
 pub struct SystemLoader;
 
 impl SystemLoader {
@@ -40,16 +37,20 @@ impl SystemLoader {
             mutation_interception_map,
         } = serialized_system;
 
-        let postgres_loader = PostgresSubsystemLoader {};
-        let deno_loader = DenoSubsystemLoader {};
-        let wasm_loader = WasmSubsystemLoader {};
-        let loaders: Vec<&dyn SubsystemLoader> = vec![&postgres_loader, &deno_loader, &wasm_loader];
+        let library_names = ["postgres_resolver", "deno_resolver", "wasm_resolver"];
+        let subsystem_loaders: Result<Vec<Box<dyn SubsystemLoader>>, LibraryLoadingError> =
+            library_names
+                .into_iter()
+                .map(core_plugin_interface::interface::load_subsystem_loader)
+                .collect();
+
+        let subsystem_loaders = subsystem_loaders?;
 
         // First build subsystem resolvers
         let subsystem_resolvers: Result<Vec<_>, _> = subsystems
             .into_iter()
             .map(|serialized_subsystem| {
-                let subsystem_loader = loaders
+                let subsystem_loader = subsystem_loaders
                     .iter()
                     .find(|loader| loader.id() == serialized_subsystem.id)
                     .ok_or_else(|| {
@@ -113,6 +114,9 @@ pub enum SystemLoadingError {
 
     #[error("Subsystem loader for '{0}' not found")]
     SubsystemLoaderNotFound(String),
+
+    #[error("Error while trying to load subsystem library: {0}")]
+    LibraryLoadingError(#[from] LibraryLoadingError),
 
     #[error("Subsystem loading error: {0}")]
     SubsystemLoadingError(#[from] SubsystemLoadingError),
