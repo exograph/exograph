@@ -34,6 +34,7 @@ steps:
     - name: sccache
       path: /sccache
     commands:
+      - cargo build --release # TODO: figure out how to build cdylibs during tests implicitly
       - CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 cargo test --workspace
 
   - name: test-integration
