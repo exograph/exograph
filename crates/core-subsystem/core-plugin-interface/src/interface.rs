@@ -65,7 +65,7 @@ fn load_subsystem_library<T: ?Sized>(
         // build file path to library
         let mut libpath = current_exe()?;
         libpath.pop();
-        libpath.push(format!("lib{}.so", library_name));
+        libpath.push(libloading::library_filename(library_name));
 
         // load the library
         let lib = Box::new(libloading::Library::new(&libpath)?);
