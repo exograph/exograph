@@ -8,7 +8,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
-    "typescript": "^4.8.4"
+    "typescript": "^4.8.4",
+    "graphql-ws": "^5.11.2"
   },
   "devDependencies": {
     "@types/react": "^18.0.25",
