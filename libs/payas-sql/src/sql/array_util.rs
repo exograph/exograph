@@ -2,7 +2,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use crate::database_error::DatabaseError;
 
-use super::{column::PhysicalColumnType, SQLParam};
+use super::SQLParam;
 use postgres_array::{Array, Dimension};
 
 pub enum ArrayEntry<'a, T> {
@@ -24,30 +24,21 @@ type OptionalSQLParam = Option<Box<dyn SQLParam>>;
 /// * `to_sql_param` - A function to convert an element of an array to an SQLParam.
 pub fn to_sql_param<T>(
     elems: &[T],
-    destination_type: &PhysicalColumnType,
     array_entry: fn(&T) -> ArrayEntry<T>,
-    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam, DatabaseError>,
+    to_sql_param: &impl Fn(&T) -> Result<OptionalSQLParam, DatabaseError>,
 ) -> Result<Option<Box<dyn SQLParam>>, DatabaseError> {
-    to_sql_array(elems, destination_type, array_entry, to_sql_param)
+    to_sql_array(elems, array_entry, to_sql_param)
         .map(|array| Some(Box::new(array) as Box<dyn SQLParam>))
 }
 
 // Separate function to enable testing
 fn to_sql_array<T>(
     elems: &[T],
-    destination_type: &PhysicalColumnType,
     array_entry: fn(&T) -> ArrayEntry<T>,
-    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam, DatabaseError>,
+    to_sql_param: &impl Fn(&T) -> Result<OptionalSQLParam, DatabaseError>,
 ) -> Result<Array<Box<dyn SQLParam>>, DatabaseError> {
     let mut result = (Vec::new(), HashMap::new());
-    process_array(
-        elems,
-        destination_type,
-        &mut result,
-        0,
-        array_entry,
-        to_sql_param,
-    )?;
+    process_array(elems, &mut result, 0, array_entry, to_sql_param)?;
 
     let mut dimension_lens = result.1.iter().collect::<Vec<_>>();
     dimension_lens.sort_by_key(|(key, _)| **key);
@@ -68,11 +59,10 @@ fn to_sql_array<T>(
 /// See the tests module for examples.
 fn process_array<T>(
     elems: &[T],
-    destination_type: &PhysicalColumnType,
     result: &mut (Vec<Box<dyn SQLParam>>, HashMap<usize, i32>),
     depth: usize,
     array_entry: fn(&T) -> ArrayEntry<T>,
-    to_sql_param: fn(&T, &PhysicalColumnType) -> Result<OptionalSQLParam, DatabaseError>,
+    to_sql_param: &impl Fn(&T) -> Result<OptionalSQLParam, DatabaseError>,
 ) -> Result<(), DatabaseError> {
     let mut len = 0;
 
@@ -80,18 +70,11 @@ fn process_array<T>(
         len += 1;
         match array_entry(elem) {
             ArrayEntry::Single(elem) => {
-                let value = to_sql_param(elem, destination_type)?;
+                let value = to_sql_param(elem)?;
                 result.0.push(Box::new(value));
             }
             ArrayEntry::List(elems) => {
-                process_array(
-                    elems,
-                    destination_type,
-                    result,
-                    depth + 1,
-                    array_entry,
-                    to_sql_param,
-                )?;
+                process_array(elems, result, depth + 1, array_entry, to_sql_param)?;
             }
         }
     }
@@ -128,23 +111,17 @@ mod tests {
         List(Vec<Element>),
     }
 
-    fn i32_to_sql_param(
-        i: &i32,
-        _: &PhysicalColumnType,
-    ) -> Result<OptionalSQLParam, DatabaseError> {
+    fn i32_to_sql_param(i: &i32) -> Result<OptionalSQLParam, DatabaseError> {
         Ok(Some(Box::new(*i) as Box<dyn SQLParam>))
     }
 
-    fn element_to_sql_param(
-        entry: &Element,
-        typ: &PhysicalColumnType,
-    ) -> Result<OptionalSQLParam, DatabaseError> {
+    fn element_to_sql_param(entry: &Element) -> Result<OptionalSQLParam, DatabaseError> {
         match entry {
             Element::Single(i) => Ok(Some(Box::new(*i) as Box<dyn SQLParam>)),
             Element::List(entries) => {
                 let mut result = Vec::new();
                 for entry in entries {
-                    result.push(element_to_sql_param(entry, typ)?);
+                    result.push(element_to_sql_param(entry)?);
                 }
                 Ok(Some(Box::new(result) as Box<dyn SQLParam>))
             }
@@ -158,14 +135,12 @@ mod tests {
     #[test]
     fn single_dimensional() {
         let elems = vec![1, 2, 3];
-        let destination_type = PhysicalColumnType::Int {
-            bits: crate::sql::column::IntBits::_32,
-        };
+
         fn array_entry(elem: &i32) -> ArrayEntry<i32> {
             ArrayEntry::Single(elem)
         }
 
-        let array = to_sql_array(&elems, &destination_type, array_entry, i32_to_sql_param).unwrap();
+        let array = to_sql_array(&elems, array_entry, &i32_to_sql_param).unwrap();
         assert_eq!(
             array.dimensions(),
             [Dimension {
@@ -193,9 +168,6 @@ mod tests {
                 Element::Single(6),
             ]),
         ];
-        let destination_type = PhysicalColumnType::Int {
-            bits: crate::sql::column::IntBits::_32,
-        };
 
         fn array_entry(elem: &Element) -> ArrayEntry<Element> {
             match elem {
@@ -204,8 +176,7 @@ mod tests {
             }
         }
 
-        let array =
-            to_sql_array(&elems, &destination_type, array_entry, element_to_sql_param).unwrap();
+        let array = to_sql_array(&elems, array_entry, &element_to_sql_param).unwrap();
         assert_eq!(
             array.dimensions(),
             [
@@ -239,9 +210,6 @@ mod tests {
                 Element::Single(6),
             ])]),
         ];
-        let destination_type = PhysicalColumnType::Int {
-            bits: crate::sql::column::IntBits::_32,
-        };
 
         fn array_entry(elem: &Element) -> ArrayEntry<Element> {
             match elem {
@@ -250,8 +218,7 @@ mod tests {
             }
         }
 
-        let array =
-            to_sql_array(&elems, &destination_type, array_entry, element_to_sql_param).unwrap();
+        let array = to_sql_array(&elems, array_entry, &element_to_sql_param).unwrap();
         assert_eq!(
             array.dimensions(),
             [

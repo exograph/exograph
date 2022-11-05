@@ -24,7 +24,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
     fn pass(
         &mut self,
         type_env: &MappedArena<Type>,
-        annotation_env: &HashMap<String, AnnotationSpec>,
+        _annotation_env: &HashMap<String, AnnotationSpec>,
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
@@ -80,7 +80,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
                 }
             }
             FieldSelection::Select(prefix, i, _, typ) => {
-                let in_updated = prefix.pass(type_env, annotation_env, scope, errors);
+                let in_updated = prefix.pass(type_env, _annotation_env, scope, errors);
                 let out_updated = if typ.is_incomplete() {
                     if let Type::Composite(c) = prefix.typ().deref(type_env) {
                         if let Some(field) = c.fields.iter().find(|f| f.name == i.0) {

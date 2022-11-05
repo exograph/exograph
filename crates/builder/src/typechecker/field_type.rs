@@ -24,8 +24,8 @@ impl TypecheckFrom<AstFieldType<Untyped>> for AstFieldType<Typed> {
     fn pass(
         &mut self,
         type_env: &MappedArena<Type>,
-        annotation_env: &HashMap<String, AnnotationSpec>,
-        scope: &Scope,
+        _annotation_env: &HashMap<String, AnnotationSpec>,
+        _scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
         match self {
@@ -57,7 +57,7 @@ impl TypecheckFrom<AstFieldType<Untyped>> for AstFieldType<Typed> {
 
                 let params_updated = params
                     .iter_mut()
-                    .map(|i| i.pass(type_env, annotation_env, scope, errors))
+                    .map(|i| i.pass(type_env, _annotation_env, _scope, errors))
                     .filter(|b| *b)
                     .count()
                     > 0;
@@ -65,7 +65,7 @@ impl TypecheckFrom<AstFieldType<Untyped>> for AstFieldType<Typed> {
                 ref_updated || params_updated
             }
 
-            AstFieldType::Optional(inner) => inner.pass(type_env, annotation_env, scope, errors),
+            AstFieldType::Optional(inner) => inner.pass(type_env, _annotation_env, _scope, errors),
         }
     }
 }

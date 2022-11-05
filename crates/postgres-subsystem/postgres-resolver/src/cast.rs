@@ -81,14 +81,13 @@ fn cast_list(
         }
     }
 
-    fn cast_value_with_error(
-        value: &ConstValue,
-        destination_type: &PhysicalColumnType,
-    ) -> Result<Option<Box<dyn SQLParam>>, DatabaseError> {
-        cast_value(value, destination_type).map_err(|error| DatabaseError::BoxedError(error.into()))
-    }
+    let cast_value_with_error =
+        |value: &ConstValue| -> Result<Option<Box<dyn SQLParam>>, DatabaseError> {
+            cast_value(value, destination_type)
+                .map_err(|error| DatabaseError::BoxedError(error.into()))
+        };
 
-    array_util::to_sql_param(elems, destination_type, array_entry, cast_value_with_error)
+    array_util::to_sql_param(elems, array_entry, &cast_value_with_error)
         .map_err(CastError::Postgres)
 }
 

@@ -4,7 +4,6 @@ use core_model::{
         AccessRelationalOp,
     },
     context_type::ContextFieldType,
-    mapped_arena::MappedArena,
     primitive_type::PrimitiveType,
 };
 use core_model_builder::{
@@ -12,10 +11,7 @@ use core_model_builder::{
     error::ModelBuildingError,
     typechecker::Typed,
 };
-use subsystem_model_util::{
-    access::ServiceAccessPrimitiveExpression,
-    types::{ServiceCompositeType, ServiceType},
-};
+use subsystem_model_util::access::ServiceAccessPrimitiveExpression;
 
 use super::type_builder::ResolvedTypeEnv;
 
@@ -25,9 +21,7 @@ enum PathSelection<'a> {
 
 pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
-    self_type_info: Option<&ServiceCompositeType>,
     resolved_env: &ResolvedTypeEnv,
-    subsystem_types: &MappedArena<ServiceType>,
 ) -> Result<AccessPredicateExpression<ServiceAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
         AstExpr::FieldSelection(selection) => match compute_selection(selection, resolved_env) {
@@ -51,9 +45,8 @@ pub fn compute_predicate_expression(
             }
         },
         AstExpr::LogicalOp(op) => {
-            let predicate_expr = |expr: &AstExpr<Typed>| {
-                compute_predicate_expression(expr, self_type_info, resolved_env, subsystem_types)
-            };
+            let predicate_expr =
+                |expr: &AstExpr<Typed>| compute_predicate_expression(expr, resolved_env);
             Ok(match op {
                 LogicalOp::And(left, right, _, _) => {
                     AccessPredicateExpression::LogicalOp(AccessLogicalExpression::And(

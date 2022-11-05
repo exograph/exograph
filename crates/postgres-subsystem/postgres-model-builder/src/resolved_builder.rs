@@ -576,7 +576,7 @@ fn build_type_hint(field: &AstField<Typed>, types: &MappedArena<Type>) -> Option
 
     let number_of_valid_primitive_hints: usize = primitive_hints
         .iter()
-        .map(|hint| if hint.is_some() { 1 } else { 0 })
+        .map(|hint| usize::from(hint.is_some()))
         .sum();
 
     let valid_primitive_hints_exist = number_of_valid_primitive_hints > 0;

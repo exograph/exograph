@@ -50,7 +50,7 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
         .iter()
         .map(|field| ContextField {
             name: field.name.clone(),
-            typ: create_context_field_type(&field.typ, building),
+            typ: create_context_field_type(&field.typ),
             source: {
                 let ResolvedContextSource { annotation, value } = field.source.clone();
                 ContextSource {
@@ -68,17 +68,14 @@ fn expand(context: &ResolvedContext, building: &mut SystemContextBuilding) {
     building.contexts[existing_context_id] = expanded_context;
 }
 
-fn create_context_field_type(
-    field_type: &ResolvedContextFieldType,
-    building: &SystemContextBuilding,
-) -> ContextFieldType {
+fn create_context_field_type(field_type: &ResolvedContextFieldType) -> ContextFieldType {
     match field_type {
         ResolvedContextFieldType::Plain(pt) => ContextFieldType::Reference(pt.clone()),
         ResolvedContextFieldType::Optional(underlying) => {
-            ContextFieldType::Optional(Box::new(create_context_field_type(underlying, building)))
+            ContextFieldType::Optional(Box::new(create_context_field_type(underlying)))
         }
         ResolvedContextFieldType::List(underlying) => {
-            ContextFieldType::List(Box::new(create_context_field_type(underlying, building)))
+            ContextFieldType::List(Box::new(create_context_field_type(underlying)))
         }
     }
 }

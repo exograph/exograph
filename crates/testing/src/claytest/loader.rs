@@ -313,7 +313,7 @@ Error as a multistage test: {}
 fn construct_operation_from_init_file(path: &Path) -> Result<TestfileOperation> {
     match path.extension().unwrap().to_str().unwrap() {
         "sql" => {
-            let sql = std::fs::read_to_string(&path).context("Failed to read SQL file")?;
+            let sql = std::fs::read_to_string(path).context("Failed to read SQL file")?;
 
             Ok(TestfileOperation::Sql(sql))
         }

@@ -224,7 +224,7 @@ fn resolve_service(
     let bundled_script = process_script(service, &module_fs_path)?;
 
     let module_anonymized_path = module_fs_path
-        .strip_prefix(&service.base_clayfile.parent().unwrap())
+        .strip_prefix(service.base_clayfile.parent().unwrap())
         .unwrap();
 
     fn extract_intercept_annot<'a>(

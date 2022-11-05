@@ -130,7 +130,7 @@ fn create_system_resolver(claypot_file: &str) -> Result<SystemResolver, SystemLo
     if !Path::new(&claypot_file).exists() {
         return Err(SystemLoadingError::FileNotFound(claypot_file.to_string()));
     }
-    match File::open(&claypot_file) {
+    match File::open(claypot_file) {
         Ok(file) => {
             let claypot_file_buffer = BufReader::new(file);
 

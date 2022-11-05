@@ -17,6 +17,6 @@ impl ParsedContext for EnvironmentContextExtractor {
         _request_context: &'r RequestContext<'r>,
         _request: &'r (dyn Request + Send + Sync),
     ) -> Option<Value> {
-        std::env::var(&key?).ok().map(|v| v.into())
+        std::env::var(key?).ok().map(|v| v.into())
     }
 }
