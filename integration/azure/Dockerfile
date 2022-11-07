@@ -9,12 +9,13 @@ COPY ${CLAY_FILE} .
 RUN ./clay build ${CLAY_FILE}
 
 # 2. Build final image
-FROM clay:latest
+FROM rust:1.64.0-buster
+WORKDIR /usr/src/app
 
 ARG CLAY_FILE
 ENV CLAYPOT_FILE=${CLAY_FILE}pot
 
 # 3 Copy artifacts created in the previous steps
 COPY --from=builder /usr/src/app/clay-server ./clay-server
-COPY --from=builder /usr/src/app/*.so ./
+COPY --from=builder /usr/src/app/*_resolver.so ./
 COPY --from=builder /usr/src/app/${CLAYPOT_FILE} ./index.claypot

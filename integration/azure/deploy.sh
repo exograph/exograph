@@ -31,8 +31,7 @@ chmod +x $SCRIPT_FILE
 
 docker build -t clay-azure-claypot -f $SCRIPT_DIRECTORY/Dockerfile --build-arg CLAY_FILE="$clay_file" $SCRIPT_DIRECTORY
 id=$(docker create clay-azure-claypot:latest)
-docker cp $id:/usr/src/app/clay-server $SCRIPT_DIRECTORY/azure-app/
-docker cp $id:/usr/src/app/index.claypot $SCRIPT_DIRECTORY/azure-app/
+docker cp $id:/usr/src/app/. $SCRIPT_DIRECTORY/azure-app/
 
 cp -r $SCRIPT_DIRECTORY/ClaytipApi $SCRIPT_DIRECTORY/azure-app/
 cp -r $SCRIPT_DIRECTORY/ClaytipPlaygroundStatic $SCRIPT_DIRECTORY/azure-app/
