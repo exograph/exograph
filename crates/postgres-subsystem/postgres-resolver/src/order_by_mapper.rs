@@ -1,6 +1,9 @@
 use async_graphql_value::ConstValue;
 
-use crate::{column_path_util::to_column_path, postgres_execution_error::PostgresExecutionError};
+use crate::{
+    column_path_util::to_column_path, postgres_execution_error::PostgresExecutionError,
+    sql_mapper::SQLMapper,
+};
 use payas_sql::{AbstractOrderBy, Ordering};
 use postgres_model::{
     column_path::ColumnIdPath,
@@ -10,23 +13,18 @@ use postgres_model::{
 
 use crate::util::to_column_id_path;
 
-pub(crate) trait OrderByParameterMapper<'a> {
-    fn map_to_order_by(
-        &'a self,
-        argument: &'a ConstValue,
-        parent_column_path: Option<ColumnIdPath>,
-        subsystem: &'a ModelPostgresSystem,
-    ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError>;
+pub(crate) struct OrderByParameterInput<'a> {
+    pub param: &'a OrderByParameter,
+    pub parent_column_path: Option<ColumnIdPath>,
 }
 
-impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
-    fn map_to_order_by(
-        &'a self,
+impl<'a> SQLMapper<'a, AbstractOrderBy<'a>> for OrderByParameterInput<'a> {
+    fn to_sql(
+        self,
         argument: &'a ConstValue,
-        parent_column_path: Option<ColumnIdPath>,
         subsystem: &'a ModelPostgresSystem,
     ) -> Result<AbstractOrderBy<'a>, PostgresExecutionError> {
-        let parameter_type = &subsystem.order_by_types[self.typ.type_id];
+        let parameter_type = &subsystem.order_by_types[self.param.typ.type_id];
         fn flatten<E>(order_bys: Result<Vec<AbstractOrderBy>, E>) -> Result<AbstractOrderBy, E> {
             let mapped = order_bys?.into_iter().flat_map(|elem| elem.0).collect();
             Ok(AbstractOrderBy(mapped))
@@ -41,7 +39,7 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
                             parameter_type,
                             elem.0,
                             elem.1,
-                            parent_column_path.clone(),
+                            self.parent_column_path.clone(),
                             subsystem,
                         )
                     })
@@ -52,7 +50,13 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
             ConstValue::List(elems) => {
                 let mapped = elems
                     .iter()
-                    .map(|elem| self.map_to_order_by(elem, parent_column_path.clone(), subsystem))
+                    .map(|elem| {
+                        OrderByParameterInput {
+                            param: self.param,
+                            parent_column_path: self.parent_column_path.clone(),
+                        }
+                        .to_sql(elem, subsystem)
+                    })
                     .collect();
 
                 flatten(mapped)
@@ -60,6 +64,10 @@ impl<'a> OrderByParameterMapper<'a> for OrderByParameter {
 
             _ => todo!(), // Invalid
         }
+    }
+
+    fn param_name(&self) -> &str {
+        &self.param.name
     }
 }
 
@@ -74,13 +82,15 @@ fn order_by_pair<'a>(
         OrderByParameterTypeKind::Composite { parameters } => {
             match parameters.iter().find(|p| p.name == parameter_name) {
                 Some(parameter) => Ok(parameter),
-                None => Err(PostgresExecutionError::Validation(format!(
-                    "Invalid order by parameter {parameter_name}"
-                ))),
+                None => Err(PostgresExecutionError::Validation(
+                    parameter_name.into(),
+                    "Invalid order by parameter".into(),
+                )),
             }
         }
         _ => Err(PostgresExecutionError::Validation(
-            "Invalid primitive order by parameter".to_string(),
+            parameter_name.into(),
+            "Invalid primitive order by parameter".into(),
         )),
     }?;
 
@@ -93,7 +103,11 @@ fn order_by_pair<'a>(
     } else {
         let new_parent_column_path =
             to_column_id_path(&parent_column_path, &parameter.column_path_link);
-        parameter.map_to_order_by(parameter_value, new_parent_column_path, subsystem)
+        OrderByParameterInput {
+            param: parameter,
+            parent_column_path: new_parent_column_path,
+        }
+        .to_sql(parameter_value, subsystem)
     }
 }
 

@@ -1,10 +1,10 @@
 use async_recursion::async_recursion;
+use async_trait::async_trait;
 use futures::StreamExt;
 
 use core_resolver::request_context::RequestContext;
 use core_resolver::validation::field::ValidatedField;
 use postgres_model::{
-    limit_offset::{LimitParameter, OffsetParameter},
     model::ModelPostgresSystem,
     operation::{PostgresQuery, PostgresQueryParameter},
     order::OrderByParameter,
@@ -13,18 +13,34 @@ use postgres_model::{
 };
 
 use payas_sql::{
-    AbstractOrderBy, AbstractPredicate, AbstractSelect, ColumnPathLink, ColumnSelection, Limit,
-    Offset, SelectionCardinality, SelectionElement,
+    AbstractOperation, AbstractOrderBy, AbstractPredicate, AbstractSelect, ColumnPathLink,
+    ColumnSelection, SelectionCardinality, SelectionElement,
 };
 
-use crate::util::find_arg;
+use crate::{
+    operation_resolver::OperationResolver, order_by_mapper::OrderByParameterInput,
+    sql_mapper::extract_and_map,
+};
 
 use super::{
-    order_by_mapper::OrderByParameterMapper,
     postgres_execution_error::PostgresExecutionError,
-    sql_mapper::{SQLMapper, SQLOperationKind},
+    sql_mapper::SQLOperationKind,
     util::{check_access, Arguments},
 };
+
+#[async_trait]
+impl OperationResolver for PostgresQuery {
+    async fn resolve<'a>(
+        &'a self,
+        field: &'a ValidatedField,
+        request_context: &'a RequestContext<'a>,
+        subsystem: &'a ModelPostgresSystem,
+    ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
+        let abstract_select = compute_select(self, field, subsystem, request_context).await?;
+
+        Ok(AbstractOperation::Select(abstract_select))
+    }
+}
 
 pub async fn compute_select<'content>(
     query: &'content PostgresQuery,
@@ -52,19 +68,13 @@ pub async fn compute_select<'content>(
         predicate_param.as_ref(),
         &field.arguments,
         subsystem,
-    )
-    .map_err(|e| match e {
-        PostgresExecutionError::Validation(message) => PostgresExecutionError::Validation(format!(
-            "Error computing predicate for field '{}': {}",
-            field.name, message
-        )),
-        e => e,
-    })?;
+    )?;
     let predicate = AbstractPredicate::and(query_predicate, access_predicate);
 
     let order_by = compute_order_by(order_by_param, &field.arguments, subsystem)?;
-    let limit = compute_limit(limit_param, &field.arguments, subsystem);
-    let offset = compute_offset(offset_param, &field.arguments, subsystem);
+
+    let limit = extract_and_map(limit_param.as_ref(), &field.arguments, subsystem)?;
+    let offset = extract_and_map(offset_param.as_ref(), &field.arguments, subsystem)?;
 
     let return_type = query.return_type.typ(subsystem);
 
@@ -99,15 +109,14 @@ fn compute_order_by<'content>(
     arguments: &'content Arguments,
     subsystem: &'content ModelPostgresSystem,
 ) -> Result<Option<AbstractOrderBy<'content>>, PostgresExecutionError> {
-    order_by_param
-        .as_ref()
-        .and_then(|order_by_param| {
-            let argument_value = find_arg(arguments, &order_by_param.name);
-            argument_value.map(|argument_value| {
-                order_by_param.map_to_order_by(argument_value, None, subsystem)
-            })
-        })
-        .transpose()
+    extract_and_map(
+        order_by_param.as_ref().map(|param| OrderByParameterInput {
+            param,
+            parent_column_path: None,
+        }),
+        arguments,
+        subsystem,
+    )
 }
 
 #[async_recursion]
@@ -123,36 +132,6 @@ async fn content_select<'content>(
         .await
         .into_iter()
         .collect()
-}
-
-fn compute_limit<'content>(
-    limit_param: &'content Option<LimitParameter>,
-    arguments: &'content Arguments,
-    subsystem: &'content ModelPostgresSystem,
-) -> Option<Limit> {
-    limit_param
-        .as_ref()
-        .and_then(|limit_param| {
-            let argument_value = find_arg(arguments, &limit_param.name);
-            argument_value.map(|argument_value| limit_param.map_to_sql(argument_value, subsystem))
-        })
-        .transpose()
-        .unwrap()
-}
-
-fn compute_offset<'content>(
-    offset_param: &'content Option<OffsetParameter>,
-    arguments: &'content Arguments,
-    subsystem: &'content ModelPostgresSystem,
-) -> Option<Offset> {
-    offset_param
-        .as_ref()
-        .and_then(|offset_param| {
-            let argument_value = find_arg(arguments, &offset_param.name);
-            argument_value.map(|argument_value| offset_param.map_to_sql(argument_value, subsystem))
-        })
-        .transpose()
-        .unwrap()
 }
 
 async fn map_field<'content>(

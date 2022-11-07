@@ -9,36 +9,31 @@ use postgres_model::{
 
 use crate::{
     column_path_util::to_column_path,
-    util::{find_arg, get_argument_field, to_column_id_path, Arguments},
+    sql_mapper::{extract_and_map, SQLMapper},
+    util::{get_argument_field, to_column_id_path, Arguments},
 };
 
 use super::{cast::cast_value, postgres_execution_error::PostgresExecutionError};
 
-trait PredicateParameterMapper<'a> {
-    fn map_to_predicate(
-        &'a self,
-        argument_value: &'a ConstValue,
-        parent_column_path: Option<ColumnIdPath>,
-        subsystem: &'a ModelPostgresSystem,
-    ) -> Result<AbstractPredicate<'a>, PostgresExecutionError>;
+struct PredicateParamInput<'a> {
+    pub param: &'a PredicateParameter,
+    pub parent_column_path: Option<ColumnIdPath>,
 }
 
-impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
-    fn map_to_predicate(
-        &'a self,
-        argument_value: &'a ConstValue,
-        parent_column_path: Option<ColumnIdPath>,
+impl<'a> SQLMapper<'a, AbstractPredicate<'a>> for PredicateParamInput<'a> {
+    fn to_sql(
+        self,
+        argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,
     ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
-        let system = &subsystem;
-        let parameter_type = &system.predicate_types[self.typ.type_id];
+        let parameter_type = &subsystem.predicate_types[self.param.typ.type_id];
 
         match &parameter_type.kind {
             PredicateParameterTypeKind::ImplicitEqual => {
                 let (op_key_path, op_value_path) =
-                    operands(self, argument_value, parent_column_path, subsystem)?;
+                    operands(self.param, argument, self.parent_column_path, subsystem)?;
 
-                Ok(AbstractPredicate::Eq(
+                Ok(AbstractPredicate::eq(
                     op_key_path.into(),
                     op_value_path.into(),
                 ))
@@ -48,13 +43,13 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     parameters
                         .iter()
                         .fold(AbstractPredicate::True, |acc, parameter| {
-                            let arg = get_argument_field(argument_value, &parameter.name);
+                            let arg = get_argument_field(argument, &parameter.name);
                             let new_predicate = match arg {
                                 Some(op_value) => {
                                     let (op_key_column, op_value_column) = operands(
-                                        self,
+                                        self.param,
                                         op_value,
-                                        parent_column_path.clone(),
+                                        self.parent_column_path.clone(),
                                         subsystem,
                                     )
                                     .expect("Could not get operands");
@@ -67,7 +62,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 None => AbstractPredicate::True,
                             };
 
-                            AbstractPredicate::And(Box::new(acc), Box::new(new_predicate))
+                            AbstractPredicate::and(acc, new_predicate)
                         });
 
                 Ok(predicate)
@@ -82,13 +77,13 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     .map(|parameter| {
                         (
                             parameter.name.as_str(),
-                            get_argument_field(argument_value, &parameter.name),
+                            get_argument_field(argument, &parameter.name),
                         )
                     })
                     .fold(Ok(("", None)), |acc, (name, result)| {
                         acc.and_then(|(acc_name, acc_result)| {
                                     if acc_result.is_some() && result.is_some() {
-                                        Err(PostgresExecutionError::Validation("Cannot specify more than one logical operation on the same level".into()))
+                                        Err(PostgresExecutionError::Validation(self.param.name.to_string(), "Cannot specify more than one logical operation on the same level".into()))
                                     } else if acc_result.is_some() && result.is_none() {
                                         Ok((acc_name, acc_result))
                                     } else {
@@ -110,7 +105,7 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                 if let ConstValue::List(arguments) = logical_op_argument_value {
                                     // first make sure we have arguments
                                     if arguments.is_empty() {
-                                        return Err(PostgresExecutionError::Validation("Logical operation predicate does not have any arguments".into()));
+                                        return Err(PostgresExecutionError::Validation(self.param.name.clone(), "Logical operation predicate does not have any arguments".into()));
                                     }
 
                                     // build our predicate chain from the array of arguments provided
@@ -121,28 +116,30 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                                     };
 
                                     let predicate_connector = match logical_op_name {
-                                        "and" => AbstractPredicate::And,
-                                        "or" => AbstractPredicate::Or,
+                                        "and" => AbstractPredicate::and,
+                                        "or" => AbstractPredicate::or,
                                         _ => todo!(),
                                     };
 
-                                    let mut new_predicate = identity_predicate;
+                                    arguments.iter().fold(
+                                        Ok(identity_predicate),
+                                        |acc, argument| {
+                                            acc.and_then(|acc| {
+                                                let arg_predicate = PredicateParamInput {
+                                                    param: self.param,
+                                                    parent_column_path: self
+                                                        .parent_column_path
+                                                        .clone(),
+                                                }
+                                                .to_sql(argument, subsystem)?;
 
-                                    for argument in arguments.iter() {
-                                        let arg_predicate = self.map_to_predicate(
-                                            argument,
-                                            parent_column_path.clone(),
-                                            subsystem,
-                                        )?;
-                                        new_predicate = predicate_connector(
-                                            Box::new(new_predicate),
-                                            Box::new(arg_predicate),
-                                        );
-                                    }
-
-                                    Ok(new_predicate)
+                                                Ok(predicate_connector(acc, arg_predicate))
+                                            })
+                                        },
+                                    )
                                 } else {
                                     Err(PostgresExecutionError::Validation(
+                                        self.param.name.clone(),
                                         "This logical operation predicate needs a list of queries"
                                             .into(),
                                     ))
@@ -150,13 +147,13 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                             }
 
                             "not" => {
-                                let arg_predicate = self.map_to_predicate(
-                                    logical_op_argument_value,
-                                    parent_column_path,
-                                    subsystem,
-                                )?;
+                                let arg_predicate = PredicateParamInput {
+                                    param: self.param,
+                                    parent_column_path: self.parent_column_path,
+                                }
+                                .to_sql(logical_op_argument_value, subsystem)?;
 
-                                Ok(AbstractPredicate::Not(Box::new(arg_predicate)))
+                                Ok(!arg_predicate)
                             }
 
                             _ => todo!(),
@@ -166,34 +163,37 @@ impl<'a> PredicateParameterMapper<'a> for PredicateParameter {
                     _ => {
                         // we are dealing with field predicate arguments
                         // map field argument values into their respective predicates
-                        let mut new_predicate = AbstractPredicate::True;
+                        field_params
+                            .iter()
+                            .fold(Ok(AbstractPredicate::True), |acc, parameter| {
+                                acc.and_then(|acc| {
+                                    let arg = get_argument_field(argument, &parameter.name);
 
-                        for parameter in field_params.iter() {
-                            let arg = get_argument_field(argument_value, &parameter.name);
+                                    let new_column_path = to_column_id_path(
+                                        &self.parent_column_path,
+                                        &self.param.column_path_link,
+                                    );
 
-                            let new_column_path =
-                                to_column_id_path(&parent_column_path, &self.column_path_link);
+                                    let field_predicate = match arg {
+                                        Some(argument_value_component) => PredicateParamInput {
+                                            param: parameter,
+                                            parent_column_path: new_column_path,
+                                        }
+                                        .to_sql(argument_value_component, subsystem)?,
+                                        None => AbstractPredicate::True,
+                                    };
 
-                            let field_predicate = match arg {
-                                Some(argument_value_component) => parameter.map_to_predicate(
-                                    argument_value_component,
-                                    new_column_path,
-                                    subsystem,
-                                )?,
-                                None => AbstractPredicate::True,
-                            };
-
-                            new_predicate = AbstractPredicate::And(
-                                Box::new(new_predicate),
-                                Box::new(field_predicate),
-                            );
-                        }
-
-                        Ok(new_predicate)
+                                    Ok(AbstractPredicate::and(acc, field_predicate))
+                                })
+                            })
                     }
                 }
             }
         }
+    }
+
+    fn param_name(&self) -> &str {
+        &self.param.name
     }
 }
 
@@ -222,17 +222,17 @@ fn operands<'a>(
 }
 
 pub fn compute_predicate<'a>(
-    predicate_param: Option<&'a PredicateParameter>,
+    param: Option<&'a PredicateParameter>,
     arguments: &'a Arguments,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
-    predicate_param
-        .and_then(|predicate_parameter| {
-            let argument_value = find_arg(arguments, &predicate_parameter.name);
-            argument_value.map(|argument_value| {
-                predicate_parameter.map_to_predicate(argument_value, None, subsystem)
-            })
-        })
-        .transpose()
-        .map(|p| p.unwrap_or(AbstractPredicate::True))
+    extract_and_map(
+        param.as_ref().map(|param| PredicateParamInput {
+            param,
+            parent_column_path: None,
+        }),
+        arguments,
+        subsystem,
+    )
+    .map(|predicate| predicate.unwrap_or(AbstractPredicate::True))
 }

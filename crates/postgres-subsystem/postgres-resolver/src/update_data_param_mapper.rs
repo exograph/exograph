@@ -12,40 +12,51 @@ use postgres_model::{
     types::{PostgresCompositeType, PostgresType, PostgresTypeKind},
 };
 
-use crate::util::{get_argument_field, return_type_info};
+use crate::{
+    sql_mapper::SQLMapper,
+    util::{get_argument_field, return_type_info},
+};
 
-use super::{cast, postgres_execution_error::PostgresExecutionError, sql_mapper::SQLUpdateMapper};
+use super::{cast, postgres_execution_error::PostgresExecutionError};
 
-impl<'a> SQLUpdateMapper<'a> for UpdateDataParameter {
-    fn update_operation(
-        &'a self,
-        return_type: &'a OperationReturnType,
-        predicate: AbstractPredicate<'a>,
-        select: AbstractSelect<'a>,
+pub struct UpdateOperation<'a> {
+    pub data_param: &'a UpdateDataParameter,
+    pub return_type: &'a OperationReturnType,
+    pub predicate: AbstractPredicate<'a>,
+    pub select: AbstractSelect<'a>,
+}
+
+impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
+    fn to_sql(
+        self,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,
     ) -> Result<AbstractUpdate<'a>, PostgresExecutionError> {
-        let data_type = &subsystem.mutation_types[self.type_id];
+        let data_type = &subsystem.mutation_types[self.data_param.type_id];
 
         let self_update_columns = compute_update_columns(data_type, argument, subsystem);
-        let (table, _, _) = return_type_info(return_type, subsystem);
+        let (table, _, _) = return_type_info(self.return_type, subsystem);
 
-        let container_model_type = return_type.typ(subsystem);
+        let container_model_type = self.return_type.typ(subsystem);
 
         let (nested_updates, nested_inserts, nested_deletes) =
             compute_nested_ops(data_type, argument, container_model_type, subsystem);
 
         let abs_update = AbstractUpdate {
             table,
-            predicate,
+            predicate: self.predicate,
             column_values: self_update_columns,
-            selection: select,
+            selection: self.select,
             nested_updates,
             nested_inserts,
             nested_deletes,
         };
 
         Ok(abs_update)
+    }
+
+    fn param_name(&self) -> &str {
+        &self.data_param.name
     }
 }
 
