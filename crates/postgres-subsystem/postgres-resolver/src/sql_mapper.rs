@@ -1,7 +1,8 @@
 use async_graphql_value::ConstValue;
 
-use payas_sql::{AbstractInsert, AbstractPredicate, AbstractSelect, AbstractUpdate};
-use postgres_model::{model::ModelPostgresSystem, operation::OperationReturnType};
+use postgres_model::model::ModelPostgresSystem;
+
+use crate::util::{find_arg, Arguments};
 
 use super::postgres_execution_error::PostgresExecutionError;
 pub(crate) enum SQLOperationKind {
@@ -12,30 +13,27 @@ pub(crate) enum SQLOperationKind {
 }
 
 pub(crate) trait SQLMapper<'a, R> {
-    fn map_to_sql(
-        &'a self,
+    fn to_sql(
+        self,
         argument: &'a ConstValue,
         subsystem: &'a ModelPostgresSystem,
     ) -> Result<R, PostgresExecutionError>;
+
+    fn param_name(&self) -> &str;
 }
 
-pub trait SQLInsertMapper<'a> {
-    fn insert_operation(
-        &'a self,
-        return_type: OperationReturnType,
-        select: AbstractSelect<'a>,
-        argument: &'a ConstValue,
-        subsystem: &'a ModelPostgresSystem,
-    ) -> Result<AbstractInsert, PostgresExecutionError>;
-}
-
-pub(crate) trait SQLUpdateMapper<'a> {
-    fn update_operation(
-        &'a self,
-        return_type: &'a OperationReturnType,
-        predicate: AbstractPredicate<'a>,
-        select: AbstractSelect<'a>,
-        argument: &'a ConstValue,
-        subsystem: &'a ModelPostgresSystem,
-    ) -> Result<AbstractUpdate, PostgresExecutionError>;
+pub(crate) fn extract_and_map<'a, P, R>(
+    param: Option<P>,
+    arguments: &'a Arguments,
+    subsystem: &'a ModelPostgresSystem,
+) -> Result<Option<R>, PostgresExecutionError>
+where
+    P: SQLMapper<'a, R>,
+{
+    param
+        .and_then(|param| {
+            let argument_value = find_arg(arguments, param.param_name());
+            argument_value.map(|argument_value| param.to_sql(argument_value, subsystem))
+        })
+        .transpose()
 }
