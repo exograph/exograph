@@ -18,6 +18,7 @@ ENV CLAYPOT_FILE=${CLAY_FILE}pot
 
 # 2.1 Copy clay-server from the builder image and the claypot created in the previous step
 COPY --from=builder /usr/src/app/clay-server ./clay-server
+COPY --from=builder /usr/src/app/*.so ./
 COPY --from=builder /usr/src/app/${CLAYPOT_FILE} ./${CLAYPOT_FILE}
 
 # 2.2: Copy the script with a bridge between DATABASE_URL and CLAY_DATABASE_URL as well as env variables

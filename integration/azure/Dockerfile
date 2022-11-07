@@ -16,4 +16,5 @@ ENV CLAYPOT_FILE=${CLAY_FILE}pot
 
 # 3 Copy artifacts created in the previous steps
 COPY --from=builder /usr/src/app/clay-server ./clay-server
+COPY --from=builder /usr/src/app/*.so ./
 COPY --from=builder /usr/src/app/${CLAYPOT_FILE} ./index.claypot

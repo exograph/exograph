@@ -61,6 +61,7 @@ RUN mkdir -p ${APP}
 COPY --from=builder /usr/src/target/${BUILD_DIR}/clay-server ${APP}/clay-server
 COPY --from=builder /usr/src/target/${BUILD_DIR}/clay ${APP}/clay
 COPY --from=builder /usr/src/target/${BUILD_DIR}/bootstrap ${APP}/bootstrap
+COPY --from=builder /usr/src/target/${BUILD_DIR}/*.so ${APP}/
 
 # Create an image that can be used for development--the `clay serve` style
 FROM clay-builder as clay-dev

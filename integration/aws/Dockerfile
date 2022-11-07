@@ -24,6 +24,7 @@ ENV CLAYPOT_FILE=${CLAY_FILE}pot
 
 # 3.1 Copy artifacts created in the previous steps
 COPY --from=builder /usr/src/app/bootstrap ./bootstrap
+COPY --from=builder /usr/src/app/*.so ./
 COPY --from=builder /usr/src/app/${CLAYPOT_FILE} ./index.claypot
 COPY --from=builder /usr/src/app/index.sql ./index.sql
 COPY --from=python-deps-builder /usr/src/python-deps ./python-deps
