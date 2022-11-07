@@ -1,9 +1,7 @@
 use introspection_resolver::IntrospectionResolver;
 use thiserror::Error;
 
-use core_plugin_interface::interface::{
-    LibraryLoadingError, SubsystemLoader, SubsystemLoadingError,
-};
+use core_plugin_interface::interface::{LibraryLoadingError, SubsystemLoadingError};
 use core_plugin_shared::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
     system_serializer::SystemSerializer,
@@ -37,25 +35,15 @@ impl SystemLoader {
             mutation_interception_map,
         } = serialized_system;
 
-        let library_names = ["postgres_resolver", "deno_resolver", "wasm_resolver"];
-        let subsystem_loaders: Result<Vec<Box<dyn SubsystemLoader>>, LibraryLoadingError> =
-            library_names
-                .into_iter()
-                .map(core_plugin_interface::interface::load_subsystem_loader)
-                .collect();
-
-        let subsystem_loaders = subsystem_loaders?;
-
         // First build subsystem resolvers
         let subsystem_resolvers: Result<Vec<_>, _> = subsystems
             .into_iter()
             .map(|serialized_subsystem| {
-                let subsystem_loader = subsystem_loaders
-                    .iter()
-                    .find(|loader| loader.id() == serialized_subsystem.id)
-                    .ok_or_else(|| {
-                        SystemLoadingError::SubsystemLoaderNotFound(serialized_subsystem.id.clone())
-                    })?;
+                let subsystem_library_name = format!("{}_resolver", serialized_subsystem.id);
+
+                let subsystem_loader = core_plugin_interface::interface::load_subsystem_loader(
+                    &subsystem_library_name,
+                )?;
 
                 subsystem_loader
                     .init(serialized_subsystem.serialized_subsystem)
@@ -111,9 +99,6 @@ impl SystemLoader {
 pub enum SystemLoadingError {
     #[error("System serialization error: {0}")]
     ModelSerializationError(#[from] ModelSerializationError),
-
-    #[error("Subsystem loader for '{0}' not found")]
-    SubsystemLoaderNotFound(String),
 
     #[error("Error while trying to load subsystem library: {0}")]
     LibraryLoadingError(#[from] LibraryLoadingError),

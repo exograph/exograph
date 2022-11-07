@@ -1,4 +1,4 @@
-use std::env::current_exe;
+use std::{env::current_exe, path::PathBuf};
 
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
@@ -39,6 +39,9 @@ pub enum SubsystemLoadingError {
 
 #[derive(Error, Debug)]
 pub enum LibraryLoadingError {
+    #[error("Library not found at {0}")]
+    LibraryNotFound(PathBuf),
+
     #[error("Error while loading subsystem library: {0}")]
     LibraryLoadingError(#[from] libloading::Error),
 
@@ -66,6 +69,10 @@ fn load_subsystem_library<T: ?Sized>(
         let mut libpath = current_exe()?;
         libpath.pop();
         libpath.push(libloading::library_filename(library_name));
+
+        if !libpath.exists() {
+            return Err(LibraryLoadingError::LibraryNotFound(libpath));
+        }
 
         // load the library
         let lib = Box::new(libloading::Library::new(&libpath)?);
