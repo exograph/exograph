@@ -3,7 +3,11 @@ import { createGraphiQLFetcher } from "@graphiql/toolkit";
 
 import "graphiql/graphiql.min.css";
 
-const Logo = () => <img src="logo.svg" className="logo" alt="Claytip" />;
+const Logo = () => (
+  <a href="https://claytip.com" target="_blank" rel="noreferrer">
+    <img src="logo.svg" className="logo" alt="Claytip" />
+  </a>
+);
 
 const fetcher = createGraphiQLFetcher({
   url: (window as any).clayGraphQLEndpoint,
@@ -11,10 +15,9 @@ const fetcher = createGraphiQLFetcher({
 
 const App = () => (
   <GraphiQL
-    tabs
     fetcher={fetcher}
-    defaultVariableEditorOpen={true}
-    headerEditorEnabled={true}
+    defaultEditorToolsVisibility={true}
+    isHeadersEditorEnabled={true}
   >
     <GraphiQL.Logo>
       <Logo />
