@@ -234,7 +234,6 @@ fn create_persistent_field(
 ) -> PostgresField {
     fn create_field_type(
         field_type: &ResolvedFieldType,
-        env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
     ) -> PostgresFieldType {
         match field_type {
@@ -251,17 +250,17 @@ fn create_persistent_field(
                 }
             }
             ResolvedFieldType::Optional(underlying) => {
-                PostgresFieldType::Optional(Box::new(create_field_type(underlying, env, building)))
+                PostgresFieldType::Optional(Box::new(create_field_type(underlying, building)))
             }
             ResolvedFieldType::List(underlying) => {
-                PostgresFieldType::List(Box::new(create_field_type(underlying, env, building)))
+                PostgresFieldType::List(Box::new(create_field_type(underlying, building)))
             }
         }
     }
 
     PostgresField {
         name: field.name.to_owned(),
-        typ: create_field_type(&field.typ, env, building),
+        typ: create_field_type(&field.typ, building),
         relation: create_relation(field, *table_id, building, env),
         has_default_value: field.default_value.is_some(),
     }
