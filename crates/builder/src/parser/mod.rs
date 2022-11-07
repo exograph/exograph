@@ -93,7 +93,7 @@ pub fn parse_str(
 
     if root_node.has_error() {
         let mut errors = vec![];
-        collect_parsing_errors(root_node, source.as_bytes(), source_span, &mut errors);
+        collect_parsing_errors(root_node, source_span, &mut errors);
         return Err(ParserError::Diagnosis(errors));
     };
 
@@ -105,12 +105,7 @@ pub fn parse_str(
     )
 }
 
-fn collect_parsing_errors(
-    node: Node,
-    source: &[u8],
-    source_span: Span,
-    errors: &mut Vec<Diagnostic>,
-) {
+fn collect_parsing_errors(node: Node, source_span: Span, errors: &mut Vec<Diagnostic>) {
     if node.is_error() {
         let expl = node.child(0).unwrap();
         let sexp = node.to_sexp();
@@ -160,6 +155,6 @@ fn collect_parsing_errors(
     } else {
         let mut cursor = node.walk();
         node.children(&mut cursor)
-            .for_each(|c| collect_parsing_errors(c, source, source_span, errors));
+            .for_each(|c| collect_parsing_errors(c, source_span, errors));
     }
 }

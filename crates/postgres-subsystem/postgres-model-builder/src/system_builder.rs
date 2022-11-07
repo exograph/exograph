@@ -276,7 +276,7 @@ mod tests {
         // Decimal @precision(4)
         if let PhysicalColumnType::Numeric { precision, scale } = &logs_latitude.typ {
             assert!(*precision == Some(4));
-            assert!(*scale == None);
+            assert!(scale.is_none());
         }
 
         // Decimal @precision(5) @scale(2)

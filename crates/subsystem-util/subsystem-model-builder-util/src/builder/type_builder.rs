@@ -36,7 +36,7 @@ pub(super) fn build_service_expanded(
 
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &resolved_type {
-            expand_service_type_fields(c, resolved_env, building);
+            expand_service_type_fields(c, building);
         }
     }
 
@@ -86,7 +86,6 @@ fn expand_service_type_no_fields(
 
 fn expand_service_type_fields(
     resolved_type: &ResolvedCompositeType,
-    resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) {
     let existing_type_id = building.get_id(&resolved_type.name).unwrap();
@@ -94,7 +93,7 @@ fn expand_service_type_fields(
     let model_fields: Vec<ServiceField> = resolved_type
         .fields
         .iter()
-        .map(|field| create_service_field(field, resolved_env, building))
+        .map(|field| create_service_field(field, building))
         .collect();
 
     let kind = ServiceTypeKind::Composite(ServiceCompositeType {
@@ -112,20 +111,15 @@ fn expand_method_access(
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
     let existing_method_id = building.methods.get_id(&resolved_method.name).unwrap();
-    let expr = compute_access_method(&resolved_method.access, resolved_env, building)?;
+    let expr = compute_access_method(&resolved_method.access, resolved_env)?;
     building.methods.values[existing_method_id].access = expr;
 
     Ok(())
 }
 
-fn create_service_field(
-    field: &ResolvedField,
-    resolved_env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
-) -> ServiceField {
+fn create_service_field(field: &ResolvedField, building: &SystemContextBuilding) -> ServiceField {
     fn create_field_type(
         field_type: &ResolvedFieldType,
-        resolved_env: &ResolvedTypeEnv,
         building: &SystemContextBuilding,
     ) -> ServiceFieldType {
         match field_type {
@@ -141,36 +135,28 @@ fn create_service_field(
                     type_id,
                 }
             }
-            ResolvedFieldType::Optional(underlying) => ServiceFieldType::Optional(Box::new(
-                create_field_type(underlying, resolved_env, building),
-            )),
-            ResolvedFieldType::List(underlying) => ServiceFieldType::List(Box::new(
-                create_field_type(underlying, resolved_env, building),
-            )),
+            ResolvedFieldType::Optional(underlying) => {
+                ServiceFieldType::Optional(Box::new(create_field_type(underlying, building)))
+            }
+            ResolvedFieldType::List(underlying) => {
+                ServiceFieldType::List(Box::new(create_field_type(underlying, building)))
+            }
         }
     }
 
     ServiceField {
         name: field.name.to_owned(),
-        typ: create_field_type(&field.typ, resolved_env, building),
+        typ: create_field_type(&field.typ, building),
         has_default_value: field.default_value.is_some(),
     }
 }
 
 fn compute_access_composite_types(
     resolved: &ResolvedAccess,
-    self_type_info: &ServiceCompositeType,
     resolved_env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
-    let access_expr = |expr: &AstExpr<Typed>| {
-        access_utils::compute_predicate_expression(
-            expr,
-            Some(self_type_info),
-            resolved_env,
-            &building.types,
-        )
-    };
+    let access_expr =
+        |expr: &AstExpr<Typed>| access_utils::compute_predicate_expression(expr, resolved_env);
 
     Ok(Access {
         value: access_expr(&resolved.value)?,
@@ -188,12 +174,7 @@ fn expand_type_access(
     let existing_type = &building.types[existing_type_id];
 
     if let ServiceTypeKind::Composite(self_type_info) = &existing_type.kind {
-        let expr = compute_access_composite_types(
-            &resolved_type.access,
-            self_type_info,
-            resolved_env,
-            building,
-        )?;
+        let expr = compute_access_composite_types(&resolved_type.access, resolved_env)?;
 
         let kind = ServiceTypeKind::Composite(ServiceCompositeType {
             fields: self_type_info.fields.clone(),
@@ -238,11 +219,9 @@ fn create_shallow_context(context: &ContextType, building: &mut SystemContextBui
 fn compute_access_method(
     resolved: &ResolvedAccess,
     resolved_env: &ResolvedTypeEnv,
-    building: &SystemContextBuilding,
 ) -> Result<Access, ModelBuildingError> {
-    let access_expr = |expr: &AstExpr<Typed>| {
-        access_utils::compute_predicate_expression(expr, None, resolved_env, &building.types)
-    };
+    let access_expr =
+        |expr: &AstExpr<Typed>| access_utils::compute_predicate_expression(expr, resolved_env);
 
     Ok(Access {
         value: access_expr(&resolved.value)?,

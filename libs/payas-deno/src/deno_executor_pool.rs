@@ -155,9 +155,7 @@ impl<
         // find or allocate a free actor in our pool
         let actor = {
             let mut actor_pool_map = self.actor_pool_map.lock().await;
-            let actor_pool = actor_pool_map
-                .entry(script_path.to_string())
-                .or_insert(vec![]);
+            let actor_pool = actor_pool_map.entry(script_path.to_string()).or_default();
 
             let free_actor = actor_pool.iter().find(|actor| !actor.is_busy());
 

@@ -73,7 +73,7 @@ impl<'a> Database {
             config.password(password);
         }
 
-        if config.get_user() == None {
+        if config.get_user().is_none() {
             return Err(DatabaseError::Config("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER".into()));
         }
 
