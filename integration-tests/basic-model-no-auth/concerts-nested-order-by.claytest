@@ -12,16 +12,22 @@ operation: |
       concerts {
         ...ConcertInfo
       }
-      concerts_oder_by_venue_id_asc: concerts(orderBy: {venue: {id: ASC}}) {
+      concerts_order_by_venue_id_asc: concerts(orderBy: {venue: {id: ASC}}) {
         ...ConcertInfo
       }
-      concerts_oder_by_venue_id_desc: concerts(orderBy: {venue: {id: DESC}}) {
+      concerts_order_by_venue_id_desc: concerts(orderBy: {venue: {id: DESC}}) {
         ...ConcertInfo
       }
-      concerts_oder_by_venue_latitude_asc: concerts(orderBy: {venue: {latitude: ASC}}) {
+      concerts_order_by_venue_latitude_asc: concerts(orderBy: {venue: {latitude: ASC}}) {
         ...ConcertInfo
       }
-      concerts_oder_by_venue_latitude_desc: concerts(orderBy: {venue: {latitude: DESC}}) {
+      concerts_order_by_venue_latitude_desc: concerts(orderBy: {venue: {latitude: DESC}}) {
+        ...ConcertInfo
+      }
+      concerts_order_by_venue_id_asc_with_predicate: concerts(where: {id: {lt: 5}}, orderBy: {venue: {id: ASC}}) {
+        ...ConcertInfo
+      }
+      concerts_order_by_venue_id_desc_with_predicate: concerts(where: {id: {lt: 5}}, orderBy: {venue: {id: DESC}}) {
         ...ConcertInfo
       }
     }
@@ -62,7 +68,7 @@ response: |
             }
           }
         ],
-        "concerts_oder_by_venue_id_asc": [
+        "concerts_order_by_venue_id_asc": [
           {
             "id": 1,
             "venue": {
@@ -96,7 +102,7 @@ response: |
             }
           }
         ],
-        "concerts_oder_by_venue_id_desc": [
+        "concerts_order_by_venue_id_desc": [
           {
             "id": 2,
             "venue": {
@@ -130,7 +136,7 @@ response: |
             }
           }
         ],
-        "concerts_oder_by_venue_latitude_asc": [
+        "concerts_order_by_venue_latitude_asc": [
           {
             "id": 2,
             "venue": {
@@ -164,7 +170,7 @@ response: |
             }
           }
         ],
-        "concerts_oder_by_venue_latitude_desc": [
+        "concerts_order_by_venue_latitude_desc": [
           {
             "id": 1,
             "venue": {
@@ -195,6 +201,74 @@ response: |
               "id": 2,
               "name": "Venue2",
               "latitude": 35.6762
+            }
+          }
+        ],
+        "concerts_order_by_venue_id_asc_with_predicate": [
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          }
+        ],
+        "concerts_order_by_venue_id_desc_with_predicate": [
+          {
+            "id": 2,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 4,
+            "venue": {
+              "id": 2,
+              "name": "Venue2",
+              "latitude": 35.6762
+            }
+          },
+          {
+            "id": 1,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
+            }
+          },
+          {
+            "id": 3,
+            "venue": {
+              "id": 1,
+              "name": "Venue1",
+              "latitude": 37.7749
             }
           }
         ]
