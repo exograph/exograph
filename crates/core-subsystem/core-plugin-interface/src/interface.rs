@@ -64,36 +64,43 @@ fn load_subsystem_library<T: ?Sized>(
     library_name: &str,
     constructor_symbol_name: &str,
 ) -> Result<Box<T>, LibraryLoadingError> {
-    unsafe {
-        // build file path to library
-        let mut libpath = current_exe()?;
-        libpath.pop();
-        libpath.push(libloading::library_filename(library_name));
+    // build file path to library
+    let mut libpath = current_exe()?;
+    libpath.pop();
+    libpath.push(libloading::library_filename(library_name));
 
-        if !libpath.exists() {
-            return Err(LibraryLoadingError::LibraryNotFound(libpath));
-        }
+    if !libpath.exists() {
+        return Err(LibraryLoadingError::LibraryNotFound(libpath));
+    }
 
-        // load the library
-        let lib = Box::new(libloading::Library::new(&libpath)?);
+    // load the dynamic library
+    let lib = Box::new(
+        // SAFETY: see documentation for [libloading::Library::new]
+        unsafe { libloading::Library::new(&libpath)? },
+    );
 
-        // check the subsystem's build info and make sure it is valid to load
-        crate::build_info::check_subsystem_library(&lib)?;
+    // check the subsystem's build info and make sure it is valid to load
+    crate::build_info::check_subsystem_library(&lib)?;
 
-        // get the constructor's pointer
+    // get the constructor's pointer
+    // SAFETY: this is safe as long as the constructor function loaded
+    //  a. has no arguments and returns a pointer
+    //  b. returns a pointer to a boxed instance of T
+    // this needs to be manually guaranteed by matching the symbol names and types appropriately
+    let boxed_obj: Box<T> = unsafe {
         let constructor: libloading::Symbol<unsafe extern "C" fn() -> *mut T> =
             lib.get(constructor_symbol_name.as_bytes()).map_err(|e| {
                 LibraryLoadingError::SymbolLoadingError(constructor_symbol_name.to_string(), e)
             })?;
 
         let obj_raw = constructor(); // construct the object and get its pointer
-        let boxed_obj: Box<T> = Box::from_raw(obj_raw); // construct from struct pointer
+        Box::from_raw(obj_raw) // construct from struct pointer
+    };
 
-        Box::leak(lib); // keep library alive & never drop
+    Box::leak(lib); // keep library alive & never drop
 
-        // return object
-        Ok(boxed_obj)
-    }
+    // return object
+    Ok(boxed_obj)
 }
 
 /// Loads a subsystem builder from a dynamic library.
