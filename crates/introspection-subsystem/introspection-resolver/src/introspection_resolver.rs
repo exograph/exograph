@@ -2,7 +2,7 @@ use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
     Positioned,
 };
-use core_plugin::interception::InterceptorIndex;
+use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
     introspection::definition::schema::Schema,
     plugin::{SubsystemResolutionError, SubsystemResolver},

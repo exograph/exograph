@@ -24,15 +24,15 @@ tracing = "0.1"
 
 payas-sql = { path = "../../../libs/payas-sql" }
 core-model = { path = "../core-model" }
-core-plugin = { path = "../core-plugin" }
+core-plugin-shared = { path = "../core-plugin-shared" }
 
 [dev-dependencies]
 tokio = "1"
 insta = "1.14.0"
 
-builder = { path = "../../builder", features = ["test-context"]}
-resolver = { path = "../../resolver"}
-postgres-model = { path = "../../postgres-subsystem/postgres-model"}
-postgres-resolver = { path = "../../postgres-subsystem/postgres-resolver"}
+builder = { path = "../../builder", features = ["test-context"] }
+resolver = { path = "../../resolver" }
+postgres-model = { path = "../../postgres-subsystem/postgres-model" }
+postgres-resolver = { path = "../../postgres-subsystem/postgres-resolver" }
 
 [lib]

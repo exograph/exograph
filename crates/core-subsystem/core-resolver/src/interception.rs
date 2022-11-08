@@ -1,7 +1,7 @@
 use async_graphql_parser::types::OperationType;
 use async_recursion::async_recursion;
 
-use core_plugin::interception::{InterceptionTree, InterceptorIndexWithSubsystemIndex};
+use core_plugin_shared::interception::{InterceptionTree, InterceptorIndexWithSubsystemIndex};
 
 use super::{request_context::RequestContext, validation::field::ValidatedField, QueryResponse};
 

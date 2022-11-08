@@ -653,16 +653,23 @@ dependencies = [
  "codemap-diagnostic",
  "core-model",
  "core-model-builder",
- "core-plugin",
- "deno-model-builder",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "insta",
- "postgres-model-builder",
  "serde",
  "serde_json",
  "thiserror",
  "tree-sitter",
- "wasm-model-builder",
  "wildmatch",
+]
+
+[[package]]
+name = "built"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f346b6890a0dfa7266974910e7df2d5088120dd54721b9b0e5aae1ae5e05715"
+dependencies = [
+ "cargo-lock",
 ]
 
 [[package]]
@@ -773,6 +780,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-lock"
+version = "7.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c408da54db4c50d4693f7e649c299bc9de9c23ead86249e5368830bb32a734b"
+dependencies = [
+ "semver 1.0.14",
+ "serde",
+ "toml",
+ "url",
+]
+
+[[package]]
 name = "castaway"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -870,7 +889,7 @@ dependencies = [
  "clap",
  "core-model",
  "core-model-builder",
- "core-plugin",
+ "core-plugin-shared",
  "ctrlc",
  "heck",
  "notify 4.0.17",
@@ -1006,17 +1025,31 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "core-model",
- "core-plugin",
+ "core-plugin-shared",
  "serde",
  "thiserror",
 ]
 
 [[package]]
-name = "core-plugin"
+name = "core-plugin-interface"
+version = "0.1.0"
+dependencies = [
+ "built",
+ "core-model",
+ "core-model-builder",
+ "core-plugin-shared",
+ "core-resolver",
+ "libloading",
+ "thiserror",
+]
+
+[[package]]
+name = "core-plugin-shared"
 version = "0.1.0"
 dependencies = [
  "bincode",
  "bytes",
+ "core-model",
  "serde",
  "thiserror",
 ]
@@ -1033,7 +1066,7 @@ dependencies = [
  "bytes",
  "cookie",
  "core-model",
- "core-plugin",
+ "core-plugin-shared",
  "futures",
  "insta",
  "jsonwebtoken",
@@ -1449,7 +1482,7 @@ dependencies = [
  "async-graphql-value",
  "bincode",
  "core-model",
- "core-plugin",
+ "core-plugin-shared",
  "serde",
  "subsystem-model-util",
 ]
@@ -1461,7 +1494,8 @@ dependencies = [
  "bincode",
  "core-model",
  "core-model-builder",
- "core-plugin",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "deno-model",
  "subsystem-model-builder-util",
 ]
@@ -1477,7 +1511,8 @@ dependencies = [
  "async-trait",
  "builder",
  "core-model",
- "core-plugin",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "core-resolver",
  "deno-model",
  "deno_core",
@@ -3009,7 +3044,7 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "core-model",
- "core-plugin",
+ "core-plugin-shared",
  "core-resolver",
  "futures",
  "serde_json",
@@ -4455,7 +4490,7 @@ dependencies = [
  "async-graphql-value",
  "bincode",
  "core-model",
- "core-plugin",
+ "core-plugin-shared",
  "payas-sql",
  "serde",
  "typed-generational-arena",
@@ -4471,7 +4506,8 @@ dependencies = [
  "codemap-diagnostic",
  "core-model",
  "core-model-builder",
- "core-plugin",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "heck",
  "insta",
  "lazy_static",
@@ -4524,7 +4560,8 @@ dependencies = [
  "builder",
  "chrono",
  "core-model",
- "core-plugin",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "core-resolver",
  "futures",
  "maybe-owned",
@@ -4905,10 +4942,10 @@ dependencies = [
  "builder",
  "bytes",
  "core-model",
- "core-plugin",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "core-resolver",
  "deno-model",
- "deno-resolver",
  "futures",
  "include_dir",
  "insta",
@@ -4918,7 +4955,6 @@ dependencies = [
  "payas-deno",
  "payas-sql",
  "postgres-model",
- "postgres-resolver",
  "pretty_env_logger",
  "serde",
  "serde_json",
@@ -4932,7 +4968,6 @@ dependencies = [
  "tracing-subscriber",
  "typed-generational-arena",
  "wasm-model",
- "wasm-resolver",
 ]
 
 [[package]]
@@ -5189,6 +5224,9 @@ name = "semver"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e25dfac463d778e353db5be2449d1cce89bd6fd23c9f1ea21310ce6e5a1b29c4"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "semver-parser"
@@ -5622,7 +5660,7 @@ dependencies = [
  "codemap-diagnostic",
  "core-model",
  "core-model-builder",
- "core-plugin",
+ "core-plugin-shared",
  "serde",
  "subsystem-model-util",
 ]
@@ -5634,7 +5672,7 @@ dependencies = [
  "async-graphql-parser",
  "async-graphql-value",
  "core-model",
- "core-plugin",
+ "core-plugin-shared",
  "serde",
  "typed-generational-arena",
 ]
@@ -6983,7 +7021,8 @@ dependencies = [
  "async-graphql-value",
  "bincode",
  "core-model",
- "core-plugin",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "serde",
  "subsystem-model-util",
 ]
@@ -6994,7 +7033,8 @@ version = "0.1.0"
 dependencies = [
  "core-model",
  "core-model-builder",
- "core-plugin",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "subsystem-model-builder-util",
  "wasm-model",
 ]
@@ -7008,7 +7048,8 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "core-model",
- "core-plugin",
+ "core-plugin-interface",
+ "core-plugin-shared",
  "core-resolver",
  "futures",
  "payas-wasm",

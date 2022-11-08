@@ -5,10 +5,11 @@ use async_graphql_parser::{
 use async_trait::async_trait;
 
 use core_model::mapped_arena::SerializableSlabIndex;
-use core_plugin::{interception::InterceptorIndex, system_serializer::SystemSerializer};
+use core_plugin_interface::interface::{SubsystemLoader, SubsystemLoadingError};
+use core_plugin_shared::{interception::InterceptorIndex, system_serializer::SystemSerializer};
 use core_resolver::{
     claytip_execute_query,
-    plugin::{SubsystemLoader, SubsystemLoadingError, SubsystemResolutionError, SubsystemResolver},
+    plugin::{SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,
     system_resolver::SystemResolver,
     validation::field::ValidatedField,
@@ -31,6 +32,7 @@ pub type ClayDenoExecutorPool = DenoExecutorPool<
     ClaytipMethodResponse,
 >;
 pub struct DenoSubsystemLoader {}
+core_plugin_interface::export_subsystem_loader!(DenoSubsystemLoader {});
 
 impl SubsystemLoader for DenoSubsystemLoader {
     fn id(&self) -> &'static str {

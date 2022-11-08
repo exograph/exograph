@@ -1,7 +1,9 @@
 use std::path::Path;
 
 use builder::error::ParserError;
-use core_plugin::{serializable_system::SerializableSystem, system_serializer::SystemSerializer};
+use core_plugin_shared::{
+    serializable_system::SerializableSystem, system_serializer::SystemSerializer,
+};
 use postgres_model::model::ModelPostgresSystem;
 
 pub(crate) fn create_postgres_system(

@@ -93,7 +93,7 @@ impl<'a> DocumentValidator<'a> {
 mod tests {
     use super::*;
     use async_graphql_parser::parse_query;
-    use core_plugin::{
+    use core_plugin_shared::{
         serializable_system::SerializableSystem, system_serializer::SystemSerializer,
     };
 
