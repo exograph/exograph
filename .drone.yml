@@ -34,7 +34,9 @@ steps:
     - name: sccache
       path: /sccache
     commands:
-      - cargo build # TODO: figure out how to build cdylibs during tests implicitly
+        # TODO: figure out how to build cdylibs during tests implicitly
+        # see https://github.com/rust-lang/cargo/issues/8311
+      - cargo build 
       - CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 cargo test --workspace
 
   - name: test-integration
