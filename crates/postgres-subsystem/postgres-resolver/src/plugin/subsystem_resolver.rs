@@ -4,7 +4,7 @@ use async_graphql_parser::{
 };
 use async_trait::async_trait;
 
-use core_plugin::interception::InterceptorIndex;
+use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
     plugin::{SubsystemResolutionError, SubsystemResolver},
     request_context::RequestContext,

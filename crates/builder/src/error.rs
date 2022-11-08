@@ -16,7 +16,7 @@ pub enum ParserError {
     ModelBuildingError(#[from] core_model_builder::error::ModelBuildingError),
 
     #[error("{0}")]
-    ModelSerializationError(#[from] core_plugin::error::ModelSerializationError),
+    ModelSerializationError(#[from] core_plugin_shared::error::ModelSerializationError),
 
     #[error("{0}")]
     Generic(String),

@@ -218,7 +218,7 @@ mod tests {
     use std::collections::HashMap;
 
     use core_model::access::{AccessLogicalExpression, AccessPredicateExpression};
-    use core_plugin::interception::InterceptionMap;
+    use core_plugin_shared::interception::InterceptionMap;
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::request_context::Request;
     use core_resolver::system_resolver::SystemResolver;

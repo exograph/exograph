@@ -1,21 +1,6 @@
-use core_model::mapped_arena::MappedArena;
-use core_plugin::interception::{InterceptorIndex, InterceptorKind};
+use core_plugin_shared::interception::{InterceptorIndex, InterceptorKind};
 
-use crate::{
-    ast::ast_types::AstExpr,
-    builder::system_builder::BaseModelSystem,
-    error::ModelBuildingError,
-    typechecker::{Type, Typed},
-};
-
-pub trait SubsystemBuilder {
-    fn build(
-        &self,
-        typechecked_system: &MappedArena<Type>,
-        base_system: &BaseModelSystem,
-    ) -> Option<Result<SubsystemBuild, ModelBuildingError>>;
-}
-
+use crate::{ast::ast_types::AstExpr, typechecker::Typed};
 pub struct SubsystemBuild {
     pub id: String,
     pub serialized_subsystem: Vec<u8>,

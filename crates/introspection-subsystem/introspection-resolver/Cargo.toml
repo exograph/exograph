@@ -14,7 +14,7 @@ tokio = "1"
 
 core-resolver = { path = "../../core-subsystem/core-resolver" }
 core-model = { path = "../../core-subsystem/core-model" }
-core-plugin = { path = "../../core-subsystem/core-plugin" }
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 
 
 [dev-dependencies]

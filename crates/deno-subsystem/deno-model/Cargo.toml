@@ -11,7 +11,7 @@ bincode = "1.3.3"
 
 subsystem-model-util = { path = "../../subsystem-util/subsystem-model-util" }
 core-model = { path = "../../core-subsystem/core-model" }
-core-plugin = { path = "../../core-subsystem/core-plugin" }
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 
 [dev-dependencies]
 

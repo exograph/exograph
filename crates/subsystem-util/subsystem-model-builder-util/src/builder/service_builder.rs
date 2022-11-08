@@ -1,5 +1,5 @@
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use core_plugin::interception::InterceptorKind;
+use core_plugin_shared::interception::InterceptorKind;
 use subsystem_model_util::{
     access::Access,
     argument::{ArgumentParameter, ArgumentParameterType},

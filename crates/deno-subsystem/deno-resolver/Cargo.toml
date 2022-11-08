@@ -18,7 +18,8 @@ tokio = "1"
 
 payas-deno = { path = "../../../libs/payas-deno" }
 core-model = { path = "../../core-subsystem/core-model" }
-core-plugin = { path = "../../core-subsystem/core-plugin" }
+core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
+core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
 core-resolver = { path = "../../core-subsystem/core-resolver" }
 deno-model = { path = "../deno-model" }
 
@@ -29,3 +30,4 @@ builder = { path = "../../builder" }
 
 
 [lib]
+crate-type = ["cdylib"]

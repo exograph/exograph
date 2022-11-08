@@ -1,5 +1,5 @@
 use codemap_diagnostic::Diagnostic;
-use core_plugin::error::ModelSerializationError;
+use core_plugin_shared::error::ModelSerializationError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

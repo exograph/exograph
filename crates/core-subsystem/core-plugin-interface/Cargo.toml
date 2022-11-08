@@ -1,14 +1,16 @@
 [package]
-name = "core-model-builder"
+name = "core-plugin-interface"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-codemap = "0.1.3"
-serde = { version = "1.0.136", features = ["derive"] }
-codemap-diagnostic = "0.1.1"
-thiserror = "1.0.30"
+[build-dependencies]
+built = "0.5"
 
+[dependencies]
+libloading = "0.7.3"
+thiserror = "1.0.30"
+core-model-builder = { path = "../core-model-builder" }
+core-resolver = { path = "../core-resolver" }
 core-model = { path = "../core-model" }
 core-plugin-shared = { path = "../core-plugin-shared" }
 

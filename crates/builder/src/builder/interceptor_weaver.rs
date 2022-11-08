@@ -3,7 +3,7 @@ use core_model_builder::{
     plugin::Interception,
     typechecker::Typed,
 };
-use core_plugin::interception::{
+use core_plugin_shared::interception::{
     InterceptionMap, InterceptionTree, InterceptorIndexWithSubsystemIndex, InterceptorKind,
 };
 

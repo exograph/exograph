@@ -1,11 +1,10 @@
 use super::interceptor_weaver::{self, OperationKind};
 use core_model::mapped_arena::MappedArena;
-use core_model_builder::{
-    error::ModelBuildingError, plugin::SubsystemBuilder, typechecker::typ::Type,
-};
-use core_plugin::serializable_system::SerializableSubsystem;
-use core_plugin::serializable_system::SerializableSystem;
-use core_plugin::system_serializer::SystemSerializer;
+use core_model_builder::{error::ModelBuildingError, typechecker::typ::Type};
+use core_plugin_interface::interface::LibraryLoadingError;
+use core_plugin_shared::serializable_system::SerializableSubsystem;
+use core_plugin_shared::serializable_system::SerializableSystem;
+use core_plugin_shared::system_serializer::SystemSerializer;
 
 /// Build a [ModelSystem] given an [AstSystem].
 ///
@@ -27,15 +26,19 @@ use core_plugin::system_serializer::SystemSerializer;
 pub fn build(typechecked_system: MappedArena<Type>) -> Result<Vec<u8>, ModelBuildingError> {
     let base_system = core_model_builder::builder::system_builder::build(&typechecked_system)?;
 
-    let postgres_subsystem_builder = postgres_model_builder::PostgresSubsystemBuilder {};
-    let deno_subsystem_builder = deno_model_builder::DenoSubsystemBuilder {};
-    let wasm_subsystem_builder = wasm_model_builder::WasmSubsystemBuilder {};
-
-    let subsystem_builders: Vec<&dyn SubsystemBuilder> = vec![
-        &postgres_subsystem_builder,
-        &deno_subsystem_builder,
-        &wasm_subsystem_builder,
+    let library_names = [
+        "postgres_model_builder",
+        "deno_model_builder",
+        "wasm_model_builder",
     ];
+
+    let subsystem_builders: Result<Vec<_>, LibraryLoadingError> = library_names
+        .into_iter()
+        .map(core_plugin_interface::interface::load_subsystem_builder)
+        .collect();
+
+    let subsystem_builders =
+        subsystem_builders.map_err(|e| ModelBuildingError::Generic(format!("{}", e)))?;
 
     let mut subsystem_interceptions = vec![];
     let mut query_names = vec![];

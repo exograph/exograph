@@ -7,17 +7,16 @@ WORKDIR /usr/src/app
 COPY ${CLAY_FILE} .
 RUN ./clay build ${CLAY_FILE}
 
-
-
 #2: Run clay with plain buster-slim as the base
 #FROM debian:buster-slim
-FROM rust:1.60.0-buster
+FROM rust:1.64.0-buster
 
 ARG CLAY_FILE
 ENV CLAYPOT_FILE=${CLAY_FILE}pot
 
 # 2.1 Copy clay-server from the builder image and the claypot created in the previous step
 COPY --from=builder /usr/src/app/clay-server ./clay-server
+COPY --from=builder /usr/src/app/*_resolver.so ./
 COPY --from=builder /usr/src/app/${CLAYPOT_FILE} ./${CLAYPOT_FILE}
 
 # 2.2: Copy the script with a bridge between DATABASE_URL and CLAY_DATABASE_URL as well as env variables

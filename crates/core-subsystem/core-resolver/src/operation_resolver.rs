@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use core_plugin::interception::InterceptionTree;
+use core_plugin_shared::interception::InterceptionTree;
 use serde_json::Value;
 
 use crate::interception::InterceptedOperation;
