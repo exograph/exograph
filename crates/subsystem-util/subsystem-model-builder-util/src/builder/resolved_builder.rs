@@ -118,7 +118,8 @@ pub struct ResolvedArgument {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ResolvedInterceptor {
-    pub name: String,
+    pub service_name: String,
+    pub method_name: String,
     pub arguments: Vec<ResolvedArgument>,
     pub interceptor_kind: ResolvedInterceptorKind,
 }
@@ -303,7 +304,8 @@ fn resolve_service(
                     }?;
 
                     Result::<ResolvedInterceptor, ModelBuildingError>::Ok(ResolvedInterceptor {
-                        name: i.name.clone(),
+                        service_name: service.name.clone(),
+                        method_name: i.name.clone(),
                         arguments: i
                             .arguments
                             .iter()
