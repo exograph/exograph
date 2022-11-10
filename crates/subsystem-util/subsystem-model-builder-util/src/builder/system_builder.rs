@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_model::mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex};
 use core_model_builder::{
     ast::ast_types::{AstExpr, AstService},
     builder::system_builder::BaseModelSystem,
@@ -20,7 +20,7 @@ use super::{
     type_builder::{self, ResolvedTypeEnv},
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SystemContextBuilding {
     pub types: MappedArena<ServiceType>,
 
@@ -29,8 +29,21 @@ pub struct SystemContextBuilding {
 
     pub mutations: MappedArena<ServiceMutation>,
     pub methods: MappedArena<ServiceMethod>,
-    pub interceptors: MappedArena<Interceptor>,
+    pub interceptors: SerializableSlab<Interceptor>, // Don't use MappedArena because we use a composite key (service name + method name) here
     pub scripts: MappedArena<Script>,
+}
+
+impl Default for SystemContextBuilding {
+    fn default() -> Self {
+        Self {
+            types: MappedArena::default(),
+            queries: MappedArena::default(),
+            mutations: MappedArena::default(),
+            methods: MappedArena::default(),
+            interceptors: SerializableSlab::new(),
+            scripts: MappedArena::default(),
+        }
+    }
 }
 
 impl SystemContextBuilding {
@@ -67,7 +80,6 @@ pub fn build_with_selection(
     build_shallow_service(&resolved_env, &mut building);
     build_expanded_service(&resolved_env, &mut building)?;
 
-    let model_interceptors = building.interceptors;
     let interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)> = resolved_env
         .resolved_services
         .values
@@ -77,8 +89,14 @@ pub fn build_with_selection(
                 .interceptors
                 .iter()
                 .map(|resolved_interceptor| {
-                    let model_interceptor = model_interceptors
-                        .get_id(&resolved_interceptor.name)
+                    let model_interceptor = building
+                        .interceptors
+                        .iter()
+                        .find_map(|(index, i)| {
+                            (i.service_name == resolved_interceptor.service_name
+                                && i.method_name == resolved_interceptor.method_name)
+                                .then_some(index)
+                        })
                         .unwrap();
 
                     (
@@ -97,7 +115,7 @@ pub fn build_with_selection(
             methods: building.methods.values,
             scripts: building.scripts.values,
             contexts: base_system.contexts.clone(),
-            interceptors: model_interceptors.values,
+            interceptors: building.interceptors,
         },
         interceptors,
     })

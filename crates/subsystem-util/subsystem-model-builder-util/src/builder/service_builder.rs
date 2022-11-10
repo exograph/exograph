@@ -213,32 +213,24 @@ pub fn create_shallow_interceptor(
         building,
     );
 
-    building.interceptors.add(
-        &resolved_interceptor.name,
-        Interceptor {
-            name: resolved_interceptor.name.clone(),
-            script,
-            interceptor_kind: match resolved_interceptor.interceptor_kind {
-                super::resolved_builder::ResolvedInterceptorKind::Before(_) => {
-                    InterceptorKind::Before
-                }
-                super::resolved_builder::ResolvedInterceptorKind::After(_) => {
-                    InterceptorKind::After
-                }
-                super::resolved_builder::ResolvedInterceptorKind::Around(_) => {
-                    InterceptorKind::Around
-                }
-            },
-            arguments: resolved_interceptor
-                .arguments
-                .iter()
-                .map(|arg| Argument {
-                    name: arg.name.clone(),
-                    type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
-                    modifier: arg.typ.get_modifier(),
-                    is_injected: true, // implicitly set is_injected for interceptors
-                })
-                .collect(),
+    building.interceptors.insert(Interceptor {
+        service_name: resolved_service.name.clone(),
+        method_name: resolved_interceptor.method_name.clone(),
+        script,
+        interceptor_kind: match resolved_interceptor.interceptor_kind {
+            super::resolved_builder::ResolvedInterceptorKind::Before(_) => InterceptorKind::Before,
+            super::resolved_builder::ResolvedInterceptorKind::After(_) => InterceptorKind::After,
+            super::resolved_builder::ResolvedInterceptorKind::Around(_) => InterceptorKind::Around,
         },
-    );
+        arguments: resolved_interceptor
+            .arguments
+            .iter()
+            .map(|arg| Argument {
+                name: arg.name.clone(),
+                type_id: building.get_id(arg.typ.get_underlying_typename()).unwrap(),
+                modifier: arg.typ.get_modifier(),
+                is_injected: true, // implicitly set is_injected for interceptors
+            })
+            .collect(),
+    });
 }

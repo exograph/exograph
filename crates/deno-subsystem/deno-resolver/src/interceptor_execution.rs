@@ -43,7 +43,7 @@ pub async fn execute_interceptor<'a>(
         .execute_and_get_r(
             &script.path,
             &script.script,
-            &interceptor.name,
+            &interceptor.method_name,
             arg_sequence,
             Some(InterceptedOperationInfo {
                 name: intercepted_operation.operation().name.to_string(),
