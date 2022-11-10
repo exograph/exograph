@@ -1,0 +1,10 @@
+operation: |
+  query {
+    getInt
+  }
+response: |
+  {
+    "data": {
+      "getInt": 10,
+    }
+  }
