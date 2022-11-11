@@ -8,6 +8,10 @@ use std::{
 use anyhow::{anyhow, Result};
 use clap::{Arg, Command};
 use commands::{serve::ServeCommand, test::TestCommand, yolo::YoloCommand};
+use tokio::sync::{
+    broadcast::{Receiver, Sender},
+    Mutex,
+};
 
 use crate::commands::{build::BuildCommand, schema};
 
@@ -16,7 +20,13 @@ pub(crate) mod util;
 
 const DEFAULT_MODEL_FILE: &str = "index.clay";
 
-pub static SIGINT: AtomicBool = AtomicBool::new(false);
+lazy_static::lazy_static! {
+    pub static ref SIGINT: (Sender<()>, Mutex<Receiver<()>>) = {
+        let (tx, rx) = tokio::sync::broadcast::channel(1);
+        (tx, Mutex::new(rx))
+    };
+}
+
 pub static EXIT_ON_SIGINT: AtomicBool = AtomicBool::new(true);
 
 fn model_file_arg() -> Arg {
@@ -63,8 +73,8 @@ fn main() -> Result<()> {
 
     // register a sigint handler
     ctrlc::set_handler(move || {
-        // set SIGINT flag when receiving signal
-        SIGINT.store(true, Ordering::SeqCst);
+        // set SIGINT event when receiving signal
+        let _ = SIGINT.0.send(());
 
         // exit if EXIT_ON_SIGINT is set
         // code may set this to be false if they have resources to

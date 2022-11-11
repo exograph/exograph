@@ -1,9 +1,11 @@
 use anyhow::{anyhow, Result};
+use futures::FutureExt;
 use std::{
     io::{stdin, stdout, Write},
     path::PathBuf,
     time::SystemTime,
 };
+use tokio::runtime::Runtime;
 
 use crate::{
     commands::schema::verify::{verify, VerificationErrors},
@@ -20,7 +22,9 @@ pub struct ServeCommand {
 
 impl Command for ServeCommand {
     fn run(&self, _system_start_time: Option<SystemTime>) -> Result<()> {
-        watcher::start_watcher(&self.model, self.port, || {
+        let rt = Runtime::new()?;
+
+        rt.block_on(watcher::start_watcher(&self.model, self.port, || async {
             println!("Verifying new model...");
 
             loop {
@@ -58,6 +62,6 @@ impl Command for ServeCommand {
                     }
                 }
             }
-        })
+        }.boxed()))
     }
 }
