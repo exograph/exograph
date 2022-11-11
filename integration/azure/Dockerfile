@@ -9,7 +9,7 @@ COPY ${CLAY_FILE} .
 RUN ./clay build ${CLAY_FILE}
 
 # 2. Build final image
-FROM rust:1.64.0-buster
+FROM rust:1.65.0-buster
 WORKDIR /usr/src/app
 
 ARG CLAY_FILE

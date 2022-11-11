@@ -9,7 +9,7 @@ RUN ./clay build ${CLAY_FILE}
 
 #2: Run clay with plain buster-slim as the base
 #FROM debian:buster-slim
-FROM rust:1.64.0-buster
+FROM rust:1.65.0-buster
 
 ARG CLAY_FILE
 ENV CLAYPOT_FILE=${CLAY_FILE}pot
