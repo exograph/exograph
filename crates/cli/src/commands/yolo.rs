@@ -10,6 +10,7 @@ use crate::util::watcher;
 
 use super::{command::Command, schema::migration_helper::migration_statements};
 use anyhow::{anyhow, Context, Result};
+use futures::FutureExt;
 use payas_sql::{schema::spec::SchemaSpec, Database};
 use rand::Rng;
 
@@ -47,6 +48,7 @@ impl Command for YoloCommand {
         let jwt_secret = generate_random_string();
 
         let prestart_callback = || {
+            async {
             // set envs for server
             std::env::set_var("CLAY_DATABASE_URL", &db.connection_url);
             std::env::remove_var("CLAY_DATABASE_USER");
@@ -62,10 +64,10 @@ impl Command for YoloCommand {
             println!("Generating migrations...");
             let database = Database::from_env(None)?;
 
-            let old_schema = rt.block_on(async {
+            let old_schema =  {
                 let client = database.get_client().await?;
                 SchemaSpec::from_db(&client).await
-            })?;
+            }?;
 
             for issue in &old_schema.issues {
                 println!("{}", issue);
@@ -78,7 +80,7 @@ impl Command for YoloCommand {
             let statements = migration_statements(&old_schema.value, &new_schema);
 
             // execute migration
-            let result: Result<()> = rt.block_on(async {
+            let result: Result<()> = {
                 println!("Running migrations...");
                 let mut client = database.get_client().await?;
                 let transaction = client.transaction().await?;
@@ -86,7 +88,7 @@ impl Command for YoloCommand {
                     transaction.execute(&statement, &[]).await?;
                 }
                 transaction.commit().await.map_err(|e| anyhow!(e))
-            });
+            };
 
             if let Err(e) = result {
                 println!("Error while applying migration: {}", e);
@@ -118,7 +120,7 @@ impl Command for YoloCommand {
                     // exit
                     Ok("e") => {
                         println!("Exiting...");
-                        crate::SIGINT.store(true, Ordering::SeqCst);
+                        let _ = crate::SIGINT.0.send(());
                     }
 
                     // continue, do nothing
@@ -129,9 +131,14 @@ impl Command for YoloCommand {
             }
 
             Ok(())
+        }.boxed()
         };
 
-        watcher::start_watcher(&self.model, self.port, prestart_callback)
+        rt.block_on(watcher::start_watcher(
+            &self.model,
+            self.port,
+            prestart_callback,
+        ))
     }
 }
 

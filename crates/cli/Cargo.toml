@@ -8,12 +8,14 @@ name = "clay"
 path = "src/main.rs"
 
 [dependencies]
+tokio = "1"
 anyhow = "1.0"
 clap = "4.0.18"
 heck = "0.4.0"
-notify = "4.0.17"
+lazy_static = "1.4.0"
+notify-debouncer-mini = "0.2.1"
 serde = { version = "1.0", features = ["derive"] }
-tokio = "1"
+futures = "0.3.25"
 rand = "0.8"
 ctrlc = "3.2"
 

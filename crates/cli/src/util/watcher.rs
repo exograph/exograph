@@ -1,29 +1,22 @@
-use std::{
-    path::Path,
-    process::Child,
-    sync::{
-        atomic::Ordering,
-        mpsc::{channel, RecvTimeoutError},
-    },
-    time::Duration,
-};
+use std::{path::Path, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use builder::error::ParserError;
 use core_model_builder::error::ModelBuildingError;
-use notify::{DebouncedEvent, RecommendedWatcher, RecursiveMode, Watcher};
+use futures::{future::BoxFuture, FutureExt};
+use notify_debouncer_mini::notify::RecursiveMode;
 
 use crate::commands::build::{build, BuildError};
 
 /// Starts a watcher that will rebuild and serve model files with every change.
 /// Takes a callback that will be called before the start of each server.
-pub fn start_watcher<F>(
+pub async fn start_watcher<'a, F>(
     model_path: &Path,
     server_port: Option<u32>,
     prestart_callback: F,
 ) -> Result<()>
 where
-    F: Fn() -> Result<()>,
+    F: Fn() -> BoxFuture<'a, Result<()>>,
 {
     let absolute_path = model_path
         .canonicalize()
@@ -35,47 +28,59 @@ where
         )
     })?;
 
+    // start watcher
     println!("Watching: {:?}", &parent_dir);
-    let (tx, rx) = channel();
-    let mut watcher: RecommendedWatcher = Watcher::new(tx, std::time::Duration::from_millis(200))?;
-    watcher.watch(parent_dir, RecursiveMode::Recursive)?;
 
+    let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel(1);
+    let mut debouncer =
+        notify_debouncer_mini::new_debouncer(Duration::from_millis(200), None, move |res| {
+            let _ = watcher_tx.blocking_send(res);
+        })?;
+    debouncer
+        .watcher()
+        .watch(parent_dir, RecursiveMode::Recursive)?;
+
+    // precompute clay-server path and claypot file name
     let mut server_binary = std::env::current_exe()?;
     server_binary.set_file_name("clay-server");
-
     let claypot_file_name = format!("{}pot", model_path.to_str().unwrap());
 
+    // Given a path, determine if the model should be rebuilt and the server restarted.
     fn should_restart(path: &Path) -> bool {
         !matches!(path.extension().and_then(|e| e.to_str()), Some("claypot"))
     }
 
-    // this method attempts to builds a claypot from the model and spawn a clay-server from it
-
+    // Attempts to builds a claypot from the model and spawn a clay-server from it
     // - if the attempt succeeds, we will return a handle to the process in an Ok(Some(...))
     // - if the return value is an Err, this means that we have encountered an unrecoverable error, and so the
     //   watcher should exit.
     // - if the return value is an Ok(None), this mean that we have encountered some error, but it is not necessarily
     //   unrecoverable (the watcher should not exit)
-    let build_and_start_server: &dyn Fn() -> Result<Option<Child>> = &|| {
-        let result = build(&absolute_path, None, false).and_then(|_| {
-            if let Err(e) = prestart_callback() {
-                println!("Error: {}", e);
-            }
+    let build_and_start_server = &|| async {
+        let build_result = build(&absolute_path, None, false);
 
-            let mut command = std::process::Command::new(&server_binary);
-            command.args(vec![&claypot_file_name]);
-            if let Some(port) = server_port {
-                command.env("CLAY_SERVER_PORT", port.to_string());
-            }
-            command
-                .spawn()
-                .context("Failed to start clay-server")
-                .map_err(|e| BuildError::UnrecoverableError(anyhow!(e)))
-        });
+        match build_result {
+            Ok(()) => {
+                if let Err(e) = prestart_callback().await {
+                    println!("Error: {}", e);
+                }
 
-        match result {
-            // server successfully started
-            Ok(child) => Ok(Some(child)),
+                let mut command = tokio::process::Command::new(&server_binary);
+
+                command.args([&claypot_file_name]);
+                command.kill_on_drop(true);
+
+                if let Some(port) = server_port {
+                    command.env("CLAY_SERVER_PORT", port.to_string());
+                }
+
+                let child = command
+                    .spawn()
+                    .context("Failed to start clay-server")
+                    .map_err(|e| BuildError::UnrecoverableError(anyhow!(e)))?;
+
+                Ok(Some(child))
+            }
 
             // server encountered an unrecoverable error while building
             Err(BuildError::ParserError(ParserError::Generic(e)))
@@ -89,51 +94,45 @@ where
         }
     };
 
-    let mut server = build_and_start_server()?;
+    let mut server = build_and_start_server().await?;
 
-    // watcher loop
     loop {
-        if crate::SIGINT.load(Ordering::SeqCst) {
-            break;
-        }
+        let server_death_event = if let Some(child) = server.as_mut() {
+            child.wait().boxed()
+        } else {
+            // no server was spawned, so we should never fire this future
+            std::future::pending().boxed()
+        };
 
-        // block loop for 500ms
-        match rx.recv_timeout(Duration::from_millis(500)) {
-            Ok(event) => match &event {
-                DebouncedEvent::Create(path) | DebouncedEvent::Write(path) => {
-                    if should_restart(path) {
-                        println!("Change detected, rebuilding and restarting...");
+        let mut ctrl_c_receiver = crate::SIGINT.1.lock().await;
+        let ctrl_c_event = ctrl_c_receiver.recv();
 
-                        if let Some(server) = server.as_mut() {
-                            if server.kill().is_err() {
-                                println!("Unable to kill server");
-                            }
+        let watcher_change = watcher_rx.recv();
+
+        tokio::select! {
+            maybe_events = watcher_change => {
+                let Some(events) = maybe_events else {
+                    break;  // quit if channel closed
+                };
+
+                if let Ok(events) = events {
+                        if events.iter().map(|event| &event.path).any(|p| should_restart(p)) {
+                            println!("Change detected, rebuilding and restarting...");
+                            server = build_and_start_server().await?;
                         }
+                    };
+            }
 
-                        server = build_and_start_server()?;
-                    }
-                }
-                _ => {}
-            },
-            Err(e) => match e {
-                RecvTimeoutError::Timeout => {}
-                RecvTimeoutError::Disconnected => {
-                    println!("watch error: {:?}", e);
-                    break;
-                }
-            },
-        }
+            _ = ctrl_c_event => {
+                // quit on CTRL-C
+                break;
+            }
 
-        if let Some(server) = server.as_mut() {
-            if let Ok(Some(_)) = server.try_wait() {
-                // server died for some reason
+            _ = server_death_event => {
+                // server died for some reason, quit
                 break;
             }
         }
-    }
-
-    if let Some(mut server) = server {
-        let _ = server.kill();
     }
 
     Ok(())
