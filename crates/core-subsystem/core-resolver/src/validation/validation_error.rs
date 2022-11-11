@@ -49,6 +49,9 @@ pub enum ValidationError {
     #[error("No operation found")]
     NoOperationFound,
 
+    #[error("Duplicate operations '{0:?}' (consider using alias)")]
+    DuplicateOperations(Vec<(Pos, String)>),
+
     #[error("Must provide operation name if query contains multiple operations")]
     MultipleOperationsNoOperationName,
 
@@ -74,6 +77,7 @@ impl ValidationError {
             ValidationError::MultipleOperationsNoOperationName => Pos::default(),
             ValidationError::MultipleOperationsUnmatchedOperationName(_) => Pos::default(),
             ValidationError::InvalidArgumentType { pos, .. } => *pos,
+            ValidationError::DuplicateOperations(value) => value.first().unwrap().0,
         }
     }
 

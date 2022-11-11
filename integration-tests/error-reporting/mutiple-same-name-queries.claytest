@@ -1,0 +1,23 @@
+operation: |
+    {
+      venue(id: 1) {
+        id
+      }
+      venue(id: 1) {
+        id
+      }
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Argument 'data' is not of a valid type. Expected 'VenueCreationInput', got '[VenueCreationInput]'",
+          "locations": [
+            {
+              "line": 2,
+              "column": 21
+            }
+          ]
+        }
+      ]
+    }    
