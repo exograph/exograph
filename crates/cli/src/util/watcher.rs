@@ -33,7 +33,7 @@ where
 
     let (watcher_tx, mut watcher_rx) = tokio::sync::mpsc::channel(1);
     let mut debouncer =
-        notify_debouncer_mini::new_debouncer(Duration::from_millis(500), None, move |res| {
+        notify_debouncer_mini::new_debouncer(Duration::from_millis(200), None, move |res| {
             let _ = watcher_tx.blocking_send(res);
         })?;
     debouncer
