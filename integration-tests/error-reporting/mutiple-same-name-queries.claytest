@@ -11,13 +11,17 @@ response: |
     {
       "errors": [
         {
-          "message": "Argument 'data' is not of a valid type. Expected 'VenueCreationInput', got '[VenueCreationInput]'",
+          "message": "Duplicate field names '[venue]' (consider using alias)",
           "locations": [
             {
               "line": 2,
-              "column": 21
+              "column": 3
+            },
+            {
+              "line": 5,
+              "column": 3
             }
           ]
         }
       ]
-    }    
+    }

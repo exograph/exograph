@@ -76,32 +76,36 @@ impl<'a> SelectionSetValidator<'a> {
             .collect::<Result<Vec<_>, _>>()
             .map(|f| f.into_iter().flatten().collect())?;
 
-        let operation_output_names: HashSet<_> = fields
-            .iter()
-            .map(|(_, field)| field.output_name())
-            .collect();
+        // Validate that there are no duplicate fields output names (names considering aliases)
+        let mut output_names = HashSet::new();
+        let mut duplicated_names = HashSet::new();
 
-        if operation_output_names.len() != fields.len() {
-            return Err(ValidationError::DuplicateOutputNames {
-                pos: selection_set.pos,
-                names: operation_output_names
-                    .iter()
-                    .map(|name| name.to_string())
-                    .collect(),
-            });
-        }
-
-        let mut duplicated = Vec::new();
-        for (pos, field) in fields.iter() {
-            if operation_output_names.contains(&field.output_name()) {
-                duplicated.push((*pos, field.output_name()));
+        // First track any duplicated names
+        for (_, field) in &fields {
+            // HashSet::insert returns false if the value was already present
+            if !output_names.insert(field.output_name()) {
+                duplicated_names.insert(field.output_name());
             }
         }
 
-        if duplicated.is_empty() {
+        if duplicated_names.is_empty() {
             Ok(fields)
         } else {
-            Err(ValidationError::DuplicateOperations(duplicated))
+            // For each duplicated name, gather its position (so we show the position for the every occurrence including the first one)
+            let duplicated_positions = fields
+                .iter()
+                .flat_map(|(pos, field)| {
+                    duplicated_names
+                        .contains(&field.output_name())
+                        .then_some(*pos)
+                })
+                .collect();
+            let mut duplicated_names = duplicated_names.into_iter().collect::<Vec<_>>();
+            duplicated_names.sort(); // Sort the names so the error message is deterministic
+            Err(ValidationError::DuplicateFields(
+                duplicated_names,
+                duplicated_positions,
+            ))
         }
     }
 
