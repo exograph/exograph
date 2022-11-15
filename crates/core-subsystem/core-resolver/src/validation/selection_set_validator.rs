@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use async_graphql_parser::{
     types::{
         Field, FieldDefinition, FragmentDefinition, FragmentSpread, Selection, SelectionSet, Type,
         TypeDefinition,
     },
-    Positioned,
+    Pos, Positioned,
 };
 use async_graphql_value::{indexmap::IndexMap, ConstValue, Name};
 
@@ -58,31 +58,78 @@ impl<'a> SelectionSetValidator<'a> {
         &self,
         selection_set: &Positioned<SelectionSet>,
     ) -> Result<Vec<ValidatedField>, ValidationError> {
-        selection_set
+        self.validate_selection_set(selection_set)
+            .map(|fields| fields.into_iter().map(|(_, field)| field).collect())
+    }
+
+    fn validate_selection_set(
+        &self,
+        selection_set: &Positioned<SelectionSet>,
+    ) -> Result<Vec<(Pos, ValidatedField)>, ValidationError> {
+        let fields = selection_set
             .node
             .items
             .iter()
-            .map(|selection| self.validate_selection(selection))
+            .map(|selection| self.validate_selection(selection));
+
+        let fields: Vec<(Pos, ValidatedField)> = fields
             .collect::<Result<Vec<_>, _>>()
-            .map(|f| f.into_iter().flatten().collect())
+            .map(|f| f.into_iter().flatten().collect())?;
+
+        // Validate that there are no duplicate fields output names (names considering aliases)
+        let mut output_names = HashSet::new();
+        let mut duplicated_names = HashSet::new();
+
+        // First track any duplicated names
+        for (_, field) in &fields {
+            // HashSet::insert returns false if the value was already present
+            if !output_names.insert(field.output_name()) {
+                duplicated_names.insert(field.output_name());
+            }
+        }
+
+        if duplicated_names.is_empty() {
+            Ok(fields)
+        } else {
+            // For each duplicated name, gather its position (so we show the position for the every occurrence including the first one)
+            let duplicated_positions = fields
+                .iter()
+                .flat_map(|(pos, field)| {
+                    duplicated_names
+                        .contains(&field.output_name())
+                        .then_some(*pos)
+                })
+                .collect();
+            let mut duplicated_names = duplicated_names.into_iter().collect::<Vec<_>>();
+            duplicated_names.sort(); // Sort the names so the error message is deterministic
+            Err(ValidationError::DuplicateFields(
+                duplicated_names,
+                duplicated_positions,
+            ))
+        }
     }
 
     fn validate_selection(
         &self,
         selection: &Positioned<Selection>,
-    ) -> Result<Vec<ValidatedField>, ValidationError> {
+    ) -> Result<Vec<(Pos, ValidatedField)>, ValidationError> {
         match &selection.node {
             Selection::Field(field) => self.validate_field(field).map(|field| vec![field]),
             Selection::FragmentSpread(fragment_spread) => self
                 .fragment_definition(fragment_spread)
-                .and_then(|fragment_definition| self.validate(&fragment_definition.selection_set)),
+                .and_then(|fragment_definition| {
+                    self.validate_selection_set(&fragment_definition.selection_set)
+                }),
             Selection::InlineFragment(inline_fragment) => Err(
                 ValidationError::InlineFragmentNotSupported(inline_fragment.pos),
             ),
         }
     }
 
-    fn validate_field(&self, field: &Positioned<Field>) -> Result<ValidatedField, ValidationError> {
+    fn validate_field(
+        &self,
+        field: &Positioned<Field>,
+    ) -> Result<(Pos, ValidatedField), ValidationError> {
         // Special treatment for the __typename field, since we are not supposed to expose it as
         // a normal field (for example, we should not declare that the "Concert" type has a __typename field")
         if field.node.name.node.as_str() == "__typename" {
@@ -103,12 +150,15 @@ impl<'a> SelectionSetValidator<'a> {
                     field.pos,
                 ))
             } else {
-                Ok(ValidatedField {
-                    alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
-                    name: field.node.name.node.clone(),
-                    arguments: IndexMap::new(),
-                    subfields: vec![],
-                })
+                Ok((
+                    field.pos,
+                    ValidatedField {
+                        alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
+                        name: field.node.name.node.clone(),
+                        arguments: IndexMap::new(),
+                        subfields: vec![],
+                    },
+                ))
             }
         } else {
             let field_definition = if self.container_type.name.node.as_str() == QUERY_ROOT_TYPENAME
@@ -148,12 +198,15 @@ impl<'a> SelectionSetValidator<'a> {
                     .collect::<Vec<_>>(),
             )?;
 
-            Ok(ValidatedField {
-                alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
-                name: field.node.name.node.clone(),
-                arguments,
-                subfields,
-            })
+            Ok((
+                field.pos,
+                ValidatedField {
+                    alias: field.node.alias.as_ref().map(|alias| alias.node.clone()),
+                    name: field.node.name.node.clone(),
+                    arguments,
+                    subfields,
+                },
+            ))
         }
     }
 

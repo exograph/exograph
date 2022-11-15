@@ -49,6 +49,9 @@ pub enum ValidationError {
     #[error("No operation found")]
     NoOperationFound,
 
+    #[error("Duplicate field names '{0:?}' (consider using alias)")]
+    DuplicateFields(Vec<String>, Vec<Pos>),
+
     #[error("Must provide operation name if query contains multiple operations")]
     MultipleOperationsNoOperationName,
 
@@ -57,30 +60,26 @@ pub enum ValidationError {
 }
 
 impl ValidationError {
-    pub fn position1(&self) -> Pos {
+    pub fn positions(&self) -> Vec<Pos> {
         match self {
-            ValidationError::QueryParsingFailed(_, pos, _) => *pos,
-            ValidationError::VariableNotFound(_, pos) => *pos,
-            ValidationError::MalformedVariable(_, pos, _) => *pos,
-            ValidationError::FragmentDefinitionNotFound(_, pos) => *pos,
-            ValidationError::InlineFragmentNotSupported(pos) => *pos,
-            ValidationError::OperationNotFound(_, pos) => *pos,
-            ValidationError::InvalidField(_, _, pos) => *pos,
-            ValidationError::InvalidFieldType(_, pos) => *pos,
-            ValidationError::ScalarWithField(_, pos) => *pos,
-            ValidationError::RequiredArgumentNotFound(_, pos) => *pos,
-            ValidationError::StrayArguments(_, _, pos) => *pos,
-            ValidationError::NoOperationFound => Pos::default(),
-            ValidationError::MultipleOperationsNoOperationName => Pos::default(),
-            ValidationError::MultipleOperationsUnmatchedOperationName(_) => Pos::default(),
-            ValidationError::InvalidArgumentType { pos, .. } => *pos,
-        }
-    }
-
-    pub fn position2(&self) -> Option<Pos> {
-        match self {
-            ValidationError::QueryParsingFailed(_, _, pos) => *pos,
-            _ => None,
+            ValidationError::QueryParsingFailed(_, pos1, pos2) => {
+                vec![Some(*pos1), *pos2].into_iter().flatten().collect()
+            }
+            ValidationError::VariableNotFound(_, pos) => vec![*pos],
+            ValidationError::MalformedVariable(_, pos, _) => vec![*pos],
+            ValidationError::FragmentDefinitionNotFound(_, pos) => vec![*pos],
+            ValidationError::InlineFragmentNotSupported(pos) => vec![*pos],
+            ValidationError::OperationNotFound(_, pos) => vec![*pos],
+            ValidationError::InvalidField(_, _, pos) => vec![*pos],
+            ValidationError::InvalidFieldType(_, pos) => vec![*pos],
+            ValidationError::ScalarWithField(_, pos) => vec![*pos],
+            ValidationError::RequiredArgumentNotFound(_, pos) => vec![*pos],
+            ValidationError::StrayArguments(_, _, pos) => vec![*pos],
+            ValidationError::NoOperationFound => vec![],
+            ValidationError::MultipleOperationsNoOperationName => vec![],
+            ValidationError::MultipleOperationsUnmatchedOperationName(_) => vec![],
+            ValidationError::InvalidArgumentType { pos, .. } => vec![*pos],
+            ValidationError::DuplicateFields(_, positions) => positions.clone(),
         }
     }
 }
