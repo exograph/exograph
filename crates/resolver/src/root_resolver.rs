@@ -70,6 +70,19 @@ pub async fn resolve<'a, E: 'static>(
             };
         }
 
+        macro_rules! report_positions {
+            ($positions:expr) => {
+                let mut first = true;
+                for p in $positions {
+                    if !first {
+                        yield Bytes::from_static(b", ");
+                    }
+                    first = false;
+                    report_position!(p);
+                }
+            };
+        }
+
         match response {
             Ok(parts) => {
                 let parts_len = parts.len();
@@ -92,7 +105,6 @@ pub async fn resolve<'a, E: 'static>(
             Err(err) => {
                 yield Bytes::from_static(br#"{"errors": [{"message":""#);
                 yield Bytes::from(
-                    // TODO: escape PostgreSQL errors properly here
                     format!("{}", err.user_error_message())
                         .replace("\"", "")
                         .replace("\n", "; ")
@@ -100,11 +112,7 @@ pub async fn resolve<'a, E: 'static>(
                 yield Bytes::from_static(br#"""#);
                 if let SystemResolutionError::Validation(err) = err {
                     yield Bytes::from_static(br#", "locations": ["#);
-                    report_position!(err.position1());
-                    if let Some(position2) = err.position2() {
-                        yield Bytes::from_static(br#","#);
-                        report_position!(position2);
-                    }
+                    report_positions!(err.positions());
                     yield Bytes::from_static(br#"]"#);
                 };
                 yield Bytes::from_static(br#"}"#);

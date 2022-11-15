@@ -1,0 +1,45 @@
+operation: |
+    {
+      venue(id: 1) {
+        id
+        name
+        ...venueInfo
+        name
+        name
+        published
+      }
+    }
+
+    fragment venueInfo on Venue {
+        id
+    }
+response: |
+    {
+      "errors": [
+        {
+          "message": "Duplicate field names '[id, name]' (consider using alias)",
+          "locations": [
+            {
+              "line": 3,
+              "column": 5
+            },
+            {
+              "line": 4,
+              "column": 5
+            },
+            {
+              "line": 13,
+              "column": 5
+            },
+            {
+              "line": 6,
+              "column": 5
+            },
+            {
+              "line": 7,
+              "column": 5
+            }
+          ]
+        }
+      ]
+    }
