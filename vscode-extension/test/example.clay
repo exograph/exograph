@@ -1,28 +1,34 @@
-@table("concerts")
-@access(query=AuthContext.role == "ROLE_ADMIN" || self.published || price <= 10, 
-        mutation=AuthContext.role == "ROLE_ADMIN")
-model Concert {
-  id: Int = autoincrement() @pk // comment after annotation
-  title: String // comment after type
-  venue: Venue @column("venueid")
-  published: Boolean
-  price: Decimal @precision(20) @scale(2)
+@postgres
+service ConcertVenues {
+  @table("concerts")
+  @access(query=AuthContext.role == "ROLE_ADMIN" || self.published || price <= 10, 
+          mutation=AuthContext.role == "ROLE_ADMIN")
+  model Concert {
+    id: Int = autoincrement() @pk // comment after annotation
+    title: String // comment after type
+    venue: Venue @column("venueid")
+    published: Boolean
+    price: Decimal @precision(20) @scale(2)
+  }
+
+  @table("venues")
+  model Venue {
+    id: Int = autoincrement() @pk // highlighting of functions in default field
+    name: String = "abc" // highlighting of strings in default field
+    concerts: Set<Concert> @column("venueid")
+    published: Boolean
+    occupancy: Int = 200 // highlighting of numbers in default field
+    latitude: Float @size(4)
+  }
 }
 
-@table("venues")
-model Venue {
-  id: Int = autoincrement() @pk // highlighting of functions in default field
-  name: String = "abc" // highlighting of strings in default field
-  concerts: Set<Concert> @column("venueid")
-  published: Boolean
-  occupancy: Int = 200 // highlighting of numbers in default field
-  latitude: Float @size(4)
-}
-
-@auth(self._starts_with_underscore == "foo" || _AuthContext.role == "ROLE_ADMIN")
-model _ModelStartWithAnUnderscore_AndHas_Underscores {
-  id_with_underscores: Int = autoincrement() @pk
-  _starts_with_underscore: String
+@plugin
+service Service {
+  @auth(self._starts_with_underscore == "foo" || _AuthContext.role == "ROLE_ADMIN")
+  model _ModelStartWithAnUnderscore_AndHas_Underscores {
+    id_with_underscores: Int = autoincrement() @pk
+    _starts_with_underscore: String
+  }
 }
 
 service _ServiceStartWithAnUnderscore_AndHas_Underscores {
@@ -55,7 +61,7 @@ service ConcertNotificationService {
 @external("rate_limiter.ts")
 service RateLimiter {
   @around("query * || mutation *")
-  intercept checkLimit(ipContext: IPContext, operation: Operation): OperationResult
+  interceptor checkLimit(ipContext: IPContext, operation: Operation): OperationResult
 }
 
 @external("authentication.wasm") // or ".so" or ".js" or ".ts"
