@@ -1,12 +1,15 @@
-@table("foo")
-model Foo {
-    id: Int = autoincrement() @pk
-    bar: Int
-    baz: Int
-    qux: Int
+@postgres
+service FooDatabase {
+    @table("foo")
+    model Foo {
+        id: Int = autoincrement() @pk
+        bar: Int
+        baz: Int
+        qux: Int
+    }
 }
 
-@external("arithmetic.js")
+@deno("arithmetic.js")
 service MathService {
     type DivisionResult {
         quotient: Int
@@ -29,7 +32,7 @@ service MathService {
 
 }
 
-@external("todo.ts")
+@deno("todo.ts")
 service TodoService {
     type Todo {
         id: Int

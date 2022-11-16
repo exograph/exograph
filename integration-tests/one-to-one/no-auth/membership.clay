@@ -1,12 +1,15 @@
-// A user may have an optional membership, but a membership must have an associated user
-model User {
-  id: Int = autoincrement() @pk
-  name: String
-  membership: Membership?
-}
+@postgres
+service MembershipService {
+  // A user may have an optional membership, but a membership must have an associated user
+  model User {
+    id: Int = autoincrement() @pk
+    name: String
+    membership: Membership?
+  }
 
-model Membership {
-  id: Int = autoincrement() @pk
-  kind: String
-  user: User
+  model Membership {
+    id: Int = autoincrement() @pk
+    kind: String
+    user: User
+  }
 }

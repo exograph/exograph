@@ -1,13 +1,16 @@
 import "../mailing_list" // An example of not specifying the .clay extension
 
-model User {
-    id: Int = autoincrement() @pk
-    username: String
-    subscribed_lists: Set<UserSubscription>? @column("subscribed_user_id")
-}
-
-model UserSubscription {
-    id: Int = autoincrement() @pk
-    user: User @column("subscribed_user_id")
-    mailing_list: MailingList @column("subscribed_mailing_list")
+@postgres 
+service UserService {
+    model User {
+        id: Int = autoincrement() @pk
+        username: String
+        subscribed_lists: Set<UserSubscription>? @column("subscribed_user_id")
+    }
+    
+    model UserSubscription {
+        id: Int = autoincrement() @pk
+        user: User @column("subscribed_user_id")
+        mailing_list: MailingList @column("subscribed_mailing_list")
+    }
 }

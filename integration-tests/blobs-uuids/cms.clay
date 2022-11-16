@@ -1,6 +1,9 @@
-@table("images")
-model Image {
-    id: Uuid = generate_uuid() @pk
-    name: String
-    data: Blob
+@postgres
+service ImageService {
+    @table("images")
+    model Image {
+        id: Uuid = generate_uuid() @pk
+        name: String
+        data: Blob
+    }
 }

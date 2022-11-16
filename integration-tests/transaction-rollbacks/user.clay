@@ -1,11 +1,14 @@
-@table("user")
-model User {
-    id: Int = autoincrement() @pk
-    username: String
-    email: String?
+@postgres
+service UserPersistence {
+    @table("user")
+    model User {
+        id: Int = autoincrement() @pk
+        username: String
+        email: String?
+    }
 }
 
-@external("user.ts")
+@deno("user.ts")
 service RegistrationService {
     export mutation registerUser(
         @inject claytip: Claytip,

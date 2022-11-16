@@ -3,20 +3,23 @@ context AuthContext {
   role: String @jwt("role")
 }
 
-@table("concerts")
-@access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
-model Concert {
-  id: Int = autoincrement() @pk
-  title: String
-  venue: Venue @column("venueid")
-  published: Boolean
-}
-
-@table("venues")
-@access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
-model Venue {
-  id: Int = autoincrement() @pk
-  name: String
-  concerts: Set<Concert>? @column("venueid")
-  published: Boolean
+@postgres
+service ConcertService {
+  @table("concerts")
+  @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
+  model Concert {
+    id: Int = autoincrement() @pk
+    title: String
+    venue: Venue @column("venueid")
+    published: Boolean
+  }
+  
+  @table("venues")
+  @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
+  model Venue {
+    id: Int = autoincrement() @pk
+    name: String
+    concerts: Set<Concert>? @column("venueid")
+    published: Boolean
+  }
 }

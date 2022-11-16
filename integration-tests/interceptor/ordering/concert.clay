@@ -1,25 +1,31 @@
-model Concert {
-  id: Int = autoincrement() @pk
-  title: String
-  venue: Venue @column("venueid")
-  published: Boolean
-  price: Decimal @precision(20) @scale(2)
+@postgres
+service ConcertVenues {
+  model Concert {
+    id: Int = autoincrement() @pk
+    title: String
+    venue: Venue @column("venueid")
+    published: Boolean
+    price: Decimal @precision(20) @scale(2)
+  }
+
+  model Venue {
+    id: Int = autoincrement() @pk
+    name: String
+    concerts: Set<Concert>? @column("venueid")
+    published: Boolean
+    latitude: Float @size(4)
+  }
 }
 
-model Venue {
-  id: Int = autoincrement() @pk
-  name: String
-  concerts: Set<Concert>? @column("venueid")
-  published: Boolean
-  latitude: Float @size(4)
+@postgres
+service LogService {
+  model Log {
+    id: Int = autoincrement() @pk
+    message: String
+  }
 }
 
-model Log {
-  id: Int = autoincrement() @pk
-  message: String
-}
-
-@external("log.js")
+@deno("log.js")
 service Logging {
   @before("mutation *Concert*")
   interceptor enterConcertMutation(operation: Operation, claytip: Claytip)

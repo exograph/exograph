@@ -1,15 +1,18 @@
-model User {
-    id: Int = autoincrement() @pk
+@postgres 
+service UserService {
+    model User {
+        id: Int = autoincrement() @pk
 
-    email: String     // login e-mail
-    role: String      // user role
-    name: String      // user's name (e.g. John Doe)
+        email: String     // login e-mail
+        role: String      // user role
+        name: String      // user's name (e.g. John Doe)
 
-    password: String  // bcrypted password (if provided; will not be provided for social logins)
-    verified: Boolean // whether the user has verified their e-mail address (social logins will always be verified)
+        password: String  // bcrypted password (if provided; will not be provided for social logins)
+        verified: Boolean // whether the user has verified their e-mail address (social logins will always be verified)
+    }
 }
 
-@external("auth-social.ts")
+@deno("auth-social.ts")
 service LoginSocial {
     // Takes a code from client-side authentication and issues a JWT token on success
     export query loginSocial(code: String, provider: String, @inject claytip: Claytip): String
@@ -22,7 +25,7 @@ service LoginSocial {
     ): Int
 }
 
-@external("auth-normal.ts")
+@deno("auth-normal.ts")
 service LoginNormal {
     // Takes a login and a password from the client authentication and issues a JWT token on success
     export query loginNormal(email: String, password: String, @inject claytip: Claytip): String

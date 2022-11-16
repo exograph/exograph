@@ -17,35 +17,38 @@ context TrackingContext {
     shouldTrack: Boolean @query("shouldTrack")
 }
 
-// A journal model, providing a journal that is queryable by everyone, but can only be
-// mutated if certain conditions are satisfied.
-@access(
-    query=true,
-    mutation=AuthContext.role == "ADMIN" ||
-             AuthContext.secretHeader == "pancake" ||
-             AuthContext.devMode == "1" ||
-             AuthContext.sessionId == "abcde" 
-)
-model JournalEntry {
-    id: Int = autoincrement() @pk
-    text: String
+@postgres
+service JournalService {
+    // A journal model, providing a journal that is queryable by everyone, but can only be
+    // mutated if certain conditions are satisfied.
+    @access(
+        query=true,
+        mutation=AuthContext.role == "ADMIN" ||
+                 AuthContext.secretHeader == "pancake" ||
+                 AuthContext.devMode == "1" ||
+                 AuthContext.sessionId == "abcde" 
+    )
+    model JournalEntry {
+        id: Int = autoincrement() @pk
+        text: String
+    }
 }
 
-@external("cookie.ts")
+@deno("cookie.ts")
 service CookieService {
     // Sets a session cookie on the client
     export query getCookie(@inject claytip: Claytip): Boolean
 }
 
 // Our example service providing 'tracking' logic. Doesn't actually do very much.
-@external("tracking.ts")
+@deno("tracking.ts")
 service TrackingService {
     // this query will return `true` for all requests EXCEPT when X-Secret-Header is set to "pancake"
     query shouldTrack(@inject context: AuthContext): Boolean
 }
 
 // Test queries for direct use in integration tests.
-@external("context_getter.ts")
+@deno("context_getter.ts")
 service ContextGetter {
     export query getRole(@inject context: AuthContext): String
     export query getSecretHeader(@inject context: AuthContext): String

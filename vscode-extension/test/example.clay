@@ -50,7 +50,7 @@ service MyService {
   mutation baz(input: FooInput): xx // xx
 }
 
-@external("concert-notification.ts")
+@deno("concert-notification.ts")
 service ConcertNotificationService {
   export mutation sendNotification(
     concertNotificationId: Int, subscriptionGroupId: Int,
@@ -58,13 +58,13 @@ service ConcertNotificationService {
   ): Result<bool, bool>
 }
 
-@external("rate_limiter.ts")
+@deno("rate_limiter.ts")
 service RateLimiter {
   @around("query * || mutation *")
   interceptor checkLimit(ipContext: IPContext, operation: Operation): OperationResult
 }
 
-@external("authentication.wasm") // or ".so" or ".js" or ".ts"
+@deno("authentication.wasm") // or ".so" or ".js" or ".ts"
 service Authentication {
   type LoginInput {
     provider: String // "google", "facebook", "username-password"

@@ -1,15 +1,18 @@
-model Rsvp {
-  id: Int = autoincrement() @pk
-  event: String @unique("one_rsvp_per_user")
-  user: User @unique("one_rsvp_per_user") 
-}
+@postgres
+service RsvpService {
+  model Rsvp {
+    id: Int = autoincrement() @pk
+    event: String @unique("one_rsvp_per_user")
+    user: User @unique("one_rsvp_per_user") 
+  }
 
-model User {
-  id: Int = autoincrement() @pk
-  username: String @unique
-  primary_email_id: String @unique("unique_email_primary")
-  secondary_email_id: String? @unique("unique_email_secondary")
-  email_domain: String @unique("unique_email_primary", "unique_email_secondary")
+  model User {
+    id: Int = autoincrement() @pk
+    username: String @unique
+    primary_email_id: String @unique("unique_email_primary")
+    secondary_email_id: String? @unique("unique_email_secondary")
+    email_domain: String @unique("unique_email_primary", "unique_email_secondary")
 
-  rsvps: Set<Rsvp>?
+    rsvps: Set<Rsvp>?
+  }
 }
