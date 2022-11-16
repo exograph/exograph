@@ -363,15 +363,27 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
             ast_service_models.extend(service.models.clone());
             types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
         } else {
-            duplicate_service_names.insert(&service.name);
+            duplicate_service_names.insert((&service.name, service.span));
         }
     }
 
     if !duplicate_service_names.is_empty() {
-        return Err(ParserError::Generic(format!(
-            "Duplicate service names: {:?}",
-            Vec::from_iter(duplicate_service_names),
-        )));
+        let (duplicate_names, duplicate_names_positions) = duplicate_service_names
+            .into_iter()
+            .unzip::<_, _, Vec<_>, Vec<_>>();
+        return Err(ParserError::Diagnosis(vec![Diagnostic {
+            level: Level::Error,
+            message: format!("Duplicate service names: {:?}", duplicate_names),
+            code: Some("C000".to_string()),
+            spans: duplicate_names_positions
+                .into_iter()
+                .map(|span| SpanLabel {
+                    span,
+                    style: SpanStyle::Primary,
+                    label: Some("duplicate service name".to_string()),
+                })
+                .collect(),
+        }]));
     }
 
     let ast_types = [ast_system.models.as_slice(), ast_service_models.as_slice()].concat();
