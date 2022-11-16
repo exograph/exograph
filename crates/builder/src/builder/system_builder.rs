@@ -1,7 +1,7 @@
 use super::interceptor_weaver::{self, OperationKind};
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::{error::ModelBuildingError, typechecker::typ::Type};
-use core_plugin_interface::interface::LibraryLoadingError;
+use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_plugin_shared::serializable_system::SerializableSystem;
 use core_plugin_shared::system_serializer::SystemSerializer;
@@ -23,22 +23,11 @@ use core_plugin_shared::system_serializer::SystemSerializer;
 /// (this is done in place, so references created from elsewhere remain valid). Since all model
 /// types have been created in the first pass, the expansion pass can refer to other types (which may still be
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
-pub fn build(typechecked_system: MappedArena<Type>) -> Result<Vec<u8>, ModelBuildingError> {
+pub fn build(
+    subsystem_builders: &[Box<dyn SubsystemBuilder>],
+    typechecked_system: MappedArena<Type>,
+) -> Result<Vec<u8>, ModelBuildingError> {
     let base_system = core_model_builder::builder::system_builder::build(&typechecked_system)?;
-
-    let library_names = [
-        "postgres_model_builder",
-        "deno_model_builder",
-        "wasm_model_builder",
-    ];
-
-    let subsystem_builders: Result<Vec<_>, LibraryLoadingError> = library_names
-        .into_iter()
-        .map(core_plugin_interface::interface::load_subsystem_builder)
-        .collect();
-
-    let subsystem_builders =
-        subsystem_builders.map_err(|e| ModelBuildingError::Generic(format!("{}", e)))?;
 
     let mut subsystem_interceptions = vec![];
     let mut query_names = vec![];

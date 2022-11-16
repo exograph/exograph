@@ -61,7 +61,7 @@ pub struct ModelServiceSystemWithInterceptors {
 pub fn build_with_selection(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
-    service_selection_predicate: impl Fn(&AstService<Typed>) -> bool,
+    service_selection_predicate: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ModelServiceSystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();

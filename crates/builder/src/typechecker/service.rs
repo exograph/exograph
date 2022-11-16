@@ -40,15 +40,6 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        if !self.annotations.contains("external") {
-            errors.push(Diagnostic {
-                level: Level::Error,
-                message: format!("Missing @external annotation for service `{}`", self.name),
-                code: Some("A000".to_string()),
-                spans: vec![],
-            })
-        }
-
         let models_changed = self
             .models
             .iter_mut()
@@ -71,7 +62,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             .count()
             > 0;
 
-        let intercetor_changed = self
+        let interceptor_changed = self
             .interceptors
             .iter_mut()
             .map(|m| m.pass(type_env, annotation_env, scope, errors))
@@ -87,7 +78,31 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             errors,
         );
 
-        models_changed || methods_changed || intercetor_changed || annot_changed
+        if self.annotations.annotations.is_empty() {
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Service `{}` is not tagged with a subsystem annotation (which plugin should handle this?)",
+                    self.name
+                ),
+                code: Some("A000".to_string()),
+                spans: vec![],
+            })
+        }
+
+        if self.annotations.annotations.len() > 1 {
+            errors.push(Diagnostic {
+                level: Level::Error,
+                message: format!(
+                    "Service `{}` is tagged with multiple subsystem annotations",
+                    self.name
+                ),
+                code: Some("A000".to_string()),
+                spans: vec![],
+            })
+        }
+
+        models_changed || methods_changed || interceptor_changed || annot_changed
     }
 }
 
@@ -211,11 +226,11 @@ impl TypecheckFrom<AstArgument<Untyped>> for AstArgument<Typed> {
     ) -> bool {
         if let Some(Type::Composite(model)) = type_env.get_by_key(&self.typ.name()) {
             match model.kind {
-                AstModelKind::NonPersistent | AstModelKind::Context => {}
+                AstModelKind::Type | AstModelKind::Context => {}
                 _ => errors.push(Diagnostic {
                     level: Level::Error,
                     message: format!(
-                        "Argument `{}` must be either an input type or a context",
+                        "Argument `{}` must be either a type or a context",
                         self.name
                     ),
                     code: Some("A000".to_string()),

@@ -1,7 +1,8 @@
-use std::{fs, path::Path};
+use std::{env::current_exe, fs, path::Path};
 
 use codemap::CodeMap;
 use codemap_diagnostic::{ColorConfig, Emitter};
+use core_plugin_interface::interface::{LibraryLoadingError, SubsystemBuilder};
 use error::ParserError;
 
 mod builder;
@@ -17,6 +18,7 @@ use core_model_builder::{
     },
     error::ModelBuildingError,
 };
+use regex::Regex;
 
 /// Build a model system from a clay file
 pub fn build_system(model_file: impl AsRef<Path>) -> Result<Vec<u8>, ParserError> {
@@ -42,13 +44,42 @@ pub fn build_system_from_str(model_str: &str, file_name: String) -> Result<Vec<u
     )
 }
 
+pub fn load_subsystem_builders() -> Result<Vec<Box<dyn SubsystemBuilder>>, LibraryLoadingError> {
+    let mut dir = current_exe()?;
+    dir.pop();
+
+    let pattern = format!(
+        "{}(.+)_model_builder\\{}",
+        std::env::consts::DLL_PREFIX,
+        std::env::consts::DLL_SUFFIX
+    );
+    let pattern = Regex::new(&pattern).unwrap();
+
+    let mut subsystem_builders = vec![];
+
+    for entry in dir.read_dir()?.flatten() {
+        if let Some(file_name) = entry.file_name().to_str() {
+            if pattern.is_match(file_name) {
+                subsystem_builders.push(core_plugin_interface::interface::load_subsystem_builder(
+                    &entry.path(),
+                )?);
+            }
+        }
+    }
+
+    Ok(subsystem_builders)
+}
+
 fn build_from_ast_system(
     ast_system: Result<AstSystem<Untyped>, ParserError>,
     codemap: CodeMap,
 ) -> Result<Vec<u8>, ParserError> {
+    let subsystem_builders =
+        load_subsystem_builders().map_err(|e| ParserError::Generic(format!("{}", e)))?;
+
     ast_system
-        .and_then(typechecker::build)
-        .and_then(|types| builder::build(types).map_err(|e| e.into()))
+        .and_then(|types| typechecker::build(&subsystem_builders, types))
+        .and_then(|types| builder::build(&subsystem_builders, types).map_err(|e| e.into()))
         .map_err(|err| {
             emit_diagnostics(&err, &codemap);
             err

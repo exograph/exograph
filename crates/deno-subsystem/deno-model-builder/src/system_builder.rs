@@ -1,11 +1,8 @@
-use std::{
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{io::Write, path::PathBuf};
 
 use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use core_model_builder::{
-    ast::ast_types::{AstAnnotationParams, AstExpr, AstService},
+    ast::ast_types::{AstExpr, AstService},
     builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
     error::ModelBuildingError,
     typechecker::{typ::Type, Typed},
@@ -28,17 +25,8 @@ pub fn build(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
 ) -> Option<Result<ModelDenoSystemWithInterceptors, ModelBuildingError>> {
-    let service_selection_predicate = |service: &AstService<Typed>| {
-        let module_path = match service.annotations.get("external").unwrap() {
-            AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
-            _ => panic!(),
-        }
-        .clone();
-
-        let extension = Path::new(&module_path).extension().and_then(|e| e.to_str());
-
-        extension == Some("ts") || extension == Some("js")
-    };
+    let service_selection_predicate =
+        |service: &AstService<Typed>| service.annotations.get("deno").map(|_| "deno".to_string());
 
     let service_system = subsystem_model_builder_util::build_with_selection(
         typechecked_system,

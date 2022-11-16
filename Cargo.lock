@@ -656,6 +656,7 @@ dependencies = [
  "core-plugin-interface",
  "core-plugin-shared",
  "insta",
+ "regex",
  "serde",
  "serde_json",
  "thiserror",

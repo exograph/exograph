@@ -223,81 +223,93 @@ fn resolve(
 ) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut resolved_postgres_types: MappedArena<ResolvedType> = MappedArena::default();
 
-    // Adopt the primitive types as a PostgresType
-    // Process each persistent type to create a PostgresType
-
     for (_, typ) in types.iter() {
         match typ {
+            // Adopt the primitive types as a PostgresType
             Type::Primitive(pt) => {
                 resolved_postgres_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
-            Type::Composite(ct) if ct.kind == AstModelKind::Persistent => {
-                if ct.kind == AstModelKind::Persistent {
-                    let plural_annotation_value = ct
-                        .annotations
-                        .get("plural_name")
-                        .map(|p| p.as_single().as_string());
 
-                    let table_name = ct
-                        .annotations
-                        .get("table")
-                        .map(|p| p.as_single().as_string())
-                        .unwrap_or_else(|| ct.name.table_name(plural_annotation_value.clone()));
-                    let access = build_access(ct.annotations.get("access"));
-                    let name = ct.name.clone();
-                    let plural_name =
-                        plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
+            // Process each persistent type to create a PostgresType
+            Type::Service(service) => {
+                if service.annotations.get("postgres").is_some() {
+                    for model in service.models.iter() {
+                        if let Some(Type::Composite(ct)) = types.get_by_key(&model.name) {
+                            if ct.kind == AstModelKind::Model {
+                                let plural_annotation_value = ct
+                                    .annotations
+                                    .get("plural_name")
+                                    .map(|p| p.as_single().as_string());
 
-                    let resolved_fields = ct
-                        .fields
-                        .iter()
-                        .flat_map(|field| {
-                            let column_info = compute_column_info(ct, field, types);
+                                let table_name = ct
+                                    .annotations
+                                    .get("table")
+                                    .map(|p| p.as_single().as_string())
+                                    .unwrap_or_else(|| {
+                                        ct.name.table_name(plural_annotation_value.clone())
+                                    });
+                                let access = build_access(ct.annotations.get("access"));
+                                let name = ct.name.clone();
+                                let plural_name =
+                                    plural_annotation_value.unwrap_or_else(|| ct.name.to_plural()); // fallback to automatically pluralizing name
 
-                            match column_info {
-                                Ok(ColumnInfo {
-                                    name: column_name,
-                                    self_column,
-                                    unique_constraints,
-                                }) => {
-                                    let typ = resolve_field_type(&field.typ.to_typ(types), types);
+                                let resolved_fields = ct
+                                    .fields
+                                    .iter()
+                                    .flat_map(|field| {
+                                        let column_info = compute_column_info(ct, field, types);
 
-                                    let default_value = field
-                                        .default_value
-                                        .as_ref()
-                                        .map(|v| resolve_field_default_type(v, &typ, errors));
+                                        match column_info {
+                                            Ok(ColumnInfo {
+                                                name: column_name,
+                                                self_column,
+                                                unique_constraints,
+                                            }) => {
+                                                let typ = resolve_field_type(
+                                                    &field.typ.to_typ(types),
+                                                    types,
+                                                );
 
-                                    Some(ResolvedField {
-                                        name: field.name.clone(),
-                                        typ,
-                                        column_name,
-                                        self_column,
-                                        is_pk: field.annotations.contains("pk"),
-                                        type_hint: build_type_hint(field, types),
-                                        unique_constraints,
-                                        default_value,
+                                                let default_value =
+                                                    field.default_value.as_ref().map(|v| {
+                                                        resolve_field_default_type(v, &typ, errors)
+                                                    });
+
+                                                Some(ResolvedField {
+                                                    name: field.name.clone(),
+                                                    typ,
+                                                    column_name,
+                                                    self_column,
+                                                    is_pk: field.annotations.contains("pk"),
+                                                    type_hint: build_type_hint(field, types),
+                                                    unique_constraints,
+                                                    default_value,
+                                                })
+                                            }
+                                            Err(e) => {
+                                                errors.push(e);
+                                                None
+                                            }
+                                        }
                                     })
-                                }
-                                Err(e) => {
-                                    errors.push(e);
-                                    None
-                                }
-                            }
-                        })
-                        .collect();
+                                    .collect();
 
-                    resolved_postgres_types.add(
-                        &ct.name,
-                        ResolvedType::Composite(ResolvedCompositeType {
-                            name,
-                            plural_name: plural_name.clone(),
-                            fields: resolved_fields,
-                            table_name,
-                            access: access.clone(),
-                        }),
-                    );
+                                resolved_postgres_types.add(
+                                    &ct.name,
+                                    ResolvedType::Composite(ResolvedCompositeType {
+                                        name,
+                                        plural_name: plural_name.clone(),
+                                        fields: resolved_fields,
+                                        table_name,
+                                        access: access.clone(),
+                                    }),
+                                );
+                            }
+                        }
+                    }
                 }
             }
+
             _ => {}
         }
     }
@@ -932,7 +944,7 @@ mod tests {
     use codemap::CodeMap;
 
     use super::*;
-    use builder::{parser, typechecker};
+    use builder::{load_subsystem_builders, parser, typechecker};
     use std::fs::File;
 
     // FIXME: separate out unit tests into respective plugins
@@ -960,7 +972,7 @@ mod tests {
           latitude: Float @size(4)
         }       
         
-        @external("bar.js")
+        @deno("bar.js")
         service Foo {
             export query qux(@inject claytip: Claytip, x: Int, y: String): Int
             mutation quuz(): String
@@ -1041,7 +1053,7 @@ mod tests {
           public: Boolean
         }      
 
-        @external("logger.js")
+        @deno("logger.js")
         service Logger {
             @access(AuthContext.role == "ROLE_ADMIN")
             export query log(@inject claytip: Claytip): Boolean
@@ -1190,9 +1202,10 @@ mod tests {
 
     fn create_resolved_system(src: &str) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
         let mut codemap = CodeMap::new();
+        let subsystem_builders = load_subsystem_builders().unwrap();
         let parsed = parser::parse_str(src, &mut codemap, "input.clay")
             .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
-        let types = typechecker::build(parsed)
+        let types = typechecker::build(&subsystem_builders, parsed)
             .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
         build(&types)
     }
