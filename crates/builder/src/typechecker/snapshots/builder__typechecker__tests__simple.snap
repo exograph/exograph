@@ -1,5 +1,5 @@
 ---
-source: builder/src/typechecker/mod.rs
+source: crates/builder/src/typechecker/mod.rs
 expression: build(src).unwrap()
 ---
 values:
@@ -35,9 +35,122 @@ values:
     - Primitive:
         Interception: Operation
   - - ~
+    - Service:
+        name: UserService
+        annotations:
+          annotations:
+            postgres:
+              name: postgres
+              params: None
+        models:
+          - name: User
+            kind: Model
+            fields:
+              - name: doc
+                typ:
+                  Plain:
+                    - Doc
+                    - []
+                    - true
+                annotations:
+                  annotations:
+                    access:
+                      name: access
+                      params:
+                        Single:
+                          - LogicalOp:
+                              Or:
+                                - LogicalOp:
+                                    Or:
+                                      - RelationalOp:
+                                          Eq:
+                                            - FieldSelection:
+                                                Select:
+                                                  - Single:
+                                                      - - self
+                                                      - Reference:
+                                                          index: 16
+                                                          generation: ~
+                                                  - - role
+                                                  - Reference:
+                                                      index: 4
+                                                      generation: ~
+                                            - StringLiteral:
+                                                - role_admin
+                                            - Primitive: Boolean
+                                      - RelationalOp:
+                                          Eq:
+                                            - FieldSelection:
+                                                Select:
+                                                  - Single:
+                                                      - - self
+                                                      - Reference:
+                                                          index: 16
+                                                          generation: ~
+                                                  - - role
+                                                  - Reference:
+                                                      index: 4
+                                                      generation: ~
+                                            - StringLiteral:
+                                                - role_superuser
+                                            - Primitive: Boolean
+                                      - Primitive: Boolean
+                                - FieldSelection:
+                                    Select:
+                                      - Select:
+                                          - Single:
+                                              - - self
+                                              - Reference:
+                                                  index: 16
+                                                  generation: ~
+                                          - - doc
+                                          - Reference:
+                                              index: 17
+                                              generation: ~
+                                      - - is_public
+                                      - Reference:
+                                          index: 0
+                                          generation: ~
+                                - Primitive: Boolean
+                    column:
+                      name: column
+                      params:
+                        Single:
+                          - StringLiteral:
+                              - custom_column
+                default_value: ~
+              - name: role
+                typ:
+                  Plain:
+                    - String
+                    - []
+                    - true
+                annotations:
+                  annotations: {}
+                default_value: ~
+            annotations:
+              annotations: {}
+          - name: Doc
+            kind: Model
+            fields:
+              - name: is_public
+                typ:
+                  Plain:
+                    - Boolean
+                    - []
+                    - true
+                annotations:
+                  annotations: {}
+                default_value: ~
+            annotations:
+              annotations: {}
+        methods: []
+        interceptors: []
+        base_clayfile: input.clay
+  - - ~
     - Composite:
         name: User
-        kind: Persistent
+        kind: Model
         fields:
           - name: doc
             typ:
@@ -62,7 +175,7 @@ values:
                                               - Single:
                                                   - - self
                                                   - Reference:
-                                                      index: 15
+                                                      index: 16
                                                       generation: ~
                                               - - role
                                               - Reference:
@@ -78,7 +191,7 @@ values:
                                               - Single:
                                                   - - self
                                                   - Reference:
-                                                      index: 15
+                                                      index: 16
                                                       generation: ~
                                               - - role
                                               - Reference:
@@ -94,11 +207,11 @@ values:
                                       - Single:
                                           - - self
                                           - Reference:
-                                              index: 15
+                                              index: 16
                                               generation: ~
                                       - - doc
                                       - Reference:
-                                          index: 16
+                                          index: 17
                                           generation: ~
                                   - - is_public
                                   - Reference:
@@ -126,7 +239,7 @@ values:
   - - ~
     - Composite:
         name: Doc
-        kind: Persistent
+        kind: Model
         fields:
           - name: is_public
             typ:
@@ -139,7 +252,6 @@ values:
             default_value: ~
         annotations:
           annotations: {}
-  - ~
   - ~
   - ~
   - ~
@@ -171,7 +283,7 @@ map:
     index: 3
     generation: ~
   Doc:
-    index: 16
+    index: 17
     generation: ~
   Float:
     index: 2
@@ -201,6 +313,9 @@ map:
     index: 4
     generation: ~
   User:
+    index: 16
+    generation: ~
+  UserService:
     index: 15
     generation: ~
   Uuid:

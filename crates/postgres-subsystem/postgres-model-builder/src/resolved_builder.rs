@@ -952,26 +952,29 @@ mod tests {
     #[test]
     fn with_annotations() {
         let src = r#"
-        @table("custom_concerts")
-        model Concert {
-          id: Int = autoincrement() @pk @dbtype("bigint") @column("custom_id")
-          title: String @column("custom_title") @length(12)
-          venue: Venue @column("custom_venue_id")
-          reserved: Int @range(min=0, max=300)
-          time: Instant @precision(4)
-          price: Decimal @precision(10) @scale(2)
+        @postgres
+        service ConcertService {
+            @table("custom_concerts")
+            model Concert {
+              id: Int = autoincrement() @pk @dbtype("bigint") @column("custom_id")
+              title: String @column("custom_title") @length(12)
+              venue: Venue @column("custom_venue_id")
+              reserved: Int @range(min=0, max=300)
+              time: Instant @precision(4)
+              price: Decimal @precision(10) @scale(2)
+            }
+        
+            @table("venues")
+            @plural_name("Venuess")
+            model Venue {
+              id: Int = autoincrement() @pk @column("custom_id")
+              name: String @column("custom_name")
+              concerts: Set<Concert> @column("custom_venue_id")
+              capacity: Int @bits(16)
+              latitude: Float @size(4)
+            }       
         }
-        
-        @table("venues")
-        @plural_name("Venuess")
-        model Venue {
-          id: Int = autoincrement() @pk @column("custom_id")
-          name: String @column("custom_name")
-          concerts: Set<Concert> @column("custom_venue_id")
-          capacity: Int @bits(16)
-          latitude: Float @size(4)
-        }       
-        
+
         @deno("bar.js")
         service Foo {
             export query qux(@inject claytip: Claytip, x: Int, y: String): Int
@@ -992,19 +995,22 @@ mod tests {
     fn with_defaults() {
         // Note the swapped order between @pk and @dbtype to assert that our parsing logic permits any order
         let src = r#"
-        model Concert {
-          id: Int = autoincrement() @dbtype("BIGINT") @pk 
-          title: String 
-          venue: Venue @unique("unique_concert")
-          attending: Array<String>
-          seating: Array<Array<Boolean>>
-        }
+        @postgres
+        service ConcertService {
+            model Concert {
+              id: Int = autoincrement() @dbtype("BIGINT") @pk 
+              title: String 
+              venue: Venue @unique("unique_concert")
+              attending: Array<String>
+              seating: Array<Array<Boolean>>
+            }
 
-        model Venue             {
-          id: Int  = autoincrement() @pk @dbtype("BIGINT")
-          name:String 
-          concerts: Set<Concert> 
-        }        
+            model Venue             {
+              id: Int  = autoincrement() @pk @dbtype("BIGINT")
+              name:String 
+              concerts: Set<Concert> 
+            }        
+        }
         "#;
 
         let resolved = create_resolved_system(src).unwrap();
@@ -1017,19 +1023,22 @@ mod tests {
     #[test]
     fn with_optional_fields() {
         let src = r#"
-        model Concert {
-          id: Int = autoincrement() @pk 
-          title: String 
-          venue: Venue? 
-          icon: Blob?
-        }
+        @postgres
+        service ConcertService {
+            model Concert {
+              id: Int = autoincrement() @pk 
+              title: String 
+              venue: Venue? 
+              icon: Blob?
+            }
 
-        model Venue {
-          id: Int = autoincrement() @pk
-          name: String
-          address: String? @column("custom_address")
-          concerts: Set<Concert>?
-        }    
+            model Venue {
+              id: Int = autoincrement() @pk
+              name: String
+              address: String? @column("custom_address")
+              concerts: Set<Concert>?
+            }    
+        }
         "#;
 
         let resolved = create_resolved_system(src).unwrap();
@@ -1045,13 +1054,18 @@ mod tests {
         context AuthContext {
             role: String @jwt("role")
         }
+        
+        @postgres
+        service ConcertService {
+            @access(AuthContext.role == "ROLE_ADMIN" || self.public)
+            model Concert {
+              id: Int = autoincrement() @pk 
+              title: String
+              public: Boolean
+            }      
 
-        @access(AuthContext.role == "ROLE_ADMIN" || self.public)
-        model Concert {
-          id: Int = autoincrement() @pk 
-          title: String
-          public: Boolean
-        }      
+
+        }
 
         @deno("logger.js")
         service Logger {
@@ -1075,13 +1089,16 @@ mod tests {
         context AuthContext {
             role: String @jwt
         }
-
-        @access(AuthContext.role == "ROLE_ADMIN" || self.public)
-        model Concert {
-          id: Int = autoincrement() @pk 
-          title: String
-          public: Boolean
-        }      
+        
+        @postgres
+        service ConcertService {
+            @access(AuthContext.role == "ROLE_ADMIN" || self.public)
+            model Concert {
+              id: Int = autoincrement() @pk 
+              title: String
+              public: Boolean
+            }      
+        }
         "#;
 
         let resolved = create_resolved_system(src).unwrap();
@@ -1094,13 +1111,16 @@ mod tests {
     #[test]
     fn field_name_variations() {
         let src = r#"
-        model Entity {
-          _id: Int = autoincrement() @pk
-          title_main: String
-          title_main1: String
-          public1: Boolean
-          PUBLIC2: Boolean
-          foo123: Int
+        @postgres
+        service EntityService {
+            model Entity {
+              _id: Int = autoincrement() @pk
+              title_main: String
+              title_main1: String
+              public1: Boolean
+              PUBLIC2: Boolean
+              foo123: Int
+            }
         }"#;
 
         let resolved = create_resolved_system(src).unwrap();
@@ -1113,19 +1133,22 @@ mod tests {
     #[test]
     fn column_names_for_non_standard_relational_field_names() {
         let src = r#"
-        model Concert {
-          id: Int = autoincrement() @pk
-          title: String
-          venuex: Venue // non-standard name
-          published: Boolean
-        }
+        @postgres
+        service ConcertService {
+            model Concert {
+              id: Int = autoincrement() @pk
+              title: String
+              venuex: Venue // non-standard name
+              published: Boolean
+            }
         
-        model Venue {
-          id: Int = autoincrement() @pk
-          name: String
-          concerts: Set<Concert>
-          published: Boolean
-        }             
+            model Venue {
+              id: Int = autoincrement() @pk
+              name: String
+              concerts: Set<Concert>
+              published: Boolean
+            }             
+        }
         "#;
 
         let resolved = create_resolved_system(src).unwrap();
@@ -1138,6 +1161,8 @@ mod tests {
     #[test]
     fn with_multiple_matching_field_no_column_annotation() {
         let src = r#"
+        @postgres
+        service ConcertService {
             model Concert {
                 id: Int = autoincrement() @pk 
                 title: String 
@@ -1151,6 +1176,7 @@ mod tests {
                 ticket_events: Set<Concert> //@column("ticket_office")
                 main_events: Set<Concert> //@column("main")
             }  
+        }
         "#;
 
         let resolved = create_resolved_system(src);
@@ -1161,6 +1187,8 @@ mod tests {
     #[test]
     fn with_multiple_matching_field_with_column_annotation() {
         let src = r#"
+        @postgres
+        service ConcertService {
             model Concert {
                 id: Int = autoincrement() @pk 
                 title: String  
@@ -1174,6 +1202,7 @@ mod tests {
                 ticket_events: Set<Concert> @column("ticket_office")
                 main_events: Set<Concert> @column("main")
             }  
+        }
         "#;
 
         let resolved = create_resolved_system(src).unwrap();
@@ -1186,10 +1215,13 @@ mod tests {
     #[test]
     fn with_camel_case_model_and_fields() {
         let src = r#"
+        @postgres
+        service ConcertService {
             model ConcertInfo {
                 concertId: Int = autoincrement() @pk 
                 mainTitle: String 
             }
+        }
         "#;
 
         // Both model and fields names are camel case, but the table and column should be defaulted to snake case

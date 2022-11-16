@@ -126,20 +126,23 @@ mod tests {
     #[test]
     fn optional_fields() {
         let src = r#"
-            @table("concerts")
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-                venue: Venue?
-                icon: Blob?
-            }
+            @postgres
+            service ConcertService {
+                @table("concerts")
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                    venue: Venue?
+                    icon: Blob?
+                }
 
-            @table("venues")
-            model Venue {
-                id: Int = autoincrement() @pk
-                name: String
-                address: String?
-                concerts: Set<Concert>?
+                @table("venues")
+                model Venue {
+                    id: Int = autoincrement() @pk
+                    name: String
+                    address: String?
+                    concerts: Set<Concert>?
+                }
             }
         "#;
 
@@ -177,6 +180,8 @@ mod tests {
     #[test]
     fn one_to_one() {
         let src = r#"
+        @postgres
+        service UserService {
             model User {
                 id: Int = autoincrement() @pk
                 membership: Membership?
@@ -186,6 +191,7 @@ mod tests {
                 id: Int = autoincrement() @pk
                 user: User
             }
+        }
         "#;
 
         let system = create_system(src);
@@ -207,19 +213,22 @@ mod tests {
     #[test]
     fn type_hint_annotations() {
         let src = r#"
-            @table("logs")
-            model Log {
-              id: Int = autoincrement() @dbtype("bigint") @pk
-              nonce: Int @bits(16)
-              hash: Int @size(8)
-              float: Float @size(4)
-              double: Float @bits(40)
-              latitude: Decimal @precision(4)
-              longitude: Decimal @precision(5) @scale(2)
-              weird: Int @range(min=0, max=32770)
-              prefix: String @length(15)
-              log: String
-              granular: Instant @precision(6)
+            @postgres
+            service LogService {
+                @table("logs")
+                model Log {
+                  id: Int = autoincrement() @dbtype("bigint") @pk
+                  nonce: Int @bits(16)
+                  hash: Int @size(8)
+                  float: Float @size(4)
+                  double: Float @bits(40)
+                  latitude: Decimal @precision(4)
+                  longitude: Decimal @precision(5) @scale(2)
+                  weird: Int @range(min=0, max=32770)
+                  prefix: String @length(15)
+                  log: String
+                  granular: Instant @precision(6)
+                }
             }
         "#;
 

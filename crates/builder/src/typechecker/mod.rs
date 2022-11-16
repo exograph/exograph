@@ -380,13 +380,16 @@ mod tests {
     #[test]
     fn simple() {
         let src = r#"
-        model User {
-          doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
-          role: String
-        }
+        @postgres
+        service UserService {
+            model User {
+              doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
+              role: String
+            }
 
-        model Doc {
-          is_public: Boolean
+            model Doc {
+              is_public: Boolean
+            }
         }
         "#;
 
@@ -400,9 +403,12 @@ mod tests {
             role: String @jwt
         }
 
-        model Doc {
-          is_public: Boolean
-          content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+        @postgres
+        service DocumentService {
+            model Doc {
+              is_public: Boolean
+              content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+            }
         }
         "#;
 
@@ -416,8 +422,11 @@ mod tests {
             roles: Array<String> @jwt
         }
 
-        model Doc {
-          content: String @access("ROLE_ADMIN" in AuthContext.roles)
+        @postgres
+        service DocumentService {
+            model Doc {
+              content: String @access("ROLE_ADMIN" in AuthContext.roles)
+            }
         }
         "#;
 
@@ -430,11 +439,14 @@ mod tests {
         context AuthContext {
             role: String @jwt
         }
-
-        @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
-        model Doc {
-          is_public: Boolean
-          content: String
+        
+        @postgres
+        service DocumentService {
+            @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+            model Doc {
+              is_public: Boolean
+              content: String
+            }
         }
         "#;
 
@@ -444,15 +456,19 @@ mod tests {
     #[test]
     fn insignificant_whitespace() {
         let typical = r#"
-        @table("venues")
-        model Venue {
-            id: Int @column("idx") @pk
-            name: String
+        @postgres
+        service DocumentService {
+            @table("venues")
+            model Venue {
+                id: Int @column("idx") @pk
+                name: String
+            }
         }
         "#;
 
         let with_whitespace = r#"
-
+        @postgres
+        service      DocumentService{
         @table ( "venues" )
         model    Venue
         {
@@ -461,7 +477,7 @@ mod tests {
 
             name:String
 
-        }
+        }}
 
         "#;
 
@@ -473,8 +489,11 @@ mod tests {
     #[test]
     fn unknown_annotation() {
         let src = r#"
-        @asdf
-        model User {
+        @postgres
+        service UserService {
+            @asdf
+            model User {
+            }
         }
         "#;
 
@@ -484,9 +503,12 @@ mod tests {
     #[test]
     fn duplicate_annotation() {
         let src = r#"
-        @table("users")
-        @table("users")
-        model User {
+        @postgres
+        service UserService {
+            @table("users")
+            @table("users")
+            model User {
+            }
         }
         "#;
 
@@ -494,22 +516,74 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_plugin_annotations() {
+        let src = r#"
+        @postgres
+        @postgres
+        service UserService {
+            @table("users")
+            model User {
+            }
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    #[test]
+    fn no_plugin_annotation() {
+        let src = r#"
+        service UserService {
+            model User {
+            }
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    #[test]
+    fn models_at_root() {
+        let src_model = r#"
+        model User {
+        }
+        "#;
+
+        let src_type = r#"
+        type User {
+        }
+        "#;
+
+        assert_err(src_model);
+        assert_err(src_type);
+    }
+
+    #[test]
     fn invalid_annotation_parameter_type() {
         let expected_none = r#"
-        model User {
-            id: Int @pk("asdf")
+        @postgres
+        service UserService {
+            model User {
+                id: Int @pk("asdf")
+            }
         }
         "#;
 
         let expected_single = r#"
-        @table
-        model User {
+        @postgres
+        service UserService {
+            @table
+            model User {
+            }
         }
         "#;
 
         let expected_map = r#"
-        model User {
-            id: Int @range(5)
+        @postgres
+        service UserService {
+            model User {
+                id: Int @range(5)
+            }
         }
         "#;
 
@@ -521,8 +595,11 @@ mod tests {
     #[test]
     fn duplicate_annotation_mapped_param() {
         let src = r#"
-        model User {
-            id: Int @range(min=5, max=10, min=3)
+        @postgres
+        service UserService {
+            model User {
+                id: Int @range(min=5, max=10, min=3)
+            }
         }
         "#;
 
@@ -532,8 +609,11 @@ mod tests {
     #[test]
     fn unknown_annotation_mapped_param() {
         let src = r#"
-        model User {
-            id: Int @range(min=5, maxx=10)
+        @postgres
+        service UserService {
+            model User {
+                id: Int @range(min=5, maxx=10)
+            }
         }
         "#;
 
@@ -543,14 +623,20 @@ mod tests {
     #[test]
     fn invalid_annotation_target() {
         let model = r#"
-        @pk
-        model User {
+        @postgres
+        service UserService {
+            @pk
+            model User {
+            }
         }
         "#;
 
         let field = r#"
-        model User {
-            id: Int @table("asdf")
+        @postgres
+        service UserService {
+            model User {
+                id: Int @table("asdf")
+            }
         }
         "#;
 
@@ -561,6 +647,7 @@ mod tests {
     #[test]
     fn multiple_types() {
         let model = r#"
+        @deno("test.ts")
         service User {
             type User {
                 id: Int

@@ -408,16 +408,19 @@ mod tests {
 
     fn create_test_schema() -> Schema {
         let test_clay = r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-                venue: Venue
-            }
+            @postgres
+            service LogService {
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                    venue: Venue
+                }
 
-            model Venue {
-                id: Int = autoincrement() @pk
-                name: String
-                concerts: Set<Concert>
+                model Venue {
+                    id: Int = autoincrement() @pk
+                    name: String
+                    concerts: Set<Concert>
+                }
             }
         "#;
         let postgres_subsystem =

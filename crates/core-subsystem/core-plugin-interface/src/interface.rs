@@ -34,7 +34,7 @@ pub trait SubsystemBuilder {
     ///
     /// [SubsystemBuilder::annotations] should provide:
     ///
-    /// ```rust
+    /// ```ignore
     /// fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
     ///     vec![
     ///         ("deno", AnnotationSpec {

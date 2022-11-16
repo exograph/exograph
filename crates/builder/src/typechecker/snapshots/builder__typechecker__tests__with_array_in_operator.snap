@@ -1,5 +1,5 @@
 ---
-source: builder/src/typechecker/mod.rs
+source: crates/builder/src/typechecker/mod.rs
 expression: build(src).unwrap()
 ---
 values:
@@ -35,6 +35,53 @@ values:
     - Primitive:
         Interception: Operation
   - - ~
+    - Service:
+        name: DocumentService
+        annotations:
+          annotations:
+            postgres:
+              name: postgres
+              params: None
+        models:
+          - name: Doc
+            kind: Model
+            fields:
+              - name: content
+                typ:
+                  Plain:
+                    - String
+                    - []
+                    - true
+                annotations:
+                  annotations:
+                    access:
+                      name: access
+                      params:
+                        Single:
+                          - RelationalOp:
+                              In:
+                                - StringLiteral:
+                                    - ROLE_ADMIN
+                                - FieldSelection:
+                                    Select:
+                                      - Single:
+                                          - - AuthContext
+                                          - Reference:
+                                              index: 16
+                                              generation: ~
+                                      - - roles
+                                      - Array:
+                                          Reference:
+                                            index: 4
+                                            generation: ~
+                                - Primitive: Boolean
+                default_value: ~
+            annotations:
+              annotations: {}
+        methods: []
+        interceptors: []
+        base_clayfile: input.clay
+  - - ~
     - Composite:
         name: AuthContext
         kind: Context
@@ -59,7 +106,7 @@ values:
   - - ~
     - Composite:
         name: Doc
-        kind: Persistent
+        kind: Model
         fields:
           - name: content
             typ:
@@ -82,7 +129,7 @@ values:
                                   - Single:
                                       - - AuthContext
                                       - Reference:
-                                          index: 15
+                                          index: 16
                                           generation: ~
                                   - - roles
                                   - Array:
@@ -107,10 +154,9 @@ values:
   - ~
   - ~
   - ~
-  - ~
 map:
   AuthContext:
-    index: 15
+    index: 16
     generation: ~
   Blob:
     index: 10
@@ -128,7 +174,10 @@ map:
     index: 3
     generation: ~
   Doc:
-    index: 16
+    index: 17
+    generation: ~
+  DocumentService:
+    index: 15
     generation: ~
   Float:
     index: 2

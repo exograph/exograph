@@ -283,12 +283,15 @@ mod tests {
                     v2_clone: Boolean @test("v2_clone")
                 }
 
-                model Article {
-                    id: Int = autoincrement() @pk
-                    published: Boolean
-                    owner_id: Int @bits(64)
-                    dept1_id: Int @bits(64)
-                    dept2_id: Int @bits(64)
+                @postgres
+                service ArticleService {
+                    model Article {
+                        id: Int = autoincrement() @pk
+                        published: Boolean
+                        owner_id: Int @bits(64)
+                        dept1_id: Int @bits(64)
+                        dept2_id: Int @bits(64)
+                    }
                 }
             "#,
             "test.clay".to_string(),

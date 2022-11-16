@@ -1,11 +1,10 @@
 ---
-source: builder/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span,\n             Path::new(\"input.clay\")).unwrap()"
-
+source: crates/builder/src/parser/converter.rs
+expression: "convert_root(parsed.root_node(),\n        r#\"\n            // a short comment\n            @table(\"concerts\")\n            model Concert {\n                id: Int = autoincrement() @pk\n                title: String // a comment\n                // another comment\n                venue: Venue @column(\"venueid\")\n                /*\n                not_a_field: Int\n                */\n            }\n\n            /*\n            a multiline comment\n            */\n            @table(\"venues\")\n            model Venue {\n                id: Int = autoincrement() @pk\n                name: String\n                concerts: Set<Concert /* here too! */> @column(\"venueid\")\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.clay\")).unwrap()"
 ---
 models:
   - name: Concert
-    kind: Persistent
+    kind: Model
     fields:
       - name: id
         typ:
@@ -49,7 +48,7 @@ models:
             - StringLiteral:
                 - concerts
   - name: Venue
-    kind: Persistent
+    kind: Model
     fields:
       - name: id
         typ:
