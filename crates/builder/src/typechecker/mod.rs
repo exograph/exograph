@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
@@ -356,9 +356,22 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
     populate_type_env(&mut types_arena);
     populate_annotation_env(&mut annotation_env);
 
+    let mut service_names = HashSet::new();
+    let mut duplicate_service_names = HashSet::new();
     for service in ast_system.services.iter() {
-        ast_service_models.extend(service.models.clone());
-        types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
+        if service_names.insert(&service.name) {
+            ast_service_models.extend(service.models.clone());
+            types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
+        } else {
+            duplicate_service_names.insert(&service.name);
+        }
+    }
+
+    if !duplicate_service_names.is_empty() {
+        return Err(ParserError::Generic(format!(
+            "Duplicate service names: {:?}",
+            Vec::from_iter(duplicate_service_names),
+        )));
     }
 
     let ast_types = [ast_system.models.as_slice(), ast_service_models.as_slice()].concat();
@@ -665,6 +678,24 @@ mod tests {
         }
         "#;
 
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_services() {
+        let model = r#"
+        @external("foo.js")
+        service Foo {
+            query userName(id: Int): String
+        }
+
+        @external("foo.js")
+        service Foo {
+            query userName(id: Int): String
+        }
+        "#;
+
+        println!("{:?}", build(model));
         assert_err(model);
     }
 
