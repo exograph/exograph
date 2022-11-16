@@ -18,7 +18,7 @@ service Intercept1 {
 }
 
 @external("intercept3.ts")
-service Intercept2 {
+service Intercept3 {
   @around("query notExistingMethod")
   interceptor bypass()
 }

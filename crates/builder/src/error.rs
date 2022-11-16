@@ -3,7 +3,8 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ParserError {
-    #[error("Could not process input clay filesx {:?}", .0)]
+    // Don't include the source, because we emit is as a diagnostic
+    #[error("Could not process input clay files")]
     Diagnosis(Vec<Diagnostic>),
 
     #[error("File '{0}' not found")]
