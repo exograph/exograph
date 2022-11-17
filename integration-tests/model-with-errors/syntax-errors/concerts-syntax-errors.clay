@@ -5,9 +5,12 @@ model Concert {
   venue: Venue column("venueid")
 }
 
-@table("venues"
-model Venue {
-  id: Int = autoincrement() @pk @access(Foo)
-  name: String
-  concerts: Concert> @column("venueid")
+@postgres
+service VenueService {
+  @table("venues"
+  model Venue {
+    id: Int = autoincrement() @pk @access(Foo)
+    name: String
+    concerts: Concert> @column("venueid")
+  }
 }

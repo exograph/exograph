@@ -1,28 +1,31 @@
-@table("concerts")
-model Concert {
-  id: Int = autoincrement() @pk
-  title: String
-  concertArtists: Set<ConcertArtist> @column("concert_id")
-  venue: Venue? @column("venue_id")
-}
+@postgres
+service ConcertsService {
+  @table("concerts")
+  model Concert {
+    id: Int = autoincrement() @pk
+    title: String
+    concertArtists: Set<ConcertArtist> @column("concert_id")
+    venue: Venue? @column("venue_id")
+  }
 
-@table("concert_artists")
-model ConcertArtist {
-  id: Int = autoincrement() @pk
-  concert: Concert @column("concert_id")
-  artist: Artist @column("artist_id")
-  rank: Int = 0
-  role: String
-}
+  @table("concert_artists")
+  model ConcertArtist {
+    id: Int = autoincrement() @pk
+    concert: Concert @column("concert_id")
+    artist: Artist @column("artist_id")
+    rank: Int = 0
+    role: String
+  }
 
-@table("artists")
-model Artist {
-  id: Int = autoincrement() @pk
-  name: String
-  aristsConcerts: Set<ConcertArtist>? @column("artist_id") // An artist may yet to participate in a concert, hence optional
-}
+  @table("artists")
+  model Artist {
+    id: Int = autoincrement() @pk
+    name: String
+    aristsConcerts: Set<ConcertArtist>? @column("artist_id") // An artist may yet to participate in a concert, hence optional
+  }
 
-model Venue {
-  id: Int = autoincrement() @pk
-  concerts: Set<Concert>? @column("venue_id")
+  model Venue {
+    id: Int = autoincrement() @pk
+    concerts: Set<Concert>? @column("venue_id")
+  }
 }

@@ -1,17 +1,20 @@
-@table("concerts")
-model Concert {
-  id: Int = autoincrement() @pk
-  title: String
-  venue: Venue @column("venueid")
-  published: Boolean
-  price: Decimal @precision(20) @scale(2)
-}
+@postgres
+service ConcertService {
+  @table("concerts")
+  model Concert {
+    id: Int = autoincrement() @pk
+    title: String
+    venue: Venue @column("venueid")
+    published: Boolean
+    price: Decimal @precision(20) @scale(2)
+  }
 
-@table("venues")
-model Venue {
-  id: Int = autoincrement() @pk
-  name: String
-  concerts: Set<Concert>? @column("venueid")
-  published: Boolean
-  latitude: Float @size(4)
+  @table("venues")
+  model Venue {
+    id: Int = autoincrement() @pk
+    name: String
+    concerts: Set<Concert>? @column("venueid")
+    published: Boolean
+    latitude: Float @size(4)
+  }
 }

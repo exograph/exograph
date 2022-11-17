@@ -1,23 +1,23 @@
-@external("core.ts")
+@deno("core.ts")
 service Core {
   query getInt(): Int  
 }
 
 // The same interceptor is named same as in all services.
 // This allow testing that we apply the correct interceptor (considering both the service and the interceptor name).
-@external("intercept2.ts")
+@deno("intercept2.ts")
 service Intercept2 {
   @around("query notExistingMethod")
   interceptor bypass()
 }
 
-@external("intercept1.ts")
+@deno("intercept1.ts")
 service Intercept1 {
   @around("query getInt")
   interceptor bypass()
 }
 
-@external("intercept3.ts")
+@deno("intercept3.ts")
 service Intercept3 {
   @around("query notExistingMethod")
   interceptor bypass()

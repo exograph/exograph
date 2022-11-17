@@ -3,31 +3,34 @@ context AuthContext {
   roles: Array<String> @jwt("roles")
 }
 
-@access(query="ADMIN" in AuthContext.roles || self.public, mutation="ADMIN" in AuthContext.roles)
-model Doc {
-  id: Int = autoincrement() @pk
-  content: String
-  public: Boolean
-}
-
-// Only admins can do anything with this model
-@access("ADMIN" in AuthContext.roles) 
-model AdminDoc {
-  id: Int = autoincrement() @pk
-  content: String
-}
-
-// An example of nested access control (users can see there own membership)
-@access(query="ADMIN" in AuthContext.roles || self.user.id == AuthContext.id, mutation="ADMIN" in AuthContext.roles)
-model Membership {
-  id: Int = autoincrement() @pk
-  kind: String
-  user: User
-}
-
-@access("ADMIN" in AuthContext.roles)
-model User {
-  id: Int = autoincrement() @pk
-  name: String
-  membership: Membership?
+@postgres
+service DocumentService {
+  @access(query="ADMIN" in AuthContext.roles || self.public, mutation="ADMIN" in AuthContext.roles)
+  model Doc {
+    id: Int = autoincrement() @pk
+    content: String
+    public: Boolean
+  }
+  
+  // Only admins can do anything with this model
+  @access("ADMIN" in AuthContext.roles) 
+  model AdminDoc {
+    id: Int = autoincrement() @pk
+    content: String
+  }
+  
+  // An example of nested access control (users can see there own membership)
+  @access(query="ADMIN" in AuthContext.roles || self.user.id == AuthContext.id, mutation="ADMIN" in AuthContext.roles)
+  model Membership {
+    id: Int = autoincrement() @pk
+    kind: String
+    user: User
+  }
+  
+  @access("ADMIN" in AuthContext.roles)
+  model User {
+    id: Int = autoincrement() @pk
+    name: String
+    membership: Membership?
+  }
 }

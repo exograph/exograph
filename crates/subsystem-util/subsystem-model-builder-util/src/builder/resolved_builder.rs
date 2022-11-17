@@ -149,7 +149,7 @@ pub struct ResolvedServiceSystem {
 
 pub fn build(
     types: &MappedArena<Type>,
-    service_selection_predicate: impl Fn(&AstService<Typed>) -> bool,
+    service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     let mut errors = Vec::new();
@@ -157,7 +157,7 @@ pub fn build(
     let resolved_system = resolve(
         types,
         &mut errors,
-        service_selection_predicate,
+        service_selection_closure,
         process_script,
     )?;
 
@@ -171,28 +171,29 @@ pub fn build(
 fn resolve(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-    service_selection_predicate: impl Fn(&AstService<Typed>) -> bool,
+    service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     Ok(ResolvedServiceSystem {
         service_types: resolve_service_types(errors, types)?,
-        services: resolve_services(types, errors, service_selection_predicate, &process_script)?,
+        services: resolve_services(types, errors, service_selection_closure, &process_script)?,
     })
 }
 
 fn resolve_services(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
-    service_selection_predicate: impl Fn(&AstService<Typed>) -> bool,
+    service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
     for (_, typ) in types.iter() {
         if let Type::Service(service) = typ {
-            if service_selection_predicate(service) {
+            if let Some(annotation_name) = service_selection_closure(service) {
                 resolve_service(
                     service,
+                    annotation_name,
                     types,
                     errors,
                     &mut resolved_services,
@@ -207,12 +208,13 @@ fn resolve_services(
 
 fn resolve_service(
     service: &AstService<Typed>,
+    annotation_name: String,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
     resolved_services: &mut MappedArena<ResolvedService>,
     process_script: &impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
-    let module_path = match service.annotations.get("external").unwrap() {
+    let module_path = match service.annotations.get(&annotation_name).unwrap() {
         AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
         _ => panic!(),
     }
@@ -437,7 +439,7 @@ fn resolve_service_types(
                 resolved_service_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
             Type::Composite(ct) => {
-                if ct.kind == AstModelKind::NonPersistent {
+                if ct.kind == AstModelKind::Type {
                     let access = build_access(ct.annotations.get("access"));
                     let resolved_fields = ct
                         .fields

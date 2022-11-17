@@ -1,4 +1,7 @@
-model Log {
-    id: Int = autoincrement() @pk
-    message: String
+@postgres
+service LoggingService {
+    model Log {
+        id: Int = autoincrement() @pk
+        message: String
+    }
 }

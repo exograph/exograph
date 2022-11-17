@@ -3,7 +3,7 @@ context AuthContext {
     role: String @jwt("role")
 }
 
-@external("logger.js")
+@deno("logger.js")
 service PrivilegedLogger {
     type LogEntry {
         level: String

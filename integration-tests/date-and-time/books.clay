@@ -1,9 +1,12 @@
-@table("books")
-model Book {
-  id: Int = autoincrement() @pk
-  name: String
-  published_on: LocalDate 
-  modified_time: Instant @precision(4)
-  modified_time_stripped: LocalDateTime 
-  reading_club_time: LocalTime 
+@postgres
+service BookService {
+  @table("books")
+  model Book {
+    id: Int = autoincrement() @pk
+    name: String
+    published_on: LocalDate 
+    modified_time: Instant @precision(4)
+    modified_time_stripped: LocalDateTime 
+    reading_club_time: LocalTime 
+  }
 }

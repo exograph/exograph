@@ -1,6 +1,9 @@
-@table("logs")
-model Log {
-  id: Int = autoincrement() @pk
-  timestamp: Int
-  text: String
+@postgres
+service LogPersistence {
+  @table("logs")
+  model Log {
+    id: Int = autoincrement() @pk
+    timestamp: Int
+    text: String
+  }
 }

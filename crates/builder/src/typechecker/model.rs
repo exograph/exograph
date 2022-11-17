@@ -21,6 +21,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             kind: untyped.kind.clone(),
             fields: untyped.fields.iter().map(AstField::shallow).collect(),
             annotations: annotation_map,
+            span: untyped.span,
         }
     }
 
@@ -44,8 +45,8 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             > 0;
 
         match self.kind {
-            AstModelKind::Persistent => {}
-            AstModelKind::Context | AstModelKind::NonPersistent => self
+            AstModelKind::Model => {}
+            AstModelKind::Context | AstModelKind::Type => self
                 .fields
                 .iter()
                 .map(|field| {

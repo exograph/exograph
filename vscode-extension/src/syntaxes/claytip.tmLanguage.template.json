@@ -3,10 +3,10 @@
   "name": "claytip",
   "patterns": [
     {
-      "include": "#model-definition"
+      "include": "#service-definition"
     },
     {
-      "include": "#service-definition"
+      "include": "#context-definition"
     },
     {
       "include": "#annotations"
@@ -43,11 +43,51 @@
         }
       ]
     },
+    "field": {
+      "patterns": [
+        {
+          "name": "meta.member.claytip",
+          "match": "({{identifier}}){{opt_ws}}:?{{opt_ws}}({{identifier}})?",
+          "captures": {
+            "1": {
+              "name": "entity.other.attribute-name.claytip"
+            },
+            "2": {
+              "patterns": [
+                {
+                  "include": "#types"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "field-default-value": {
+      "patterns": [
+        {
+          "name": "meta.default-value-field.claytip",
+          "begin": "={{opt_ws}}",
+          "end": "{{ws}}",
+          "patterns": [
+            {
+              "include": "#function-name"
+            },
+            {
+              "include": "#function-parameters"
+            },
+            {
+              "include": "#expressions"
+            }
+          ]
+        }
+      ]
+    },
     "model-definition": {
       "patterns": [
         {
           "name": "meta.typedef.claytip",
-          "begin": "(model|context){{ws}}({{identifier}}){{opt_ws}}{?",
+          "begin": "(model){{ws}}({{identifier}}){{opt_ws}}{?",
           "beginCaptures": {
             "1": {
               "name": "keyword.type.claytip"
@@ -58,36 +98,10 @@
           },
           "patterns": [
             {
-              "name": "meta.member.claytip",
-              "match": "({{identifier}}){{opt_ws}}:?{{opt_ws}}({{identifier}})?",
-              "captures": {
-                "1": {
-                  "name": "entity.other.attribute-name.claytip"
-                },
-                "2": {
-                  "patterns": [
-                    {
-                      "include": "#types"
-                    }
-                  ]
-                }
-              }
+              "include": "#field"
             },
             {
-              "name": "meta.default-value-field.claytip",
-              "begin": "={{opt_ws}}",
-              "end": "{{ws}}",
-              "patterns": [
-                {
-                  "include": "#function-name"
-                },
-                {
-                  "include": "#function-parameters"
-                },
-                {
-                  "include": "#expressions"
-                }
-              ]
+              "include": "#field-default-value"
             },
             {
               "include": "#annotations"
@@ -110,28 +124,40 @@
               "name": "keyword.type.claytip"
             },
             "2": {
-              "name": "keyword.type.claytip"
-            },
-            "3": {
               "name": "entity.name.class.claytip"
             }
           },
           "patterns": [
             {
-              "name": "meta.member.claytip",
-              "match": "({{identifier}}){{opt_ws}}:?{{opt_ws}}({{identifier}})?",
-              "captures": {
-                "1": {
-                  "name": "entity.other.attribute-name.claytip"
-                },
-                "2": {
-                  "patterns": [
-                    {
-                      "include": "#types"
-                    }
-                  ]
-                }
-              }
+              "include": "#field"
+            },
+            {
+              "include": "#annotations"
+            },
+            {
+              "include": "#comments"
+            }
+          ],
+          "end": "}"
+        }
+      ]
+    },
+    "context-definition": {
+      "patterns": [
+        {
+          "name": "meta.typedef.claytip",
+          "begin": "(context){{ws}}({{identifier}}){{opt_ws}}{?",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.type.claytip"
+            },
+            "2": {
+              "name": "entity.name.class.claytip"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#field"
             },
             {
               "include": "#annotations"
@@ -160,6 +186,9 @@
           "patterns": [
             {
               "include": "#functions"
+            },
+            {
+              "include": "#model-definition"
             },
             {
               "include": "#type-definition"

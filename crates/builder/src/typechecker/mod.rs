@@ -3,13 +3,14 @@ use std::collections::{HashMap, HashSet};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::{
-    ast::ast_types::{AstModel, AstService, AstSystem, Untyped},
+    ast::ast_types::{AstModel, AstModelKind, AstService, AstSystem, Untyped},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
         typ::Type,
         Scope,
     },
 };
+use core_plugin_interface::interface::SubsystemBuilder;
 
 use crate::error::ParserError;
 
@@ -79,8 +80,11 @@ fn populate_type_env(env: &mut MappedArena<Type>) {
     );
 }
 
-fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
-    let annotations = [
+fn populate_annotation_env(
+    subsystem_builders: &[Box<dyn SubsystemBuilder>],
+    env: &mut HashMap<String, AnnotationSpec>,
+) {
+    let mut annotations = vec![
         (
             "access",
             AnnotationSpec {
@@ -116,37 +120,10 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             },
         ),
         (
-            "bits",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: false,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
-            "column",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: false,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
             "cookie",
             AnnotationSpec {
                 targets: &[AnnotationTarget::Field],
                 no_params: true,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
-            "dbtype",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: false,
                 single_params: true,
                 mapped_params: None,
             },
@@ -166,15 +143,6 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             AnnotationSpec {
                 targets: &[AnnotationTarget::Field],
                 no_params: true,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
-            "external",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Service],
-                no_params: false,
                 single_params: true,
                 mapped_params: None,
             },
@@ -243,42 +211,6 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
             },
         ),
         (
-            "length",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: false,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
-            "pk",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: true,
-                single_params: false,
-                mapped_params: None,
-            },
-        ),
-        (
-            "plural_name",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Model],
-                no_params: false,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
-            "precision",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: false,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
             "query",
             AnnotationSpec {
                 targets: &[AnnotationTarget::Field],
@@ -287,74 +219,27 @@ fn populate_annotation_env(env: &mut HashMap<String, AnnotationSpec>) {
                 mapped_params: None,
             },
         ),
-        (
-            "range",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: false,
-                single_params: false,
-                mapped_params: Some(&[
-                    MappedAnnotationParamSpec {
-                        name: "min",
-                        optional: false,
-                    },
-                    MappedAnnotationParamSpec {
-                        name: "max",
-                        optional: false,
-                    },
-                ]),
-            },
-        ),
-        (
-            "scale",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: false,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
-            "size",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: false,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
-            "table",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Model],
-                no_params: false,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
-        (
-            "unique",
-            AnnotationSpec {
-                targets: &[AnnotationTarget::Field],
-                no_params: true,
-                single_params: true,
-                mapped_params: None,
-            },
-        ),
     ];
+
+    for builder in subsystem_builders.iter() {
+        annotations.extend(builder.annotations())
+    }
 
     for (name, spec) in annotations {
         env.insert(name.to_owned(), spec);
     }
 }
 
-pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, ParserError> {
+pub fn build(
+    subsystem_builders: &[Box<dyn SubsystemBuilder>],
+    ast_system: AstSystem<Untyped>,
+) -> Result<MappedArena<Type>, ParserError> {
     let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
 
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     let mut annotation_env = HashMap::new();
     populate_type_env(&mut types_arena);
-    populate_annotation_env(&mut annotation_env);
+    populate_annotation_env(subsystem_builders, &mut annotation_env);
 
     let mut service_names = HashSet::new();
     let mut duplicate_service_names = HashSet::new();
@@ -386,10 +271,11 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
         }]));
     }
 
-    let ast_types = [ast_system.models.as_slice(), ast_service_models.as_slice()].concat();
+    let ast_types_iter = ast_system.models.iter().chain(ast_service_models.iter());
+    let ast_root_models = &ast_system.models;
     let ast_services = ast_system.services;
 
-    for model in ast_types.iter() {
+    for model in ast_types_iter.clone() {
         types_arena.add(
             model.name.as_str(),
             Type::Composite(AstModel::shallow(model)),
@@ -404,7 +290,25 @@ pub fn build(ast_system: AstSystem<Untyped>) -> Result<MappedArena<Type>, Parser
 
         let mut errors = Vec::new();
 
-        for model in ast_types.iter() {
+        for model in ast_root_models.iter() {
+            let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
+            if let Type::Composite(c) = &mut typ {
+                if c.kind != AstModelKind::Context {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: "Models and types are not permitted outside a service".to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: model.span,
+                            style: SpanStyle::Primary,
+                            label: None,
+                        }],
+                    })
+                }
+            }
+        }
+
+        for model in ast_types_iter.clone() {
             let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
             if let Type::Composite(c) = &mut typ {
                 let pass_res = c.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
@@ -462,12 +366,13 @@ pub mod test_support {
     use codemap::CodeMap;
 
     use super::*;
-    use crate::parser::parse_str;
+    use crate::{load_subsystem_builders, parser::parse_str};
 
     pub fn build(src: &str) -> Result<MappedArena<Type>, ParserError> {
         let mut codemap = CodeMap::new();
         let parsed = parse_str(src, &mut codemap, "input.clay")?;
-        super::build(parsed)
+        let subsystem_builders = load_subsystem_builders().unwrap();
+        super::build(&subsystem_builders, parsed)
     }
 
     pub fn parse_sorted(src: &str) -> Vec<(String, Type)> {
@@ -500,13 +405,16 @@ mod tests {
     #[test]
     fn simple() {
         let src = r#"
-        model User {
-          doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
-          role: String
-        }
+        @postgres
+        service UserService {
+            model User {
+              doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
+              role: String
+            }
 
-        model Doc {
-          is_public: Boolean
+            model Doc {
+              is_public: Boolean
+            }
         }
         "#;
 
@@ -520,9 +428,12 @@ mod tests {
             role: String @jwt
         }
 
-        model Doc {
-          is_public: Boolean
-          content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+        @postgres
+        service DocumentService {
+            model Doc {
+              is_public: Boolean
+              content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+            }
         }
         "#;
 
@@ -536,8 +447,11 @@ mod tests {
             roles: Array<String> @jwt
         }
 
-        model Doc {
-          content: String @access("ROLE_ADMIN" in AuthContext.roles)
+        @postgres
+        service DocumentService {
+            model Doc {
+              content: String @access("ROLE_ADMIN" in AuthContext.roles)
+            }
         }
         "#;
 
@@ -550,11 +464,14 @@ mod tests {
         context AuthContext {
             role: String @jwt
         }
-
-        @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
-        model Doc {
-          is_public: Boolean
-          content: String
+        
+        @postgres
+        service DocumentService {
+            @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+            model Doc {
+              is_public: Boolean
+              content: String
+            }
         }
         "#;
 
@@ -564,15 +481,19 @@ mod tests {
     #[test]
     fn insignificant_whitespace() {
         let typical = r#"
-        @table("venues")
-        model Venue {
-            id: Int @column("idx") @pk
-            name: String
+        @postgres
+        service DocumentService {
+            @table("venues")
+            model Venue {
+                id: Int @column("idx") @pk
+                name: String
+            }
         }
         "#;
 
         let with_whitespace = r#"
-
+        @postgres
+        service      DocumentService{
         @table ( "venues" )
         model    Venue
         {
@@ -581,7 +502,7 @@ mod tests {
 
             name:String
 
-        }
+        }}
 
         "#;
 
@@ -593,8 +514,11 @@ mod tests {
     #[test]
     fn unknown_annotation() {
         let src = r#"
-        @asdf
-        model User {
+        @postgres
+        service UserService {
+            @asdf
+            model User {
+            }
         }
         "#;
 
@@ -604,9 +528,12 @@ mod tests {
     #[test]
     fn duplicate_annotation() {
         let src = r#"
-        @table("users")
-        @table("users")
-        model User {
+        @postgres
+        service UserService {
+            @table("users")
+            @table("users")
+            model User {
+            }
         }
         "#;
 
@@ -614,22 +541,74 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_plugin_annotations() {
+        let src = r#"
+        @postgres
+        @postgres
+        service UserService {
+            @table("users")
+            model User {
+            }
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    #[test]
+    fn no_plugin_annotation() {
+        let src = r#"
+        service UserService {
+            model User {
+            }
+        }
+        "#;
+
+        assert_err(src);
+    }
+
+    #[test]
+    fn models_at_root() {
+        let src_model = r#"
+        model User {
+        }
+        "#;
+
+        let src_type = r#"
+        type User {
+        }
+        "#;
+
+        assert_err(src_model);
+        assert_err(src_type);
+    }
+
+    #[test]
     fn invalid_annotation_parameter_type() {
         let expected_none = r#"
-        model User {
-            id: Int @pk("asdf")
+        @postgres
+        service UserService {
+            model User {
+                id: Int @pk("asdf")
+            }
         }
         "#;
 
         let expected_single = r#"
-        @table
-        model User {
+        @postgres
+        service UserService {
+            @table
+            model User {
+            }
         }
         "#;
 
         let expected_map = r#"
-        model User {
-            id: Int @range(5)
+        @postgres
+        service UserService {
+            model User {
+                id: Int @range(5)
+            }
         }
         "#;
 
@@ -641,8 +620,11 @@ mod tests {
     #[test]
     fn duplicate_annotation_mapped_param() {
         let src = r#"
-        model User {
-            id: Int @range(min=5, max=10, min=3)
+        @postgres
+        service UserService {
+            model User {
+                id: Int @range(min=5, max=10, min=3)
+            }
         }
         "#;
 
@@ -652,8 +634,11 @@ mod tests {
     #[test]
     fn unknown_annotation_mapped_param() {
         let src = r#"
-        model User {
-            id: Int @range(min=5, maxx=10)
+        @postgres
+        service UserService {
+            model User {
+                id: Int @range(min=5, maxx=10)
+            }
         }
         "#;
 
@@ -663,14 +648,20 @@ mod tests {
     #[test]
     fn invalid_annotation_target() {
         let model = r#"
-        @pk
-        model User {
+        @postgres
+        service UserService {
+            @pk
+            model User {
+            }
         }
         "#;
 
         let field = r#"
-        model User {
-            id: Int @table("asdf")
+        @postgres
+        service UserService {
+            model User {
+                id: Int @table("asdf")
+            }
         }
         "#;
 
@@ -681,6 +672,7 @@ mod tests {
     #[test]
     fn multiple_types() {
         let model = r#"
+        @deno("test.ts")
         service User {
             type User {
                 id: Int
@@ -696,12 +688,12 @@ mod tests {
     #[test]
     fn multiple_same_named_services() {
         let model = r#"
-        @external("foo.js")
+        @deno("foo.js")
         service Foo {
             query userName(id: Int): String
         }
 
-        @external("foo.js")
+        @deno("foo.js")
         service Foo {
             query userName(id: Int): String
         }
