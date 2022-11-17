@@ -171,9 +171,9 @@ fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyp
         .to_string();
 
     let kind = if kind == "model" {
-        AstModelKind::Persistent
+        AstModelKind::Model
     } else if kind == "type" {
-        AstModelKind::NonPersistent
+        AstModelKind::Type
     } else if kind == "context" {
         AstModelKind::Context
     } else {
@@ -197,6 +197,9 @@ fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyp
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
+        span: span_from_node(source_span, node.child_by_field_name("kind").unwrap()).merge(
+            span_from_node(source_span, node.child_by_field_name("name").unwrap()),
+        ),
     }
 }
 
@@ -218,6 +221,11 @@ fn convert_service(
             .filter(move |node| node.kind() == kind)
     }
 
+    let annotations = node
+        .children_by_field_name("annotation", &mut node.walk())
+        .map(|c| convert_annotation(c, source, source_span))
+        .collect::<Vec<_>>();
+
     AstService {
         name: node
             .child_by_field_name("name")
@@ -234,10 +242,7 @@ fn convert_service(
         interceptors: matching_nodes(node, &mut node.walk(), "interceptor")
             .map(|n| convert_interceptor(n, source, source_span))
             .collect(),
-        annotations: node
-            .children_by_field_name("annotation", &mut node.walk())
-            .map(|c| convert_annotation(c, source, source_span))
-            .collect(),
+        annotations,
         base_clayfile: filepath.into(),
         span: span_from_node(source_span, node),
     }

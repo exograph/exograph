@@ -1,9 +1,12 @@
-@table("videos")
-model Video {
-  id: Int = autoincrement() @dbtype("BIGINT") @pk
-  name: String  
-  slug: String @length(30) 
-  nonce: Int @bits(16)
-  views: Int @range(min=0, max=9999999999)
-  filesize: Int @size(6)
+@postgres
+service VideoService {
+  @table("videos")
+  model Video {
+    id: Int = autoincrement() @dbtype("BIGINT") @pk
+    name: String  
+    slug: String @length(30) 
+    nonce: Int @bits(16)
+    views: Int @range(min=0, max=9999999999)
+    filesize: Int @size(6)
+  }
 }

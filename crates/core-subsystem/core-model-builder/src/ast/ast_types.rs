@@ -55,6 +55,10 @@ pub struct AstModel<T: NodeTypedness> {
     pub kind: AstModelKind,
     pub fields: Vec<AstField<T>>,
     pub annotations: T::Annotations,
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    #[serde(default = "default_span")]
+    pub span: Span,
 }
 
 impl<T: NodeTypedness> Display for AstModel<T> {
@@ -66,10 +70,10 @@ impl<T: NodeTypedness> Display for AstModel<T> {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AstService<T: NodeTypedness> {
     pub name: String,
+    pub annotations: T::Annotations,
     pub models: Vec<AstModel<T>>,
     pub methods: Vec<AstMethod<T>>,
     pub interceptors: Vec<AstInterceptor<T>>,
-    pub annotations: T::Annotations,
     pub base_clayfile: PathBuf,
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -117,9 +121,9 @@ pub struct AstInterceptor<T: NodeTypedness> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum AstModelKind {
-    Persistent,    // a model intended to be persisted inside the database
-    Context,       // defines contextual models for authorization
-    NonPersistent, // a non-persistent model used as a type for service methods
+    Model,   // a model intended to be persisted inside the database
+    Context, // defines contextual models for authorization
+    Type,    // a non-persistent model used as a type for service methods
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

@@ -28,30 +28,42 @@ impl Schema {
         subsystem_resolvers: &[Box<dyn SubsystemResolver + Send + Sync>],
     ) -> Schema {
         let type_definitions: Vec<TypeDefinition> = {
-            subsystem_resolvers
+            let mut typedefs = subsystem_resolvers
                 .iter()
                 .fold(vec![], |mut acc, resolver| {
                     acc.extend(resolver.schema_types());
                     acc
-                })
+                });
+
+            // ensure introspection outputs fields in a stable order
+            typedefs.sort_by_key(|f| f.name.clone());
+            typedefs
         };
 
         let queries = {
-            subsystem_resolvers
+            let mut queries = subsystem_resolvers
                 .iter()
                 .fold(vec![], |mut acc, resolver| {
                     acc.extend(resolver.schema_queries());
                     acc
-                })
+                });
+
+            // ensure introspection outputs queries in a stable order
+            queries.sort_by_key(|q| q.node.name.clone());
+            queries
         };
 
         let mutations = {
-            subsystem_resolvers
+            let mut mutations = subsystem_resolvers
                 .iter()
                 .fold(vec![], |mut acc, resolver| {
                     acc.extend(resolver.schema_mutations());
                     acc
-                })
+                });
+
+            // ensure introspection outputs mutations in a stable order
+            mutations.sort_by_key(|m| m.node.name.clone());
+            mutations
         };
 
         Self::new(type_definitions, queries, mutations)

@@ -1,9 +1,12 @@
-model Todo {
-  id: Int = autoincrement() @pk
-  title: String
+@postgres
+service TodoPersistence {
+  model Todo {
+    id: Int = autoincrement() @pk
+    title: String
+  }
 }
 
-@external("interception.ts")
+@deno("interception.ts")
 service Interception {
   @around("query *")
   interceptor captureParams(operation: Operation)

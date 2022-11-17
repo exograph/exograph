@@ -1,5 +1,8 @@
-@table("foo")
-model Foo {
-  id: Int = autoincrement() @pk
-  verylong: Decimal @precision(40) @scale(30)
+@postgres
+service FooService {
+  @table("foo")
+  model Foo {
+    id: Int = autoincrement() @pk
+    verylong: Decimal @precision(40) @scale(30)
+  }
 }

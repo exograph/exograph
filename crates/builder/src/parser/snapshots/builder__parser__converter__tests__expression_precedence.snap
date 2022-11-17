@@ -1,11 +1,10 @@
 ---
-source: builder/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(), src.as_bytes(), file_span,\n             Path::new(\"input.clay\")).unwrap()"
-
+source: crates/builder/src/parser/converter.rs
+expression: "convert_root(parsed.root_node(),\n        r#\"\n            model Foo {\n                bar: Baz @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.clay\")).unwrap()"
 ---
 models:
   - name: Foo
-    kind: Persistent
+    kind: Model
     fields:
       - name: bar
         typ:

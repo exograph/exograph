@@ -1,9 +1,14 @@
+use std::vec;
+
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
     plugin::{Interception, SubsystemBuild},
-    typechecker::typ::Type,
+    typechecker::{
+        annotation::{AnnotationSpec, AnnotationTarget},
+        typ::Type,
+    },
 };
 use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::{interception::InterceptorIndex, system_serializer::SystemSerializer};
@@ -14,6 +19,22 @@ pub struct WasmSubsystemBuilder {}
 core_plugin_interface::export_subsystem_builder!(WasmSubsystemBuilder {});
 
 impl SubsystemBuilder for WasmSubsystemBuilder {
+    fn id(&self) -> &'static str {
+        "wasm"
+    }
+
+    fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+        vec![(
+            "wasm",
+            AnnotationSpec {
+                targets: &[AnnotationTarget::Service],
+                no_params: false,
+                single_params: true,
+                mapped_params: None,
+            },
+        )]
+    }
+
     fn build(
         &self,
         typechecked_system: &MappedArena<Type>,

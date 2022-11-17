@@ -1,7 +1,10 @@
-@table("chess_piece")
-model ChessPiece {
-  id: Int = autoincrement() @pk
-  name: String
-  position_history: Array<String>
-  neighbor_info: Array<Array<String>>
+@postgres
+service ChessService {
+  @table("chess_piece")
+  model ChessPiece {
+    id: Int = autoincrement() @pk
+    name: String
+    position_history: Array<String>
+    neighbor_info: Array<Array<String>>
+  }
 }

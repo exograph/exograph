@@ -1,6 +1,5 @@
 ---
-source: postgres-subsystem/postgres-model-builder/src/resolved_builder.rs
-assertion_line: 1078
+source: crates/postgres-subsystem/postgres-model-builder/src/resolved_builder.rs
 expression: resolved
 ---
 values:
@@ -85,7 +84,7 @@ values:
                             - Single:
                                 - - AuthContext
                                 - Reference:
-                                    index: 15
+                                    index: 16
                                     generation: ~
                             - - role
                             - Reference:
@@ -99,7 +98,7 @@ values:
                       - Single:
                           - - self
                           - Reference:
-                              index: 16
+                              index: 17
                               generation: ~
                       - - public
                       - Reference:
@@ -116,7 +115,7 @@ values:
                             - Single:
                                 - - AuthContext
                                 - Reference:
-                                    index: 15
+                                    index: 16
                                     generation: ~
                             - - role
                             - Reference:
@@ -130,7 +129,7 @@ values:
                       - Single:
                           - - self
                           - Reference:
-                              index: 16
+                              index: 17
                               generation: ~
                       - - public
                       - Reference:
@@ -147,7 +146,7 @@ values:
                             - Single:
                                 - - AuthContext
                                 - Reference:
-                                    index: 15
+                                    index: 16
                                     generation: ~
                             - - role
                             - Reference:
@@ -161,7 +160,7 @@ values:
                       - Single:
                           - - self
                           - Reference:
-                              index: 16
+                              index: 17
                               generation: ~
                       - - public
                       - Reference:
@@ -178,7 +177,7 @@ values:
                             - Single:
                                 - - AuthContext
                                 - Reference:
-                                    index: 15
+                                    index: 16
                                     generation: ~
                             - - role
                             - Reference:
@@ -192,7 +191,7 @@ values:
                       - Single:
                           - - self
                           - Reference:
-                              index: 16
+                              index: 17
                               generation: ~
                       - - public
                       - Reference:

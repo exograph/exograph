@@ -55,7 +55,7 @@ declare class ClaytipError extends Error {
 /// # Example:
 /// For a service definition in a clay file as follows:
 /// ```clay
-/// @external("todo.ts")
+/// @deno("todo.ts")
 /// service TodoService {
 ///     type Todo {
 ///       userId: Int
@@ -85,7 +85,7 @@ declare class ClaytipError extends Error {
 ///
 /// Note that we add a commented `async` to let user know that they may have an async function.
 ///
-/// If the `@external("todo.js") was specified, the generated code will look like this:
+/// If the `@deno("todo.js") was specified, the generated code will look like this:
 /// ```javascript
 /// export /*async*/ function todo(id) {
 ///     // TODO

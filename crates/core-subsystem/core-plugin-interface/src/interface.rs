@@ -1,9 +1,14 @@
-use std::{env::current_exe, path::PathBuf};
+use std::{
+    env::current_exe,
+    path::{Path, PathBuf},
+};
 
 use core_model::mapped_arena::MappedArena;
 use core_model_builder::{
-    builder::system_builder::BaseModelSystem, error::ModelBuildingError, plugin::SubsystemBuild,
-    typechecker::typ::Type,
+    builder::system_builder::BaseModelSystem,
+    error::ModelBuildingError,
+    plugin::SubsystemBuild,
+    typechecker::{annotation::AnnotationSpec, typ::Type},
 };
 use core_plugin_shared::error::ModelSerializationError;
 use core_resolver::plugin::SubsystemResolver;
@@ -12,6 +17,39 @@ use thiserror::Error;
 use crate::build_info::SubsystemCheckError;
 
 pub trait SubsystemBuilder {
+    /// Unique string to identify the subsystem by. Should be shared with the corresponding
+    /// [SubsystemLoader].
+    fn id(&self) -> &'static str;
+
+    /// Subsystem-specific annotations to typecheck during the building phase.
+    /// This should include the plugin annotation.
+    ///
+    /// For example, in order to typecheck:
+    ///
+    /// ```clay
+    /// @deno("example.ts")
+    /// service ExampleService {
+    /// ...
+    /// ```
+    ///
+    /// [SubsystemBuilder::annotations] should provide:
+    ///
+    /// ```ignore
+    /// fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)> {
+    ///     vec![
+    ///         ("deno", AnnotationSpec {
+    ///             targets: &[AnnotationTarget::Service],
+    ///             no_params: false,
+    ///             single_params: true,
+    ///             mapped_params: None,
+    ///         })
+    ///     ]
+    /// }
+    /// ```
+    ///
+    fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)>;
+
+    /// Build a subsystem's model, producing a [SubsystemBuild].
     fn build(
         &self,
         typechecked_system: &MappedArena<Type>,
@@ -20,8 +58,11 @@ pub trait SubsystemBuilder {
 }
 
 pub trait SubsystemLoader {
+    /// Unique string to identify the subsystem by. Should be shared with the corresponding
+    /// [SubsystemBuilder].
     fn id(&self) -> &'static str;
 
+    /// Loads and initializes the subsystem, producing a [SubsystemResolver].
     fn init(
         &self,
         serialized_subsystem: Vec<u8>,
@@ -61,22 +102,13 @@ pub enum LibraryLoadingError {
 /// * `library_name` - The name of the library to load (platform-independent).
 /// * `constructor_symbol_name` - The symbol the constructor function is under in the library.
 fn load_subsystem_library<T: ?Sized>(
-    library_name: &str,
+    library_path: &Path,
     constructor_symbol_name: &str,
 ) -> Result<Box<T>, LibraryLoadingError> {
-    // build file path to library
-    let mut libpath = current_exe()?;
-    libpath.pop();
-    libpath.push(libloading::library_filename(library_name));
-
-    if !libpath.exists() {
-        return Err(LibraryLoadingError::LibraryNotFound(libpath));
-    }
-
     // load the dynamic library
     let lib = Box::new(
         // SAFETY: see documentation for [libloading::Library::new]
-        unsafe { libloading::Library::new(&libpath)? },
+        unsafe { libloading::Library::new(library_path.as_os_str())? },
     );
 
     // check the subsystem's build info and make sure it is valid to load
@@ -105,14 +137,24 @@ fn load_subsystem_library<T: ?Sized>(
 
 /// Loads a subsystem builder from a dynamic library.
 pub fn load_subsystem_builder(
-    library_name: &str,
+    library_path: &Path,
 ) -> Result<Box<dyn SubsystemBuilder>, LibraryLoadingError> {
-    load_subsystem_library(library_name, "__claytip_subsystem_builder")
+    load_subsystem_library(library_path, "__claytip_subsystem_builder")
 }
 
 /// Loads a subsystem loader from a dynamic library.
 pub fn load_subsystem_loader(
     library_name: &str,
 ) -> Result<Box<dyn SubsystemLoader>, LibraryLoadingError> {
-    load_subsystem_library(library_name, "__claytip_subsystem_loader")
+    // search executable directory for library
+    // TODO: we should try to load from sources LD_LIBRARY_PATH first
+    let mut library_path = current_exe()?;
+    library_path.pop();
+    library_path.push(libloading::library_filename(library_name));
+
+    if !library_path.exists() {
+        return Err(LibraryLoadingError::LibraryNotFound(library_path));
+    }
+
+    load_subsystem_library(&library_path, "__claytip_subsystem_loader")
 }

@@ -12,7 +12,7 @@ context ICaptchaValidatorContext {
 }
 
 // CAPTCHA service implementation.
-@external("captcha.ts")
+@deno("captcha.ts")
 service CaptchaService {
     // The CAPTCHA challenge issued to client.
     type CaptchaChallenge {
@@ -34,11 +34,14 @@ service CaptchaService {
     ): Boolean
 }
 
-// Postgres record of a CAPTCHA challenge issued to a client.
-// Can be referred to by UUID. 
-model CaptchaChallengeRecord {
-    uuid: Uuid = generate_uuid() @pk
-    properResponse: String
+@postgres
+service CaptchaPersistenceService {
+    // Postgres record of a CAPTCHA challenge issued to a client.
+    // Can be referred to by UUID. 
+    model CaptchaChallengeRecord {
+        uuid: Uuid = generate_uuid() @pk
+        properResponse: String
+    }
 }
 
 // The final context for use by an external @access rule or service.

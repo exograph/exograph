@@ -59,10 +59,13 @@ mod tests {
         assert_changes(
             "",
             r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-                published: Boolean
+            @postgres
+            service ConcertService {
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                    published: Boolean
+                }
             }
             "#,
             vec![],
@@ -90,16 +93,22 @@ mod tests {
     fn add_field() {
         assert_changes(
             r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
+            @postgres
+            service ConcertService {
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                }
             }
             "#,
             r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-                published: Boolean
+            @postgres
+            service ConcertService {
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                    published: Boolean
+                }
             }
             "#,
             vec![(
@@ -129,21 +138,27 @@ mod tests {
     fn add_relation_and_related_model() {
         assert_changes(
             r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
+            @postgres
+            service ConcertService {
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                }
             }
             "#,
             r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-                venue: Venue
-            }
-            model Venue {
-                id: Int = autoincrement() @pk
-                name: String
-                concerts: Set<Concert>?
+            @postgres
+            service ConcertService {
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                    venue: Venue
+                }
+                model Venue {
+                    id: Int = autoincrement() @pk
+                    name: String
+                    concerts: Set<Concert>?
+                }
             }
             "#,
             vec![(
@@ -202,25 +217,31 @@ mod tests {
     fn add_relation_field() {
         assert_changes(
             r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-            }
-            model Venue {
-                id: Int = autoincrement() @pk
-                name: String
+            @postgres
+            service ConcertService {
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                }
+                model Venue {
+                    id: Int = autoincrement() @pk
+                    name: String
+                }
             }
             "#,
             r#"
-            model Concert {
-                id: Int = autoincrement() @pk
-                title: String
-                venue: Venue
-            }
-            model Venue {
-                id: Int = autoincrement() @pk
-                name: String
-                concerts: Set<Concert>?
+            @postgres
+            service ConcertService {
+                model Concert {
+                    id: Int = autoincrement() @pk
+                    title: String
+                    venue: Venue
+                }
+                model Venue {
+                    id: Int = autoincrement() @pk
+                    name: String
+                    concerts: Set<Concert>?
+                }
             }
             "#,
             vec![
@@ -278,23 +299,29 @@ mod tests {
     fn one_to_one_constraints() {
         assert_changes(
             r#"
-                model Membership {
-                    id: Int = autoincrement() @pk
-                }
-                model User {
-                    id: Int = autoincrement() @pk
-                    name: String
+                @postgres
+                service MembershipService {
+                    model Membership {
+                        id: Int = autoincrement() @pk
+                    }
+                    model User {
+                        id: Int = autoincrement() @pk
+                        name: String
+                    }
                 }
             "#,
             r#"
-                model Membership {
-                    id: Int = autoincrement() @pk
-                    user: User
-                }
-                model User {
-                    id: Int = autoincrement() @pk
-                    name: String
-                    membership: Membership?
+                @postgres
+                service MembershipService {
+                    model Membership {
+                        id: Int = autoincrement() @pk
+                        user: User
+                    }
+                    model User {
+                        id: Int = autoincrement() @pk
+                        name: String
+                        membership: Membership?
+                    }
                 }
             "#,
             vec![
@@ -364,17 +391,23 @@ mod tests {
     fn multi_column_unique_constraint() {
         assert_changes(
             r#"
-                model Rsvp {
-                    id: Int = autoincrement() @pk
-                    email: String
-                    event_id: Int
+                @postgres
+                service RsvpService {
+                    model Rsvp {
+                        id: Int = autoincrement() @pk
+                        email: String
+                        event_id: Int
+                    }
                 }
             "#,
             r#"
-                model Rsvp {
-                    id: Int = autoincrement() @pk
-                    email: String @unique("email_event_id")
-                    event_id: Int @unique("email_event_id")
+                @postgres
+                service RsvpService {
+                    model Rsvp {
+                        id: Int = autoincrement() @pk
+                        email: String @unique("email_event_id")
+                        event_id: Int @unique("email_event_id")
+                    }
                 }
             "#,
             vec![(
@@ -414,17 +447,23 @@ mod tests {
     fn multi_column_unique_constraint_participation_change() {
         assert_changes(
             r#"
-                model Rsvp {
-                    id: Int = autoincrement() @pk
-                    email: String @unique("email_event_id")
-                    event_id: Int
+                @postgres
+                service RsvpService {
+                    model Rsvp {
+                        id: Int = autoincrement() @pk
+                        email: String @unique("email_event_id")
+                        event_id: Int
+                    }
                 }
             "#,
             r#"
-                model Rsvp {
-                    id: Int = autoincrement() @pk
-                    email: String @unique("email_event_id")
-                    event_id: Int @unique("email_event_id")
+                @postgres
+                service RsvpService {
+                    model Rsvp {
+                        id: Int = autoincrement() @pk
+                        email: String @unique("email_event_id")
+                        event_id: Int @unique("email_event_id")
+                    }
                 }
             "#,
             vec![
@@ -482,19 +521,25 @@ mod tests {
     fn default_value_change() {
         assert_changes(
             r#"
-                model User {
-                    id: Int = autoincrement() @pk
-                    role: String
-                    verified: Boolean = false
-                    enabled: Boolean = true
+                @postgres
+                service UserService {
+                    model User {
+                        id: Int = autoincrement() @pk
+                        role: String
+                        verified: Boolean = false
+                        enabled: Boolean = true
+                    }
                 }
             "#,
             r#"
-                model User {
-                    id: Int = autoincrement() @pk
-                    role: String = "USER" // Set default value
-                    verified: Boolean = true // Change default value
-                    enabled: Boolean // Drop default value
+                @postgres
+                service UserService {
+                    model User {
+                        id: Int = autoincrement() @pk
+                        role: String = "USER" // Set default value
+                        verified: Boolean = true // Change default value
+                        enabled: Boolean // Drop default value
+                    }
                 }
             "#,
             vec![(
@@ -550,18 +595,24 @@ mod tests {
     fn not_null() {
         assert_changes(
             r#"
-                model Log {
-                    id: Int @pk
-                    level: String?
-                    message: String
+                @postgres
+                service LogService {
+                    model Log {
+                        id: Int @pk
+                        level: String?
+                        message: String
+                    }
                 }
             "#,
             r#"
-                model Log {
-                    id: Int @pk
-                    level: String
-                    message: String
-                }
+                @postgres
+                service LogService {
+                    model Log {
+                        id: Int @pk
+                        level: String
+                        message: String
+                    }
+                } 
             "#,
             vec![(
                 r#"CREATE TABLE "logs" (

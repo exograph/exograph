@@ -1,9 +1,12 @@
-model Person {
-  id: Int = autoincrement() @pk
-  name: String
+@postgres
+service PersonService {
+  model Person {
+    id: Int = autoincrement() @pk
+    name: String
+  }
 }
 
-@external("logger.js")
+@deno("logger.js")
 service Logger {
   type LogMessage {
     level: String

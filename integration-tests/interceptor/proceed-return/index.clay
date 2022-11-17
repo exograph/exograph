@@ -1,9 +1,12 @@
-model Todo {
-  id: Int = autoincrement() @pk
-  title: String
+@postgres
+service TodoService {
+  model Todo {
+    id: Int = autoincrement() @pk
+    title: String
+  }
 }
 
-@external("test-service.ts")
+@deno("test-service.ts")
 service TestService {
   type Info {
     id: Int
@@ -13,7 +16,7 @@ service TestService {
   query getInfo(): Info
 }
 
-@external("interception.ts")
+@deno("interception.ts")
 service Interception {
   @around("query todo")
   interceptor todoReturnFreshValue(operation: Operation)

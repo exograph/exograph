@@ -1,5 +1,8 @@
-@table("todos")
-model Todo {
-  id: Int = autoincrement() @pk
-  data: Json
+@postgres
+service TodoService {
+  @table("todos")
+  model Todo {
+    id: Int = autoincrement() @pk
+    data: Json
+  }
 }
