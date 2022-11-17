@@ -481,6 +481,8 @@ fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldTyp
         Type::Set(underlying) | Type::Array(underlying) => {
             ResolvedFieldType::List(Box::new(resolve_field_type(underlying.as_ref(), types)))
         }
-        _ => todo!("Unsupported field type"),
+        _ => {
+            panic!("Unsupported field type")
+        }
     }
 }
