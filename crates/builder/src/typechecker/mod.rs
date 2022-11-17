@@ -347,6 +347,13 @@ fn validate_service(service: &AstService<Untyped>) -> Result<(), ParserError> {
         |method| &method.name,
         |method| method.span,
         "operation",
+    )?;
+
+    validate_no_duplicates(
+        &service.models,
+        |model| &model.name,
+        |model| model.span,
+        "model/type",
     )
 }
 
@@ -745,6 +752,63 @@ mod tests {
             query userName(id1: Int): String
             query userName(id2: Int): String
             query userName(id3: Int): String
+        }
+        "#;
+
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_typess() {
+        let model = r#"
+        @deno("foo.js")
+        service Foo {
+            type User {
+                id: Int
+                name: String
+            }
+            type User {
+                id: Int
+                name: String
+            }
+        }
+        "#;
+
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_types() {
+        let model = r#"
+        @postgres
+        service Foo {
+            model User {
+                id: Int
+                name: String
+            }
+            model User {
+                id: Int
+                name: String
+            }
+        }
+        "#;
+
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_model_and_types() {
+        let model = r#"
+        @deno("foo.js")
+        service Foo {
+            model User {
+                id: Int
+                name: String
+            }
+            type User {
+                id: Int
+                name: String
+            }
         }
         "#;
 
