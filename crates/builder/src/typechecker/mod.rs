@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
@@ -241,9 +241,34 @@ pub fn build(
     populate_type_env(&mut types_arena);
     populate_annotation_env(subsystem_builders, &mut annotation_env);
 
+    let mut service_names = HashSet::new();
+    let mut duplicate_service_names = HashSet::new();
     for service in ast_system.services.iter() {
-        ast_service_models.extend(service.models.clone());
-        types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
+        if service_names.insert(&service.name) {
+            ast_service_models.extend(service.models.clone());
+            types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
+        } else {
+            duplicate_service_names.insert((&service.name, service.span));
+        }
+    }
+
+    if !duplicate_service_names.is_empty() {
+        let (duplicate_names, duplicate_names_positions) = duplicate_service_names
+            .into_iter()
+            .unzip::<_, _, Vec<_>, Vec<_>>();
+        return Err(ParserError::Diagnosis(vec![Diagnostic {
+            level: Level::Error,
+            message: format!("Duplicate service names: {:?}", duplicate_names),
+            code: Some("C000".to_string()),
+            spans: duplicate_names_positions
+                .into_iter()
+                .map(|span| SpanLabel {
+                    span,
+                    style: SpanStyle::Primary,
+                    label: Some("duplicate service name".to_string()),
+                })
+                .collect(),
+        }]));
     }
 
     let ast_types_iter = ast_system.models.iter().chain(ast_service_models.iter());
@@ -657,6 +682,24 @@ mod tests {
         }
         "#;
 
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_services() {
+        let model = r#"
+        @deno("foo.js")
+        service Foo {
+            query userName(id: Int): String
+        }
+
+        @deno("foo.js")
+        service Foo {
+            query userName(id: Int): String
+        }
+        "#;
+
+        println!("{:?}", build(model));
         assert_err(model);
     }
 
