@@ -58,16 +58,23 @@ pub struct ModelServiceSystemWithInterceptors {
     pub interceptors: Vec<(AstExpr<Typed>, SerializableSlabIndex<Interceptor>)>,
 }
 
+/// Builds a [ModelServiceSystemWithInterceptors], with a subset of [AstService]s chosen by closure.
+///  
+/// `service_selection_closure` - A closure that will return `Some(name)` for each [AstService] the
+///                               subsystem supports, where `name` is the annotation name of the plugin
+///                               annotation (e.g. `"deno"` for `@deno`).
+/// `process_script` - A closure that will process a script at the provided [PathBuf] into a runnable form for usage
+///                    during subsystem resolution at runtime.
 pub fn build_with_selection(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
-    service_selection_predicate: impl Fn(&AstService<Typed>) -> Option<String>,
+    service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ModelServiceSystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
     let resolved_system = resolved_builder::build(
         typechecked_system,
-        service_selection_predicate,
+        service_selection_closure,
         process_script,
     )?;
 

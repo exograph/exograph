@@ -22,13 +22,13 @@ pub fn build(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
 ) -> Option<Result<ModelWasmSystemWithInterceptors, ModelBuildingError>> {
-    let service_selection_predicate =
+    let service_selection_closure =
         |service: &AstService<Typed>| service.annotations.get("wasm").map(|_| "wasm".to_string());
 
     let service_system = subsystem_model_builder_util::build_with_selection(
         typechecked_system,
         base_system,
-        service_selection_predicate,
+        service_selection_closure,
         process_script,
     );
 
