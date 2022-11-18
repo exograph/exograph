@@ -117,6 +117,7 @@ impl TypecheckFrom<AstMethod<Untyped>> for AstMethod<Typed> {
             return_type: AstFieldType::shallow(&untyped.return_type),
             is_exported: untyped.is_exported,
             annotations: annotation_map,
+            span: untyped.span,
         }
     }
 
