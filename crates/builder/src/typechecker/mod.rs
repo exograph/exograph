@@ -1,5 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
+use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::{
@@ -241,34 +242,13 @@ pub fn build(
     populate_type_env(&mut types_arena);
     populate_annotation_env(subsystem_builders, &mut annotation_env);
 
-    let mut service_names = HashSet::new();
-    let mut duplicate_service_names = HashSet::new();
-    for service in ast_system.services.iter() {
-        if service_names.insert(&service.name) {
-            ast_service_models.extend(service.models.clone());
-            types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
-        } else {
-            duplicate_service_names.insert((&service.name, service.span));
-        }
-    }
+    validate_no_duplicates(&ast_system.services, |s| &s.name, |s| s.span, "service")?;
 
-    if !duplicate_service_names.is_empty() {
-        let (duplicate_names, duplicate_names_positions) = duplicate_service_names
-            .into_iter()
-            .unzip::<_, _, Vec<_>, Vec<_>>();
-        return Err(ParserError::Diagnosis(vec![Diagnostic {
-            level: Level::Error,
-            message: format!("Duplicate service names: {:?}", duplicate_names),
-            code: Some("C000".to_string()),
-            spans: duplicate_names_positions
-                .into_iter()
-                .map(|span| SpanLabel {
-                    span,
-                    style: SpanStyle::Primary,
-                    label: Some("duplicate service name".to_string()),
-                })
-                .collect(),
-        }]));
+    for service in ast_system.services.iter() {
+        ast_service_models.extend(service.models.clone());
+        types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
+
+        validate_service(service)?;
     }
 
     let ast_types_iter = ast_system.models.iter().chain(ast_service_models.iter());
@@ -361,6 +341,68 @@ pub fn build(
     }
 }
 
+fn validate_service(service: &AstService<Untyped>) -> Result<(), ParserError> {
+    validate_no_duplicates(
+        &service.methods,
+        |method| &method.name,
+        |method| method.span,
+        "operation",
+    )?;
+
+    validate_no_duplicates(
+        &service.models,
+        |model| &model.name,
+        |model| model.span,
+        "model/type",
+    )
+}
+
+fn validate_no_duplicates<T>(
+    items: &[T],
+    get_name: impl Fn(&T) -> &str,
+    get_span: impl Fn(&T) -> Span,
+    item_kind: &str, // To print as a part of the error message
+) -> Result<(), ParserError> {
+    let mut items_with_pos = HashMap::new();
+    let mut duplicates_with_pos = vec![];
+
+    for item in items.iter() {
+        // TODO: Use try_insert when it's stable. This way the first item will always be designated as the existing one
+        // Currently, if we have three duplicates, we get diagnostics as (existing: 1, duplicate: 2), (existing: 2, duplicate: 3)
+        let existing_item = items_with_pos.insert(get_name(item), get_span(item));
+
+        if let Some(existing_span) = existing_item {
+            duplicates_with_pos.push((get_name(item), existing_span, get_span(item)));
+        }
+    }
+
+    if duplicates_with_pos.is_empty() {
+        Ok(())
+    } else {
+        let diagnostics =
+            duplicates_with_pos
+                .into_iter()
+                .map(|(name, existing_span, duplicate_span)| Diagnostic {
+                    level: Level::Error,
+                    message: format!("Duplicate {item_kind}: {name}"),
+                    code: Some("C000".to_string()),
+                    spans: vec![
+                        SpanLabel {
+                            span: existing_span,
+                            style: SpanStyle::Primary,
+                            label: Some("first defined here".to_string()),
+                        },
+                        SpanLabel {
+                            span: duplicate_span,
+                            style: SpanStyle::Secondary,
+                            label: Some("again defined here".to_string()),
+                        },
+                    ],
+                });
+
+        Err(ParserError::Diagnosis(diagnostics.collect()))
+    }
+}
 #[cfg(test)]
 pub mod test_support {
     use codemap::CodeMap;
@@ -699,7 +741,77 @@ mod tests {
         }
         "#;
 
-        println!("{:?}", build(model));
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_operations() {
+        let model = r#"
+        @deno("foo.js")
+        service Foo {
+            query userName(id1: Int): String
+            query userName(id2: Int): String
+            query userName(id3: Int): String
+        }
+        "#;
+
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_typess() {
+        let model = r#"
+        @deno("foo.js")
+        service Foo {
+            type User {
+                id: Int
+                name: String
+            }
+            type User {
+                id: Int
+                name: String
+            }
+        }
+        "#;
+
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_types() {
+        let model = r#"
+        @postgres
+        service Foo {
+            model User {
+                id: Int
+                name: String
+            }
+            model User {
+                id: Int
+                name: String
+            }
+        }
+        "#;
+
+        assert_err(model);
+    }
+
+    #[test]
+    fn multiple_same_named_model_and_types() {
+        let model = r#"
+        @deno("foo.js")
+        service Foo {
+            model User {
+                id: Int
+                name: String
+            }
+            type User {
+                id: Int
+                name: String
+            }
+        }
+        "#;
+
         assert_err(model);
     }
 

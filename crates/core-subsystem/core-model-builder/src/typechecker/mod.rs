@@ -7,7 +7,6 @@ mod expression;
 mod field_type;
 mod logical_op;
 mod selection;
-mod util;
 
 pub(super) use typ::Type;
 
