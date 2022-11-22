@@ -1,4 +1,6 @@
-use core_resolver::{plugin::SubsystemResolutionError, system_resolver::SystemResolutionError};
+use core_plugin_interface::core_resolver::{
+    plugin::SubsystemResolutionError, system_resolver::SystemResolutionError,
+};
 use thiserror::Error;
 
 use payas_deno::deno_error::DenoError;

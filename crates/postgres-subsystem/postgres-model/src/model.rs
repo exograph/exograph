@@ -4,14 +4,6 @@ use async_graphql_parser::{
     types::{FieldDefinition, TypeDefinition},
     Positioned,
 };
-use core_model::{
-    context_type::ContextType,
-    mapped_arena::{MappedArena, SerializableSlab},
-    type_normalization::{default_positioned, FieldDefinitionProvider, TypeDefinitionProvider},
-};
-use core_plugin_shared::{error::ModelSerializationError, system_serializer::SystemSerializer};
-use payas_sql::PhysicalTable;
-use serde::{Deserialize, Serialize};
 
 use super::{
     operation::{PostgresMutation, PostgresQuery},
@@ -19,6 +11,17 @@ use super::{
     predicate::PredicateParameterType,
     types::PostgresType,
 };
+use core_plugin_interface::{
+    core_model::{
+        context_type::ContextType,
+        mapped_arena::{MappedArena, SerializableSlab},
+        type_normalization::{default_positioned, FieldDefinitionProvider, TypeDefinitionProvider},
+    },
+    error::ModelSerializationError,
+    system_serializer::SystemSerializer,
+};
+use payas_sql::PhysicalTable;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ModelPostgresSystem {

@@ -1,5 +1,18 @@
+use super::{
+    postgres_execution_error::PostgresExecutionError,
+    postgres_query::compute_select,
+    sql_mapper::SQLOperationKind,
+    util::{check_access, find_arg, return_type_info},
+};
+use crate::{
+    create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
+    predicate_mapper::compute_predicate, sql_mapper::SQLMapper,
+    update_data_param_mapper::UpdateOperation,
+};
 use async_trait::async_trait;
-use core_resolver::{request_context::RequestContext, validation::field::ValidatedField};
+use core_plugin_interface::core_resolver::{
+    request_context::RequestContext, validation::field::ValidatedField,
+};
 use payas_sql::{
     AbstractDelete, AbstractInsert, AbstractOperation, AbstractSelect, AbstractUpdate,
 };
@@ -11,19 +24,6 @@ use postgres_model::{
     },
     predicate::PredicateParameter,
     types::PostgresTypeModifier,
-};
-
-use crate::{
-    create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
-    predicate_mapper::compute_predicate, sql_mapper::SQLMapper,
-    update_data_param_mapper::UpdateOperation,
-};
-
-use super::{
-    postgres_execution_error::PostgresExecutionError,
-    postgres_query::compute_select,
-    sql_mapper::SQLOperationKind,
-    util::{check_access, find_arg, return_type_info},
 };
 
 #[async_trait]

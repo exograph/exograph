@@ -1,10 +1,11 @@
-use core_plugin_interface::interface::{SubsystemLoader, SubsystemLoadingError};
-use core_plugin_shared::system_serializer::SystemSerializer;
-use core_resolver::plugin::SubsystemResolver;
+use super::PostgresSubsystemResolver;
+use core_plugin_interface::{
+    core_resolver::plugin::SubsystemResolver,
+    interface::{SubsystemLoader, SubsystemLoadingError},
+    system_serializer::SystemSerializer,
+};
 use payas_sql::{Database, DatabaseExecutor};
 use postgres_model::model::ModelPostgresSystem;
-
-use super::PostgresSubsystemResolver;
 
 pub struct PostgresSubsystemLoader {}
 core_plugin_interface::export_subsystem_loader!(PostgresSubsystemLoader {});

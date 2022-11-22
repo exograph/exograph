@@ -1,12 +1,15 @@
 use std::{io::Write, path::PathBuf};
 
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use core_model_builder::{
-    ast::ast_types::{AstExpr, AstService},
-    builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
-    error::ModelBuildingError,
-    typechecker::{typ::Type, Typed},
+use core_plugin_interface::{
+    core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
+    core_model_builder::{
+        ast::ast_types::{AstExpr, AstService},
+        builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
+        error::ModelBuildingError,
+        typechecker::{typ::Type, Typed},
+    },
 };
+
 use deno_model::{
     interceptor::Interceptor,
     model::ModelDenoSystem,

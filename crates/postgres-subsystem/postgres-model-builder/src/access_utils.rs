@@ -1,17 +1,20 @@
-use core_model::{
-    access::{
-        AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
-        AccessRelationalOp,
+use core_plugin_interface::{
+    core_model::{
+        access::{
+            AccessContextSelection, AccessLogicalExpression, AccessPredicateExpression,
+            AccessRelationalOp,
+        },
+        context_type::ContextFieldType,
+        mapped_arena::MappedArena,
+        primitive_type::PrimitiveType,
     },
-    context_type::ContextFieldType,
-    mapped_arena::MappedArena,
-    primitive_type::PrimitiveType,
+    core_model_builder::{
+        ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
+        error::ModelBuildingError,
+        typechecker::Typed,
+    },
 };
-use core_model_builder::{
-    ast::ast_types::{AstExpr, FieldSelection, LogicalOp, RelationalOp},
-    error::ModelBuildingError,
-    typechecker::Typed,
-};
+
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
     column_path::{ColumnIdPath, ColumnIdPathLink},

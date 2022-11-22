@@ -1,13 +1,13 @@
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use postgres_model::types::{
     PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier,
 };
 use std::collections::HashMap;
 
-use super::system_builder::SystemContextBuilding;
 use super::{
     column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
 };
 use postgres_model::predicate::{
     PredicateParameter, PredicateParameterType, PredicateParameterTypeKind,

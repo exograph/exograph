@@ -1,9 +1,6 @@
+use super::{column_id::ColumnId, types::PostgresType};
+use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use serde::{Deserialize, Serialize};
-
-use super::column_id::ColumnId;
-
-use super::types::PostgresType;
-use core_model::mapped_arena::SerializableSlabIndex;
 
 // We model one-to-one (more precisely one-to-one_or_zero and one_or_zero-to-one) relations as
 // a OneToMany and ManyToOne relation (respectively), so that we can share most of the logic to

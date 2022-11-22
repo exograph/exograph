@@ -4,8 +4,9 @@ use crate::{
     access_solver::PostgresAccessSolver, postgres_execution_error::PostgresExecutionError,
     sql_mapper::SQLOperationKind,
 };
-use core_resolver::access_solver::AccessSolver;
-use core_resolver::request_context::RequestContext;
+use core_plugin_interface::core_resolver::{
+    access_solver::AccessSolver, request_context::RequestContext,
+};
 use payas_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},

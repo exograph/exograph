@@ -1,18 +1,19 @@
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use postgres_model::column_path::ColumnIdPathLink;
-use postgres_model::limit_offset::{
-    LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType,
-};
-use postgres_model::operation::{OperationReturnType, PostgresQuery, PostgresQueryParameter};
-use postgres_model::predicate::{PredicateParameter, PredicateParameterTypeWithModifier};
-use postgres_model::types::{
-    PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier,
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+
+use postgres_model::{
+    column_path::ColumnIdPathLink,
+    limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
+    operation::{OperationReturnType, PostgresQuery, PostgresQueryParameter},
+    predicate::{PredicateParameter, PredicateParameterTypeWithModifier},
+    types::{PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
 
-use super::naming::ToPostgresQueryName;
-
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
-use super::{order_by_type_builder, predicate_builder, system_builder::SystemContextBuilding};
+use super::{
+    naming::ToPostgresQueryName,
+    order_by_type_builder, predicate_builder,
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+};
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {

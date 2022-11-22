@@ -1,4 +1,4 @@
-use core_model::mapped_arena::MappedArena;
+use core_plugin_interface::core_model::mapped_arena::MappedArena;
 use postgres_model::{
     column_path::ColumnIdPathLink,
     relation::PostgresRelation,

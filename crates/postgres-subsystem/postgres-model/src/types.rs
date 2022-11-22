@@ -7,14 +7,14 @@ use async_graphql_parser::types::{
     TypeDefinition, TypeKind,
 };
 use async_graphql_value::Name;
-use core_model::mapped_arena::{SerializableSlab, SerializableSlabIndex};
-
-use core_model::type_normalization::{
-    default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
-    TypeDefinitionProvider, TypeModifier,
+use core_plugin_interface::core_model::{
+    mapped_arena::{SerializableSlab, SerializableSlabIndex},
+    type_normalization::{
+        default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
+        TypeDefinitionProvider, TypeModifier,
+    },
 };
 use payas_sql::PhysicalTable;
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

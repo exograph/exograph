@@ -1,24 +1,24 @@
+use crate::{
+    abstract_operation_resolver::resolve_operation, operation_resolver::OperationResolver,
+    postgres_execution_error::PostgresExecutionError,
+};
 use async_graphql_parser::{
     types::{FieldDefinition, OperationType, TypeDefinition},
     Positioned,
 };
 use async_trait::async_trait;
-
-use core_plugin_shared::interception::InterceptorIndex;
-use core_resolver::{
-    plugin::{SubsystemResolutionError, SubsystemResolver},
-    request_context::RequestContext,
-    system_resolver::SystemResolver,
-    validation::field::ValidatedField,
-    InterceptedOperation, QueryResponse,
+use core_plugin_interface::{
+    core_resolver::{
+        plugin::{SubsystemResolutionError, SubsystemResolver},
+        request_context::RequestContext,
+        system_resolver::SystemResolver,
+        validation::field::ValidatedField,
+        InterceptedOperation, QueryResponse,
+    },
+    interception::InterceptorIndex,
 };
 use payas_sql::DatabaseExecutor;
 use postgres_model::model::ModelPostgresSystem;
-
-use crate::{
-    abstract_operation_resolver::resolve_operation, operation_resolver::OperationResolver,
-    postgres_execution_error::PostgresExecutionError,
-};
 
 pub struct PostgresSubsystemResolver {
     pub id: &'static str,

@@ -3,15 +3,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use core_model::mapped_arena::MappedArena;
-use core_model_builder::{
+use crate::core_model::mapped_arena::MappedArena;
+use crate::core_model_builder::{
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
     plugin::SubsystemBuild,
     typechecker::{annotation::AnnotationSpec, typ::Type},
 };
-use core_plugin_shared::error::ModelSerializationError;
-use core_resolver::plugin::SubsystemResolver;
+use crate::core_resolver::plugin::SubsystemResolver;
+use crate::error::ModelSerializationError;
 use thiserror::Error;
 
 use crate::build_info::SubsystemCheckError;

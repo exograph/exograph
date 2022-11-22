@@ -5,10 +5,11 @@ use async_trait::async_trait;
 use futures::future::BoxFuture;
 use serde_json::Value;
 
-use core_resolver::{
+use core_plugin_interface::core_resolver::{
     system_resolver::{ClaytipExecuteQueryFn, SystemResolutionError},
     QueryResponse,
 };
+
 use payas_deno::{
     deno_executor::CallbackProcessor,
     deno_executor_pool::DenoExecutorConfig,

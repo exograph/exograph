@@ -1,28 +1,31 @@
 use async_graphql_value::indexmap::IndexMap;
 use async_graphql_value::ConstValue;
-use core_resolver::access_solver::AccessSolver;
-use core_resolver::request_context::RequestContext;
-use core_resolver::system_resolver::ClaytipExecuteQueryFn;
-use core_resolver::system_resolver::SystemResolver;
-use deno_model::model::ModelDenoSystem;
-use deno_model::service::Argument;
-use futures::StreamExt;
-use std::collections::HashMap;
 
-use core_resolver::validation::field::ValidatedField;
-use deno_model::service::ServiceMethod;
-use deno_model::types::{ServiceCompositeType, ServiceTypeKind};
+use core_plugin_interface::core_resolver::{
+    access_solver::AccessSolver,
+    claytip_execute_query,
+    request_context::RequestContext,
+    system_resolver::{ClaytipExecuteQueryFn, SystemResolver},
+    validation::field::ValidatedField,
+    QueryResponse, QueryResponseBody,
+};
+
+use deno_model::{
+    model::ModelDenoSystem,
+    service::{Argument, ServiceMethod},
+    types::{ServiceCompositeType, ServiceTypeKind},
+};
+
+use futures::StreamExt;
 use payas_deno::Arg;
 
-use crate::access_solver::DenoAccessSolver;
-use crate::clay_execution::ClayCallbackProcessor;
-use crate::deno_execution_error::DenoExecutionError;
-use crate::plugin::DenoSubsystemResolver;
-use crate::service_access_predicate::ServiceAccessPredicate;
+use crate::{
+    access_solver::DenoAccessSolver, clay_execution::ClayCallbackProcessor,
+    deno_execution_error::DenoExecutionError, plugin::DenoSubsystemResolver,
+    service_access_predicate::ServiceAccessPredicate,
+};
 
-use core_resolver::{QueryResponse, QueryResponseBody};
-
-use core_resolver::claytip_execute_query;
+use std::collections::HashMap;
 
 pub struct DenoOperation<'a> {
     pub method: &'a ServiceMethod,

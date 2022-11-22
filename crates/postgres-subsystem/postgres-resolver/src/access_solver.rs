@@ -1,17 +1,18 @@
+use crate::column_path_util;
 use async_trait::async_trait;
-use core_model::access::{AccessContextSelection, AccessRelationalOp};
-use core_resolver::access_solver::AccessPredicate;
-use core_resolver::access_solver::AccessSolver;
-use core_resolver::request_context::RequestContext;
+use core_plugin_interface::{
+    core_model::access::{AccessContextSelection, AccessRelationalOp},
+    core_resolver::{
+        access_solver::AccessPredicate, access_solver::AccessSolver,
+        request_context::RequestContext,
+    },
+};
 use maybe_owned::MaybeOwned;
+use payas_sql::{AbstractPredicate, ColumnPath};
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression, column_path::ColumnIdPath,
     model::ModelPostgresSystem,
 };
-
-use crate::column_path_util;
-use payas_sql::{AbstractPredicate, ColumnPath};
-
 use serde_json::Value;
 
 // Only to get around the orphan rule while implementing AccessSolver
@@ -217,8 +218,11 @@ fn literal_column(value: Value) -> MaybeOwned<'static, ColumnPath<'static>> {
 mod tests {
     use std::collections::HashMap;
 
-    use core_model::access::{AccessLogicalExpression, AccessPredicateExpression};
-    use core_plugin_shared::interception::InterceptionMap;
+    use core_plugin_interface::{
+        core_model::access::{AccessLogicalExpression, AccessPredicateExpression},
+        interception::InterceptionMap,
+    };
+
     use core_resolver::introspection::definition::schema::Schema;
     use core_resolver::request_context::Request;
     use core_resolver::system_resolver::SystemResolver;

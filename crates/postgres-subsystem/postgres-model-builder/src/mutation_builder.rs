@@ -1,24 +1,29 @@
 //! Build mutation input types (<Type>CreationInput, <Type>UpdateInput, <Type>ReferenceInput) and
 //! mutations (create<Type>, update<Type>, and delete<Type> as well as their plural versions)
 
-use super::naming::ToPostgresTypeNames;
-use super::resolved_builder::ResolvedFieldType;
-use super::type_builder::ResolvedTypeEnv;
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use postgres_model::operation::{OperationReturnType, PostgresMutation, PostgresMutationKind};
-use postgres_model::relation::PostgresRelation;
-use postgres_model::types::{
-    PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
-    PostgresTypeModifier,
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+
+use postgres_model::{
+    operation::{OperationReturnType, PostgresMutation, PostgresMutationKind},
+    relation::PostgresRelation,
+    types::{
+        PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
+        PostgresTypeModifier,
+    },
 };
 
-use super::builder::Builder;
-use super::create_mutation_builder::CreateMutationBuilder;
-use super::delete_mutation_builder::DeleteMutationBuilder;
-use super::reference_input_type_builder::ReferenceInputTypeBuilder;
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
-use super::system_builder::SystemContextBuilding;
-use super::update_mutation_builder::UpdateMutationBuilder;
+use super::{
+    builder::Builder,
+    create_mutation_builder::CreateMutationBuilder,
+    delete_mutation_builder::DeleteMutationBuilder,
+    naming::ToPostgresTypeNames,
+    reference_input_type_builder::ReferenceInputTypeBuilder,
+    resolved_builder::ResolvedFieldType,
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+    type_builder::ResolvedTypeEnv,
+    update_mutation_builder::UpdateMutationBuilder,
+};
 
 // TODO: Introduce this module as a struct (and have it hold the sub-builders)
 // TODO: Abstract the concept of composite builders

@@ -22,10 +22,7 @@ pg_bigdecimal = "0.1.4"
 uuid = "1.1.2"
 
 payas-sql = { path = "../../../libs/payas-sql" }
-core-model = { path = "../../core-subsystem/core-model" }
-core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-core-resolver = { path = "../../core-subsystem/core-resolver" }
 postgres-model = { path = "../postgres-model" }
 
 [dev-dependencies]

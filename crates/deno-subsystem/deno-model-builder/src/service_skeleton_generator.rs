@@ -1,10 +1,11 @@
 use std::io::Write;
 use std::{fs::File, path::Path};
 
-use core_model_builder::ast::ast_types::{AstArgument, AstFieldType, AstModel, AstService};
-use core_model_builder::typechecker::Typed;
-
-use core_model_builder::error::ModelBuildingError;
+use core_plugin_interface::core_model_builder::{
+    ast::ast_types::{AstArgument, AstFieldType, AstModel, AstService},
+    error::ModelBuildingError,
+    typechecker::Typed,
+};
 
 // Temporary. Eventually, we will have a published artifact (at https://deno.land/x/claytip@<version>) that contains this code.
 // Then, we will have this imported in each generated service code (currently, it suffices to just have it in the same directory as the service code).

@@ -1,7 +1,10 @@
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use core_model_builder::{
-    builder::system_builder::BaseModelSystem, error::ModelBuildingError, typechecker::typ::Type,
+use core_plugin_interface::{
+    core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
+    core_model_builder::{
+        builder::system_builder::BaseModelSystem, error::ModelBuildingError, typechecker::typ::Type,
+    },
 };
+
 use postgres_model::{
     model::ModelPostgresSystem,
     operation::{PostgresMutation, PostgresQuery},
@@ -12,10 +15,9 @@ use postgres_model::{
 
 use payas_sql::PhysicalTable;
 
-use super::type_builder::ResolvedTypeEnv;
 use super::{
     mutation_builder, order_by_type_builder, predicate_builder, query_builder, resolved_builder,
-    type_builder,
+    type_builder, type_builder::ResolvedTypeEnv,
 };
 
 pub fn build(
@@ -118,7 +120,7 @@ impl SystemContextBuilding {
 
 #[cfg(test)]
 mod tests {
-    use core_model::mapped_arena::SerializableSlab;
+    use core_plugin_interface::core_model::mapped_arena::SerializableSlab;
     use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType};
 
     use super::*;

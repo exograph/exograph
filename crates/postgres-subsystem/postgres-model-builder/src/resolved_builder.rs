@@ -4,27 +4,30 @@
 //! column name, here that information is encoded into an attribute of `ResolvedType`.
 //! If no @column is provided, the encoded information is set to an appropriate default value.
 
-use super::access_builder::{build_access, ResolvedAccess};
-use super::naming::{ToPlural, ToTableName};
-
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
-use core_model::mapped_arena::MappedArena;
-use core_model_builder::builder::resolved_builder::AnnotationMapHelper;
-use core_model_builder::typechecker::typ::Type;
-use core_model_builder::typechecker::Typed;
 
-use super::builder::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID};
-use core_model_builder::ast::ast_types::{
-    AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind, AstFieldType,
-    AstModel, AstModelKind,
+use core_plugin_interface::{
+    core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType},
+    core_model_builder::{
+        ast::ast_types::{
+            AstAnnotationParams, AstExpr, AstField, AstFieldDefault, AstFieldDefaultKind,
+            AstFieldType, AstModel, AstModelKind,
+        },
+        builder::resolved_builder::AnnotationMapHelper,
+        error::ModelBuildingError,
+        typechecker::{typ::Type, Typed},
+    },
 };
-use core_model_builder::error::ModelBuildingError;
+
+use super::{
+    access_builder::{build_access, ResolvedAccess},
+    builder::{DEFAULT_FN_AUTOINCREMENT, DEFAULT_FN_CURRENT_TIME, DEFAULT_FN_GENERATE_UUID},
+    naming::{ToPlural, ToTableName},
+    type_builder::ResolvedTypeEnv,
+};
+
 use heck::ToSnakeCase;
 use serde::{Deserialize, Serialize};
-
-use core_model::primitive_type::PrimitiveType;
-
-use super::type_builder::ResolvedTypeEnv;
 
 impl ToPlural for ResolvedCompositeType {
     fn to_singular(&self) -> String {
