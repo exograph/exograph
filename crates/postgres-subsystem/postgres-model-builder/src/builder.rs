@@ -1,6 +1,6 @@
 //! Transforms an AstSystem into a GraphQL system
 
-use core_model::mapped_arena::MappedArena;
+use core_plugin_interface::core_model::mapped_arena::MappedArena;
 use postgres_model::types::{PostgresType, PostgresTypeKind};
 
 use super::{

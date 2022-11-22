@@ -1,20 +1,18 @@
 use crate::model::ModelPostgresSystem;
 
-use super::column_path::ColumnIdPathLink;
+use super::{column_path::ColumnIdPathLink, types::PostgresTypeModifier};
 use async_graphql_parser::{
     types::{EnumType, EnumValueDefinition, InputObjectType, TypeDefinition, TypeKind},
     Pos, Positioned,
 };
 use async_graphql_value::Name;
-use core_model::{
+use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
         default_positioned, default_positioned_name, InputValueProvider, Parameter, ParameterType,
         TypeDefinitionProvider, TypeModifier,
     },
 };
-
-use super::types::PostgresTypeModifier;
 
 use serde::{Deserialize, Serialize};
 

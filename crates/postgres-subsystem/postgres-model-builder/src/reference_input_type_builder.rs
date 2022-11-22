@@ -1,16 +1,19 @@
 //! Build the reference input type (used to refer to an entity by its pk)
 
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use postgres_model::access::Access;
-use postgres_model::relation::PostgresRelation;
-use postgres_model::types::{PostgresCompositeType, PostgresType, PostgresTypeKind};
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use postgres_model::{
+    access::Access,
+    relation::PostgresRelation,
+    types::{PostgresCompositeType, PostgresType, PostgresTypeKind},
+};
 
-use super::naming::ToPostgresTypeNames;
-
-use super::builder::Builder;
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
-use super::system_builder::SystemContextBuilding;
-use super::type_builder::ResolvedTypeEnv;
+use super::{
+    builder::Builder,
+    naming::ToPostgresTypeNames,
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+    type_builder::ResolvedTypeEnv,
+};
 
 pub struct ReferenceInputTypeBuilder;
 

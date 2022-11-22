@@ -1,5 +1,5 @@
 #[cfg(test)]
-use core_plugin_shared::{
+use core_plugin_interface::{
     error::ModelSerializationError, serializable_system::SerializableSystem,
     system_serializer::SystemSerializer,
 };

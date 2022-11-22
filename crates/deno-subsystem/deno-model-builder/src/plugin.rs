@@ -1,17 +1,20 @@
-use core_model::mapped_arena::MappedArena;
-use core_model_builder::{
-    builder::system_builder::BaseModelSystem,
-    error::ModelBuildingError,
-    plugin::{Interception, SubsystemBuild},
-    typechecker::{
-        annotation::{AnnotationSpec, AnnotationTarget},
-        typ::Type,
+use core_plugin_interface::{
+    core_model::mapped_arena::MappedArena,
+    core_model_builder::{
+        builder::system_builder::BaseModelSystem,
+        error::ModelBuildingError,
+        plugin::{Interception, SubsystemBuild},
+        typechecker::{
+            annotation::{AnnotationSpec, AnnotationTarget},
+            typ::Type,
+        },
     },
+    interception::InterceptorIndex,
+    interface::SubsystemBuilder,
+    system_serializer::SystemSerializer,
 };
-use core_plugin_shared::{interception::InterceptorIndex, system_serializer::SystemSerializer};
 
 use crate::system_builder::ModelDenoSystemWithInterceptors;
-use core_plugin_interface::interface::SubsystemBuilder;
 
 pub struct DenoSubsystemBuilder {}
 core_plugin_interface::export_subsystem_builder!(DenoSubsystemBuilder {});

@@ -1,20 +1,24 @@
 //! Build update mutation types <Type>UpdateInput, update<Type>, and update<Type>s
 
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use postgres_model::access::Access;
-use postgres_model::operation::{PostgresMutationKind, UpdateDataParameter};
-use postgres_model::types::{
-    PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use postgres_model::{
+    access::Access,
+    operation::{PostgresMutationKind, UpdateDataParameter},
+    types::{
+        PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
+    },
 };
 
-use super::builder::Builder;
-use super::mutation_builder::{create_data_type_name, update_data_type_name};
-use super::mutation_builder::{DataParamBuilder, MutationBuilder};
-use super::naming::{ToPostgresMutationNames, ToPostgresTypeNames};
-use super::query_builder;
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
-use super::system_builder::SystemContextBuilding;
-use super::type_builder::ResolvedTypeEnv;
+use super::{
+    builder::Builder,
+    mutation_builder::{create_data_type_name, update_data_type_name},
+    mutation_builder::{DataParamBuilder, MutationBuilder},
+    naming::{ToPostgresMutationNames, ToPostgresTypeNames},
+    query_builder,
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+    type_builder::ResolvedTypeEnv,
+};
 
 pub struct UpdateMutationBuilder;
 

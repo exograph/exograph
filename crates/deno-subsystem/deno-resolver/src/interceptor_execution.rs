@@ -1,5 +1,5 @@
 use async_graphql_value::indexmap::IndexMap;
-use core_resolver::{
+use core_plugin_interface::core_resolver::{
     request_context::RequestContext, system_resolver::ClaytipExecuteQueryFn, InterceptedOperation,
 };
 use deno_model::interceptor::Interceptor;

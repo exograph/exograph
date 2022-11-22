@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use deno_core::{error::AnyError, op, OpState};
 
-use core_resolver::system_resolver::SystemResolutionError;
+use core_plugin_interface::core_resolver::system_resolver::SystemResolutionError;
 use serde_json::Value;
 use std::{cell::RefCell, rc::Rc};
 use tokio::sync::mpsc::Sender;

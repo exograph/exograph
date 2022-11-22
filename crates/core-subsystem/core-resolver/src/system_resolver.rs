@@ -201,7 +201,7 @@ macro_rules! claytip_execute_query {
         &move |query_string: String,
                variables: Option<serde_json::Map<String, serde_json::Value>>,
                context_override: serde_json::Value| {
-            use core_resolver::QueryResponseBody;
+            use core_plugin_interface::core_resolver::{OperationsPayload, QueryResponseBody};
             use futures::FutureExt;
 
             let new_request_context = $request_context.with_override(context_override);
@@ -209,7 +209,7 @@ macro_rules! claytip_execute_query {
                 // execute query
                 let result = $system_resolver
                     .resolve_operations(
-                        core_resolver::OperationsPayload {
+                        OperationsPayload {
                             operation_name: None,
                             query: query_string,
                             variables,
