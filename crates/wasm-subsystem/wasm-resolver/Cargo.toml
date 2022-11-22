@@ -15,10 +15,7 @@ wasmtime = "2.0.0"
 wasmtime-wasi = "2.0.0"
 
 payas-wasm = { path = "../../../libs/payas-wasm" }
-core-model = { path = "../../core-subsystem/core-model" }
-core-plugin-shared = { path = "../../core-subsystem/core-plugin-shared" }
 core-plugin-interface = { path = "../../core-subsystem/core-plugin-interface" }
-core-resolver = { path = "../../core-subsystem/core-resolver" }
 wasm-model = { path = "../wasm-model" }
 
 

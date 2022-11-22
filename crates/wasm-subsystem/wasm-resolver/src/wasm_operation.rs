@@ -1,14 +1,12 @@
-use std::collections::HashMap;
-
+use crate::{plugin::WasmSubsystemResolver, wasm_execution_error::WasmExecutionError};
 use async_graphql_value::ConstValue;
-use core_resolver::{
+use core_plugin_interface::core_resolver::{
     request_context::RequestContext, system_resolver::SystemResolver,
     validation::field::ValidatedField, QueryResponse, QueryResponseBody,
 };
+use std::collections::HashMap;
 use wasm_model::service::ServiceMethod;
 use wasmtime::Val;
-
-use crate::{plugin::WasmSubsystemResolver, wasm_execution_error::WasmExecutionError};
 
 pub struct WasmOperation<'a> {
     pub method: &'a ServiceMethod,
