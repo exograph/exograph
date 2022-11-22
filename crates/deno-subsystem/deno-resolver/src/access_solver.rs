@@ -1,9 +1,13 @@
 use async_trait::async_trait;
-use core_model::access::{AccessContextSelection, AccessRelationalOp};
-use core_resolver::{
-    access_solver::{AccessPredicate, AccessSolver},
-    request_context::RequestContext,
+
+use core_plugin_interface::{
+    core_model::access::{AccessContextSelection, AccessRelationalOp},
+    core_resolver::{
+        access_solver::{AccessPredicate, AccessSolver},
+        request_context::RequestContext,
+    },
 };
+
 use deno_model::{access::ServiceAccessPrimitiveExpression, model::ModelDenoSystem};
 
 use serde_json::Value;
