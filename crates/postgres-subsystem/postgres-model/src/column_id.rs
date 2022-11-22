@@ -1,11 +1,7 @@
-use payas_sql::PhysicalTable;
-use serde::{Deserialize, Serialize};
-
-use payas_sql::PhysicalColumn;
-
-use core_model::mapped_arena::SerializableSlabIndex;
-
 use crate::model::ModelPostgresSystem;
+use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use payas_sql::{PhysicalColumn, PhysicalTable};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ColumnId {

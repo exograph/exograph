@@ -1,4 +1,4 @@
-use core_model::mapped_arena::SerializableSlabIndex;
+use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 
 use postgres_model::{
     column_path::ColumnIdPathLink,
@@ -9,11 +9,11 @@ use postgres_model::{
     },
 };
 
-use super::system_builder::SystemContextBuilding;
-use super::type_builder::ResolvedTypeEnv;
 use super::{
     column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+    type_builder::ResolvedTypeEnv,
 };
 
 pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {

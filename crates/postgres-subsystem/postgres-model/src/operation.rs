@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use core_model::{
+use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{Operation, Parameter, TypeModifier},
 };

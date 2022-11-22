@@ -1,9 +1,10 @@
 // use super::column_path::ColumnIdPath;
 
-use core_model::access::{AccessContextSelection, AccessPredicateExpression};
-use serde::{Deserialize, Serialize};
-
 use crate::column_path::ColumnIdPath;
+use core_plugin_interface::core_model::access::{
+    AccessContextSelection, AccessPredicateExpression,
+};
+use serde::{Deserialize, Serialize};
 
 /// Access specification for a model
 #[derive(Serialize, Deserialize, Debug, Clone)]

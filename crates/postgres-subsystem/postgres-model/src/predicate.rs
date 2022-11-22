@@ -2,10 +2,8 @@ use crate::{column_path::ColumnIdPathLink, model::ModelPostgresSystem};
 use async_graphql_parser::types::{InputObjectType, TypeDefinition, TypeKind};
 use serde::{Deserialize, Serialize};
 
-use super::types::PostgresType;
-
-use super::types::PostgresTypeModifier;
-use core_model::{
+use super::types::{PostgresType, PostgresTypeModifier};
+use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
         default_positioned, default_positioned_name, InputValueProvider, Parameter, ParameterType,

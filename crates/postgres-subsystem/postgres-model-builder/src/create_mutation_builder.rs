@@ -1,19 +1,21 @@
 //! Build mutation input types associated with creation (<Type>CreationInput) and
 //! the create mutations (create<Type>, and create<Type>s)
 
-use super::naming::{ToPostgresMutationNames, ToPostgresTypeNames};
-use super::type_builder::ResolvedTypeEnv;
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 
-use postgres_model::operation::{
-    CreateDataParameter, CreateDataParameterTypeWithModifier, PostgresMutationKind,
+use postgres_model::{
+    operation::{CreateDataParameter, CreateDataParameterTypeWithModifier, PostgresMutationKind},
+    types::{PostgresCompositeType, PostgresType, PostgresTypeKind},
 };
-use postgres_model::types::{PostgresCompositeType, PostgresType, PostgresTypeKind};
 
-use super::builder::Builder;
-use super::mutation_builder::{DataParamBuilder, MutationBuilder};
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
-use super::system_builder::SystemContextBuilding;
+use super::{
+    builder::Builder,
+    mutation_builder::{DataParamBuilder, MutationBuilder},
+    naming::{ToPostgresMutationNames, ToPostgresTypeNames},
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+    type_builder::ResolvedTypeEnv,
+};
 
 pub struct CreateMutationBuilder;
 

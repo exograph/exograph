@@ -1,6 +1,8 @@
 use payas_sql::AbstractOperation;
 
-use core_resolver::{request_context::RequestContext, QueryResponse, QueryResponseBody};
+use core_plugin_interface::core_resolver::{
+    request_context::RequestContext, QueryResponse, QueryResponseBody,
+};
 use postgres_types::FromSqlOwned;
 use tokio_postgres::Row;
 

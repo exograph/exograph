@@ -1,25 +1,32 @@
 use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::ResolvedFieldType};
-use core_model::context_type::ContextType;
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use core_model::primitive_type::PrimitiveType;
-use core_model_builder::ast::ast_types::AstExpr;
 
-use core_model_builder::typechecker::Typed;
+use core_plugin_interface::{
+    core_model::{
+        context_type::ContextType,
+        mapped_arena::{MappedArena, SerializableSlabIndex},
+        primitive_type::PrimitiveType,
+    },
+    core_model_builder::{ast::ast_types::AstExpr, error::ModelBuildingError, typechecker::Typed},
+};
+
 use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, PhysicalTable};
-use postgres_model::access::Access;
-use postgres_model::column_id::ColumnId;
-use postgres_model::relation::{PostgresRelation, RelationCardinality};
-use postgres_model::types::{
-    PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
+
+use postgres_model::{
+    access::Access,
+    column_id::ColumnId,
+    relation::{PostgresRelation, RelationCardinality},
+    types::{
+        PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
+    },
 };
 
-use super::naming::ToPostgresQueryName;
-use super::resolved_builder::{
-    ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedType, ResolvedTypeHint,
+use super::{
+    naming::ToPostgresQueryName,
+    resolved_builder::{
+        ResolvedCompositeType, ResolvedField, ResolvedFieldDefault, ResolvedType, ResolvedTypeHint,
+    },
+    system_builder::SystemContextBuilding,
 };
-use super::system_builder::SystemContextBuilding;
-
-use core_model_builder::error::ModelBuildingError;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedTypeEnv<'a> {

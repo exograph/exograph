@@ -1,18 +1,19 @@
 //! Build mutation input types associatd with deletion (<Type>DeletionInput) and
 //! the create mutations (delete<Type>, and delete<Type>s)
 
-use super::naming::ToPostgresMutationNames;
-use super::resolved_builder::{ResolvedCompositeType, ResolvedType};
-use super::type_builder::ResolvedTypeEnv;
-use core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use postgres_model::operation::PostgresMutationKind;
 use postgres_model::types::{PostgresType, PostgresTypeKind};
 
-use super::query_builder;
-
-use super::builder::Builder;
-use super::mutation_builder::MutationBuilder;
-use super::system_builder::SystemContextBuilding;
+use super::{
+    builder::Builder,
+    mutation_builder::MutationBuilder,
+    naming::ToPostgresMutationNames,
+    query_builder,
+    resolved_builder::{ResolvedCompositeType, ResolvedType},
+    system_builder::SystemContextBuilding,
+    type_builder::ResolvedTypeEnv,
+};
 
 pub struct DeleteMutationBuilder;
 

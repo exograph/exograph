@@ -1,17 +1,13 @@
-use async_graphql_parser::types::TypeDefinition;
-use async_graphql_parser::types::TypeKind;
-use core_model::type_normalization::default_positioned_name;
-use core_model::type_normalization::Parameter;
-use core_model::type_normalization::TypeDefinitionProvider;
-use core_model::type_normalization::TypeModifier;
-use serde::{Deserialize, Serialize};
-
+use super::types::{PostgresType, PostgresTypeModifier};
 use crate::model::ModelPostgresSystem;
-
-use super::types::PostgresType;
-
-use super::types::PostgresTypeModifier;
-use core_model::mapped_arena::SerializableSlabIndex;
+use async_graphql_parser::types::{TypeDefinition, TypeKind};
+use core_plugin_interface::core_model::{
+    mapped_arena::SerializableSlabIndex,
+    type_normalization::{
+        default_positioned_name, Parameter, TypeDefinitionProvider, TypeModifier,
+    },
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LimitParameter {
