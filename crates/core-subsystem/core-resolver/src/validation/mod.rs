@@ -13,7 +13,7 @@ mod arguments_validator;
 mod operation_validator;
 mod selection_set_validator;
 
-fn underlying_type(typ: &Type) -> &Name {
+pub fn underlying_type(typ: &Type) -> &Name {
     match &typ.base {
         BaseType::Named(name) => name,
         BaseType::List(typ) => underlying_type(typ),

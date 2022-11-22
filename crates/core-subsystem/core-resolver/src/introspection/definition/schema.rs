@@ -1,3 +1,5 @@
+use std::collections::{HashMap, HashSet};
+
 use async_graphql_parser::{
     types::{
         BaseType, FieldDefinition, InputValueDefinition, ObjectType, Type, TypeDefinition, TypeKind,
@@ -10,7 +12,7 @@ use core_model::type_normalization::{
     default_positioned, default_positioned_name, TypeDefinitionIntrospection,
 };
 
-use crate::plugin::SubsystemResolver;
+use crate::{plugin::SubsystemResolver, validation::underlying_type};
 
 #[derive(Debug, Clone)]
 pub struct Schema {
@@ -117,6 +119,51 @@ impl Schema {
         type_definitions.push(Self::create_directive_definition());
         type_definitions.push(Self::create_directive_location_definition());
         type_definitions.push(Self::create_input_value_definition());
+
+        // We may have unused scalars (an artifact of how our typechecking starts with supplying all scalars)
+        // So here we remove unused ones
+        let (scalars, mut type_definitions): (Vec<_>, Vec<_>) = type_definitions
+            .into_iter()
+            .partition(|td| matches!(td.kind, TypeKind::Scalar));
+
+        // Start with assuming no scalars are used
+        let mut unused_scalars_names: HashSet<String> = scalars
+            .iter()
+            .map(|td| td.name.node.as_str().to_string())
+            .collect();
+
+        // Next, remove scalars that are used
+        for td in &type_definitions {
+            match &td.kind {
+                TypeKind::Object(object_type) => {
+                    for field in &object_type.fields {
+                        unused_scalars_names.remove(underlying_type(&field.node.ty.node).as_str());
+                    }
+                }
+                TypeKind::Interface(interface_type) => {
+                    for field in &interface_type.fields {
+                        unused_scalars_names.remove(underlying_type(&field.node.ty.node).as_str());
+                    }
+                }
+                TypeKind::InputObject(input_object_type) => {
+                    for field in &input_object_type.fields {
+                        unused_scalars_names.remove(underlying_type(&field.node.ty.node).as_str());
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let used_scalars = scalars
+            .into_iter()
+            .filter(|td| !unused_scalars_names.contains(td.name.node.as_str()));
+        // Create a unique list of scalars (each subsystem may expose the same scalar)
+        let unique_scalars: HashMap<_, _> = used_scalars
+            .into_iter()
+            .map(|td| (td.name.node.as_str().to_string(), td))
+            .collect();
+
+        type_definitions.extend(unique_scalars.into_values().into_iter());
 
         Schema {
             type_definitions,
