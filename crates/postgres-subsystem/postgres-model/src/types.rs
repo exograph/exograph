@@ -1,7 +1,7 @@
 use super::access::Access;
 use super::{column_id::ColumnId, relation::PostgresRelation};
 use crate::model::ModelPostgresSystem;
-use crate::operation::{PostgresQuery, PostgresQueryParameter};
+use crate::operation::{CollectionQuery, CollectionQueryParameter, PkQuery};
 use async_graphql_parser::types::{
     BaseType, FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, Type,
     TypeDefinition, TypeKind,
@@ -78,8 +78,8 @@ pub enum PostgresTypeKind {
 pub struct PostgresCompositeType {
     pub fields: Vec<PostgresField>,
     pub table_id: SerializableSlabIndex<PhysicalTable>,
-    pub pk_query: SerializableSlabIndex<PostgresQuery>,
-    pub collection_query: SerializableSlabIndex<PostgresQuery>,
+    pub pk_query: SerializableSlabIndex<PkQuery>,
+    pub collection_query: SerializableSlabIndex<CollectionQuery>,
     pub access: Access,
 }
 
@@ -230,9 +230,9 @@ impl FieldDefinitionProvider<ModelPostgresSystem> for PostgresField {
                     PostgresTypeKind::Primitive => panic!(),
                     PostgresTypeKind::Composite(kind) => {
                         let collection_query = kind.collection_query;
-                        let collection_query = &system.queries[collection_query];
+                        let collection_query = &system.collection_queries[collection_query];
 
-                        let PostgresQueryParameter {
+                        let CollectionQueryParameter {
                             predicate_param,
                             order_by_param,
                             limit_param,

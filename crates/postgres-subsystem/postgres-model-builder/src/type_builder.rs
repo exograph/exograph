@@ -121,12 +121,12 @@ fn expand_persistent_type_no_fields(
     let table_id = building.tables.add(&table_name, table);
 
     let pk_query = building
-        .queries
+        .pk_queries
         .get_id(&resolved_postgres_type.pk_query())
         .unwrap();
 
     let collection_query = building
-        .queries
+        .collection_queries
         .get_id(&resolved_postgres_type.collection_query())
         .unwrap();
 

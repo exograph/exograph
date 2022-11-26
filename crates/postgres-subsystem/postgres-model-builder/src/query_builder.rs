@@ -3,7 +3,9 @@ use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableS
 use postgres_model::{
     column_path::ColumnIdPathLink,
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
-    operation::{OperationReturnType, PostgresQuery, PostgresQueryParameter},
+    operation::{
+        CollectionQuery, CollectionQueryParameter, OperationReturnType, PkQuery, PkQueryParameter,
+    },
     predicate::{PredicateParameter, PredicateParameterTypeWithModifier},
     types::{PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
@@ -23,10 +25,10 @@ pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemCo
             let collection_query = shallow_collection_query(model_type_id, c);
 
             building
-                .queries
+                .pk_queries
                 .add(&shallow_query.name.to_owned(), shallow_query);
             building
-                .queries
+                .collection_queries
                 .add(&collection_query.name.to_owned(), collection_query);
         }
     }
@@ -38,14 +40,14 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
             {
                 let operation_name = model_type.pk_query();
                 let query = expanded_pk_query(model_type_id, model_type, building);
-                let existing_id = building.queries.get_id(&operation_name).unwrap();
-                building.queries[existing_id] = query;
+                let existing_id = building.pk_queries.get_id(&operation_name).unwrap();
+                building.pk_queries[existing_id] = query;
             }
             {
                 let operation_name = model_type.collection_query();
                 let query = expanded_collection_query(model_type_id, model_type, building);
-                let existing_id = building.queries.get_id(&operation_name).unwrap();
-                building.queries[existing_id] = query;
+                let existing_id = building.collection_queries.get_id(&operation_name).unwrap();
+                building.collection_queries[existing_id] = query;
             }
         }
     }
@@ -54,15 +56,12 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
 fn shallow_pk_query(
     model_type_id: SerializableSlabIndex<PostgresType>,
     typ: &ResolvedCompositeType,
-) -> PostgresQuery {
+) -> PkQuery {
     let operation_name = typ.pk_query();
-    PostgresQuery {
+    PkQuery {
         name: operation_name,
-        parameter: PostgresQueryParameter {
+        parameter: PkQueryParameter {
             predicate_param: None,
-            order_by_param: None,
-            limit_param: None,
-            offset_param: None,
         },
         return_type: OperationReturnType {
             type_id: model_type_id,
@@ -76,19 +75,16 @@ fn expanded_pk_query(
     model_type_id: SerializableSlabIndex<PostgresType>,
     model_type: &PostgresType,
     building: &SystemContextBuilding,
-) -> PostgresQuery {
+) -> PkQuery {
     let operation_name = model_type.pk_query();
-    let existing_query = building.queries.get_by_key(&operation_name).unwrap();
+    let existing_query = building.pk_queries.get_by_key(&operation_name).unwrap();
 
     let pk_param = pk_predicate_param(model_type_id, model_type, building);
 
-    PostgresQuery {
+    PkQuery {
         name: operation_name,
-        parameter: PostgresQueryParameter {
+        parameter: PkQueryParameter {
             predicate_param: Some(pk_param),
-            order_by_param: None,
-            limit_param: None,
-            offset_param: None,
         },
         return_type: existing_query.return_type.clone(),
     }
@@ -125,11 +121,11 @@ pub fn pk_predicate_param(
 fn shallow_collection_query(
     model_type_id: SerializableSlabIndex<PostgresType>,
     model: &ResolvedCompositeType,
-) -> PostgresQuery {
+) -> CollectionQuery {
     let operation_name = model.collection_query();
-    PostgresQuery {
+    CollectionQuery {
         name: operation_name,
-        parameter: PostgresQueryParameter {
+        parameter: CollectionQueryParameter {
             predicate_param: None,
             order_by_param: None,
             limit_param: None,
@@ -147,18 +143,21 @@ fn expanded_collection_query(
     model_type_id: SerializableSlabIndex<PostgresType>,
     model_type: &PostgresType,
     building: &SystemContextBuilding,
-) -> PostgresQuery {
+) -> CollectionQuery {
     let operation_name = model_type.collection_query();
-    let existing_query = building.queries.get_by_key(&operation_name).unwrap();
+    let existing_query = building
+        .collection_queries
+        .get_by_key(&operation_name)
+        .unwrap();
 
     let predicate_param = collection_predicate_param(model_type_id, model_type, building);
     let order_by_param = order_by_type_builder::new_root_param(&model_type.name, false, building);
     let limit_param = limit_param(building);
     let offset_param = offset_param(building);
 
-    PostgresQuery {
+    CollectionQuery {
         name: operation_name.clone(),
-        parameter: PostgresQueryParameter {
+        parameter: CollectionQueryParameter {
             predicate_param: Some(predicate_param),
             order_by_param: Some(order_by_param),
             limit_param: Some(limit_param),

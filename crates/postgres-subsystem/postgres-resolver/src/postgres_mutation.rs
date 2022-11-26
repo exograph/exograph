@@ -38,12 +38,30 @@ impl OperationResolver for PostgresMutation {
 
         let abstract_select = {
             let (_, pk_query, collection_query) = return_type_info(return_type, subsystem);
-            let selection_query = match return_type.type_modifier {
-                PostgresTypeModifier::List => collection_query,
-                PostgresTypeModifier::NonNull | PostgresTypeModifier::Optional => pk_query,
-            };
+            let (predicate_param, order_by_param, limit_param, offset_param) =
+                match return_type.type_modifier {
+                    PostgresTypeModifier::List => (
+                        &collection_query.parameter.predicate_param,
+                        &collection_query.parameter.order_by_param,
+                        &collection_query.parameter.limit_param,
+                        &collection_query.parameter.offset_param,
+                    ),
+                    PostgresTypeModifier::NonNull | PostgresTypeModifier::Optional => {
+                        (&pk_query.parameter.predicate_param, &None, &None, &None)
+                    }
+                };
 
-            compute_select(selection_query, field, subsystem, request_context).await?
+            compute_select(
+                predicate_param,
+                order_by_param,
+                limit_param,
+                offset_param,
+                return_type,
+                field,
+                subsystem,
+                request_context,
+            )
+            .await?
         };
 
         Ok(match &self.kind {

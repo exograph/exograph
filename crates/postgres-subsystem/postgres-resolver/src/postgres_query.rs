@@ -18,48 +18,82 @@ use payas_sql::{
     ColumnSelection, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
+    limit_offset::{LimitParameter, OffsetParameter},
     model::ModelPostgresSystem,
-    operation::{PostgresQuery, PostgresQueryParameter},
+    operation::{CollectionQuery, OperationReturnType, PkQuery},
     order::OrderByParameter,
+    predicate::PredicateParameter,
     relation::{PostgresRelation, RelationCardinality},
     types::{PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
 
 #[async_trait]
-impl OperationResolver for PostgresQuery {
+impl OperationResolver for PkQuery {
     async fn resolve<'a>(
         &'a self,
         field: &'a ValidatedField,
         request_context: &'a RequestContext<'a>,
         subsystem: &'a ModelPostgresSystem,
     ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
-        let abstract_select = compute_select(self, field, subsystem, request_context).await?;
+        let abstract_select = compute_select(
+            &self.parameter.predicate_param,
+            &None,
+            &None,
+            &None,
+            &self.return_type,
+            field,
+            subsystem,
+            request_context,
+        )
+        .await?;
 
         Ok(AbstractOperation::Select(abstract_select))
     }
 }
 
+#[async_trait]
+impl OperationResolver for CollectionQuery {
+    async fn resolve<'a>(
+        &'a self,
+        field: &'a ValidatedField,
+        request_context: &'a RequestContext<'a>,
+        subsystem: &'a ModelPostgresSystem,
+    ) -> Result<AbstractOperation<'a>, PostgresExecutionError> {
+        let parameter = &self.parameter;
+        let abstract_select = compute_select(
+            &parameter.predicate_param,
+            &parameter.order_by_param,
+            &parameter.limit_param,
+            &parameter.offset_param,
+            &self.return_type,
+            field,
+            subsystem,
+            request_context,
+        )
+        .await?;
+
+        Ok(AbstractOperation::Select(abstract_select))
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 pub async fn compute_select<'content>(
-    query: &'content PostgresQuery,
+    predicate_param: &'content Option<PredicateParameter>,
+    order_by_param: &'content Option<OrderByParameter>,
+    limit_param: &Option<LimitParameter>,
+    offset_param: &Option<OffsetParameter>,
+    return_type: &OperationReturnType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
 ) -> Result<AbstractSelect<'content>, PostgresExecutionError> {
     let access_predicate = check_access(
-        &query.return_type,
+        return_type,
         &SQLOperationKind::Retrieve,
         subsystem,
         request_context,
     )
     .await?;
-
-    let PostgresQueryParameter {
-        predicate_param,
-        order_by_param,
-        limit_param,
-        offset_param,
-        ..
-    } = &query.parameter;
 
     let query_predicate = super::predicate_mapper::compute_predicate(
         predicate_param.as_ref(),
@@ -73,13 +107,18 @@ pub async fn compute_select<'content>(
     let limit = extract_and_map(limit_param.as_ref(), &field.arguments, subsystem)?;
     let offset = extract_and_map(offset_param.as_ref(), &field.arguments, subsystem)?;
 
-    let return_type = query.return_type.typ(subsystem);
+    let return_postgres_type = return_type.typ(subsystem);
 
-    let content_object =
-        content_select(return_type, &field.subfields, subsystem, request_context).await?;
+    let content_object = content_select(
+        return_postgres_type,
+        &field.subfields,
+        subsystem,
+        request_context,
+    )
+    .await?;
 
     let root_physical_table =
-        if let PostgresTypeKind::Composite(composite_root_type) = &return_type.kind {
+        if let PostgresTypeKind::Composite(composite_root_type) = &return_postgres_type.kind {
             &subsystem.tables[composite_root_type.table_id]
         } else {
             return Err(PostgresExecutionError::Generic(
@@ -87,7 +126,7 @@ pub async fn compute_select<'content>(
             ));
         };
 
-    let selection_cardinality = match query.return_type.type_modifier {
+    let selection_cardinality = match return_type.type_modifier {
         PostgresTypeModifier::Optional | PostgresTypeModifier::NonNull => SelectionCardinality::One,
         PostgresTypeModifier::List => SelectionCardinality::Many,
     };
@@ -157,7 +196,7 @@ async fn map_field<'content>(
 
                 let other_table_pk_query = match &other_type.kind {
                     PostgresTypeKind::Primitive => panic!(""),
-                    PostgresTypeKind::Composite(kind) => &subsystem.queries[kind.pk_query],
+                    PostgresTypeKind::Composite(kind) => &subsystem.pk_queries[kind.pk_query],
                 };
                 let self_table = &subsystem.tables[return_type
                     .table_id()
@@ -172,8 +211,17 @@ async fn map_field<'content>(
                     )),
                 };
 
-                let nested_abstract_select =
-                    compute_select(other_table_pk_query, field, subsystem, request_context).await?;
+                let nested_abstract_select = compute_select(
+                    &other_table_pk_query.parameter.predicate_param,
+                    &None,
+                    &None,
+                    &None,
+                    &other_table_pk_query.return_type,
+                    field,
+                    subsystem,
+                    request_context,
+                )
+                .await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
             }
             PostgresRelation::OneToMany {
@@ -182,15 +230,40 @@ async fn map_field<'content>(
                 cardinality,
             } => {
                 let other_type = &subsystem.postgres_types[*other_type_id];
-                let other_table_query = {
+                let (
+                    other_table_predicate_param,
+                    other_table_order_by_param,
+                    other_table_limit_param,
+                    other_table_offset_param,
+                    other_table_return_type,
+                ) = {
                     match &other_type.kind {
                         PostgresTypeKind::Primitive => panic!(""),
                         PostgresTypeKind::Composite(kind) => {
                             // Get an appropriate query based on the cardinality of the relation
                             if cardinality == &RelationCardinality::Unbounded {
-                                &subsystem.queries[kind.collection_query]
+                                let collection_query =
+                                    &subsystem.collection_queries[kind.collection_query];
+                                let parameter = &collection_query.parameter;
+
+                                (
+                                    &parameter.predicate_param,
+                                    &parameter.order_by_param,
+                                    &parameter.limit_param,
+                                    &parameter.offset_param,
+                                    &collection_query.return_type,
+                                )
                             } else {
-                                &subsystem.queries[kind.pk_query]
+                                let pk_query = &subsystem.pk_queries[kind.pk_query];
+                                let parameter = &pk_query.parameter;
+
+                                (
+                                    &parameter.predicate_param,
+                                    &None,
+                                    &None,
+                                    &None,
+                                    &pk_query.return_type,
+                                )
                             }
                         }
                     }
@@ -206,8 +279,17 @@ async fn map_field<'content>(
                         &subsystem.tables[other_type.table_id().unwrap()],
                     )),
                 };
-                let nested_abstract_select =
-                    compute_select(other_table_query, field, subsystem, request_context).await?;
+                let nested_abstract_select = compute_select(
+                    other_table_predicate_param,
+                    other_table_order_by_param,
+                    other_table_limit_param,
+                    other_table_offset_param,
+                    other_table_return_type,
+                    field,
+                    subsystem,
+                    request_context,
+                )
+                .await?;
                 SelectionElement::Nested(relation_link, nested_abstract_select)
             }
         }

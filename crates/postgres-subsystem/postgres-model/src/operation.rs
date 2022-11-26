@@ -20,14 +20,26 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PostgresQuery {
+pub struct PkQuery {
     pub name: String,
-    pub parameter: PostgresQueryParameter,
+    pub parameter: PkQueryParameter,
     pub return_type: OperationReturnType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PostgresQueryParameter {
+pub struct PkQueryParameter {
+    pub predicate_param: Option<PredicateParameter>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CollectionQuery {
+    pub name: String,
+    pub parameter: CollectionQueryParameter,
+    pub return_type: OperationReturnType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CollectionQueryParameter {
     pub predicate_param: Option<PredicateParameter>,
     pub order_by_param: Option<OrderByParameter>,
     pub limit_param: Option<LimitParameter>,
@@ -128,7 +140,7 @@ impl Parameter for UpdateDataParameter {
     }
 }
 
-impl Operation for PostgresQuery {
+impl Operation for PkQuery {
     fn name(&self) -> &String {
         &self.name
     }
@@ -145,7 +157,39 @@ impl Operation for PostgresQuery {
             }
         );
 
-        let PostgresQueryParameter {
+        let PkQueryParameter { predicate_param } = &self.parameter;
+        populate_params!(&predicate_param);
+
+        params
+    }
+
+    fn return_type_name(&self) -> &str {
+        &self.return_type.type_name
+    }
+
+    fn return_type_modifier(&self) -> TypeModifier {
+        (&self.return_type.type_modifier).into()
+    }
+}
+
+impl Operation for CollectionQuery {
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn parameters(&self) -> Vec<&dyn Parameter> {
+        let mut params: Vec<&dyn Parameter> = vec![];
+
+        macro_rules! populate_params (
+            ($param_name:expr) => {
+                match $param_name {
+                    Some(param) => params.push(param),
+                    None => {}
+                }
+            }
+        );
+
+        let CollectionQueryParameter {
             predicate_param,
             order_by_param,
             limit_param,

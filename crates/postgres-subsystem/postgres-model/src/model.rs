@@ -5,8 +5,10 @@ use async_graphql_parser::{
     Positioned,
 };
 
+use crate::operation::CollectionQuery;
+
 use super::{
-    operation::{PostgresMutation, PostgresQuery},
+    operation::{PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     types::PostgresType,
@@ -31,7 +33,8 @@ pub struct ModelPostgresSystem {
     // query related
     pub order_by_types: SerializableSlab<OrderByParameterType>,
     pub predicate_types: SerializableSlab<PredicateParameterType>,
-    pub queries: MappedArena<PostgresQuery>,
+    pub pk_queries: MappedArena<PkQuery>,
+    pub collection_queries: MappedArena<CollectionQuery>,
 
     // mutation related
     pub mutation_types: SerializableSlab<PostgresType>, // create, update, delete input types such as `PersonUpdateInput`
@@ -42,10 +45,17 @@ pub struct ModelPostgresSystem {
 
 impl ModelPostgresSystem {
     pub fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
-        self.queries
+        let pk_queries_defn = self
+            .pk_queries
             .iter()
-            .map(|query| default_positioned(query.1.field_definition(self)))
-            .collect()
+            .map(|query| default_positioned(query.1.field_definition(self)));
+
+        let collection_queries_defn = self
+            .collection_queries
+            .iter()
+            .map(|query| default_positioned(query.1.field_definition(self)));
+
+        pk_queries_defn.chain(collection_queries_defn).collect()
     }
 
     pub fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>> {
@@ -85,7 +95,8 @@ impl Default for ModelPostgresSystem {
             postgres_types: SerializableSlab::new(),
             order_by_types: SerializableSlab::new(),
             predicate_types: SerializableSlab::new(),
-            queries: MappedArena::default(),
+            pk_queries: MappedArena::default(),
+            collection_queries: MappedArena::default(),
             mutation_types: SerializableSlab::new(),
             mutations: MappedArena::default(),
             tables: SerializableSlab::new(),
