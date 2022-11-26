@@ -1,12 +1,13 @@
 use super::{
     postgres_execution_error::PostgresExecutionError,
-    postgres_query::compute_select,
     sql_mapper::SQLOperationKind,
     util::{check_access, find_arg, return_type_info},
 };
 use crate::{
-    create_data_param_mapper::InsertOperation, operation_resolver::OperationResolver,
-    predicate_mapper::compute_predicate, sql_mapper::SQLMapper,
+    create_data_param_mapper::InsertOperation,
+    operation_resolver::{OperationResolver, OperationSelectionResolver},
+    predicate_mapper::compute_predicate,
+    sql_mapper::SQLMapper,
     update_data_param_mapper::UpdateOperation,
 };
 use async_trait::async_trait;
@@ -38,31 +39,16 @@ impl OperationResolver for PostgresMutation {
 
         let abstract_select = {
             let (_, pk_query, collection_query) = return_type_info(return_type, subsystem);
-            let (predicate_param, order_by_param, limit_param, offset_param) =
-                match return_type.type_modifier {
-                    PostgresTypeModifier::List => (
-                        &collection_query.parameter.predicate_param,
-                        &collection_query.parameter.order_by_param,
-                        &collection_query.parameter.limit_param,
-                        &collection_query.parameter.offset_param,
-                    ),
-                    PostgresTypeModifier::NonNull | PostgresTypeModifier::Optional => {
-                        (&pk_query.parameter.predicate_param, &None, &None, &None)
-                    }
-                };
-
-            compute_select(
-                predicate_param,
-                order_by_param,
-                limit_param,
-                offset_param,
-                return_type,
-                field,
-                subsystem,
-                request_context,
-            )
-            .await?
-        };
+            match return_type.type_modifier {
+                PostgresTypeModifier::List => {
+                    collection_query.resolve_select(field, request_context, subsystem)
+                }
+                PostgresTypeModifier::NonNull | PostgresTypeModifier::Optional => {
+                    pk_query.resolve_select(field, request_context, subsystem)
+                }
+            }
+        }
+        .await?;
 
         Ok(match &self.kind {
             PostgresMutationKind::Create(data_param) => AbstractOperation::Insert(
@@ -155,7 +141,7 @@ async fn delete_operation<'content>(
     )
     .await?;
 
-    let predicate = compute_predicate(Some(predicate_param), &field.arguments, subsystem)?;
+    let predicate = compute_predicate(predicate_param, &field.arguments, subsystem)?;
 
     Ok(AbstractDelete {
         table,
@@ -184,7 +170,7 @@ async fn update_operation<'content>(
     )
     .await?;
 
-    let predicate = compute_predicate(Some(predicate_param), &field.arguments, subsystem)?;
+    let predicate = compute_predicate(predicate_param, &field.arguments, subsystem)?;
 
     match find_arg(&field.arguments, &data_param.name) {
         Some(argument) => UpdateOperation {

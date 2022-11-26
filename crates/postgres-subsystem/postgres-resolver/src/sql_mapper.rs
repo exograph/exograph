@@ -23,17 +23,15 @@ pub(crate) trait SQLMapper<'a, R> {
 }
 
 pub(crate) fn extract_and_map<'a, P, R>(
-    param: Option<P>,
+    param: P,
     arguments: &'a Arguments,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<Option<R>, PostgresExecutionError>
 where
     P: SQLMapper<'a, R>,
 {
-    param
-        .and_then(|param| {
-            let argument_value = find_arg(arguments, param.param_name());
-            argument_value.map(|argument_value| param.to_sql(argument_value, subsystem))
-        })
+    let argument_value = find_arg(arguments, param.param_name());
+    argument_value
+        .map(|argument_value| param.to_sql(argument_value, subsystem))
         .transpose()
 }

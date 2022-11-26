@@ -6,9 +6,12 @@ use postgres_model::{
     operation::{
         CollectionQuery, CollectionQueryParameter, OperationReturnType, PkQuery, PkQueryParameter,
     },
+    order::OrderByParameter,
     predicate::{PredicateParameter, PredicateParameterTypeWithModifier},
     types::{PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
+
+use crate::shallow::Shallow;
 
 use super::{
     naming::ToPostgresQueryName,
@@ -61,7 +64,7 @@ fn shallow_pk_query(
     PkQuery {
         name: operation_name,
         parameter: PkQueryParameter {
-            predicate_param: None,
+            predicate_param: PredicateParameter::shallow(),
         },
         return_type: OperationReturnType {
             type_id: model_type_id,
@@ -84,7 +87,7 @@ fn expanded_pk_query(
     PkQuery {
         name: operation_name,
         parameter: PkQueryParameter {
-            predicate_param: Some(pk_param),
+            predicate_param: pk_param,
         },
         return_type: existing_query.return_type.clone(),
     }
@@ -126,10 +129,10 @@ fn shallow_collection_query(
     CollectionQuery {
         name: operation_name,
         parameter: CollectionQueryParameter {
-            predicate_param: None,
-            order_by_param: None,
-            limit_param: None,
-            offset_param: None,
+            predicate_param: PredicateParameter::shallow(),
+            order_by_param: OrderByParameter::shallow(),
+            limit_param: LimitParameter::shallow(),
+            offset_param: OffsetParameter::shallow(),
         },
         return_type: OperationReturnType {
             type_id: model_type_id,
@@ -158,10 +161,10 @@ fn expanded_collection_query(
     CollectionQuery {
         name: operation_name.clone(),
         parameter: CollectionQueryParameter {
-            predicate_param: Some(predicate_param),
-            order_by_param: Some(order_by_param),
-            limit_param: Some(limit_param),
-            offset_param: Some(offset_param),
+            predicate_param,
+            order_by_param,
+            limit_param,
+            offset_param,
         },
         return_type: existing_query.return_type.clone(),
     }
@@ -208,5 +211,43 @@ pub fn collection_predicate_param(
         },
         column_path_link: None,
         underlying_type_id: model_type_id,
+    }
+}
+
+impl Shallow for LimitParameter {
+    fn shallow() -> Self {
+        LimitParameter {
+            name: String::default(),
+            typ: LimitParameterType::shallow(),
+        }
+    }
+}
+
+impl Shallow for LimitParameterType {
+    fn shallow() -> Self {
+        LimitParameterType {
+            type_name: String::default(),
+            type_id: SerializableSlabIndex::shallow(),
+            type_modifier: PostgresTypeModifier::Optional,
+        }
+    }
+}
+
+impl Shallow for OffsetParameter {
+    fn shallow() -> Self {
+        OffsetParameter {
+            name: String::default(),
+            typ: OffsetParameterType::shallow(),
+        }
+    }
+}
+
+impl Shallow for OffsetParameterType {
+    fn shallow() -> Self {
+        OffsetParameterType {
+            type_name: String::default(),
+            type_id: SerializableSlabIndex::shallow(),
+            type_modifier: PostgresTypeModifier::Optional,
+        }
     }
 }

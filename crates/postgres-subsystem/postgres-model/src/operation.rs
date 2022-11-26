@@ -28,7 +28,7 @@ pub struct PkQuery {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PkQueryParameter {
-    pub predicate_param: Option<PredicateParameter>,
+    pub predicate_param: PredicateParameter,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -40,10 +40,10 @@ pub struct CollectionQuery {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CollectionQueryParameter {
-    pub predicate_param: Option<PredicateParameter>,
-    pub order_by_param: Option<OrderByParameter>,
-    pub limit_param: Option<LimitParameter>,
-    pub offset_param: Option<OffsetParameter>,
+    pub predicate_param: PredicateParameter,
+    pub order_by_param: OrderByParameter,
+    pub limit_param: LimitParameter,
+    pub offset_param: OffsetParameter,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -146,21 +146,8 @@ impl Operation for PkQuery {
     }
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
-        let mut params: Vec<&dyn Parameter> = vec![];
-
-        macro_rules! populate_params (
-            ($param_name:expr) => {
-                match $param_name {
-                    Some(param) => params.push(param),
-                    None => {}
-                }
-            }
-        );
-
         let PkQueryParameter { predicate_param } = &self.parameter;
-        populate_params!(&predicate_param);
-
-        params
+        vec![predicate_param]
     }
 
     fn return_type_name(&self) -> &str {
@@ -178,29 +165,14 @@ impl Operation for CollectionQuery {
     }
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
-        let mut params: Vec<&dyn Parameter> = vec![];
-
-        macro_rules! populate_params (
-            ($param_name:expr) => {
-                match $param_name {
-                    Some(param) => params.push(param),
-                    None => {}
-                }
-            }
-        );
-
         let CollectionQueryParameter {
             predicate_param,
             order_by_param,
             limit_param,
             offset_param,
         } = &self.parameter;
-        populate_params!(&predicate_param);
-        populate_params!(&order_by_param);
-        populate_params!(&limit_param);
-        populate_params!(&offset_param);
 
-        params
+        vec![predicate_param, order_by_param, limit_param, offset_param]
     }
 
     fn return_type_name(&self) -> &str {

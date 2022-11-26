@@ -229,8 +229,7 @@ impl FieldDefinitionProvider<ModelPostgresSystem> for PostgresField {
                 match &other_type.kind {
                     PostgresTypeKind::Primitive => panic!(),
                     PostgresTypeKind::Composite(kind) => {
-                        let collection_query = kind.collection_query;
-                        let collection_query = &system.collection_queries[collection_query];
+                        let collection_query = &system.collection_queries[kind.collection_query];
 
                         let CollectionQueryParameter {
                             predicate_param,
@@ -239,21 +238,13 @@ impl FieldDefinitionProvider<ModelPostgresSystem> for PostgresField {
                             offset_param,
                         } = &collection_query.parameter;
 
-                        let predicate_parameter_arg =
-                            predicate_param.as_ref().map(|p| p.input_value());
-                        let order_by_parameter_arg =
-                            order_by_param.as_ref().map(|p| p.input_value());
-                        let limit_arg = limit_param.as_ref().map(|p| p.input_value());
-                        let offset_arg = offset_param.as_ref().map(|p| p.input_value());
-
-                        vec![
-                            predicate_parameter_arg,
-                            order_by_parameter_arg,
-                            limit_arg,
-                            offset_arg,
+                        [
+                            predicate_param.input_value(),
+                            order_by_param.input_value(),
+                            limit_param.input_value(),
+                            offset_param.input_value(),
                         ]
                         .into_iter()
-                        .flatten()
                         .map(default_positioned)
                         .collect()
                     }
