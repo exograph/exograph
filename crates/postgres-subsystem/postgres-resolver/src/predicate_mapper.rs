@@ -222,15 +222,15 @@ fn operands<'a>(
 }
 
 pub fn compute_predicate<'a>(
-    param: Option<&'a PredicateParameter>,
+    param: &'a PredicateParameter,
     arguments: &'a Arguments,
     subsystem: &'a ModelPostgresSystem,
 ) -> Result<AbstractPredicate<'a>, PostgresExecutionError> {
     extract_and_map(
-        param.as_ref().map(|param| PredicateParamInput {
+        PredicateParamInput {
             param,
             parent_column_path: None,
-        }),
+        },
         arguments,
         subsystem,
     )

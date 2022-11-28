@@ -169,11 +169,16 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             Ok(SubsystemBuild {
                 id: "postgres".to_string(),
                 serialized_subsystem,
-                query_names: subsystem
-                    .queries
-                    .iter()
-                    .map(|(_, q)| q.name.clone())
-                    .collect(),
+                query_names: {
+                    let pk_query_names = subsystem.pk_queries.iter().map(|(_, q)| q.name.clone());
+
+                    let collection_query_names = subsystem
+                        .collection_queries
+                        .iter()
+                        .map(|(_, q)| q.name.clone());
+
+                    pk_query_names.chain(collection_query_names).collect()
+                },
                 mutation_names: subsystem
                     .mutations
                     .iter()

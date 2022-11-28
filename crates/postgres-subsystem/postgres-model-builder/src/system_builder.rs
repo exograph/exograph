@@ -7,7 +7,7 @@ use core_plugin_interface::{
 
 use postgres_model::{
     model::ModelPostgresSystem,
-    operation::{PostgresMutation, PostgresQuery},
+    operation::{CollectionQuery, PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     types::PostgresType,
@@ -43,7 +43,8 @@ pub fn build(
 
             order_by_types: building.order_by_types.values,
             predicate_types: building.predicate_types.values,
-            queries: building.queries,
+            pk_queries: building.pk_queries,
+            collection_queries: building.collection_queries,
             tables: building.tables.values,
             mutation_types: building.mutation_types.values,
             mutations: building.mutations,
@@ -52,7 +53,10 @@ pub fn build(
 
     match system {
         Ok(system) => {
-            if system.queries.values.is_empty() && system.mutations.values.is_empty() {
+            if system.pk_queries.values.is_empty()
+                && system.collection_queries.values.is_empty()
+                && system.mutations.values.is_empty()
+            {
                 None
             } else {
                 Some(Ok(system))
@@ -104,8 +108,8 @@ pub struct SystemContextBuilding {
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
 
-    // break this into subsystems
-    pub queries: MappedArena<PostgresQuery>,
+    pub pk_queries: MappedArena<PkQuery>,
+    pub collection_queries: MappedArena<CollectionQuery>,
 
     pub mutation_types: MappedArena<PostgresType>,
     pub mutations: MappedArena<PostgresMutation>,

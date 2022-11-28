@@ -20,18 +20,30 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PostgresQuery {
+pub struct PkQuery {
     pub name: String,
-    pub parameter: PostgresQueryParameter,
+    pub parameter: PkQueryParameter,
     pub return_type: OperationReturnType,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PostgresQueryParameter {
-    pub predicate_param: Option<PredicateParameter>,
-    pub order_by_param: Option<OrderByParameter>,
-    pub limit_param: Option<LimitParameter>,
-    pub offset_param: Option<OffsetParameter>,
+pub struct PkQueryParameter {
+    pub predicate_param: PredicateParameter,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CollectionQuery {
+    pub name: String,
+    pub parameter: CollectionQueryParameter,
+    pub return_type: OperationReturnType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CollectionQueryParameter {
+    pub predicate_param: PredicateParameter,
+    pub order_by_param: OrderByParameter,
+    pub limit_param: LimitParameter,
+    pub offset_param: OffsetParameter,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -128,35 +140,39 @@ impl Parameter for UpdateDataParameter {
     }
 }
 
-impl Operation for PostgresQuery {
+impl Operation for PkQuery {
     fn name(&self) -> &String {
         &self.name
     }
 
     fn parameters(&self) -> Vec<&dyn Parameter> {
-        let mut params: Vec<&dyn Parameter> = vec![];
+        let PkQueryParameter { predicate_param } = &self.parameter;
+        vec![predicate_param]
+    }
 
-        macro_rules! populate_params (
-            ($param_name:expr) => {
-                match $param_name {
-                    Some(param) => params.push(param),
-                    None => {}
-                }
-            }
-        );
+    fn return_type_name(&self) -> &str {
+        &self.return_type.type_name
+    }
 
-        let PostgresQueryParameter {
+    fn return_type_modifier(&self) -> TypeModifier {
+        (&self.return_type.type_modifier).into()
+    }
+}
+
+impl Operation for CollectionQuery {
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn parameters(&self) -> Vec<&dyn Parameter> {
+        let CollectionQueryParameter {
             predicate_param,
             order_by_param,
             limit_param,
             offset_param,
         } = &self.parameter;
-        populate_params!(&predicate_param);
-        populate_params!(&order_by_param);
-        populate_params!(&limit_param);
-        populate_params!(&offset_param);
 
-        params
+        vec![predicate_param, order_by_param, limit_param, offset_param]
     }
 
     fn return_type_name(&self) -> &str {

@@ -4,6 +4,8 @@ use postgres_model::types::{
 };
 use std::collections::HashMap;
 
+use crate::shallow::Shallow;
+
 use super::{
     column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -15,6 +17,27 @@ use postgres_model::predicate::{
 };
 
 use lazy_static::lazy_static;
+
+impl Shallow for PredicateParameter {
+    fn shallow() -> Self {
+        Self {
+            name: String::new(),
+            type_name: String::new(),
+            typ: PredicateParameterTypeWithModifier::shallow(),
+            column_path_link: None,
+            underlying_type_id: SerializableSlabIndex::shallow(),
+        }
+    }
+}
+
+impl Shallow for PredicateParameterTypeWithModifier {
+    fn shallow() -> Self {
+        Self {
+            type_modifier: PostgresTypeModifier::Optional,
+            type_id: SerializableSlabIndex::shallow(),
+        }
+    }
+}
 
 pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
     for (_, model) in models.iter() {

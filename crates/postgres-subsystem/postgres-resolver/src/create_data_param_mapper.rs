@@ -158,7 +158,7 @@ fn map_foreign<'a>(
         match &data_type.kind {
             PostgresTypeKind::Primitive => todo!(),
             PostgresTypeKind::Composite(kind) => {
-                &system.postgres_types[system.queries[kind.pk_query].return_type.type_id]
+                &system.postgres_types[system.pk_queries[kind.pk_query].return_type.type_id]
             }
         }
     }

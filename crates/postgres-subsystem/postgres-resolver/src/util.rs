@@ -11,7 +11,7 @@ use payas_sql::{AbstractPredicate, PhysicalTable};
 use postgres_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},
     model::ModelPostgresSystem,
-    operation::{OperationReturnType, PostgresQuery},
+    operation::{CollectionQuery, OperationReturnType, PkQuery},
     types::{PostgresCompositeType, PostgresTypeKind},
 };
 
@@ -94,15 +94,15 @@ pub(crate) fn get_argument_field<'a>(
 pub(crate) fn return_type_info<'a>(
     return_type: &'a OperationReturnType,
     subsystem: &'a ModelPostgresSystem,
-) -> (&'a PhysicalTable, &'a PostgresQuery, &'a PostgresQuery) {
+) -> (&'a PhysicalTable, &'a PkQuery, &'a CollectionQuery) {
     let typ = return_type.typ(subsystem);
 
     match &typ.kind {
         PostgresTypeKind::Primitive => panic!(""),
         PostgresTypeKind::Composite(kind) => (
             &subsystem.tables[kind.table_id],
-            &subsystem.queries[kind.pk_query],
-            &subsystem.queries[kind.collection_query],
+            &subsystem.pk_queries[kind.pk_query],
+            &subsystem.collection_queries[kind.collection_query],
         ),
     }
 }
