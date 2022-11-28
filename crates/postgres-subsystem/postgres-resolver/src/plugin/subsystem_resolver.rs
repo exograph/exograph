@@ -42,16 +42,15 @@ impl SubsystemResolver for PostgresSubsystemResolver {
         let operation_name = &field.name;
 
         let operation = match operation_type {
-            OperationType::Query => {
-                let query = self.subsystem.queries.get_by_key(operation_name);
-
-                match query {
+            OperationType::Query => match self.subsystem.pk_queries.get_by_key(operation_name) {
+                Some(query) => Some(query.resolve(field, request_context, &self.subsystem).await),
+                None => match self.subsystem.collection_queries.get_by_key(operation_name) {
                     Some(query) => {
                         Some(query.resolve(field, request_context, &self.subsystem).await)
                     }
                     None => None,
-                }
-            }
+                },
+            },
             OperationType::Mutation => {
                 let mutation = self.subsystem.mutations.get_by_key(operation_name);
 

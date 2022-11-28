@@ -9,12 +9,34 @@ use postgres_model::{
     },
 };
 
+use crate::shallow::Shallow;
+
 use super::{
     column_path_utils,
     resolved_builder::{ResolvedCompositeType, ResolvedType},
     system_builder::SystemContextBuilding,
     type_builder::ResolvedTypeEnv,
 };
+
+impl Shallow for OrderByParameter {
+    fn shallow() -> Self {
+        Self {
+            name: String::default(),
+            type_name: String::default(),
+            typ: OrderByParameterTypeWithModifier::shallow(),
+            column_path_link: None,
+        }
+    }
+}
+
+impl Shallow for OrderByParameterTypeWithModifier {
+    fn shallow() -> Self {
+        Self {
+            type_modifier: PostgresTypeModifier::Optional,
+            type_id: SerializableSlabIndex::shallow(),
+        }
+    }
+}
 
 pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     let type_name = "Ordering".to_string();
