@@ -34,6 +34,8 @@ pub(super) trait ToPostgresQueryName {
     fn pk_query(&self) -> String;
     /// Plural query name (e.g. `concerts`)
     fn collection_query(&self) -> String;
+    /// Aggregate query name (e.g. `concertAgg`)
+    fn aggregate_query(&self) -> String;
 }
 
 fn to_query(name: &str) -> String {
@@ -47,6 +49,10 @@ impl<T: ToPlural> ToPostgresQueryName for T {
 
     fn collection_query(&self) -> String {
         to_query(&self.to_plural())
+    }
+
+    fn aggregate_query(&self) -> String {
+        format!("{}Agg", self.pk_query())
     }
 }
 

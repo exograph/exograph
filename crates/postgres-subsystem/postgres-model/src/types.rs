@@ -1,7 +1,7 @@
 use super::access::Access;
 use super::{column_id::ColumnId, relation::PostgresRelation};
 use crate::model::ModelPostgresSystem;
-use crate::operation::{CollectionQuery, CollectionQueryParameter, PkQuery};
+use crate::operation::{AggregateQuery, CollectionQuery, CollectionQueryParameter, PkQuery};
 use async_graphql_parser::types::{
     BaseType, FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, Type,
     TypeDefinition, TypeKind,
@@ -68,7 +68,6 @@ impl PostgresType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
 pub enum PostgresTypeKind {
     Primitive,
     Composite(PostgresCompositeType),
@@ -80,6 +79,7 @@ pub struct PostgresCompositeType {
     pub table_id: SerializableSlabIndex<PhysicalTable>,
     pub pk_query: SerializableSlabIndex<PkQuery>,
     pub collection_query: SerializableSlabIndex<CollectionQuery>,
+    pub aggregate_query: SerializableSlabIndex<AggregateQuery>,
     pub access: Access,
 }
 

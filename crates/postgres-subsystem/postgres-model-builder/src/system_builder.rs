@@ -8,7 +8,7 @@ use core_plugin_interface::{
 
 use postgres_model::{
     model::ModelPostgresSystem,
-    operation::{CollectionQuery, PkQuery, PostgresMutation},
+    operation::{AggregateQuery, CollectionQuery, PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     types::PostgresType,
@@ -45,6 +45,7 @@ pub fn build(
             predicate_types: building.predicate_types.values,
             pk_queries: building.pk_queries,
             collection_queries: building.collection_queries,
+            aggregate_queries: building.aggregate_queries,
             tables: building.tables.values,
             mutation_types: building.mutation_types.values,
             mutations: building.mutations,
@@ -86,7 +87,7 @@ fn build_expanded(
     // First fully build the types.
     type_builder::build_expanded(resolved_env, building)?;
 
-    // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
+    // Which is then used to expand query and query parameters (the order is unimportant) but must be executed
     // after running type_builder::build_expanded (since they depend on expanded PostgresTypes (note the next ones do not access resolved_types))
     order_by_type_builder::build_expanded(building);
     predicate_builder::build_expanded(building);
@@ -107,6 +108,7 @@ pub struct SystemContextBuilding {
 
     pub pk_queries: MappedArena<PkQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
+    pub aggregate_queries: MappedArena<AggregateQuery>,
 
     pub mutation_types: MappedArena<PostgresType>,
     pub mutations: MappedArena<PostgresMutation>,

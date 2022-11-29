@@ -4,7 +4,8 @@ use postgres_model::{
     column_path::ColumnIdPathLink,
     limit_offset::{LimitParameter, LimitParameterType, OffsetParameter, OffsetParameterType},
     operation::{
-        CollectionQuery, CollectionQueryParameter, OperationReturnType, PkQuery, PkQueryParameter,
+        AggregateQuery, AggregateQueryParameter, CollectionQuery, CollectionQueryParameter,
+        OperationReturnType, PkQuery, PkQueryParameter,
     },
     order::OrderByParameter,
     predicate::{PredicateParameter, PredicateParameterTypeWithModifier},
@@ -26,6 +27,7 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             let model_type_id = building.get_id(c.name.as_str()).unwrap();
             let shallow_query = shallow_pk_query(model_type_id, c);
             let collection_query = shallow_collection_query(model_type_id, c);
+            let aggregate_query = shallow_aggregate_query(model_type_id, c);
 
             building
                 .pk_queries
@@ -33,6 +35,9 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
             building
                 .collection_queries
                 .add(&collection_query.name.to_owned(), collection_query);
+            building
+                .aggregate_queries
+                .add(&aggregate_query.name.to_owned(), aggregate_query);
         }
     }
 }
@@ -41,16 +46,19 @@ pub fn build_expanded(building: &mut SystemContextBuilding) {
     for (model_type_id, model_type) in building.postgres_types.iter() {
         if let PostgresTypeKind::Composite(PostgresCompositeType { .. }) = &model_type.kind {
             {
-                let operation_name = model_type.pk_query();
                 let query = expanded_pk_query(model_type_id, model_type, building);
-                let existing_id = building.pk_queries.get_id(&operation_name).unwrap();
+                let existing_id = building.pk_queries.get_id(&query.name).unwrap();
                 building.pk_queries[existing_id] = query;
             }
             {
-                let operation_name = model_type.collection_query();
                 let query = expanded_collection_query(model_type_id, model_type, building);
-                let existing_id = building.collection_queries.get_id(&operation_name).unwrap();
+                let existing_id = building.collection_queries.get_id(&query.name).unwrap();
                 building.collection_queries[existing_id] = query;
+            }
+            {
+                let query = expanded_aggregate_query(model_type_id, model_type, building);
+                let existing_id = building.aggregate_queries.get_id(&query.name).unwrap();
+                building.aggregate_queries[existing_id] = query;
             }
         }
     }
@@ -166,6 +174,43 @@ fn expanded_collection_query(
             limit_param,
             offset_param,
         },
+        return_type: existing_query.return_type.clone(),
+    }
+}
+
+fn shallow_aggregate_query(
+    model_type_id: SerializableSlabIndex<PostgresType>,
+    typ: &ResolvedCompositeType,
+) -> AggregateQuery {
+    AggregateQuery {
+        name: typ.aggregate_query(),
+        parameter: AggregateQueryParameter {
+            predicate_param: PredicateParameter::shallow(),
+        },
+        return_type: OperationReturnType {
+            type_id: model_type_id,
+            type_name: typ.name.clone(),
+            type_modifier: PostgresTypeModifier::NonNull,
+        },
+    }
+}
+
+fn expanded_aggregate_query(
+    model_type_id: SerializableSlabIndex<PostgresType>,
+    model_type: &PostgresType,
+    building: &SystemContextBuilding,
+) -> AggregateQuery {
+    let operation_name = model_type.aggregate_query();
+    let existing_query = building
+        .aggregate_queries
+        .get_by_key(&operation_name)
+        .unwrap();
+
+    let predicate_param = collection_predicate_param(model_type_id, model_type, building);
+
+    AggregateQuery {
+        name: operation_name.clone(),
+        parameter: AggregateQueryParameter { predicate_param },
         return_type: existing_query.return_type.clone(),
     }
 }

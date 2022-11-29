@@ -130,11 +130,17 @@ fn expand_persistent_type_no_fields(
         .get_id(&resolved_postgres_type.collection_query())
         .unwrap();
 
+    let aggregate_query = building
+        .aggregate_queries
+        .get_id(&resolved_postgres_type.aggregate_query())
+        .unwrap();
+
     let kind = PostgresTypeKind::Composite(PostgresCompositeType {
         fields: vec![],
         table_id,
         pk_query,
         collection_query,
+        aggregate_query,
         access: Access::restrictive(),
     });
 
@@ -158,6 +164,7 @@ fn expand_persistent_type_fields(
         table_id,
         pk_query,
         collection_query,
+        aggregate_query,
         ..
     }) = &existing_type.kind
     {
@@ -172,6 +179,7 @@ fn expand_persistent_type_fields(
             table_id: *table_id,
             pk_query: *pk_query,
             collection_query: *collection_query,
+            aggregate_query: *aggregate_query,
             access: Access::restrictive(),
         });
 
@@ -201,6 +209,7 @@ fn expand_type_access(
             table_id: self_type_info.table_id,
             pk_query: self_type_info.pk_query,
             collection_query: self_type_info.collection_query,
+            aggregate_query: self_type_info.aggregate_query,
             access: expr,
         });
 

@@ -47,6 +47,18 @@ pub struct CollectionQueryParameter {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AggregateQuery {
+    pub name: String,
+    pub parameter: AggregateQueryParameter,
+    pub return_type: OperationReturnType,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AggregateQueryParameter {
+    pub predicate_param: PredicateParameter,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresMutation {
     pub name: String,
     pub kind: PostgresMutationKind,
@@ -173,6 +185,25 @@ impl Operation for CollectionQuery {
         } = &self.parameter;
 
         vec![predicate_param, order_by_param, limit_param, offset_param]
+    }
+
+    fn return_type_name(&self) -> &str {
+        &self.return_type.type_name
+    }
+
+    fn return_type_modifier(&self) -> TypeModifier {
+        (&self.return_type.type_modifier).into()
+    }
+}
+
+impl Operation for AggregateQuery {
+    fn name(&self) -> &String {
+        &self.name
+    }
+
+    fn parameters(&self) -> Vec<&dyn Parameter> {
+        let AggregateQueryParameter { predicate_param } = &self.parameter;
+        vec![predicate_param]
     }
 
     fn return_type_name(&self) -> &str {

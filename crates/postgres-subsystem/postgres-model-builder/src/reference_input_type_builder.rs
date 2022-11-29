@@ -52,6 +52,7 @@ fn expanded_reference_types(
         ref fields,
         pk_query,
         collection_query,
+        aggregate_query,
         table_id,
         ..
     }) = &existing_type.kind
@@ -74,6 +75,7 @@ fn expanded_reference_types(
                 fields: reference_type_fields,
                 pk_query: *pk_query,
                 collection_query: *collection_query,
+                aggregate_query: *aggregate_query,
                 table_id: *table_id,
                 access: Access::restrictive(),
             }),

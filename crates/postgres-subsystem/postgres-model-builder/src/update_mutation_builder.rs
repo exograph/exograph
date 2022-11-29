@@ -225,6 +225,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             table_id,
             pk_query,
             collection_query,
+            aggregate_query,
             ..
         }) = &model_type.kind
         {
@@ -274,6 +275,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                         table_id: *table_id,
                         pk_query: *pk_query,
                         collection_query: *collection_query,
+                        aggregate_query: *aggregate_query,
                         access: Access::restrictive(),
                     },
                 )];
