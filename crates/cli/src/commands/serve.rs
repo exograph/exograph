@@ -28,7 +28,7 @@ impl Command for ServeCommand {
             println!("Verifying new model...");
 
             loop {
-                let verification_result = verify(&self.model, None);
+                let verification_result = verify(&self.model, None).await;
 
                 match verification_result {
                     Err(e @ VerificationErrors::ModelNotCompatible(_)) => {
