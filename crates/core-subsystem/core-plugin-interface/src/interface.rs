@@ -66,7 +66,7 @@ pub trait SubsystemBuilder {
     /// Return variants:
     ///
     /// - `Ok(Some(SubsystemBuild { .. }))`: The subsystem was built successfully.
-    /// - `Ok(None)`: The subsystem was built successfully, but there were no user-declared services.
+    /// - `Ok(None)`: There were no user-declared services (no build is required).
     /// - `Err(ModelBuildingError { .. })`: The subsystem was not built successfully.
     fn build(
         &self,
