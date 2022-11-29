@@ -23,12 +23,11 @@ use super::{
 pub fn build(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
-) -> Option<Result<ModelPostgresSystem, ModelBuildingError>> {
+) -> Result<Option<ModelPostgresSystem>, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
 
-    let resolved_types = resolved_builder::build(typechecked_system);
-
-    let system = resolved_types.and_then(|resolved_types| {
+    let resolved_types = resolved_builder::build(typechecked_system)?;
+    let system = {
         let resolved_env = ResolvedTypeEnv {
             contexts: &base_system.contexts,
             resolved_types,
@@ -37,7 +36,7 @@ pub fn build(
         build_shallow(&resolved_env, &mut building);
         build_expanded(&resolved_env, &mut building)?;
 
-        Ok(ModelPostgresSystem {
+        ModelPostgresSystem {
             contexts: base_system.contexts.clone(),
             postgres_types: building.postgres_types.values,
 
@@ -48,22 +47,19 @@ pub fn build(
             tables: building.tables.values,
             mutation_types: building.mutation_types.values,
             mutations: building.mutations,
-        })
-    });
-
-    match system {
-        Ok(system) => {
-            if system.pk_queries.values.is_empty()
-                && system.collection_queries.values.is_empty()
-                && system.mutations.values.is_empty()
-            {
-                None
-            } else {
-                Some(Ok(system))
-            }
         }
-        Err(e) => Some(Err(e)),
-    }
+    };
+
+    Ok({
+        if system.pk_queries.values.is_empty()
+            && system.collection_queries.values.is_empty()
+            && system.mutations.values.is_empty()
+        {
+            None
+        } else {
+            Some(system)
+        }
+    })
 }
 
 fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
