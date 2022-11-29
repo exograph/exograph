@@ -156,36 +156,33 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
         &self,
         typechecked_system: &MappedArena<Type>,
         base_system: &BaseModelSystem,
-    ) -> Option<Result<SubsystemBuild, ModelBuildingError>> {
-        let subsystem = crate::system_builder::build(typechecked_system, base_system);
+    ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
+        let subsystem = crate::system_builder::build(typechecked_system, base_system)?;
+        let Some(subsystem) = subsystem else { return Ok(None)};
 
-        subsystem.map(|subsystem| {
-            let subsystem = subsystem?;
+        let serialized_subsystem = subsystem
+            .serialize()
+            .map_err(ModelBuildingError::Serialize)?;
 
-            let serialized_subsystem = subsystem
-                .serialize()
-                .map_err(ModelBuildingError::Serialize)?;
+        Ok(Some(SubsystemBuild {
+            id: "postgres".to_string(),
+            serialized_subsystem,
+            query_names: {
+                let pk_query_names = subsystem.pk_queries.iter().map(|(_, q)| q.name.clone());
 
-            Ok(SubsystemBuild {
-                id: "postgres".to_string(),
-                serialized_subsystem,
-                query_names: {
-                    let pk_query_names = subsystem.pk_queries.iter().map(|(_, q)| q.name.clone());
-
-                    let collection_query_names = subsystem
-                        .collection_queries
-                        .iter()
-                        .map(|(_, q)| q.name.clone());
-
-                    pk_query_names.chain(collection_query_names).collect()
-                },
-                mutation_names: subsystem
-                    .mutations
+                let collection_query_names = subsystem
+                    .collection_queries
                     .iter()
-                    .map(|(_, q)| q.name.clone())
-                    .collect(),
-                interceptions: vec![],
-            })
-        })
+                    .map(|(_, q)| q.name.clone());
+
+                pk_query_names.chain(collection_query_names).collect()
+            },
+            mutation_names: subsystem
+                .mutations
+                .iter()
+                .map(|(_, q)| q.name.clone())
+                .collect(),
+            interceptions: vec![],
+        }))
     }
 }

@@ -39,21 +39,23 @@ pub fn build(
     // correct subsystem)
     let subsystems: Vec<SerializableSubsystem> = subsystem_builders
         .iter()
-        .flat_map(|builder| builder.build(&typechecked_system, &base_system))
+        .map(|builder| builder.build(&typechecked_system, &base_system))
+        .collect::<Result<Vec<_>, ModelBuildingError>>()?
+        .into_iter()
+        .flatten()
         .enumerate()
         .map(|(subsystem_index, build_info)| {
-            let build_info = build_info?;
             subsystem_interceptions.push((subsystem_index, build_info.interceptions));
             query_names.extend(build_info.query_names);
             mutation_names.extend(build_info.mutation_names);
 
-            Ok(SerializableSubsystem {
+            SerializableSubsystem {
                 id: build_info.id,
                 subsystem_index,
                 serialized_subsystem: build_info.serialized_subsystem,
-            })
+            }
         })
-        .collect::<Result<Vec<_>, ModelBuildingError>>()?;
+        .collect();
 
     let query_interception_map =
         interceptor_weaver::weave(&query_names, &subsystem_interceptions, OperationKind::Query);

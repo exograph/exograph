@@ -27,7 +27,7 @@ pub struct ModelDenoSystemWithInterceptors {
 pub fn build(
     typechecked_system: &MappedArena<Type>,
     base_system: &BaseModelSystem,
-) -> Option<Result<ModelDenoSystemWithInterceptors, ModelBuildingError>> {
+) -> Result<Option<ModelDenoSystemWithInterceptors>, ModelBuildingError> {
     let service_selection_closure =
         |service: &AstService<Typed>| service.annotations.get("deno").map(|_| "deno".to_string());
 
@@ -36,44 +36,39 @@ pub fn build(
         base_system,
         service_selection_closure,
         process_script,
-    );
+    )?;
 
-    match service_system {
-        Ok(service_system) => {
-            let underlying_service_system = service_system.underlying;
+    let underlying_service_system = service_system.underlying;
 
-            if underlying_service_system.queries.is_empty()
-                && underlying_service_system.mutations.is_empty()
-                && underlying_service_system.interceptors.is_empty()
-            {
-                return None;
-            }
-
-            let mut queries = MappedArena::default();
-            for query in underlying_service_system.queries.values.into_iter() {
-                queries.add(&query.name.clone(), DenoQuery(query));
-            }
-
-            let mut mutations = MappedArena::default();
-            for mutation in underlying_service_system.mutations.values.into_iter() {
-                mutations.add(&mutation.name.clone(), DenoMutation(mutation));
-            }
-
-            Some(Ok(ModelDenoSystemWithInterceptors {
-                underlying: ModelDenoSystem {
-                    contexts: underlying_service_system.contexts,
-                    service_types: underlying_service_system.service_types,
-                    queries,
-                    mutations,
-                    methods: underlying_service_system.methods,
-                    scripts: underlying_service_system.scripts,
-                    interceptors: underlying_service_system.interceptors,
-                },
-                interceptors: service_system.interceptors,
-            }))
-        }
-        Err(e) => Some(Err(e)),
+    if underlying_service_system.queries.is_empty()
+        && underlying_service_system.mutations.is_empty()
+        && underlying_service_system.interceptors.is_empty()
+    {
+        return Ok(None);
     }
+
+    let mut queries = MappedArena::default();
+    for query in underlying_service_system.queries.values.into_iter() {
+        queries.add(&query.name.clone(), DenoQuery(query));
+    }
+
+    let mut mutations = MappedArena::default();
+    for mutation in underlying_service_system.mutations.values.into_iter() {
+        mutations.add(&mutation.name.clone(), DenoMutation(mutation));
+    }
+
+    Ok(Some(ModelDenoSystemWithInterceptors {
+        underlying: ModelDenoSystem {
+            contexts: underlying_service_system.contexts,
+            service_types: underlying_service_system.service_types,
+            queries,
+            mutations,
+            methods: underlying_service_system.methods,
+            scripts: underlying_service_system.scripts,
+            interceptors: underlying_service_system.interceptors,
+        },
+        interceptors: service_system.interceptors,
+    }))
 }
 
 fn process_script(
