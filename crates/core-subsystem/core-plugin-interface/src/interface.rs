@@ -22,14 +22,20 @@ pub trait SubsystemBuilder {
     fn id(&self) -> &'static str;
 
     /// Subsystem-specific annotations to typecheck during the building phase.
-    /// This should include the plugin annotation.
+    /// Implementations should provide information about the annotations this plugin supports.
+    /// The output is a [Vec], consisting of tuples with the annotation name and what
+    /// parameters and targets it supports ([AnnotationSpec]).
+    ///
+    /// One particular annotation that all plugins should declare (if nothing else)
+    /// is the plugin annotation. Plugin annotations are used to mark what subsystem a service
+    /// should be handled by.
     ///
     /// For example, in order to typecheck:
     ///
     /// ```clay
     /// @deno("example.ts")
     /// service ExampleService {
-    /// ...
+    ///     ...
     /// ```
     ///
     /// [SubsystemBuilder::annotations] should provide:
@@ -49,12 +55,24 @@ pub trait SubsystemBuilder {
     ///
     fn annotations(&self) -> Vec<(&'static str, AnnotationSpec)>;
 
-    /// Build a subsystem's model, producing a [SubsystemBuild].
+    /// Build a subsystem's model, producing an [Option<SubsystemBuild>].
+    ///
+    /// - `typechecked_system`: A partially typechecked system. This contains the set of all [Type]s
+    ///                         that were successfully parsed from the user's model, ranging from `service`s
+    ///                         to composite types like `model`s and `type`s (not to be confused with [Type]s).
+    /// - `base_system`: The base model system for Claytip. These are a set of common types that are
+    ///                  used by all plugins, like `context`s and primitive types (`Int`, `String`, etc.)
+    ///
+    /// Return variants:
+    ///
+    /// - `Ok(Some(SubsystemBuild { .. }))`: The subsystem was built successfully.
+    /// - `Ok(None)`: The subsystem was built successfully, but there were no user-declared services.
+    /// - `Err(ModelBuildingError { .. })`: The subsystem was not built successfully.
     fn build(
         &self,
         typechecked_system: &MappedArena<Type>,
         base_system: &BaseModelSystem,
-    ) -> Option<Result<SubsystemBuild, ModelBuildingError>>;
+    ) -> Result<Option<SubsystemBuild>, ModelBuildingError>;
 }
 
 pub trait SubsystemLoader {
