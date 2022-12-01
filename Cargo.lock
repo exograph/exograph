@@ -1037,7 +1037,9 @@ dependencies = [
 name = "core-plugin-interface"
 version = "0.1.0"
 dependencies = [
+ "async-graphql-parser",
  "built",
+ "codemap-diagnostic",
  "core-model",
  "core-model-builder",
  "core-plugin-shared",
