@@ -1,0 +1,21 @@
+# Mergeable simple fields
+operation: |
+    query {
+        concert(id: 1) {
+            title
+            id
+            title
+            title
+            t: title # This should not be merged with the previous other title fields
+        }
+    }
+response: |
+  {
+    "data": {
+      "concert": {
+        "title": "Concert1",
+        "id": 1,
+        "t": "Concert1"
+      }
+    }
+  }

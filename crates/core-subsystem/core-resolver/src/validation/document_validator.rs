@@ -308,6 +308,197 @@ mod tests {
     }
 
     #[test]
+    fn mergeable_leaf_fields() {
+        let schema = create_test_schema();
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        let query = r#"
+            query {
+               concerts {
+                    title
+                    id
+                    title
+                    title
+                    t: title # This should not be merged with the previous other title fields
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn mergeable_leaf_fields_with_alias() {
+        let schema = create_test_schema();
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        let query = r#"
+            query {
+               concerts {
+                    t: title
+                    id
+                    t: title
+                    t: title
+                    tt: title # All t's should be merged, but not tt (even if it points to the same field)
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn unmergeable_leaf_fields_all_aliases() {
+        let schema = create_test_schema();
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        let query = r#"
+            query {
+               concerts {
+                    t: title # The `t` alias points to a different field than the other `t` aliases
+                    id
+                    t: id
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn unmergeable_leaf_fields_mixed_aliases() {
+        let schema = create_test_schema();
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        let query = r#"
+            query {
+               concerts {
+                    id: title # The `t` alias points to a different field than the next field
+                    id
+                    t: id
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn mergeable_non_leaf_fields() {
+        let schema = create_test_schema();
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        let query = r#"
+            query {
+               concerts {
+                    id
+                    venue {
+                        id
+                        name
+                    }
+                    venue {
+                        name
+                        published
+                    }
+                    v: venue {
+                        name
+                        published
+                    }
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn unmergeable_non_leaf_fields() {
+        let schema = create_test_schema();
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        let query = r#"
+            query {
+               concerts {
+                    id
+                    venue {
+                        id
+                        n: name # The alias 'n' points to a different field than the other 'n' aliases (in the other 'venue' fields)
+                    }
+                    venue {
+                        name
+                        n: published
+                    }
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
+    fn mergeable_non_leaf_fields_with_alias() {
+        let schema = create_test_schema();
+
+        let validator = DocumentValidator {
+            schema: &schema,
+            operation_name: None,
+            variables: None,
+        };
+
+        let query = r#"
+            query {
+               concerts {
+                    id
+                    v: venue {
+                        id
+                        name
+                    }
+                    v: venue {
+                        name
+                        published
+                    }
+                    vv: venue {
+                        name
+                        published
+                    }
+                }
+            }
+        "#;
+
+        insta::assert_debug_snapshot!(validator.validate(create_query_document(query)));
+    }
+
+    #[test]
     fn multi_operations_valid() {
         let schema = create_test_schema();
 
@@ -419,6 +610,7 @@ mod tests {
                 model Venue {
                     id: Int = autoincrement() @pk
                     name: String
+                    published: Boolean
                     concerts: Set<Concert>
                 }
             }

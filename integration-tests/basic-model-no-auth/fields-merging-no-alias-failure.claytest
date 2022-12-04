@@ -1,0 +1,27 @@
+# Unmergeable simple fields 
+operation: |
+  query {
+      concert(id: 1) {
+          t: title # The `t` alias points to a different field than the other `t` aliases
+          id
+          t: id
+      }
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Failed to merge field defined multiple times with different selection or arguments: 't'",
+        "locations": [
+          {
+            "line": 3,
+            "column": 9
+          },
+          {
+            "line": 5,
+            "column": 9
+          }
+        ]
+      }
+    ]
+  }

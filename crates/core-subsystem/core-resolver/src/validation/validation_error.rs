@@ -46,11 +46,13 @@ pub enum ValidationError {
         pos: Pos,
     },
 
+    #[error(
+        "Failed to merge field defined multiple times with different selection or arguments: '{0}'"
+    )]
+    MergeFields(String, Vec<Pos>),
+
     #[error("No operation found")]
     NoOperationFound,
-
-    #[error("Duplicate field names '{0:?}' (consider using alias)")]
-    DuplicateFields(Vec<String>, Vec<Pos>),
 
     #[error("Must provide operation name if query contains multiple operations")]
     MultipleOperationsNoOperationName,
@@ -75,11 +77,11 @@ impl ValidationError {
             ValidationError::ScalarWithField(_, pos) => vec![*pos],
             ValidationError::RequiredArgumentNotFound(_, pos) => vec![*pos],
             ValidationError::StrayArguments(_, _, pos) => vec![*pos],
+            ValidationError::MergeFields(_, pos) => pos.clone(),
             ValidationError::NoOperationFound => vec![],
             ValidationError::MultipleOperationsNoOperationName => vec![],
             ValidationError::MultipleOperationsUnmatchedOperationName(_) => vec![],
             ValidationError::InvalidArgumentType { pos, .. } => vec![*pos],
-            ValidationError::DuplicateFields(_, positions) => positions.clone(),
         }
     }
 }
