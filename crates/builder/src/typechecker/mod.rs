@@ -235,8 +235,6 @@ pub fn build(
     subsystem_builders: &[Box<dyn SubsystemBuilder>],
     ast_system: AstSystem<Untyped>,
 ) -> Result<MappedArena<Type>, ParserError> {
-    let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
-
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     let mut annotation_env = HashMap::new();
     populate_type_env(&mut types_arena);
@@ -244,6 +242,7 @@ pub fn build(
 
     validate_no_duplicates(&ast_system.services, |s| &s.name, |s| s.span, "service")?;
 
+    let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
     for service in ast_system.services.iter() {
         ast_service_models.extend(service.models.clone());
         types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
@@ -253,7 +252,6 @@ pub fn build(
 
     let ast_types_iter = ast_system.models.iter().chain(ast_service_models.iter());
     let ast_root_models = &ast_system.models;
-    let ast_services = ast_system.services;
 
     for model in ast_types_iter.clone() {
         types_arena.add(
@@ -306,7 +304,7 @@ pub fn build(
             }
         }
 
-        for service in ast_services.iter() {
+        for service in ast_system.services.iter() {
             let mut typ = types_arena
                 .get_by_key(service.name.as_str())
                 .unwrap()
