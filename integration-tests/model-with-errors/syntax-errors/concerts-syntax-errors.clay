@@ -1,5 +1,5 @@
 @table("concerts")
-model Concert {
+type Concert {
   id: Int @pk = autoincrement()
   title: Stringg @access(!self.id.bar | self.venue.name)
   venue: Venue column("venueid")
@@ -8,7 +8,7 @@ model Concert {
 @postgres
 service VenueService {
   @table("venues"
-  model Venue {
+  type Venue {
     id: Int = autoincrement() @pk @access(Foo)
     name: String
     concerts: Concert> @column("venueid")

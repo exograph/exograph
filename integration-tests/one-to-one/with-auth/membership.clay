@@ -7,14 +7,14 @@ context AuthContext {
 service MembershipService {
   // A user may have an optional membership, but a membership must have an associated user
   @access(query = AuthContext.role == "ADMIN" || AuthContext.id == self.id, mutation = AuthContext.role == "ADMIN" || AuthContext.id == self.id)
-  model User {
+  type User {
     id: Int = autoincrement() @pk
     name: String
     membership: Membership?
   }
   
   @access(query = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id, mutation = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id)
-  model Membership {
+  type Membership {
     id: Int = autoincrement() @pk
     kind: String
     user: User

@@ -7,7 +7,7 @@ service RsvpPersistence {
   // Non-admins cannot use the rsvp APIs (a service with priviledged Claytip will be able to escalate the role and thus use the APIs)
   // Later, we will allow to not even export this APIs
   @access(AuthContext.role == "admin")
-  model Rsvp {
+  type Rsvp {
     id: Int = autoincrement() @pk
     email: String
     count: Int

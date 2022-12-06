@@ -1,12 +1,12 @@
 @postgres 
 service ConcertsService {
-  model Concert {
+  type Concert {
     id: Int = autoincrement() @pk
     title: String
     concertArtists: Set<ConcertArtist>
   }
   
-  model ConcertArtist {
+  type ConcertArtist {
     id: Int = autoincrement() @pk
     concert: Concert
     artist: Artist
@@ -14,7 +14,7 @@ service ConcertsService {
     role: String
   }
   
-  model Artist {
+  type Artist {
     id: Int = autoincrement() @pk
     name: String
     concertArtists: Set<ConcertArtist>? // An artist may yet to participate in a concert, hence optional

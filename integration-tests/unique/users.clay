@@ -1,12 +1,12 @@
 @postgres
 service RsvpService {
-  model Rsvp {
+  type Rsvp {
     id: Int = autoincrement() @pk
     event: String @unique("one_rsvp_per_user")
     user: User @unique("one_rsvp_per_user") 
   }
 
-  model User {
+  type User {
     id: Int = autoincrement() @pk
     username: String @unique
     primary_email_id: String @unique("unique_email_primary")

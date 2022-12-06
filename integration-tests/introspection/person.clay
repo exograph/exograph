@@ -1,6 +1,6 @@
 @postgres
 service PersonService {
-  model Person {
+  type Person {
     id: Int = autoincrement() @pk
     name: String
   }

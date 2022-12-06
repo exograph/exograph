@@ -1,7 +1,7 @@
 @postgres
 service ImageService {
     @table("images")
-    model Image {
+    type Image {
         id: Uuid = generate_uuid() @pk
         name: String
         data: Blob
