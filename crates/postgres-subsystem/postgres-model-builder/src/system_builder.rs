@@ -135,7 +135,7 @@ mod tests {
             @postgres
             service ConcertService {
                 @table("concerts")
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                     venue: Venue?
@@ -143,7 +143,7 @@ mod tests {
                 }
 
                 @table("venues")
-                model Venue {
+                type Venue {
                     id: Int = autoincrement() @pk
                     name: String
                     address: String?
@@ -188,12 +188,12 @@ mod tests {
         let src = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int = autoincrement() @pk
                 membership: Membership?
             }
 
-            model Membership {
+            type Membership {
                 id: Int = autoincrement() @pk
                 user: User
             }
@@ -222,7 +222,7 @@ mod tests {
             @postgres
             service LogService {
                 @table("logs")
-                model Log {
+                type Log {
                   id: Int = autoincrement() @dbtype("bigint") @pk
                   nonce: Int @bits(16)
                   hash: Int @size(8)

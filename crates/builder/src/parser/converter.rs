@@ -704,7 +704,7 @@ mod tests {
     fn expression_precedence() {
         parsing_test!(
             r#"
-            model Foo {
+            type Foo {
                 bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
             }
         "#
@@ -717,7 +717,7 @@ mod tests {
             r#"
             // a short comment
             @table("concerts")
-            model Concert {
+            type Concert {
                 id: Int = autoincrement() @pk
                 title: String // a comment
                 // another comment
@@ -731,7 +731,7 @@ mod tests {
             a multiline comment
             */
             @table("venues")
-            model Venue {
+            type Venue {
                 id: Int = autoincrement() @pk
                 name: String
                 concerts: Set<Concert /* here too! */> @column("venueid")

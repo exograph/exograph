@@ -447,12 +447,12 @@ mod tests {
         let src = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
               doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
               role: String
             }
 
-            model Doc {
+            type Doc {
               is_public: Boolean
             }
         }
@@ -470,7 +470,7 @@ mod tests {
 
         @postgres
         service DocumentService {
-            model Doc {
+            type Doc {
               is_public: Boolean
               content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
             }
@@ -489,7 +489,7 @@ mod tests {
 
         @postgres
         service DocumentService {
-            model Doc {
+            type Doc {
               content: String @access("ROLE_ADMIN" in AuthContext.roles)
             }
         }
@@ -508,7 +508,7 @@ mod tests {
         @postgres
         service DocumentService {
             @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
-            model Doc {
+            type Doc {
               is_public: Boolean
               content: String
             }
@@ -524,7 +524,7 @@ mod tests {
         @postgres
         service DocumentService {
             @table("venues")
-            model Venue {
+            type Venue {
                 id: Int @column("idx") @pk
                 name: String
             }
@@ -535,7 +535,7 @@ mod tests {
         @postgres
         service      DocumentService{
         @table ( "venues" )
-        model    Venue
+        type    Venue
         {
             id:   Int   @column(  "idx"  )
             @pk
@@ -557,7 +557,7 @@ mod tests {
         @postgres
         service UserService {
             @asdf
-            model User {
+            type User {
             }
         }
         "#;
@@ -572,7 +572,7 @@ mod tests {
         service UserService {
             @table("users")
             @table("users")
-            model User {
+            type User {
             }
         }
         "#;
@@ -587,7 +587,7 @@ mod tests {
         @postgres
         service UserService {
             @table("users")
-            model User {
+            type User {
             }
         }
         "#;
@@ -599,7 +599,7 @@ mod tests {
     fn no_plugin_annotation() {
         let src = r#"
         service UserService {
-            model User {
+            type User {
             }
         }
         "#;
@@ -610,7 +610,7 @@ mod tests {
     #[test]
     fn models_at_root() {
         let src_model = r#"
-        model User {
+        type User {
         }
         "#;
 
@@ -628,7 +628,7 @@ mod tests {
         let expected_none = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @pk("asdf")
             }
         }
@@ -638,7 +638,7 @@ mod tests {
         @postgres
         service UserService {
             @table
-            model User {
+            type User {
             }
         }
         "#;
@@ -646,7 +646,7 @@ mod tests {
         let expected_map = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @range(5)
             }
         }
@@ -662,7 +662,7 @@ mod tests {
         let src = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @range(min=5, max=10, min=3)
             }
         }
@@ -676,7 +676,7 @@ mod tests {
         let src = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @range(min=5, maxx=10)
             }
         }
@@ -691,7 +691,7 @@ mod tests {
         @postgres
         service UserService {
             @pk
-            model User {
+            type User {
             }
         }
         "#;
@@ -699,7 +699,7 @@ mod tests {
         let field = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @table("asdf")
             }
         }
@@ -780,11 +780,11 @@ mod tests {
         let model = r#"
         @postgres
         service Foo {
-            model User {
+            type User {
                 id: Int
                 name: String
             }
-            model User {
+            type User {
                 id: Int
                 name: String
             }
@@ -799,7 +799,7 @@ mod tests {
         let model = r#"
         @deno("foo.js")
         service Foo {
-            model User {
+            type User {
                 id: Int
                 name: String
             }

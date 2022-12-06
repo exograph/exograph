@@ -44,7 +44,7 @@ values:
               params: None
         models:
           - name: User
-            kind: Model
+            kind: Type
             fields:
               - name: doc
                 typ:
@@ -131,7 +131,7 @@ values:
             annotations:
               annotations: {}
           - name: Doc
-            kind: Model
+            kind: Type
             fields:
               - name: is_public
                 typ:
@@ -150,7 +150,7 @@ values:
   - - ~
     - Composite:
         name: User
-        kind: Model
+        kind: Type
         fields:
           - name: doc
             typ:
@@ -239,7 +239,7 @@ values:
   - - ~
     - Composite:
         name: Doc
-        kind: Model
+        kind: Type
         fields:
           - name: is_public
             typ:

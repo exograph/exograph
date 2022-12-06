@@ -410,13 +410,13 @@ mod tests {
         let test_clay = r#"
             @postgres
             service LogService {
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                     venue: Venue
                 }
 
-                model Venue {
+                type Venue {
                     id: Int = autoincrement() @pk
                     name: String
                     concerts: Set<Concert>
