@@ -61,7 +61,7 @@ mod tests {
             r#"
             @postgres
             service ConcertService {
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                     published: Boolean
@@ -95,7 +95,7 @@ mod tests {
             r#"
             @postgres
             service ConcertService {
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                 }
@@ -104,7 +104,7 @@ mod tests {
             r#"
             @postgres
             service ConcertService {
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                     published: Boolean
@@ -140,7 +140,7 @@ mod tests {
             r#"
             @postgres
             service ConcertService {
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                 }
@@ -149,12 +149,12 @@ mod tests {
             r#"
             @postgres
             service ConcertService {
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                     venue: Venue
                 }
-                model Venue {
+                type Venue {
                     id: Int = autoincrement() @pk
                     name: String
                     concerts: Set<Concert>?
@@ -219,11 +219,11 @@ mod tests {
             r#"
             @postgres
             service ConcertService {
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                 }
-                model Venue {
+                type Venue {
                     id: Int = autoincrement() @pk
                     name: String
                 }
@@ -232,12 +232,12 @@ mod tests {
             r#"
             @postgres
             service ConcertService {
-                model Concert {
+                type Concert {
                     id: Int = autoincrement() @pk
                     title: String
                     venue: Venue
                 }
-                model Venue {
+                type Venue {
                     id: Int = autoincrement() @pk
                     name: String
                     concerts: Set<Concert>?
@@ -301,10 +301,10 @@ mod tests {
             r#"
                 @postgres
                 service MembershipService {
-                    model Membership {
+                    type Membership {
                         id: Int = autoincrement() @pk
                     }
-                    model User {
+                    type User {
                         id: Int = autoincrement() @pk
                         name: String
                     }
@@ -313,11 +313,11 @@ mod tests {
             r#"
                 @postgres
                 service MembershipService {
-                    model Membership {
+                    type Membership {
                         id: Int = autoincrement() @pk
                         user: User
                     }
-                    model User {
+                    type User {
                         id: Int = autoincrement() @pk
                         name: String
                         membership: Membership?
@@ -393,7 +393,7 @@ mod tests {
             r#"
                 @postgres
                 service RsvpService {
-                    model Rsvp {
+                    type Rsvp {
                         id: Int = autoincrement() @pk
                         email: String
                         event_id: Int
@@ -403,7 +403,7 @@ mod tests {
             r#"
                 @postgres
                 service RsvpService {
-                    model Rsvp {
+                    type Rsvp {
                         id: Int = autoincrement() @pk
                         email: String @unique("email_event_id")
                         event_id: Int @unique("email_event_id")
@@ -449,7 +449,7 @@ mod tests {
             r#"
                 @postgres
                 service RsvpService {
-                    model Rsvp {
+                    type Rsvp {
                         id: Int = autoincrement() @pk
                         email: String @unique("email_event_id")
                         event_id: Int
@@ -459,7 +459,7 @@ mod tests {
             r#"
                 @postgres
                 service RsvpService {
-                    model Rsvp {
+                    type Rsvp {
                         id: Int = autoincrement() @pk
                         email: String @unique("email_event_id")
                         event_id: Int @unique("email_event_id")
@@ -523,7 +523,7 @@ mod tests {
             r#"
                 @postgres
                 service UserService {
-                    model User {
+                    type User {
                         id: Int = autoincrement() @pk
                         role: String
                         verified: Boolean = false
@@ -534,7 +534,7 @@ mod tests {
             r#"
                 @postgres
                 service UserService {
-                    model User {
+                    type User {
                         id: Int = autoincrement() @pk
                         role: String = "USER" // Set default value
                         verified: Boolean = true // Change default value
@@ -597,7 +597,7 @@ mod tests {
             r#"
                 @postgres
                 service LogService {
-                    model Log {
+                    type Log {
                         id: Int @pk
                         level: String?
                         message: String
@@ -607,7 +607,7 @@ mod tests {
             r#"
                 @postgres
                 service LogService {
-                    model Log {
+                    type Log {
                         id: Int @pk
                         level: String
                         message: String

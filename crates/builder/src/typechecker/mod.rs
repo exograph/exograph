@@ -235,8 +235,6 @@ pub fn build(
     subsystem_builders: &[Box<dyn SubsystemBuilder>],
     ast_system: AstSystem<Untyped>,
 ) -> Result<MappedArena<Type>, ParserError> {
-    let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
-
     let mut types_arena: MappedArena<Type> = MappedArena::default();
     let mut annotation_env = HashMap::new();
     populate_type_env(&mut types_arena);
@@ -244,6 +242,7 @@ pub fn build(
 
     validate_no_duplicates(&ast_system.services, |s| &s.name, |s| s.span, "service")?;
 
+    let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
     for service in ast_system.services.iter() {
         ast_service_models.extend(service.models.clone());
         types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
@@ -253,7 +252,6 @@ pub fn build(
 
     let ast_types_iter = ast_system.models.iter().chain(ast_service_models.iter());
     let ast_root_models = &ast_system.models;
-    let ast_services = ast_system.services;
 
     for model in ast_types_iter.clone() {
         types_arena.add(
@@ -306,7 +304,7 @@ pub fn build(
             }
         }
 
-        for service in ast_services.iter() {
+        for service in ast_system.services.iter() {
             let mut typ = types_arena
                 .get_by_key(service.name.as_str())
                 .unwrap()
@@ -449,12 +447,12 @@ mod tests {
         let src = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
               doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
               role: String
             }
 
-            model Doc {
+            type Doc {
               is_public: Boolean
             }
         }
@@ -472,7 +470,7 @@ mod tests {
 
         @postgres
         service DocumentService {
-            model Doc {
+            type Doc {
               is_public: Boolean
               content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
             }
@@ -491,7 +489,7 @@ mod tests {
 
         @postgres
         service DocumentService {
-            model Doc {
+            type Doc {
               content: String @access("ROLE_ADMIN" in AuthContext.roles)
             }
         }
@@ -510,7 +508,7 @@ mod tests {
         @postgres
         service DocumentService {
             @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
-            model Doc {
+            type Doc {
               is_public: Boolean
               content: String
             }
@@ -526,7 +524,7 @@ mod tests {
         @postgres
         service DocumentService {
             @table("venues")
-            model Venue {
+            type Venue {
                 id: Int @column("idx") @pk
                 name: String
             }
@@ -537,7 +535,7 @@ mod tests {
         @postgres
         service      DocumentService{
         @table ( "venues" )
-        model    Venue
+        type    Venue
         {
             id:   Int   @column(  "idx"  )
             @pk
@@ -559,7 +557,7 @@ mod tests {
         @postgres
         service UserService {
             @asdf
-            model User {
+            type User {
             }
         }
         "#;
@@ -574,7 +572,7 @@ mod tests {
         service UserService {
             @table("users")
             @table("users")
-            model User {
+            type User {
             }
         }
         "#;
@@ -589,7 +587,7 @@ mod tests {
         @postgres
         service UserService {
             @table("users")
-            model User {
+            type User {
             }
         }
         "#;
@@ -601,7 +599,7 @@ mod tests {
     fn no_plugin_annotation() {
         let src = r#"
         service UserService {
-            model User {
+            type User {
             }
         }
         "#;
@@ -612,7 +610,7 @@ mod tests {
     #[test]
     fn models_at_root() {
         let src_model = r#"
-        model User {
+        type User {
         }
         "#;
 
@@ -630,7 +628,7 @@ mod tests {
         let expected_none = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @pk("asdf")
             }
         }
@@ -640,7 +638,7 @@ mod tests {
         @postgres
         service UserService {
             @table
-            model User {
+            type User {
             }
         }
         "#;
@@ -648,7 +646,7 @@ mod tests {
         let expected_map = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @range(5)
             }
         }
@@ -664,7 +662,7 @@ mod tests {
         let src = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @range(min=5, max=10, min=3)
             }
         }
@@ -678,7 +676,7 @@ mod tests {
         let src = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @range(min=5, maxx=10)
             }
         }
@@ -693,7 +691,7 @@ mod tests {
         @postgres
         service UserService {
             @pk
-            model User {
+            type User {
             }
         }
         "#;
@@ -701,7 +699,7 @@ mod tests {
         let field = r#"
         @postgres
         service UserService {
-            model User {
+            type User {
                 id: Int @table("asdf")
             }
         }
@@ -782,11 +780,11 @@ mod tests {
         let model = r#"
         @postgres
         service Foo {
-            model User {
+            type User {
                 id: Int
                 name: String
             }
-            model User {
+            type User {
                 id: Int
                 name: String
             }
@@ -801,7 +799,7 @@ mod tests {
         let model = r#"
         @deno("foo.js")
         service Foo {
-            model User {
+            type User {
                 id: Int
                 name: String
             }

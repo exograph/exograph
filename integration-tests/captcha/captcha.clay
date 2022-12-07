@@ -1,6 +1,6 @@
 // CAPTCHA example
 //
-// This model and its associated integration tests provide a simplistic implementation of a CAPTCHA. 
+// This type and its associated integration tests provide a simplistic implementation of a CAPTCHA. 
 // In order to keep this implementation testable, the correct CAPTCHA response is very simple: reverse the challenge string.
 
 
@@ -38,7 +38,7 @@ service CaptchaService {
 service CaptchaPersistenceService {
     // Postgres record of a CAPTCHA challenge issued to a client.
     // Can be referred to by UUID. 
-    model CaptchaChallengeRecord {
+    type CaptchaChallengeRecord {
         uuid: Uuid = generate_uuid() @pk
         properResponse: String
     }

@@ -1,7 +1,7 @@
 @postgres
 service EventService {
     @table("events")
-    model Event {
+    type Event {
         id: Int = autoincrement() @pk
         timestamp: Instant = now()
         category: String = "INFO"

@@ -289,7 +289,7 @@ mod tests {
 
                 @postgres
                 service ArticleService {
-                    model Article {
+                    type Article {
                         id: Int = autoincrement() @pk
                         published: Boolean
                         owner_id: Int @bits(64)

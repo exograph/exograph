@@ -238,7 +238,7 @@ fn resolve(
                 if service.annotations.get("postgres").is_some() {
                     for model in service.models.iter() {
                         if let Some(Type::Composite(ct)) = types.get_by_key(&model.name) {
-                            if ct.kind == AstModelKind::Model {
+                            if ct.kind == AstModelKind::Model || ct.kind == AstModelKind::Type {
                                 let plural_annotation_value = ct
                                     .annotations
                                     .get("plural_name")
@@ -699,22 +699,22 @@ fn compute_column_info(
                                 //
                                 // If the cardinality is One (thus forming a one-to-one relationship), then we need to use the matching field's name.
                                 // For example, if we have the following model, we will have a `user_id` column in `memberships` table, but no column in the `users` table:
-                                // model User {
+                                // type User {
                                 //     ...
                                 //     membership: Membership?
                                 // }
-                                // model Membership {
+                                // type Membership {
                                 //     ...
                                 //     user: User
                                 // }
                                 //
                                 // If the cardinality is Unbounded, then we need to use the field's name. For example, if we have
                                 // the following model, we will have a `venue_id` column in the `concerts` table.
-                                // model Concert {
+                                // type Concert {
                                 //    ...
                                 //    venue: Venue?
                                 // }
-                                // model Venue {
+                                // type Venue {
                                 //    ...
                                 //    concerts: Set<Concert>
                                 // }
@@ -958,7 +958,7 @@ mod tests {
         @postgres
         service ConcertService {
             @table("custom_concerts")
-            model Concert {
+            type Concert {
               id: Int = autoincrement() @pk @dbtype("bigint") @column("custom_id")
               title: String @column("custom_title") @length(12)
               venue: Venue @column("custom_venue_id")
@@ -969,7 +969,7 @@ mod tests {
         
             @table("venues")
             @plural_name("Venuess")
-            model Venue {
+            type Venue {
               id: Int = autoincrement() @pk @column("custom_id")
               name: String @column("custom_name")
               concerts: Set<Concert> @column("custom_venue_id")
@@ -1000,7 +1000,7 @@ mod tests {
         let src = r#"
         @postgres
         service ConcertService {
-            model Concert {
+            type Concert {
               id: Int = autoincrement() @dbtype("BIGINT") @pk 
               title: String 
               venue: Venue @unique("unique_concert")
@@ -1008,7 +1008,7 @@ mod tests {
               seating: Array<Array<Boolean>>
             }
 
-            model Venue             {
+            type Venue             {
               id: Int  = autoincrement() @pk @dbtype("BIGINT")
               name:String 
               concerts: Set<Concert> 
@@ -1028,14 +1028,14 @@ mod tests {
         let src = r#"
         @postgres
         service ConcertService {
-            model Concert {
+            type Concert {
               id: Int = autoincrement() @pk 
               title: String 
               venue: Venue? 
               icon: Blob?
             }
 
-            model Venue {
+            type Venue {
               id: Int = autoincrement() @pk
               name: String
               address: String? @column("custom_address")
@@ -1061,7 +1061,7 @@ mod tests {
         @postgres
         service ConcertService {
             @access(AuthContext.role == "ROLE_ADMIN" || self.public)
-            model Concert {
+            type Concert {
               id: Int = autoincrement() @pk 
               title: String
               public: Boolean
@@ -1096,7 +1096,7 @@ mod tests {
         @postgres
         service ConcertService {
             @access(AuthContext.role == "ROLE_ADMIN" || self.public)
-            model Concert {
+            type Concert {
               id: Int = autoincrement() @pk 
               title: String
               public: Boolean
@@ -1116,7 +1116,7 @@ mod tests {
         let src = r#"
         @postgres
         service EntityService {
-            model Entity {
+            type Entity {
               _id: Int = autoincrement() @pk
               title_main: String
               title_main1: String
@@ -1138,14 +1138,14 @@ mod tests {
         let src = r#"
         @postgres
         service ConcertService {
-            model Concert {
+            type Concert {
               id: Int = autoincrement() @pk
               title: String
               venuex: Venue // non-standard name
               published: Boolean
             }
         
-            model Venue {
+            type Venue {
               id: Int = autoincrement() @pk
               name: String
               concerts: Set<Concert>
@@ -1166,14 +1166,14 @@ mod tests {
         let src = r#"
         @postgres
         service ConcertService {
-            model Concert {
+            type Concert {
                 id: Int = autoincrement() @pk 
                 title: String 
                 ticket_office: Venue //@column("ticket_office")
                 main: Venue //@column("main")
             }
           
-            model Venue {
+            type Venue {
                 id: Int  @autoincrement @pk 
                 name:String 
                 ticket_events: Set<Concert> //@column("ticket_office")
@@ -1192,14 +1192,14 @@ mod tests {
         let src = r#"
         @postgres
         service ConcertService {
-            model Concert {
+            type Concert {
                 id: Int = autoincrement() @pk 
                 title: String  
                 ticket_office: Venue @column("ticket_office")
                 main: Venue @column("main")
             }
           
-            model Venue {
+            type Venue {
                 id: Int = autoincrement() @pk 
                 name:String 
                 ticket_events: Set<Concert> @column("ticket_office")
@@ -1220,7 +1220,7 @@ mod tests {
         let src = r#"
         @postgres
         service ConcertService {
-            model ConcertInfo {
+            type ConcertInfo {
                 concertId: Int = autoincrement() @pk 
                 mainTitle: String 
             }

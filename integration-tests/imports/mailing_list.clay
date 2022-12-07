@@ -2,7 +2,7 @@ import "users"  // Example of not specifying the index.clay file in a directory
 
 @postgres
 service MailingListService {
-    model MailingList {
+    type MailingList {
         id: Int = autoincrement() @pk
         email_address: String
         subscriptions: Set<UserSubscription>? @column("subscribed_mailing_list") 

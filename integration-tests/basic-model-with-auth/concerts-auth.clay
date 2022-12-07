@@ -7,7 +7,7 @@ context AuthContext {
 service ConcertService {
   @table("concerts")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
-  model Concert {
+  type Concert {
     id: Int = autoincrement() @pk
     title: String
     venue: Venue @column("venueid")
@@ -16,7 +16,7 @@ service ConcertService {
   
   @table("venues")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
-  model Venue {
+  type Venue {
     id: Int = autoincrement() @pk
     name: String
     concerts: Set<Concert>? @column("venueid")

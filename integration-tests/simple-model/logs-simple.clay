@@ -1,7 +1,7 @@
 @postgres
 service LogPersistence {
   @table("logs")
-  model Log {
+  type Log {
     id: Int = autoincrement() @pk
     timestamp: Int
     text: String

@@ -1,6 +1,6 @@
 @postgres
 service VenueService {
-  model Venue {
+  type Venue {
     id: Int = autoincrement() @pk
     name: String
     published: Boolean

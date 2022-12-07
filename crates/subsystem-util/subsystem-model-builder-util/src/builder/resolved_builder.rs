@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use codemap::Span;
@@ -91,6 +92,7 @@ pub struct ResolvedService {
     pub script_path: String,
     pub methods: Vec<ResolvedMethod>,
     pub interceptors: Vec<ResolvedInterceptor>,
+    pub types_defined: HashSet<String>, // Typed defined in the service
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -174,9 +176,24 @@ fn resolve(
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
+    let services = resolve_services(types, errors, service_selection_closure, &process_script)?;
+
     Ok(ResolvedServiceSystem {
-        service_types: resolve_service_types(errors, types)?,
-        services: resolve_services(types, errors, service_selection_closure, &process_script)?,
+        service_types: resolve_service_types(errors, types, |typ| {
+            // The type is relevant only if it is a type defined in a relevant service
+            // TODO: Improve this by passing only the relevant services and processing types in the services
+            let type_name = match typ {
+                Type::Composite(c) => Some(&c.name),
+                _ => None,
+            };
+            match type_name {
+                Some(type_name) => services
+                    .iter()
+                    .any(|(_, service)| service.types_defined.contains(type_name)),
+                None => false,
+            }
+        })?,
+        services,
     })
 }
 
@@ -317,6 +334,7 @@ fn resolve_service(
                     })
                 })
                 .collect(),
+                types_defined: service.models.iter().map(|m| m.name.clone()).collect(),
         },
     );
 
@@ -420,6 +438,7 @@ fn resolve_service_input_types(
 fn resolve_service_types(
     errors: &mut Vec<Diagnostic>,
     types: &MappedArena<Type>,
+    is_relevant: impl Fn(&Type) -> bool,
 ) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
 
@@ -438,7 +457,7 @@ fn resolve_service_types(
             Type::Primitive(pt) => {
                 resolved_service_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
             }
-            Type::Composite(ct) => {
+            Type::Composite(ct) if is_relevant(typ) => {
                 if ct.kind == AstModelKind::Type {
                     let access = build_access(ct.annotations.get("access"));
                     let resolved_fields = ct

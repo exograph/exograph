@@ -1,14 +1,14 @@
 @postgres
 service ConcertService {
 @table("concerts")
-  model Concert {
+  type Concert {
     id: Int = autoincrement() @pk
     title: Stringg @access(!self.id.bar || self.venue.name)
     venue: Venue @column("venueid")
   }
   
   @table("venues")
-  model Venue {
+  type Venue {
     id: Int = autoincrement() @pk @access(Foo)
     name: String @range(min=-10, max=10)
     concerts: <Concert> @column("venueid")
