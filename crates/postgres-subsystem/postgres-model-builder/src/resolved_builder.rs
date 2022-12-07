@@ -1068,6 +1068,17 @@ mod tests {
             }      
 
 
+            @access(true)
+            type Venue {
+              id: Int = autoincrement() @pk 
+              name: String
+            }   
+
+            @access(false)
+            type Artist {
+              id: Int = autoincrement() @pk 
+              name: String
+            }  
         }
 
         @deno("logger.js")

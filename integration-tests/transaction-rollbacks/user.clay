@@ -1,6 +1,7 @@
 @postgres
 service UserPersistence {
     @table("user")
+    @access(true)
     type User {
         id: Int = autoincrement() @pk
         username: String
@@ -10,6 +11,7 @@ service UserPersistence {
 
 @deno("user.ts")
 service RegistrationService {
+    @access(true)
     export mutation registerUser(
         @inject claytip: Claytip,
         username: String,

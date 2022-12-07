@@ -1,6 +1,5 @@
 ---
-source: postgres-subsystem/postgres-model-builder/src/resolved_builder.rs
-assertion_line: 1026
+source: crates/postgres-subsystem/postgres-model-builder/src/resolved_builder.rs
 expression: resolved
 ---
 values:
@@ -90,16 +89,16 @@ values:
         access:
           creation:
             BooleanLiteral:
-              - true
+              - false
           read:
             BooleanLiteral:
-              - true
+              - false
           update:
             BooleanLiteral:
-              - true
+              - false
           delete:
             BooleanLiteral:
-              - true
+              - false
   - - ~
     - Composite:
         name: Venue
@@ -156,16 +155,16 @@ values:
         access:
           creation:
             BooleanLiteral:
-              - true
+              - false
           read:
             BooleanLiteral:
-              - true
+              - false
           update:
             BooleanLiteral:
-              - true
+              - false
           delete:
             BooleanLiteral:
-              - true
+              - false
   - ~
   - ~
   - ~

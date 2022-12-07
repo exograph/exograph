@@ -1,0 +1,80 @@
+stages:
+  - operation: |
+      query {
+        concerts {
+          id
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  
+  - operation: |
+      query {
+        concert(id: 1) {
+          id
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      query {
+        divideFullAccess(a: 6, b: 2) {
+          quotient
+          remainder
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      query {
+        divideNoAccess(a: 6, b: 2) {
+          quotient
+          remainder
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+
+  - operation: |
+      query {
+        divide(a: 6, b: 2) {
+          quotient
+          remainder
+        }
+      }
+    response: |
+      {
+        "data": {
+          "divide": {
+            "quotient": 3,
+            "remainder": 0
+          }
+        }
+      }

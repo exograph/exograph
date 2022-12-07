@@ -1,6 +1,7 @@
 @postgres
 service FooService {
   @table("foo")
+  @access(true)
   type Foo {
     id: Int = autoincrement() @pk
     verylong: Decimal @precision(40) @scale(30)

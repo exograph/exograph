@@ -1,6 +1,7 @@
 @postgres
 service BookService {
   @table("books")
+  @access(true)
   type Book {
     id: Int = autoincrement() @pk
     name: String

@@ -2,12 +2,14 @@ import "../mailing_list" // An example of not specifying the .clay extension
 
 @postgres 
 service UserService {
+    @access(true)
     type User {
         id: Int = autoincrement() @pk
         username: String
         subscribed_lists: Set<UserSubscription>? @column("subscribed_user_id")
     }
     
+    @access(true)
     type UserSubscription {
         id: Int = autoincrement() @pk
         user: User @column("subscribed_user_id")

@@ -1,6 +1,7 @@
 @postgres
 service ImageService {
     @table("images")
+    @access(true)
     type Image {
         id: Uuid = generate_uuid() @pk
         name: String
