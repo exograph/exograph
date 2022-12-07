@@ -1,0 +1,95 @@
+stages:
+  - operation: |
+      mutation {
+        createConcert(data: {title: "Foo"}) {
+          id
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+  
+  - operation: |
+      mutation {
+        updateConcert(id: 1, data: {title: "Foo"}) {
+          id
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      mutation {
+        deleteConcert(id: 1) {
+          id
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      mutation {
+        divideFullAccessMutation(a: 6, b: 2) {
+          quotient
+          remainder
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+  - operation: |
+      mutation {
+        divideNoAccessMutation(a: 6, b: 2) {
+          quotient
+          remainder
+        }
+      }
+    response: |
+      {
+        "errors": [
+          {
+            "message": "Not authorized"
+          }
+        ]
+      }
+
+
+  - operation: |
+      mutation {
+        divideMutation(a: 6, b: 2) {
+          quotient
+          remainder
+        }
+      }
+    response: |
+      {
+        "data": {
+          "divideMutation": {
+            "quotient": 3,
+            "remainder": 0
+          }
+        }
+      }

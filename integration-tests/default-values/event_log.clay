@@ -1,6 +1,7 @@
 @postgres
 service EventService {
     @table("events")
+    @access(true)
     type Event {
         id: Int = autoincrement() @pk
         timestamp: Instant = now()

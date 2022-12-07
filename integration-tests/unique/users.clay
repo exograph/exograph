@@ -1,11 +1,13 @@
 @postgres
 service RsvpService {
+  @access(true)
   type Rsvp {
     id: Int = autoincrement() @pk
     event: String @unique("one_rsvp_per_user")
     user: User @unique("one_rsvp_per_user") 
   }
 
+  @access(true)
   type User {
     id: Int = autoincrement() @pk
     username: String @unique

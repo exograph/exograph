@@ -1,5 +1,6 @@
 @postgres
 service ConcertVenues {
+  @access(true)
   type Concert {
     id: Int = autoincrement() @pk
     title: String
@@ -8,6 +9,7 @@ service ConcertVenues {
     price: Decimal @precision(20) @scale(2)
   }
 
+  @access(true)
   type Venue {
     id: Int = autoincrement() @pk
     name: String
@@ -19,6 +21,7 @@ service ConcertVenues {
 
 @postgres
 service LogService {
+  @access(true)
   type Log {
     id: Int = autoincrement() @pk
     message: String

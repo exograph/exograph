@@ -11,9 +11,9 @@ pub struct ResolvedAccess {
 }
 
 impl ResolvedAccess {
-    fn permissive() -> Self {
+    fn restrictive() -> Self {
         ResolvedAccess {
-            value: AstExpr::BooleanLiteral(true, null_span()),
+            value: AstExpr::BooleanLiteral(false, null_span()),
         }
     }
 }
@@ -39,6 +39,6 @@ pub fn build_access(
                 value: value.clone(),
             }
         }
-        None => ResolvedAccess::permissive(),
+        None => ResolvedAccess::restrictive(),
     }
 }

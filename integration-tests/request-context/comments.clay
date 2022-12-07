@@ -37,27 +37,27 @@ service JournalService {
 @deno("cookie.ts")
 service CookieService {
     // Sets a session cookie on the client
-    export query getCookie(@inject claytip: Claytip): Boolean
+    @access(true) export query getCookie(@inject claytip: Claytip): Boolean
 }
 
 // Our example service providing 'tracking' logic. Doesn't actually do very much.
 @deno("tracking.ts")
 service TrackingService {
     // this query will return `true` for all requests EXCEPT when X-Secret-Header is set to "pancake"
-    query shouldTrack(@inject context: AuthContext): Boolean
+    @access(true) query shouldTrack(@inject context: AuthContext): Boolean
 }
 
 // Test queries for direct use in integration tests.
 @deno("context_getter.ts")
 service ContextGetter {
-    export query getRole(@inject context: AuthContext): String
-    export query getSecretHeader(@inject context: AuthContext): String
-    export query getDevModeEnabled(@inject context: AuthContext): Boolean
-    export query getIp(@inject context: AuthContext): String
+    @access(true) export query getRole(@inject context: AuthContext): String
+    @access(true) export query getSecretHeader(@inject context: AuthContext): String
+    @access(true) export query getDevModeEnabled(@inject context: AuthContext): Boolean
+    @access(true) export query getIp(@inject context: AuthContext): String
 
     // this method simply takes TrackingContext and returns TrackingContext.shouldTrack
-    export query isTrackingEnabled(@inject tracking: TrackingContext): Boolean
+    @access(true) export query isTrackingEnabled(@inject tracking: TrackingContext): Boolean
 
     // query with two different injected contexts
-    export query getRoleAndUid(@inject auth: AuthContext, @inject tracking: TrackingContext): String
+    @access(true) export query getRoleAndUid(@inject auth: AuthContext, @inject tracking: TrackingContext): String
 }

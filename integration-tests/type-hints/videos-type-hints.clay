@@ -1,6 +1,7 @@
 @postgres
 service VideoService {
   @table("videos")
+  @access(true)
   type Video {
     id: Int = autoincrement() @dbtype("BIGINT") @pk
     name: String  

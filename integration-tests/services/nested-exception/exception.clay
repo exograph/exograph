@@ -1,7 +1,11 @@
 @deno("expection.ts")
 service ExceptionService {
+    @access(true)
     export query callThrowClaytipError(@inject claytip: Claytip): Int
-    export query callThrowClaytipErrorPriv(@inject claytip: ClaytipPriv): Int
 
+    @access(true)
+    export query callThrowClaytipErrorPriv(@inject claytip: ClaytipPriv): Int
+    
+    @access(true)
     export query throwClaytipError(): Int
 }

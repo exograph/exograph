@@ -1,6 +1,5 @@
 ---
-source: postgres-subsystem/postgres-model-builder/src/resolved_builder.rs
-assertion_line: 1097
+source: crates/postgres-subsystem/postgres-model-builder/src/resolved_builder.rs
 expression: resolved
 ---
 values:
@@ -110,16 +109,16 @@ values:
         access:
           creation:
             BooleanLiteral:
-              - true
+              - false
           read:
             BooleanLiteral:
-              - true
+              - false
           update:
             BooleanLiteral:
-              - true
+              - false
           delete:
             BooleanLiteral:
-              - true
+              - false
 map:
   Blob:
     index: 10
