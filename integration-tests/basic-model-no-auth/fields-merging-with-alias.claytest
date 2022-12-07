@@ -1,0 +1,21 @@
+# Mergeable simple fields with aliases
+operation: |
+    query {
+        concert(id: 1) {
+            t: title
+            id
+            t: title
+            t: title
+            tt: title # All 't's should be merged, but not 'tt' (even if it points to the same field)
+        }
+    }
+response: |
+  {
+    "data": {
+      "concert": {
+        "t": "Concert1",
+        "id": 1,
+        "tt": "Concert1"
+      }
+    }
+  }

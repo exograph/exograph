@@ -1,0 +1,36 @@
+# Mergeable non-leaf fields with aliases
+operation: |
+  query {
+      concert(id: 1) {
+          id
+          venue {
+              id
+              name
+          }
+          venue {
+              name
+              published
+          }
+          v: venue {
+              name
+              published
+          }
+      }
+  }
+response: |
+  {
+    "data": {
+      "concert": {
+        "id": 1,
+        "venue": {
+          "id": 1,
+          "name": "Venue1",
+          "published": true
+        },
+        "v": {
+          "name": "Venue1",
+          "published": true
+        }
+      }
+    }
+  }  
