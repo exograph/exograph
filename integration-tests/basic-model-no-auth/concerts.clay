@@ -1,7 +1,7 @@
 @postgres
 service ConcertService {
   @table("concerts")
-  model Concert {
+  type Concert {
     id: Int = autoincrement() @pk
     title: String
     venue: Venue @column("venueid")
@@ -10,7 +10,7 @@ service ConcertService {
   }
 
   @table("venues")
-  model Venue {
+  type Venue {
     id: Int = autoincrement() @pk
     name: String
     concerts: Set<Concert>? @column("venueid")

@@ -28,7 +28,7 @@ service JournalService {
                  AuthContext.devMode == "1" ||
                  AuthContext.sessionId == "abcde" 
     )
-    model JournalEntry {
+    type JournalEntry {
         id: Int = autoincrement() @pk
         text: String
     }

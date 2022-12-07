@@ -44,7 +44,7 @@ values:
               params: None
         models:
           - name: Doc
-            kind: Model
+            kind: Type
             fields:
               - name: is_public
                 typ:
@@ -125,7 +125,7 @@ values:
   - - ~
     - Composite:
         name: Doc
-        kind: Model
+        kind: Type
         fields:
           - name: is_public
             typ:

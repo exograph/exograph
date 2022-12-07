@@ -1,7 +1,7 @@
 @postgres
 service TodoService {
   @table("todos")
-  model Todo {
+  type Todo {
     id: Int = autoincrement() @pk
     data: Json
   }

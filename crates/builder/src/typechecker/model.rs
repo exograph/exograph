@@ -44,26 +44,21 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
             .count()
             > 0;
 
-        match self.kind {
-            AstModelKind::Model => {}
-            AstModelKind::Context | AstModelKind::Type => self
-                .fields
-                .iter()
-                .map(|field| {
-                    if let Some(AstFieldDefault { span, .. }) = &field.default_value {
-                        errors.push(Diagnostic {
-                            level: Level::Error,
-                            message: "Default fields can only be specified in models".to_string(),
-                            code: Some("C000".to_string()),
-                            spans: vec![SpanLabel {
-                                span: *span,
-                                style: SpanStyle::Primary,
-                                label: Some("bad default field".to_string()),
-                            }],
-                        });
-                    }
-                })
-                .collect(),
+        if matches!(self.kind, AstModelKind::Context) {
+            self.fields.iter().for_each(|field| {
+                if let Some(AstFieldDefault { span, .. }) = &field.default_value {
+                    errors.push(Diagnostic {
+                        level: Level::Error,
+                        message: "Default fields can only be specified in models".to_string(),
+                        code: Some("C000".to_string()),
+                        spans: vec![SpanLabel {
+                            span: *span,
+                            style: SpanStyle::Primary,
+                            label: Some("bad default field".to_string()),
+                        }],
+                    });
+                }
+            })
         };
 
         let annot_changed = self.annotations.pass(

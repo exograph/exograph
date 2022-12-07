@@ -1,7 +1,7 @@
 @postgres
 service ChessService {
   @table("chess_piece")
-  model ChessPiece {
+  type ChessPiece {
     id: Int = autoincrement() @pk
     name: String
     position_history: Array<String>

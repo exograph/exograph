@@ -1,7 +1,7 @@
 @postgres
 service FooDatabase {
     @table("foo")
-    model Foo {
+    type Foo {
         id: Int = autoincrement() @pk
         bar: Int
         baz: Int

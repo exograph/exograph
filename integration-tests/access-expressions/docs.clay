@@ -6,7 +6,7 @@ context AuthContext {
 @postgres
 service DocumentService {
   @access(query="ADMIN" in AuthContext.roles || self.public, mutation="ADMIN" in AuthContext.roles)
-  model Doc {
+  type Doc {
     id: Int = autoincrement() @pk
     content: String
     public: Boolean
@@ -14,21 +14,21 @@ service DocumentService {
   
   // Only admins can do anything with this model
   @access("ADMIN" in AuthContext.roles) 
-  model AdminDoc {
+  type AdminDoc {
     id: Int = autoincrement() @pk
     content: String
   }
   
   // An example of nested access control (users can see there own membership)
   @access(query="ADMIN" in AuthContext.roles || self.user.id == AuthContext.id, mutation="ADMIN" in AuthContext.roles)
-  model Membership {
+  type Membership {
     id: Int = autoincrement() @pk
     kind: String
     user: User
   }
   
   @access("ADMIN" in AuthContext.roles)
-  model User {
+  type User {
     id: Int = autoincrement() @pk
     name: String
     membership: Membership?
