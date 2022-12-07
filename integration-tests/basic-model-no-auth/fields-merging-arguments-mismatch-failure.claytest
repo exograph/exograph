@@ -1,0 +1,34 @@
+# Mergeable non-leaf fields with aliases
+operation: |
+  query {
+      venue(id: 1) {
+          id
+          concerts(where: {id: {eq: 1}}) {
+              id
+          }
+          concerts(where: {id: {eq: 2}}) {
+              id
+          }
+          c1: concerts(where: {id: {eq: 1}}) {
+              id
+          }
+      }
+  }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Failed to merge field defined multiple times with different selection or arguments: 'concerts'",
+        "locations": [
+          {
+            "line": 4,
+            "column": 9
+          },
+          {
+            "line": 7,
+            "column": 9
+          }
+        ]
+      }
+    ]
+  }

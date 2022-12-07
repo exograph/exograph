@@ -1,0 +1,91 @@
+---
+source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
+expression: validator.validate(create_query_document(query))
+---
+Ok(
+    ValidatedOperation {
+        name: None,
+        typ: Query,
+        fields: [
+            ValidatedField {
+                alias: None,
+                name: Name(
+                    "concerts",
+                ),
+                arguments: {},
+                subfields: [
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "id",
+                        ),
+                        arguments: {},
+                        subfields: [],
+                    },
+                    ValidatedField {
+                        alias: None,
+                        name: Name(
+                            "venue",
+                        ),
+                        arguments: {},
+                        subfields: [
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "id",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "name",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "published",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                        ],
+                    },
+                    ValidatedField {
+                        alias: Some(
+                            Name(
+                                "v",
+                            ),
+                        ),
+                        name: Name(
+                            "venue",
+                        ),
+                        arguments: {},
+                        subfields: [
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "name",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                            ValidatedField {
+                                alias: None,
+                                name: Name(
+                                    "published",
+                                ),
+                                arguments: {},
+                                subfields: [],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+)

@@ -1,0 +1,33 @@
+# Unmergeable non-leaf fields with aliases
+operation: |
+    query {
+        concert(id: 1) {
+            id
+            venue {
+                id
+                n: name # The alias 'n' points to a different field than the other 'n' aliases (in the other 'venue' fields)
+            }
+            venue {
+                name
+                n: published
+            }
+        }
+    }
+response: |
+  {
+    "errors": [
+      {
+        "message": "Failed to merge field defined multiple times with different selection or arguments: 'venue'",
+        "locations": [
+          {
+            "line": 4,
+            "column": 9
+          },
+          {
+            "line": 8,
+            "column": 9
+          }
+        ]
+      }
+    ]
+  }      

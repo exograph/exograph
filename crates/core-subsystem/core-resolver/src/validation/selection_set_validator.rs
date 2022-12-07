@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use async_graphql_parser::{
     types::{
@@ -76,37 +76,67 @@ impl<'a> SelectionSetValidator<'a> {
             .collect::<Result<Vec<_>, _>>()
             .map(|f| f.into_iter().flatten().collect())?;
 
-        // Validate that there are no duplicate fields output names (names considering aliases)
-        let mut output_names = HashSet::new();
-        let mut duplicated_names = HashSet::new();
+        // Merge any duplicate fields (see https://spec.graphql.org/October2021/#sec-Field-Selection-Merging)
 
-        // First track any duplicated names
-        for (_, field) in &fields {
-            // HashSet::insert returns false if the value was already present
-            if !output_names.insert(field.output_name()) {
-                duplicated_names.insert(field.output_name());
+        // First gather all fields by name. This is a map of field name to a list of fields with that name.
+        let mut fields_map: IndexMap<String, Vec<(Pos, ValidatedField)>> = IndexMap::new();
+        for field in fields {
+            let name = field.1.output_name();
+
+            match fields_map.get_mut(&name) {
+                Some(fields) => {
+                    fields.push(field);
+                }
+                None => {
+                    fields_map.insert(name, vec![field]);
+                }
             }
         }
 
-        if duplicated_names.is_empty() {
-            Ok(fields)
-        } else {
-            // For each duplicated name, gather its position (so we show the position for the every occurrence including the first one)
-            let duplicated_positions = fields
-                .iter()
-                .flat_map(|(pos, field)| {
-                    duplicated_names
-                        .contains(&field.output_name())
-                        .then_some(*pos)
-                })
-                .collect();
-            let mut duplicated_names = duplicated_names.into_iter().collect::<Vec<_>>();
-            duplicated_names.sort(); // Sort the names so the error message is deterministic
-            Err(ValidationError::DuplicateFields(
-                duplicated_names,
-                duplicated_positions,
-            ))
+        // Second, merge the fields with the same name. If there is only one field, it is trivially merged (return that single entry)
+        let fields = fields_map.into_values().map(|mut fields| {
+            if fields.len() == 1 {
+                Ok(fields.remove(0))
+            } else {
+                Self::merge_fields(fields)
+            }
+        });
+
+        let mut valid_fields = vec![];
+        let mut invalid_fields = vec![];
+
+        for field in fields {
+            match field {
+                Ok(field) => valid_fields.push(field),
+                Err(err) => invalid_fields.push(err),
+            }
         }
+
+        if invalid_fields.is_empty() {
+            Ok(valid_fields)
+        } else {
+            Err(invalid_fields.remove(0))
+        }
+    }
+
+    fn merge_fields(
+        mut fields: Vec<(Pos, ValidatedField)>,
+    ) -> Result<(Pos, ValidatedField), ValidationError> {
+        let mut acc = Ok(fields.remove(0));
+
+        for (next_field_pos, next_field) in fields {
+            match acc {
+                Ok((field_pos, field)) => {
+                    acc = merge_field(field, next_field, vec![field_pos, next_field_pos])
+                        .map(|f| (field_pos, f));
+                }
+                Err(err) => {
+                    return Err(err);
+                }
+            }
+        }
+
+        acc
     }
 
     fn validate_selection(
@@ -262,5 +292,67 @@ impl<'a> SelectionSetValidator<'a> {
             )),
             Some(field_definition) => Ok(field_definition),
         }
+    }
+}
+
+pub fn merge_field(
+    first: ValidatedField,
+    second: ValidatedField,
+    positions: Vec<Pos>,
+) -> Result<ValidatedField, ValidationError> {
+    if first.output_name() != second.output_name()
+        || first.name != second.name
+        || first.arguments != second.arguments
+    {
+        return Err(ValidationError::MergeFields(first.output_name(), positions));
+    }
+
+    let field_output_name = first.output_name();
+
+    match merge_subfields(first.subfields, second.subfields) {
+        Ok(subfields) => Ok(ValidatedField { subfields, ..first }),
+        Err(_) => Err(ValidationError::MergeFields(field_output_name, positions)),
+    }
+}
+
+fn merge_subfields(
+    fields: Vec<ValidatedField>,
+    mut other_fields: Vec<ValidatedField>,
+) -> Result<Vec<ValidatedField>, Vec<ValidationError>> {
+    let mut merged_fields = vec![];
+
+    // Merged others into fields
+    fields.into_iter().for_each(|field| {
+        let matching_index = other_fields
+            .iter()
+            .position(|other_field| other_field.output_name() == field.output_name());
+
+        let merged_field = match matching_index {
+            Some(index) => {
+                let other_field = other_fields.remove(index);
+                merge_field(field, other_field, vec![])
+            }
+            None => Ok(field),
+        };
+
+        merged_fields.push(merged_field)
+    });
+
+    // Since we removed all matching fields from `other_fields`, the remaining fields can be added as is
+    merged_fields.extend(other_fields.into_iter().map(Ok));
+
+    let mut valid_fields = vec![];
+    let mut invalid_fields = vec![];
+    for field in merged_fields {
+        match field {
+            Ok(field) => valid_fields.push(field),
+            Err(error) => invalid_fields.push(error),
+        }
+    }
+
+    if invalid_fields.is_empty() {
+        Ok(valid_fields)
+    } else {
+        Err(invalid_fields)
     }
 }

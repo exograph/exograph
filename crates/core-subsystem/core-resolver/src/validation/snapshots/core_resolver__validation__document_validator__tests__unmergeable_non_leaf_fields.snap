@@ -1,0 +1,13 @@
+---
+source: crates/core-subsystem/core-resolver/src/validation/document_validator.rs
+expression: validator.validate(create_query_document(query))
+---
+Err(
+    MergeFields(
+        "venue",
+        [
+            Pos(5:21),
+            Pos(9:21),
+        ],
+    ),
+)
