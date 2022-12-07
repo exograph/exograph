@@ -1,6 +1,7 @@
 @postgres
 service ChessService {
   @table("chess_piece")
+  @access(true)
   type ChessPiece {
     id: Int = autoincrement() @pk
     name: String

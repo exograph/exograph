@@ -15,6 +15,7 @@ context ICaptchaValidatorContext {
 @deno("captcha.ts")
 service CaptchaService {
     // The CAPTCHA challenge issued to client.
+    @access(true)
     type CaptchaChallenge {
         uuid: Uuid
         challenge: String
@@ -22,13 +23,13 @@ service CaptchaService {
 
     // Generates a challenge for the client and stores it in the database for
     // later verification.
-    export query getChallenge(
+    @access(true) export query getChallenge(
         @inject claytip: Claytip
     ): CaptchaChallenge
 
     // Verifies a challenge, and returns a Boolean representing the result.
     // NOTE: For internal use by CaptchaContext through @query.
-    query verifyCaptcha(
+    @access(true) query verifyCaptcha(
         @inject claytip: Claytip,
         @inject context: ICaptchaValidatorContext
     ): Boolean
@@ -38,6 +39,7 @@ service CaptchaService {
 service CaptchaPersistenceService {
     // Postgres record of a CAPTCHA challenge issued to a client.
     // Can be referred to by UUID. 
+    @access(true)
     type CaptchaChallengeRecord {
         uuid: Uuid = generate_uuid() @pk
         properResponse: String

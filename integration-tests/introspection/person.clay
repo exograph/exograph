@@ -1,5 +1,6 @@
 @postgres
 service PersonService {
+  @access(true)
   type Person {
     id: Int = autoincrement() @pk
     name: String

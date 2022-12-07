@@ -1,11 +1,15 @@
 @deno("arithmetic.js")
 service MathService {
+    @access(true)
     type DivisionResult {
         quotient: Int
         remainder: Int
     }
 
+    @access(true)
     export query divide(x: Int, y: Int): DivisionResult
+
+    @access(true)
     export query asyncDivide(x: Int, y: Int): DivisionResult
 }
 

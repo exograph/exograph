@@ -1,6 +1,7 @@
 @postgres
 service ConcertsService {
   @table("concerts")
+  @access(true)
   type Concert {
     id: Int = autoincrement() @pk
     title: String
@@ -9,6 +10,7 @@ service ConcertsService {
   }
 
   @table("concert_artists")
+  @access(true)
   type ConcertArtist {
     id: Int = autoincrement() @pk
     concert: Concert @column("concert_id")
@@ -18,12 +20,14 @@ service ConcertsService {
   }
 
   @table("artists")
+  @access(true)
   type Artist {
     id: Int = autoincrement() @pk
     name: String
     aristsConcerts: Set<ConcertArtist>? @column("artist_id") // An artist may yet to participate in a concert, hence optional
   }
 
+  @access(true)
   type Venue {
     id: Int = autoincrement() @pk
     concerts: Set<Concert>? @column("venue_id")

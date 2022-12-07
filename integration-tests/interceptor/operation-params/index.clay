@@ -1,5 +1,6 @@
 @postgres
 service TodoPersistence {
+  @access(true)
   type Todo {
     id: Int = autoincrement() @pk
     title: String

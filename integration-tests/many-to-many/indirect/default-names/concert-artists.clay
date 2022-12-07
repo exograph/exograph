@@ -1,11 +1,13 @@
 @postgres 
 service ConcertsService {
+  @access(true)
   type Concert {
     id: Int = autoincrement() @pk
     title: String
     concertArtists: Set<ConcertArtist>
   }
   
+  @access(true)
   type ConcertArtist {
     id: Int = autoincrement() @pk
     concert: Concert
@@ -14,6 +16,7 @@ service ConcertsService {
     role: String
   }
   
+  @access(true)
   type Artist {
     id: Int = autoincrement() @pk
     name: String

@@ -198,7 +198,106 @@ values:
                           index: 0
                           generation: ~
                 - Primitive: Boolean
+  - - ~
+    - Composite:
+        name: Venue
+        plural_name: Venues
+        fields:
+          - name: id
+            typ:
+              Plain:
+                type_name: Int
+                is_primitive: true
+            column_name: id
+            self_column: true
+            is_pk: true
+            type_hint: ~
+            unique_constraints: []
+            default_value: Autoincrement
+          - name: name
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_name: name
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+        table_name: venues
+        access:
+          creation:
+            BooleanLiteral:
+              - true
+          read:
+            BooleanLiteral:
+              - true
+          update:
+            BooleanLiteral:
+              - true
+          delete:
+            BooleanLiteral:
+              - true
+  - - ~
+    - Composite:
+        name: Artist
+        plural_name: Artists
+        fields:
+          - name: id
+            typ:
+              Plain:
+                type_name: Int
+                is_primitive: true
+            column_name: id
+            self_column: true
+            is_pk: true
+            type_hint: ~
+            unique_constraints: []
+            default_value: Autoincrement
+          - name: name
+            typ:
+              Plain:
+                type_name: String
+                is_primitive: true
+            column_name: name
+            self_column: true
+            is_pk: false
+            type_hint: ~
+            unique_constraints: []
+            default_value: ~
+        table_name: artists
+        access:
+          creation:
+            BooleanLiteral:
+              - false
+          read:
+            BooleanLiteral:
+              - false
+          update:
+            BooleanLiteral:
+              - false
+          delete:
+            BooleanLiteral:
+              - false
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
+  - ~
 map:
+  Artist:
+    index: 17
+    generation: ~
   Blob:
     index: 10
     generation: ~
@@ -246,5 +345,8 @@ map:
     generation: ~
   Uuid:
     index: 11
+    generation: ~
+  Venue:
+    index: 16
     generation: ~
 
