@@ -1,0 +1,42 @@
+@postgres
+service ConcertService {
+  // No @access specified, so all queries and mutations should result in "Not authorized"
+  type Concert {
+    id: Int = autoincrement() @pk
+    title: String
+  }
+}
+
+@deno("arithmetics.ts")
+service ComputeService {
+  // No @access specified for the type, so all queries and mutations should result in "Not authorized" regardless
+  // of those queries specification
+  type DivisionResultNoAccess {
+    quotient: Int
+    remainder: Int
+  }
+
+  @access(true)
+  query divideFullAccess(a: Int, b: Int): DivisionResultNoAccess
+
+  @access(true)
+  mutation divideFullAccessMutation(a: Int, b: Int): DivisionResultNoAccess
+
+  // Type is accessible, so the query/mutation's @access should determine the result
+  @access(true)
+  type DivisionResultFullAccess {
+    quotient: Int
+    remainder: Int
+  }
+
+  query divideNoAccess(a: Int, b: Int): DivisionResultFullAccess
+  mutation divideNoAccessMutation(a: Int, b: Int): DivisionResultFullAccess
+
+
+  // Both type and query is accessible, so the query should be accessible
+  @access(true)
+  query divide(a: Int, b: Int): DivisionResultFullAccess
+
+  @access(true)
+  mutation divideMutation(a: Int, b: Int): DivisionResultFullAccess
+}
