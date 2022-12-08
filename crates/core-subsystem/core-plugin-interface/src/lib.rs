@@ -3,9 +3,9 @@ pub mod export_utils;
 
 pub mod interface;
 
-pub use async_trait;
 pub use async_graphql_parser;
 pub use async_graphql_value;
+pub use async_trait;
 pub use codemap_diagnostic;
 
 pub use core_model;
