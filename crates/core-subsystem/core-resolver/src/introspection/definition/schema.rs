@@ -51,7 +51,7 @@ impl Schema {
                 });
 
             // ensure introspection outputs queries in a stable order
-            queries.sort_by_key(|q| q.node.name.clone());
+            queries.sort_by_key(|q| q.name.clone());
             queries
         };
 
@@ -64,7 +64,7 @@ impl Schema {
                 });
 
             // ensure introspection outputs mutations in a stable order
-            mutations.sort_by_key(|m| m.node.name.clone());
+            mutations.sort_by_key(|m| m.name.clone());
             mutations
         };
 
@@ -73,8 +73,8 @@ impl Schema {
 
     pub fn new(
         type_definitions: Vec<TypeDefinition>,
-        queries: Vec<Positioned<FieldDefinition>>,
-        mutations: Vec<Positioned<FieldDefinition>>,
+        queries: Vec<FieldDefinition>,
+        mutations: Vec<FieldDefinition>,
     ) -> Schema {
         let mut type_definitions = type_definitions;
 
@@ -96,7 +96,7 @@ impl Schema {
             directives: vec![],
             kind: TypeKind::Object(ObjectType {
                 implements: vec![],
-                fields: queries,
+                fields: queries.into_iter().map(default_positioned).collect(),
             }),
         });
 
@@ -108,7 +108,7 @@ impl Schema {
                 directives: vec![],
                 kind: TypeKind::Object(ObjectType {
                     implements: vec![],
-                    fields: mutations,
+                    fields: mutations.into_iter().map(default_positioned).collect(),
                 }),
             });
         };

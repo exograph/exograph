@@ -1,7 +1,4 @@
-use async_graphql_parser::{
-    types::{FieldDefinition, OperationType, TypeDefinition},
-    Positioned,
-};
+use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use async_trait::async_trait;
 
 use core_plugin_interface::{
@@ -20,7 +17,6 @@ use core_plugin_interface::{
 };
 
 use deno_model::{model::ModelDenoSystem, service::ServiceMethod};
-use futures::TryFutureExt;
 use payas_deno::DenoExecutorPool;
 
 use super::{
@@ -78,7 +74,7 @@ impl SubsystemResolver for DenoSubsystemResolver {
         operation_type: OperationType,
         request_context: &'a RequestContext<'a>,
         system_resolver: &'a SystemResolver,
-    ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let operation_name = &operation.name;
 
         let deno_operation = match operation_type {
@@ -114,9 +110,9 @@ impl SubsystemResolver for DenoSubsystemResolver {
         };
 
         match deno_operation {
-            Some(Ok(operation)) => Some(operation.execute().map_err(|e| e.into()).await),
-            Some(Err(e)) => Some(Err(e.into())),
-            None => None,
+            Some(Ok(operation)) => Ok(Some(operation.execute().await?)),
+            Some(Err(e)) => Err(e.into()),
+            None => Ok(None),
         }
     }
 
@@ -151,11 +147,11 @@ impl SubsystemResolver for DenoSubsystemResolver {
         }))
     }
 
-    fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
+    fn schema_queries(&self) -> Vec<FieldDefinition> {
         self.subsystem.schema_queries()
     }
 
-    fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>> {
+    fn schema_mutations(&self) -> Vec<FieldDefinition> {
         self.subsystem.schema_mutations()
     }
 

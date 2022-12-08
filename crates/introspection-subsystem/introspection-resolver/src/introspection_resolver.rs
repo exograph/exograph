@@ -1,7 +1,4 @@
-use async_graphql_parser::{
-    types::{FieldDefinition, OperationType, TypeDefinition},
-    Positioned,
-};
+use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use core_plugin_shared::interception::InterceptorIndex;
 use core_resolver::{
     introspection::definition::schema::Schema,
@@ -35,7 +32,7 @@ impl SubsystemResolver for IntrospectionResolver {
         operation_type: OperationType,
         request_context: &'a RequestContext,
         _system_resolver: &'a SystemResolver,
-    ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let name = field.name.as_str();
 
         if name.starts_with("__") {
@@ -46,14 +43,15 @@ impl SubsystemResolver for IntrospectionResolver {
             };
             let body = introspection_root
                 .resolve_field(field, &self.schema, request_context)
-                .await;
+                .await
+                .map(|body| QueryResponse {
+                    body: QueryResponseBody::Json(body),
+                    headers: vec![],
+                })?;
 
-            Some(body.map(|body| QueryResponse {
-                body: QueryResponseBody::Json(body),
-                headers: vec![],
-            }))
+            Ok(Some(body))
         } else {
-            None
+            Ok(None)
         }
     }
 
@@ -67,11 +65,11 @@ impl SubsystemResolver for IntrospectionResolver {
         Err(SubsystemResolutionError::NoInterceptorFound)
     }
 
-    fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
+    fn schema_queries(&self) -> Vec<FieldDefinition> {
         vec![]
     }
 
-    fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>> {
+    fn schema_mutations(&self) -> Vec<FieldDefinition> {
         vec![]
     }
 
