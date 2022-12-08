@@ -9,6 +9,8 @@ built = "0.5"
 [dependencies]
 libloading = "0.7.3"
 thiserror = "1.0.30"
+async-trait = "0.1.57"
+async-graphql-value = "4.0.5"
 async-graphql-parser = "4.0.5"
 codemap-diagnostic = "0.1.1"
 core-model-builder = { path = "../core-model-builder" }
