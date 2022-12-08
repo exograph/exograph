@@ -140,9 +140,9 @@ impl SystemResolver {
 
         // Really a find_map(), but StreamExt::find_map() is not available
         while let Some(next_val) = stream.next().await {
-            if let Some(val) = next_val {
+            if let Some(val) = next_val? {
                 // Found a resolver that could return a value (or an error), so we are done resolving
-                return val.map_err(|e| e.into());
+                return Ok(val);
             }
         }
 

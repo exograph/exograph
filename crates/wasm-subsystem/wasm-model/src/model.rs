@@ -5,15 +5,12 @@ use crate::{
     service::ServiceMethod,
     types::ServiceType,
 };
-use async_graphql_parser::{
-    types::{FieldDefinition, TypeDefinition},
-    Positioned,
-};
+use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 use core_plugin_interface::{
     core_model::{
         context_type::ContextType,
         mapped_arena::{MappedArena, SerializableSlab},
-        type_normalization::{default_positioned, FieldDefinitionProvider, TypeDefinitionProvider},
+        type_normalization::{FieldDefinitionProvider, TypeDefinitionProvider},
     },
     error::ModelSerializationError,
     system_serializer::SystemSerializer,
@@ -38,19 +35,19 @@ pub struct ModelWasmSystem {
 }
 
 impl ModelWasmSystem {
-    pub fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>> {
+    pub fn schema_queries(&self) -> Vec<FieldDefinition> {
         self.queries
             .values
             .iter()
-            .map(|query| default_positioned(query.1.field_definition(self)))
+            .map(|(_, query)| query.field_definition(self))
             .collect()
     }
 
-    pub fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>> {
+    pub fn schema_mutations(&self) -> Vec<FieldDefinition> {
         self.mutations
             .values
             .iter()
-            .map(|query| default_positioned(query.1.field_definition(self)))
+            .map(|(_, query)| query.field_definition(self))
             .collect()
     }
 
