@@ -31,7 +31,7 @@ pub fn convert_root(
 
     let mut cursor = node.walk();
     Ok(AstSystem {
-        models: node
+        types: node
             .children(&mut cursor)
             .filter(|n| n.kind() == "declaration")
             .filter_map(|c| convert_declaration_to_context(c, source, source_span))
@@ -49,13 +49,11 @@ pub fn convert_root(
                     let first_child = c.child(0).unwrap();
 
                     if first_child.kind() == "import" {
-                        let path_str = first_child
-                            .child_by_field_name("path")
-                            .unwrap()
-                            .child_by_field_name("value")
-                            .unwrap()
-                            .utf8_text(source)
-                            .unwrap();
+                        let path_str = text_child(
+                            first_child.child_by_field_name("path").unwrap(),
+                            source,
+                            "value",
+                        );
 
                         // Create a path relative to the current file
                         let mut import_path = filepath.to_owned();
@@ -169,17 +167,12 @@ fn convert_model(
     source_span: Span,
     kind: AstModelKind,
 ) -> AstModel<Untyped> {
-    assert!(node.kind() == "model" || node.kind() == "context");
+    assert!(node.kind() == "type" || node.kind() == "context");
 
     let mut cursor = node.walk();
 
     AstModel {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         kind,
         fields: convert_fields(
             node.child_by_field_name("body").unwrap(),
@@ -218,13 +211,8 @@ fn convert_service(
         .collect::<Vec<_>>();
 
     AstService {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
-        models: matching_nodes(node, &mut node.walk(), "model")
+        name: text_child(node, source, "name"),
+        types: matching_nodes(node, &mut node.walk(), "type")
             .map(|n| convert_model(n, source, source_span, AstModelKind::Type))
             .collect(),
         methods: matching_nodes(node, &mut node.walk(), "service_method")
@@ -243,14 +231,9 @@ fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMe
     let mut cursor = node.walk();
 
     AstMethod {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         typ: node
-            .child_by_field_name("type")
+            .child_by_field_name("method_type")
             .unwrap()
             .utf8_text(source)
             .unwrap()
@@ -277,12 +260,7 @@ fn convert_interceptor(node: Node, source: &[u8], source_span: Span) -> AstInter
     let mut cursor = node.walk();
 
     AstInterceptor {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         arguments: node
             .children_by_field_name("args", &mut cursor)
             .map(|c| convert_argument(c, source, source_span))
@@ -308,14 +286,9 @@ fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyp
     let mut cursor = node.walk();
 
     AstField {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         typ: convert_type(
-            node.child_by_field_name("type").unwrap(),
+            node.child_by_field_name("field_type").unwrap(),
             source,
             source_span,
         ),
@@ -359,21 +332,15 @@ fn convert_field_default_value(
     }
 }
 
-// TODO: dedup
 fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
     assert!(node.kind() == "argument");
 
     let mut cursor = node.walk();
 
     AstArgument {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         typ: convert_type(
-            node.child_by_field_name("type").unwrap(),
+            node.child_by_field_name("argument_type").unwrap(),
             source,
             source_span,
         ),
@@ -385,7 +352,7 @@ fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument
 }
 
 fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
-    assert_eq!(node.kind(), "type");
+    assert_eq!(node.kind(), "field_type");
     let first_child = node.child(0).unwrap();
     let mut cursor = node.walk();
 
@@ -398,7 +365,7 @@ fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Un
             (),
             span_from_node(source_span, first_child),
         ),
-        "optional_type" => AstFieldType::Optional(Box::new(convert_type(
+        "optional_field_type" => AstFieldType::Optional(Box::new(convert_type(
             first_child.child_by_field_name("inner").unwrap(),
             source,
             source_span,
@@ -466,16 +433,7 @@ fn convert_annotation_params(
         "annotation_map_params" => {
             let params = first_child
                 .children_by_field_name("param", &mut cursor)
-                .map(|p| {
-                    (
-                        p.child_by_field_name("name")
-                            .unwrap()
-                            .utf8_text(source)
-                            .unwrap()
-                            .to_string(),
-                        p,
-                    )
-                })
+                .map(|p| (text_child(p, source, "name"), p))
                 .collect::<Vec<_>>();
 
             let exprs = params
@@ -528,12 +486,7 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<U
             ),
         ),
         "literal_str" => AstExpr::StringLiteral(
-            first_child
-                .child_by_field_name("value")
-                .unwrap()
-                .utf8_text(source)
-                .unwrap()
-                .to_string(),
+            text_child(first_child, source, "value"),
             span_from_node(
                 source_span,
                 first_child.child_by_field_name("value").unwrap(),
@@ -641,12 +594,7 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
                 source_span,
             )),
             Identifier(
-                first_child
-                    .child_by_field_name("term")
-                    .unwrap()
-                    .utf8_text(source)
-                    .unwrap()
-                    .to_string(),
+                text_child(first_child, source, "term"),
                 span_from_node(
                     source_span,
                     first_child.child_by_field_name("term").unwrap(),
@@ -664,6 +612,14 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
         ),
         o => panic!("unsupported logical op kind: {}", o),
     }
+}
+
+fn text_child(node: Node, source: &[u8], child_name: &str) -> String {
+    node.child_by_field_name(child_name)
+        .unwrap()
+        .utf8_text(source)
+        .unwrap()
+        .to_string()
 }
 
 #[cfg(test)]

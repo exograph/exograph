@@ -131,8 +131,8 @@ pub fn generate_service_skeleton(
 
     // Types (defined in `service`) matter only if the target is a typescript file.
     if is_typescript {
-        for model in service.models.iter() {
-            generate_type_skeleton(model, &mut file)?;
+        for service_type in service.types.iter() {
+            generate_type_skeleton(service_type, &mut file)?;
         }
     }
 

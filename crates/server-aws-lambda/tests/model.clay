@@ -1,7 +1,7 @@
 @postgres
 service LoggingService {
     @access(true)
-    model Log {
+    type Log {
         id: Int = autoincrement() @pk
         message: String
     }

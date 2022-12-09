@@ -24,7 +24,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
 
         AstService {
             name: untyped.name.clone(),
-            models: typed(&untyped.models),
+            types: typed(&untyped.types),
             methods: typed(&untyped.methods),
             interceptors: typed(&untyped.interceptors),
             annotations: annotation_map,
@@ -40,12 +40,12 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        let models_changed = self
-            .models
+        let types_changed = self
+            .types
             .iter_mut()
             .map(|m| {
                 let model_scope = Scope {
-                    enclosing_model: Some(m.name.clone()),
+                    enclosing_type: Some(m.name.clone()),
                 };
 
                 m.pass(type_env, annotation_env, &model_scope, errors)
@@ -102,7 +102,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             })
         }
 
-        models_changed || methods_changed || interceptor_changed || annot_changed
+        types_changed || methods_changed || interceptor_changed || annot_changed
     }
 }
 

@@ -39,12 +39,12 @@ impl Shallow for PredicateParameterTypeWithModifier {
     }
 }
 
-pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
-    for (_, model) in models.iter() {
-        match model {
+pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+    for (_, typ) in types.iter() {
+        match typ {
             ResolvedType::Primitive(pt) => {
                 let type_name = pt.name();
-                // One for queries such as {id: 1}, where the type name is the same as the model type name (in this case `Int`)
+                // One for queries such as {id: 1}, where the type name is the same as the type name (in this case `Int`)
                 building.predicate_types.add(
                     &type_name,
                     PredicateParameterType {

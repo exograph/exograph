@@ -179,7 +179,7 @@ fn expand_persistent_type_fields(
     }
 }
 
-// Expand access expressions (pre-condition: all model fields have been populated)
+// Expand access expressions (pre-condition: all type fields have been populated)
 fn expand_type_access(
     resolved_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,

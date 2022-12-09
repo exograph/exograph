@@ -21,7 +21,7 @@ impl Builder for DeleteMutationBuilder {
     fn type_names(
         &self,
         _resolved_composite_type: &ResolvedCompositeType,
-        _models: &MappedArena<ResolvedType>,
+        _types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
         // delete mutations don't need any special input type (the type for the PK and the type for filtering suffice)
         vec![]

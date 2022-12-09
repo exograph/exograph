@@ -17,7 +17,7 @@ use super::{
 };
 
 pub fn build_shallow(
-    _models: &MappedArena<ResolvedType>,
+    _types: &MappedArena<ResolvedType>,
     services: &MappedArena<ResolvedService>,
     building: &mut SystemContextBuilding,
 ) {
