@@ -90,7 +90,7 @@ fn populate_annotation_env(
             "access",
             AnnotationSpec {
                 targets: &[
-                    AnnotationTarget::Model,
+                    AnnotationTarget::Type,
                     AnnotationTarget::Field,
                     AnnotationTarget::Method,
                 ],

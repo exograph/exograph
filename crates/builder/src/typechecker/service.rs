@@ -9,7 +9,7 @@ use core_model_builder::typechecker::{
 };
 
 use crate::ast::ast_types::{
-    AstArgument, AstFieldType, AstInterceptor, AstMethod, AstModelKind, AstService, Untyped,
+    AstArgument, AstFieldType, AstInterceptor, AstMethod, AstService, Untyped,
 };
 
 use super::{annotation_map::AnnotationMapImpl, Scope, Type, TypecheckFrom};
@@ -225,21 +225,6 @@ impl TypecheckFrom<AstArgument<Untyped>> for AstArgument<Typed> {
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        if let Some(Type::Composite(model)) = type_env.get_by_key(&self.typ.name()) {
-            match model.kind {
-                AstModelKind::Type | AstModelKind::Context => {}
-                _ => errors.push(Diagnostic {
-                    level: Level::Error,
-                    message: format!(
-                        "Argument `{}` must be either a type or a context",
-                        self.name
-                    ),
-                    code: Some("A000".to_string()),
-                    spans: vec![],
-                }),
-            }
-        }
-
         let typ_changed = self.typ.pass(type_env, annotation_env, scope, errors);
 
         let annot_changed = self.annotations.pass(

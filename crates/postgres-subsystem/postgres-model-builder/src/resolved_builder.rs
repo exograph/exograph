@@ -238,7 +238,7 @@ fn resolve(
                 if service.annotations.get("postgres").is_some() {
                     for model in service.models.iter() {
                         if let Some(Type::Composite(ct)) = types.get_by_key(&model.name) {
-                            if ct.kind == AstModelKind::Model || ct.kind == AstModelKind::Type {
+                            if ct.kind == AstModelKind::Type {
                                 let plural_annotation_value = ct
                                     .annotations
                                     .get("plural_name")

@@ -125,9 +125,8 @@ pub struct AstInterceptor<T: NodeTypedness> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum AstModelKind {
-    Model,   // a model intended to be persisted inside the database
+    Type,    // a type in a service (with semantics assigned by each service plugin)
     Context, // defines contextual models for authorization
-    Type,    // a non-persistent model used as a type for service methods
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

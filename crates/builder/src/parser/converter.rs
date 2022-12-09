@@ -170,14 +170,13 @@ fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyp
         .unwrap()
         .to_string();
 
-    let kind = if kind == "model" {
-        AstModelKind::Model
-    } else if kind == "type" {
+    let kind = if kind == "type" {
         AstModelKind::Type
     } else if kind == "context" {
         AstModelKind::Context
     } else {
-        todo!()
+        // The parse ensures that it can only be "type" or "context"
+        unreachable!("Invalid model kind")
     };
 
     AstModel {

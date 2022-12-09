@@ -62,7 +62,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
         };
 
         let annot_changed = self.annotations.pass(
-            AnnotationTarget::Model,
+            AnnotationTarget::Type,
             type_env,
             annotation_env,
             &model_scope,
