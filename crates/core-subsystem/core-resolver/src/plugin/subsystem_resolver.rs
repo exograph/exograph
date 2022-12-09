@@ -2,10 +2,7 @@ use crate::{
     request_context::RequestContext, system_resolver::SystemResolver,
     validation::field::ValidatedField, InterceptedOperation, QueryResponse,
 };
-use async_graphql_parser::{
-    types::{FieldDefinition, OperationType, TypeDefinition},
-    Positioned,
-};
+use async_graphql_parser::types::{FieldDefinition, OperationType, TypeDefinition};
 use async_trait::async_trait;
 use core_plugin_shared::interception::InterceptorIndex;
 use thiserror::Error;
@@ -36,7 +33,7 @@ pub trait SubsystemResolver: Sync {
         operation_type: OperationType,
         request_context: &'a RequestContext,
         system_resolver: &'a SystemResolver,
-    ) -> Option<Result<QueryResponse, SubsystemResolutionError>> {
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError> {
         let _guard = handle.enter();
         self.resolve(operation, operation_type, request_context, system_resolver)
             .await
@@ -70,7 +67,7 @@ pub trait SubsystemResolver: Sync {
         operation_type: OperationType,
         request_context: &'a RequestContext,
         system_resolver: &'a SystemResolver,
-    ) -> Option<Result<QueryResponse, SubsystemResolutionError>>;
+    ) -> Result<Option<QueryResponse>, SubsystemResolutionError>;
 
     /// Involves an interceptor
     ///
@@ -87,9 +84,10 @@ pub trait SubsystemResolver: Sync {
     // Support for schema creation (and in turn, validation)
 
     /// Queries supported by this subsystem
-    fn schema_queries(&self) -> Vec<Positioned<FieldDefinition>>;
+    fn schema_queries(&self) -> Vec<FieldDefinition>;
     /// Mutations supported by this subsystem
-    fn schema_mutations(&self) -> Vec<Positioned<FieldDefinition>>;
+
+    fn schema_mutations(&self) -> Vec<FieldDefinition>;
     /// Types supported by this subsystem. This includes types explicitly defined by user types as
     /// well as types derived from user types (such as for predicates)
     fn schema_types(&self) -> Vec<TypeDefinition>;
