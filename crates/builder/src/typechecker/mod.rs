@@ -618,6 +618,20 @@ mod tests {
     }
 
     #[test]
+    fn context_in_a_service() {
+        let src_model = r#"
+        @postgres
+        service UserService {
+            context AuthContext {
+                role: String @jwt
+            }
+        }
+        "#;
+
+        assert_err(src_model);
+    }
+
+    #[test]
     fn invalid_annotation_parameter_type() {
         let expected_none = r#"
         @postgres
