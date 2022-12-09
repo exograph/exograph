@@ -13,7 +13,7 @@ module.exports = grammar({
   rules: {
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
-      $.model,
+      $.context,
       $.service,
       $.import
     ),
@@ -55,9 +55,15 @@ module.exports = grammar({
       optional(commaSep(field("args", $.argument))),
       ")",
     ),
+    context: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      "context",
+      field("name", $.term),
+      field("body", $.model_body)
+    ),
     model: $ => seq(
       repeat(field("annotation", $.annotation)),
-      field("kind", $.model_kind),
+      "type",
       field("name", $.term),
       field("body", $.model_body)
     ),

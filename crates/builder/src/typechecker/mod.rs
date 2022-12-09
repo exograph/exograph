@@ -614,13 +614,7 @@ mod tests {
         }
         "#;
 
-        let src_type = r#"
-        type User {
-        }
-        "#;
-
         assert_err(src_model);
-        assert_err(src_type);
     }
 
     #[test]

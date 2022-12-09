@@ -1,58 +1,66 @@
 ---
 source: crates/builder/src/parser/converter.rs
-expression: "convert_root(parsed.root_node(),\n        r#\"\n            type Foo {\n                bar: Baz @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.clay\")).unwrap()"
+expression: "convert_root(parsed.root_node(),\n        r#\"\n            @postgres\n            service TestService{            \n                type Foo {\n                    bar: Baz @column(\"custom_column\") @access(!self.role == \"role_admin\" || self.role == \"role_superuser\")\n                }\n            }\n        \"#.as_bytes(),\n        file_span, Path::new(\"input.clay\")).unwrap()"
 ---
-models:
-  - name: Foo
-    kind: Type
-    fields:
-      - name: bar
-        typ:
-          Plain:
-            - Baz
-            - []
-            - ~
-        annotations:
-          - name: column
-            params:
-              Single:
-                - StringLiteral:
-                    - custom_column
-          - name: access
-            params:
-              Single:
-                - LogicalOp:
-                    Or:
-                      - RelationalOp:
-                          Eq:
-                            - LogicalOp:
-                                Not:
-                                  - FieldSelection:
-                                      Select:
-                                        - Single:
-                                            - - self
+models: []
+services:
+  - name: TestService
+    annotations:
+      - name: postgres
+        params: None
+    models:
+      - name: Foo
+        kind: Type
+        fields:
+          - name: bar
+            typ:
+              Plain:
+                - Baz
+                - []
+                - ~
+            annotations:
+              - name: column
+                params:
+                  Single:
+                    - StringLiteral:
+                        - custom_column
+              - name: access
+                params:
+                  Single:
+                    - LogicalOp:
+                        Or:
+                          - RelationalOp:
+                              Eq:
+                                - LogicalOp:
+                                    Not:
+                                      - FieldSelection:
+                                          Select:
+                                            - Single:
+                                                - - self
+                                                - ~
+                                            - - role
                                             - ~
-                                        - - role
-                                        - ~
-                                  - ~
-                            - StringLiteral:
-                                - role_admin
-                            - ~
-                      - RelationalOp:
-                          Eq:
-                            - FieldSelection:
-                                Select:
-                                  - Single:
-                                      - - self
                                       - ~
-                                  - - role
-                                  - ~
-                            - StringLiteral:
-                                - role_superuser
-                            - ~
-                      - ~
-        default_value: ~
-    annotations: []
-services: []
+                                - StringLiteral:
+                                    - role_admin
+                                - ~
+                          - RelationalOp:
+                              Eq:
+                                - FieldSelection:
+                                    Select:
+                                      - Single:
+                                          - - self
+                                          - ~
+                                      - - role
+                                      - ~
+                                - StringLiteral:
+                                    - role_superuser
+                                - ~
+                          - ~
+            default_value: ~
+        annotations: []
+    methods: []
+    interceptors: []
+    base_clayfile: input.clay
 imports: []
 

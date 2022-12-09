@@ -34,7 +34,7 @@ pub fn convert_root(
         models: node
             .children(&mut cursor)
             .filter(|n| n.kind() == "declaration")
-            .filter_map(|c| convert_declaration_to_model(c, source, source_span))
+            .filter_map(|c| convert_declaration_to_context(c, source, source_span))
             .collect::<Vec<_>>(),
         services: node
             .children(&mut cursor)
@@ -126,7 +126,7 @@ pub fn convert_root(
     })
 }
 
-fn convert_declaration_to_model(
+fn convert_declaration_to_context(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -134,8 +134,13 @@ fn convert_declaration_to_model(
     assert_eq!(node.kind(), "declaration");
     let first_child = node.child(0).unwrap();
 
-    if first_child.kind() == "model" {
-        Some(convert_model(first_child, source, source_span))
+    if first_child.kind() == "context" {
+        Some(convert_model(
+            first_child,
+            source,
+            source_span,
+            AstModelKind::Context,
+        ))
     } else {
         None
     }
@@ -158,26 +163,15 @@ fn convert_declaration_to_service(
     }
 }
 
-fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
-    assert_eq!(node.kind(), "model");
+fn convert_model(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+    kind: AstModelKind,
+) -> AstModel<Untyped> {
+    assert!(node.kind() == "model" || node.kind() == "context");
 
     let mut cursor = node.walk();
-
-    let kind = node
-        .child_by_field_name("kind")
-        .unwrap()
-        .utf8_text(source)
-        .unwrap()
-        .to_string();
-
-    let kind = if kind == "type" {
-        AstModelKind::Type
-    } else if kind == "context" {
-        AstModelKind::Context
-    } else {
-        // The parse ensures that it can only be "type" or "context"
-        unreachable!("Invalid model kind")
-    };
 
     AstModel {
         name: node
@@ -196,9 +190,7 @@ fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyp
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
-        span: span_from_node(source_span, node.child_by_field_name("kind").unwrap()).merge(
-            span_from_node(source_span, node.child_by_field_name("name").unwrap()),
-        ),
+        span: span_from_node(source_span, node.child_by_field_name("name").unwrap()),
     }
 }
 
@@ -233,7 +225,7 @@ fn convert_service(
             .unwrap()
             .to_string(),
         models: matching_nodes(node, &mut node.walk(), "model")
-            .map(|n| convert_model(n, source, source_span))
+            .map(|n| convert_model(n, source, source_span, AstModelKind::Type))
             .collect(),
         methods: matching_nodes(node, &mut node.walk(), "service_method")
             .map(|n| convert_service_method(n, source, source_span))
@@ -703,8 +695,11 @@ mod tests {
     fn expression_precedence() {
         parsing_test!(
             r#"
-            type Foo {
-                bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
+            @postgres
+            service TestService{            
+                type Foo {
+                    bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
+                }
             }
         "#
         );
@@ -714,26 +709,29 @@ mod tests {
     fn bb_schema() {
         parsing_test!(
             r#"
-            // a short comment
-            @table("concerts")
-            type Concert {
-                id: Int = autoincrement() @pk
-                title: String // a comment
-                // another comment
-                venue: Venue @column("venueid")
-                /*
-                not_a_field: Int
-                */
-            }
+            @postgres
+            service TestService{
+                // a short comment
+                @table("concerts")
+                type Concert {
+                    id: Int = autoincrement() @pk
+                    title: String // a comment
+                    // another comment
+                    venue: Venue @column("venueid")
+                    /*
+                    not_a_field: Int
+                    */
+                }
 
-            /*
-            a multiline comment
-            */
-            @table("venues")
-            type Venue {
-                id: Int = autoincrement() @pk
-                name: String
-                concerts: Set<Concert /* here too! */> @column("venueid")
+                /*
+                a multiline comment
+                */
+                @table("venues")
+                type Venue {
+                    id: Int = autoincrement() @pk
+                    name: String
+                    concerts: Set<Concert /* here too! */> @column("venueid")
+                }
             }
         "#
         );
