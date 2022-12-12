@@ -1,6 +1,6 @@
 @postgres 
 service UserService {
-    model User {
+    type User {
         id: Int = autoincrement() @pk
 
         email: String     // login e-mail

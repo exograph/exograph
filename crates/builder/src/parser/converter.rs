@@ -31,10 +31,10 @@ pub fn convert_root(
 
     let mut cursor = node.walk();
     Ok(AstSystem {
-        models: node
+        types: node
             .children(&mut cursor)
             .filter(|n| n.kind() == "declaration")
-            .filter_map(|c| convert_declaration_to_model(c, source, source_span))
+            .filter_map(|c| convert_declaration_to_context(c, source, source_span))
             .collect::<Vec<_>>(),
         services: node
             .children(&mut cursor)
@@ -49,13 +49,11 @@ pub fn convert_root(
                     let first_child = c.child(0).unwrap();
 
                     if first_child.kind() == "import" {
-                        let path_str = first_child
-                            .child_by_field_name("path")
-                            .unwrap()
-                            .child_by_field_name("value")
-                            .unwrap()
-                            .utf8_text(source)
-                            .unwrap();
+                        let path_str = text_child(
+                            first_child.child_by_field_name("path").unwrap(),
+                            source,
+                            "value",
+                        );
 
                         // Create a path relative to the current file
                         let mut import_path = filepath.to_owned();
@@ -126,7 +124,7 @@ pub fn convert_root(
     })
 }
 
-fn convert_declaration_to_model(
+fn convert_declaration_to_context(
     node: Node,
     source: &[u8],
     source_span: Span,
@@ -134,8 +132,13 @@ fn convert_declaration_to_model(
     assert_eq!(node.kind(), "declaration");
     let first_child = node.child(0).unwrap();
 
-    if first_child.kind() == "model" {
-        Some(convert_model(first_child, source, source_span))
+    if first_child.kind() == "context" {
+        Some(convert_model(
+            first_child,
+            source,
+            source_span,
+            AstModelKind::Context,
+        ))
     } else {
         None
     }
@@ -158,35 +161,18 @@ fn convert_declaration_to_service(
     }
 }
 
-fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyped> {
-    assert_eq!(node.kind(), "model");
+fn convert_model(
+    node: Node,
+    source: &[u8],
+    source_span: Span,
+    kind: AstModelKind,
+) -> AstModel<Untyped> {
+    assert!(node.kind() == "type" || node.kind() == "context");
 
     let mut cursor = node.walk();
 
-    let kind = node
-        .child_by_field_name("kind")
-        .unwrap()
-        .utf8_text(source)
-        .unwrap()
-        .to_string();
-
-    let kind = if kind == "model" {
-        AstModelKind::Model
-    } else if kind == "type" {
-        AstModelKind::Type
-    } else if kind == "context" {
-        AstModelKind::Context
-    } else {
-        todo!()
-    };
-
     AstModel {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         kind,
         fields: convert_fields(
             node.child_by_field_name("body").unwrap(),
@@ -197,9 +183,7 @@ fn convert_model(node: Node, source: &[u8], source_span: Span) -> AstModel<Untyp
             .children_by_field_name("annotation", &mut cursor)
             .map(|c| convert_annotation(c, source, source_span))
             .collect(),
-        span: span_from_node(source_span, node.child_by_field_name("kind").unwrap()).merge(
-            span_from_node(source_span, node.child_by_field_name("name").unwrap()),
-        ),
+        span: span_from_node(source_span, node.child_by_field_name("name").unwrap()),
     }
 }
 
@@ -227,14 +211,9 @@ fn convert_service(
         .collect::<Vec<_>>();
 
     AstService {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
-        models: matching_nodes(node, &mut node.walk(), "model")
-            .map(|n| convert_model(n, source, source_span))
+        name: text_child(node, source, "name"),
+        types: matching_nodes(node, &mut node.walk(), "type")
+            .map(|n| convert_model(n, source, source_span, AstModelKind::Type))
             .collect(),
         methods: matching_nodes(node, &mut node.walk(), "service_method")
             .map(|n| convert_service_method(n, source, source_span))
@@ -252,14 +231,9 @@ fn convert_service_method(node: Node, source: &[u8], source_span: Span) -> AstMe
     let mut cursor = node.walk();
 
     AstMethod {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         typ: node
-            .child_by_field_name("type")
+            .child_by_field_name("method_type")
             .unwrap()
             .utf8_text(source)
             .unwrap()
@@ -286,12 +260,7 @@ fn convert_interceptor(node: Node, source: &[u8], source_span: Span) -> AstInter
     let mut cursor = node.walk();
 
     AstInterceptor {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         arguments: node
             .children_by_field_name("args", &mut cursor)
             .map(|c| convert_argument(c, source, source_span))
@@ -317,14 +286,9 @@ fn convert_field(node: Node, source: &[u8], source_span: Span) -> AstField<Untyp
     let mut cursor = node.walk();
 
     AstField {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         typ: convert_type(
-            node.child_by_field_name("type").unwrap(),
+            node.child_by_field_name("field_type").unwrap(),
             source,
             source_span,
         ),
@@ -368,21 +332,15 @@ fn convert_field_default_value(
     }
 }
 
-// TODO: dedup
 fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument<Untyped> {
     assert!(node.kind() == "argument");
 
     let mut cursor = node.walk();
 
     AstArgument {
-        name: node
-            .child_by_field_name("name")
-            .unwrap()
-            .utf8_text(source)
-            .unwrap()
-            .to_string(),
+        name: text_child(node, source, "name"),
         typ: convert_type(
-            node.child_by_field_name("type").unwrap(),
+            node.child_by_field_name("argument_type").unwrap(),
             source,
             source_span,
         ),
@@ -394,7 +352,7 @@ fn convert_argument(node: Node, source: &[u8], source_span: Span) -> AstArgument
 }
 
 fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Untyped> {
-    assert_eq!(node.kind(), "type");
+    assert_eq!(node.kind(), "field_type");
     let first_child = node.child(0).unwrap();
     let mut cursor = node.walk();
 
@@ -407,7 +365,7 @@ fn convert_type(node: Node, source: &[u8], source_span: Span) -> AstFieldType<Un
             (),
             span_from_node(source_span, first_child),
         ),
-        "optional_type" => AstFieldType::Optional(Box::new(convert_type(
+        "optional_field_type" => AstFieldType::Optional(Box::new(convert_type(
             first_child.child_by_field_name("inner").unwrap(),
             source,
             source_span,
@@ -475,16 +433,7 @@ fn convert_annotation_params(
         "annotation_map_params" => {
             let params = first_child
                 .children_by_field_name("param", &mut cursor)
-                .map(|p| {
-                    (
-                        p.child_by_field_name("name")
-                            .unwrap()
-                            .utf8_text(source)
-                            .unwrap()
-                            .to_string(),
-                        p,
-                    )
-                })
+                .map(|p| (text_child(p, source, "name"), p))
                 .collect::<Vec<_>>();
 
             let exprs = params
@@ -537,12 +486,7 @@ fn convert_expression(node: Node, source: &[u8], source_span: Span) -> AstExpr<U
             ),
         ),
         "literal_str" => AstExpr::StringLiteral(
-            first_child
-                .child_by_field_name("value")
-                .unwrap()
-                .utf8_text(source)
-                .unwrap()
-                .to_string(),
+            text_child(first_child, source, "value"),
             span_from_node(
                 source_span,
                 first_child.child_by_field_name("value").unwrap(),
@@ -650,12 +594,7 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
                 source_span,
             )),
             Identifier(
-                first_child
-                    .child_by_field_name("term")
-                    .unwrap()
-                    .utf8_text(source)
-                    .unwrap()
-                    .to_string(),
+                text_child(first_child, source, "term"),
                 span_from_node(
                     source_span,
                     first_child.child_by_field_name("term").unwrap(),
@@ -673,6 +612,14 @@ fn convert_selection(node: Node, source: &[u8], source_span: Span) -> FieldSelec
         ),
         o => panic!("unsupported logical op kind: {}", o),
     }
+}
+
+fn text_child(node: Node, source: &[u8], child_name: &str) -> String {
+    node.child_by_field_name(child_name)
+        .unwrap()
+        .utf8_text(source)
+        .unwrap()
+        .to_string()
 }
 
 #[cfg(test)]
@@ -704,8 +651,11 @@ mod tests {
     fn expression_precedence() {
         parsing_test!(
             r#"
-            type Foo {
-                bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
+            @postgres
+            service TestService{            
+                type Foo {
+                    bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
+                }
             }
         "#
         );
@@ -715,26 +665,29 @@ mod tests {
     fn bb_schema() {
         parsing_test!(
             r#"
-            // a short comment
-            @table("concerts")
-            type Concert {
-                id: Int = autoincrement() @pk
-                title: String // a comment
-                // another comment
-                venue: Venue @column("venueid")
-                /*
-                not_a_field: Int
-                */
-            }
+            @postgres
+            service TestService{
+                // a short comment
+                @table("concerts")
+                type Concert {
+                    id: Int = autoincrement() @pk
+                    title: String // a comment
+                    // another comment
+                    venue: Venue @column("venueid")
+                    /*
+                    not_a_field: Int
+                    */
+                }
 
-            /*
-            a multiline comment
-            */
-            @table("venues")
-            type Venue {
-                id: Int = autoincrement() @pk
-                name: String
-                concerts: Set<Concert /* here too! */> @column("venueid")
+                /*
+                a multiline comment
+                */
+                @table("venues")
+                type Venue {
+                    id: Int = autoincrement() @pk
+                    name: String
+                    concerts: Set<Concert /* here too! */> @column("venueid")
+                }
             }
         "#
         );

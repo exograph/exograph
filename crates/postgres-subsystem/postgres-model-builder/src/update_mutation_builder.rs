@@ -26,10 +26,10 @@ impl Builder for UpdateMutationBuilder {
     fn type_names(
         &self,
         resolved_composite_type: &ResolvedCompositeType,
-        models: &MappedArena<ResolvedType>,
+        types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
         // TODO: This implementation is the same for CreateMutationBuilder. Fix it when we refactor non-mutations builders
-        let mut field_types = self.data_param_field_type_names(resolved_composite_type, models);
+        let mut field_types = self.data_param_field_type_names(resolved_composite_type, types);
         field_types.push(Self::data_param_type_name(resolved_composite_type));
         field_types
     }
@@ -134,7 +134,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         resolved_composite_type: &ResolvedCompositeType,
     ) -> Vec<String> {
         // Base: ConcertArtistUpdateInputFromConcert (will have create, insert, and update fields)
-        // Nested: ConcertArtistUpdateInputFromConcertNested (will have the model fields to be updated)
+        // Nested: ConcertArtistUpdateInputFromConcertNested (will have the type fields to be updated)
         let base = Self::data_type_name(field_type_name, Some(&resolved_composite_type.name));
         let nested = format!("{}Nested", &base);
         vec![base, nested]

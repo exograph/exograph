@@ -154,7 +154,7 @@ fn map_foreign<'a>(
         system: &'a ModelPostgresSystem,
     ) -> &'a PostgresType {
         // TODO: Unhack this. Most likely, we need to separate input types from output types and have input types carry
-        //       additional information (such as the associated model type) so that we can get the id column more directly
+        //       additional information (such as the associated type) so that we can get the id column more directly
         match &data_type.kind {
             PostgresTypeKind::Primitive => todo!(),
             PostgresTypeKind::Composite(kind) => {

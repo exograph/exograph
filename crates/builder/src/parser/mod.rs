@@ -68,7 +68,7 @@ fn _parse_file(
             let mut imported_system = _parse_file(import, codemap, already_parsed)?;
 
             // merge import into system
-            system.models.append(&mut imported_system.models);
+            system.types.append(&mut imported_system.types);
             system.services.append(&mut imported_system.services);
         }
     }

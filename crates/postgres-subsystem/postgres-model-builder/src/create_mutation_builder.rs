@@ -23,9 +23,9 @@ impl Builder for CreateMutationBuilder {
     fn type_names(
         &self,
         resolved_composite_type: &ResolvedCompositeType,
-        models: &MappedArena<ResolvedType>,
+        types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
-        let mut field_types = self.data_param_field_type_names(resolved_composite_type, models);
+        let mut field_types = self.data_param_field_type_names(resolved_composite_type, types);
         field_types.push(Self::data_param_type_name(resolved_composite_type));
         field_types
     }

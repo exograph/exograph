@@ -121,7 +121,7 @@ fn compute_nested_ops<'a>(
         PostgresTypeKind::Composite(PostgresCompositeType { fields, .. }) => {
             fields.iter().for_each(|field| {
                 if let PostgresRelation::OneToMany { other_type_id, .. } = &field.relation {
-                    let field_model_type = &subsystem.postgres_types[*other_type_id]; // TODO: This is a model type but should be a data type
+                    let field_model_type = &subsystem.postgres_types[*other_type_id]; // TODO: This is a type but should be a data type
 
                     if let Some(argument) = get_argument_field(argument, &field.name) {
                         nested_updates.extend(compute_nested_update(
