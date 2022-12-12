@@ -334,7 +334,7 @@ fn resolve_service(
                     })
                 })
                 .collect(),
-                types_defined: service.models.iter().map(|m| m.name.clone()).collect(),
+                types_defined: service.types.iter().map(|m| m.name.clone()).collect(),
         },
     );
 

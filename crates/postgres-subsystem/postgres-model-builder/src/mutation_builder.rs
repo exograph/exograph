@@ -29,12 +29,12 @@ use super::{
 // TODO: Abstract the concept of composite builders
 
 /// Build shallow mutation input types
-pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
-    ReferenceInputTypeBuilder {}.build_shallow_only_persistent(models, building);
+pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+    ReferenceInputTypeBuilder {}.build_shallow_only_persistent(types, building);
 
-    CreateMutationBuilder {}.build_shallow_only_persistent(models, building);
-    UpdateMutationBuilder {}.build_shallow_only_persistent(models, building);
-    DeleteMutationBuilder {}.build_shallow_only_persistent(models, building);
+    CreateMutationBuilder {}.build_shallow_only_persistent(types, building);
+    UpdateMutationBuilder {}.build_shallow_only_persistent(types, building);
+    DeleteMutationBuilder {}.build_shallow_only_persistent(types, building);
 }
 
 /// Expand the mutation input types as well as build the mutation

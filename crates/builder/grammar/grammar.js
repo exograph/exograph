@@ -13,7 +13,7 @@ module.exports = grammar({
   rules: {
     source_file: $ => repeat($.declaration),
     declaration: $ => choice(
-      $.model,
+      $.context,
       $.service,
       $.import
     ),
@@ -33,19 +33,19 @@ module.exports = grammar({
       "}"
     ),
     service_field: $ => choice(
-      $.model,
+      $.type,
       $.service_method,
       $.interceptor
     ),
     service_method: $ => seq(
       repeat(field("annotation", $.annotation)),
       optional(field("is_exported", "export")),
-      field("type", choice("query", "mutation")),
+      field("method_type", choice("query", "mutation")),
       field("name", $.term),
       "(",
       optional(commaSep(field("args", $.argument))),
       "):",
-      field("return_type", $.type)
+      field("return_type", $.field_type)
     ),
     interceptor: $ => seq(
       repeat(field("annotation", $.annotation)),
@@ -55,14 +55,19 @@ module.exports = grammar({
       optional(commaSep(field("args", $.argument))),
       ")",
     ),
-    model: $ => seq(
+    context: $ => seq(
       repeat(field("annotation", $.annotation)),
-      field("kind", $.model_kind),
+      "context",
       field("name", $.term),
-      field("body", $.model_body)
+      field("body", $.type_body)
     ),
-    model_kind: $ => choice("model", "context", "type"),
-    model_body: $ => seq("{", repeat(field("field", $.field)), "}"),
+    type: $ => seq(
+      repeat(field("annotation", $.annotation)),
+      "type",
+      field("name", $.term),
+      field("body", $.type_body)
+    ),
+    type_body: $ => seq("{", repeat(field("field", $.field)), "}"),
     annotation: $ => seq(
       "@",
       field("name", $.term),
@@ -83,12 +88,12 @@ module.exports = grammar({
       repeat(field("annotation", $.annotation)),
       field("name", $.term),
       ":",
-      field("type", $.type),
+      field("argument_type", $.field_type),
     ),
     field: $ => seq(
       field("name", $.term),
       ":",
-      field("type", $.type),
+      field("field_type", $.field_type),
       optional(seq(
         "=",
         field("default_value", $.field_default_value) 
@@ -104,12 +109,11 @@ module.exports = grammar({
         ")"
       )
     ),
-    type: $ => choice(
-      $.optional_type,
-      seq($.term, optional(seq("<", commaSep(field("type_param", $.type)), ">")))
+    field_type: $ => choice(
+      $.optional_field_type,
+      seq($.term, optional(seq("<", commaSep(field("type_param", $.field_type)), ">")))
     ),
-    array_type: $ => seq("<", field("inner", $.type), ">"),
-    optional_type: $ => seq(field("inner", $.type), "?"),
+    optional_field_type: $ => seq(field("inner", $.field_type), "?"),
     expression: $ => choice(
       $.parenthetical,
       prec(1, $.logical_op),

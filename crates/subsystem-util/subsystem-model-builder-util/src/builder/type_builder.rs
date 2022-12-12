@@ -54,12 +54,12 @@ pub(super) fn build_service_expanded(
 }
 
 pub(super) fn build_shallow(
-    models: &MappedArena<ResolvedType>,
+    types: &MappedArena<ResolvedType>,
     contexts: &MappedArena<ContextType>,
     building: &mut SystemContextBuilding,
 ) {
-    for (_, model_type) in models.iter() {
-        create_shallow_type(model_type, building);
+    for (_, typ) in types.iter() {
+        create_shallow_type(typ, building);
     }
 
     // For contexts, building shallow types is enough
@@ -163,7 +163,7 @@ fn compute_access_composite_types(
     })
 }
 
-// Expand access expressions (pre-condition: all model fields have been populated)
+// Expand access expressions (pre-condition: all type fields have been populated)
 fn expand_type_access(
     resolved_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,

@@ -21,7 +21,7 @@ impl Builder for ReferenceInputTypeBuilder {
     fn type_names(
         &self,
         resolved_composite_type: &ResolvedCompositeType,
-        _models: &MappedArena<ResolvedType>,
+        _types: &MappedArena<ResolvedType>,
     ) -> Vec<String> {
         vec![resolved_composite_type.reference_type()]
     }

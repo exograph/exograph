@@ -9,7 +9,7 @@ use core_model_builder::typechecker::{
 };
 
 use crate::ast::ast_types::{
-    AstArgument, AstFieldType, AstInterceptor, AstMethod, AstModelKind, AstService, Untyped,
+    AstArgument, AstFieldType, AstInterceptor, AstMethod, AstService, Untyped,
 };
 
 use super::{annotation_map::AnnotationMapImpl, Scope, Type, TypecheckFrom};
@@ -24,7 +24,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
 
         AstService {
             name: untyped.name.clone(),
-            models: typed(&untyped.models),
+            types: typed(&untyped.types),
             methods: typed(&untyped.methods),
             interceptors: typed(&untyped.interceptors),
             annotations: annotation_map,
@@ -40,12 +40,12 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
         scope: &super::Scope,
         errors: &mut Vec<codemap_diagnostic::Diagnostic>,
     ) -> bool {
-        let models_changed = self
-            .models
+        let types_changed = self
+            .types
             .iter_mut()
             .map(|m| {
                 let model_scope = Scope {
-                    enclosing_model: Some(m.name.clone()),
+                    enclosing_type: Some(m.name.clone()),
                 };
 
                 m.pass(type_env, annotation_env, &model_scope, errors)
@@ -102,7 +102,7 @@ impl TypecheckFrom<AstService<Untyped>> for AstService<Typed> {
             })
         }
 
-        models_changed || methods_changed || interceptor_changed || annot_changed
+        types_changed || methods_changed || interceptor_changed || annot_changed
     }
 }
 
@@ -225,21 +225,6 @@ impl TypecheckFrom<AstArgument<Untyped>> for AstArgument<Typed> {
         scope: &Scope,
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
-        if let Some(Type::Composite(model)) = type_env.get_by_key(&self.typ.name()) {
-            match model.kind {
-                AstModelKind::Type | AstModelKind::Context => {}
-                _ => errors.push(Diagnostic {
-                    level: Level::Error,
-                    message: format!(
-                        "Argument `{}` must be either a type or a context",
-                        self.name
-                    ),
-                    code: Some("A000".to_string()),
-                    spans: vec![],
-                }),
-            }
-        }
-
         let typ_changed = self.typ.pass(type_env, annotation_env, scope, errors);
 
         let annot_changed = self.annotations.pass(

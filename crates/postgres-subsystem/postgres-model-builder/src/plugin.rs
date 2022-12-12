@@ -80,7 +80,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             (
                 "plural_name",
                 AnnotationSpec {
-                    targets: &[AnnotationTarget::Model],
+                    targets: &[AnnotationTarget::Type],
                     no_params: false,
                     single_params: true,
                     mapped_params: None,
@@ -134,7 +134,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
             (
                 "table",
                 AnnotationSpec {
-                    targets: &[AnnotationTarget::Model],
+                    targets: &[AnnotationTarget::Type],
                     no_params: false,
                     single_params: true,
                     mapped_params: None,

@@ -1,5 +1,6 @@
 ---
 source: crates/builder/src/typechecker/mod.rs
+assertion_line: 480
 expression: build(src).unwrap()
 ---
 values:
@@ -42,7 +43,7 @@ values:
             postgres:
               name: postgres
               params: None
-        models:
+        types:
           - name: Doc
             kind: Type
             fields:

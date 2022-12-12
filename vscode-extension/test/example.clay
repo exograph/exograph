@@ -3,7 +3,7 @@ service ConcertVenues {
   @table("concerts")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published || price <= 10, 
           mutation=AuthContext.role == "ROLE_ADMIN")
-  model Concert {
+  type Concert {
     id: Int = autoincrement() @pk // comment after annotation
     title: String // comment after type
     venue: Venue @column("venueid")
@@ -12,7 +12,7 @@ service ConcertVenues {
   }
 
   @table("venues")
-  model Venue {
+  type Venue {
     id: Int = autoincrement() @pk // highlighting of functions in default field
     name: String = "abc" // highlighting of strings in default field
     concerts: Set<Concert> @column("venueid")
@@ -25,7 +25,7 @@ service ConcertVenues {
 @plugin
 service Service {
   @auth(self._starts_with_underscore == "foo" || _AuthContext.role == "ROLE_ADMIN")
-  model _ModelStartWithAnUnderscore_AndHas_Underscores {
+  type _ModelStartWithAnUnderscore_AndHas_Underscores {
     id_with_underscores: Int = autoincrement() @pk
     _starts_with_underscore: String
   }
