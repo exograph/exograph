@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::Path;
 
 use codemap::Span;
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
@@ -158,7 +158,7 @@ pub fn build(
     process_script: impl Fn(
         &AstService<Typed>,
         &BaseModelSystem,
-        &PathBuf,
+        &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     let mut errors = Vec::new();
@@ -186,7 +186,7 @@ fn resolve(
     process_script: impl Fn(
         &AstService<Typed>,
         &BaseModelSystem,
-        &PathBuf,
+        &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     let resolved_services = resolve_services(
@@ -227,7 +227,7 @@ fn resolve_services(
     process_script: impl Fn(
         &AstService<Typed>,
         &BaseModelSystem,
-        &PathBuf,
+        &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
@@ -261,7 +261,7 @@ fn resolve_service(
     process_script: &impl Fn(
         &AstService<Typed>,
         &BaseModelSystem,
-        &PathBuf,
+        &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
     let module_path = match service.annotations.get(&annotation_name).unwrap() {
@@ -538,5 +538,110 @@ fn resolve_field_type(typ: &Type, types: &MappedArena<Type>) -> ResolvedFieldTyp
         _ => {
             panic!("Unsupported field type")
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use builder::{
+        load_subsystem_builders, parser,
+        typechecker::{self, annotation_map::AnnotationMapImpl},
+    };
+    use codemap::CodeMap;
+    use core_model_builder::{
+        ast::ast_types::AstService, error::ModelBuildingError, typechecker::Typed,
+    };
+
+    use super::{build, ResolvedServiceSystem};
+
+    #[test]
+    fn type_disambiguation() {
+        let model = r#"
+            @deno("x.ts")
+            service TestService {
+                type Bar {
+                    a: String
+                    b: Boolean
+                    c: Int
+                }
+
+                type FooInput {
+                    a: String
+                    b: Boolean
+                }
+
+                mutation setFoo(key: Int, value: FooInput): Boolean
+                query getBar(key: Int): Bar
+            } 
+        "#;
+
+        assert_success(model);
+    }
+
+    #[test]
+    fn input_type_used_as_output_type() {
+        let model = r#"
+            @deno("x.ts")
+            service TestService {
+                type FooInput {
+                    a: String
+                    b: Boolean
+                }
+
+                mutation setFoo(key: Int, value: FooInput): Boolean
+                query getFoo(key: Int): FooInput
+            } 
+        "#;
+
+        assert_err(model);
+    }
+
+    #[test]
+    fn output_type_used_as_input_type() {
+        let model = r#"
+            @deno("x.ts")
+            service TestService {
+                type Foo {
+                    a: String
+                    b: Boolean
+                }
+
+                query getFoo(key: Int): Foo
+                mutation setFoo(key: Int, value: Foo): Boolean
+            } 
+        "#;
+
+        assert_err(model);
+    }
+
+    fn assert_success(src: &str) {
+        assert!(create_resolved_system(src).is_ok())
+    }
+
+    fn assert_err(src: &str) {
+        assert!(create_resolved_system(src).is_err())
+    }
+
+    fn process_script(
+        _service: &AstService<Typed>,
+        _path: &Path,
+    ) -> Result<Vec<u8>, ModelBuildingError> {
+        Ok(vec![])
+    }
+
+    fn create_resolved_system(src: &str) -> Result<ResolvedServiceSystem, ModelBuildingError> {
+        let mut codemap = CodeMap::new();
+        let subsystem_builders = load_subsystem_builders().unwrap();
+        let parsed = parser::parse_str(src, &mut codemap, "input.clay")
+            .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+        let types = typechecker::build(&subsystem_builders, parsed)
+            .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+        build(
+            &types,
+            |service| service.annotations.get("deno").map(|_| "deno".to_string()),
+            process_script,
+        )
     }
 }

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use core_model::mapped_arena::{MappedArena, SerializableSlab, SerializableSlabIndex};
 use core_model_builder::{
@@ -72,7 +72,7 @@ pub fn build_with_selection(
     process_script: impl Fn(
         &AstService<Typed>,
         &BaseModelSystem,
-        &PathBuf,
+        &Path,
     ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ModelServiceSystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
