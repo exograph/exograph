@@ -73,9 +73,10 @@ pub fn build(
 
 fn process_script(
     service: &AstService<Typed>,
+    base_system: &BaseModelSystem,
     module_fs_path: &PathBuf,
 ) -> Result<Vec<u8>, ModelBuildingError> {
-    service_skeleton_generator::generate_service_skeleton(service, module_fs_path)?;
+    service_skeleton_generator::generate_service_skeleton(service, base_system, module_fs_path)?;
 
     // Bundle js/ts files using Deno; we need to bundle even the js files since they may import ts files
     let bundler_output = std::process::Command::new("deno")
