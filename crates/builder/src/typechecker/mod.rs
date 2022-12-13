@@ -728,6 +728,10 @@ mod tests {
                 id: Int
             }
 
+            type User {
+                id: Int
+            }
+
             query userName(id: Int): String
         }
         "#;
