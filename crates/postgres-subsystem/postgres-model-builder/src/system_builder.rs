@@ -83,7 +83,7 @@ fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
-    // First fully build the model types.
+    // First fully build the types.
     type_builder::build_expanded(resolved_env, building)?;
 
     // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed

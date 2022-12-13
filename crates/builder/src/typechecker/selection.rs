@@ -32,7 +32,7 @@ impl TypecheckFrom<FieldSelection<Untyped>> for FieldSelection<Typed> {
             FieldSelection::Single(Identifier(i, s), typ) => {
                 if typ.is_incomplete() {
                     if i.as_str() == "self" {
-                        if let Some(enclosing) = &scope.enclosing_model {
+                        if let Some(enclosing) = &scope.enclosing_type {
                             *typ = Type::Reference(type_env.get_id(enclosing).unwrap());
                             true
                         } else {

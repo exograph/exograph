@@ -33,7 +33,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
         errors: &mut Vec<Diagnostic>,
     ) -> bool {
         let model_scope = Scope {
-            enclosing_model: Some(self.name.clone()),
+            enclosing_type: Some(self.name.clone()),
         };
 
         let fields_changed = self
@@ -49,7 +49,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
                 if let Some(AstFieldDefault { span, .. }) = &field.default_value {
                     errors.push(Diagnostic {
                         level: Level::Error,
-                        message: "Default fields can only be specified in models".to_string(),
+                        message: "Default fields can only be specified in types".to_string(),
                         code: Some("C000".to_string()),
                         spans: vec![SpanLabel {
                             span: *span,
@@ -62,7 +62,7 @@ impl TypecheckFrom<AstModel<Untyped>> for AstModel<Typed> {
         };
 
         let annot_changed = self.annotations.pass(
-            AnnotationTarget::Model,
+            AnnotationTarget::Type,
             type_env,
             annotation_env,
             &model_scope,

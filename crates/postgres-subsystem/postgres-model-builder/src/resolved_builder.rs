@@ -241,10 +241,10 @@ fn resolve(
     for (_, Service(service)) in typechecked_system.services.iter() {
         // Process each persistent type to create a PostgresType
         if service.annotations.get("postgres").is_some() {
-            for model in service.models.iter() {
+            for model in service.types.iter() {
                 if let Some(Type::Composite(ct)) = typechecked_system.types.get_by_key(&model.name)
                 {
-                    if ct.kind == AstModelKind::Model || ct.kind == AstModelKind::Type {
+                    if ct.kind == AstModelKind::Type {
                         let plural_annotation_value = ct
                             .annotations
                             .get("plural_name")
@@ -1242,7 +1242,7 @@ mod tests {
         }
         "#;
 
-        // Both model and fields names are camel case, but the table and column should be defaulted to snake case
+        // Both type and fields names are camel case, but the table and column should be defaulted to snake case
         let resolved = create_resolved_system(src).unwrap();
 
         insta::with_settings!({sort_maps => true}, {

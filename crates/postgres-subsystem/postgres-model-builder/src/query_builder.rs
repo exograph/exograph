@@ -20,9 +20,9 @@ use super::{
     system_builder::SystemContextBuilding,
 };
 
-pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
-    for (_, model) in models.iter() {
-        if let ResolvedType::Composite(c) = &model {
+pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+    for (_, typ) in types.iter() {
+        if let ResolvedType::Composite(c) = &typ {
             let model_type_id = building.get_id(c.name.as_str()).unwrap();
             let shallow_query = shallow_pk_query(model_type_id, c);
             let collection_query = shallow_collection_query(model_type_id, c);

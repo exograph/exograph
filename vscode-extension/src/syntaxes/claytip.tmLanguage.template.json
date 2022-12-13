@@ -83,37 +83,6 @@
         }
       ]
     },
-    "model-definition": {
-      "patterns": [
-        {
-          "name": "meta.typedef.claytip",
-          "begin": "(model){{ws}}({{identifier}}){{opt_ws}}{?",
-          "beginCaptures": {
-            "1": {
-              "name": "keyword.type.claytip"
-            },
-            "2": {
-              "name": "entity.name.class.claytip"
-            }
-          },
-          "patterns": [
-            {
-              "include": "#field"
-            },
-            {
-              "include": "#field-default-value"
-            },
-            {
-              "include": "#annotations"
-            },
-            {
-              "include": "#comments"
-            }
-          ],
-          "end": "}"
-        }
-      ]
-    },
     "type-definition": {
       "patterns": [
         {
@@ -130,6 +99,9 @@
           "patterns": [
             {
               "include": "#field"
+            },
+            {
+              "include": "#field-default-value"
             },
             {
               "include": "#annotations"

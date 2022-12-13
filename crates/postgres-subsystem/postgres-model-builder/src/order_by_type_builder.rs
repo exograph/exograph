@@ -47,9 +47,9 @@ pub fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContex
 
     building.order_by_types.add(&type_name, primitive_type);
 
-    for (_, model) in resolved_env.resolved_types.iter() {
-        if let ResolvedType::Composite(ResolvedCompositeType { .. }) = model {
-            let shallow_type = create_shallow_type(model);
+    for (_, typ) in resolved_env.resolved_types.iter() {
+        if let ResolvedType::Composite(ResolvedCompositeType { .. }) = typ {
+            let shallow_type = create_shallow_type(typ);
             let param_type_name = shallow_type.name.clone();
             building.order_by_types.add(&param_type_name, shallow_type);
         }
@@ -76,9 +76,9 @@ pub fn get_parameter_type_name(model_type_name: &str, is_primitive: bool) -> Str
     }
 }
 
-fn create_shallow_type(model: &ResolvedType) -> OrderByParameterType {
+fn create_shallow_type(typ: &ResolvedType) -> OrderByParameterType {
     OrderByParameterType {
-        name: match &model {
+        name: match &typ {
             ResolvedType::Primitive(p) => get_parameter_type_name(&p.name(), true),
             ResolvedType::Composite(c) => get_parameter_type_name(c.name.as_str(), false),
         },

@@ -90,7 +90,7 @@ fn populate_annotation_env(
             "access",
             AnnotationSpec {
                 targets: &[
-                    AnnotationTarget::Model,
+                    AnnotationTarget::Type,
                     AnnotationTarget::Field,
                     AnnotationTarget::Method,
                 ],
@@ -243,34 +243,37 @@ pub fn build(
 
     validate_no_duplicates(&ast_system.services, |s| &s.name, |s| s.span, "service")?;
 
-    let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
+    let mut ast_service_types: Vec<AstModel<Untyped>> = vec![];
     for service in ast_system.services.iter() {
-        ast_service_models.extend(service.models.clone());
+        ast_service_types.extend(service.types.clone());
         services_arena.add(&service.name, Service(AstService::shallow(service)));
 
         validate_service(service)?;
     }
 
-    let ast_types_iter = ast_system.models.iter().chain(ast_service_models.iter());
-    let ast_root_models = &ast_system.models;
+    let ast_types_iter = ast_system.types.iter().chain(ast_service_types.iter());
+    let ast_root_types = &ast_system.types;
 
-    for model in ast_types_iter.clone() {
+    for ast_type in ast_types_iter.clone() {
         types_arena.add(
-            model.name.as_str(),
-            Type::Composite(AstModel::shallow(model)),
+            ast_type.name.as_str(),
+            Type::Composite(AstModel::shallow(ast_type)),
         );
     }
 
     loop {
         let mut did_change = false;
         let init_scope = Scope {
-            enclosing_model: None,
+            enclosing_type: None,
         };
 
         let mut errors = Vec::new();
 
-        for model in ast_root_models.iter() {
-            let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
+        for ast_root_type in ast_root_types.iter() {
+            let mut typ = types_arena
+                .get_by_key(ast_root_type.name.as_str())
+                .unwrap()
+                .clone();
             if let Type::Composite(c) = &mut typ {
                 if c.kind != AstModelKind::Context {
                     errors.push(Diagnostic {
@@ -278,7 +281,7 @@ pub fn build(
                         message: "Models and types are not permitted outside a service".to_string(),
                         code: Some("C000".to_string()),
                         spans: vec![SpanLabel {
-                            span: model.span,
+                            span: ast_root_type.span,
                             style: SpanStyle::Primary,
                             label: None,
                         }],
@@ -287,12 +290,15 @@ pub fn build(
             }
         }
 
-        for model in ast_types_iter.clone() {
-            let mut typ = types_arena.get_by_key(model.name.as_str()).unwrap().clone();
+        for ast_type in ast_types_iter.clone() {
+            let mut typ = types_arena
+                .get_by_key(ast_type.name.as_str())
+                .unwrap()
+                .clone();
             if let Type::Composite(c) = &mut typ {
                 let pass_res = c.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
                 if pass_res {
-                    *types_arena.get_by_key_mut(model.name.as_str()).unwrap() = typ;
+                    *types_arena.get_by_key_mut(ast_type.name.as_str()).unwrap() = typ;
                     did_change = true;
                 }
             } else {
@@ -343,7 +349,7 @@ fn validate_service(service: &AstService<Untyped>) -> Result<(), ParserError> {
     )?;
 
     validate_no_duplicates(
-        &service.models,
+        &service.types,
         |model| &model.name,
         |model| model.span,
         "model/type",
@@ -604,19 +610,27 @@ mod tests {
     }
 
     #[test]
-    fn models_at_root() {
+    fn type_at_root() {
         let src_model = r#"
         type User {
         }
         "#;
 
-        let src_type = r#"
-        type User {
+        assert_err(src_model);
+    }
+
+    #[test]
+    fn context_in_a_service() {
+        let src_model = r#"
+        @postgres
+        service UserService {
+            context AuthContext {
+                role: String @jwt
+            }
         }
         "#;
 
         assert_err(src_model);
-        assert_err(src_type);
     }
 
     #[test]

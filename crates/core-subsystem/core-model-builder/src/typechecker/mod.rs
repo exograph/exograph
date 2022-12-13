@@ -15,7 +15,7 @@ use crate::ast::ast_types::NodeTypedness;
 use serde::{Deserialize, Serialize};
 
 pub struct Scope {
-    pub enclosing_model: Option<String>,
+    pub enclosing_type: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]

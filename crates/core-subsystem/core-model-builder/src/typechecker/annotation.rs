@@ -13,7 +13,7 @@ pub struct AnnotationSpec {
 /// Target for an annotation.
 #[derive(Debug, PartialEq, Eq)]
 pub enum AnnotationTarget {
-    Model,
+    Type,
     Field,
     Argument,
     Service,
