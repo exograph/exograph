@@ -1,6 +1,6 @@
 use super::interceptor_weaver::{self, OperationKind};
-use core_model::mapped_arena::MappedArena;
-use core_model_builder::{error::ModelBuildingError, typechecker::typ::Type};
+use core_model_builder::error::ModelBuildingError;
+use core_model_builder::typechecker::typ::TypecheckedSystem;
 use core_plugin_interface::interface::SubsystemBuilder;
 use core_plugin_shared::serializable_system::SerializableSubsystem;
 use core_plugin_shared::serializable_system::SerializableSystem;
@@ -25,7 +25,7 @@ use core_plugin_shared::system_serializer::SystemSerializer;
 /// shallow if hasn't had its chance in the iteration, but will expand when its turn comes in).
 pub fn build(
     subsystem_builders: &[Box<dyn SubsystemBuilder>],
-    typechecked_system: MappedArena<Type>,
+    typechecked_system: TypecheckedSystem,
 ) -> Result<Vec<u8>, ModelBuildingError> {
     let base_system = core_model_builder::builder::system_builder::build(&typechecked_system)?;
 

@@ -78,8 +78,10 @@ fn build_from_ast_system(
         load_subsystem_builders().map_err(|e| ParserError::Generic(format!("{}", e)))?;
 
     ast_system
-        .and_then(|types| typechecker::build(&subsystem_builders, types))
-        .and_then(|types| builder::build(&subsystem_builders, types).map_err(|e| e.into()))
+        .and_then(|ast_system| typechecker::build(&subsystem_builders, ast_system))
+        .and_then(|typechecked_system| {
+            builder::build(&subsystem_builders, typechecked_system).map_err(|e| e.into())
+        })
         .map_err(|err| {
             emit_diagnostics(&err, &codemap);
             err

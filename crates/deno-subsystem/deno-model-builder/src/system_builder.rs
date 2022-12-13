@@ -6,7 +6,7 @@ use core_plugin_interface::{
         ast::ast_types::{AstExpr, AstService},
         builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
         error::ModelBuildingError,
-        typechecker::{typ::Type, Typed},
+        typechecker::{typ::TypecheckedSystem, Typed},
     },
 };
 
@@ -25,7 +25,7 @@ pub struct ModelDenoSystemWithInterceptors {
 }
 
 pub fn build(
-    typechecked_system: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
 ) -> Result<Option<ModelDenoSystemWithInterceptors>, ModelBuildingError> {
     let service_selection_closure =

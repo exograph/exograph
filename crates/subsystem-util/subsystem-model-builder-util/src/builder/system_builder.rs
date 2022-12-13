@@ -5,7 +5,7 @@ use core_model_builder::{
     ast::ast_types::{AstExpr, AstService},
     builder::system_builder::BaseModelSystem,
     error::ModelBuildingError,
-    typechecker::{typ::Type, Typed},
+    typechecker::{typ::TypecheckedSystem, Typed},
 };
 use subsystem_model_util::{
     interceptor::Interceptor,
@@ -66,7 +66,7 @@ pub struct ModelServiceSystemWithInterceptors {
 /// `process_script` - A closure that will process a script at the provided [PathBuf] into a runnable form for usage
 ///                    during subsystem resolution at runtime.
 pub fn build_with_selection(
-    typechecked_system: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,

@@ -3,15 +3,13 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::core_model::mapped_arena::MappedArena;
 use crate::core_model_builder::{
-    builder::system_builder::BaseModelSystem,
-    error::ModelBuildingError,
-    plugin::SubsystemBuild,
-    typechecker::{annotation::AnnotationSpec, typ::Type},
+    builder::system_builder::BaseModelSystem, error::ModelBuildingError, plugin::SubsystemBuild,
+    typechecker::annotation::AnnotationSpec,
 };
 use crate::core_resolver::plugin::SubsystemResolver;
 use crate::error::ModelSerializationError;
+use core_model_builder::typechecker::typ::TypecheckedSystem;
 use thiserror::Error;
 
 use crate::build_info::SubsystemCheckError;
@@ -70,7 +68,7 @@ pub trait SubsystemBuilder {
     /// - `Err(ModelBuildingError { .. })`: The subsystem was not built successfully.
     fn build(
         &self,
-        typechecked_system: &MappedArena<Type>,
+        typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError>;
 }

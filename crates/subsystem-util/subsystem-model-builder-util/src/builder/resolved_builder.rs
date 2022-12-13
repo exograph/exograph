@@ -7,6 +7,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::ast::ast_types::AstFieldType;
 use core_model_builder::builder::resolved_builder::AnnotationMapHelper;
+use core_model_builder::typechecker::typ::{Service, TypecheckedSystem};
 use core_model_builder::typechecker::AnnotationMap;
 use core_model_builder::{
     ast::ast_types::{
@@ -150,14 +151,14 @@ pub struct ResolvedServiceSystem {
 }
 
 pub fn build(
-    types: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     let mut errors = Vec::new();
 
     let resolved_system = resolve(
-        types,
+        typechecked_system,
         &mut errors,
         service_selection_closure,
         process_script,
@@ -171,15 +172,20 @@ pub fn build(
 }
 
 fn resolve(
-    types: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
     errors: &mut Vec<Diagnostic>,
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
-    let services = resolve_services(types, errors, service_selection_closure, &process_script)?;
+    let resolved_services = resolve_services(
+        typechecked_system,
+        errors,
+        service_selection_closure,
+        &process_script,
+    )?;
 
     Ok(ResolvedServiceSystem {
-        service_types: resolve_service_types(errors, types, |typ| {
+        service_types: resolve_service_types(errors, typechecked_system, |typ| {
             // The type is relevant only if it is a type defined in a relevant service
             // TODO: Improve this by passing only the relevant services and processing types in the services
             let type_name = match typ {
@@ -187,36 +193,39 @@ fn resolve(
                 _ => None,
             };
             match type_name {
-                Some(type_name) => services
-                    .iter()
-                    .any(|(_, service)| service.types_defined.contains(type_name)),
+                Some(type_name) => resolved_services.iter().any(|(_, resolved_service)| {
+                    resolved_service
+                        .types_defined
+                        .iter()
+                        .any(|typ| typ == type_name)
+                }),
                 None => false,
             }
         })?,
-        services,
+        services: resolved_services,
     })
 }
 
 fn resolve_services(
-    types: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
     errors: &mut Vec<Diagnostic>,
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
     process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
-    for (_, typ) in types.iter() {
-        if let Type::Service(service) = typ {
-            if let Some(annotation_name) = service_selection_closure(service) {
-                resolve_service(
-                    service,
-                    annotation_name,
-                    types,
-                    errors,
-                    &mut resolved_services,
-                    &process_script,
-                )?;
-            }
+    for (_, service) in typechecked_system.services.iter() {
+        let Service(service) = service;
+
+        if let Some(annotation_name) = service_selection_closure(service) {
+            resolve_service(
+                service,
+                annotation_name,
+                &typechecked_system.types,
+                errors,
+                &mut resolved_services,
+                &process_script,
+            )?;
         }
     }
 
@@ -352,26 +361,24 @@ fn resolve_argument(arg: &AstArgument<Typed>, types: &MappedArena<Type>) -> Reso
 fn resolve_service_input_types(
     errors: &mut Vec<Diagnostic>,
     resolved_service_types: &MappedArena<ResolvedType>,
-    types: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
 ) -> Result<Vec<String>, ModelBuildingError> {
     // 1. collect types used as arguments (input) and return types (output)
     type IsInput = bool;
     let mut types_used: Vec<(AstFieldType<Typed>, IsInput)> = vec![];
 
-    for (_, typ) in types.iter() {
-        if let Type::Service(service) = typ {
-            for method in service.methods.iter() {
-                for argument in method.arguments.iter() {
-                    types_used.push((argument.typ.clone(), true))
-                }
-
-                types_used.push((method.return_type.clone(), false))
+    for (_, Service(service)) in typechecked_system.services.iter() {
+        for method in service.methods.iter() {
+            for argument in method.arguments.iter() {
+                types_used.push((argument.typ.clone(), true))
             }
 
-            for interceptor in service.interceptors.iter() {
-                for argument in interceptor.arguments.iter() {
-                    types_used.push((argument.typ.clone(), true))
-                }
+            types_used.push((method.return_type.clone(), false))
+        }
+
+        for interceptor in service.interceptors.iter() {
+            for argument in interceptor.arguments.iter() {
+                types_used.push((argument.typ.clone(), true))
             }
         }
     }
@@ -437,21 +444,22 @@ fn resolve_service_input_types(
 
 fn resolve_service_types(
     errors: &mut Vec<Diagnostic>,
-    types: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
     is_relevant: impl Fn(&Type) -> bool,
 ) -> Result<MappedArena<ResolvedType>, ModelBuildingError> {
     let mut resolved_service_types: MappedArena<ResolvedType> = MappedArena::default();
 
-    for (_, typ) in types.iter() {
+    for (_, typ) in typechecked_system.types.iter() {
         if let Type::Primitive(pt) = typ {
             // Adopt the primitive types as a ServiceType
             resolved_service_types.add(&pt.name(), ResolvedType::Primitive(pt.clone()));
         }
     }
 
-    let input_types = resolve_service_input_types(errors, &resolved_service_types, types)?;
+    let input_types =
+        resolve_service_input_types(errors, &resolved_service_types, typechecked_system)?;
 
-    for (_, typ) in types.iter() {
+    for (_, typ) in typechecked_system.types.iter() {
         match typ {
             // Adopt the primitive types as a ServiceType
             Type::Primitive(pt) => {
@@ -465,7 +473,10 @@ fn resolve_service_types(
                         .iter()
                         .map(|field| ResolvedField {
                             name: field.name.clone(),
-                            typ: resolve_field_type(&field.typ.to_typ(types), types),
+                            typ: resolve_field_type(
+                                &field.typ.to_typ(&typechecked_system.types),
+                                &typechecked_system.types,
+                            ),
                             default_value: None,
                         })
                         .collect();

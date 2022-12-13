@@ -7,7 +7,7 @@ use core_model_builder::{
     ast::ast_types::{AstModel, AstModelKind, AstService, AstSystem, Untyped},
     typechecker::{
         annotation::{AnnotationSpec, AnnotationTarget, MappedAnnotationParamSpec},
-        typ::Type,
+        typ::{Service, Type, TypecheckedSystem},
         Scope,
     },
 };
@@ -234,8 +234,9 @@ fn populate_annotation_env(
 pub fn build(
     subsystem_builders: &[Box<dyn SubsystemBuilder>],
     ast_system: AstSystem<Untyped>,
-) -> Result<MappedArena<Type>, ParserError> {
+) -> Result<TypecheckedSystem, ParserError> {
     let mut types_arena: MappedArena<Type> = MappedArena::default();
+    let mut services_arena: MappedArena<Service> = MappedArena::default();
     let mut annotation_env = HashMap::new();
     populate_type_env(&mut types_arena);
     populate_annotation_env(subsystem_builders, &mut annotation_env);
@@ -245,7 +246,7 @@ pub fn build(
     let mut ast_service_models: Vec<AstModel<Untyped>> = vec![];
     for service in ast_system.services.iter() {
         ast_service_models.extend(service.models.clone());
-        types_arena.add(&service.name, Type::Service(AstService::shallow(service)));
+        services_arena.add(&service.name, Service(AstService::shallow(service)));
 
         validate_service(service)?;
     }
@@ -304,28 +305,19 @@ pub fn build(
             }
         }
 
-        for service in ast_system.services.iter() {
-            let mut typ = types_arena
-                .get_by_key(service.name.as_str())
+        for ast_service in ast_system.services.iter() {
+            let mut service = services_arena
+                .get_by_key(ast_service.name.as_str())
                 .unwrap()
                 .clone();
-            if let Type::Service(s) = &mut typ {
-                let pass_res = s.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
-                if pass_res {
-                    *types_arena.get_by_key_mut(service.name.as_str()).unwrap() = typ;
-                    did_change = true;
-                }
-            } else {
-                errors.push(Diagnostic {
-                    level: Level::Error,
-                    message: format!("Type {} is not a service", service.name),
-                    code: Some("C000".to_string()),
-                    spans: vec![SpanLabel {
-                        span: service.span,
-                        style: SpanStyle::Primary,
-                        label: None,
-                    }],
-                });
+            let Service(s) = &mut service;
+
+            let pass_res = s.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
+            if pass_res {
+                *services_arena
+                    .get_by_key_mut(ast_service.name.as_str())
+                    .unwrap() = service;
+                did_change = true;
             }
         }
 
@@ -333,7 +325,10 @@ pub fn build(
             if !errors.is_empty() {
                 return Err(ParserError::Diagnosis(errors));
             } else {
-                return Ok(types_arena);
+                return Ok(TypecheckedSystem {
+                    types: types_arena,
+                    services: services_arena,
+                });
             }
         }
     }
@@ -408,7 +403,7 @@ pub mod test_support {
     use super::*;
     use crate::{load_subsystem_builders, parser::parse_str};
 
-    pub fn build(src: &str) -> Result<MappedArena<Type>, ParserError> {
+    pub fn build(src: &str) -> Result<TypecheckedSystem, ParserError> {
         let mut codemap = CodeMap::new();
         let parsed = parse_str(src, &mut codemap, "input.clay")?;
         let subsystem_builders = load_subsystem_builders().unwrap();
@@ -419,8 +414,9 @@ pub mod test_support {
         let checked = build(src).unwrap();
 
         let mut entries: Vec<_> = checked
+            .types
             .keys()
-            .map(|key| (key.clone(), checked.get_by_key(key).unwrap().clone()))
+            .map(|key| (key.clone(), checked.types.get_by_key(key).unwrap().clone()))
             .collect();
 
         entries.sort_by_key(|pair| pair.0.to_owned());
