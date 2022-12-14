@@ -1,7 +1,8 @@
 use core_plugin_interface::{
     core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
     core_model_builder::{
-        builder::system_builder::BaseModelSystem, error::ModelBuildingError, typechecker::typ::Type,
+        builder::system_builder::BaseModelSystem, error::ModelBuildingError,
+        typechecker::typ::TypecheckedSystem,
     },
 };
 
@@ -21,7 +22,7 @@ use super::{
 };
 
 pub fn build(
-    typechecked_system: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
 ) -> Result<Option<ModelPostgresSystem>, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();

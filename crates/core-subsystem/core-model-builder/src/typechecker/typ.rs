@@ -10,7 +10,6 @@ use crate::ast::ast_types::{AstModel, AstService};
 pub enum Type {
     Primitive(PrimitiveType),
     Composite(AstModel<Typed>),
-    Service(AstService<Typed>),
     Optional(Box<Type>),
     Set(Box<Type>),
     Array(Box<Type>),
@@ -18,6 +17,9 @@ pub enum Type {
     Defer,
     Error,
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Service(pub AstService<Typed>);
 
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -99,4 +101,10 @@ impl Type {
             o => o.clone(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypecheckedSystem {
+    pub types: MappedArena<Type>,
+    pub services: MappedArena<Service>,
 }

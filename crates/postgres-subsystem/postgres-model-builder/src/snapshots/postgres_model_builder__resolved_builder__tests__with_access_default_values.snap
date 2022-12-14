@@ -84,7 +84,7 @@ values:
                             - Single:
                                 - - AuthContext
                                 - Reference:
-                                    index: 16
+                                    index: 15
                                     generation: ~
                             - - role
                             - Reference:
@@ -98,7 +98,7 @@ values:
                       - Single:
                           - - self
                           - Reference:
-                              index: 17
+                              index: 16
                               generation: ~
                       - - public
                       - Reference:
@@ -115,7 +115,7 @@ values:
                             - Single:
                                 - - AuthContext
                                 - Reference:
-                                    index: 16
+                                    index: 15
                                     generation: ~
                             - - role
                             - Reference:
@@ -129,7 +129,7 @@ values:
                       - Single:
                           - - self
                           - Reference:
-                              index: 17
+                              index: 16
                               generation: ~
                       - - public
                       - Reference:
@@ -146,7 +146,7 @@ values:
                             - Single:
                                 - - AuthContext
                                 - Reference:
-                                    index: 16
+                                    index: 15
                                     generation: ~
                             - - role
                             - Reference:
@@ -160,7 +160,7 @@ values:
                       - Single:
                           - - self
                           - Reference:
-                              index: 17
+                              index: 16
                               generation: ~
                       - - public
                       - Reference:
@@ -177,7 +177,7 @@ values:
                             - Single:
                                 - - AuthContext
                                 - Reference:
-                                    index: 16
+                                    index: 15
                                     generation: ~
                             - - role
                             - Reference:
@@ -191,7 +191,7 @@ values:
                       - Single:
                           - - self
                           - Reference:
-                              index: 17
+                              index: 16
                               generation: ~
                       - - public
                       - Reference:

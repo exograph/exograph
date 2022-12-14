@@ -4,7 +4,7 @@ use core_plugin_interface::{
         ast::ast_types::{AstExpr, AstService},
         builder::{resolved_builder::AnnotationMapHelper, system_builder::BaseModelSystem},
         error::ModelBuildingError,
-        typechecker::{typ::Type, Typed},
+        typechecker::{typ::TypecheckedSystem, Typed},
     },
 };
 use std::path::PathBuf;
@@ -20,7 +20,7 @@ pub struct ModelWasmSystemWithInterceptors {
 }
 
 pub fn build(
-    typechecked_system: &MappedArena<Type>,
+    typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
 ) -> Result<Option<ModelWasmSystemWithInterceptors>, ModelBuildingError> {
     let service_selection_closure =
