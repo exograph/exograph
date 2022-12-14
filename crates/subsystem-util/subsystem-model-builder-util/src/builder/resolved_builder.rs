@@ -7,6 +7,7 @@ use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use core_model::{mapped_arena::MappedArena, primitive_type::PrimitiveType};
 use core_model_builder::ast::ast_types::AstFieldType;
 use core_model_builder::builder::resolved_builder::AnnotationMapHelper;
+use core_model_builder::builder::system_builder::BaseModelSystem;
 use core_model_builder::typechecker::AnnotationMap;
 use core_model_builder::{
     ast::ast_types::{
@@ -151,13 +152,19 @@ pub struct ResolvedServiceSystem {
 
 pub fn build(
     types: &MappedArena<Type>,
+    base_system: &BaseModelSystem,
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
-    process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
+    process_script: impl Fn(
+        &AstService<Typed>,
+        &BaseModelSystem,
+        &PathBuf,
+    ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
     let mut errors = Vec::new();
 
     let resolved_system = resolve(
         types,
+        base_system,
         &mut errors,
         service_selection_closure,
         process_script,
@@ -172,11 +179,22 @@ pub fn build(
 
 fn resolve(
     types: &MappedArena<Type>,
+    base_system: &BaseModelSystem,
     errors: &mut Vec<Diagnostic>,
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
-    process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
+    process_script: impl Fn(
+        &AstService<Typed>,
+        &BaseModelSystem,
+        &PathBuf,
+    ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ResolvedServiceSystem, ModelBuildingError> {
-    let services = resolve_services(types, errors, service_selection_closure, &process_script)?;
+    let services = resolve_services(
+        types,
+        base_system,
+        errors,
+        service_selection_closure,
+        &process_script,
+    )?;
 
     Ok(ResolvedServiceSystem {
         service_types: resolve_service_types(errors, types, |typ| {
@@ -199,9 +217,14 @@ fn resolve(
 
 fn resolve_services(
     types: &MappedArena<Type>,
+    base_system: &BaseModelSystem,
     errors: &mut Vec<Diagnostic>,
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
-    process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
+    process_script: impl Fn(
+        &AstService<Typed>,
+        &BaseModelSystem,
+        &PathBuf,
+    ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<MappedArena<ResolvedService>, ModelBuildingError> {
     let mut resolved_services: MappedArena<ResolvedService> = MappedArena::default();
 
@@ -210,6 +233,7 @@ fn resolve_services(
             if let Some(annotation_name) = service_selection_closure(service) {
                 resolve_service(
                     service,
+                    base_system,
                     annotation_name,
                     types,
                     errors,
@@ -225,11 +249,16 @@ fn resolve_services(
 
 fn resolve_service(
     service: &AstService<Typed>,
+    base_system: &BaseModelSystem,
     annotation_name: String,
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
     resolved_services: &mut MappedArena<ResolvedService>,
-    process_script: &impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
+    process_script: &impl Fn(
+        &AstService<Typed>,
+        &BaseModelSystem,
+        &PathBuf,
+    ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<(), ModelBuildingError> {
     let module_path = match service.annotations.get(&annotation_name).unwrap() {
         AstAnnotationParams::Single(AstExpr::StringLiteral(s, _), _) => s,
@@ -241,7 +270,7 @@ fn resolve_service(
     module_fs_path.pop();
     module_fs_path.push(module_path);
 
-    let bundled_script = process_script(service, &module_fs_path)?;
+    let bundled_script = process_script(service, base_system, &module_fs_path)?;
 
     let module_anonymized_path = module_fs_path
         .strip_prefix(service.base_clayfile.parent().unwrap())

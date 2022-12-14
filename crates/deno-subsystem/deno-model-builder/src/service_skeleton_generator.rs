@@ -1,6 +1,8 @@
 use std::io::Write;
 use std::{fs::File, path::Path};
 
+use core_plugin_interface::core_model::context_type::{ContextFieldType, ContextType};
+use core_plugin_interface::core_model_builder::builder::system_builder::BaseModelSystem;
 use core_plugin_interface::core_model_builder::{
     ast::ast_types::{AstArgument, AstFieldType, AstModel, AstService},
     error::ModelBuildingError,
@@ -9,47 +11,7 @@ use core_plugin_interface::core_model_builder::{
 
 // Temporary. Eventually, we will have a published artifact (at https://deno.land/x/claytip@<version>) that contains this code.
 // Then, we will have this imported in each generated service code (currently, it suffices to just have it in the same directory as the service code).
-static CLAYTIP_D_TS: &str = r#"
-interface Claytip {
-  executeQuery(query: string, variable?: { [key: string]: any }): Promise<any>;
-  addResponseHeader(name: string, value: string ): Promise<void>;
-  setCookie(cookie: {
-    name: string,
-    value: string,
-    expires: Date,
-    maxAge: number,
-    domain: string,
-    path: string,
-    secure: boolean,
-    httpOnly: boolean,
-    sameSite: "Lax" | "Strict" | "None"
-  }): Promise<void>;
-}
-
-interface ClaytipPriv extends Claytip {
-  executeQueryPriv(query: string, variable?: { [key: string]: any }, contextOverride?: { [key: string]: any }): Promise<any>;
-}
-
-type JsonObject = { [Key in string]?: JsonValue };
-type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
-
-interface Field {
-    alias: string | null;
-    name: string;
-    arguments: JsonObject;
-    subfields: Field[];
-}
-
-interface Operation {
-    name(): string;
-    proceed<T>(): Promise<T>;
-    query(): Field;
-}
-
-declare class ClaytipError extends Error {
-    constructor(message: string);
-}
-"#;
+static CLAYTIP_D_TEMPLATE_TS: &str = include_str!("claytip.d.template.ts");
 
 /// Generates a service skeleton based on service definitions in the clay file so that users can have a good starting point.
 ///
@@ -97,6 +59,7 @@ declare class ClaytipError extends Error {
 ///
 pub fn generate_service_skeleton(
     service: &AstService<Typed>,
+    base_system: &BaseModelSystem,
     out_file: impl AsRef<Path>,
 ) -> Result<(), ModelBuildingError> {
     let is_typescript = out_file
@@ -112,7 +75,7 @@ pub fn generate_service_skeleton(
     let claytip_d_path = out_file.parent().unwrap().join("claytip.d.ts");
     if !claytip_d_path.exists() {
         let mut claytip_d_file = File::create(&claytip_d_path)?;
-        claytip_d_file.write_all(CLAYTIP_D_TS.as_bytes())?;
+        claytip_d_file.write_all(CLAYTIP_D_TEMPLATE_TS.as_bytes())?;
     }
 
     // We don't want to overwrite any user files
@@ -131,6 +94,10 @@ pub fn generate_service_skeleton(
 
     // Types (defined in `service`) matter only if the target is a typescript file.
     if is_typescript {
+        for (_, context) in base_system.contexts.iter() {
+            generate_type_skeleton(context, &mut file)?;
+        }
+
         for service_type in service.types.iter() {
             generate_type_skeleton(service_type, &mut file)?;
         }
@@ -159,16 +126,11 @@ pub fn generate_service_skeleton(
     Ok(())
 }
 
-fn generate_type_skeleton(
-    model: &AstModel<Typed>,
-    out_file: &mut File,
-) -> Result<(), ModelBuildingError> {
-    out_file.write_all(format!("interface {} {{\n", model.name).as_bytes())?;
+fn generate_type_skeleton(model: &dyn Type, out_file: &mut File) -> Result<(), ModelBuildingError> {
+    out_file.write_all(format!("interface {} {{\n", model.name()).as_bytes())?;
 
-    for field in model.fields.iter() {
-        out_file.write_all(
-            format!("\t{}\n", generate_field(&field.name, &field.typ, true)).as_bytes(),
-        )?;
+    for (name, typ) in model.fields() {
+        out_file.write_all(format!("\t{}\n", generate_field(name, typ, true)).as_bytes())?;
     }
 
     out_file.write_all("}\n\n".as_bytes())?;
@@ -176,9 +138,9 @@ fn generate_type_skeleton(
     Ok(())
 }
 
-fn generate_field(name: &str, tpe: &AstFieldType<Typed>, is_typescript: bool) -> String {
+fn generate_field(name: &str, tpe: &dyn TypeScriptType, is_typescript: bool) -> String {
     if is_typescript {
-        format!("{}: {}", name, typescript_type(tpe))
+        format!("{}: {}", name, tpe.typescript_type())
     } else {
         name.to_string()
     }
@@ -187,7 +149,7 @@ fn generate_field(name: &str, tpe: &AstFieldType<Typed>, is_typescript: bool) ->
 fn generate_method_skeleton(
     name: &str,
     arguments: &[AstArgument<Typed>],
-    return_type: Option<&AstFieldType<Typed>>,
+    return_type: Option<&dyn TypeScriptType>,
     out_file: &mut File,
     is_typescript: bool,
 ) -> Result<(), ModelBuildingError> {
@@ -203,7 +165,7 @@ fn generate_method_skeleton(
     if is_typescript {
         if let Some(return_type) = return_type {
             out_file.write_all(": Promise<".as_bytes())?;
-            out_file.write_all(typescript_type(return_type).as_bytes())?;
+            out_file.write_all(return_type.typescript_type().as_bytes())?;
             out_file.write_all(">".as_bytes())?;
         }
     }
@@ -232,10 +194,57 @@ fn generate_arguments_skeleton(
     Ok(())
 }
 
-fn typescript_type(tpe: &AstFieldType<Typed>) -> String {
-    match tpe {
-        AstFieldType::Optional(tpe) => format!("{}?", typescript_type(tpe)),
-        AstFieldType::Plain(name, ..) => typescript_base_type(name),
+trait Type {
+    fn name(&self) -> &str;
+    fn fields(&self) -> Vec<(&str, &dyn TypeScriptType)>;
+}
+
+impl Type for AstModel<Typed> {
+    fn fields(&self) -> Vec<(&str, &dyn TypeScriptType)> {
+        self.fields
+            .iter()
+            .map(|field| (field.name.as_str(), &field.typ as &dyn TypeScriptType))
+            .collect()
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl Type for ContextType {
+    fn fields(&self) -> Vec<(&str, &dyn TypeScriptType)> {
+        self.fields
+            .iter()
+            .map(|field| (field.name.as_str(), &field.typ as &dyn TypeScriptType))
+            .collect()
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+trait TypeScriptType {
+    fn typescript_type(&self) -> String;
+}
+
+impl TypeScriptType for AstFieldType<Typed> {
+    fn typescript_type(&self) -> String {
+        match self {
+            AstFieldType::Optional(tpe) => format!("{}?", tpe.typescript_type()),
+            AstFieldType::Plain(name, ..) => typescript_base_type(name),
+        }
+    }
+}
+
+impl TypeScriptType for ContextFieldType {
+    fn typescript_type(&self) -> String {
+        match self {
+            ContextFieldType::Optional(typ) => format!("{}?", typ.typescript_type()),
+            ContextFieldType::Reference(pt) => typescript_base_type(&pt.name()),
+            ContextFieldType::List(typ) => format!("{}[]", typ.typescript_type()),
+        }
     }
 }
 
