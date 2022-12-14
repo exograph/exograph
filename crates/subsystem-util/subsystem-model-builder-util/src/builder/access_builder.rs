@@ -31,8 +31,7 @@ pub fn build_access(
         Some(p) => {
             let value = match p {
                 AstAnnotationParams::Single(default, _) => default,
-
-                _ => panic!(),
+                _ => panic!(), // service queries and annotations should only have a single parameter (the default value)
             };
 
             ResolvedAccess {

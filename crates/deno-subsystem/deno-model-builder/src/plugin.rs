@@ -1,12 +1,11 @@
 use core_plugin_interface::{
-    core_model::mapped_arena::MappedArena,
     core_model_builder::{
         builder::system_builder::BaseModelSystem,
         error::ModelBuildingError,
         plugin::{Interception, SubsystemBuild},
         typechecker::{
             annotation::{AnnotationSpec, AnnotationTarget},
-            typ::Type,
+            typ::TypecheckedSystem,
         },
     },
     interception::InterceptorIndex,
@@ -38,7 +37,7 @@ impl SubsystemBuilder for DenoSubsystemBuilder {
 
     fn build(
         &self,
-        typechecked_system: &MappedArena<Type>,
+        typechecked_system: &TypecheckedSystem,
         base_system: &BaseModelSystem,
     ) -> Result<Option<SubsystemBuild>, ModelBuildingError> {
         let subsystem = crate::system_builder::build(typechecked_system, base_system)?;

@@ -1,43 +1,189 @@
 ---
 source: crates/builder/src/typechecker/mod.rs
-assertion_line: 480
 expression: build(src).unwrap()
 ---
-values:
-  - - ~
-    - Primitive: Boolean
-  - - ~
-    - Primitive: Int
-  - - ~
-    - Primitive: Float
-  - - ~
-    - Primitive: Decimal
-  - - ~
-    - Primitive: String
-  - - ~
-    - Primitive: LocalTime
-  - - ~
-    - Primitive: LocalDateTime
-  - - ~
-    - Primitive: LocalDate
-  - - ~
-    - Primitive: Instant
-  - - ~
-    - Primitive: Json
-  - - ~
-    - Primitive: Blob
-  - - ~
-    - Primitive: Uuid
-  - - ~
-    - Primitive: Claytip
-  - - ~
-    - Primitive: ClaytipPriv
-  - - ~
-    - Primitive:
-        Interception: Operation
-  - - ~
-    - Service:
-        name: DocumentService
+types:
+  values:
+    - - ~
+      - Primitive: Boolean
+    - - ~
+      - Primitive: Int
+    - - ~
+      - Primitive: Float
+    - - ~
+      - Primitive: Decimal
+    - - ~
+      - Primitive: String
+    - - ~
+      - Primitive: LocalTime
+    - - ~
+      - Primitive: LocalDateTime
+    - - ~
+      - Primitive: LocalDate
+    - - ~
+      - Primitive: Instant
+    - - ~
+      - Primitive: Json
+    - - ~
+      - Primitive: Blob
+    - - ~
+      - Primitive: Uuid
+    - - ~
+      - Primitive: Claytip
+    - - ~
+      - Primitive: ClaytipPriv
+    - - ~
+      - Primitive:
+          Interception: Operation
+    - - ~
+      - Composite:
+          name: AuthContext
+          kind: Context
+          fields:
+            - name: role
+              typ:
+                Plain:
+                  - String
+                  - []
+                  - true
+              annotations:
+                annotations:
+                  jwt:
+                    name: jwt
+                    params: None
+              default_value: ~
+          annotations:
+            annotations: {}
+    - - ~
+      - Composite:
+          name: Doc
+          kind: Type
+          fields:
+            - name: is_public
+              typ:
+                Plain:
+                  - Boolean
+                  - []
+                  - true
+              annotations:
+                annotations: {}
+              default_value: ~
+            - name: content
+              typ:
+                Plain:
+                  - String
+                  - []
+                  - true
+              annotations:
+                annotations:
+                  access:
+                    name: access
+                    params:
+                      Single:
+                        - LogicalOp:
+                            Or:
+                              - RelationalOp:
+                                  Eq:
+                                    - FieldSelection:
+                                        Select:
+                                          - Single:
+                                              - - AuthContext
+                                              - Reference:
+                                                  index: 15
+                                                  generation: ~
+                                          - - role
+                                          - Reference:
+                                              index: 4
+                                              generation: ~
+                                    - StringLiteral:
+                                        - ROLE_ADMIN
+                                    - Primitive: Boolean
+                              - FieldSelection:
+                                  Select:
+                                    - Single:
+                                        - - self
+                                        - Reference:
+                                            index: 16
+                                            generation: ~
+                                    - - is_public
+                                    - Reference:
+                                        index: 0
+                                        generation: ~
+                              - Primitive: Boolean
+              default_value: ~
+          annotations:
+            annotations: {}
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+    - ~
+  map:
+    AuthContext:
+      index: 15
+      generation: ~
+    Blob:
+      index: 10
+      generation: ~
+    Boolean:
+      index: 0
+      generation: ~
+    Claytip:
+      index: 12
+      generation: ~
+    ClaytipPriv:
+      index: 13
+      generation: ~
+    Decimal:
+      index: 3
+      generation: ~
+    Doc:
+      index: 16
+      generation: ~
+    Float:
+      index: 2
+      generation: ~
+    Instant:
+      index: 8
+      generation: ~
+    Int:
+      index: 1
+      generation: ~
+    Json:
+      index: 9
+      generation: ~
+    LocalDate:
+      index: 7
+      generation: ~
+    LocalDateTime:
+      index: 6
+      generation: ~
+    LocalTime:
+      index: 5
+      generation: ~
+    Operation:
+      index: 14
+      generation: ~
+    String:
+      index: 4
+      generation: ~
+    Uuid:
+      index: 11
+      generation: ~
+services:
+  values:
+    - - ~
+      - name: DocumentService
         annotations:
           annotations:
             postgres:
@@ -77,7 +223,7 @@ values:
                                             - Single:
                                                 - - AuthContext
                                                 - Reference:
-                                                    index: 16
+                                                    index: 15
                                                     generation: ~
                                             - - role
                                             - Reference:
@@ -91,7 +237,7 @@ values:
                                       - Single:
                                           - - self
                                           - Reference:
-                                              index: 17
+                                              index: 16
                                               generation: ~
                                       - - is_public
                                       - Reference:
@@ -104,151 +250,11 @@ values:
         methods: []
         interceptors: []
         base_clayfile: input.clay
-  - - ~
-    - Composite:
-        name: AuthContext
-        kind: Context
-        fields:
-          - name: role
-            typ:
-              Plain:
-                - String
-                - []
-                - true
-            annotations:
-              annotations:
-                jwt:
-                  name: jwt
-                  params: None
-            default_value: ~
-        annotations:
-          annotations: {}
-  - - ~
-    - Composite:
-        name: Doc
-        kind: Type
-        fields:
-          - name: is_public
-            typ:
-              Plain:
-                - Boolean
-                - []
-                - true
-            annotations:
-              annotations: {}
-            default_value: ~
-          - name: content
-            typ:
-              Plain:
-                - String
-                - []
-                - true
-            annotations:
-              annotations:
-                access:
-                  name: access
-                  params:
-                    Single:
-                      - LogicalOp:
-                          Or:
-                            - RelationalOp:
-                                Eq:
-                                  - FieldSelection:
-                                      Select:
-                                        - Single:
-                                            - - AuthContext
-                                            - Reference:
-                                                index: 16
-                                                generation: ~
-                                        - - role
-                                        - Reference:
-                                            index: 4
-                                            generation: ~
-                                  - StringLiteral:
-                                      - ROLE_ADMIN
-                                  - Primitive: Boolean
-                            - FieldSelection:
-                                Select:
-                                  - Single:
-                                      - - self
-                                      - Reference:
-                                          index: 17
-                                          generation: ~
-                                  - - is_public
-                                  - Reference:
-                                      index: 0
-                                      generation: ~
-                            - Primitive: Boolean
-            default_value: ~
-        annotations:
-          annotations: {}
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-  - ~
-map:
-  AuthContext:
-    index: 16
-    generation: ~
-  Blob:
-    index: 10
-    generation: ~
-  Boolean:
-    index: 0
-    generation: ~
-  Claytip:
-    index: 12
-    generation: ~
-  ClaytipPriv:
-    index: 13
-    generation: ~
-  Decimal:
-    index: 3
-    generation: ~
-  Doc:
-    index: 17
-    generation: ~
-  DocumentService:
-    index: 15
-    generation: ~
-  Float:
-    index: 2
-    generation: ~
-  Instant:
-    index: 8
-    generation: ~
-  Int:
-    index: 1
-    generation: ~
-  Json:
-    index: 9
-    generation: ~
-  LocalDate:
-    index: 7
-    generation: ~
-  LocalDateTime:
-    index: 6
-    generation: ~
-  LocalTime:
-    index: 5
-    generation: ~
-  Operation:
-    index: 14
-    generation: ~
-  String:
-    index: 4
-    generation: ~
-  Uuid:
-    index: 11
-    generation: ~
+    - ~
+    - ~
+    - ~
+  map:
+    DocumentService:
+      index: 0
+      generation: ~
 
