@@ -68,6 +68,7 @@ pub fn build(
 
 fn process_script(
     _service: &AstService<Typed>,
+    _base_system: &BaseModelSystem,
     module_fs_path: &PathBuf,
 ) -> Result<Vec<u8>, ModelBuildingError> {
     std::fs::read(module_fs_path).map_err(|err| {

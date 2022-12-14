@@ -69,11 +69,16 @@ pub fn build_with_selection(
     typechecked_system: &TypecheckedSystem,
     base_system: &BaseModelSystem,
     service_selection_closure: impl Fn(&AstService<Typed>) -> Option<String>,
-    process_script: impl Fn(&AstService<Typed>, &PathBuf) -> Result<Vec<u8>, ModelBuildingError>,
+    process_script: impl Fn(
+        &AstService<Typed>,
+        &BaseModelSystem,
+        &PathBuf,
+    ) -> Result<Vec<u8>, ModelBuildingError>,
 ) -> Result<ModelServiceSystemWithInterceptors, ModelBuildingError> {
     let mut building = SystemContextBuilding::default();
     let resolved_system = resolved_builder::build(
         typechecked_system,
+        base_system,
         service_selection_closure,
         process_script,
     )?;
