@@ -598,24 +598,6 @@ mod tests {
         assert_err(model);
     }
 
-    #[test]
-    fn output_type_used_as_input_type() {
-        let model = r#"
-            @deno("x.ts")
-            service TestService {
-                type Foo {
-                    a: String
-                    b: Boolean
-                }
-
-                query getFoo(key: Int): Foo
-                mutation setFoo(key: Int, value: Foo): Boolean
-            } 
-        "#;
-
-        assert_err(model);
-    }
-
     fn assert_success(src: &str) {
         assert!(create_resolved_system(src).is_ok())
     }
