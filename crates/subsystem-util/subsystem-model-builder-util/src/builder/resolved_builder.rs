@@ -551,7 +551,8 @@ mod tests {
     };
     use codemap::CodeMap;
     use core_model_builder::{
-        ast::ast_types::AstService, error::ModelBuildingError, typechecker::Typed,
+        ast::ast_types::AstService, builder::system_builder::BaseModelSystem,
+        error::ModelBuildingError, typechecker::Typed,
     };
 
     use super::{build, ResolvedServiceSystem};
@@ -608,6 +609,7 @@ mod tests {
 
     fn process_script(
         _service: &AstService<Typed>,
+        _base_system: &BaseModelSystem,
         _path: &Path,
     ) -> Result<Vec<u8>, ModelBuildingError> {
         Ok(vec![])
@@ -620,8 +622,11 @@ mod tests {
             .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
         let types = typechecker::build(&subsystem_builders, parsed)
             .map_err(|e| ModelBuildingError::Generic(format!("{:?}", e)))?;
+        let base_system = core_model_builder::builder::system_builder::build(&types)?;
+
         build(
             &types,
+            &base_system,
             |service| service.annotations.get("deno").map(|_| "deno".to_string()),
             process_script,
         )
