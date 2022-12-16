@@ -14,7 +14,6 @@ core-model-builder = { path = "../../core-subsystem/core-model-builder" }
 subsystem-model-util = { path = "../subsystem-model-util" }
 
 [dev-dependencies]
-
-
+builder = { path = "../../builder" }
 
 [lib]

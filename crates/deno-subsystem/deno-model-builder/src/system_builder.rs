@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf};
+use std::{io::Write, path::Path};
 
 use core_plugin_interface::{
     core_model::mapped_arena::{MappedArena, SerializableSlabIndex},
@@ -74,7 +74,7 @@ pub fn build(
 fn process_script(
     service: &AstService<Typed>,
     base_system: &BaseModelSystem,
-    module_fs_path: &PathBuf,
+    module_fs_path: &Path,
 ) -> Result<Vec<u8>, ModelBuildingError> {
     service_skeleton_generator::generate_service_skeleton(service, base_system, module_fs_path)?;
 
