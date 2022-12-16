@@ -7,7 +7,7 @@ use core_plugin_interface::{
         typechecker::{typ::TypecheckedSystem, Typed},
     },
 };
-use std::path::PathBuf;
+use std::path::Path;
 use wasm_model::{
     interceptor::Interceptor,
     model::ModelWasmSystem,
@@ -69,7 +69,7 @@ pub fn build(
 fn process_script(
     _service: &AstService<Typed>,
     _base_system: &BaseModelSystem,
-    module_fs_path: &PathBuf,
+    module_fs_path: &Path,
 ) -> Result<Vec<u8>, ModelBuildingError> {
     std::fs::read(module_fs_path).map_err(|err| {
         ModelBuildingError::Generic(format!(
