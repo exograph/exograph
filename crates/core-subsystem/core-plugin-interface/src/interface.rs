@@ -57,7 +57,7 @@ pub trait SubsystemBuilder {
     ///
     /// - `typechecked_system`: A partially typechecked system. This contains the set of all [Type]s
     ///                         that were successfully parsed from the user's model, ranging from `service`s
-    ///                         to composite types like `model`s and `type`s (not to be confused with [Type]s).
+    ///                         to composite `type`s (not to be confused with [Type]s).
     /// - `base_system`: The base model system for Claytip. These are a set of common types that are
     ///                  used by all plugins, like `context`s and primitive types (`Int`, `String`, etc.)
     ///
