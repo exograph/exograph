@@ -99,11 +99,11 @@ fn cast_number(
         PhysicalColumnType::Int { bits } => match bits {
             IntBits::_16 => Box::new(number.as_i64().unwrap() as i16),
             IntBits::_32 => Box::new(number.as_i64().unwrap() as i32),
-            IntBits::_64 => Box::new(number.as_i64().unwrap() as i64),
+            IntBits::_64 => Box::new(number.as_i64().unwrap()),
         },
         PhysicalColumnType::Float { bits } => match bits {
             FloatBits::_24 => Box::new(number.as_f64().unwrap() as f32),
-            FloatBits::_53 => Box::new(number.as_f64().unwrap() as f64),
+            FloatBits::_53 => Box::new(number.as_f64().unwrap()),
         },
         PhysicalColumnType::Numeric { .. } => {
             return Err(CastError::Generic(
