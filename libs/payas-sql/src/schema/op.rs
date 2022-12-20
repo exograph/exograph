@@ -54,21 +54,21 @@ pub enum SchemaOp<'a> {
 impl SchemaOp<'_> {
     pub fn to_sql(&self) -> SchemaStatement {
         fn create_index(column: &PhysicalColumn, post_statements: &mut Vec<String>) {
-            post_statements.push(format!(
-                "CREATE INDEX ON \"{}\" ({});",
-                column.table_name, column.column_name
-            ))
+            // create indices for all columns except pk columns
+            if !column.is_pk {
+                post_statements.push(format!(
+                    "CREATE INDEX ON \"{}\" ({});",
+                    column.table_name, column.column_name
+                ))
+            }
         }
 
         match self {
             SchemaOp::CreateTable { table } => {
                 let mut table_creation = table.creation_sql();
 
-                // create indices for all columns except pk columns
                 for column in table.columns.iter() {
-                    if !column.is_pk {
-                        create_index(column, &mut table_creation.post_statements)
-                    }
+                    create_index(column, &mut table_creation.post_statements)
                 }
 
                 table_creation
