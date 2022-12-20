@@ -69,22 +69,30 @@ mod tests {
             }
             "#,
             vec![],
-            vec![(
-                r#"CREATE TABLE "concerts" (
-                  |    "id" SERIAL PRIMARY KEY,
-                  |    "title" TEXT NOT NULL,
-                  |    "published" BOOLEAN NOT NULL
-                  |);"#,
-                false,
-            )],
-            vec![(
-                r#"CREATE TABLE "concerts" (
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
                    |    "id" SERIAL PRIMARY KEY,
                    |    "title" TEXT NOT NULL,
                    |    "published" BOOLEAN NOT NULL
                    |);"#,
-                false,
-            )],
+                    false,
+                ),
+                ("CREATE INDEX ON \"concerts\" (title);", false),
+                ("CREATE INDEX ON \"concerts\" (published);", false),
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                   |    "id" SERIAL PRIMARY KEY,
+                   |    "title" TEXT NOT NULL,
+                   |    "published" BOOLEAN NOT NULL
+                   |);"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"concerts\" (title);", false),
+                ("CREATE INDEX ON \"concerts\" (published);", false),
+            ],
             vec![(r#"DROP TABLE "concerts" CASCADE;"#, true)],
         );
     }
@@ -111,25 +119,35 @@ mod tests {
                 }
             }
             "#,
-            vec![(
-                r#"CREATE TABLE "concerts" (
-                |    "id" SERIAL PRIMARY KEY,
-                |    "title" TEXT NOT NULL
-                |);"#,
-                false,
-            )],
-            vec![(
-                r#"CREATE TABLE "concerts" (
-                |    "id" SERIAL PRIMARY KEY,
-                |    "title" TEXT NOT NULL,
-                |    "published" BOOLEAN NOT NULL
-                |);"#,
-                false,
-            )],
-            vec![(
-                r#"ALTER TABLE "concerts" ADD "published" BOOLEAN NOT NULL;"#,
-                false,
-            )],
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"concerts\" (title);", false),
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL,
+                    |    "published" BOOLEAN NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"concerts\" (title);", false),
+                ("CREATE INDEX ON \"concerts\" (published);", false),
+            ],
+            vec![
+                (
+                    r#"ALTER TABLE "concerts" ADD "published" BOOLEAN NOT NULL;"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"concerts\" (published);", false),
+            ],
             vec![(r#"ALTER TABLE "concerts" DROP COLUMN "published";"#, true)],
         );
     }
@@ -161,13 +179,16 @@ mod tests {
                 }
             }
             "#,
-            vec![(
-                r#"CREATE TABLE "concerts" (
-                |    "id" SERIAL PRIMARY KEY,
-                |    "title" TEXT NOT NULL
-                |);"#,
-                false,
-            )],
+            vec![
+                (
+                    r#"CREATE TABLE "concerts" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"concerts\" (title);", false),
+            ],
             vec![
                 (
                     r#"CREATE TABLE "concerts" (
@@ -188,6 +209,9 @@ mod tests {
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"concerts\" (title);", false),
+                ("CREATE INDEX ON \"concerts\" (venue_id);", false),
+                ("CREATE INDEX ON \"venues\" (name);", false),
             ],
             vec![
                 (
@@ -196,15 +220,17 @@ mod tests {
                 ),
                 (
                     r#"CREATE TABLE "venues" (
-                |    "id" SERIAL PRIMARY KEY,
-                |    "name" TEXT NOT NULL
-                |);"#,
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
                     false,
                 ),
                 (
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"concerts\" (venue_id);", false),
+                ("CREATE INDEX ON \"venues\" (name);", false),
             ],
             vec![
                 (r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true),
@@ -247,9 +273,9 @@ mod tests {
             vec![
                 (
                     r#"CREATE TABLE "concerts" (
-                      |    "id" SERIAL PRIMARY KEY,
-                      |    "title" TEXT NOT NULL
-                      |);"#,
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "title" TEXT NOT NULL
+                    |);"#,
                     false,
                 ),
                 (
@@ -259,6 +285,8 @@ mod tests {
                     |);"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"concerts\" (title);", false),
+                ("CREATE INDEX ON \"venues\" (name);", false),
             ],
             vec![
                 (
@@ -280,6 +308,9 @@ mod tests {
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"concerts\" (title);", false),
+                ("CREATE INDEX ON \"concerts\" (venue_id);", false),
+                ("CREATE INDEX ON \"venues\" (name);", false),
             ],
             vec![
                 (
@@ -290,6 +321,7 @@ mod tests {
                     r#"ALTER TABLE "concerts" ADD CONSTRAINT "concerts_venue_id_fk" FOREIGN KEY ("venue_id") REFERENCES "venues";"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"concerts\" (venue_id);", false),
             ],
             vec![(r#"ALTER TABLE "concerts" DROP COLUMN "venue_id";"#, true)],
         );
@@ -327,17 +359,18 @@ mod tests {
             vec![
                 (
                     r#"CREATE TABLE "memberships" (
-                        |    "id" SERIAL PRIMARY KEY
-                        |);"#,
+                    |    "id" SERIAL PRIMARY KEY
+                    |);"#,
                     false,
                 ),
                 (
                     r#"CREATE TABLE "users" (
-                     |    "id" SERIAL PRIMARY KEY,
-                     |    "name" TEXT NOT NULL
-                     |);"#,
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "name" TEXT NOT NULL
+                    |);"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"users\" (name);", false),
             ],
             vec![
                 (
@@ -362,6 +395,8 @@ mod tests {
                     r#"ALTER TABLE "memberships" ADD CONSTRAINT "unique_constraint_membership_user" UNIQUE ("user_id");"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"memberships\" (user_id);", false),
+                ("CREATE INDEX ON \"users\" (name);", false),
             ],
             vec![
                 (
@@ -376,6 +411,7 @@ mod tests {
                     r#"ALTER TABLE "memberships" ADD CONSTRAINT "memberships_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "users";"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"memberships\" (user_id);", false),
             ],
             vec![
                 (r#"ALTER TABLE "memberships" DROP COLUMN "user_id";"#, true),
@@ -410,14 +446,18 @@ mod tests {
                     }
                 }
             "#,
-            vec![(
-                r#"CREATE TABLE "rsvps" (
+            vec![
+                (
+                    r#"CREATE TABLE "rsvps" (
                 |    "id" SERIAL PRIMARY KEY,
                 |    "email" TEXT NOT NULL,
                 |    "event_id" INT NOT NULL
                 |);"#,
-                false,
-            )],
+                    false,
+                ),
+                ("CREATE INDEX ON \"rsvps\" (email);", false),
+                ("CREATE INDEX ON \"rsvps\" (event_id);", false),
+            ],
             vec![
                 (
                     r#"CREATE TABLE "rsvps" (
@@ -431,6 +471,8 @@ mod tests {
                     r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"rsvps\" (email);", false),
+                ("CREATE INDEX ON \"rsvps\" (event_id);", false),
             ],
             vec![(
                 r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE (email, event_id);"#,
@@ -469,16 +511,18 @@ mod tests {
             vec![
                 (
                     r#"CREATE TABLE "rsvps" (
-                |    "id" SERIAL PRIMARY KEY,
-                |    "email" TEXT NOT NULL,
-                |    "event_id" INT NOT NULL
-                |);"#,
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "email" TEXT NOT NULL,
+                    |    "event_id" INT NOT NULL
+                    |);"#,
                     false,
                 ),
                 (
                     r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email");"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"rsvps\" (email);", false),
+                ("CREATE INDEX ON \"rsvps\" (event_id);", false),
             ],
             vec![
                 (
@@ -493,6 +537,8 @@ mod tests {
                     r#"ALTER TABLE "rsvps" ADD CONSTRAINT "email_event_id" UNIQUE ("email", "event_id");"#,
                     false,
                 ),
+                ("CREATE INDEX ON \"rsvps\" (email);", false),
+                ("CREATE INDEX ON \"rsvps\" (event_id);", false),
             ],
             vec![
                 (
@@ -542,24 +588,34 @@ mod tests {
                     }
                 }
             "#,
-            vec![(
-                r#"CREATE TABLE "users" (
-                |    "id" SERIAL PRIMARY KEY,
-                |    "role" TEXT NOT NULL,
-                |    "verified" BOOLEAN NOT NULL DEFAULT false,
-                |    "enabled" BOOLEAN NOT NULL DEFAULT true
-                |);"#,
-                false,
-            )],
-            vec![(
-                r#"CREATE TABLE "users" (
-                |    "id" SERIAL PRIMARY KEY,
-                |    "role" TEXT NOT NULL DEFAULT 'USER'::text,
-                |    "verified" BOOLEAN NOT NULL DEFAULT true,
-                |    "enabled" BOOLEAN NOT NULL
-                |);"#,
-                false,
-            )],
+            vec![
+                (
+                    r#"CREATE TABLE "users" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "role" TEXT NOT NULL,
+                    |    "verified" BOOLEAN NOT NULL DEFAULT false,
+                    |    "enabled" BOOLEAN NOT NULL DEFAULT true
+                    |);"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"users\" (role);", false),
+                ("CREATE INDEX ON \"users\" (verified);", false),
+                ("CREATE INDEX ON \"users\" (enabled);", false),
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "users" (
+                    |    "id" SERIAL PRIMARY KEY,
+                    |    "role" TEXT NOT NULL DEFAULT 'USER'::text,
+                    |    "verified" BOOLEAN NOT NULL DEFAULT true,
+                    |    "enabled" BOOLEAN NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"users\" (role);", false),
+                ("CREATE INDEX ON \"users\" (verified);", false),
+                ("CREATE INDEX ON \"users\" (enabled);", false),
+            ],
             vec![
                 (
                     r#"ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'USER'::text;"#,
@@ -614,22 +670,30 @@ mod tests {
                     }
                 } 
             "#,
-            vec![(
-                r#"CREATE TABLE "logs" (
-                |    "id" INT PRIMARY KEY,
-                |    "level" TEXT,
-                |    "message" TEXT NOT NULL
-                |);"#,
-                false,
-            )],
-            vec![(
-                r#"CREATE TABLE "logs" (
-                |    "id" INT PRIMARY KEY,
-                |    "level" TEXT NOT NULL,
-                |    "message" TEXT NOT NULL
-                |);"#,
-                false,
-            )],
+            vec![
+                (
+                    r#"CREATE TABLE "logs" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "level" TEXT,
+                    |    "message" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"logs\" (level);", false),
+                ("CREATE INDEX ON \"logs\" (message);", false),
+            ],
+            vec![
+                (
+                    r#"CREATE TABLE "logs" (
+                    |    "id" INT PRIMARY KEY,
+                    |    "level" TEXT NOT NULL,
+                    |    "message" TEXT NOT NULL
+                    |);"#,
+                    false,
+                ),
+                ("CREATE INDEX ON \"logs\" (level);", false),
+                ("CREATE INDEX ON \"logs\" (message);", false),
+            ],
             vec![(
                 r#"ALTER TABLE "logs" ALTER COLUMN "level" SET NOT NULL;"#,
                 false,
