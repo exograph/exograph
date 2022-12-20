@@ -290,13 +290,22 @@ pub fn build(
             }
         }
 
+        // Temporary workaround to avoid reporting errors twice (once here, and once in the service pass)
+        // TODO: Remove this after fixing https://github.com/payalabs/payas/issues/596
+        let mut ignore_errors = Vec::new();
+
         for ast_type in ast_types_iter.clone() {
             let mut typ = types_arena
                 .get_by_key(ast_type.name.as_str())
                 .unwrap()
                 .clone();
             if let Type::Composite(c) = &mut typ {
-                let pass_res = c.pass(&types_arena, &annotation_env, &init_scope, &mut errors);
+                let pass_res = c.pass(
+                    &types_arena,
+                    &annotation_env,
+                    &init_scope,
+                    &mut ignore_errors,
+                );
                 if pass_res {
                     *types_arena.get_by_key_mut(ast_type.name.as_str()).unwrap() = typ;
                     did_change = true;
