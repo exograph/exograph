@@ -86,11 +86,11 @@ fn resolve(
     errors: &mut Vec<Diagnostic>,
 ) -> Result<ResolvedBaseSystem, ModelBuildingError> {
     Ok(ResolvedBaseSystem {
-        contexts: resolve_shallow_contexts(types, errors)?,
+        contexts: resolve_contexts(types, errors)?,
     })
 }
 
-fn resolve_shallow_contexts(
+fn resolve_contexts(
     types: &MappedArena<Type>,
     errors: &mut Vec<Diagnostic>,
 ) -> Result<MappedArena<ResolvedContext>, ModelBuildingError> {
