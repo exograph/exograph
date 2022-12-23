@@ -2,7 +2,10 @@ use std::vec;
 
 use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 
-use crate::operation::{AggregateQuery, CollectionQuery};
+use crate::{
+    aggregate::AggregateType,
+    operation::{AggregateQuery, CollectionQuery},
+};
 
 use super::{
     operation::{PkQuery, PostgresMutation},
@@ -26,6 +29,8 @@ use serde::{Deserialize, Serialize};
 pub struct ModelPostgresSystem {
     pub contexts: MappedArena<ContextType>,
     pub postgres_types: SerializableSlab<PostgresType>,
+
+    pub aggregate_types: SerializableSlab<AggregateType>,
 
     // query related
     pub order_by_types: SerializableSlab<OrderByParameterType>,
@@ -78,6 +83,10 @@ impl ModelPostgresSystem {
             .iter()
             .for_each(|model_type| all_type_definitions.push(model_type.1.type_definition(self)));
 
+        self.aggregate_types
+            .iter()
+            .for_each(|typ| all_type_definitions.push(typ.1.type_definition(self)));
+
         self.order_by_types.iter().for_each(|parameter_type| {
             all_type_definitions.push(parameter_type.1.type_definition(self))
         });
@@ -99,6 +108,7 @@ impl Default for ModelPostgresSystem {
         Self {
             contexts: MappedArena::default(),
             postgres_types: SerializableSlab::new(),
+            aggregate_types: SerializableSlab::new(),
             order_by_types: SerializableSlab::new(),
             predicate_types: SerializableSlab::new(),
             pk_queries: MappedArena::default(),

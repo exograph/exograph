@@ -12,7 +12,7 @@ use postgres_model::{
     types::{PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
 
-use crate::shallow::Shallow;
+use crate::{aggregate_type_builder::aggregate_type_name, shallow::Shallow};
 
 use super::{
     naming::ToPostgresQueryName,
@@ -189,7 +189,7 @@ fn shallow_aggregate_query(
         },
         return_type: OperationReturnType {
             type_id: model_type_id,
-            type_name: typ.name.clone(),
+            type_name: aggregate_type_name(&typ.name),
             type_modifier: PostgresTypeModifier::NonNull,
         },
     }

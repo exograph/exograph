@@ -52,13 +52,13 @@ pub(crate) fn build_expanded(
 ) -> Result<(), ModelBuildingError> {
     for (_, model_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_persistent_type_no_fields(c, resolved_env, building);
+            expand_type_no_fields(c, resolved_env, building);
         }
     }
 
     for (_, model_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_persistent_type_fields(c, building, resolved_env);
+            expand_type_fields(c, building, resolved_env);
         }
     }
 
@@ -100,7 +100,7 @@ fn create_shallow_type(
 /// This allows types to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
 /// We can't expand fields yet since creating a field requires access to columns (self as well as those in a referred field in case a relation)
 /// and we may not have expanded a referred type yet.
-fn expand_persistent_type_no_fields(
+fn expand_type_no_fields(
     resolved_postgres_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
@@ -151,7 +151,7 @@ fn expand_persistent_type_no_fields(
 
 /// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
 /// expand fields
-fn expand_persistent_type_fields(
+fn expand_type_fields(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
     resolved_env: &ResolvedTypeEnv,
