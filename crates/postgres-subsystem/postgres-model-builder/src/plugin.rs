@@ -174,7 +174,15 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                     .iter()
                     .map(|(_, q)| q.name.clone());
 
-                pk_query_names.chain(collection_query_names).collect()
+                let aggregate_query_names = subsystem
+                    .aggregate_queries
+                    .iter()
+                    .map(|(_, q)| q.name.clone());
+
+                pk_query_names
+                    .chain(collection_query_names)
+                    .chain(aggregate_query_names)
+                    .collect()
             },
             mutation_names: subsystem
                 .mutations

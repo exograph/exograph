@@ -290,6 +290,10 @@ pub enum Column<'a> {
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
+    Function {
+        function_name: String,
+        column: &'a PhysicalColumn,
+    },
 }
 
 impl Expression for PhysicalColumn {
@@ -307,6 +311,13 @@ impl<'a> Expression for Column<'a> {
     fn binding(&self, expression_context: &mut ExpressionContext) -> ParameterBinding {
         match self {
             Column::Physical(pc) => pc.binding(expression_context),
+            Column::Function {
+                function_name,
+                column,
+            } => {
+                let column_stmt = column.binding(expression_context).stmt;
+                ParameterBinding::new(format!("{function_name}({column_stmt})"), vec![])
+            }
             Column::Literal(value) => {
                 let param_index = expression_context.next_param();
                 ParameterBinding::new(format! {"${}", param_index}, vec![value.as_ref()])

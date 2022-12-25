@@ -94,6 +94,8 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
                     },
                 })
                 .chain(vec![AggregateField {
+                    // vec![], since extend_one() is not stable yet
+
                     // Always add the count aggregate
                     name: ScalarAggregateFieldKind::Count.name().to_string(),
                     typ: AggregateFieldType::Scalar {
