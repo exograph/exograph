@@ -11,13 +11,17 @@ use crate::resolved_builder::ResolvedType;
 use super::system_builder::SystemContextBuilding;
 use super::type_builder::ResolvedTypeEnv;
 
-pub(crate) fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
+pub(super) fn aggregate_type_name(type_name: &str) -> String {
+    format!("{}Agg", type_name)
+}
+
+pub(super) fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
     for (_, resolved_type) in resolved_env.resolved_types.iter() {
         create_shallow_type(resolved_type, building);
     }
 }
 
-pub(crate) fn build_expanded(
+pub(super) fn build_expanded(
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
 ) -> Result<(), ModelBuildingError> {
@@ -28,35 +32,6 @@ pub(crate) fn build_expanded(
     Ok(())
 }
 
-fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
-    let type_name = aggregate_type_name(&resolved_type.name());
-
-    let existing_type_id = building.aggregate_types.get_id(&type_name).unwrap();
-
-    if let ResolvedType::Composite(c) = resolved_type {
-        let fields = c
-            .fields
-            .iter()
-            .map(|field| {
-                let type_name = aggregate_type_name(field.typ.get_underlying_typename());
-
-                let type_id = building.aggregate_types.get_id(&type_name).unwrap();
-
-                AggregateField {
-                    name: field.name.clone(),
-                    typ: AggregateFieldType::Composite { type_id, type_name },
-                }
-            })
-            .collect();
-
-        building.aggregate_types.values[existing_type_id].fields = fields;
-    }
-}
-
-pub fn aggregate_type_name(type_name: &str) -> String {
-    format!("{}Agg", type_name)
-}
-
 fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
     let aggregate_type_name = aggregate_type_name(&resolved_type.name());
 
@@ -65,12 +40,14 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
             let fields = c
                 .fields
                 .iter()
-                .map(|field| AggregateField {
-                    name: field.name.clone(),
-                    typ: AggregateFieldType::Scalar {
-                        type_name: resolved_type.name(),
-                        kind: ScalarAggregateFieldKind::Min,
-                    }, // Something to set the type to (we will fix this later in the expansion phase)
+                .map(|field| {
+                    AggregateField {
+                        name: field.name.clone(),
+                        typ: AggregateFieldType::Scalar {
+                            type_name: resolved_type.name(),
+                            kind: ScalarAggregateFieldKind::Count,
+                        }, // Something to set the type to (we will fix this later in the expansion phase)
+                    }
                 })
                 .collect();
 
@@ -115,14 +92,44 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
     building.aggregate_types.add(&aggregate_type_name, typ);
 }
 
+fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuilding) {
+    let type_name = aggregate_type_name(&resolved_type.name());
+
+    let existing_type_id = building.aggregate_types.get_id(&type_name).unwrap();
+
+    if let ResolvedType::Composite(c) = resolved_type {
+        let fields = c
+            .fields
+            .iter()
+            .map(|field| {
+                let type_name = aggregate_type_name(field.typ.get_underlying_typename());
+
+                let type_id = building.aggregate_types.get_id(&type_name).unwrap();
+
+                AggregateField {
+                    name: field.name.clone(),
+                    typ: AggregateFieldType::Composite { type_id, type_name },
+                }
+            })
+            .collect();
+
+        building.aggregate_types.values[existing_type_id].fields = fields;
+    }
+}
+
 lazy_static! {
+    static ref NUMERIC_AGG: Vec<ScalarAggregateFieldKind> = vec![
+        ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max,
+        ScalarAggregateFieldKind::Sum, ScalarAggregateFieldKind::Avg
+    ];
+
     // immutable map defining the aggregates allowed for each scalar type
     // We don't specify the "count" aggregate here because it is always supported (see above)
     static ref TYPE_OPERATORS: HashMap<&'static str, Vec<ScalarAggregateFieldKind>> = HashMap::from([
-        ("Int", vec![ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max, ScalarAggregateFieldKind::Sum]),
-        ("Float", vec![ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max, ScalarAggregateFieldKind::Sum]),
-        ("Decimal", vec![ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max, ScalarAggregateFieldKind::Sum]),
-        ("Decimal", vec![ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max, ScalarAggregateFieldKind::Sum]),
+        ("Int", NUMERIC_AGG.clone()),
+        ("Float", NUMERIC_AGG.clone()),
+        ("Decimal", NUMERIC_AGG.clone()),
+        ("Decimal", NUMERIC_AGG.clone()),
 
         ("String", vec![ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max]),
     ]);

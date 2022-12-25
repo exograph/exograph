@@ -280,6 +280,7 @@ impl PhysicalColumnType {
     }
 }
 
+/// A column in a table. Essentially `<column>` in a `select <column>, <column> from <table>`
 #[derive(Debug, PartialEq)]
 pub enum Column<'a> {
     Physical(&'a PhysicalColumn),
@@ -287,6 +288,7 @@ pub enum Column<'a> {
     JsonObject(Vec<(String, MaybeOwned<'a, Column<'a>>)>),
     JsonAgg(Box<MaybeOwned<'a, Column<'a>>>),
     SelectionTableWrapper(Box<Select<'a>>),
+    // TODO: Generalize the following to return any type of value, not just strings
     Constant(String), // Currently needed to have a query return __typename set to a constant value
     Star,
     Null,
@@ -340,6 +342,7 @@ impl<'a> Expression for Column<'a> {
 
                                 // numerics must be outputted as text to avoid any loss in precision
                                 PhysicalColumnType::Numeric { .. } => format!("{}::text", stmt),
+
                                 _ => stmt,
                             }
                         }

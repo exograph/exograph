@@ -155,10 +155,12 @@ impl<'a> SelectionElement<'a> {
             SelectionElement::Nested(relation, select) => {
                 Column::SelectionTableWrapper(Box::new(database_kind.to_select(
                     select,
-                    Some(Predicate::Eq(
-                        Column::Physical(relation.self_column.0).into(),
-                        Column::Physical(relation.linked_column.unwrap().0).into(),
-                    )),
+                    relation.linked_column.map(|linked_column| {
+                        Predicate::Eq(
+                            Column::Physical(relation.self_column.0).into(),
+                            Column::Physical(linked_column.0).into(),
+                        )
+                    }),
                     SelectionLevel::Nested,
                 )))
             }
