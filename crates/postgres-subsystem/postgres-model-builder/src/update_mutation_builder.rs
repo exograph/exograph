@@ -6,6 +6,7 @@ use postgres_model::{
     operation::{PostgresMutationKind, UpdateDataParameter},
     types::{
         PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
+        PostgresTypeModifier,
     },
 };
 
@@ -80,6 +81,10 @@ impl MutationBuilder for UpdateMutationBuilder {
             data_param: Self::data_param(model_type, building, false),
             predicate_param: query_builder::pk_predicate_param(model_type_id, model_type, building),
         }
+    }
+
+    fn single_mutation_type_modifier() -> PostgresTypeModifier {
+        PostgresTypeModifier::Optional // We return null if the specified id doesn't exist
     }
 
     fn multi_mutation_name(model_type: &PostgresType) -> String {
