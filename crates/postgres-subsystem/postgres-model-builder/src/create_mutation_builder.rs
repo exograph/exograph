@@ -5,7 +5,7 @@ use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableS
 
 use postgres_model::{
     operation::{CreateDataParameter, CreateDataParameterTypeWithModifier, PostgresMutationKind},
-    types::{PostgresCompositeType, PostgresType, PostgresTypeKind},
+    types::{PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
 
 use super::{
@@ -71,6 +71,10 @@ impl MutationBuilder for CreateMutationBuilder {
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Create(Self::data_param(model_type, building, false))
+    }
+
+    fn single_mutation_type_modifier() -> PostgresTypeModifier {
+        PostgresTypeModifier::NonNull
     }
 
     fn multi_mutation_name(model_type: &PostgresType) -> String {

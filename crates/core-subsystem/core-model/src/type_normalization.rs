@@ -69,7 +69,7 @@ impl InputValueProvider for &dyn Parameter {
     parameter_input_value_provider!();
 }
 
-pub fn value_type(name: &str, type_modifier: &TypeModifier) -> Type {
+fn value_type(name: &str, type_modifier: &TypeModifier) -> Type {
     let base_field_type = BaseType::Named(Name::new(name));
     match type_modifier {
         TypeModifier::Optional => Type {
@@ -83,7 +83,7 @@ pub fn value_type(name: &str, type_modifier: &TypeModifier) -> Type {
         TypeModifier::List => Type {
             base: BaseType::List(Box::new(Type {
                 base: base_field_type,
-                nullable: true,
+                nullable: false, // Reasonable default; See https://github.com/payalabs/payas/issues/599 for a proper fix
             })),
             nullable: true,
         },

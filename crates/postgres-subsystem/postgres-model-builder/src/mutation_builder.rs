@@ -53,6 +53,7 @@ pub trait MutationBuilder {
         model_type: &PostgresType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind;
+    fn single_mutation_type_modifier() -> PostgresTypeModifier;
 
     fn multi_mutation_name(model_type: &PostgresType) -> String;
     fn multi_mutation_kind(
@@ -73,7 +74,7 @@ pub trait MutationBuilder {
             return_type: OperationReturnType {
                 type_id: model_type_id,
                 type_name: model_type.name.clone(),
-                type_modifier: PostgresTypeModifier::Optional,
+                type_modifier: Self::single_mutation_type_modifier(),
             },
         };
 

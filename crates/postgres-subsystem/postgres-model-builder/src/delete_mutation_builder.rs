@@ -3,7 +3,7 @@
 
 use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use postgres_model::operation::PostgresMutationKind;
-use postgres_model::types::{PostgresType, PostgresTypeKind};
+use postgres_model::types::{PostgresType, PostgresTypeKind, PostgresTypeModifier};
 
 use super::{
     builder::Builder,
@@ -65,6 +65,10 @@ impl MutationBuilder for DeleteMutationBuilder {
             model_type,
             building,
         ))
+    }
+
+    fn single_mutation_type_modifier() -> PostgresTypeModifier {
+        PostgresTypeModifier::Optional // We return null if the specified id doesn't exist
     }
 
     fn multi_mutation_name(model_type: &PostgresType) -> String {
