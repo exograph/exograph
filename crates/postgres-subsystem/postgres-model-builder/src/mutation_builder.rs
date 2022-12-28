@@ -218,7 +218,6 @@ pub trait DataParamBuilder<D> {
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = PostgresFieldType::Reference {
                     type_name: field_type_name,
-                    is_primitive: false,
                     type_id: field_type_id,
                 };
                 let field_type = match field.typ {
@@ -267,7 +266,6 @@ pub trait DataParamBuilder<D> {
             .and_then(|field_type_id| {
                 let field_plain_type = PostgresFieldType::Reference {
                     type_name: field_type_name,
-                    is_primitive: false, // Mutation types are never primitive
                     type_id: field_type_id,
                 };
                 let field_type = PostgresFieldType::List(Box::new(field_plain_type));

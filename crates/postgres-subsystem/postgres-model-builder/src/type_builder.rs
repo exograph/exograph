@@ -253,15 +253,11 @@ fn create_persistent_field(
         building: &SystemContextBuilding,
     ) -> PostgresFieldType {
         match field_type {
-            ResolvedFieldType::Plain {
-                type_name,
-                is_primitive,
-            } => {
+            ResolvedFieldType::Plain { type_name, .. } => {
                 let type_id = building.postgres_types.get_id(type_name).unwrap();
 
                 PostgresFieldType::Reference {
                     type_name: type_name.clone(),
-                    is_primitive: *is_primitive,
                     type_id,
                 }
             }

@@ -254,7 +254,6 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     .map(|(name, field_type_name)| {
                         let plain_field_type = PostgresFieldType::Reference {
                             type_id: building.mutation_types.get_id(&field_type_name).unwrap(),
-                            is_primitive: false, // Mutation types are always non-primitive
                             type_name: field_type_name,
                         };
                         PostgresField {

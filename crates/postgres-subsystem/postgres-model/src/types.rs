@@ -120,7 +120,6 @@ pub enum PostgresFieldType {
     Optional(Box<PostgresFieldType>),
     Reference {
         type_id: SerializableSlabIndex<PostgresType>,
-        is_primitive: bool, // A way to know which arena to look up the type in
         type_name: String,
     },
     List(Box<PostgresFieldType>),
@@ -133,15 +132,6 @@ impl PostgresFieldType {
                 underlying.type_id()
             }
             PostgresFieldType::Reference { type_id, .. } => type_id,
-        }
-    }
-
-    pub fn is_primitive(&self) -> bool {
-        match self {
-            PostgresFieldType::Optional(underlying) | PostgresFieldType::List(underlying) => {
-                underlying.is_primitive()
-            }
-            PostgresFieldType::Reference { is_primitive, .. } => *is_primitive,
         }
     }
 
