@@ -36,27 +36,11 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
     let aggregate_type_name = aggregate_type_name(&resolved_type.name());
 
     let typ = match resolved_type {
-        ResolvedType::Composite(c) => {
-            let fields = c
-                .fields
-                .iter()
-                .map(|field| {
-                    AggregateField {
-                        name: field.name.clone(),
-                        typ: AggregateFieldType::Scalar {
-                            type_name: resolved_type.name(),
-                            kind: ScalarAggregateFieldKind::Count,
-                        }, // Something to set the type to (we will fix this later in the expansion phase)
-                    }
-                })
-                .collect();
-
-            AggregateType {
-                name: aggregate_type_name.clone(),
-                fields,
-            }
-        }
-        _ => {
+        ResolvedType::Composite(_) => AggregateType {
+            name: aggregate_type_name.clone(),
+            fields: vec![],
+        },
+        ResolvedType::Primitive(_) => {
             let supported_kinds = TYPE_OPERATORS
                 .get(resolved_type.name().as_str())
                 .map(|ks| ks.iter())
@@ -101,14 +85,50 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
         let fields = c
             .fields
             .iter()
-            .map(|field| {
-                let type_name = aggregate_type_name(field.typ.get_underlying_typename());
+            .flat_map(|field| {
+                // Only include fields that are primitive types, since nested aggregations doesn't make sense.
+                // For example, if we have a query like this:
+                // ```graphql
+                // query {
+                //   venueAgg {
+                //     id {
+                //       min
+                //       max
+                //     }
+                //     concerts {
+                //        price {
+                //          avg
+                //        }
+                //     }
+                //   }
+                // }
+                // ```
+                // The `price` field is a nested aggregate, which doesn't make sense.
+                //
+                // However, the following does make sense (get aggregate of field in a nested type, while performing a collection query):
+                // ```graphql
+                // query {
+                //   venue {
+                //     id
+                //     concertAgg {
+                //        price {
+                //          avg
+                //        }
+                //     }
+                //   }
+                // }
+                // ```
+                if field.typ.get_is_underlying_primitive() {
+                    let type_name = aggregate_type_name(field.typ.get_underlying_typename());
 
-                let type_id = building.aggregate_types.get_id(&type_name).unwrap();
+                    let type_id = building.aggregate_types.get_id(&type_name).unwrap();
 
-                AggregateField {
-                    name: field.name.clone(),
-                    typ: AggregateFieldType::Composite { type_id, type_name },
+                    Some(AggregateField {
+                        name: field.name.clone(),
+                        typ: AggregateFieldType::Composite { type_id, type_name },
+                    })
+                } else {
+                    None
                 }
             })
             .collect();
@@ -117,6 +137,7 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
     }
 }
 
+// TODO: Support aggregates for more types and allow expressing the return types (for example, avg() should return a a numeric even for integer types)
 lazy_static! {
     static ref NUMERIC_AGG: Vec<ScalarAggregateFieldKind> = vec![
         ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max,
@@ -128,7 +149,6 @@ lazy_static! {
     static ref TYPE_OPERATORS: HashMap<&'static str, Vec<ScalarAggregateFieldKind>> = HashMap::from([
         ("Int", NUMERIC_AGG.clone()),
         ("Float", NUMERIC_AGG.clone()),
-        ("Decimal", NUMERIC_AGG.clone()),
         ("Decimal", NUMERIC_AGG.clone()),
 
         ("String", vec![ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max]),

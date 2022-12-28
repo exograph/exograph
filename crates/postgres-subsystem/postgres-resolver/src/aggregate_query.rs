@@ -11,13 +11,12 @@ use core_plugin_interface::core_resolver::{
 use futures::StreamExt;
 use maybe_owned::MaybeOwned;
 use payas_sql::{
-    AbstractPredicate, AbstractSelect, ColumnPathLink, ColumnSelection, SelectionCardinality,
-    SelectionElement,
+    AbstractPredicate, AbstractSelect, ColumnSelection, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
     model::ModelPostgresSystem,
     operation::AggregateQuery,
-    relation::{PostgresRelation, RelationCardinality},
+    relation::PostgresRelation,
     types::{PostgresType, PostgresTypeKind},
 };
 
@@ -95,7 +94,7 @@ async fn map_field<'content>(
     return_type: &PostgresType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
-    request_context: &'content RequestContext<'content>,
+    _request_context: &'content RequestContext<'content>,
 ) -> Result<ColumnSelection<'content>, PostgresExecutionError> {
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.clone())
@@ -120,77 +119,10 @@ async fn map_field<'content>(
                     .collect();
                 SelectionElement::Object(elements)
             }
-            PostgresRelation::ManyToOne {
-                column_id,
-                other_type_id,
-                ..
-            } => {
-                let other_type = &subsystem.postgres_types[*other_type_id];
-                let other_table = &subsystem.tables[other_type.table_id().unwrap()];
-
-                let other_table_pk_query = match &other_type.kind {
-                    PostgresTypeKind::Primitive => panic!(""),
-                    PostgresTypeKind::Composite(kind) => &subsystem.pk_queries[kind.pk_query],
-                };
-                let self_table = &subsystem.tables[return_type
-                    .table_id()
-                    .expect("No table for a composite type")];
-                let relation_link = ColumnPathLink {
-                    self_column: (column_id.get_column(subsystem), self_table),
-                    linked_column: Some((
-                        other_table
-                            .get_pk_physical_column()
-                            .expect("No primary key column found"),
-                        other_table,
-                    )),
-                };
-
-                let nested_abstract_select = other_table_pk_query
-                    .resolve_select(field, request_context, subsystem)
-                    .await?;
-
-                SelectionElement::Nested(relation_link, nested_abstract_select)
-            }
-            PostgresRelation::OneToMany {
-                other_type_column_id,
-                other_type_id,
-                cardinality,
-            } => {
-                let other_type = &subsystem.postgres_types[*other_type_id];
-                let self_table = &subsystem.tables[return_type.table_id().unwrap()];
-                let self_table_pk_column = self_table
-                    .get_pk_physical_column()
-                    .expect("No primary key column found");
-                let relation_link = ColumnPathLink {
-                    self_column: (self_table_pk_column, self_table),
-                    linked_column: Some((
-                        other_type_column_id.get_column(subsystem),
-                        &subsystem.tables[other_type.table_id().unwrap()],
-                    )),
-                };
-
-                let nested_abstract_select = match &other_type.kind {
-                    PostgresTypeKind::Primitive => panic!(""),
-                    PostgresTypeKind::Composite(kind) => {
-                        // Get an appropriate query based on the cardinality of the relation
-                        if cardinality == &RelationCardinality::Unbounded {
-                            let collection_query =
-                                &subsystem.collection_queries[kind.collection_query];
-
-                            collection_query
-                                .resolve_select(field, request_context, subsystem)
-                                .await?
-                        } else {
-                            let pk_query = &subsystem.pk_queries[kind.pk_query];
-
-                            pk_query
-                                .resolve_select(field, request_context, subsystem)
-                                .await?
-                        }
-                    }
-                };
-
-                SelectionElement::Nested(relation_link, nested_abstract_select)
+            _ => {
+                return Err(PostgresExecutionError::Generic(
+                    "Invalid nested aggregation of a composite type".into(),
+                ))
             }
         }
     };

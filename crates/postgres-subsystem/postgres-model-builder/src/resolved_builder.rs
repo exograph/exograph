@@ -91,6 +91,14 @@ impl ResolvedFieldType {
             ResolvedFieldType::List(underlying) => underlying.get_underlying_typename(),
         }
     }
+
+    pub fn get_is_underlying_primitive(&self) -> bool {
+        match &self {
+            ResolvedFieldType::Plain { is_primitive, .. } => *is_primitive,
+            ResolvedFieldType::Optional(underlying) => underlying.get_is_underlying_primitive(),
+            ResolvedFieldType::List(underlying) => underlying.get_is_underlying_primitive(),
+        }
+    }
 }
 
 impl ResolvedFieldType {
