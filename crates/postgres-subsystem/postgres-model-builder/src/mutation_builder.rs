@@ -301,6 +301,7 @@ pub trait DataParamBuilder<D> {
             collection_query,
             aggregate_query,
             access,
+            ..
         }) = &model_type.kind
         {
             let model_fields = fields;
@@ -343,6 +344,7 @@ pub trait DataParamBuilder<D> {
                 existing_type_id,
                 PostgresCompositeType {
                     fields: input_type_fields,
+                    agg_fields: vec![],
                     table_id: *table_id,
                     pk_query: *pk_query,
                     collection_query: *collection_query,

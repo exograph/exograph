@@ -271,6 +271,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     existing_type_id,
                     PostgresCompositeType {
                         fields,
+                        agg_fields: vec![],
                         table_id: *table_id,
                         pk_query: *pk_query,
                         collection_query: *collection_query,

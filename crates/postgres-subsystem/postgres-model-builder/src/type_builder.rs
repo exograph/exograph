@@ -1,3 +1,5 @@
+use crate::aggregate_type_builder::aggregate_type_name;
+
 use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::ResolvedFieldType};
 
 use core_plugin_interface::{
@@ -13,6 +15,7 @@ use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, Physical
 
 use postgres_model::{
     access::Access,
+    aggregate::{AggregateField, AggregateFieldType},
     column_id::ColumnId,
     relation::{PostgresRelation, RelationCardinality},
     types::{
@@ -137,6 +140,7 @@ fn expand_type_no_fields(
 
     let kind = PostgresTypeKind::Composite(PostgresCompositeType {
         fields: vec![],
+        agg_fields: vec![],
         table_id,
         pk_query,
         collection_query,
@@ -174,8 +178,15 @@ fn expand_type_fields(
             .map(|field| create_persistent_field(field, table_id, building, resolved_env))
             .collect();
 
+        let agg_fields = resolved_type
+            .fields
+            .iter()
+            .flat_map(|field| create_agg_field(field, building))
+            .collect();
+
         let kind = PostgresTypeKind::Composite(PostgresCompositeType {
             fields: model_fields,
+            agg_fields,
             table_id: *table_id,
             pk_query: *pk_query,
             collection_query: *collection_query,
@@ -206,6 +217,7 @@ fn expand_type_access(
 
         let kind = PostgresTypeKind::Composite(PostgresCompositeType {
             fields: self_type_info.fields.clone(),
+            agg_fields: self_type_info.agg_fields.clone(),
             table_id: self_type_info.table_id,
             pk_query: self_type_info.pk_query,
             collection_query: self_type_info.collection_query,
@@ -275,6 +287,36 @@ fn create_persistent_field(
         typ: create_field_type(&field.typ, building),
         relation: create_relation(field, *table_id, building, env),
         has_default_value: field.default_value.is_some(),
+    }
+}
+
+fn create_agg_field(
+    field: &ResolvedField,
+    building: &SystemContextBuilding,
+) -> Option<AggregateField> {
+    fn is_underlying_type_list(field_type: &ResolvedFieldType) -> bool {
+        match field_type {
+            ResolvedFieldType::Plain { .. } => false,
+            ResolvedFieldType::Optional(underlying) => is_underlying_type_list(underlying),
+            ResolvedFieldType::List(_) => true,
+        }
+    }
+
+    if field.typ.get_is_underlying_primitive() || !is_underlying_type_list(&field.typ) {
+        None
+    } else {
+        let field_name = format!("{}Agg", field.name);
+        let field_type_name = field.typ.get_underlying_typename();
+        let agg_type_name = aggregate_type_name(field_type_name);
+        let agg_type_id = building.aggregate_types.get_id(&agg_type_name).unwrap();
+
+        Some(AggregateField {
+            name: field_name,
+            typ: AggregateFieldType::Composite {
+                type_name: agg_type_name,
+                type_id: agg_type_id,
+            },
+        })
     }
 }
 

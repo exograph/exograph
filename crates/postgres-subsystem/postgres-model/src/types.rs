@@ -1,5 +1,6 @@
 use super::access::Access;
 use super::{column_id::ColumnId, relation::PostgresRelation};
+use crate::aggregate::AggregateField;
 use crate::model::ModelPostgresSystem;
 use crate::operation::{AggregateQuery, CollectionQuery, CollectionQueryParameter, PkQuery};
 use async_graphql_parser::types::{
@@ -17,7 +18,7 @@ use core_plugin_interface::core_model::{
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresType {
     pub name: String,
     pub plural_name: String,
@@ -76,6 +77,7 @@ pub enum PostgresTypeKind {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresCompositeType {
     pub fields: Vec<PostgresField>,
+    pub agg_fields: Vec<AggregateField>,
     pub table_id: SerializableSlabIndex<PhysicalTable>,
     pub pk_query: SerializableSlabIndex<PkQuery>,
     pub collection_query: SerializableSlabIndex<CollectionQuery>,
@@ -173,6 +175,7 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresType {
             },
             PostgresTypeKind::Composite(PostgresCompositeType {
                 fields: model_fields,
+                agg_fields,
                 ..
             }) => {
                 let kind = if self.is_input {
@@ -182,10 +185,15 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresType {
                         .collect();
                     TypeKind::InputObject(InputObjectType { fields })
                 } else {
-                    let fields: Vec<_> = model_fields
+                    let model_fields = model_fields.iter().map(|model_field| {
+                        default_positioned(model_field.field_definition(system))
+                    });
+
+                    let agg_fields = agg_fields
                         .iter()
-                        .map(|model_field| default_positioned(model_field.field_definition(system)))
-                        .collect();
+                        .map(|agg_field| default_positioned(agg_field.field_definition(system)));
+
+                    let fields = model_fields.chain(agg_fields).collect();
 
                     TypeKind::Object(ObjectType {
                         implements: vec![],
