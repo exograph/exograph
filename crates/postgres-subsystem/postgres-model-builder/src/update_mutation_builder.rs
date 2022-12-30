@@ -4,11 +4,14 @@ use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableS
 use postgres_model::{
     access::Access,
     operation::{PostgresMutationKind, UpdateDataParameter},
+    relation::PostgresRelation,
     types::{
         PostgresCompositeType, PostgresField, PostgresFieldType, PostgresType, PostgresTypeKind,
         PostgresTypeModifier,
     },
 };
+
+use crate::mutation_builder::DataParamRole;
 
 use super::{
     builder::Builder,
@@ -116,6 +119,10 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
         model_type_name.update_type()
     }
 
+    fn data_param_role() -> DataParamRole {
+        DataParamRole::Update
+    }
+
     fn data_param(
         model_type: &PostgresType,
         building: &SystemContextBuilding,
@@ -189,20 +196,23 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                 .first()
                 .map(|tpe| {
                     let base_type = tpe.1.clone();
-                    let mut fields_with_id = Vec::with_capacity(base_type.fields.len() + 1);
+                    let mut base_type_fields = base_type.fields;
 
-                    let model_pk_field = model_type.pk_field().unwrap();
+                    let base_type_pk_field = base_type_fields
+                        .iter_mut()
+                        .find(|f| matches!(f.relation, PostgresRelation::Pk { .. }));
 
-                    let update_pk_field = PostgresField {
-                        typ: model_pk_field.typ.clone(),
-                        ..model_pk_field.clone()
+                    // For a non-nested type ("base type"), we already have the PK field, but it is optional. So here
+                    // we make it required (by not wrapping the model_pk_field it as optional)
+                    if let Some(base_type_pk_field) = base_type_pk_field {
+                        let model_pk_field = model_type.pk_field().unwrap();
+                        base_type_pk_field.typ = model_pk_field.typ.clone();
+                    } else {
+                        panic!("Expected a PK field in the base type")
                     };
-                    fields_with_id.push(update_pk_field);
-
-                    fields_with_id.extend(base_type.fields.into_iter());
 
                     let type_with_id = PostgresCompositeType {
-                        fields: fields_with_id,
+                        fields: base_type_fields,
                         ..base_type
                     };
 

@@ -25,6 +25,12 @@ use super::{
     update_mutation_builder::UpdateMutationBuilder,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DataParamRole {
+    Create,
+    Update,
+}
+
 // TODO: Introduce this module as a struct (and have it hold the sub-builders)
 // TODO: Abstract the concept of composite builders
 
@@ -106,6 +112,8 @@ pub trait DataParamBuilder<D> {
         super::mutation_builder::data_type_name(&base_name, container_type)
     }
 
+    fn data_param_role() -> DataParamRole;
+
     fn compute_data_fields(
         &self,
         postgres_fields: &[PostgresField],
@@ -179,7 +187,21 @@ pub trait DataParamBuilder<D> {
         let optional = Self::mark_fields_optional() || field.has_default_value;
 
         match &field.relation {
-            PostgresRelation::Pk { .. } => None, // TODO: Make this decision based on autoincrement/uuid etc of the id
+            PostgresRelation::Pk { .. } => {
+                if Self::data_param_role() == DataParamRole::Update {
+                    // A typical way clients use update mutation is to get the data along with the id,
+                    // modify the data and send it back to the server. So we should accept the id
+                    // as an optional field in the update mutation.
+                    // See also https://github.com/payalabs/payas/issues/601
+                    Some(PostgresField {
+                        typ: field.typ.optional(),
+                        ..field.clone()
+                    })
+                } else {
+                    // TODO: Make this decision based on autoincrement/uuid etc of the id
+                    None
+                }
+            }
             PostgresRelation::Scalar { .. } => Some(PostgresField {
                 typ: if optional {
                     field.typ.optional()
