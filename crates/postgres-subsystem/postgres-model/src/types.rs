@@ -36,8 +36,23 @@ impl PostgresType {
         }
     }
 
+    pub fn aggregate_fields(&self) -> Vec<&AggregateField> {
+        match &self.kind {
+            PostgresTypeKind::Primitive => vec![],
+            PostgresTypeKind::Composite(PostgresCompositeType { agg_fields, .. }) => {
+                agg_fields.iter().collect()
+            }
+        }
+    }
+
     pub fn model_field(&self, name: &str) -> Option<&PostgresField> {
         self.model_fields()
+            .into_iter()
+            .find(|model_field| model_field.name == name)
+    }
+
+    pub fn aggregate_field(&self, name: &str) -> Option<&AggregateField> {
+        self.aggregate_fields()
             .into_iter()
             .find(|model_field| model_field.name == name)
     }

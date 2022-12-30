@@ -53,6 +53,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
                         type_name: resolved_type.name(),
                         kind: *kind,
                     },
+                    relation: None,
                 })
                 .chain(vec![AggregateField {
                     // vec![], since extend_one() is not stable yet
@@ -63,6 +64,7 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
                         type_name: "Int".to_string(),
                         kind: ScalarAggregateFieldKind::Count,
                     },
+                    relation: None,
                 }])
                 .collect();
 
@@ -126,6 +128,7 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
                     Some(AggregateField {
                         name: field.name.clone(),
                         typ: AggregateFieldType::Composite { type_id, type_name },
+                        relation: None,
                     })
                 } else {
                     None

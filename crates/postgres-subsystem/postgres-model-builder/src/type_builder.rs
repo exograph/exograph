@@ -181,7 +181,7 @@ fn expand_type_fields(
         let agg_fields = resolved_type
             .fields
             .iter()
-            .flat_map(|field| create_agg_field(field, building))
+            .flat_map(|field| create_agg_field(field, table_id, building, resolved_env))
             .collect();
 
         let kind = PostgresTypeKind::Composite(PostgresCompositeType {
@@ -292,7 +292,9 @@ fn create_persistent_field(
 
 fn create_agg_field(
     field: &ResolvedField,
+    table_id: &SerializableSlabIndex<PhysicalTable>,
     building: &SystemContextBuilding,
+    env: &ResolvedTypeEnv,
 ) -> Option<AggregateField> {
     fn is_underlying_type_list(field_type: &ResolvedFieldType) -> bool {
         match field_type {
@@ -316,6 +318,7 @@ fn create_agg_field(
                 type_name: agg_type_name,
                 type_id: agg_type_id,
             },
+            relation: Some(create_relation(field, *table_id, building, env)),
         })
     }
 }

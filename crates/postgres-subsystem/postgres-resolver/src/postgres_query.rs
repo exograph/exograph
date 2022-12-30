@@ -18,12 +18,13 @@ use payas_sql::{
     Offset, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
+    aggregate::AggregateField,
     model::ModelPostgresSystem,
     operation::{CollectionQuery, OperationReturnType, PkQuery},
     order::OrderByParameter,
     predicate::PredicateParameter,
     relation::{PostgresRelation, RelationCardinality},
-    types::{PostgresType, PostgresTypeKind, PostgresTypeModifier},
+    types::{PostgresField, PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
 
 #[async_trait]
@@ -167,87 +168,171 @@ async fn map_field<'content>(
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.clone())
     } else {
-        let model_field = return_type.model_field(&field.name).unwrap();
+        let model_field = return_type.model_field(&field.name);
 
-        match &model_field.relation {
-            PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
-                let column = column_id.get_column(subsystem);
-                SelectionElement::Physical(column)
+        match model_field {
+            Some(model_field) => {
+                map_persistent_field(model_field, return_type, field, subsystem, request_context)
+                    .await?
             }
-            PostgresRelation::ManyToOne {
-                column_id,
-                other_type_id,
-                ..
-            } => {
-                let other_type = &subsystem.postgres_types[*other_type_id];
-                let other_table = &subsystem.tables[other_type.table_id().unwrap()];
-
-                let other_table_pk_query = match &other_type.kind {
-                    PostgresTypeKind::Primitive => panic!(""),
-                    PostgresTypeKind::Composite(kind) => &subsystem.pk_queries[kind.pk_query],
-                };
-                let self_table = &subsystem.tables[return_type
-                    .table_id()
-                    .expect("No table for a composite type")];
-                let relation_link = ColumnPathLink {
-                    self_column: (column_id.get_column(subsystem), self_table),
-                    linked_column: Some((
-                        other_table
-                            .get_pk_physical_column()
-                            .expect("No primary key column found"),
-                        other_table,
-                    )),
-                };
-
-                let nested_abstract_select = other_table_pk_query
-                    .resolve_select(field, request_context, subsystem)
-                    .await?;
-
-                SelectionElement::Nested(relation_link, nested_abstract_select)
-            }
-            PostgresRelation::OneToMany {
-                other_type_column_id,
-                other_type_id,
-                cardinality,
-            } => {
-                let other_type = &subsystem.postgres_types[*other_type_id];
-                let self_table = &subsystem.tables[return_type.table_id().unwrap()];
-                let self_table_pk_column = self_table
-                    .get_pk_physical_column()
-                    .expect("No primary key column found");
-                let relation_link = ColumnPathLink {
-                    self_column: (self_table_pk_column, self_table),
-                    linked_column: Some((
-                        other_type_column_id.get_column(subsystem),
-                        &subsystem.tables[other_type.table_id().unwrap()],
-                    )),
-                };
-
-                let nested_abstract_select = match &other_type.kind {
-                    PostgresTypeKind::Primitive => panic!(""),
-                    PostgresTypeKind::Composite(kind) => {
-                        // Get an appropriate query based on the cardinality of the relation
-                        if cardinality == &RelationCardinality::Unbounded {
-                            let collection_query =
-                                &subsystem.collection_queries[kind.collection_query];
-
-                            collection_query
-                                .resolve_select(field, request_context, subsystem)
-                                .await?
-                        } else {
-                            let pk_query = &subsystem.pk_queries[kind.pk_query];
-
-                            pk_query
-                                .resolve_select(field, request_context, subsystem)
-                                .await?
-                        }
-                    }
-                };
-
-                SelectionElement::Nested(relation_link, nested_abstract_select)
+            None => {
+                let agg_field = return_type.aggregate_field(&field.name).unwrap();
+                map_aggregate_field(agg_field, return_type, field, subsystem, request_context)
+                    .await?
             }
         }
     };
 
     Ok(ColumnSelection::new(field.output_name(), selection_elem))
+}
+
+async fn map_persistent_field<'content>(
+    model_field: &PostgresField,
+    return_type: &PostgresType,
+    field: &'content ValidatedField,
+    subsystem: &'content ModelPostgresSystem,
+    request_context: &'content RequestContext<'content>,
+) -> Result<SelectionElement<'content>, PostgresExecutionError> {
+    match &model_field.relation {
+        PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {
+            let column = column_id.get_column(subsystem);
+            Ok(SelectionElement::Physical(column))
+        }
+        PostgresRelation::ManyToOne {
+            column_id,
+            other_type_id,
+            ..
+        } => {
+            let other_type = &subsystem.postgres_types[*other_type_id];
+            let other_table = &subsystem.tables[other_type.table_id().unwrap()];
+
+            let other_table_pk_query = match &other_type.kind {
+                PostgresTypeKind::Primitive => panic!(""),
+                PostgresTypeKind::Composite(kind) => &subsystem.pk_queries[kind.pk_query],
+            };
+            let self_table = &subsystem.tables[return_type
+                .table_id()
+                .expect("No table for a composite type")];
+            let relation_link = ColumnPathLink {
+                self_column: (column_id.get_column(subsystem), self_table),
+                linked_column: Some((
+                    other_table
+                        .get_pk_physical_column()
+                        .expect("No primary key column found"),
+                    other_table,
+                )),
+            };
+
+            let nested_abstract_select = other_table_pk_query
+                .resolve_select(field, request_context, subsystem)
+                .await?;
+
+            Ok(SelectionElement::Nested(
+                relation_link,
+                nested_abstract_select,
+            ))
+        }
+        PostgresRelation::OneToMany {
+            other_type_column_id,
+            other_type_id,
+            cardinality,
+        } => {
+            let other_type = &subsystem.postgres_types[*other_type_id];
+            let self_table = &subsystem.tables[return_type.table_id().unwrap()];
+            let self_table_pk_column = self_table
+                .get_pk_physical_column()
+                .expect("No primary key column found");
+            let relation_link = ColumnPathLink {
+                self_column: (self_table_pk_column, self_table),
+                linked_column: Some((
+                    other_type_column_id.get_column(subsystem),
+                    &subsystem.tables[other_type.table_id().unwrap()],
+                )),
+            };
+
+            let nested_abstract_select = match &other_type.kind {
+                PostgresTypeKind::Primitive => panic!(""),
+                PostgresTypeKind::Composite(kind) => {
+                    // Get an appropriate query based on the cardinality of the relation
+                    if cardinality == &RelationCardinality::Unbounded {
+                        let collection_query = &subsystem.collection_queries[kind.collection_query];
+
+                        collection_query
+                            .resolve_select(field, request_context, subsystem)
+                            .await?
+                    } else {
+                        let pk_query = &subsystem.pk_queries[kind.pk_query];
+
+                        pk_query
+                            .resolve_select(field, request_context, subsystem)
+                            .await?
+                    }
+                }
+            };
+
+            Ok(SelectionElement::Nested(
+                relation_link,
+                nested_abstract_select,
+            ))
+        }
+    }
+}
+
+async fn map_aggregate_field<'content>(
+    agg_field: &AggregateField,
+    return_type: &PostgresType,
+    field: &'content ValidatedField,
+    subsystem: &'content ModelPostgresSystem,
+    request_context: &'content RequestContext<'content>,
+) -> Result<SelectionElement<'content>, PostgresExecutionError> {
+    if let Some(PostgresRelation::OneToMany {
+        other_type_column_id,
+        other_type_id,
+        cardinality,
+    }) = &agg_field.relation
+    {
+        // TODO: Avoid code duplication with map_persistent_field
+        let other_type = &subsystem.postgres_types[*other_type_id];
+        let self_table = &subsystem.tables[return_type.table_id().unwrap()];
+        let self_table_pk_column = self_table
+            .get_pk_physical_column()
+            .expect("No primary key column found");
+        let relation_link = ColumnPathLink {
+            self_column: (self_table_pk_column, self_table),
+            linked_column: Some((
+                other_type_column_id.get_column(subsystem),
+                &subsystem.tables[other_type.table_id().unwrap()],
+            )),
+        };
+
+        let nested_abstract_select = match &other_type.kind {
+            PostgresTypeKind::Primitive => panic!(""),
+            PostgresTypeKind::Composite(kind) => {
+                // Aggregate is supported only for unbounded relations (i.e. not supported for one-to-one)
+                if cardinality == &RelationCardinality::Unbounded {
+                    let aggregate_query = &subsystem.aggregate_queries[kind.aggregate_query];
+
+                    aggregate_query
+                        .resolve_select(field, request_context, subsystem)
+                        .await
+                } else {
+                    // Reaching this point means our validation logic failed
+                    Err(PostgresExecutionError::Generic(
+                        "Validation error: Aggregate is supported only for unbounded relations"
+                            .to_string(),
+                    ))
+                }
+            }
+        }?;
+
+        Ok(SelectionElement::Nested(
+            relation_link,
+            nested_abstract_select,
+        ))
+    } else {
+        // Reaching this point means our validation logic failed
+        Err(PostgresExecutionError::Generic(
+            "Validation error: Aggregate is supported only for one-to-many".to_string(),
+        ))
+    }
 }

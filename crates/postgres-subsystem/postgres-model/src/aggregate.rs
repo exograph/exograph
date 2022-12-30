@@ -5,6 +5,7 @@ use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
 
 use crate::model::ModelPostgresSystem;
+use crate::relation::PostgresRelation;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::{
     default_positioned, default_positioned_name, FieldDefinitionProvider, TypeDefinitionProvider,
@@ -20,6 +21,7 @@ pub struct AggregateType {
 pub struct AggregateField {
     pub name: String, // Such as max, sum, etc for scalar types; field names (id, name, etc.) for composite types
     pub typ: AggregateFieldType,
+    pub relation: Option<PostgresRelation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
