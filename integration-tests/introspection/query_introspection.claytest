@@ -77,6 +77,16 @@ response: |
             },
             {
               "__typename": "__Field",
+              "name": "personAgg",
+              "args": [
+                {
+                  "name": "where",
+                  "__typename": "__InputValue"
+                }
+              ]
+            },
+            {
+              "__typename": "__Field",
               "name": "persons",
               "args": [
                 {
@@ -117,4 +127,3 @@ response: |
       }
     }
   }
-   
