@@ -10,6 +10,8 @@ use postgres_model::{
     },
 };
 
+use crate::mutation_builder::DataParamRole;
+
 use super::{
     builder::Builder,
     mutation_builder::{create_data_type_name, update_data_type_name},
@@ -114,6 +116,10 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
 
     fn base_data_type_name(model_type_name: &str) -> String {
         model_type_name.update_type()
+    }
+
+    fn data_param_role() -> DataParamRole {
+        DataParamRole::Update
     }
 
     fn data_param(

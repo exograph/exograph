@@ -8,6 +8,8 @@ use postgres_model::{
     types::{PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier},
 };
 
+use crate::mutation_builder::DataParamRole;
+
 use super::{
     builder::Builder,
     mutation_builder::{DataParamBuilder, MutationBuilder},
@@ -97,6 +99,10 @@ impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
 
     fn base_data_type_name(model_type_name: &str) -> String {
         model_type_name.creation_type()
+    }
+
+    fn data_param_role() -> DataParamRole {
+        DataParamRole::Create
     }
 
     fn data_param(
