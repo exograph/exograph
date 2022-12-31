@@ -5,10 +5,13 @@ use async_graphql_value::Name;
 use serde::{Deserialize, Serialize};
 
 use crate::model::ModelPostgresSystem;
+use crate::operation::AggregateQueryParameter;
 use crate::relation::PostgresRelation;
+use crate::types::PostgresTypeKind;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::{
-    default_positioned, default_positioned_name, FieldDefinitionProvider, TypeDefinitionProvider,
+    default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
+    TypeDefinitionProvider,
 };
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -82,11 +85,36 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for AggregateType {
 }
 
 impl FieldDefinitionProvider<ModelPostgresSystem> for AggregateField {
-    fn field_definition(&self, _system: &ModelPostgresSystem) -> FieldDefinition {
+    fn field_definition(&self, system: &ModelPostgresSystem) -> FieldDefinition {
+        let arguments = match &self.relation {
+            Some(relation) => match relation {
+                PostgresRelation::Pk { .. }
+                | PostgresRelation::Scalar { .. }
+                | PostgresRelation::ManyToOne { .. } => {
+                    vec![]
+                }
+                PostgresRelation::OneToMany { other_type_id, .. } => {
+                    let other_type = &system.postgres_types[*other_type_id];
+                    match &other_type.kind {
+                        PostgresTypeKind::Primitive => panic!(),
+                        PostgresTypeKind::Composite(kind) => {
+                            let aggregate_query = &system.aggregate_queries[kind.aggregate_query];
+
+                            let AggregateQueryParameter { predicate_param } =
+                                &aggregate_query.parameter;
+
+                            vec![default_positioned(predicate_param.input_value())]
+                        }
+                    }
+                }
+            },
+            None => vec![],
+        };
+
         FieldDefinition {
             description: None,
             name: default_positioned_name(&self.name),
-            arguments: vec![],
+            arguments,
             ty: default_positioned(compute_type(&self.typ)),
             directives: vec![],
         }
