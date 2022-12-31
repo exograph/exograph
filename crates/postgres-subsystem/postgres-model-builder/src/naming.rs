@@ -52,7 +52,7 @@ impl<T: ToPlural> ToPostgresQueryName for T {
     }
 
     fn aggregate_query(&self) -> String {
-        format!("{}Agg", self.pk_query())
+        format!("{}Agg", self.collection_query())
     }
 }
 
