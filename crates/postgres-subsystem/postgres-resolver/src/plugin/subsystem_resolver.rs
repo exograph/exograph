@@ -45,7 +45,12 @@ impl SubsystemResolver for PostgresSubsystemResolver {
                     Some(query) => {
                         Some(query.resolve(field, request_context, &self.subsystem).await)
                     }
-                    None => None,
+                    None => match self.subsystem.aggregate_queries.get_by_key(operation_name) {
+                        Some(query) => {
+                            Some(query.resolve(field, request_context, &self.subsystem).await)
+                        }
+                        None => None,
+                    },
                 },
             },
             OperationType::Mutation => {

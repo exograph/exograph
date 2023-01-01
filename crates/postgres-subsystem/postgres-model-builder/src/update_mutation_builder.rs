@@ -225,6 +225,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             table_id,
             pk_query,
             collection_query,
+            aggregate_query,
             ..
         }) = &model_type.kind
         {
@@ -253,7 +254,6 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     .map(|(name, field_type_name)| {
                         let plain_field_type = PostgresFieldType::Reference {
                             type_id: building.mutation_types.get_id(&field_type_name).unwrap(),
-                            is_primitive: false, // Mutation types are always non-primitive
                             type_name: field_type_name,
                         };
                         PostgresField {
@@ -271,9 +271,11 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     existing_type_id,
                     PostgresCompositeType {
                         fields,
+                        agg_fields: vec![],
                         table_id: *table_id,
                         pk_query: *pk_query,
                         collection_query: *collection_query,
+                        aggregate_query: *aggregate_query,
                         access: Access::restrictive(),
                     },
                 )];

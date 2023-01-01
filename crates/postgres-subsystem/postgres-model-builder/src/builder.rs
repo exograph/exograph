@@ -47,7 +47,7 @@ pub trait Builder {
         }
     }
 
-    fn build_shallow_only_persistent(
+    fn build_shallow(
         &self,
         resolved_types: &MappedArena<ResolvedType>,
         building: &mut SystemContextBuilding,

@@ -7,14 +7,17 @@ use core_plugin_interface::{
 };
 
 use postgres_model::{
+    aggregate::AggregateType,
     model::ModelPostgresSystem,
-    operation::{CollectionQuery, PkQuery, PostgresMutation},
+    operation::{AggregateQuery, CollectionQuery, PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
     types::PostgresType,
 };
 
 use payas_sql::PhysicalTable;
+
+use crate::aggregate_type_builder;
 
 use super::{
     mutation_builder, order_by_type_builder, predicate_builder, query_builder, resolved_builder,
@@ -40,11 +43,13 @@ pub fn build(
         ModelPostgresSystem {
             contexts: base_system.contexts.clone(),
             postgres_types: building.postgres_types.values,
+            aggregate_types: building.aggregate_types.values,
 
             order_by_types: building.order_by_types.values,
             predicate_types: building.predicate_types.values,
             pk_queries: building.pk_queries,
             collection_queries: building.collection_queries,
+            aggregate_queries: building.aggregate_queries,
             tables: building.tables.values,
             mutation_types: building.mutation_types.values,
             mutations: building.mutations,
@@ -54,6 +59,7 @@ pub fn build(
     Ok({
         if system.pk_queries.values.is_empty()
             && system.collection_queries.values.is_empty()
+            && system.aggregate_queries.values.is_empty()
             && system.mutations.values.is_empty()
         {
             None
@@ -63,16 +69,18 @@ pub fn build(
     })
 }
 
+/// Build shallow types, context, query parameters (order by and predicate)
 fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-    // First build shallow types, context, query parameters (order by and predicate)
-    // The order of next five is unimportant, since each of them simply create a shallow type without referring to anything
+    // The order of next three is unimportant, since each of them simply create a shallow type without referring to anything
     type_builder::build_shallow(resolved_env, building);
 
     order_by_type_builder::build_shallow(resolved_env, building);
 
     predicate_builder::build_shallow(&resolved_env.resolved_types, building);
 
-    // The next two shallow builders need DATABASE types build above (the order of the next three is unimportant)
+    aggregate_type_builder::build_shallow(resolved_env, building);
+
+    // The next two shallow builders need DATABASE types build above (the order of the next two is unimportant)
     // Specifically, the OperationReturn type in Query and Mutation looks for the id for the return type, so requires
     // type_builder::build_shallow to have run
     query_builder::build_shallow(&resolved_env.resolved_types, building);
@@ -86,10 +94,11 @@ fn build_expanded(
     // First fully build the types.
     type_builder::build_expanded(resolved_env, building)?;
 
-    // Which is then used to expand query and query parameters (the order of the next four is unimportant) but must be executed
+    // Which is then used to expand query and query parameters (the order is unimportant) but must be executed
     // after running type_builder::build_expanded (since they depend on expanded PostgresTypes (note the next ones do not access resolved_types))
     order_by_type_builder::build_expanded(building);
     predicate_builder::build_expanded(building);
+    aggregate_type_builder::build_expanded(resolved_env, building)?;
 
     // Finally expand queries, mutations, and service methods
     query_builder::build_expanded(building);
@@ -102,11 +111,14 @@ fn build_expanded(
 pub struct SystemContextBuilding {
     pub postgres_types: MappedArena<PostgresType>,
 
+    pub aggregate_types: MappedArena<AggregateType>,
+
     pub order_by_types: MappedArena<OrderByParameterType>,
     pub predicate_types: MappedArena<PredicateParameterType>,
 
     pub pk_queries: MappedArena<PkQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
+    pub aggregate_queries: MappedArena<AggregateQuery>,
 
     pub mutation_types: MappedArena<PostgresType>,
     pub mutations: MappedArena<PostgresMutation>,

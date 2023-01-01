@@ -1,3 +1,5 @@
+use crate::aggregate_type_builder::aggregate_type_name;
+
 use super::{access_builder::ResolvedAccess, access_utils, resolved_builder::ResolvedFieldType};
 
 use core_plugin_interface::{
@@ -13,6 +15,7 @@ use payas_sql::{FloatBits, IntBits, PhysicalColumn, PhysicalColumnType, Physical
 
 use postgres_model::{
     access::Access,
+    aggregate::{AggregateField, AggregateFieldType},
     column_id::ColumnId,
     relation::{PostgresRelation, RelationCardinality},
     types::{
@@ -52,13 +55,13 @@ pub(crate) fn build_expanded(
 ) -> Result<(), ModelBuildingError> {
     for (_, model_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_persistent_type_no_fields(c, resolved_env, building);
+            expand_type_no_fields(c, resolved_env, building);
         }
     }
 
     for (_, model_type) in resolved_env.resolved_types.iter() {
         if let ResolvedType::Composite(c) = &model_type {
-            expand_persistent_type_fields(c, building, resolved_env);
+            expand_type_fields(c, building, resolved_env);
         }
     }
 
@@ -100,7 +103,7 @@ fn create_shallow_type(
 /// This allows types to become `Composite` and `table_id` for any type can be accessed when building fields in the next step of expansion.
 /// We can't expand fields yet since creating a field requires access to columns (self as well as those in a referred field in case a relation)
 /// and we may not have expanded a referred type yet.
-fn expand_persistent_type_no_fields(
+fn expand_type_no_fields(
     resolved_postgres_type: &ResolvedCompositeType,
     resolved_env: &ResolvedTypeEnv,
     building: &mut SystemContextBuilding,
@@ -130,11 +133,18 @@ fn expand_persistent_type_no_fields(
         .get_id(&resolved_postgres_type.collection_query())
         .unwrap();
 
+    let aggregate_query = building
+        .aggregate_queries
+        .get_id(&resolved_postgres_type.aggregate_query())
+        .unwrap();
+
     let kind = PostgresTypeKind::Composite(PostgresCompositeType {
         fields: vec![],
+        agg_fields: vec![],
         table_id,
         pk_query,
         collection_query,
+        aggregate_query,
         access: Access::restrictive(),
     });
 
@@ -145,7 +155,7 @@ fn expand_persistent_type_no_fields(
 
 /// Now that all types have table with them (set in the earlier expand_type_no_fields phase), we can
 /// expand fields
-fn expand_persistent_type_fields(
+fn expand_type_fields(
     resolved_type: &ResolvedCompositeType,
     building: &mut SystemContextBuilding,
     resolved_env: &ResolvedTypeEnv,
@@ -158,6 +168,7 @@ fn expand_persistent_type_fields(
         table_id,
         pk_query,
         collection_query,
+        aggregate_query,
         ..
     }) = &existing_type.kind
     {
@@ -167,11 +178,19 @@ fn expand_persistent_type_fields(
             .map(|field| create_persistent_field(field, table_id, building, resolved_env))
             .collect();
 
+        let agg_fields = resolved_type
+            .fields
+            .iter()
+            .flat_map(|field| create_agg_field(field, table_id, building, resolved_env))
+            .collect();
+
         let kind = PostgresTypeKind::Composite(PostgresCompositeType {
             fields: model_fields,
+            agg_fields,
             table_id: *table_id,
             pk_query: *pk_query,
             collection_query: *collection_query,
+            aggregate_query: *aggregate_query,
             access: Access::restrictive(),
         });
 
@@ -198,9 +217,11 @@ fn expand_type_access(
 
         let kind = PostgresTypeKind::Composite(PostgresCompositeType {
             fields: self_type_info.fields.clone(),
+            agg_fields: self_type_info.agg_fields.clone(),
             table_id: self_type_info.table_id,
             pk_query: self_type_info.pk_query,
             collection_query: self_type_info.collection_query,
+            aggregate_query: self_type_info.aggregate_query,
             access: expr,
         });
 
@@ -244,15 +265,11 @@ fn create_persistent_field(
         building: &SystemContextBuilding,
     ) -> PostgresFieldType {
         match field_type {
-            ResolvedFieldType::Plain {
-                type_name,
-                is_primitive,
-            } => {
+            ResolvedFieldType::Plain { type_name, .. } => {
                 let type_id = building.postgres_types.get_id(type_name).unwrap();
 
                 PostgresFieldType::Reference {
                     type_name: type_name.clone(),
-                    is_primitive: *is_primitive,
                     type_id,
                 }
             }
@@ -270,6 +287,39 @@ fn create_persistent_field(
         typ: create_field_type(&field.typ, building),
         relation: create_relation(field, *table_id, building, env),
         has_default_value: field.default_value.is_some(),
+    }
+}
+
+fn create_agg_field(
+    field: &ResolvedField,
+    table_id: &SerializableSlabIndex<PhysicalTable>,
+    building: &SystemContextBuilding,
+    env: &ResolvedTypeEnv,
+) -> Option<AggregateField> {
+    fn is_underlying_type_list(field_type: &ResolvedFieldType) -> bool {
+        match field_type {
+            ResolvedFieldType::Plain { .. } => false,
+            ResolvedFieldType::Optional(underlying) => is_underlying_type_list(underlying),
+            ResolvedFieldType::List(_) => true,
+        }
+    }
+
+    if field.typ.get_is_underlying_primitive() || !is_underlying_type_list(&field.typ) {
+        None
+    } else {
+        let field_name = format!("{}Agg", field.name);
+        let field_type_name = field.typ.get_underlying_typename();
+        let agg_type_name = aggregate_type_name(field_type_name);
+        let agg_type_id = building.aggregate_types.get_id(&agg_type_name).unwrap();
+
+        Some(AggregateField {
+            name: field_name,
+            typ: AggregateFieldType::Composite {
+                type_name: agg_type_name,
+                type_id: agg_type_id,
+            },
+            relation: Some(create_relation(field, *table_id, building, env)),
+        })
     }
 }
 

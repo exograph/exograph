@@ -35,12 +35,12 @@ pub enum DataParamRole {
 // TODO: Abstract the concept of composite builders
 
 /// Build shallow mutation input types
-pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
-    ReferenceInputTypeBuilder {}.build_shallow_only_persistent(types, building);
+pub fn build_shallow(models: &MappedArena<ResolvedType>, building: &mut SystemContextBuilding) {
+    ReferenceInputTypeBuilder {}.build_shallow(models, building);
 
-    CreateMutationBuilder {}.build_shallow_only_persistent(types, building);
-    UpdateMutationBuilder {}.build_shallow_only_persistent(types, building);
-    DeleteMutationBuilder {}.build_shallow_only_persistent(types, building);
+    CreateMutationBuilder {}.build_shallow(models, building);
+    UpdateMutationBuilder {}.build_shallow(models, building);
+    DeleteMutationBuilder {}.build_shallow(models, building);
 }
 
 /// Expand the mutation input types as well as build the mutation
@@ -218,7 +218,6 @@ pub trait DataParamBuilder<D> {
                 let field_type_id = building.mutation_types.get_id(&field_type_name).unwrap();
                 let field_plain_type = PostgresFieldType::Reference {
                     type_name: field_type_name,
-                    is_primitive: false,
                     type_id: field_type_id,
                 };
                 let field_type = match field.typ {
@@ -267,7 +266,6 @@ pub trait DataParamBuilder<D> {
             .and_then(|field_type_id| {
                 let field_plain_type = PostgresFieldType::Reference {
                     type_name: field_type_name,
-                    is_primitive: false, // Mutation types are never primitive
                     type_id: field_type_id,
                 };
                 let field_type = PostgresFieldType::List(Box::new(field_plain_type));
@@ -301,7 +299,9 @@ pub trait DataParamBuilder<D> {
             table_id,
             pk_query,
             collection_query,
+            aggregate_query,
             access,
+            ..
         }) = &model_type.kind
         {
             let model_fields = fields;
@@ -344,9 +344,11 @@ pub trait DataParamBuilder<D> {
                 existing_type_id,
                 PostgresCompositeType {
                     fields: input_type_fields,
+                    agg_fields: vec![],
                     table_id: *table_id,
                     pk_query: *pk_query,
                     collection_query: *collection_query,
+                    aggregate_query: *aggregate_query,
                     access: access.clone(),
                 },
             ));

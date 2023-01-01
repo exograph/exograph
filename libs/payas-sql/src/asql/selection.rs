@@ -1,3 +1,5 @@
+use maybe_owned::MaybeOwned;
+
 use crate::{
     sql::column::{Column, PhysicalColumn},
     ColumnPathLink, PhysicalTable,
@@ -37,6 +39,11 @@ pub enum SelectionSQL<'a> {
 #[derive(Debug)]
 pub enum SelectionElement<'a> {
     Physical(&'a PhysicalColumn),
+    Function {
+        function_name: String,
+        column: &'a PhysicalColumn,
+    },
+    Object(Vec<(String, MaybeOwned<'a, SelectionElement<'a>>)>),
     Constant(String), // To support __typename
     Nested(ColumnPathLink<'a>, AbstractSelect<'a>),
 }

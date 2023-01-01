@@ -1,7 +1,8 @@
 use super::access::Access;
 use super::{column_id::ColumnId, relation::PostgresRelation};
+use crate::aggregate::AggregateField;
 use crate::model::ModelPostgresSystem;
-use crate::operation::{CollectionQuery, CollectionQueryParameter, PkQuery};
+use crate::operation::{AggregateQuery, CollectionQuery, CollectionQueryParameter, PkQuery};
 use async_graphql_parser::types::{
     BaseType, FieldDefinition, InputObjectType, InputValueDefinition, ObjectType, Type,
     TypeDefinition, TypeKind,
@@ -17,7 +18,7 @@ use core_plugin_interface::core_model::{
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PostgresType {
     pub name: String,
     pub plural_name: String,
@@ -35,8 +36,23 @@ impl PostgresType {
         }
     }
 
+    pub fn aggregate_fields(&self) -> Vec<&AggregateField> {
+        match &self.kind {
+            PostgresTypeKind::Primitive => vec![],
+            PostgresTypeKind::Composite(PostgresCompositeType { agg_fields, .. }) => {
+                agg_fields.iter().collect()
+            }
+        }
+    }
+
     pub fn model_field(&self, name: &str) -> Option<&PostgresField> {
         self.model_fields()
+            .into_iter()
+            .find(|model_field| model_field.name == name)
+    }
+
+    pub fn aggregate_field(&self, name: &str) -> Option<&AggregateField> {
+        self.aggregate_fields()
             .into_iter()
             .find(|model_field| model_field.name == name)
     }
@@ -68,7 +84,6 @@ impl PostgresType {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
 pub enum PostgresTypeKind {
     Primitive,
     Composite(PostgresCompositeType),
@@ -77,9 +92,11 @@ pub enum PostgresTypeKind {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresCompositeType {
     pub fields: Vec<PostgresField>,
+    pub agg_fields: Vec<AggregateField>,
     pub table_id: SerializableSlabIndex<PhysicalTable>,
     pub pk_query: SerializableSlabIndex<PkQuery>,
     pub collection_query: SerializableSlabIndex<CollectionQuery>,
+    pub aggregate_query: SerializableSlabIndex<AggregateQuery>,
     pub access: Access,
 }
 
@@ -120,7 +137,6 @@ pub enum PostgresFieldType {
     Optional(Box<PostgresFieldType>),
     Reference {
         type_id: SerializableSlabIndex<PostgresType>,
-        is_primitive: bool, // A way to know which arena to look up the type in
         type_name: String,
     },
     List(Box<PostgresFieldType>),
@@ -133,15 +149,6 @@ impl PostgresFieldType {
                 underlying.type_id()
             }
             PostgresFieldType::Reference { type_id, .. } => type_id,
-        }
-    }
-
-    pub fn is_primitive(&self) -> bool {
-        match self {
-            PostgresFieldType::Optional(underlying) | PostgresFieldType::List(underlying) => {
-                underlying.is_primitive()
-            }
-            PostgresFieldType::Reference { is_primitive, .. } => *is_primitive,
         }
     }
 
@@ -183,6 +190,7 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresType {
             },
             PostgresTypeKind::Composite(PostgresCompositeType {
                 fields: model_fields,
+                agg_fields,
                 ..
             }) => {
                 let kind = if self.is_input {
@@ -192,10 +200,15 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresType {
                         .collect();
                     TypeKind::InputObject(InputObjectType { fields })
                 } else {
-                    let fields: Vec<_> = model_fields
+                    let model_fields = model_fields.iter().map(|model_field| {
+                        default_positioned(model_field.field_definition(system))
+                    });
+
+                    let agg_fields = agg_fields
                         .iter()
-                        .map(|model_field| default_positioned(model_field.field_definition(system)))
-                        .collect();
+                        .map(|agg_field| default_positioned(agg_field.field_definition(system)));
+
+                    let fields = model_fields.chain(agg_fields).collect();
 
                     TypeKind::Object(ObjectType {
                         implements: vec![],
