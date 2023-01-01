@@ -41,16 +41,18 @@ fn create_shallow_type(resolved_type: &ResolvedType, building: &mut SystemContex
             fields: vec![],
         },
         ResolvedType::Primitive(_) => {
-            let supported_kinds = TYPE_OPERATORS
+            let supported_kinds = AGG_MAP
                 .get(resolved_type.name().as_str())
                 .map(|ks| ks.iter())
                 .unwrap_or_else(|| [].iter());
 
             let fields = supported_kinds
-                .map(|kind| AggregateField {
+                .map(|(kind, agg_return_type)| AggregateField {
                     name: kind.name().to_string(),
                     typ: AggregateFieldType::Scalar {
-                        type_name: resolved_type.name(),
+                        type_name: agg_return_type
+                            .map(|t| t.to_string())
+                            .unwrap_or_else(|| resolved_type.name()),
                         kind: *kind,
                     },
                     relation: None,
@@ -140,20 +142,23 @@ fn expand_type(resolved_type: &ResolvedType, building: &mut SystemContextBuildin
     }
 }
 
-// TODO: Support aggregates for more types and allow expressing the return types (for example, avg() should return a a numeric even for integer types)
+// TODO: Support aggregates for more types (https://github.com/payalabs/payas/issues/604)
 lazy_static! {
-    static ref NUMERIC_AGG: Vec<ScalarAggregateFieldKind> = vec![
-        ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max,
-        ScalarAggregateFieldKind::Sum, ScalarAggregateFieldKind::Avg
-    ];
-
-    // immutable map defining the aggregates allowed for each scalar type
+    // An immutable map defining the aggregates allowed for each scalar type
     // We don't specify the "count" aggregate here because it is always supported (see above)
-    static ref TYPE_OPERATORS: HashMap<&'static str, Vec<ScalarAggregateFieldKind>> = HashMap::from([
-        ("Int", NUMERIC_AGG.clone()),
-        ("Float", NUMERIC_AGG.clone()),
-        ("Decimal", NUMERIC_AGG.clone()),
+    // The second element in the tuple is the return type of the avg, if it differs from the input type
+    static ref AGG_MAP: HashMap<&'static str, Vec<(ScalarAggregateFieldKind, Option<&'static str>)>> = HashMap::from([
+        ("Int",
+            vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
+                 (ScalarAggregateFieldKind::Sum, None), (ScalarAggregateFieldKind::Avg, Some("Float"))]),
+        ("Float",
+            vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
+                 (ScalarAggregateFieldKind::Sum, Some("Float")), (ScalarAggregateFieldKind::Avg, Some("Float"))]),
+        ("Decimal",
+            vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None),
+                 (ScalarAggregateFieldKind::Sum, None), (ScalarAggregateFieldKind::Avg, None)]),
 
-        ("String", vec![ScalarAggregateFieldKind::Min, ScalarAggregateFieldKind::Max]),
+        ("String",
+                vec![(ScalarAggregateFieldKind::Min, None), (ScalarAggregateFieldKind::Max, None)]),
     ]);
 }
