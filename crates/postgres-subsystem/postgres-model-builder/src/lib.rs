@@ -2,6 +2,7 @@ pub use plugin::PostgresSubsystemBuilder;
 
 mod access_builder;
 mod access_utils;
+mod aggregate_type_builder;
 mod builder;
 mod column_path_utils;
 mod create_mutation_builder;

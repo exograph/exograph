@@ -52,6 +52,7 @@ fn expanded_reference_types(
         ref fields,
         pk_query,
         collection_query,
+        aggregate_query,
         table_id,
         ..
     }) = &existing_type.kind
@@ -72,8 +73,10 @@ fn expanded_reference_types(
             existing_type_id,
             PostgresTypeKind::Composite(PostgresCompositeType {
                 fields: reference_type_fields,
+                agg_fields: vec![],
                 pk_query: *pk_query,
                 collection_query: *collection_query,
+                aggregate_query: *aggregate_query,
                 table_id: *table_id,
                 access: Access::restrictive(),
             }),

@@ -1,4 +1,3 @@
-use maybe_owned::MaybeOwned;
 use tracing::instrument;
 
 use crate::{
@@ -109,14 +108,7 @@ impl<'a> Selection<'a> {
                         |ColumnSelection {
                              alias: _alias,
                              column,
-                         }| match column {
-                            // TODO: Support alias (requires a change to `Select`)
-                            SelectionElement::Physical(pc) => Column::Physical(pc),
-                            SelectionElement::Constant(s) => Column::Constant(s.to_owned()),
-                            SelectionElement::Nested(_, _) => {
-                                panic!("Nested selection not supported in Selection::Seq")
-                            }
-                        },
+                         }| column.to_sql(database_kind),
                     )
                     .collect(),
             ),
@@ -124,7 +116,7 @@ impl<'a> Selection<'a> {
                 let object_elems = seq
                     .iter()
                     .map(|ColumnSelection { alias, column }| {
-                        (alias.clone(), column.to_sql(database_kind))
+                        (alias.clone(), column.to_sql(database_kind).into())
                     })
                     .collect();
 
@@ -142,22 +134,37 @@ impl<'a> Selection<'a> {
 }
 
 impl<'a> SelectionElement<'a> {
-    pub fn to_sql(&'a self, database_kind: &impl SelectTransformer) -> MaybeOwned<'a, Column<'a>> {
+    pub fn to_sql(&'a self, database_kind: &impl SelectTransformer) -> Column<'a> {
         match self {
             SelectionElement::Physical(pc) => Column::Physical(pc),
+            SelectionElement::Function {
+                function_name,
+                column,
+            } => Column::Function {
+                function_name: function_name.clone(),
+                column,
+            },
             SelectionElement::Constant(s) => Column::Constant(s.clone()),
+            SelectionElement::Object(elements) => {
+                let elements = elements
+                    .iter()
+                    .map(|(alias, column)| (alias.to_owned(), column.to_sql(database_kind).into()))
+                    .collect();
+                Column::JsonObject(elements)
+            }
             SelectionElement::Nested(relation, select) => {
                 Column::SelectionTableWrapper(Box::new(database_kind.to_select(
                     select,
-                    Some(Predicate::Eq(
-                        Column::Physical(relation.self_column.0).into(),
-                        Column::Physical(relation.linked_column.unwrap().0).into(),
-                    )),
+                    relation.linked_column.map(|linked_column| {
+                        Predicate::Eq(
+                            Column::Physical(relation.self_column.0).into(),
+                            Column::Physical(linked_column.0).into(),
+                        )
+                    }),
                     SelectionLevel::Nested,
                 )))
             }
         }
-        .into()
     }
 }
 
