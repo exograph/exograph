@@ -12,6 +12,7 @@ service ConcertService {
     title: String
     venue: Venue @column("venueid")
     published: Boolean
+    price: Decimal @precision(20) @scale(2)
   }
   
   @table("venues")
@@ -21,5 +22,6 @@ service ConcertService {
     name: String
     concerts: Set<Concert>? @column("venueid")
     published: Boolean
+    latitude: Float @size(4)
   }
 }
