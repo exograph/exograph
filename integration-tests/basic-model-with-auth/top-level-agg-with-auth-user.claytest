@@ -1,0 +1,174 @@
+operation: |
+    query {
+      venuesAgg {
+          id {
+            count
+          }
+          latitude {
+            count
+            max
+            min
+            avg
+          }
+      }
+
+      higherLatitudeVenuesAgg: venuesAgg(where: {latitude: {gt: 36}}) {
+          id {
+            count
+          }
+          latitude {
+            count
+            max
+            min
+            avg
+          }
+      }
+
+      # Even though such concerts exists, they are not published, hence unavailable for a non-authenticated user
+      lowerLatitudeVenuesAgg: venuesAgg(where: {latitude: {lt: 36}}) {
+          id {
+            count
+          }
+          latitude {
+            count
+            max
+            min
+            avg
+          }
+      }
+
+      concertsAgg {
+          id {
+            count
+          }
+          price {
+            count
+            max
+            min
+            avg
+          }
+      }
+
+      expensiveConcertsAgg: concertsAgg(where: {price: {gt: "20"}}) {
+          id {
+            count
+          }
+          price {
+            count
+            max
+            min
+            avg
+          }
+      }
+
+      highLatitudeConcertsAgg: concertsAgg(where: {venue: {latitude: {gt: 36}}}) { # An example of predicate on nested element
+          id {
+            count
+          }
+          price {
+            count
+            max
+            min
+            avg
+          }
+      }
+
+      lowLatitudeConcertsAgg: concertsAgg(where: {venue: {latitude: {lt: 36}}}) { # An example of predicate on nested element
+          id {
+            count
+          }
+          price {
+            count
+            max
+            min
+            avg
+          }
+      }      
+    }
+auth: |
+    {
+        "sub": 2,
+        "role": "ROLE_USER"
+    }    
+response: |
+    {
+      "data": {
+        "venuesAgg": {
+          "id": {
+            "count": 1
+          },
+          "latitude": {
+            "count": 1,
+            "max": 37.7749,
+            "min": 37.7749,
+            "avg": 37.774898529052734
+          }
+        },
+        "higherLatitudeVenuesAgg": {
+          "id": {
+            "count": 1
+          },
+          "latitude": {
+            "count": 1,
+            "max": 37.7749,
+            "min": 37.7749,
+            "avg": 37.774898529052734
+          }
+        },
+        "lowerLatitudeVenuesAgg": {
+          "id": {
+            "count": 0
+          },
+          "latitude": {
+            "count": 0,
+            "max": null,
+            "min": null,
+            "avg": null
+          }
+        },
+        "concertsAgg": {
+          "id": {
+            "count": 2
+          },
+          "price": {
+            "count": 2,
+            "max": 22.5,
+            "min": 20.5,
+            "avg": 21.5
+          }
+        },
+        "expensiveConcertsAgg": {
+          "id": {
+            "count": 2
+          },
+          "price": {
+            "count": 2,
+            "max": 22.5,
+            "min": 20.5,
+            "avg": 21.5
+          }
+        },
+        "highLatitudeConcertsAgg": {
+          "id": {
+            "count": 1
+          },
+          "price": {
+            "count": 1,
+            "max": 20.5,
+            "min": 20.5,
+            "avg": 20.5
+          }
+        },
+        "lowLatitudeConcertsAgg": {
+          "id": {
+            "count": 1
+          },
+          "price": {
+            "count": 1,
+            "max": 22.5,
+            "min": 22.5,
+            "avg": 22.5
+          }
+        }
+      }
+    }

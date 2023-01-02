@@ -1,0 +1,148 @@
+operation: |
+    query {
+      allVenues: venues {
+        id
+        name
+        concerts {
+          id
+          price
+        }
+        concertsAgg {
+          id {
+            count
+          }
+          price {
+            count
+            sum
+            avg
+          }
+        }
+      }
+
+      allVenuesExpensiveConcerts: venues {
+        id
+        name
+        concerts {
+          id
+          price
+        }
+        expensiveConcertsAgg: concertsAgg(where: {price: {gt: "20"}}) {
+          id {
+            count
+          }
+          price {
+            count
+            sum
+            avg
+          }
+        }
+      }
+
+      venue1: venue(id: 1) {
+        id
+        name
+        concerts {
+          id
+          price
+        }
+        concertsAgg {
+          id {
+            count
+          }
+          price {
+            count
+            sum
+            avg
+          }
+        }
+      }
+
+      venue2: venue(id: 2) {
+        id
+        name
+        concerts {
+          id
+          price
+        }
+        concertsAgg {
+          id {
+            count
+          }
+          price {
+            count
+            sum
+            avg
+          }
+        }
+      }                   
+    }     
+response: |
+    {
+      "data": {
+        "allVenues": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "concerts": [
+              {
+                "id": 1,
+                "price": "20.50"
+              }
+            ],
+            "concertsAgg": {
+              "id": {
+                "count": 1
+              },
+              "price": {
+                "count": 1,
+                "sum": 20.5,
+                "avg": 20.5
+              }
+            }
+          }
+        ],
+        "allVenuesExpensiveConcerts": [
+          {
+            "id": 1,
+            "name": "Venue1",
+            "concerts": [
+              {
+                "id": 1,
+                "price": "20.50"
+              }
+            ],
+            "expensiveConcertsAgg": {
+              "id": {
+                "count": 1
+              },
+              "price": {
+                "count": 1,
+                "sum": 20.5,
+                "avg": 20.5
+              }
+            }
+          }
+        ],
+        "venue1": {
+          "id": 1,
+          "name": "Venue1",
+          "concerts": [
+            {
+              "id": 1,
+              "price": "20.50"
+            }
+          ],
+          "concertsAgg": {
+            "id": {
+              "count": 1
+            },
+            "price": {
+              "count": 1,
+              "sum": 20.5,
+              "avg": 20.5
+            }
+          }
+        },
+        "venue2": null
+      }
+    }
