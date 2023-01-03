@@ -3,7 +3,7 @@ service UserPersistence {
     @table("user")
     @access(true)
     type User {
-        id: Int = autoincrement() @pk
+        @pk id: Int = autoincrement()
         username: String
         email: String?
     }

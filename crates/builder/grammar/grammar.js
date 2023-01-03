@@ -91,6 +91,7 @@ module.exports = grammar({
       field("argument_type", $.field_type),
     ),
     field: $ => seq(
+      repeat(field("annotation", $.annotation)),
       field("name", $.term),
       ":",
       field("field_type", $.field_type),
@@ -98,7 +99,7 @@ module.exports = grammar({
         "=",
         field("default_value", $.field_default_value) 
       )),
-      repeat(field("annotation", $.annotation))
+      optional(";")
     ),
     field_default_value: $ => choice(
       field("default_value_concrete", $.expression),

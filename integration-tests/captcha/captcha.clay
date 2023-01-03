@@ -7,8 +7,8 @@
 // An internal context provided to verifyCaptcha.
 // Used to grab CAPTCHA ID and response from headers.
 context ICaptchaValidatorContext {
-    uuid: Uuid @header("X-Captcha-Id")
-    response: String @header("X-Captcha-Response") 
+    @header("X-Captcha-Id") uuid: Uuid 
+    @header("X-Captcha-Response")  response: String 
 }
 
 // CAPTCHA service implementation.
@@ -41,12 +41,12 @@ service CaptchaPersistenceService {
     // Can be referred to by UUID. 
     @access(true)
     type CaptchaChallengeRecord {
-        uuid: Uuid = generate_uuid() @pk
+        @pk uuid: Uuid = generate_uuid()
         properResponse: String
     }
 }
 
 // The final context for use by an external @access rule or service.
 context CaptchaContext {
-    isValid: Boolean @query("verifyCaptcha")
+    @query("verifyCaptcha") isValid: Boolean 
 }

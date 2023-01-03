@@ -1,5 +1,5 @@
 context AuthContext {
-  role: String @jwt("role")
+  @jwt("role") role: String 
 }
 
 @postgres
@@ -8,7 +8,7 @@ service RsvpPersistence {
   // Later, we will allow to not even export this APIs
   @access(AuthContext.role == "admin")
   type Rsvp {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     email: String
     count: Int
   }

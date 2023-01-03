@@ -2,7 +2,7 @@
 service TodoService {
   @access(true)
   type Todo {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     title: String
   }
 }

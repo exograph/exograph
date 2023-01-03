@@ -1,6 +1,6 @@
 context AuthContext {
-  id: Int @jwt("sub")
-  role: String @jwt("role")
+  @jwt("sub") id: Int 
+  @jwt("role") role: String 
 }
 
 @postgres
@@ -8,20 +8,22 @@ service ConcertService {
   @table("concerts")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
   type Concert {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     title: String
-    venue: Venue @column("venueid")
+    @column("venueid")
+    venue: Venue 
     published: Boolean
-    price: Decimal @precision(20) @scale(2)
+    @precision(20) @scale(2) 
+    price: Decimal 
   }
   
   @table("venues")
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published, mutation=AuthContext.role == "ROLE_ADMIN")
   type Venue {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     name: String
-    concerts: Set<Concert>? @column("venueid")
+    @column("venueid") concerts: Set<Concert>? 
     published: Boolean
-    latitude: Float @size(4)
+    @size(4) latitude: Float 
   }
 }

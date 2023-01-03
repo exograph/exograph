@@ -276,25 +276,25 @@ mod tests {
         let postgres_subsystem = crate::test_utils::create_postgres_system_from_str(
             r#"
                 context AccessContext {
-                    role: String @test("role")
-                    token1: String @test("token1")
-                    token2: String @test("token2")
-                    is_admin: Boolean @test("is_admin")
-                    user_id: String @test("user_id")
-                    v1: Boolean @test("v1")
-                    v2: Boolean @test("v2")
-                    v1_clone: Boolean @test("v1_clone")
-                    v2_clone: Boolean @test("v2_clone")
+                    @test("role") role: String 
+                    @test("token1") token1: String 
+                    @test("token2") token2: String 
+                    @test("is_admin") is_admin: Boolean 
+                    @test("user_id") user_id: String 
+                    @test("v1") v1: Boolean 
+                    @test("v2") v2: Boolean 
+                    @test("v1_clone") v1_clone: Boolean 
+                    @test("v2_clone") v2_clone: Boolean 
                 }
 
                 @postgres
                 service ArticleService {
                     type Article {
-                        id: Int = autoincrement() @pk
+                        @pk id: Int = autoincrement()
                         published: Boolean
-                        owner_id: Int @bits(64)
-                        dept1_id: Int @bits(64)
-                        dept2_id: Int @bits(64)
+                        @bits(64) owner_id: Int 
+                        @bits(64) dept1_id: Int 
+                        @bits(64) dept2_id: Int 
                     }
                 }
             "#,

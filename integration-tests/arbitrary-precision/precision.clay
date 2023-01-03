@@ -1,0 +1,11 @@
+@postgres
+service FooService {
+  @table("foo")
+  @access(true)
+  type Foo {
+    @pk id: Int = autoincrement();
+    
+    @precision(40) @scale(30)
+    verylong: Decimal
+  }
+}

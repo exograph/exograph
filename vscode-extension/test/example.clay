@@ -4,7 +4,7 @@ service ConcertVenues {
   @access(query=AuthContext.role == "ROLE_ADMIN" || self.published || price <= 10, 
           mutation=AuthContext.role == "ROLE_ADMIN")
   type Concert {
-    id: Int = autoincrement() @pk // comment after annotation
+    @pk id: Int = autoincrement() // comment after annotation
     title: String // comment after type
     venue: Venue @column("venueid")
     published: Boolean
@@ -13,7 +13,7 @@ service ConcertVenues {
 
   @table("venues")
   type Venue {
-    id: Int = autoincrement() @pk // highlighting of functions in default field
+    @pk id: Int = autoincrement() // highlighting of functions in default field
     name: String = "abc" // highlighting of strings in default field
     concerts: Set<Concert> @column("venueid")
     published: Boolean
@@ -35,7 +35,7 @@ service _ServiceStartWithAnUnderscore_AndHas_Underscores {
 }
 
 context AuthContext {
-  id: Int @jwt("sub")
+  @jwt("sub") id: Int 
   role: String @jwt("role")
 }
 

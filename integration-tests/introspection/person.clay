@@ -2,7 +2,7 @@
 service PersonService {
   @access(true)
   type Person {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     name: String
   }
 }
