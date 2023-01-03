@@ -1,6 +1,6 @@
 context AuthContext {
-    id: Int @jwt("sub")
-    role: String @jwt("role")
+    @jwt("sub") id: Int 
+    @jwt("role") role: String 
 }
 
 @deno("logger.js")

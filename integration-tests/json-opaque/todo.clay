@@ -3,7 +3,7 @@ service TodoService {
   @table("todos")
   @access(true)
   type Todo {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     data: Json
   }
 }

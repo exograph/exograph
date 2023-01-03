@@ -1,6 +1,6 @@
 context AuthContext {
-  id: Int @jwt("sub")
-  role: String @jwt("role")
+  @jwt("sub") id: Int 
+  @jwt("role") role: String 
 }
 
 @postgres
@@ -8,14 +8,14 @@ service MembershipService {
   // A user may have an optional membership, but a membership must have an associated user
   @access(query = AuthContext.role == "ADMIN" || AuthContext.id == self.id, mutation = AuthContext.role == "ADMIN" || AuthContext.id == self.id)
   type User {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     name: String
     membership: Membership?
   }
   
   @access(query = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id, mutation = AuthContext.role == "ADMIN" || AuthContext.id == self.user.id)
   type Membership {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     kind: String
     user: User
   }

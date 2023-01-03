@@ -1,16 +1,16 @@
 @table("concerts")
 type Concert {
   id: Int @pk = autoincrement()
-  title: Stringg @access(!self.id.bar | self.venue.name)
-  venue: Venue column("venueid")
+  @access(!self.id.bar | self.venue.name) title: Stringg 
+  column("venueid") venue: Venue 
 }
 
 @postgres
 service VenueService {
   @table("venues"
   type Venue {
-    id: Int = autoincrement() @pk @access(Foo)
+    @access(Foo) @pk id: Int = autoincrement() 
     name: String
-    concerts: Concert> @column("venueid")
+    @column("venueid") concerts: Concert> 
   }
 }

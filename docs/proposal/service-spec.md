@@ -87,20 +87,20 @@ Assume the following Clay model:
 
 ```clay
 model ConcertNotification {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   concert: Concert? // Allow null for sending general notification without a concert
   preBlurb: String?
   postBlurb: String?
 }
 
 model Subscription {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   email: String
   groups: Set[SubscriptionGroup] // many-to-many
 }
 
 model SubscriptionGroup {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   name: String // "test", "all", "admins"
   subscriptions: Set[Subscription] // many-to-many
 }
@@ -229,15 +229,15 @@ async function sendNotification(
   concertNotificationId: number,
   subscriptionGroupId: number,
   clay: Clay,
-  emailService: EmailService,
+  emailService: EmailService
 ): Result<boolean, string> {
   let concertNotification = await clay.execute(
     "...concertNotification(id: $id) {...",
-    { id: concertNotificationId },
+    { id: concertNotificationId }
   );
   let nextConcert = await clay.execute(
     "...concerts(where: {startDate: {gte: <the concerts-end-time...>}}",
-    { startDate: concertNotification.endTime | currentTime },
+    { startDate: concertNotification.endTime | currentTime }
   );
   let emails = await clay.execute("subscriptions(where...", {
     groupId: subscriptionGroupId,
@@ -245,7 +245,7 @@ async function sendNotification(
 
   const formatted: string = formatNotification(
     concertNotification,
-    nextConcert,
+    nextConcert
   );
 
   return await emailService.send(emails, formatted);

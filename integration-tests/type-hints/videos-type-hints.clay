@@ -3,11 +3,11 @@ service VideoService {
   @table("videos")
   @access(true)
   type Video {
-    id: Int = autoincrement() @dbtype("BIGINT") @pk
+    @dbtype("BIGINT") @pk id: Int = autoincrement() 
     name: String  
-    slug: String @length(30) 
-    nonce: Int @bits(16)
-    views: Int @range(min=0, max=9999999999)
-    filesize: Int @size(6)
+    @length(30)  slug: String 
+    @bits(16) nonce: Int 
+    @range(min=0, max=9999999999) views: Int 
+    @size(6) filesize: Int 
   }
 }

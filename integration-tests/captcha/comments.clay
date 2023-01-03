@@ -7,7 +7,7 @@ service CommentsPersistence {
         mutation=CaptchaContext.isValid
     )
     type Comment {
-        id: Int = autoincrement() @pk
+        @pk id: Int = autoincrement()
         text: String
     }
 }

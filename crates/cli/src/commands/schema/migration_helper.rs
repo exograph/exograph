@@ -62,7 +62,7 @@ mod tests {
             @postgres
             service ConcertService {
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String
                     published: Boolean
                 }
@@ -104,7 +104,7 @@ mod tests {
             @postgres
             service ConcertService {
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String
                 }
             }
@@ -113,7 +113,7 @@ mod tests {
             @postgres
             service ConcertService {
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String
                     published: Boolean
                 }
@@ -159,7 +159,7 @@ mod tests {
             @postgres
             service ConcertService {
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String
                 }
             }
@@ -168,12 +168,12 @@ mod tests {
             @postgres
             service ConcertService {
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String
                     venue: Venue
                 }
                 type Venue {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     name: String
                     concerts: Set<Concert>?
                 }
@@ -246,11 +246,11 @@ mod tests {
             @postgres
             service ConcertService {
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String
                 }
                 type Venue {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     name: String
                 }
             }
@@ -259,12 +259,12 @@ mod tests {
             @postgres
             service ConcertService {
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String
                     venue: Venue
                 }
                 type Venue {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     name: String
                     concerts: Set<Concert>?
                 }
@@ -334,10 +334,10 @@ mod tests {
                 @postgres
                 service MembershipService {
                     type Membership {
-                        id: Int = autoincrement() @pk
+                        @pk id: Int = autoincrement()
                     }
                     type User {
-                        id: Int = autoincrement() @pk
+                        @pk id: Int = autoincrement()
                         name: String
                     }
                 }
@@ -346,11 +346,11 @@ mod tests {
                 @postgres
                 service MembershipService {
                     type Membership {
-                        id: Int = autoincrement() @pk
+                        @pk id: Int = autoincrement()
                         user: User
                     }
                     type User {
-                        id: Int = autoincrement() @pk
+                        @pk id: Int = autoincrement()
                         name: String
                         membership: Membership?
                     }
@@ -430,7 +430,7 @@ mod tests {
                 @postgres
                 service RsvpService {
                     type Rsvp {
-                        id: Int = autoincrement() @pk
+                        @pk id: Int = autoincrement()
                         email: String
                         event_id: Int
                     }
@@ -440,9 +440,9 @@ mod tests {
                 @postgres
                 service RsvpService {
                     type Rsvp {
-                        id: Int = autoincrement() @pk
-                        email: String @unique("email_event_id")
-                        event_id: Int @unique("email_event_id")
+                        @pk id: Int = autoincrement()
+                        @unique("email_event_id") email: String 
+                        @unique("email_event_id") event_id: Int 
                     }
                 }
             "#,
@@ -492,8 +492,8 @@ mod tests {
                 @postgres
                 service RsvpService {
                     type Rsvp {
-                        id: Int = autoincrement() @pk
-                        email: String @unique("email_event_id")
+                        @pk id: Int = autoincrement()
+                        @unique("email_event_id") email: String 
                         event_id: Int
                     }
                 }
@@ -502,9 +502,9 @@ mod tests {
                 @postgres
                 service RsvpService {
                     type Rsvp {
-                        id: Int = autoincrement() @pk
-                        email: String @unique("email_event_id")
-                        event_id: Int @unique("email_event_id")
+                        @pk id: Int = autoincrement()
+                        @unique("email_event_id") email: String 
+                        @unique("email_event_id") event_id: Int 
                     }
                 }
             "#,
@@ -570,7 +570,7 @@ mod tests {
                 @postgres
                 service UserService {
                     type User {
-                        id: Int = autoincrement() @pk
+                        @pk id: Int = autoincrement()
                         role: String
                         verified: Boolean = false
                         enabled: Boolean = true
@@ -581,7 +581,7 @@ mod tests {
                 @postgres
                 service UserService {
                     type User {
-                        id: Int = autoincrement() @pk
+                        @pk id: Int = autoincrement()
                         role: String = "USER" // Set default value
                         verified: Boolean = true // Change default value
                         enabled: Boolean // Drop default value
@@ -654,7 +654,7 @@ mod tests {
                 @postgres
                 service LogService {
                     type Log {
-                        id: Int @pk
+                        @pk id: Int
                         level: String?
                         message: String
                     }
@@ -664,7 +664,7 @@ mod tests {
                 @postgres
                 service LogService {
                     type Log {
-                        id: Int @pk
+                        @pk id: Int
                         level: String
                         message: String
                     }

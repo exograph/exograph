@@ -3,18 +3,18 @@ service ConcertsService {
   @table("concerts")
   @access(true)
   type Concert {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     title: String
-    concertArtists: Set<ConcertArtist> @column("concert_id")
-    venue: Venue? @column("venue_id")
+    @column("concert_id") concertArtists: Set<ConcertArtist> 
+    @column("venue_id") venue: Venue? 
   }
 
   @table("concert_artists")
   @access(true)
   type ConcertArtist {
-    id: Int = autoincrement() @pk
-    concert: Concert @column("concert_id")
-    artist: Artist @column("artist_id")
+    @pk id: Int = autoincrement()
+    @column("concert_id") concert: Concert 
+    @column("artist_id") artist: Artist 
     rank: Int = 0
     role: String
   }
@@ -22,14 +22,14 @@ service ConcertsService {
   @table("artists")
   @access(true)
   type Artist {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     name: String
-    aristsConcerts: Set<ConcertArtist>? @column("artist_id") // An artist may yet to participate in a concert, hence optional
+    @column("artist_id")  aristsConcerts: Set<ConcertArtist>? // An artist may yet to participate in a concert, hence optional
   }
 
   @access(true)
   type Venue {
-    id: Int = autoincrement() @pk
-    concerts: Set<Concert>? @column("venue_id")
+    @pk id: Int = autoincrement()
+    @column("venue_id") concerts: Set<Concert>? 
   }
 }

@@ -654,7 +654,8 @@ mod tests {
             @postgres
             service TestService{            
                 type Foo {
-                    bar: Baz @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
+                    @column("custom_column") @access(!self.role == "role_admin" || self.role == "role_superuser")
+                    bar: Baz
                 }
             }
         "#
@@ -670,10 +671,10 @@ mod tests {
                 // a short comment
                 @table("concerts")
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String // a comment
                     // another comment
-                    venue: Venue @column("venueid")
+                    @column("venueid") venue: Venue 
                     /*
                     not_a_field: Int
                     */
@@ -684,9 +685,9 @@ mod tests {
                 */
                 @table("venues")
                 type Venue {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     name: String
-                    concerts: Set<Concert /* here too! */> @column("venueid")
+                    /*here */ @column("venueid") /* and here */ concerts: Set<Concert /* here too! */> 
                 }
             }
         "#
@@ -698,8 +699,8 @@ mod tests {
         parsing_test!(
             r#"
             context AuthUser {
-                id: Int @jwt("sub")
-                roles: Array<String> @jwt
+                @jwt("sub") id: Int 
+                @jwt roles: Array<String> 
             }
         "#
         );
