@@ -9,19 +9,19 @@ Users will first start with the following domain model.
 
 ```claytip
 export model Concert {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   title: String
   concertArtists: Set[ConcertArtist]
 }
 
 export model Artist {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   name: String
   artistConcerts: Set[ConcertArtist]
 }
 
 model ConcertArtist {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   concert: Concert
   artist: Artist
   role: String // When we support, an enum { main, accompanying }
@@ -37,12 +37,12 @@ manipulate it directly.
 > Changes so far from the current implementation
 >
 > - The `export` keyword. Only the `export`ed models have top-level API access;
-  > others have to be accessed through an exported entity. For example, there
-  > will not be `createConcertArtist`, `updateConcertArtists`, etc.
+>   others have to be accessed through an exported entity. For example, there
+>   will not be `createConcertArtist`, `updateConcertArtists`, etc.
 > - The plain array has been replaced with `Set` to better match the unordered
-  > nature and the constraint that each member appears only once. This will also
-  > help distinguish from `json_array`, which has the proper array semantics, as
-  > a primitive type (see issue #6).
+>   nature and the constraint that each member appears only once. This will also
+>   help distinguish from `json_array`, which has the proper array semantics, as
+>   a primitive type (see issue #6).
 
 The `Concert` model will have associated APIs such as (and their plural versions
 as we have in the current implementation)
@@ -98,11 +98,11 @@ notion of weak references.
 > **Semantics**
 >
 > 1. A weak reference holds onto an object such that it doesn't prevent the
-   > object from getting deleted if there is no way to reach to that object
-   > through a chain of strong references. Colloquially, weak references may be
-   > snatched away by a change to another entity.
+>    object from getting deleted if there is no way to reach to that object
+>    through a chain of strong references. Colloquially, weak references may be
+>    snatched away by a change to another entity.
 > 2. By default, the database (conceptually the root object) holds onto all
-   > **exposed** model elements strongly.
+>    **exposed** model elements strongly.
 
 ### Weak collections
 
@@ -114,7 +114,7 @@ associated with a `Concert`). This can be accomplished by replacing the type of
 
 ```claytip
 export model Artist {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   name: String
   artistConcerts: WeakSet[ConcertArtist]
 }
@@ -141,7 +141,7 @@ model ConcertArtist {
 }
 
 export model FeaturedPerformance {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   promoTitle: String
   concertArtist: ConcertArtist
 }
@@ -255,7 +255,7 @@ residue dynamically with the query (similar to how we do it for access control).
 
 ```claytip
 export model Artist {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   name: String
   artistConcerts: WeakSet[ConcertArtist]
 }
@@ -306,7 +306,7 @@ C. For `@weak` and not exported models, emit each strong reference as
 
 ```claytip
 @weak export model FeaturedPerformance {
-  id: Int = autoincrement() @pk
+  @pk id: Int = autoincrement()
   promoTitle: String
   concertArtist: ConcertArtist
 }

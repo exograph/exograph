@@ -3,7 +3,7 @@ service ChessService {
   @table("chess_piece")
   @access(true)
   type ChessPiece {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     name: String
     position_history: Array<String>
     neighbor_info: Array<Array<String>>

@@ -3,10 +3,10 @@ service BookService {
   @table("books")
   @access(true)
   type Book {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     name: String
     published_on: LocalDate 
-    modified_time: Instant @precision(4)
+    @precision(4) modified_time: Instant 
     modified_time_stripped: LocalDateTime 
     reading_club_time: LocalTime 
   }

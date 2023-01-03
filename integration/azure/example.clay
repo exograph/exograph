@@ -2,7 +2,7 @@
 service ConcertsService {
   @table("concerts")
   type Concert {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     title: String
     venue: Venue @column("venueid")
     published: Boolean
@@ -11,7 +11,7 @@ service ConcertsService {
 
   @table("venues")
   type Venue {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     name: String
     concerts: Set<Concert>? @column("venueid")
     published: Boolean

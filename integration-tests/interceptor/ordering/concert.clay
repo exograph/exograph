@@ -2,20 +2,20 @@
 service ConcertVenues {
   @access(true)
   type Concert {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     title: String
-    venue: Venue @column("venueid")
+    @column("venueid") venue: Venue 
     published: Boolean
-    price: Decimal @precision(20) @scale(2)
+    @precision(20) @scale(2) price: Decimal 
   }
 
   @access(true)
   type Venue {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     name: String
-    concerts: Set<Concert>? @column("venueid")
+    @column("venueid") concerts: Set<Concert>? 
     published: Boolean
-    latitude: Float @size(4)
+    @size(4) latitude: Float 
   }
 }
 
@@ -23,7 +23,7 @@ service ConcertVenues {
 service LogService {
   @access(true)
   type Log {
-    id: Int = autoincrement() @pk
+    @pk id: Int = autoincrement()
     message: String
   }
 }

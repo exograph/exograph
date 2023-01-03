@@ -971,22 +971,22 @@ mod tests {
         service ConcertService {
             @table("custom_concerts")
             type Concert {
-              id: Int = autoincrement() @pk @dbtype("bigint") @column("custom_id")
-              title: String @column("custom_title") @length(12)
-              venue: Venue @column("custom_venue_id")
-              reserved: Int @range(min=0, max=300)
-              time: Instant @precision(4)
-              price: Decimal @precision(10) @scale(2)
+              @pk @dbtype("bigint") @column("custom_id") id: Int = autoincrement() 
+              @column("custom_title") @length(12) title: String 
+              @column("custom_venue_id") venue: Venue 
+              @range(min=0, max=300) reserved: Int 
+              @precision(4) time: Instant 
+              @precision(10) @scale(2) price: Decimal
             }
         
             @table("venues")
             @plural_name("Venuess")
             type Venue {
-              id: Int = autoincrement() @pk @column("custom_id")
-              name: String @column("custom_name")
-              concerts: Set<Concert> @column("custom_venue_id")
-              capacity: Int @bits(16)
-              latitude: Float @size(4)
+              @pk @column("custom_id") id: Int = autoincrement() 
+              @column("custom_name") name: String 
+              @column("custom_venue_id") concerts: Set<Concert> 
+              @bits(16) capacity: Int 
+              @size(4) latitude: Float 
             }       
         }
 
@@ -1013,15 +1013,15 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-              id: Int = autoincrement() @dbtype("BIGINT") @pk 
+                @dbtype("BIGINT") @pk  id: Int = autoincrement() 
               title: String 
-              venue: Venue @unique("unique_concert")
+              @unique("unique_concert") venue: Venue 
               attending: Array<String>
               seating: Array<Array<Boolean>>
             }
 
             type Venue             {
-              id: Int  = autoincrement() @pk @dbtype("BIGINT")
+              @pk @dbtype("BIGINT") id: Int  = autoincrement() 
               name:String 
               concerts: Set<Concert> 
             }        
@@ -1041,16 +1041,16 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-              id: Int = autoincrement() @pk 
+              @pk id: Int = autoincrement() 
               title: String 
               venue: Venue? 
               icon: Blob?
             }
 
             type Venue {
-              id: Int = autoincrement() @pk
+              @pk id: Int = autoincrement()
               name: String
-              address: String? @column("custom_address")
+              @column("custom_address") address: String? 
               concerts: Set<Concert>?
             }    
         }
@@ -1067,14 +1067,14 @@ mod tests {
     fn with_access() {
         let src = r#"
         context AuthContext {
-            role: String @jwt("role")
+            @jwt("role") role: String 
         }
         
         @postgres
         service ConcertService {
             @access(AuthContext.role == "ROLE_ADMIN" || self.public)
             type Concert {
-              id: Int = autoincrement() @pk 
+              @pk id: Int = autoincrement() 
               title: String
               public: Boolean
             }      
@@ -1082,13 +1082,13 @@ mod tests {
 
             @access(true)
             type Venue {
-              id: Int = autoincrement() @pk 
+              @pk id: Int = autoincrement() 
               name: String
             }   
 
             @access(false)
             type Artist {
-              id: Int = autoincrement() @pk 
+              @pk id: Int = autoincrement() 
               name: String
             }  
         }
@@ -1113,14 +1113,14 @@ mod tests {
     fn with_access_default_values() {
         let src = r#"
         context AuthContext {
-            role: String @jwt
+            @jwt role: String
         }
         
         @postgres
         service ConcertService {
             @access(AuthContext.role == "ROLE_ADMIN" || self.public)
             type Concert {
-              id: Int = autoincrement() @pk 
+              @pk id: Int = autoincrement() 
               title: String
               public: Boolean
             }      
@@ -1140,7 +1140,7 @@ mod tests {
         @postgres
         service EntityService {
             type Entity {
-              _id: Int = autoincrement() @pk
+              @pk _id: Int = autoincrement()
               title_main: String
               title_main1: String
               public1: Boolean
@@ -1162,14 +1162,14 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-              id: Int = autoincrement() @pk
+              @pk id: Int = autoincrement()
               title: String
               venuex: Venue // non-standard name
               published: Boolean
             }
         
             type Venue {
-              id: Int = autoincrement() @pk
+              @pk id: Int = autoincrement()
               name: String
               concerts: Set<Concert>
               published: Boolean
@@ -1190,17 +1190,21 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-                id: Int = autoincrement() @pk 
+                @pk id: Int = autoincrement() 
                 title: String 
-                ticket_office: Venue //@column("ticket_office")
-                main: Venue //@column("main")
+                //@column("ticket_office")
+                ticket_office: Venue 
+                //@column("main")
+                main: Venue 
             }
           
             type Venue {
                 id: Int  @autoincrement @pk 
                 name:String 
-                ticket_events: Set<Concert> //@column("ticket_office")
-                main_events: Set<Concert> //@column("main")
+                //@column("ticket_office")
+                ticket_events: Set<Concert> 
+                //@column("main")
+                main_events: Set<Concert> 
             }  
         }
         "#;
@@ -1216,17 +1220,17 @@ mod tests {
         @postgres
         service ConcertService {
             type Concert {
-                id: Int = autoincrement() @pk 
+                @pk id: Int = autoincrement() 
                 title: String  
-                ticket_office: Venue @column("ticket_office")
-                main: Venue @column("main")
+                @column("ticket_office") ticket_office: Venue 
+                @column("main") main: Venue 
             }
           
             type Venue {
-                id: Int = autoincrement() @pk 
+                @pk id: Int = autoincrement() 
                 name:String 
-                ticket_events: Set<Concert> @column("ticket_office")
-                main_events: Set<Concert> @column("main")
+                @column("ticket_office") ticket_events: Set<Concert> 
+                @column("main") main_events: Set<Concert> 
             }  
         }
         "#;
@@ -1244,7 +1248,7 @@ mod tests {
         @postgres
         service ConcertService {
             type ConcertInfo {
-                concertId: Int = autoincrement() @pk 
+                @pk concertId: Int = autoincrement() 
                 mainTitle: String 
             }
         }

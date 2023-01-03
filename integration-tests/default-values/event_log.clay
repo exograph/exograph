@@ -3,7 +3,7 @@ service EventService {
     @table("events")
     @access(true)
     type Event {
-        id: Int = autoincrement() @pk
+        @pk id: Int = autoincrement()
         timestamp: Instant = now()
         category: String = "INFO"
         priority: Int = 0

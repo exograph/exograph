@@ -459,7 +459,8 @@ mod tests {
         @postgres
         service UserService {
             type User {
-              doc: Doc @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
+              @column("custom_column") @access(self.role == "role_admin" || self.role == "role_superuser" || self.doc.is_public)
+              doc: Doc;
               role: String
             }
 
@@ -476,14 +477,14 @@ mod tests {
     fn with_auth_context_use_in_field_annotation() {
         let src = r#"
         context AuthContext {
-            role: String @jwt
+            @jwt role: String
         }
 
         @postgres
         service DocumentService {
             type Doc {
               is_public: Boolean
-              content: String @access(AuthContext.role == "ROLE_ADMIN" || self.is_public)
+              @access(AuthContext.role == "ROLE_ADMIN" || self.is_public) content: String 
             }
         }
         "#;
@@ -495,13 +496,13 @@ mod tests {
     fn with_array_in_operator() {
         let src = r#"
         context AuthContext {
-            roles: Array<String> @jwt
+            @jwt roles: Array<String> 
         }
 
         @postgres
         service DocumentService {
             type Doc {
-              content: String @access("ROLE_ADMIN" in AuthContext.roles)
+              @access("ROLE_ADMIN" in AuthContext.roles) content: String 
             }
         }
         "#;
@@ -513,7 +514,7 @@ mod tests {
     fn with_auth_context_use_in_type_annotation() {
         let src = r#"
         context AuthContext {
-            role: String @jwt
+            @jwt role: String
         }
         
         @postgres
@@ -536,7 +537,7 @@ mod tests {
         service DocumentService {
             @table("venues")
             type Venue {
-                id: Int @column("idx") @pk
+                @column("idx") @pk id: Int 
                 name: String
             }
         }
@@ -548,8 +549,8 @@ mod tests {
         @table ( "venues" )
         type    Venue
         {
-            id:   Int   @column(  "idx"  )
-            @pk
+            @column(  "idx"  )    @pk  id:   Int   
+           
 
             name:String
 
@@ -634,7 +635,7 @@ mod tests {
         @postgres
         service UserService {
             context AuthContext {
-                role: String @jwt
+                @jwt role: String
             }
         }
         "#;
@@ -648,7 +649,7 @@ mod tests {
         @postgres
         service UserService {
             type User {
-                id: Int @pk("asdf")
+                @pk("asdf") id: Int 
             }
         }
         "#;
@@ -666,7 +667,7 @@ mod tests {
         @postgres
         service UserService {
             type User {
-                id: Int @range(5)
+                @range(5) id: Int
             }
         }
         "#;
@@ -682,7 +683,7 @@ mod tests {
         @postgres
         service UserService {
             type User {
-                id: Int @range(min=5, max=10, min=3)
+                @range(min=5, max=10, min=3) id: Int
             }
         }
         "#;
@@ -696,7 +697,7 @@ mod tests {
         @postgres
         service UserService {
             type User {
-                id: Int @range(min=5, maxx=10)
+                @range(min=5, maxx=10) id: Int
             }
         }
         "#;
@@ -719,7 +720,7 @@ mod tests {
         @postgres
         service UserService {
             type User {
-                id: Int @table("asdf")
+                @table("asdf") id: Int
             }
         }
         "#;

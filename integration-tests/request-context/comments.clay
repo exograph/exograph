@@ -1,20 +1,20 @@
 context AuthContext {
-    role: String @jwt("role")
-    secretHeader: String @header("X-Secret-Header")
-    devMode: String @env("__DEV_MODE")
-    sessionId: String @cookie("session_id")
-    clientIp: String @clientIp
+    @jwt("role") role: String 
+    @header("X-Secret-Header") secretHeader: String 
+    @env("__DEV_MODE") devMode: String 
+    @cookie("session_id") sessionId: String 
+    @clientIp clientIp: String 
 }
 
 context TrackingContext {
-    uid: String @header("X-User-ID")
+    @header("X-User-ID") uid: String 
 
     // this should be determined by the query `shouldTrack` (as specified through the @query source) 
     // e.g.
     // query {
     //      shouldTrack
     // }
-    shouldTrack: Boolean @query("shouldTrack")
+    @query("shouldTrack") shouldTrack: Boolean 
 }
 
 @postgres
@@ -29,7 +29,7 @@ service JournalService {
                  AuthContext.sessionId == "abcde" 
     )
     type JournalEntry {
-        id: Int = autoincrement() @pk
+        @pk id: Int = autoincrement()
         text: String
     }
 }

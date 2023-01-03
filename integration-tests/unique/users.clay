@@ -2,18 +2,18 @@
 service RsvpService {
   @access(true)
   type Rsvp {
-    id: Int = autoincrement() @pk
-    event: String @unique("one_rsvp_per_user")
-    user: User @unique("one_rsvp_per_user") 
+    @pk id: Int = autoincrement()
+    @unique("one_rsvp_per_user") event: String 
+    @unique("one_rsvp_per_user")  user: User 
   }
 
   @access(true)
   type User {
-    id: Int = autoincrement() @pk
-    username: String @unique
-    primary_email_id: String @unique("unique_email_primary")
-    secondary_email_id: String? @unique("unique_email_secondary")
-    email_domain: String @unique("unique_email_primary", "unique_email_secondary")
+    @pk id: Int = autoincrement()
+    @unique username: String 
+    @unique("unique_email_primary") primary_email_id: String 
+    @unique("unique_email_secondary") secondary_email_id: String? 
+    @unique("unique_email_primary", "unique_email_secondary") email_domain: String 
 
     rsvps: Set<Rsvp>?
   }

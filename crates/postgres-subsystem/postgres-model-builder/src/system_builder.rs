@@ -145,7 +145,7 @@ mod tests {
             service ConcertService {
                 @table("concerts")
                 type Concert {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     title: String
                     venue: Venue?
                     icon: Blob?
@@ -153,7 +153,7 @@ mod tests {
 
                 @table("venues")
                 type Venue {
-                    id: Int = autoincrement() @pk
+                    @pk id: Int = autoincrement()
                     name: String
                     address: String?
                     concerts: Set<Concert>?
@@ -198,12 +198,12 @@ mod tests {
         @postgres
         service UserService {
             type User {
-                id: Int = autoincrement() @pk
+                @pk id: Int = autoincrement()
                 membership: Membership?
             }
 
             type Membership {
-                id: Int = autoincrement() @pk
+                @pk id: Int = autoincrement()
                 user: User
             }
         }
@@ -232,17 +232,17 @@ mod tests {
             service LogService {
                 @table("logs")
                 type Log {
-                  id: Int = autoincrement() @dbtype("bigint") @pk
-                  nonce: Int @bits(16)
-                  hash: Int @size(8)
-                  float: Float @size(4)
-                  double: Float @bits(40)
-                  latitude: Decimal @precision(4)
-                  longitude: Decimal @precision(5) @scale(2)
-                  weird: Int @range(min=0, max=32770)
-                  prefix: String @length(15)
+                  @dbtype("bigint") @pk id: Int = autoincrement() 
+                  @bits(16) nonce: Int 
+                  @size(8) hash: Int 
+                  @size(4) float: Float 
+                  @bits(40) double: Float 
+                  @precision(4) latitude: Decimal 
+                  @precision(5) @scale(2) longitude: Decimal 
+                  @range(min=0, max=32770) weird: Int 
+                  @length(15) prefix: String 
                   log: String
-                  granular: Instant @precision(6)
+                  @precision(6) granular: Instant 
                 }
             }
         "#;
