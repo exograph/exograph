@@ -77,7 +77,7 @@ impl SubsystemBuilder for PostgresSubsystemBuilder {
                 },
             ),
             (
-                "plural_name",
+                "plural",
                 AnnotationSpec {
                     targets: &[AnnotationTarget::Type],
                     no_params: false,

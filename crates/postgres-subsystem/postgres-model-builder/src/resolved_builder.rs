@@ -255,7 +255,7 @@ fn resolve(
                     if ct.kind == AstModelKind::Type {
                         let plural_annotation_value = ct
                             .annotations
-                            .get("plural_name")
+                            .get("plural")
                             .map(|p| p.as_single().as_string());
 
                         let table_name = ct
@@ -980,7 +980,7 @@ mod tests {
             }
         
             @table("venues")
-            @plural_name("Venuess")
+            @plural("Venuess")
             type Venue {
               @pk @column("custom_id") id: Int = autoincrement() 
               @column("custom_name") name: String 
