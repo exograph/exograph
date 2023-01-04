@@ -46,9 +46,9 @@ where
 // where
 //     T: FieldResolver<Value>,
 // {
-//     fn resolve_field(&self, field: &ValidatedField, system_context: &SystemContext, request_context: &request_context::RequestContext<'_>,) -> Value {
+//     fn resolve_field(&self, field: &ValidatedField, system_resolver: &SystemContext, request_context: &request_context::RequestContext<'_>,) -> Value {
 //         match self {
-//             Some(td) => td.resolve_field(system_context, field),
+//             Some(td) => td.resolve_field(system_resolver, field),
 //             None => Value::Null,
 //         }
 //     }
