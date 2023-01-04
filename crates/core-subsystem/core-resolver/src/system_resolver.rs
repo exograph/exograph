@@ -243,7 +243,7 @@ macro_rules! claytip_execute_query {
     };
 }
 
-#[instrument(name = "system_context::parse_query")]
+#[instrument(name = "system_resolver::parse_query")]
 fn parse_query(query: String) -> Result<ExecutableDocument, ValidationError> {
     async_graphql_parser::parse_query(query).map_err(|error| {
         error!(%error, "Failed to parse query");

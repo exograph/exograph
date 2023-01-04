@@ -84,7 +84,7 @@ impl FieldResolver<Value, SubsystemResolutionError> for Type {
             match base_type {
                 BaseType::Named(name) => {
                     // See commented out derivation of FieldResolver for Option<T>
-                    //system_context.schema.get_type_definition(name).resolve_field(system_context, field)
+                    //system_resolver.schema.get_type_definition(name).resolve_field(system_resolver, field)
 
                     let tpe = schema.get_type_definition(name);
                     match tpe {

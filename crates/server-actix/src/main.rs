@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
 
     resolver::init();
 
-    let system_context = web::Data::new(create_system_resolver_or_exit(&claypot_file));
+    let system_resolver = web::Data::new(create_system_resolver_or_exit(&claypot_file));
 
     let server_port = env::var("CLAY_SERVER_PORT")
         .map(|port_str| {
@@ -45,7 +45,7 @@ async fn main() -> std::io::Result<()> {
                 middleware::TrailingSlash::Trim,
             ))
             .wrap(cors)
-            .app_data(system_context.clone())
+            .app_data(system_resolver.clone())
             .route(&resolve_path, web::post().to(resolve))
             .route(&playground_path, web::get().to(playground))
             .route(&playground_path_subpaths, web::get().to(playground))

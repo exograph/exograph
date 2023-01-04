@@ -156,7 +156,7 @@ pub fn create_system_resolver_from_serialized_bytes(
 
 pub fn create_system_resolver_or_exit(claypot_file: &str) -> SystemResolver {
     match create_system_resolver(claypot_file) {
-        Ok(system_context) => system_context,
+        Ok(system_resolver) => system_resolver,
         Err(error) => {
             println!("{}", error);
             exit(1);
