@@ -15,9 +15,9 @@ async fn main() -> Result<(), Error> {
 
     resolver::init();
 
-    let system_context = Arc::new(create_system_resolver_or_exit(&claypot_file));
+    let system_resolver = Arc::new(create_system_resolver_or_exit(&claypot_file));
     let service = lambda_runtime::service_fn(|event: LambdaEvent<Value>| async {
-        resolve(event, system_context.clone()).await
+        resolve(event, system_resolver.clone()).await
     });
 
     lambda_runtime::run(service).await?;
