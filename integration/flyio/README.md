@@ -28,4 +28,4 @@ flyctl postgres create --name concerts-db
 flyctl postgres attach --app clay-concert --postgres-app concerts-db
 ```
 
-Note down the DATABASE_URL shown. Later, you can connect to it using `psql` (after creating a WireGuard tunnel).
+Note down the POSTGRES_URL shown. Later, you can connect to it using `psql` (after creating a WireGuard tunnel).

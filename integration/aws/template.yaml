@@ -91,11 +91,11 @@ Resources:
       CodeUri: aws-cf-func/.
       Environment:
         Variables:
-          CLAY_DATABASE_HOST: !GetAtt [ClaytipPostgres, Endpoint.Address]
-          CLAY_DATABASE_HOST_PORT: !GetAtt [ClaytipPostgres, Endpoint.Port]
-          CLAY_DATABASE_USER: !Ref ClaytipPostgresUsername
-          CLAY_DATABASE_PASSWORD: !Ref ClaytipPostgresPassword
-          CLAY_DATABASE_NAME: !Ref ClaytipPostgresName
+          CLAY_POSTGRES_HOST: !GetAtt [ClaytipPostgres, Endpoint.Address]
+          CLAY_POSTGRES_HOST_PORT: !GetAtt [ClaytipPostgres, Endpoint.Port]
+          CLAY_POSTGRES_USER: !Ref ClaytipPostgresUsername
+          CLAY_POSTGRES_PASSWORD: !Ref ClaytipPostgresPassword
+          CLAY_POSTGRES_NAME: !Ref ClaytipPostgresName
           CLAY_INTROSPECTION: !Ref ClaytipIntrospection
 
   # The real Claytip Lambda function.
@@ -120,8 +120,8 @@ Resources:
           CLAY_CORS_DOMAINS: "*"
           CLAY_CONNECTION_POOL_SIZE: 1
           CLAY_CHECK_CONNECTION_ON_STARTUP: false
-          CLAY_DATABASE_USER: !Ref ClaytipPostgresUsername
-          CLAY_DATABASE_URL: !Sub
+          CLAY_POSTGRES_USER: !Ref ClaytipPostgresUsername
+          CLAY_POSTGRES_URL: !Sub
             - "postgresql://${Username}:${Password}@${IP}:${Port}/${Postgres}"
             - IP: !GetAtt [ClaytipPostgres, Endpoint.Address]
               Port: !GetAtt [ClaytipPostgres, Endpoint.Port]

@@ -11,7 +11,7 @@ pub async fn test_query(json_input: Value, clay_model: &str, expected: Value) {
     // HACK: some envvars need to be set to create a SystemContext
     {
         std::env::set_var("CLAY_CHECK_CONNECTION_ON_STARTUP", "false");
-        std::env::set_var("CLAY_DATABASE_URL", "postgres://a@dummy-value");
+        std::env::set_var("CLAY_POSTGRES_URL", "postgres://a@dummy-value");
     }
 
     let model_system =

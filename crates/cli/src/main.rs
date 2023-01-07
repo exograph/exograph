@@ -41,7 +41,7 @@ fn model_file_arg() -> Arg {
 
 fn database_arg() -> Arg {
     Arg::new("database")
-        .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`CLAY_DATABASE_URL`).")
+        .help("The PostgreSQL database connection string to use. If not specified, the program will attempt to read it from the environment (`CLAY_POSTGRES_URL`).")
         .long("database")
         .required(false)
 }

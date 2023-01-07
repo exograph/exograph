@@ -36,7 +36,7 @@ pub fn run(
     let cpus = num_cpus::get();
 
     let postgres_url =
-        std::env::var("CLAY_TEST_DATABASE_URL").expect("CLAY_TEST_DATABASE_URL must be specified");
+        std::env::var("CLAY_TEST_POSTGRES_URL").expect("CLAY_TEST_POSTGRES_URL must be specified");
 
     let testfiles = load_testfiles_from_dir(root_directory, pattern).with_context(|| {
         format!(

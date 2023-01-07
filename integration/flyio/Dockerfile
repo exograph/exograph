@@ -19,7 +19,7 @@ COPY --from=builder /usr/src/app/clay-server ./clay-server
 COPY --from=builder /usr/src/app/*_resolver.so ./
 COPY --from=builder /usr/src/app/${CLAYPOT_FILE} ./${CLAYPOT_FILE}
 
-# 2.2: Copy the script with a bridge between DATABASE_URL and CLAY_DATABASE_URL as well as env variables
+# 2.2: Copy the script with a bridge between POSTGRES_URL and CLAY_POSTGRES_URL as well as env variables
 COPY ./run-clay-fly.sh .
 
 EXPOSE 8080
