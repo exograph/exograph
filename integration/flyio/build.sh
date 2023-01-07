@@ -20,7 +20,7 @@ fi
 SCRIPT_FILE=run-clay-fly.sh
 
 echo -en "#!/bin/sh\n\n" > $SCRIPT_FILE
-echo -en "export CLAY_DATABASE_URL=\${DATABASE_URL}\n\n" >> $SCRIPT_FILE
+echo -en "export CLAY_POSTGRES_URL=\${POSTGRES_URL}\n\n" >> $SCRIPT_FILE
 if [ -n "$envfile" ]; then
     cat "$envfile" >> $SCRIPT_FILE
 fi

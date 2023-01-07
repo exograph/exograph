@@ -98,7 +98,7 @@ echo "Creation of Azure function app \`$appname\` successful."
 echo "- Delete all resources after finishing to avoid incurring additional charges:"
 echo "  \$ az group delete --name $resourceGroup"
 
-echo "- Please create and initialize a database, then set CLAY_DATABASE_URL in this app's Application Settings."
+echo "- Please create and initialize a database, then set CLAY_POSTGRES_URL in this app's Application Settings."
 if [ $(queryUser "Do this automatically?" "y") != "y" ]; then
     echo "Exiting..."
     exit 0
@@ -126,7 +126,7 @@ az functionapp config appsettings set \
     --resource-group "$resourceGroup" \
     --name "$appname" \
     --settings \
-    CLAY_DATABASE_URL=$postgresConnectionString 
+    CLAY_POSTGRES_URL=$postgresConnectionString 
 
 az postgres server firewall-rule create \
     --resource-group $resourceGroup \

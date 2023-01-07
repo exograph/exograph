@@ -7,9 +7,9 @@ use tokio_postgres::{config::SslMode, Config};
 
 use crate::database_error::DatabaseError;
 
-const URL_PARAM: &str = "CLAY_DATABASE_URL";
-const USER_PARAM: &str = "CLAY_DATABASE_USER";
-const PASSWORD_PARAM: &str = "CLAY_DATABASE_PASSWORD";
+const URL_PARAM: &str = "CLAY_POSTGRES_URL";
+const USER_PARAM: &str = "CLAY_POSTGRES_USER";
+const PASSWORD_PARAM: &str = "CLAY_POSTGRES_PASSWORD";
 const CONNECTION_POOL_SIZE_PARAM: &str = "CLAY_CONNECTION_POOL_SIZE";
 const CHECK_CONNECTION_ON_STARTUP: &str = "CLAY_CHECK_CONNECTION_ON_STARTUP";
 const SSL_VERIFY_PARAM: &str = "CLAY_SSL_VERIFY"; // boolean (default: true)
@@ -74,7 +74,7 @@ impl<'a> Database {
         }
 
         if config.get_user().is_none() {
-            return Err(DatabaseError::Config("Database user must be specified through as a part of CLAY_DATABASE_URL or through CLAY_DATABASE_USER".into()));
+            return Err(DatabaseError::Config("Database user must be specified through as a part of CLAY_POSTGRES_URL or through CLAY_POSTGRES_USER".into()));
         }
 
         let manager_config = ManagerConfig {

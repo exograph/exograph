@@ -12,7 +12,7 @@ This is an example workflow to show how to deploy Claytip as an Azure function.
    `az login`.
 1. Run `./create-azure-app.sh` to create a function app in Azure and follow the
    interactive instructions.
-2. If needed, create a database and set `CLAY_DATABASE_URL` as an application
+2. If needed, create a database and set `CLAY_POSTGRES_URL` as an application
    setting in the Azure dashboard for your created function app.
 3. Initialize the schema in your database:
    ```

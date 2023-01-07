@@ -5,7 +5,7 @@
     "CLAY_INTROSPECTION": "true",
     "CLAY_JWT_SECRET": "abcd",
     "CLAY_CORS_DOMAINS": "*",
-    "CLAY_DATABASE_URL": "postgresql://",
+    "CLAY_POSTGRES_URL": "postgresql://",
     "CLAY_ENDPOINT_HTTP_PATH": "/api/claytipapi",
     "CLAY_PLAYGROUND_HTTP_PATH": "/api/claytipapi",
     "FUNCTIONS_WORKER_RUNTIME": "custom"

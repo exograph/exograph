@@ -50,9 +50,9 @@ impl Command for YoloCommand {
         let prestart_callback = || {
             async {
             // set envs for server
-            std::env::set_var("CLAY_DATABASE_URL", &db.connection_url);
-            std::env::remove_var("CLAY_DATABASE_USER");
-            std::env::remove_var("CLAY_DATABASE_PASSWORD");
+            std::env::set_var("CLAY_POSTGRES_URL", &db.connection_url);
+            std::env::remove_var("CLAY_POSTGRES_USER");
+            std::env::remove_var("CLAY_POSTGRES_PASSWORD");
             std::env::set_var("CLAY_INTROSPECTION", "true");
             std::env::set_var("CLAY_JWT_SECRET", &jwt_secret);
             std::env::set_var("CLAY_CORS_DOMAINS", "*");

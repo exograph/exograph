@@ -69,13 +69,13 @@ and then paste the output of the `clay schema create` command.
 4. Start the server
 
 ```
-CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://localhost:5432/concerts-db CLAY_DATABASE_USER=$USER cargo run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay
+CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_POSTGRES_URL=postgresql://localhost:5432/concerts-db CLAY_POSTGRES_USER=$USER cargo run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay
 ```
 
 During development, it is nicer to use `cargo watch` and let compilation and restart happen automatically with any source changes. You may also set `CLAY_INTROSPECTION=true` to allow GraphQL introspection queries.
 
 ```
-CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_DATABASE_URL=postgresql://localhost:5432/concerts-db CLAY_DATABASE_USER=$USER CLAY_INTROSPECTION=true cargo watch --clear -x "run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay"
+CLAY_JWT_SECRET="abcd" CLAY_CORS_DOMAINS="*" CLAY_POSTGRES_URL=postgresql://localhost:5432/concerts-db CLAY_POSTGRES_USER=$USER CLAY_INTROSPECTION=true cargo watch --clear -x "run --bin clay serve integration-tests/basic-model-no-auth/concerts.clay"
 ```
 
 When introspection is on, an interactive page is served at `/playground` by default; this is adjustable through the environment variable `CLAY_PLAYGROUND_HTTP_PATH`. The GraphQL endpoint accepts requests at `/graphql` by default; this is also adjustable through the environment variable `CLAY_ENDPOINT_HTTP_PATH`.
@@ -86,13 +86,13 @@ If you change the treesitter grammar source file, `cargo watch` doesn't seem to 
 5. Run unit and integration tests
 
 ```
-CLAY_TEST_DATABASE_URL=postgresql://localhost:5432 CLAY_TEST_DATABASE_USER=$USER cargo test
+CLAY_TEST_POSTGRES_URL=postgresql://localhost:5432 CLAY_TEST_POSTGRES_USER=$USER cargo test
 ```
 
 6. Run blackbox integration tests
 
 ```
-cargo build && CLAY_TEST_DATABASE_URL=postgresql://$USER@localhost:5432 target/debug/clay test integration-tests
+cargo build && CLAY_TEST_POSTGRES_URL=postgresql://$USER@localhost:5432 target/debug/clay test integration-tests
 ```
 
 ## Logging, telemetry and tracing

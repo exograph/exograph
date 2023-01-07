@@ -80,7 +80,7 @@ fn build_shallow(resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBui
 
     aggregate_type_builder::build_shallow(resolved_env, building);
 
-    // The next two shallow builders need DATABASE types build above (the order of the next two is unimportant)
+    // The next two shallow builders need POSTGRES types build above (the order of the next two is unimportant)
     // Specifically, the OperationReturn type in Query and Mutation looks for the id for the return type, so requires
     // type_builder::build_shallow to have run
     query_builder::build_shallow(&resolved_env.resolved_types, building);

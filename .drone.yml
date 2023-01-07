@@ -37,7 +37,7 @@ steps:
         # TODO: figure out how to build cdylibs during tests implicitly
         # see https://github.com/rust-lang/cargo/issues/8311
       - cargo build 
-      - CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 cargo test --workspace
+      - CLAY_TEST_POSTGRES_URL=postgresql://postgres@database:5432 cargo test --workspace
 
   - name: test-integration
     image: payas-ci-image
@@ -51,7 +51,7 @@ steps:
       - (cd graphiql && npm install && npm run prod-build)
       - cargo build --release
       - export PATH=./target/release:$PATH
-      - CLAY_TEST_DATABASE_URL=postgresql://postgres@database:5432 clay test --run-introspection-tests integration-tests
+      - CLAY_TEST_POSTGRES_URL=postgresql://postgres@database:5432 clay test --run-introspection-tests integration-tests
 
   - name: discord-end
     image: appleboy/drone-discord
