@@ -76,8 +76,8 @@ pub(crate) fn run_testfile(
         let server = spawn_clay_server(
             &testfile.model_path,
             [
-                ("CLAY_DATABASE_URL", db.connection_string.as_str()),
-                ("CLAY_DATABASE_USER", &db.db_username),
+                ("CLAY_POSTGRES_URL", db.connection_string.as_str()),
+                ("CLAY_POSTGRES_USER", &db.db_username),
                 ("CLAY_JWT_SECRET", &jwtsecret),
                 ("CLAY_CONNECTION_POOL_SIZE", "1"), // Otherwise we get a "too many connections" error
                 ("CLAY_CHECK_CONNECTION_ON_STARTUP", check_on_startup),

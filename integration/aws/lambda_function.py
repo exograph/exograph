@@ -21,11 +21,11 @@ def handler(event, context):
 def create(event, context):
     logger.info("Connecting to db...")
 
-    user=os.getenv("CLAY_DATABASE_USER")
-    password=os.getenv("CLAY_DATABASE_PASSWORD")
-    host=os.getenv("CLAY_DATABASE_HOST")
-    port=os.getenv("CLAY_DATABASE_HOST_PORT")
-    dbname=os.getenv("CLAY_DATABASE_NAME")
+    user=os.getenv("CLAY_POSTGRES_USER")
+    password=os.getenv("CLAY_POSTGRES_PASSWORD")
+    host=os.getenv("CLAY_POSTGRES_HOST")
+    port=os.getenv("CLAY_POSTGRES_HOST_PORT")
+    dbname=os.getenv("CLAY_POSTGRES_NAME")
 
     logger.info(f"user={user}, host={host}, port={port}, dbname={dbname}")
 

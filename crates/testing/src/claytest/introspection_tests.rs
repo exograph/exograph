@@ -26,7 +26,7 @@ pub(crate) fn run_introspection_test(model_path: &Path) -> Result<TestResult> {
         model_path,
         [
             ("CLAY_INTROSPECTION", "true"),
-            ("CLAY_DATABASE_URL", "postgres://a@dummy-value"),
+            ("CLAY_POSTGRES_URL", "postgres://a@dummy-value"),
             ("CLAY_CHECK_CONNECTION_ON_STARTUP", "false"),
             ("CLAY_SERVER_PORT", "0"), // ask clay-server to select a free port
         ]
