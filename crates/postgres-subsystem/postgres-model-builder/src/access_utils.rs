@@ -18,7 +18,7 @@ use core_plugin_interface::{
 use postgres_model::{
     access::DatabaseAccessPrimitiveExpression,
     column_path::{ColumnIdPath, ColumnIdPathLink},
-    types::{PostgresCompositeType, PostgresFieldType, PostgresType, PostgresTypeKind},
+    types::{PostgresCompositeType, PostgresFieldType, PostgresPrimitiveType, PostgresType},
 };
 
 use super::column_path_utils;
@@ -34,13 +34,27 @@ pub fn compute_predicate_expression(
     expr: &AstExpr<Typed>,
     self_type_info: Option<&PostgresCompositeType>,
     resolved_env: &ResolvedTypeEnv,
-    subsystem_types: &MappedArena<PostgresType>,
+    subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
+    subsystem_entity_types: &MappedArena<PostgresCompositeType>,
 ) -> Result<AccessPredicateExpression<DatabaseAccessPrimitiveExpression>, ModelBuildingError> {
     match expr {
         AstExpr::FieldSelection(selection) => {
-            match compute_selection(selection, self_type_info, resolved_env, subsystem_types) {
+            match compute_selection(
+                selection,
+                self_type_info,
+                resolved_env,
+                subsystem_primitive_types,
+                subsystem_entity_types,
+            ) {
                 PathSelection::Column(column_path, column_type) => {
-                    if column_type.base_type(&subsystem_types.values).name == "Boolean" {
+                    if column_type
+                        .base_type(
+                            &subsystem_primitive_types.values,
+                            &subsystem_entity_types.values,
+                        )
+                        .name()
+                        == "Boolean"
+                    {
                         // Treat boolean columns in the same way as an "eq" relational expression
                         // For example, treat `self.published` the same as `self.published == true`
                         Ok(AccessPredicateExpression::RelationalOp(
@@ -77,7 +91,13 @@ pub fn compute_predicate_expression(
         }
         AstExpr::LogicalOp(op) => {
             let predicate_expr = |expr: &AstExpr<Typed>| {
-                compute_predicate_expression(expr, self_type_info, resolved_env, subsystem_types)
+                compute_predicate_expression(
+                    expr,
+                    self_type_info,
+                    resolved_env,
+                    subsystem_primitive_types,
+                    subsystem_entity_types,
+                )
             };
             Ok(match op {
                 LogicalOp::And(left, right, _, _) => {
@@ -115,13 +135,15 @@ pub fn compute_predicate_expression(
                     left,
                     self_type_info,
                     resolved_env,
-                    subsystem_types,
+                    subsystem_primitive_types,
+                    subsystem_entity_types,
                 )),
                 Box::new(compute_primitive_expr(
                     right,
                     self_type_info,
                     resolved_env,
-                    subsystem_types,
+                    subsystem_primitive_types,
+                    subsystem_entity_types,
                 )),
             )))
         }
@@ -137,11 +159,18 @@ fn compute_primitive_expr(
     expr: &AstExpr<Typed>,
     self_type_info: Option<&PostgresCompositeType>,
     resolved_env: &ResolvedTypeEnv,
-    subsystem_types: &MappedArena<PostgresType>,
+    subsystem_primitive_types: &MappedArena<PostgresPrimitiveType>,
+    subsystem_entity_types: &MappedArena<PostgresCompositeType>,
 ) -> DatabaseAccessPrimitiveExpression {
     match expr {
         AstExpr::FieldSelection(selection) => {
-            match compute_selection(selection, self_type_info, resolved_env, subsystem_types) {
+            match compute_selection(
+                selection,
+                self_type_info,
+                resolved_env,
+                subsystem_primitive_types,
+                subsystem_entity_types,
+            ) {
                 PathSelection::Column(column_path, _) => {
                     DatabaseAccessPrimitiveExpression::Column(column_path)
                 }
@@ -169,7 +198,8 @@ fn compute_selection<'a>(
     selection: &FieldSelection<Typed>,
     self_type_info: Option<&'a PostgresCompositeType>,
     resolved_env: &'a ResolvedTypeEnv<'a>,
-    subsystem_types: &'a MappedArena<PostgresType>,
+    subsystem_primitive_types: &'a MappedArena<PostgresPrimitiveType>,
+    subsystem_entity_types: &'a MappedArena<PostgresCompositeType>,
 ) -> PathSelection<'a> {
     fn flatten(selection: &FieldSelection<Typed>, acc: &mut Vec<String>) {
         match selection {
@@ -184,7 +214,7 @@ fn compute_selection<'a>(
     fn get_column<'a>(
         field_name: &str,
         self_type_info: &'a PostgresCompositeType,
-        subsystem_types: &MappedArena<PostgresType>,
+        subsystem_composite_types: &MappedArena<PostgresCompositeType>,
     ) -> (ColumnIdPathLink, &'a PostgresFieldType) {
         let get_field = |field_name: &str| {
             self_type_info
@@ -196,7 +226,7 @@ fn compute_selection<'a>(
 
         let field = get_field(field_name);
         let column_path_link =
-            column_path_utils::column_path_link(self_type_info, field, subsystem_types);
+            column_path_utils::column_path_link(self_type_info, field, subsystem_composite_types);
 
         (column_path_link, &field.typ)
     }
@@ -242,11 +272,13 @@ fn compute_selection<'a>(
                     self_type_info.expect("Type for the access selection is not defined");
 
                 let (field_column_path, field_type) =
-                    get_column(field_name, self_type_info, subsystem_types);
+                    get_column(field_name, self_type_info, subsystem_entity_types);
 
-                let field_composite_type = match &field_type.base_type(&subsystem_types.values).kind
-                {
-                    PostgresTypeKind::Composite(composite_type) => Some(composite_type),
+                let field_composite_type = match &field_type.base_type(
+                    &subsystem_primitive_types.values,
+                    &subsystem_entity_types.values,
+                ) {
+                    PostgresType::Composite(composite_type) => Some(*composite_type),
                     _ => None,
                 };
 

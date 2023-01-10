@@ -1,7 +1,9 @@
 //! Transforms an AstSystem into a GraphQL system
 
-use core_plugin_interface::core_model::mapped_arena::MappedArena;
-use postgres_model::types::{PostgresType, PostgresTypeKind};
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use postgres_model::{access::Access, types::PostgresCompositeType};
+
+use crate::shallow::Shallow;
 
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -36,11 +38,17 @@ pub trait Builder {
             for type_name in self.type_names(c, resolved_types).iter() {
                 building.mutation_types.add(
                     type_name,
-                    PostgresType {
+                    PostgresCompositeType {
+                        fields: vec![],
+                        agg_fields: vec![],
+                        pk_query: SerializableSlabIndex::shallow(),
+                        collection_query: SerializableSlabIndex::shallow(),
+                        aggregate_query: SerializableSlabIndex::shallow(),
+                        table_id: SerializableSlabIndex::shallow(),
                         name: type_name.to_string(),
                         plural_name: "".to_string(), // unused
-                        kind: PostgresTypeKind::Primitive,
                         is_input: true,
+                        access: Access::restrictive(),
                     },
                 );
             }

@@ -14,10 +14,8 @@ use payas_sql::{
     AbstractPredicate, AbstractSelect, ColumnSelection, SelectionCardinality, SelectionElement,
 };
 use postgres_model::{
-    model::ModelPostgresSystem,
-    operation::AggregateQuery,
-    relation::PostgresRelation,
-    types::{PostgresType, PostgresTypeKind},
+    model::ModelPostgresSystem, operation::AggregateQuery, relation::PostgresRelation,
+    types::PostgresCompositeType,
 };
 
 #[async_trait]
@@ -47,14 +45,7 @@ impl OperationSelectionResolver for AggregateQuery {
         let predicate = AbstractPredicate::and(query_predicate, access_predicate);
         let return_postgres_type = &self.return_type.typ(subsystem);
 
-        let root_physical_table =
-            if let PostgresTypeKind::Composite(composite_root_type) = &return_postgres_type.kind {
-                &subsystem.tables[composite_root_type.table_id]
-            } else {
-                return Err(PostgresExecutionError::Generic(
-                    "Expected a composite type".into(),
-                ));
-            };
+        let root_physical_table = &subsystem.tables[return_postgres_type.table_id];
 
         let content_object = content_select(
             return_postgres_type,
@@ -77,7 +68,7 @@ impl OperationSelectionResolver for AggregateQuery {
 
 #[async_recursion]
 async fn content_select<'content>(
-    return_type: &PostgresType,
+    return_type: &PostgresCompositeType,
     fields: &'content [ValidatedField],
     subsystem: &'content ModelPostgresSystem,
     request_context: &'content RequestContext<'content>,
@@ -91,7 +82,7 @@ async fn content_select<'content>(
 }
 
 async fn map_field<'content>(
-    return_type: &PostgresType,
+    return_type: &PostgresCompositeType,
     field: &'content ValidatedField,
     subsystem: &'content ModelPostgresSystem,
     _request_context: &'content RequestContext<'content>,

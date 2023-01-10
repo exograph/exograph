@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use crate::model::ModelPostgresSystem;
 use crate::operation::AggregateQueryParameter;
 use crate::relation::PostgresRelation;
-use crate::types::PostgresTypeKind;
 use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
 use core_plugin_interface::core_model::type_normalization::{
     default_positioned, default_positioned_name, FieldDefinitionProvider, InputValueProvider,
@@ -94,18 +93,12 @@ impl FieldDefinitionProvider<ModelPostgresSystem> for AggregateField {
                     vec![]
                 }
                 PostgresRelation::OneToMany { other_type_id, .. } => {
-                    let other_type = &system.postgres_types[*other_type_id];
-                    match &other_type.kind {
-                        PostgresTypeKind::Primitive => panic!(),
-                        PostgresTypeKind::Composite(kind) => {
-                            let aggregate_query = &system.aggregate_queries[kind.aggregate_query];
+                    let other_type = &system.entity_types[*other_type_id];
+                    let aggregate_query = &system.aggregate_queries[other_type.aggregate_query];
 
-                            let AggregateQueryParameter { predicate_param } =
-                                &aggregate_query.parameter;
+                    let AggregateQueryParameter { predicate_param } = &aggregate_query.parameter;
 
-                            vec![default_positioned(predicate_param.input_value())]
-                        }
-                    }
+                    vec![default_positioned(predicate_param.input_value())]
                 }
             },
             None => vec![],

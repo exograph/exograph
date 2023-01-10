@@ -1,11 +1,7 @@
 //! Build the reference input type (used to refer to an entity by its pk)
 
 use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
-use postgres_model::{
-    access::Access,
-    relation::PostgresRelation,
-    types::{PostgresCompositeType, PostgresType, PostgresTypeKind},
-};
+use postgres_model::{access::Access, relation::PostgresRelation, types::PostgresCompositeType};
 
 use super::{
     builder::Builder,
@@ -32,30 +28,32 @@ impl Builder for ReferenceInputTypeBuilder {
         _resolved_env: &ResolvedTypeEnv,
         building: &mut SystemContextBuilding,
     ) {
-        for (_, model_type) in building.postgres_types.iter() {
-            if let PostgresTypeKind::Composite(PostgresCompositeType { .. }) = &model_type.kind {
-                for (existing_id, expanded_kind) in expanded_reference_types(model_type, building) {
-                    building.mutation_types[existing_id].kind = expanded_kind;
-                }
+        for (_, model_type) in building.entity_types.iter() {
+            for (existing_id, expanded_type) in expanded_reference_types(model_type, building) {
+                building.mutation_types[existing_id] = expanded_type;
             }
         }
     }
 }
 
 fn expanded_reference_types(
-    model_type: &PostgresType,
+    model_type: &PostgresCompositeType,
     building: &SystemContextBuilding,
-) -> Vec<(SerializableSlabIndex<PostgresType>, PostgresTypeKind)> {
+) -> Vec<(
+    SerializableSlabIndex<PostgresCompositeType>,
+    PostgresCompositeType,
+)> {
     let existing_type = model_type;
 
-    if let PostgresTypeKind::Composite(PostgresCompositeType {
+    let PostgresCompositeType {
         ref fields,
         pk_query,
         collection_query,
         aggregate_query,
         table_id,
         ..
-    }) = &existing_type.kind
+    } = &existing_type;
+
     {
         let reference_type_fields = fields
             .clone()
@@ -71,7 +69,9 @@ fn expanded_reference_types(
 
         vec![(
             existing_type_id,
-            PostgresTypeKind::Composite(PostgresCompositeType {
+            PostgresCompositeType {
+                name: existing_type_name,
+                plural_name: "".to_owned(),
                 fields: reference_type_fields,
                 agg_fields: vec![],
                 pk_query: *pk_query,
@@ -79,9 +79,8 @@ fn expanded_reference_types(
                 aggregate_query: *aggregate_query,
                 table_id: *table_id,
                 access: Access::restrictive(),
-            }),
+                is_input: true,
+            },
         )]
-    } else {
-        vec![]
     }
 }

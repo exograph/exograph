@@ -1,8 +1,8 @@
-use crate::{column_path::ColumnIdPathLink, model::ModelPostgresSystem};
+use crate::{column_path::ColumnIdPathLink, model::ModelPostgresSystem, types::PostgresTypeIndex};
 use async_graphql_parser::types::{InputObjectType, TypeDefinition, TypeKind};
 use serde::{Deserialize, Serialize};
 
-use super::types::{PostgresType, PostgresTypeModifier};
+use super::types::PostgresTypeModifier;
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
     type_normalization::{
@@ -31,7 +31,7 @@ pub struct PredicateParameter {
     pub column_path_link: Option<ColumnIdPathLink>,
 
     /// The type this parameter is filtering on. For example, for ConcertFilter, this will be (the index of) the Concert.
-    pub underlying_type_id: SerializableSlabIndex<PostgresType>,
+    pub underlying_type_id: PostgresTypeIndex,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

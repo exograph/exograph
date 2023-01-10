@@ -18,79 +18,53 @@ use core_plugin_interface::core_model::{
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum PostgresTypeIndex {
+    Primitive(SerializableSlabIndex<PostgresPrimitiveType>),
+    Composite(SerializableSlabIndex<PostgresCompositeType>),
+}
+
+impl PostgresTypeIndex {
+    pub fn to_type<'a>(
+        &self,
+        primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
+        entity_types: &'a SerializableSlab<PostgresCompositeType>,
+    ) -> PostgresType<'a> {
+        match self {
+            PostgresTypeIndex::Primitive(index) => {
+                PostgresType::Primitive(&primitive_types[*index])
+            }
+            PostgresTypeIndex::Composite(index) => PostgresType::Composite(&entity_types[*index]),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum PostgresType<'a> {
+    Primitive(&'a PostgresPrimitiveType),
+    Composite(&'a PostgresCompositeType),
+}
+
+impl<'a> PostgresType<'a> {
+    pub fn name(&self) -> &str {
+        match self {
+            PostgresType::Primitive(primitive_type) => &primitive_type.name,
+            PostgresType::Composite(composite_type) => &composite_type.name,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
-pub struct PostgresType {
+pub struct PostgresPrimitiveType {
     pub name: String,
-    pub plural_name: String,
-    pub kind: PostgresTypeKind,
-    pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
-}
-
-impl PostgresType {
-    pub fn model_fields(&self) -> Vec<&PostgresField> {
-        match &self.kind {
-            PostgresTypeKind::Primitive => vec![],
-            PostgresTypeKind::Composite(PostgresCompositeType { fields, .. }) => {
-                fields.iter().collect()
-            }
-        }
-    }
-
-    pub fn aggregate_fields(&self) -> Vec<&AggregateField> {
-        match &self.kind {
-            PostgresTypeKind::Primitive => vec![],
-            PostgresTypeKind::Composite(PostgresCompositeType { agg_fields, .. }) => {
-                agg_fields.iter().collect()
-            }
-        }
-    }
-
-    pub fn model_field(&self, name: &str) -> Option<&PostgresField> {
-        self.model_fields()
-            .into_iter()
-            .find(|model_field| model_field.name == name)
-    }
-
-    pub fn aggregate_field(&self, name: &str) -> Option<&AggregateField> {
-        self.aggregate_fields()
-            .into_iter()
-            .find(|model_field| model_field.name == name)
-    }
-
-    pub fn pk_field(&self) -> Option<&PostgresField> {
-        match &self.kind {
-            PostgresTypeKind::Primitive => None,
-            PostgresTypeKind::Composite(composite_type) => composite_type.pk_field(),
-        }
-    }
-
-    pub fn pk_column_id(&self) -> Option<ColumnId> {
-        match &self.kind {
-            PostgresTypeKind::Primitive => None,
-            PostgresTypeKind::Composite(composite_type) => composite_type.pk_column_id(),
-        }
-    }
-
-    pub fn table_id(&self) -> Option<SerializableSlabIndex<PhysicalTable>> {
-        match &self.kind {
-            PostgresTypeKind::Composite(PostgresCompositeType { table_id, .. }) => Some(*table_id),
-            _ => None,
-        }
-    }
-
-    pub fn is_primitive(&self) -> bool {
-        matches!(&self.kind, PostgresTypeKind::Primitive)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum PostgresTypeKind {
-    Primitive,
-    Composite(PostgresCompositeType),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PostgresCompositeType {
+    pub name: String,
+    pub plural_name: String,
+    pub is_input: bool, // Is this to be used as an input field (such as an argument in a mutation)? Needed for introspection
+
     pub fields: Vec<PostgresField>,
     pub agg_fields: Vec<AggregateField>,
     pub table_id: SerializableSlabIndex<PhysicalTable>,
@@ -101,6 +75,11 @@ pub struct PostgresCompositeType {
 }
 
 impl PostgresCompositeType {
+    pub fn model_field<'a>(&'a self, name: &str) -> Option<&PostgresField> {
+        self.fields
+            .iter()
+            .find(|model_field| model_field.name == name)
+    }
     pub fn get_field_by_name(&self, name: &str) -> Option<&PostgresField> {
         self.fields.iter().find(|field| field.name == name)
     }
@@ -114,6 +93,45 @@ impl PostgresCompositeType {
     pub fn pk_column_id(&self) -> Option<ColumnId> {
         self.pk_field()
             .and_then(|pk_field| pk_field.relation.self_column())
+    }
+
+    pub fn aggregate_fields(&self) -> Vec<&AggregateField> {
+        self.agg_fields.iter().collect()
+    }
+
+    pub fn aggregate_field<'a>(&'a self, name: &str) -> Option<&AggregateField> {
+        self.aggregate_fields()
+            .into_iter()
+            .find(|model_field| model_field.name == name)
+    }
+}
+
+impl PostgresTypeIndex {
+    pub fn model_fields<'a>(
+        &self,
+        entity_types: &'a SerializableSlab<PostgresCompositeType>,
+    ) -> Vec<&'a PostgresField> {
+        match &self {
+            PostgresTypeIndex::Primitive(_) => vec![],
+            PostgresTypeIndex::Composite(index) => {
+                let PostgresCompositeType { fields, .. } = &entity_types[*index];
+                fields.iter().collect()
+            }
+        }
+    }
+
+    pub fn model_field<'a>(
+        &'a self,
+        name: &str,
+        entity_types: &'a SerializableSlab<PostgresCompositeType>,
+    ) -> Option<&PostgresField> {
+        self.model_fields(entity_types)
+            .into_iter()
+            .find(|model_field| model_field.name == name)
+    }
+
+    pub fn is_primitive(&self) -> bool {
+        matches!(&self, PostgresTypeIndex::Primitive(_))
     }
 }
 
@@ -136,14 +154,14 @@ pub struct PostgresField {
 pub enum PostgresFieldType {
     Optional(Box<PostgresFieldType>),
     Reference {
-        type_id: SerializableSlabIndex<PostgresType>,
+        type_id: PostgresTypeIndex,
         type_name: String,
     },
     List(Box<PostgresFieldType>),
 }
 
 impl PostgresFieldType {
-    pub fn type_id(&self) -> &SerializableSlabIndex<PostgresType> {
+    pub fn type_id(&self) -> &PostgresTypeIndex {
         match self {
             PostgresFieldType::Optional(underlying) | PostgresFieldType::List(underlying) => {
                 underlying.type_id()
@@ -152,12 +170,18 @@ impl PostgresFieldType {
         }
     }
 
-    pub fn base_type<'a>(&self, types: &'a SerializableSlab<PostgresType>) -> &'a PostgresType {
+    pub fn base_type<'a>(
+        &self,
+        primitive_types: &'a SerializableSlab<PostgresPrimitiveType>,
+        entity_types: &'a SerializableSlab<PostgresCompositeType>,
+    ) -> PostgresType<'a> {
         match self {
             PostgresFieldType::Optional(underlying) | PostgresFieldType::List(underlying) => {
-                underlying.base_type(types)
+                underlying.base_type(primitive_types, entity_types)
             }
-            PostgresFieldType::Reference { type_id, .. } => &types[*type_id],
+            PostgresFieldType::Reference { type_id, .. } => {
+                type_id.to_type(primitive_types, entity_types)
+            }
         }
     }
 
@@ -178,51 +202,54 @@ impl PostgresFieldType {
     }
 }
 
-impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresType {
+impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresPrimitiveType {
+    fn type_definition(&self, _system: &ModelPostgresSystem) -> TypeDefinition {
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind: TypeKind::Scalar,
+        }
+    }
+}
+
+impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresCompositeType {
     fn type_definition(&self, system: &ModelPostgresSystem) -> TypeDefinition {
-        match &self.kind {
-            PostgresTypeKind::Primitive => TypeDefinition {
-                extend: false,
-                description: None,
-                name: default_positioned_name(&self.name),
-                directives: vec![],
-                kind: TypeKind::Scalar,
-            },
-            PostgresTypeKind::Composite(PostgresCompositeType {
-                fields: model_fields,
-                agg_fields,
-                ..
-            }) => {
-                let kind = if self.is_input {
-                    let fields = model_fields
-                        .iter()
-                        .map(|model_field| default_positioned(model_field.input_value()))
-                        .collect();
-                    TypeKind::InputObject(InputObjectType { fields })
-                } else {
-                    let model_fields = model_fields.iter().map(|model_field| {
-                        default_positioned(model_field.field_definition(system))
-                    });
+        let PostgresCompositeType {
+            fields: model_fields,
+            agg_fields,
+            ..
+        } = self;
 
-                    let agg_fields = agg_fields
-                        .iter()
-                        .map(|agg_field| default_positioned(agg_field.field_definition(system)));
+        let kind = if self.is_input {
+            let fields = model_fields
+                .iter()
+                .map(|model_field| default_positioned(model_field.input_value()))
+                .collect();
+            TypeKind::InputObject(InputObjectType { fields })
+        } else {
+            let model_fields = model_fields
+                .iter()
+                .map(|model_field| default_positioned(model_field.field_definition(system)));
 
-                    let fields = model_fields.chain(agg_fields).collect();
+            let agg_fields = agg_fields
+                .iter()
+                .map(|agg_field| default_positioned(agg_field.field_definition(system)));
 
-                    TypeKind::Object(ObjectType {
-                        implements: vec![],
-                        fields,
-                    })
-                };
-                TypeDefinition {
-                    extend: false,
-                    description: None,
-                    name: default_positioned_name(&self.name),
-                    directives: vec![],
-                    kind,
-                }
-            }
+            let fields = model_fields.chain(agg_fields).collect();
+
+            TypeKind::Object(ObjectType {
+                implements: vec![],
+                fields,
+            })
+        };
+        TypeDefinition {
+            extend: false,
+            description: None,
+            name: default_positioned_name(&self.name),
+            directives: vec![],
+            kind,
         }
     }
 }
@@ -238,30 +265,25 @@ impl FieldDefinitionProvider<ModelPostgresSystem> for PostgresField {
                 vec![]
             }
             PostgresRelation::OneToMany { other_type_id, .. } => {
-                let other_type = &system.postgres_types[other_type_id];
-                match &other_type.kind {
-                    PostgresTypeKind::Primitive => panic!(),
-                    PostgresTypeKind::Composite(kind) => {
-                        let collection_query = &system.collection_queries[kind.collection_query];
+                let other_type = &system.entity_types[other_type_id];
+                let collection_query = &system.collection_queries[other_type.collection_query];
 
-                        let CollectionQueryParameter {
-                            predicate_param,
-                            order_by_param,
-                            limit_param,
-                            offset_param,
-                        } = &collection_query.parameter;
+                let CollectionQueryParameter {
+                    predicate_param,
+                    order_by_param,
+                    limit_param,
+                    offset_param,
+                } = &collection_query.parameter;
 
-                        [
-                            predicate_param.input_value(),
-                            order_by_param.input_value(),
-                            limit_param.input_value(),
-                            offset_param.input_value(),
-                        ]
-                        .into_iter()
-                        .map(default_positioned)
-                        .collect()
-                    }
-                }
+                [
+                    predicate_param.input_value(),
+                    order_by_param.input_value(),
+                    limit_param.input_value(),
+                    offset_param.input_value(),
+                ]
+                .into_iter()
+                .map(default_positioned)
+                .collect()
             }
         };
 

@@ -12,7 +12,6 @@ use postgres_model::{
     column_path::{ColumnIdPath, ColumnIdPathLink},
     model::ModelPostgresSystem,
     operation::{CollectionQuery, OperationReturnType, PkQuery},
-    types::{PostgresCompositeType, PostgresTypeKind},
 };
 
 pub type Arguments = IndexMap<String, ConstValue>;
@@ -20,7 +19,7 @@ pub type Arguments = IndexMap<String, ConstValue>;
 // TODO: Allow access_predicate to have a residue that we can evaluate against data_param
 // See issue #69
 pub(crate) async fn check_access<'a>(
-    return_type: &OperationReturnType,
+    return_type: &'a OperationReturnType,
     kind: &SQLOperationKind,
     subsystem: &'a ModelPostgresSystem,
     request_context: &'a RequestContext<'a>,
@@ -28,17 +27,14 @@ pub(crate) async fn check_access<'a>(
     let return_type = return_type.typ(subsystem);
     let access_solver = PostgresAccessSolver::new(request_context, subsystem);
 
-    let access_predicate = match &return_type.kind {
-        PostgresTypeKind::Primitive => AbstractPredicate::True,
-        PostgresTypeKind::Composite(PostgresCompositeType { access, .. }) => {
-            let access_expr = match kind {
-                SQLOperationKind::Create => &access.creation,
-                SQLOperationKind::Retrieve => &access.read,
-                SQLOperationKind::Update => &access.update,
-                SQLOperationKind::Delete => &access.delete,
-            };
-            access_solver.solve(access_expr).await.0
-        }
+    let access_predicate = {
+        let access_expr = match kind {
+            SQLOperationKind::Create => &return_type.access.creation,
+            SQLOperationKind::Retrieve => &return_type.access.read,
+            SQLOperationKind::Update => &return_type.access.update,
+            SQLOperationKind::Delete => &return_type.access.delete,
+        };
+        access_solver.solve(access_expr).await.0
     };
 
     if access_predicate == AbstractPredicate::False {
@@ -97,12 +93,9 @@ pub(crate) fn return_type_info<'a>(
 ) -> (&'a PhysicalTable, &'a PkQuery, &'a CollectionQuery) {
     let typ = return_type.typ(subsystem);
 
-    match &typ.kind {
-        PostgresTypeKind::Primitive => panic!(""),
-        PostgresTypeKind::Composite(kind) => (
-            &subsystem.tables[kind.table_id],
-            &subsystem.pk_queries[kind.pk_query],
-            &subsystem.collection_queries[kind.collection_query],
-        ),
-    }
+    (
+        &subsystem.tables[typ.table_id],
+        &subsystem.pk_queries[typ.pk_query],
+        &subsystem.collection_queries[typ.collection_query],
+    )
 }

@@ -1,5 +1,5 @@
-use super::types::{PostgresType, PostgresTypeModifier};
-use crate::model::ModelPostgresSystem;
+use super::types::PostgresTypeModifier;
+use crate::{model::ModelPostgresSystem, types::PostgresPrimitiveType};
 use async_graphql_parser::types::{TypeDefinition, TypeKind};
 use core_plugin_interface::core_model::{
     mapped_arena::SerializableSlabIndex,
@@ -18,7 +18,7 @@ pub struct LimitParameter {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LimitParameterType {
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresType>,
+    pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,
     pub type_modifier: PostgresTypeModifier,
 }
 
@@ -31,7 +31,7 @@ pub struct OffsetParameter {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OffsetParameterType {
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresType>,
+    pub type_id: SerializableSlabIndex<PostgresPrimitiveType>,
     pub type_modifier: PostgresTypeModifier,
 }
 
