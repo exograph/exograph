@@ -90,7 +90,7 @@ async fn map_field<'content>(
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.clone())
     } else {
-        let model_field = return_type.model_field(&field.name).unwrap();
+        let model_field = return_type.field(&field.name).unwrap();
 
         match &model_field.relation {
             PostgresRelation::Pk { column_id } | PostgresRelation::Scalar { column_id } => {

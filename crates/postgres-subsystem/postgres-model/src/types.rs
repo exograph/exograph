@@ -75,12 +75,7 @@ pub struct PostgresCompositeType {
 }
 
 impl PostgresCompositeType {
-    pub fn model_field<'a>(&'a self, name: &str) -> Option<&PostgresField> {
-        self.fields
-            .iter()
-            .find(|model_field| model_field.name == name)
-    }
-    pub fn get_field_by_name(&self, name: &str) -> Option<&PostgresField> {
+    pub fn field<'a>(&'a self, name: &str) -> Option<&PostgresField> {
         self.fields.iter().find(|field| field.name == name)
     }
 
@@ -95,43 +90,10 @@ impl PostgresCompositeType {
             .and_then(|pk_field| pk_field.relation.self_column())
     }
 
-    pub fn aggregate_fields(&self) -> Vec<&AggregateField> {
-        self.agg_fields.iter().collect()
-    }
-
     pub fn aggregate_field<'a>(&'a self, name: &str) -> Option<&AggregateField> {
-        self.aggregate_fields()
-            .into_iter()
+        self.agg_fields
+            .iter()
             .find(|model_field| model_field.name == name)
-    }
-}
-
-impl PostgresTypeIndex {
-    pub fn model_fields<'a>(
-        &self,
-        entity_types: &'a SerializableSlab<PostgresCompositeType>,
-    ) -> Vec<&'a PostgresField> {
-        match &self {
-            PostgresTypeIndex::Primitive(_) => vec![],
-            PostgresTypeIndex::Composite(index) => {
-                let PostgresCompositeType { fields, .. } = &entity_types[*index];
-                fields.iter().collect()
-            }
-        }
-    }
-
-    pub fn model_field<'a>(
-        &'a self,
-        name: &str,
-        entity_types: &'a SerializableSlab<PostgresCompositeType>,
-    ) -> Option<&PostgresField> {
-        self.model_fields(entity_types)
-            .into_iter()
-            .find(|model_field| model_field.name == name)
-    }
-
-    pub fn is_primitive(&self) -> bool {
-        matches!(&self, PostgresTypeIndex::Primitive(_))
     }
 }
 
@@ -225,19 +187,19 @@ impl TypeDefinitionProvider<ModelPostgresSystem> for PostgresCompositeType {
         let kind = if self.is_input {
             let fields = model_fields
                 .iter()
-                .map(|model_field| default_positioned(model_field.input_value()))
+                .map(|field| default_positioned(field.input_value()))
                 .collect();
             TypeKind::InputObject(InputObjectType { fields })
         } else {
-            let model_fields = model_fields
+            let entity = model_fields
                 .iter()
-                .map(|model_field| default_positioned(model_field.field_definition(system)));
+                .map(|field| default_positioned(field.field_definition(system)));
 
             let agg_fields = agg_fields
                 .iter()
-                .map(|agg_field| default_positioned(agg_field.field_definition(system)));
+                .map(|field| default_positioned(field.field_definition(system)));
 
-            let fields = model_fields.chain(agg_fields).collect();
+            let fields = entity.chain(agg_fields).collect();
 
             TypeKind::Object(ObjectType {
                 implements: vec![],
@@ -334,7 +296,7 @@ impl From<&PostgresTypeModifier> for TypeModifier {
     }
 }
 
-// We need to a special case for the GqlField type, so that we can properly
+// We need to a special case for the PostgresField type, so that we can properly
 // created nested types such as Optional(List(List(String))). The blanket impl
 // above will not work for nested types like these.
 impl InputValueProvider for PostgresField {

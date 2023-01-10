@@ -217,11 +217,9 @@ fn compute_selection<'a>(
         subsystem_composite_types: &MappedArena<PostgresCompositeType>,
     ) -> (ColumnIdPathLink, &'a PostgresFieldType) {
         let get_field = |field_name: &str| {
-            self_type_info
-                .get_field_by_name(field_name)
-                .unwrap_or_else(|| {
-                    panic!("Field {field_name} not found while processing access rules")
-                })
+            self_type_info.field(field_name).unwrap_or_else(|| {
+                panic!("Field {field_name} not found while processing access rules")
+            })
         };
 
         let field = get_field(field_name);

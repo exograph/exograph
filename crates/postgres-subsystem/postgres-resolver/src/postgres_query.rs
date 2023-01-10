@@ -161,7 +161,7 @@ async fn map_field<'content>(
     let selection_elem = if field.name == "__typename" {
         SelectionElement::Constant(return_type.name.to_owned())
     } else {
-        let model_field = return_type.model_field(&field.name);
+        let model_field = return_type.field(&field.name);
 
         match model_field {
             Some(model_field) => {
