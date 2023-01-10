@@ -12,7 +12,7 @@ use postgres_model::{
     },
 };
 
-use crate::shallow::Shallow;
+use crate::{resolved_builder::ResolvedField, shallow::Shallow};
 
 use super::{
     builder::Builder,
@@ -158,11 +158,31 @@ pub trait DataParamBuilder<D> {
                 };
 
                 // If the type is a list or a reference, we need to create a nested input type (one-to-many or one-to-zero-or-one)
-                if let ResolvedFieldType::List(_) | ResolvedFieldType::Optional(_) = field.typ {
-                    if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
-                        typ.deref_subsystem_type(resolved_types)
-                    {
+                if let Some(ResolvedType::Composite(ResolvedCompositeType { name, .. })) =
+                    typ.deref_subsystem_type(resolved_types)
+                {
+                    if let ResolvedFieldType::List(_) = field.typ {
+                        // If it is a list, we need to create a nested input type (one-to-many)
                         Self::data_param_field_one_to_many_type_names(name, resolved_composite_type)
+                    } else if let ResolvedFieldType::Optional(_) = field.typ {
+                        // Let's determine if it is one-to-zero_or_one (where we need to create a nested input type)
+                        // Or many-to-one_optional (Think Concert with an optional Venue, and Venue with multiple (possibly optional) concerts)
+                        match get_matching_field(field, resolved_types) {
+                            Some(matching_field) => {
+                                let inner_type = matching_field.typ.inner();
+                                if let Some(ResolvedFieldType::List(_)) = inner_type {
+                                    vec![]
+                                } else {
+                                    Self::data_param_field_one_to_many_type_names(
+                                        name,
+                                        resolved_composite_type,
+                                    )
+                                }
+                            }
+                            None => {
+                                vec![]
+                            }
+                        }
                     } else {
                         vec![]
                     }
@@ -313,9 +333,7 @@ pub trait DataParamBuilder<D> {
             ..
         } = &model_type;
 
-        let model_fields = fields;
-
-        let mut field_types: Vec<_> = model_fields
+        let mut field_types: Vec<_> = fields
             .iter()
             .flat_map(|field| {
                 let field_type = field.typ.base_type(
@@ -347,7 +365,7 @@ pub trait DataParamBuilder<D> {
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
         let input_type_fields = self.compute_data_fields(
-            model_fields,
+            fields,
             top_level_type,
             Some(model_type.name.as_str()),
             building,
@@ -428,5 +446,29 @@ fn data_type_name(base_name: &str, container_type: Option<&str>) -> String {
             format!("{}From{}", base_name, container_type)
         }
         None => base_name.to_owned(),
+    }
+}
+
+fn get_matching_field<'a>(
+    field: &'a ResolvedField,
+    types: &'a MappedArena<ResolvedType>,
+) -> Option<&'a ResolvedField> {
+    let field_typ = types
+        .get_by_key(field.typ.get_underlying_typename())
+        .unwrap();
+
+    if let ResolvedType::Composite(field_typ) = field_typ {
+        let matching_fields: Vec<_> = field_typ
+            .fields
+            .iter()
+            .filter(|f| field.column_name == f.column_name)
+            .collect();
+
+        match &matching_fields[..] {
+            [matching_field] => Some(matching_field),
+            _ => None,
+        }
+    } else {
+        None
     }
 }

@@ -163,53 +163,6 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()));
         let existing_type_id = building.mutation_types.get_id(&existing_type_name).unwrap();
 
-        let nested_type = {
-            let nested_existing_type_id = {
-                let nested_existing_type_name =
-                    Self::data_type_name(&field_type.name, container_type.map(|t| t.name.as_str()))
-                        + "Nested";
-                building
-                    .mutation_types
-                    .get_id(&nested_existing_type_name)
-                    .unwrap()
-            };
-
-            &self
-                .expanded_data_type(
-                    field_type,
-                    resolved_env,
-                    building,
-                    top_level_type,
-                    container_type,
-                )
-                .first()
-                .map(|tpe| {
-                    let base_type = tpe.1.clone();
-                    let mut base_type_fields = base_type.fields;
-
-                    let base_type_pk_field = base_type_fields
-                        .iter_mut()
-                        .find(|f| matches!(f.relation, PostgresRelation::Pk { .. }));
-
-                    // For a non-nested type ("base type"), we already have the PK field, but it is optional. So here
-                    // we make it required (by not wrapping the model_pk_field it as optional)
-                    if let Some(base_type_pk_field) = base_type_pk_field {
-                        let model_pk_field = model_type.pk_field().unwrap();
-                        base_type_pk_field.typ = model_pk_field.typ.clone();
-                    } else {
-                        panic!("Expected a PK field in the base type")
-                    };
-
-                    let type_with_id = PostgresCompositeType {
-                        fields: base_type_fields,
-                        ..base_type
-                    };
-
-                    (nested_existing_type_id, type_with_id)
-                })
-        }
-        .clone();
-
         let PostgresCompositeType {
             table_id,
             pk_query,
@@ -261,7 +214,7 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
             let mut types = vec![(
                 existing_type_id,
                 PostgresCompositeType {
-                    name: existing_type_name,
+                    name: existing_type_name.clone(),
                     plural_name: "".to_string(), // unused. TODO: Fix this by separating mutation types from entity types.
                     fields,
                     agg_fields: vec![],
@@ -273,6 +226,50 @@ impl DataParamBuilder<UpdateDataParameter> for UpdateMutationBuilder {
                     is_input: true,
                 },
             )];
+
+            let nested_type = {
+                let nested_existing_type_name = existing_type_name + "Nested";
+                let nested_existing_type_id = building
+                    .mutation_types
+                    .get_id(&nested_existing_type_name)
+                    .unwrap();
+
+                &self
+                    .expanded_data_type(
+                        field_type,
+                        resolved_env,
+                        building,
+                        top_level_type,
+                        container_type,
+                    )
+                    .first()
+                    .map(|tpe| {
+                        let base_type = tpe.1.clone();
+                        let mut base_type_fields = base_type.fields;
+
+                        let base_type_pk_field = base_type_fields
+                            .iter_mut()
+                            .find(|f| matches!(f.relation, PostgresRelation::Pk { .. }));
+
+                        // For a non-nested type ("base type"), we already have the PK field, but it is optional. So here
+                        // we make it required (by not wrapping the model_pk_field it as optional)
+                        if let Some(base_type_pk_field) = base_type_pk_field {
+                            let model_pk_field = model_type.pk_field().unwrap();
+                            base_type_pk_field.typ = model_pk_field.typ.clone();
+                        } else {
+                            panic!("Expected a PK field in the base type")
+                        };
+
+                        let type_with_id = PostgresCompositeType {
+                            name: nested_existing_type_name,
+                            fields: base_type_fields,
+                            ..base_type
+                        };
+
+                        (nested_existing_type_id, type_with_id)
+                    })
+            }
+            .clone();
 
             if let Some(nested_type) = nested_type {
                 types.push(nested_type);
