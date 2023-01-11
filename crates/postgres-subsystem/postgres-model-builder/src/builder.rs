@@ -1,7 +1,9 @@
 //! Transforms an AstSystem into a GraphQL system
 
-use core_plugin_interface::core_model::mapped_arena::MappedArena;
-use postgres_model::types::{PostgresType, PostgresTypeKind};
+use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
+use postgres_model::{access::Access, types::PostgresCompositeType};
+
+use crate::shallow::Shallow;
 
 use super::{
     resolved_builder::{ResolvedCompositeType, ResolvedType},
@@ -28,22 +30,29 @@ pub trait Builder {
 
     fn create_shallow_type(
         &self,
-        resolved_type: &ResolvedType,
+        resolved_composite_type: &ResolvedCompositeType,
         resolved_types: &MappedArena<ResolvedType>,
         building: &mut SystemContextBuilding,
     ) {
-        if let ResolvedType::Composite(c) = resolved_type {
-            for type_name in self.type_names(c, resolved_types).iter() {
-                building.mutation_types.add(
-                    type_name,
-                    PostgresType {
-                        name: type_name.to_string(),
-                        plural_name: "".to_string(), // unused
-                        kind: PostgresTypeKind::Primitive,
-                        is_input: true,
-                    },
-                );
-            }
+        for type_name in self
+            .type_names(resolved_composite_type, resolved_types)
+            .iter()
+        {
+            building.mutation_types.add(
+                type_name,
+                PostgresCompositeType {
+                    name: type_name.to_string(),
+                    fields: vec![],
+                    agg_fields: vec![],
+                    pk_query: SerializableSlabIndex::shallow(),
+                    collection_query: SerializableSlabIndex::shallow(),
+                    aggregate_query: SerializableSlabIndex::shallow(),
+                    table_id: SerializableSlabIndex::shallow(),
+                    plural_name: "".to_string(), // unused
+                    is_input: true,
+                    access: Access::restrictive(),
+                },
+            );
         }
     }
 
@@ -53,8 +62,8 @@ pub trait Builder {
         building: &mut SystemContextBuilding,
     ) {
         for (_, model_type) in resolved_types.iter() {
-            if let ResolvedType::Composite(ResolvedCompositeType { .. }) = &model_type {
-                self.create_shallow_type(model_type, resolved_types, building);
+            if let ResolvedType::Composite(composite_type) = &model_type {
+                self.create_shallow_type(composite_type, resolved_types, building);
             }
         }
     }

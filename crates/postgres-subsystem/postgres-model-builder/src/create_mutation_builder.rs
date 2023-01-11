@@ -5,7 +5,7 @@ use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableS
 
 use postgres_model::{
     operation::{CreateDataParameter, CreateDataParameterTypeWithModifier, PostgresMutationKind},
-    types::{PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier},
+    types::{PostgresCompositeType, PostgresTypeModifier},
 };
 
 use crate::mutation_builder::DataParamRole;
@@ -33,43 +33,35 @@ impl Builder for CreateMutationBuilder {
     }
 
     fn build_expanded(&self, resolved_env: &ResolvedTypeEnv, building: &mut SystemContextBuilding) {
-        for (_, model_type) in building.postgres_types.iter() {
-            if let PostgresTypeKind::Composite(PostgresCompositeType { .. }) = &model_type.kind {
-                for (existing_id, expanded_kind) in self.expanded_data_type(
-                    model_type,
-                    resolved_env,
-                    building,
-                    Some(model_type),
-                    None,
-                ) {
-                    building.mutation_types[existing_id].kind =
-                        PostgresTypeKind::Composite(expanded_kind);
-                }
+        for (_, model_type) in building.entity_types.iter() {
+            for (existing_id, expanded_type) in
+                self.expanded_data_type(model_type, resolved_env, building, Some(model_type), None)
+            {
+                building.mutation_types[existing_id] = expanded_type;
             }
         }
-        for (_, model_type) in building.postgres_types.iter() {
-            if let PostgresTypeKind::Composite(PostgresCompositeType { .. }) = &model_type.kind {
-                let model_type_id = building
-                    .postgres_types
-                    .get_id(model_type.name.as_str())
-                    .unwrap();
 
-                for mutation in self.build_mutations(model_type_id, model_type, building) {
-                    building.mutations.add(&mutation.name.to_owned(), mutation);
-                }
+        for (_, model_type) in building.entity_types.iter() {
+            let model_type_id = building
+                .entity_types
+                .get_id(model_type.name.as_str())
+                .unwrap();
+
+            for mutation in self.build_mutations(model_type_id, model_type, building) {
+                building.mutations.add(&mutation.name.to_owned(), mutation);
             }
         }
     }
 }
 
 impl MutationBuilder for CreateMutationBuilder {
-    fn single_mutation_name(model_type: &PostgresType) -> String {
+    fn single_mutation_name(model_type: &PostgresCompositeType) -> String {
         model_type.pk_create()
     }
 
     fn single_mutation_kind(
-        _model_type_id: SerializableSlabIndex<PostgresType>,
-        model_type: &PostgresType,
+        _model_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        model_type: &PostgresCompositeType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Create(Self::data_param(model_type, building, false))
@@ -79,13 +71,13 @@ impl MutationBuilder for CreateMutationBuilder {
         PostgresTypeModifier::NonNull
     }
 
-    fn multi_mutation_name(model_type: &PostgresType) -> String {
+    fn multi_mutation_name(model_type: &PostgresCompositeType) -> String {
         model_type.collection_create()
     }
 
     fn multi_mutation_kind(
-        _model_type_id: SerializableSlabIndex<PostgresType>,
-        model_type: &PostgresType,
+        _model_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        model_type: &PostgresCompositeType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Create(Self::data_param(model_type, building, true))
@@ -106,7 +98,7 @@ impl DataParamBuilder<CreateDataParameter> for CreateMutationBuilder {
     }
 
     fn data_param(
-        model_type: &PostgresType,
+        model_type: &PostgresCompositeType,
         building: &SystemContextBuilding,
         array: bool,
     ) -> CreateDataParameter {

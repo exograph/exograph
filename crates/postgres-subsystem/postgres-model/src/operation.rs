@@ -1,22 +1,17 @@
 use std::fmt::Debug;
 
-use core_plugin_interface::core_model::{
-    mapped_arena::SerializableSlabIndex,
-    type_normalization::{Operation, Parameter, TypeModifier},
-};
+use core_plugin_interface::core_model::mapped_arena::SerializableSlabIndex;
+use core_plugin_interface::core_model::type_normalization::{Operation, Parameter, TypeModifier};
 use payas_sql::PhysicalTable;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    model::ModelPostgresSystem,
-    types::{PostgresCompositeType, PostgresTypeKind},
-};
+use crate::{model::ModelPostgresSystem, types::PostgresCompositeType};
 
 use super::{
     limit_offset::{LimitParameter, OffsetParameter},
     order::OrderByParameter,
     predicate::PredicateParameter,
-    types::{PostgresType, PostgresTypeModifier},
+    types::PostgresTypeModifier,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -85,38 +80,31 @@ pub struct CreateDataParameter {
 pub struct UpdateDataParameter {
     pub name: String,
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresType>,
+    pub type_id: SerializableSlabIndex<PostgresCompositeType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateDataParameterTypeWithModifier {
     pub type_name: String,
-    pub type_id: SerializableSlabIndex<PostgresType>,
+    pub type_id: SerializableSlabIndex<PostgresCompositeType>,
     pub array_input: bool, // does it take an array parameter? For create<Entity>s (note the plural), this is set to true
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OperationReturnType {
-    pub type_id: SerializableSlabIndex<PostgresType>,
+    pub type_id: SerializableSlabIndex<PostgresCompositeType>,
     pub type_name: String,
     pub type_modifier: PostgresTypeModifier,
 }
 
 impl OperationReturnType {
-    pub fn typ<'a>(&self, system: &'a ModelPostgresSystem) -> &'a PostgresType {
-        &system.postgres_types[self.type_id]
+    pub fn typ<'a>(&'a self, system: &'a ModelPostgresSystem) -> &PostgresCompositeType {
+        &system.entity_types[self.type_id]
     }
 
     pub fn physical_table<'a>(&self, system: &'a ModelPostgresSystem) -> &'a PhysicalTable {
         let return_type = self.typ(system);
-        match &return_type.kind {
-            PostgresTypeKind::Primitive => panic!(),
-            PostgresTypeKind::Composite(PostgresCompositeType {
-                fields: _,
-                table_id,
-                ..
-            }) => &system.tables[*table_id],
-        }
+        &system.tables[return_type.table_id]
     }
 }
 

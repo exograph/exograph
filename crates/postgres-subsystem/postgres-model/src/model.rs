@@ -5,13 +5,13 @@ use async_graphql_parser::types::{FieldDefinition, TypeDefinition};
 use crate::{
     aggregate::AggregateType,
     operation::{AggregateQuery, CollectionQuery},
+    types::{PostgresCompositeType, PostgresPrimitiveType},
 };
 
 use super::{
     operation::{PkQuery, PostgresMutation},
     order::OrderByParameterType,
     predicate::PredicateParameterType,
-    types::PostgresType,
 };
 use core_plugin_interface::{
     core_model::{
@@ -28,19 +28,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ModelPostgresSystem {
     pub contexts: MappedArena<ContextType>,
-    pub postgres_types: SerializableSlab<PostgresType>,
+    pub primitive_types: SerializableSlab<PostgresPrimitiveType>,
+    pub entity_types: SerializableSlab<PostgresCompositeType>,
 
     pub aggregate_types: SerializableSlab<AggregateType>,
 
     // query related
     pub order_by_types: SerializableSlab<OrderByParameterType>,
     pub predicate_types: SerializableSlab<PredicateParameterType>,
+
     pub pk_queries: MappedArena<PkQuery>,
     pub collection_queries: MappedArena<CollectionQuery>,
     pub aggregate_queries: MappedArena<AggregateQuery>,
 
     // mutation related
-    pub mutation_types: SerializableSlab<PostgresType>, // create, update, delete input types such as `PersonUpdateInput`
+    pub mutation_types: SerializableSlab<PostgresCompositeType>, // create, update, delete input types such as `PersonUpdateInput`
     pub mutations: MappedArena<PostgresMutation>,
 
     pub tables: SerializableSlab<PhysicalTable>,
@@ -79,9 +81,13 @@ impl ModelPostgresSystem {
     pub fn schema_types(&self) -> Vec<TypeDefinition> {
         let mut all_type_definitions = vec![];
 
-        self.postgres_types
+        self.primitive_types
             .iter()
-            .for_each(|model_type| all_type_definitions.push(model_type.1.type_definition(self)));
+            .for_each(|typ| all_type_definitions.push(typ.1.type_definition(self)));
+
+        self.entity_types
+            .iter()
+            .for_each(|typ| all_type_definitions.push(typ.1.type_definition(self)));
 
         self.aggregate_types
             .iter()
@@ -107,7 +113,8 @@ impl Default for ModelPostgresSystem {
     fn default() -> Self {
         Self {
             contexts: MappedArena::default(),
-            postgres_types: SerializableSlab::new(),
+            primitive_types: SerializableSlab::new(),
+            entity_types: SerializableSlab::new(),
             aggregate_types: SerializableSlab::new(),
             order_by_types: SerializableSlab::new(),
             predicate_types: SerializableSlab::new(),

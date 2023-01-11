@@ -1,6 +1,6 @@
 use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use postgres_model::types::{
-    PostgresCompositeType, PostgresType, PostgresTypeKind, PostgresTypeModifier,
+    PostgresCompositeType, PostgresPrimitiveType, PostgresTypeIndex, PostgresTypeModifier,
 };
 use std::collections::HashMap;
 
@@ -25,7 +25,7 @@ impl Shallow for PredicateParameter {
             type_name: String::new(),
             typ: PredicateParameterTypeWithModifier::shallow(),
             column_path_link: None,
-            underlying_type_id: SerializableSlabIndex::shallow(),
+            underlying_type_id: PostgresTypeIndex::shallow(),
         }
     }
 }
@@ -73,13 +73,19 @@ pub fn build_shallow(types: &MappedArena<ResolvedType>, building: &mut SystemCon
 }
 
 pub fn build_expanded(building: &mut SystemContextBuilding) {
-    for (model_type_id, model_type) in building.postgres_types.iter()
-    // Chain with primitives too to expand filters like "IntFilter"
-    {
+    for (type_id, typ) in building.primitive_types.iter() {
+        let param_type_name = get_parameter_type_name(&typ.name);
+        let existing_param_id = building.predicate_types.get_id(&param_type_name);
+
+        let new_kind = expand_primitive_type(type_id, typ, building);
+        building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
+    }
+
+    for (model_type_id, model_type) in building.entity_types.iter() {
         let param_type_name = get_parameter_type_name(&model_type.name);
         let existing_param_id = building.predicate_types.get_id(&param_type_name);
 
-        let new_kind = expand_type(model_type_id, model_type, building);
+        let new_kind = expand_entity_type(model_type_id, model_type, building);
         building.predicate_types[existing_param_id.unwrap()].kind = new_kind;
     }
 }
@@ -95,22 +101,20 @@ fn create_shallow_type(model: &ResolvedCompositeType) -> PredicateParameterType 
     }
 }
 
-fn expand_type(
-    postgres_type_id: SerializableSlabIndex<PostgresType>,
-    postgres_type: &PostgresType,
+fn expand_primitive_type(
+    type_id: SerializableSlabIndex<PostgresPrimitiveType>,
+    typ: &PostgresPrimitiveType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
-    match &postgres_type.kind {
-        PostgresTypeKind::Primitive => {
-            create_operator_filter_type_kind(postgres_type_id, postgres_type, building)
-        }
-        PostgresTypeKind::Composite(composite_type) => create_composite_filter_type_kind(
-            postgres_type_id,
-            composite_type,
-            &postgres_type.name,
-            building,
-        ),
-    }
+    create_operator_filter_type_kind(type_id, typ, building)
+}
+
+fn expand_entity_type(
+    postgres_type_id: SerializableSlabIndex<PostgresCompositeType>,
+    entity_type: &PostgresCompositeType,
+    building: &SystemContextBuilding,
+) -> PredicateParameterTypeKind {
+    create_composite_filter_type_kind(postgres_type_id, entity_type, &entity_type.name, building)
 }
 
 lazy_static! {
@@ -176,8 +180,8 @@ lazy_static! {
 }
 
 fn create_operator_filter_type_kind(
-    postgres_type_id: SerializableSlabIndex<PostgresType>,
-    scalar_model_type: &PostgresType,
+    postgres_type_id: SerializableSlabIndex<PostgresPrimitiveType>,
+    scalar_model_type: &PostgresPrimitiveType,
     building: &SystemContextBuilding,
 ) -> PredicateParameterTypeKind {
     let parameter_constructor = |operator: &&str| PredicateParameter {
@@ -191,7 +195,7 @@ fn create_operator_filter_type_kind(
             type_modifier: PostgresTypeModifier::Optional,
         },
         column_path_link: None,
-        underlying_type_id: postgres_type_id,
+        underlying_type_id: PostgresTypeIndex::Primitive(postgres_type_id),
     };
 
     // look up type in (type, operations) table
@@ -212,7 +216,7 @@ fn create_operator_filter_type_kind(
 }
 
 fn create_composite_filter_type_kind(
-    postgres_type_id: SerializableSlabIndex<PostgresType>,
+    postgres_type_id: SerializableSlabIndex<PostgresCompositeType>,
     composite_type: &PostgresCompositeType,
     composite_type_name: &str,
     building: &SystemContextBuilding,
@@ -228,7 +232,7 @@ fn create_composite_filter_type_kind(
             let column_path_link = Some(column_path_utils::column_path_link(
                 composite_type,
                 field,
-                &building.postgres_types,
+                &building.entity_types,
             ));
 
             PredicateParameter {
@@ -268,7 +272,7 @@ fn create_composite_filter_type_kind(
                     type_modifier,
                 },
                 column_path_link: None,
-                underlying_type_id: postgres_type_id,
+                underlying_type_id: PostgresTypeIndex::Composite(postgres_type_id),
             }
         })
         .collect();

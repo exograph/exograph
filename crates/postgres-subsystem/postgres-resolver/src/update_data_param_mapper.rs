@@ -9,7 +9,7 @@ use postgres_model::{
     model::ModelPostgresSystem,
     operation::{OperationReturnType, UpdateDataParameter},
     relation::PostgresRelation,
-    types::{PostgresCompositeType, PostgresType, PostgresTypeKind},
+    types::PostgresCompositeType,
 };
 
 use crate::{
@@ -61,40 +61,38 @@ impl<'a> SQLMapper<'a, AbstractUpdate<'a>> for UpdateOperation<'a> {
 }
 
 fn compute_update_columns<'a>(
-    data_type: &'a PostgresType,
+    data_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
 ) -> Vec<(&'a PhysicalColumn, Column<'a>)> {
-    match &data_type.kind {
-        PostgresTypeKind::Primitive => panic!(),
-        PostgresTypeKind::Composite(PostgresCompositeType { fields, .. }) => fields
-            .iter()
-            .flat_map(|field| {
-                field.relation.self_column().and_then(|key_column_id| {
-                    get_argument_field(argument, &field.name).map(|argument_value| {
-                        let key_column = key_column_id.get_column(subsystem);
-                        let argument_value = match &field.relation {
-                            PostgresRelation::ManyToOne { other_type_id, .. } => {
-                                let other_type = &subsystem.postgres_types[*other_type_id];
-                                let other_type_pk_field_name = other_type
-                                    .pk_column_id()
-                                    .map(|column_id| &column_id.get_column(subsystem).column_name)
-                                    .unwrap();
-                                match get_argument_field(argument_value, other_type_pk_field_name) {
-                                    Some(other_type_pk_arg) => other_type_pk_arg,
-                                    None => todo!(),
-                                }
+    let PostgresCompositeType { fields, .. } = data_type;
+    fields
+        .iter()
+        .flat_map(|field| {
+            field.relation.self_column().and_then(|key_column_id| {
+                get_argument_field(argument, &field.name).map(|argument_value| {
+                    let key_column = key_column_id.get_column(subsystem);
+                    let argument_value = match &field.relation {
+                        PostgresRelation::ManyToOne { other_type_id, .. } => {
+                            let other_type = &subsystem.entity_types[*other_type_id];
+                            let other_type_pk_field_name = other_type
+                                .pk_column_id()
+                                .map(|column_id| &column_id.get_column(subsystem).column_name)
+                                .unwrap();
+                            match get_argument_field(argument_value, other_type_pk_field_name) {
+                                Some(other_type_pk_arg) => other_type_pk_arg,
+                                None => todo!(),
                             }
-                            _ => argument_value,
-                        };
+                        }
+                        _ => argument_value,
+                    };
 
-                        let value_column = cast::literal_column(argument_value, key_column);
-                        (key_column, value_column.unwrap())
-                    })
+                    let value_column = cast::literal_column(argument_value, key_column);
+                    (key_column, value_column.unwrap())
                 })
             })
-            .collect(),
-    }
+        })
+        .collect()
 }
 
 // A bit hacky way. Ideally, the nested parameter should have the same shape as the container type. Specifically, it should have
@@ -103,9 +101,9 @@ fn compute_update_columns<'a>(
 // can be updated at the same time.
 // TODO: Do this once we rethink how we set up the parameters.
 fn compute_nested_ops<'a>(
-    field_model_type: &'a PostgresType,
+    field_model_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
-    container_model_type: &'a PostgresType,
+    container_model_type: &'a PostgresCompositeType,
     subsystem: &'a ModelPostgresSystem,
 ) -> (
     Vec<NestedAbstractUpdate<'a>>,
@@ -116,38 +114,36 @@ fn compute_nested_ops<'a>(
     let mut nested_inserts = vec![];
     let mut nested_deletes = vec![];
 
-    match &field_model_type.kind {
-        PostgresTypeKind::Primitive => {}
-        PostgresTypeKind::Composite(PostgresCompositeType { fields, .. }) => {
-            fields.iter().for_each(|field| {
-                if let PostgresRelation::OneToMany { other_type_id, .. } = &field.relation {
-                    let field_model_type = &subsystem.postgres_types[*other_type_id]; // TODO: This is a type but should be a data type
+    let PostgresCompositeType { fields, .. } = field_model_type;
+    {
+        fields.iter().for_each(|field| {
+            if let PostgresRelation::OneToMany { other_type_id, .. } = &field.relation {
+                let field_model_type = &subsystem.entity_types[*other_type_id]; // TODO: This is a type but should be a data type
 
-                    if let Some(argument) = get_argument_field(argument, &field.name) {
-                        nested_updates.extend(compute_nested_update(
-                            field_model_type,
-                            argument,
-                            container_model_type,
-                            subsystem,
-                        ));
+                if let Some(argument) = get_argument_field(argument, &field.name) {
+                    nested_updates.extend(compute_nested_update(
+                        field_model_type,
+                        argument,
+                        container_model_type,
+                        subsystem,
+                    ));
 
-                        nested_inserts.extend(compute_nested_inserts(
-                            field_model_type,
-                            argument,
-                            container_model_type,
-                            subsystem,
-                        ));
+                    nested_inserts.extend(compute_nested_inserts(
+                        field_model_type,
+                        argument,
+                        container_model_type,
+                        subsystem,
+                    ));
 
-                        nested_deletes.extend(compute_nested_delete(
-                            field_model_type,
-                            argument,
-                            subsystem,
-                            container_model_type,
-                        ));
-                    }
+                    nested_deletes.extend(compute_nested_delete(
+                        field_model_type,
+                        argument,
+                        subsystem,
+                        container_model_type,
+                    ));
                 }
-            })
-        }
+            }
+        })
     }
 
     (nested_updates, nested_inserts, nested_deletes)
@@ -155,20 +151,16 @@ fn compute_nested_ops<'a>(
 
 // Which column in field_model_type corresponds to the primary column in container_model_type?
 fn compute_nested_reference_column<'a>(
-    field_model_type: &'a PostgresType,
-    container_model_type: &'a PostgresType,
+    field_model_type: &'a PostgresCompositeType,
+    container_model_type: &'a PostgresCompositeType,
     system: &'a ModelPostgresSystem,
 ) -> Option<&'a PhysicalColumn> {
-    let pk_column = match &container_model_type.kind {
-        PostgresTypeKind::Primitive => panic!(),
-        PostgresTypeKind::Composite(kind) => {
-            let container_table = &system.tables[kind.table_id];
-            container_table.get_pk_physical_column()
-        }
-    }
-    .unwrap();
+    let pk_column = {
+        let container_table = &system.tables[container_model_type.table_id];
+        container_table.get_pk_physical_column().unwrap()
+    };
 
-    let nested_table = &system.tables[field_model_type.table_id().unwrap()];
+    let nested_table = &system.tables[field_model_type.table_id];
 
     nested_table
         .columns
@@ -187,9 +179,9 @@ fn compute_nested_reference_column<'a>(
 
 // Look for the "update" field in the argument. If it exists, compute the SQLOperation needed to update the nested object.
 fn compute_nested_update<'a>(
-    field_model_type: &'a PostgresType,
+    field_model_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
-    container_model_type: &'a PostgresType,
+    container_model_type: &'a PostgresCompositeType,
     subsystem: &'a ModelPostgresSystem,
 ) -> Vec<NestedAbstractUpdate<'a>> {
     let nested_reference_col =
@@ -226,14 +218,14 @@ fn compute_nested_update<'a>(
 
 // Compute update step assuming that the argument is a single object (not an array)
 fn compute_nested_update_object_arg<'a>(
-    field_model_type: &'a PostgresType,
+    field_model_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
     subsystem: &'a ModelPostgresSystem,
 ) -> NestedAbstractUpdate<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
-    let table = &subsystem.tables[field_model_type.table_id().unwrap()];
+    let table = &subsystem.tables[field_model_type.table_id];
 
     let nested = compute_update_columns(field_model_type, argument, subsystem);
     let (pk_columns, nested): (Vec<_>, Vec<_>) = nested.into_iter().partition(|elem| elem.0.is_pk);
@@ -287,22 +279,22 @@ fn compute_nested_update_object_arg<'a>(
 
 // Looks for the "create" field in the argument. If it exists, compute the SQLOperation needed to create the nested object.
 fn compute_nested_inserts<'a>(
-    field_model_type: &'a PostgresType,
+    field_model_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
-    container_model_type: &'a PostgresType,
+    container_model_type: &'a PostgresCompositeType,
     subsystem: &'a ModelPostgresSystem,
 ) -> Vec<NestedAbstractInsert<'a>> {
     fn create_nested<'a>(
-        field_model_type: &'a PostgresType,
+        field_model_type: &'a PostgresCompositeType,
         argument: &'a ConstValue,
-        container_model_type: &'a PostgresType,
+        container_model_type: &'a PostgresCompositeType,
         subsystem: &'a ModelPostgresSystem,
     ) -> Result<NestedAbstractInsert<'a>, PostgresExecutionError> {
         let nested_reference_col =
             compute_nested_reference_column(field_model_type, container_model_type, subsystem)
                 .unwrap();
 
-        let table = &subsystem.tables[field_model_type.table_id().unwrap()];
+        let table = &subsystem.tables[field_model_type.table_id];
 
         let rows =
             super::create_data_param_mapper::map_argument(field_model_type, argument, subsystem)?;
@@ -351,10 +343,10 @@ fn compute_nested_inserts<'a>(
 }
 
 fn compute_nested_delete<'a>(
-    field_model_type: &'a PostgresType,
+    field_model_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
     subsystem: &'a ModelPostgresSystem,
-    container_model_type: &'a PostgresType,
+    container_model_type: &'a PostgresCompositeType,
 ) -> Vec<NestedAbstractDelete<'a>> {
     // This is not the right way. But current API needs to be updated to not even take the "id" parameter (the same issue exists in the "update" case).
     // TODO: Revisit this.
@@ -393,14 +385,14 @@ fn compute_nested_delete<'a>(
 
 // Compute delete step assuming that the argument is a single object (not an array)
 fn compute_nested_delete_object_arg<'a>(
-    field_model_type: &'a PostgresType,
+    field_model_type: &'a PostgresCompositeType,
     argument: &'a ConstValue,
     nested_reference_col: &'a PhysicalColumn,
     subsystem: &'a ModelPostgresSystem,
 ) -> NestedAbstractDelete<'a> {
     assert!(matches!(argument, ConstValue::Object(..)));
 
-    let table = &subsystem.tables[field_model_type.table_id().unwrap()];
+    let table = &subsystem.tables[field_model_type.table_id];
 
     //
     let nested = compute_update_columns(field_model_type, argument, subsystem);

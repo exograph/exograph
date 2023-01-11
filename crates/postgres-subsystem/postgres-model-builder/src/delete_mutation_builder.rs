@@ -1,9 +1,9 @@
-//! Build mutation input types associatd with deletion (<Type>DeletionInput) and
+//! Build mutation input types associated with deletion (<Type>DeletionInput) and
 //! the create mutations (delete<Type>, and delete<Type>s)
 
 use core_plugin_interface::core_model::mapped_arena::{MappedArena, SerializableSlabIndex};
 use postgres_model::operation::PostgresMutationKind;
-use postgres_model::types::{PostgresType, PostgresTypeKind, PostgresTypeModifier};
+use postgres_model::types::{PostgresCompositeType, PostgresTypeModifier};
 
 use super::{
     builder::Builder,
@@ -35,29 +35,22 @@ impl Builder for DeleteMutationBuilder {
     ) {
         // Since there are no special input types for deletion, no expansion is needed
 
-        for (_, model_type) in building.postgres_types.iter() {
-            if let PostgresTypeKind::Composite(_) = &model_type.kind {
-                let model_type_id = building
-                    .postgres_types
-                    .get_id(model_type.name.as_str())
-                    .unwrap();
-
-                for mutation in self.build_mutations(model_type_id, model_type, building) {
-                    building.mutations.add(&mutation.name.to_owned(), mutation);
-                }
+        for (model_type_id, model_type) in building.entity_types.iter() {
+            for mutation in self.build_mutations(model_type_id, model_type, building) {
+                building.mutations.add(&mutation.name.to_owned(), mutation);
             }
         }
     }
 }
 
 impl MutationBuilder for DeleteMutationBuilder {
-    fn single_mutation_name(model_type: &PostgresType) -> String {
+    fn single_mutation_name(model_type: &PostgresCompositeType) -> String {
         model_type.pk_delete()
     }
 
     fn single_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresType>,
-        model_type: &PostgresType,
+        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        model_type: &PostgresCompositeType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Delete(query_builder::pk_predicate_param(
@@ -71,13 +64,13 @@ impl MutationBuilder for DeleteMutationBuilder {
         PostgresTypeModifier::Optional // We return null if the specified id doesn't exist
     }
 
-    fn multi_mutation_name(model_type: &PostgresType) -> String {
+    fn multi_mutation_name(model_type: &PostgresCompositeType) -> String {
         model_type.collection_delete()
     }
 
     fn multi_mutation_kind(
-        model_type_id: SerializableSlabIndex<PostgresType>,
-        model_type: &PostgresType,
+        model_type_id: SerializableSlabIndex<PostgresCompositeType>,
+        model_type: &PostgresCompositeType,
         building: &SystemContextBuilding,
     ) -> PostgresMutationKind {
         PostgresMutationKind::Delete(query_builder::collection_predicate_param(
